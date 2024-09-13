@@ -1,4 +1,4 @@
-:root {
+/* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -65,4 +65,20 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+} */
+
+
+.App {
+  text-align: center;
+  padding: 20px;
+}
+
+.gantt-chart {
+  margin: 0 auto;
+  max-width: 1000px;
+}
+
+svg {
+  border: 1px solid #ddd;
+  margin-top: 20px;
 }
