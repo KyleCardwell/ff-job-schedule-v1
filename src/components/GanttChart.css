@@ -1,0 +1,45 @@
+.gantt-container {
+  display: flex;
+  overflow: hidden;
+}
+
+.gantt-left {
+  width: 300px; /* Fixed width for job details */
+  background-color: #f4f4f4;
+  border-right: 1px solid #ccc;
+  margin-top: 31px;
+}
+
+.gantt-right {
+  flex-grow: 1; /* Take the rest of the space */
+  overflow: auto; /* Enable both horizontal and vertical scrolling */
+  background-color: #fff;
+  position: relative;
+}
+
+.gantt-row {
+  display: flex;
+  flex-direction: row;
+  /* padding: 20px 5px; */
+  /* border-bottom: 1px solid #ccc; */
+  height: 40px;
+}
+
+.gantt-left .gantt-row:nth-child(odd) {
+  background-color: #f9f9f9; /* Light gray for even rows */
+}
+
+.gantt-left .gantt-row:nth-child(even) {
+  background-color: #fff; /* White for odd rows */
+}
+
+.gantt-cell {
+  width: 100px; /* Adjust width as needed */
+  text-align: left;
+}
+
+.header {
+  font-weight: bold;
+}
+
+

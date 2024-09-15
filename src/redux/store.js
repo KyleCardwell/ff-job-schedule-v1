@@ -1,7 +1,7 @@
 // redux/store.js
 import { createStore } from "redux";
-import { ganttReducer } from "./ganttReducer";
+import { ganttReducer } from "./reducers/ganttReducer";
 
-const store = createStore(ganttReducer);
+const store = createStore(ganttReducer, undefined, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__());
 
 export default store;
