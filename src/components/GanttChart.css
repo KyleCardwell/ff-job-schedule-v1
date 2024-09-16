@@ -3,11 +3,19 @@
   overflow: hidden;
 }
 
+.gantt-main {
+  flex-grow: 1;
+  position: relative;
+  overflow-x: auto;
+}
+
 .gantt-left {
   width: 300px; /* Fixed width for job details */
   background-color: #f4f4f4;
   border-right: 1px solid #ccc;
-  margin-top: 31px;
+  position: sticky;
+  background-color: #f0f0f0;
+  z-index: 10;
 }
 
 .gantt-right {
@@ -20,26 +28,41 @@
 .gantt-row {
   display: flex;
   flex-direction: row;
-  /* padding: 20px 5px; */
-  /* border-bottom: 1px solid #ccc; */
   height: 40px;
 }
 
-.gantt-left .gantt-row:nth-child(odd) {
-  background-color: #f9f9f9; /* Light gray for even rows */
-}
-
-.gantt-left .gantt-row:nth-child(even) {
-  background-color: #fff; /* White for odd rows */
+.gantt-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
 }
 
 .gantt-cell {
-  width: 100px; /* Adjust width as needed */
+  width: 1000px; /* Adjust width as needed */
   text-align: left;
 }
 
 .header {
   font-weight: bold;
+}
+
+.gantt-scrollable {
+  overflow: auto;
+  height: 500px; /* Adjust as needed */
+}
+
+.gantt-container, .gantt-left, .gantt-main, svg {
+  margin: 0;
+  padding: 0;
+}
+
+svg {
+  overflow: visible;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 
