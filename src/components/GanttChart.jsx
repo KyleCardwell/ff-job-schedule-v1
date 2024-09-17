@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef} from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
 import { updateJobStartDate } from "../redux/actions/ganttActions";
-import { startOfDay, addDays, format } from "date-fns";
+import { startOfDay, addDays } from "date-fns";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs);
@@ -40,24 +40,33 @@ const GanttChart = () => {
 	};
 
 	useEffect(() => {
+
 		const chartSvg = d3.select(chartRef.current);
 		chartSvg.selectAll("*").remove(); // Clear previous SVG content
 
 		const dayWidth = 40;
 		const numDays = 180;
+		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
 		const startDate = new Date("2024-09-01"); // Initialize start date for the Gantt chart
 		const startOfDayDate = addDays(startOfDay(startDate), 1);
+		const endDate = addDays(startDate, numDays);
+
+		console.log(endDate);
 
 		const width = numDays * dayWidth;
 		const rowHeight = 30;
-		const height = jobs.length * rowHeight + 50;
+		const height = jobs.length * rowHeight;
 
 		// Create an array of dates for the column headers
 		const dates = Array.from({ length: numDays }, (_, i) => {
 			return addDays(startOfDayDate, i);
 		});
 
-		chartSvg.attr("width", width).attr("height", height).style("margin", "0");
+		chartSvg
+			.attr("width", width)
+			.attr("height", height)
+			.style("margin", "0")
+			.style("padding", "0");
 
 		const leftHeaderSvg = d3.select(leftColumnHeaderRef.current);
 		leftHeaderSvg.selectAll("*").remove();
@@ -115,6 +124,19 @@ const GanttChart = () => {
 			.each(function (d, i) {
 				// Group for each header
 				const group = d3.select(this);
+
+				const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+				// Append a rectangle for weekends
+				if (isWeekend) {
+					group
+						.append("rect")
+						.attr("x", i * dayWidth)
+						.attr("y", 0)
+						.attr("width", dayWidth)
+						.attr("height", 50) // Adjust to cover the header
+						.attr("fill", "#e0e0e0"); // A slightly darker background for weekends
+				}
 				group
 					.append("text")
 					.attr("x", i * dayWidth)
@@ -193,29 +215,6 @@ const GanttChart = () => {
 					.attr("dominant-baseline", "middle");
 			});
 
-		chartSvg
-			.selectAll(".row-background")
-			.data(jobs)
-			.enter()
-			.append("rect")
-			.attr("x", 0)
-			.attr("y", (d, i) => i * rowHeight)
-			.attr("width", width)
-			.attr("height", rowHeight)
-			.attr("fill", (d, i) => (i % 2 === 0 ? "#f9f9f9" : "#e0e0e0")); // Alternate colors
-
-		chartSvg
-			.selectAll(".vertical-line")
-			.data(dates)
-			.enter()
-			.append("line")
-			.attr("x1", (d, i) => i * dayWidth)
-			.attr("x2", (d, i) => i * dayWidth)
-			.attr("y1", 0)
-			.attr("y2", height)
-			.attr("stroke", "#ccc")
-			.attr("stroke-width", 1);
-
 		const calculateXPosition = (jobStartDate) => {
 			const startDateTime = startDate.getTime();
 			const jobStartDateTime = new Date(jobStartDate).getTime();
@@ -246,6 +245,48 @@ const GanttChart = () => {
 			});
 
 		const barMargin = 3;
+		const weekendColor = "#c1c1c1"; // Darker color for weekends
+		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
+
+		chartSvg
+			.selectAll(".row-background")
+			.data(jobs)
+			.enter()
+			.append("rect")
+			.attr("x", 0)
+			.attr("y", (d, i) => i * rowHeight)
+			.attr("width", width)
+			.attr("height", rowHeight)
+			.attr("fill", (d, i) =>
+				i % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
+			); // Alternate colors
+
+		chartSvg
+			.selectAll(".weekend-background")
+			.data(dates)
+			.enter()
+			.append("rect")
+			.attr("class", "weekend-background")
+			.attr("x", (d, i) => i * dayWidth)
+			.attr("y", 0)
+			.attr("width", dayWidth)
+			.attr("height", height)
+			.attr("fill", (d) => {
+				const dayOfWeek = d3.timeFormat("%a")(d);
+				return dayOfWeek === "Sat" || dayOfWeek === "Sun" ? weekendColor : "none"; // Darker color for weekends
+			})
+
+		chartSvg
+			.selectAll(".vertical-line")
+			.data(dates)
+			.enter()
+			.append("line")
+			.attr("x1", (d, i) => i * dayWidth)
+			.attr("x2", (d, i) => i * dayWidth)
+			.attr("y1", 0)
+			.attr("y2", height)
+			.attr("stroke", "#616161")
+			.attr("stroke-width", 1);
 
 		chartSvg
 			.selectAll("rect.job")
@@ -269,12 +310,8 @@ const GanttChart = () => {
 			.append("text")
 			.attr("x", (d) => calculateXPosition(d.startDate) + 5)
 			.attr("y", (d, i) => i * rowHeight + rowHeight - 15 + 5)
-			.text((d) => d.jobName)
+			.text((d) => d.roomName)
 			.attr("fill", "#fff");
-
-		d3.selectAll(".gantt-chart-row").style("background-color", (d, i) =>
-			i % 2 === 0 ? "#f9f9f9" : "#ffffff"
-		);
 
 		const scrollableDiv = d3.select(scrollableRef.current);
 		scrollableDiv.on("scroll", () => {
@@ -291,7 +328,6 @@ const GanttChart = () => {
 
 			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
 		});
-		
 	}, [jobs, dispatch]);
 
 	return (

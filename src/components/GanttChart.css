@@ -1,6 +1,6 @@
 .gantt-container {
   display: flex;
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 .gantt-main {
@@ -10,7 +10,7 @@
 }
 
 .gantt-left {
-  width: 300px; /* Fixed width for job details */
+  /* width: 300px; Fixed width for job details */
   background-color: #f4f4f4;
   border-right: 1px solid #ccc;
   position: sticky;
@@ -20,7 +20,7 @@
 
 .gantt-right {
   flex-grow: 1; /* Take the rest of the space */
-  overflow: auto; /* Enable both horizontal and vertical scrolling */
+  /* overflow: auto; Enable both horizontal and vertical scrolling */
   background-color: #fff;
   position: relative;
 }
@@ -58,7 +58,7 @@
 }
 
 svg {
-  overflow: visible;
+  /* overflow: visible; */
   display: block;
   margin: 0;
   padding: 0;
