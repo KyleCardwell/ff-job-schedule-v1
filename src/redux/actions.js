@@ -1,0 +1,11 @@
+export const Actions = {
+	jobs: {
+		SAVE_JOBS: "SAVE_JOBS",
+		UPDATE_JOB_START_DATE: "UPDATE_JOB_START_DATE",
+	},
+	builders: {
+		ADD_BUILDER: "ADD_BUILDER",
+		DELETE_BUILDER: "DELETE_BUILDER",
+		UPDATE_BUILDER: "UPDATE_BUILDER",
+	},
+};
