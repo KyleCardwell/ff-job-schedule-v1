@@ -5,7 +5,7 @@ export const saveJobs = (jobs) => ({
 	payload: jobs,
 });
 
-export const updateJobStartDate = (id, newStartDate) => ({
+export const updateJobStartDate = (jobId, roomId, newStartDate) => ({
   type: Actions.jobs.UPDATE_JOB_START_DATE,
-  payload: { id, newStartDate },
+  payload: { jobId, roomId, newStartDate },
 });
