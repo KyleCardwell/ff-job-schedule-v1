@@ -347,7 +347,14 @@ const GanttChart = () => {
 			.attr("stroke", "#616161")
 			.attr("stroke-width", 1);
 
-		chartSvg
+		// Create a group for jobs
+		const jobsGroup = chartSvg
+			.append("g")
+			.attr("class", "jobs-group")
+			.style("cursor", "ew-resize"); // Set cursor style for the entire group
+
+		// Append rectangles to the jobs group
+		jobsGroup
 			.selectAll("rect.job")
 			.data(jobs)
 			.enter()
@@ -365,9 +372,10 @@ const GanttChart = () => {
 			.attr("class", "job") // Add a class for job rectangles
 			.attr("rx", 5) // Set the x-axis corner radius
 			.attr("ry", 5) // Set the y-axis corner radius
-			.call(drag);
+			.call(drag); // Apply drag behavior to rectangles
 
-		chartSvg
+		// Append text elements to the jobs group
+		jobsGroup
 			.selectAll(".bar-text")
 			.data(jobs)
 			.enter()
@@ -378,7 +386,8 @@ const GanttChart = () => {
 			)
 			.attr("y", (d, i) => i * rowHeight + rowHeight - 15 + 5)
 			.text((d) => d.roomName)
-			.attr("fill", "#fff");
+			.attr("fill", "#fff")
+			.style("pointer-events", "none"); // Disable pointer events on text to avoid interfering with dragging
 
 		const scrollableDiv = d3.select(scrollableRef.current);
 		scrollableDiv.on("scroll", () => {
