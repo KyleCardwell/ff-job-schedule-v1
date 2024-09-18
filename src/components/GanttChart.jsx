@@ -3,7 +3,15 @@ import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
 import { updateJobStartDate } from "../redux/actions/ganttActions";
-import { startOfDay, addDays } from "date-fns";
+import {
+	endOfDay,
+	startOfDay,
+	addDays,
+	differenceInCalendarDays,
+	addHours,
+	isSaturday,
+	isSunday,
+} from "date-fns";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.gantt.jobs);
@@ -16,8 +24,15 @@ const GanttChart = () => {
 	const scrollableRef = useRef(null);
 	const leftScrollableRef = useRef(null);
 
-	const startDate = new Date("2024-09-01"); // Initialize start date for the Gantt chart
+	const normalizeDate = (date) => {
+		const normalized = new Date(date);
+		normalized.setHours(0, 0, 0, 0); // Set time to 00:00:00
+		return normalized;
+	};
+
+	const startDate = normalizeDate("2024-08-01"); // Initialize start date for the Gantt chart
 	const dayWidth = 40;
+	const workdayHours = 8;
 
 	// Function to handle auto-scrolling when dragging near edges
 	const handleAutoScroll = (event) => {
@@ -43,11 +58,42 @@ const GanttChart = () => {
 		}
 	};
 
+	const totalJobHours = (startDate, jobHours) => {
+		let currentDate = normalizeDate(startDate);
+
+		// Calculate total days based on jobHours (e.g., 16 hours = 2 days)
+		let totalDays = Math.ceil(jobHours / workdayHours);
+
+		// Loop through each day in the range based on totalDays
+		for (let i = 0; i < totalDays; i++) {
+			// Check if the current day is a weekend
+			if (isSaturday(currentDate) || isSunday(currentDate)) {
+				jobHours += 8;
+				totalDays += 1;
+			}
+			// Move to the next day
+			currentDate = addDays(currentDate, 1);
+		}
+
+		return jobHours; // Total job hours
+	};
+
+	const calculateJobWidth = (jobStartDate, jobDuration, dayWidth) => {
+		// Calculate the number of days (each workday is 8 hours)
+		const totalDays = totalJobHours(jobStartDate, jobDuration) / workdayHours;
+
+		// Return the width based on the total number of days
+		return totalDays * dayWidth;
+	};
+
 	const calculateXPosition = (jobStartDate, startDate, dayWidth) => {
-		const startDateTime = startDate.getTime();
-		const jobStartDateTime = new Date(jobStartDate).getTime();
-		const diffInTime = jobStartDateTime - startDateTime;
-		const diffInDays = diffInTime / (1000 * 3600 * 24); // Convert time difference to days
+		// Calculate the difference in days between jobStartDate and startDate
+		const diffInDays = differenceInCalendarDays(
+			normalizeDate(jobStartDate),
+			normalizeDate(startDate)
+		);
+
+		// Multiply the difference in days by dayWidth to get the x position
 		return diffInDays * dayWidth;
 	};
 
@@ -58,8 +104,6 @@ const GanttChart = () => {
 		// const dayWidth = 40;
 		const numDays = 180;
 		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
-		const startOfDayDate = addDays(startOfDay(startDate), 1);
-		const endDate = addDays(startDate, numDays);
 
 		const width = numDays * dayWidth;
 		const rowHeight = 30;
@@ -67,7 +111,7 @@ const GanttChart = () => {
 
 		// Create an array of dates for the column headers
 		const dates = Array.from({ length: numDays }, (_, i) => {
-			return addDays(startOfDayDate, i);
+			return addDays(startDate, i);
 		});
 
 		chartSvg
@@ -239,7 +283,7 @@ const GanttChart = () => {
 			.drag()
 			.on("drag", function (event, d) {
 				const xPos = event.x;
-				const newStartDate = new Date(startDate);
+				const newStartDate = normalizeDate(startDate);
 				newStartDate.setDate(startDate.getDate() + Math.round(xPos / dayWidth));
 
 				// Update the position of the dragged job
@@ -310,7 +354,9 @@ const GanttChart = () => {
 			.append("rect")
 			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
 			.attr("y", (d, i) => i * rowHeight + barMargin)
-			.attr("width", (d) => (d.duration / 8) * dayWidth)
+			.attr("width", (d) =>
+				calculateJobWidth(d.startDate, d.duration, dayWidth)
+			)
 			.attr("height", rowHeight - 2 * barMargin)
 			.attr(
 				"fill",
@@ -352,13 +398,12 @@ const GanttChart = () => {
 	}, [jobs, dispatch, builders]);
 
 	useEffect(() => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
+		const today = normalizeDate(new Date());
 		const todayXPosition = calculateXPosition(today, startDate, dayWidth);
 
 		// scroll to today's date
 		if (scrollableRef.current) {
-			scrollableRef.current.scrollLeft = todayXPosition - 10;
+			scrollableRef.current.scrollLeft = todayXPosition;
 		}
 	}, []);
 
