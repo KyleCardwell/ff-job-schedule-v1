@@ -1,4 +1,4 @@
-import React, { useEffect, useRef} from "react";
+import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
@@ -6,7 +6,8 @@ import { updateJobStartDate } from "../redux/actions/ganttActions";
 import { startOfDay, addDays } from "date-fns";
 
 const GanttChart = () => {
-	const jobs = useSelector((state) => state.jobs);
+	const jobs = useSelector((state) => state.gantt.jobs);
+	const builders = useSelector((state) => state.builders.builders);
 	const dispatch = useDispatch();
 	const chartRef = useRef(null);
 	const headerRef = useRef(null); // For the fixed header
@@ -15,10 +16,13 @@ const GanttChart = () => {
 	const scrollableRef = useRef(null);
 	const leftScrollableRef = useRef(null);
 
+	const startDate = new Date("2024-09-01"); // Initialize start date for the Gantt chart
+	const dayWidth = 40;
+
 	// Function to handle auto-scrolling when dragging near edges
 	const handleAutoScroll = (event) => {
 		const container = scrollableRef.current;
-		const scrollSpeed = 10; // Speed of the auto-scroll
+		const scrollSpeed = 20; // Speed of the auto-scroll
 		const buffer = 50; // Distance from edge to trigger scroll
 
 		const { left, right, top, bottom } = container.getBoundingClientRect();
@@ -39,19 +43,23 @@ const GanttChart = () => {
 		}
 	};
 
-	useEffect(() => {
+	const calculateXPosition = (jobStartDate, startDate, dayWidth) => {
+		const startDateTime = startDate.getTime();
+		const jobStartDateTime = new Date(jobStartDate).getTime();
+		const diffInTime = jobStartDateTime - startDateTime;
+		const diffInDays = diffInTime / (1000 * 3600 * 24); // Convert time difference to days
+		return diffInDays * dayWidth;
+	};
 
+	useEffect(() => {
 		const chartSvg = d3.select(chartRef.current);
 		chartSvg.selectAll("*").remove(); // Clear previous SVG content
 
-		const dayWidth = 40;
+		// const dayWidth = 40;
 		const numDays = 180;
 		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
-		const startDate = new Date("2024-09-01"); // Initialize start date for the Gantt chart
 		const startOfDayDate = addDays(startOfDay(startDate), 1);
 		const endDate = addDays(startDate, numDays);
-
-		console.log(endDate);
 
 		const width = numDays * dayWidth;
 		const rowHeight = 30;
@@ -74,10 +82,10 @@ const GanttChart = () => {
 
 		// Add the left column header with titles
 		leftHeaderSvg.append("g").each(function () {
-			const headerGroup = d3.select(this);
+			const leftHeaderGroup = d3.select(this);
 
 			// Job Number header
-			headerGroup
+			leftHeaderGroup
 				.append("text")
 				.attr("x", 10) // Adjust x for alignment
 				.attr("y", rowHeight / 2)
@@ -87,7 +95,7 @@ const GanttChart = () => {
 				.attr("dominant-baseline", "middle");
 
 			// Job Name header
-			headerGroup
+			leftHeaderGroup
 				.append("text")
 				.attr("x", 80) // Adjust x for alignment
 				.attr("y", rowHeight / 2)
@@ -97,7 +105,7 @@ const GanttChart = () => {
 				.attr("dominant-baseline", "middle");
 
 			// Room Name header
-			headerGroup
+			leftHeaderGroup
 				.append("text")
 				.attr("x", 200) // Adjust x for alignment
 				.attr("y", rowHeight / 2)
@@ -139,7 +147,7 @@ const GanttChart = () => {
 				}
 				group
 					.append("text")
-					.attr("x", i * dayWidth)
+					.attr("x", i * dayWidth + 10)
 					.attr("y", 10)
 					.text(d3.timeFormat("%b")(d))
 					.attr("fill", "#000")
@@ -147,7 +155,7 @@ const GanttChart = () => {
 					.attr("text-anchor", "left");
 				group
 					.append("text")
-					.attr("x", i * dayWidth)
+					.attr("x", i * dayWidth + 10)
 					.attr("y", 25)
 					.text(d3.timeFormat("%d")(d))
 					.attr("fill", "#000")
@@ -156,13 +164,25 @@ const GanttChart = () => {
 
 				group
 					.append("text")
-					.attr("x", i * dayWidth)
-					.attr("y", 40) // Adjust vertical position for day of the week
+					.attr("x", i * dayWidth + 10)
+					.attr("y", 38) // Adjust vertical position for day of the week
 					.text(d3.timeFormat("%a")(d))
 					.attr("fill", "#000")
 					.attr("font-size", "10px")
 					.attr("text-anchor", "left");
 			});
+
+		headerSvg
+			.selectAll(".vertical-line")
+			.data(dates)
+			.enter()
+			.append("line")
+			.attr("x1", (d, i) => i * dayWidth)
+			.attr("x2", (d, i) => i * dayWidth)
+			.attr("y1", 0)
+			.attr("y2", height)
+			.attr("stroke", "#616161")
+			.attr("stroke-width", 1);
 
 		const leftColumnSvg = d3.select(leftColumnRef.current);
 		leftColumnSvg.selectAll("*").remove();
@@ -215,14 +235,6 @@ const GanttChart = () => {
 					.attr("dominant-baseline", "middle");
 			});
 
-		const calculateXPosition = (jobStartDate) => {
-			const startDateTime = startDate.getTime();
-			const jobStartDateTime = new Date(jobStartDate).getTime();
-			const diffInTime = jobStartDateTime - startDateTime;
-			const diffInDays = diffInTime / (1000 * 3600 * 24); // Convert time difference to days
-			return diffInDays * dayWidth;
-		};
-
 		const drag = d3
 			.drag()
 			.on("drag", function (event, d) {
@@ -273,8 +285,11 @@ const GanttChart = () => {
 			.attr("height", height)
 			.attr("fill", (d) => {
 				const dayOfWeek = d3.timeFormat("%a")(d);
-				return dayOfWeek === "Sat" || dayOfWeek === "Sun" ? weekendColor : "none"; // Darker color for weekends
+				return dayOfWeek === "Sat" || dayOfWeek === "Sun"
+					? weekendColor
+					: "none"; // Darker color for weekends
 			})
+			.attr("opacity", 0.5); // Set opacity value (0 = fully transparent, 1 = fully opaque);
 
 		chartSvg
 			.selectAll(".vertical-line")
@@ -293,11 +308,14 @@ const GanttChart = () => {
 			.data(jobs)
 			.enter()
 			.append("rect")
-			.attr("x", (d) => calculateXPosition(d.startDate))
+			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
 			.attr("y", (d, i) => i * rowHeight + barMargin)
 			.attr("width", (d) => (d.duration / 8) * dayWidth)
 			.attr("height", rowHeight - 2 * barMargin)
-			.attr("fill", (d) => d.builderColor)
+			.attr(
+				"fill",
+				(d) => builders.find((builder) => builder.id === d.builderId).color
+			)
 			.attr("class", "job") // Add a class for job rectangles
 			.attr("rx", 5) // Set the x-axis corner radius
 			.attr("ry", 5) // Set the y-axis corner radius
@@ -308,7 +326,10 @@ const GanttChart = () => {
 			.data(jobs)
 			.enter()
 			.append("text")
-			.attr("x", (d) => calculateXPosition(d.startDate) + 5)
+			.attr(
+				"x",
+				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
+			)
 			.attr("y", (d, i) => i * rowHeight + rowHeight - 15 + 5)
 			.text((d) => d.roomName)
 			.attr("fill", "#fff");
@@ -328,7 +349,18 @@ const GanttChart = () => {
 
 			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
 		});
-	}, [jobs, dispatch]);
+	}, [jobs, dispatch, builders]);
+
+	useEffect(() => {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const todayXPosition = calculateXPosition(today, startDate, dayWidth);
+
+		// scroll to today's date
+		if (scrollableRef.current) {
+			scrollableRef.current.scrollLeft = todayXPosition - 10;
+		}
+	}, []);
 
 	return (
 		<div className="gantt-container">

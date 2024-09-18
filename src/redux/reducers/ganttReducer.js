@@ -5,11 +5,6 @@ import { Actions } from "../actions";
 
 const initialState = JSON.parse(localStorage.getItem("ganttJobs")) || {
 	jobs: jobs,
-	builders: [
-		{ name: "Frosty", color: "blue" },
-		{ name: "Patrick", color: "green" },
-		{ name: "Nick", color: "purple" },
-	],
 };
 
 // Reducer
