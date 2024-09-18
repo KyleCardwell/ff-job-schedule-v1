@@ -4,11 +4,8 @@ import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
 import { updateJobStartDate } from "../redux/actions/ganttActions";
 import {
-	endOfDay,
-	startOfDay,
 	addDays,
 	differenceInCalendarDays,
-	addHours,
 	isSaturday,
 	isSunday,
 } from "date-fns";
@@ -23,6 +20,12 @@ const GanttChart = () => {
 	const leftColumnHeaderRef = useRef(null); // For the fixed left column
 	const scrollableRef = useRef(null);
 	const leftScrollableRef = useRef(null);
+
+	const countAllRooms = (jobs) => {
+		return jobs.reduce((count, job) => count + job.rooms.length, 0);
+	};
+
+	const totalRooms = countAllRooms(jobs);
 
 	const normalizeDate = (date) => {
 		const normalized = new Date(date);
@@ -101,13 +104,16 @@ const GanttChart = () => {
 		const chartSvg = d3.select(chartRef.current);
 		chartSvg.selectAll("*").remove(); // Clear previous SVG content
 
-		// const dayWidth = 40;
 		const numDays = 180;
 		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
+		const barMargin = 3;
+		const weekendColor = "#c1c1c1"; // Darker color for weekends
+		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
+		const strokeColor = "#bebebe"; // stroke color
 
 		const width = numDays * dayWidth;
 		const rowHeight = 30;
-		const height = jobs.length * rowHeight;
+		const height = totalRooms * rowHeight;
 
 		// Create an array of dates for the column headers
 		const dates = Array.from({ length: numDays }, (_, i) => {
@@ -225,30 +231,51 @@ const GanttChart = () => {
 			.attr("x2", (d, i) => i * dayWidth)
 			.attr("y1", 0)
 			.attr("y2", height)
-			.attr("stroke", "#616161")
+			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
 
 		const leftColumnSvg = d3.select(leftColumnRef.current);
 		leftColumnSvg.selectAll("*").remove();
 		leftColumnSvg
 			.attr("width", 300)
-			.attr("height", jobs.length * rowHeight)
+			.attr(
+				"height",
+				jobs.reduce((acc, job) => acc + job.rooms.length * rowHeight, 0)
+			)
 			.style("margin", "0");
 
+		const roomsData = jobs.flatMap((job, i) =>
+			job.rooms.map((room) => ({
+				...room,
+				jobsIndex: i,
+				jobId: job.id,
+				jobName: job.name,
+				jobNumber: room.jobNumber,
+				startDate: room.startDate,
+				duration: room.duration,
+				builderId: room.builderId,
+			}))
+		);
+
+		console.log(roomsData);
+		// Create row backgrounds for each room
 		leftColumnSvg
 			.selectAll(".row-background")
-			.data(jobs)
+			.data(roomsData)
 			.enter()
 			.append("rect")
 			.attr("x", 0)
-			.attr("y", (d, i) => i * rowHeight)
-			.attr("width", width)
+			.attr("y", (d, i) => i * rowHeight) // Each room gets its own row
+			.attr("width", 300)
 			.attr("height", rowHeight)
-			.attr("fill", (d, i) => (i % 2 === 0 ? "#f9f9f9" : "#e0e0e0")); // Alternate colors
+			.attr("fill", (d) =>
+				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
+			); // Alternate colors
 
+		// Create text elements for job number, job name, and room name
 		leftColumnSvg
 			.selectAll("text")
-			.data(jobs)
+			.data(roomsData)
 			.enter()
 			.each(function (d, i) {
 				// Append job number
@@ -258,7 +285,7 @@ const GanttChart = () => {
 					.attr("y", i * rowHeight + rowHeight / 2)
 					.text(d.jobNumber) // Job number
 					.attr("fill", "#000")
-					.attr("dominant-baseline", "middle"); // Vertical alignment
+					.attr("dominant-baseline", "middle");
 
 				// Append job name
 				d3.select(this)
@@ -274,7 +301,7 @@ const GanttChart = () => {
 					.append("text")
 					.attr("x", 200) // Adjust position for room name
 					.attr("y", i * rowHeight + rowHeight / 2)
-					.text(d.roomName) // Room name
+					.text(d.name) // Room name
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
 			});
@@ -297,26 +324,33 @@ const GanttChart = () => {
 			})
 			.on("end", function (event, d) {
 				// Update Redux store with the new job start date
-				dispatch(updateJobStartDate(d.id, d.startDate));
+				dispatch(updateJobStartDate(d.jobId, d.id, d.startDate));
 			});
 
-		const barMargin = 3;
-		const weekendColor = "#c1c1c1"; // Darker color for weekends
-		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
+		// Remove previous SVG elements
+		chartSvg.selectAll("*").remove();
 
+		// Set SVG dimensions based on room count
+		chartSvg.attr("width", width).attr("height", roomsData.length * rowHeight);
+
+		// Create row backgrounds for each room
 		chartSvg
 			.selectAll(".row-background")
-			.data(jobs)
+			.data(roomsData)
 			.enter()
 			.append("rect")
 			.attr("x", 0)
 			.attr("y", (d, i) => i * rowHeight)
 			.attr("width", width)
 			.attr("height", rowHeight)
-			.attr("fill", (d, i) =>
-				i % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
-			); // Alternate colors
+			.attr("fill", (d) =>
+				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
+			) // Alternate colors
+			.attr("stroke", strokeColor) // Set stroke color for bottom border
+			.attr("stroke-width", 1) // Set stroke width
+			.attr("stroke-dasharray", `0,${rowHeight},${width},0`); // Apply stroke only to the bottom
 
+		// Draw weekend backgrounds
 		chartSvg
 			.selectAll(".weekend-background")
 			.data(dates)
@@ -326,15 +360,16 @@ const GanttChart = () => {
 			.attr("x", (d, i) => i * dayWidth)
 			.attr("y", 0)
 			.attr("width", dayWidth)
-			.attr("height", height)
+			.attr("height", roomsData.length * rowHeight) // Adjust height based on room count
 			.attr("fill", (d) => {
 				const dayOfWeek = d3.timeFormat("%a")(d);
 				return dayOfWeek === "Sat" || dayOfWeek === "Sun"
 					? weekendColor
 					: "none"; // Darker color for weekends
 			})
-			.attr("opacity", 0.5); // Set opacity value (0 = fully transparent, 1 = fully opaque);
+			.attr("opacity", 0.5);
 
+		// Draw vertical grid lines for each day
 		chartSvg
 			.selectAll(".vertical-line")
 			.data(dates)
@@ -343,20 +378,20 @@ const GanttChart = () => {
 			.attr("x1", (d, i) => i * dayWidth)
 			.attr("x2", (d, i) => i * dayWidth)
 			.attr("y1", 0)
-			.attr("y2", height)
-			.attr("stroke", "#616161")
+			.attr("y2", roomsData.length * rowHeight) // Adjust based on room count
+			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
 
 		// Create a group for jobs
 		const jobsGroup = chartSvg
 			.append("g")
 			.attr("class", "jobs-group")
-			.style("cursor", "ew-resize"); // Set cursor style for the entire group
+			.style("cursor", "ew-resize");
 
-		// Append rectangles to the jobs group
+		// Append rectangles to the jobs group (for each room)
 		jobsGroup
 			.selectAll("rect.job")
-			.data(jobs)
+			.data(roomsData)
 			.enter()
 			.append("rect")
 			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
@@ -374,10 +409,10 @@ const GanttChart = () => {
 			.attr("ry", 5) // Set the y-axis corner radius
 			.call(drag); // Apply drag behavior to rectangles
 
-		// Append text elements to the jobs group
+		// Append text elements to the jobs group (for each room)
 		jobsGroup
 			.selectAll(".bar-text")
-			.data(jobs)
+			.data(roomsData)
 			.enter()
 			.append("text")
 			.attr(
@@ -385,10 +420,11 @@ const GanttChart = () => {
 				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
 			)
 			.attr("y", (d, i) => i * rowHeight + rowHeight - 15 + 5)
-			.text((d) => d.roomName)
+			.text((d) => d.name) // Room name
 			.attr("fill", "#fff")
 			.style("pointer-events", "none"); // Disable pointer events on text to avoid interfering with dragging
 
+		// Add scrolling behavior for the chart
 		const scrollableDiv = d3.select(scrollableRef.current);
 		scrollableDiv.on("scroll", () => {
 			const scrollLeft = scrollableDiv.node().scrollLeft;
@@ -404,7 +440,7 @@ const GanttChart = () => {
 
 			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
 		});
-	}, [jobs, dispatch, builders]);
+	}, [jobs, dispatch, builders, totalRooms, startDate]);
 
 	useEffect(() => {
 		const today = normalizeDate(new Date());
