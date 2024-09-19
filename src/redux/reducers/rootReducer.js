@@ -3,7 +3,7 @@ import { ganttReducer } from "./ganttReducer";
 import { builders } from "./builders"; // Adjust the import path
 
 const rootReducer = combineReducers({
-	gantt: ganttReducer,
+	jobs: ganttReducer,
 	builders,
 	// other reducers if needed
 });
