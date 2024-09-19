@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
@@ -9,9 +9,11 @@ import {
 	isSaturday,
 	isSunday,
 } from "date-fns";
+import JobModal from "./JobModal";
+import { normalizeDate } from "../utils/dateUtils";
 
 const GanttChart = () => {
-	const jobs = useSelector((state) => state.gantt.jobs);
+	const jobs = useSelector((state) => state.jobs.jobs);
 	const builders = useSelector((state) => state.builders.builders);
 	const dispatch = useDispatch();
 	const chartRef = useRef(null);
@@ -21,17 +23,29 @@ const GanttChart = () => {
 	const scrollableRef = useRef(null);
 	const leftScrollableRef = useRef(null);
 
+	const [selectedJob, setSelectedJob] = useState(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
+	const handleRowDoubleClick = (job) => {
+		setSelectedJob(job);
+		setIsModalOpen(true);
+	};
+
+	const closeModal = () => {
+		setIsModalOpen(false);
+		setSelectedJob(null);
+	};
+
+	const saveJob = (updatedJob) => {
+		// Update the job in your state or dispatch an action to save it
+		setIsModalOpen(false);
+	};
+
 	const countAllRooms = (jobs) => {
 		return jobs.reduce((count, job) => count + job.rooms.length, 0);
 	};
 
 	const totalRooms = countAllRooms(jobs);
-
-	const normalizeDate = (date) => {
-		const normalized = new Date(date);
-		normalized.setHours(0, 0, 0, 0); // Set time to 00:00:00
-		return normalized;
-	};
 
 	const startDate = normalizeDate("2024-08-01"); // Initialize start date for the Gantt chart
 	const dayWidth = 40;
@@ -234,16 +248,6 @@ const GanttChart = () => {
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
 
-		const leftColumnSvg = d3.select(leftColumnRef.current);
-		leftColumnSvg.selectAll("*").remove();
-		leftColumnSvg
-			.attr("width", 300)
-			.attr(
-				"height",
-				jobs.reduce((acc, job) => acc + job.rooms.length * rowHeight, 0)
-			)
-			.style("margin", "0");
-
 		const roomsData = jobs.flatMap((job, i) =>
 			job.rooms.map((room) => ({
 				...room,
@@ -257,51 +261,75 @@ const GanttChart = () => {
 			}))
 		);
 
-		console.log(roomsData);
-		// Create row backgrounds for each room
+		const leftColumnSvg = d3.select(leftColumnRef.current);
+		leftColumnSvg.selectAll("*").remove();
+		leftColumnSvg
+			.attr("width", 300)
+			.attr(
+				"height",
+				jobs.reduce((acc, job) => acc + job.rooms.length * rowHeight, 0)
+			)
+			.style("margin", "0");
+
+		leftColumnSvg.on("dblclick", (event) => {
+			const [x, y] = d3.pointer(event);
+			const rowIndex = Math.floor(y / rowHeight); // Calculate which row was clicked based on y-coordinate
+			const room = roomsData[rowIndex]; // Get the room data based on the row index
+
+			if (room) {
+				const job = jobs.find((j) => j.id === room.jobId); // Find the job associated with the room
+				handleRowDoubleClick(job); // Call the double-click handler with the job data
+			}
+		});
+
+		// Background rows
 		leftColumnSvg
 			.selectAll(".row-background")
 			.data(roomsData)
 			.enter()
 			.append("rect")
 			.attr("x", 0)
-			.attr("y", (d, i) => i * rowHeight) // Each room gets its own row
+			.attr("y", (d, i) => i * rowHeight)
 			.attr("width", 300)
 			.attr("height", rowHeight)
 			.attr("fill", (d) =>
 				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
 			); // Alternate colors
 
-		// Create text elements for job number, job name, and room name
+		// Text elements for job number, job name, and room name
 		leftColumnSvg
-			.selectAll("text")
+			.selectAll(".job-text")
 			.data(roomsData)
 			.enter()
-			.each(function (d, i) {
-				// Append job number
-				d3.select(this)
+			.append("g") // Group text elements together
+			.attr(
+				"transform",
+				(d, i) => `translate(0, ${i * rowHeight + rowHeight / 2})`
+			)
+			.each(function (d) {
+				const group = d3.select(this);
+
+				// Job number
+				group
 					.append("text")
-					.attr("x", 10) // Adjust position for job number
-					.attr("y", i * rowHeight + rowHeight / 2)
-					.text(d.jobNumber) // Job number
+					.attr("x", 10)
+					.text(d.jobNumber)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
 
-				// Append job name
-				d3.select(this)
+				// Job name
+				group
 					.append("text")
-					.attr("x", 80) // Adjust position for job name
-					.attr("y", i * rowHeight + rowHeight / 2)
-					.text(d.jobName) // Job name
+					.attr("x", 80)
+					.text(d.jobName)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
 
-				// Append room name
-				d3.select(this)
+				// Room name
+				group
 					.append("text")
-					.attr("x", 200) // Adjust position for room name
-					.attr("y", i * rowHeight + rowHeight / 2)
-					.text(d.name) // Room name
+					.attr("x", 200)
+					.text(d.name)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
 			});
@@ -453,20 +481,30 @@ const GanttChart = () => {
 	}, []);
 
 	return (
-		<div className="gantt-container">
-			<div className="gantt-left">
-				<svg ref={leftColumnHeaderRef} className="gantt-left-header" />
-				<div className="gantt-scrollable" ref={leftScrollableRef}>
-					<svg ref={leftColumnRef} />
+		<>
+			<div className="instructions">Double-click a job to edit rooms</div>
+			<div className="gantt-container">
+				<div className="gantt-left">
+					<svg ref={leftColumnHeaderRef} className="gantt-left-header" />
+					<div className="gantt-scrollable" ref={leftScrollableRef}>
+						<svg ref={leftColumnRef} />
+					</div>
 				</div>
-			</div>
-			<div className="gantt-main">
-				<svg ref={headerRef} className="gantt-header" />
-				<div className="gantt-scrollable" ref={scrollableRef}>
-					<svg ref={chartRef} />
+				<div className="gantt-main">
+					<svg ref={headerRef} className="gantt-header" />
+					<div className="gantt-scrollable" ref={scrollableRef}>
+						<svg ref={chartRef} />
+					</div>
 				</div>
+				<JobModal
+					isOpen={isModalOpen}
+					onClose={closeModal}
+					onSave={saveJob}
+					jobData={selectedJob}
+				/>
 			</div>
-		</div>
+			<button onClick={() => setIsModalOpen(true)}>Add Job</button>
+		</>
 	);
 };
 

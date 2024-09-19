@@ -2,6 +2,8 @@ export const Actions = {
 	jobs: {
 		SAVE_JOBS: "SAVE_JOBS",
 		UPDATE_JOB_START_DATE: "UPDATE_JOB_START_DATE",
+		UPDATE_JOB_AND_ROOMS: "UPDATE_JOB_AND_ROOMS",
+		INCREMENT_JOB_NUMBER: "INCREMENT_JOB_NUMBER",
 	},
 	builders: {
 		ADD_BUILDER: "ADD_BUILDER",
@@ -9,3 +11,4 @@ export const Actions = {
 		UPDATE_BUILDER: "UPDATE_BUILDER",
 	},
 };
+

@@ -65,4 +65,51 @@ svg {
   border: 0;
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  z-index: 10000;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.roomGroup {
+  display: flex;
+  padding: 2px 0 7px;
+}
+
+.jobNumber {
+  max-width: 40px;
+}
+
+.duration {
+  max-width: 50px;
+}
+
+.add-room-button {
+  margin-top: 20px;
+}
+
+.instructions {
+  text-align: left;
+  padding-left: 30px;
+}

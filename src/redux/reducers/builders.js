@@ -2,6 +2,7 @@ import { Actions } from "../actions";
 
 const initialState = {
 	builders: [
+		{ id: 4, name: "No one", color: "pink" },
 		{ id: 1, name: "Frosty", color: "skyblue" },
 		{ id: 2, name: "Patrick", color: "green" },
 		{ id: 3, name: "Nick", color: "purple" },
@@ -10,7 +11,7 @@ const initialState = {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-export const builders= (state = initialState, action) => {
+export const builders = (state = initialState, action) => {
 	switch (action.type) {
 		case Actions.builders.ADD_BUILDER:
 			return {
@@ -20,7 +21,7 @@ export const builders= (state = initialState, action) => {
 					{
 						id: generateId(),
 						name: action.payload.name,
-            color: action.payload.color,
+						color: action.payload.color,
 					},
 				], // Add new builder to the array
 			};

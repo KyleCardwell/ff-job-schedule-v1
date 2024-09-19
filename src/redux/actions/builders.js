@@ -1,7 +1,6 @@
 import { Actions } from "../actions";
 
 export const addBuilder = (name, color) => {
-  console.log('in addbuilder')
 	return {
 		type: Actions.builders.ADD_BUILDER,
 		payload: { name, color },
