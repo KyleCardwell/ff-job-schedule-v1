@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
@@ -104,13 +104,12 @@ const GanttChart = () => {
 	};
 
 	const calculateXPosition = (jobStartDate, startDate, dayWidth) => {
-		// Calculate the difference in days between jobStartDate and startDate
+		const normalizedJobStartDate = normalizeDate(jobStartDate);
+		const normalizedStartDate = normalizeDate(startDate);
 		const diffInDays = differenceInCalendarDays(
-			normalizeDate(jobStartDate),
-			normalizeDate(startDate)
+			normalizedJobStartDate,
+			normalizedStartDate
 		);
-
-		// Multiply the difference in days by dayWidth to get the x position
 		return diffInDays * dayWidth;
 	};
 
@@ -336,27 +335,48 @@ const GanttChart = () => {
 
 		const drag = d3
 			.drag()
+			.on("start", function (event, d) {
+				// Hide the tooltip when dragging starts
+				tooltip.style("opacity", 0);
+				d3.select(this).classed("dragging", true);
+			})
 			.on("drag", function (event, d) {
 				const xPos = event.x;
 				const newStartDate = normalizeDate(startDate);
 				newStartDate.setDate(startDate.getDate() + Math.round(xPos / dayWidth));
 
 				// Update the position of the dragged job
-				d3.select(this).attr("x", Math.round(xPos / dayWidth) * dayWidth);
+				const newX = Math.round(xPos / dayWidth) * dayWidth;
+				d3.select(this).attr("x", newX);
+
+				// Update the position of the corresponding text
+				d3.select(this.parentNode)
+					.select(".bar-text")
+					.attr("x", newX + 5);
 
 				// Update the job's start date in the local variable
 				d.startDate = newStartDate;
 
 				// Trigger scrolling when dragging near the edges
 				handleAutoScroll(event);
+
+				// Keep the tooltip hidden during drag
+				tooltip.style("opacity", 0);
 			})
 			.on("end", function (event, d) {
 				// Update Redux store with the new job start date
 				dispatch(updateJobStartDate(d.jobId, d.id, d.startDate));
+				d3.select(this).classed("dragging", false);
 			});
 
+		const tooltip = d3
+			.select("body")
+			.append("div")
+			.attr("class", "tooltip")
+			.style("opacity", 0);
+
 		// Remove previous SVG elements
-		chartSvg.selectAll("*").remove();
+		chartSvg.selectAll("*").remove().append("rect");
 
 		// Set SVG dimensions based on room count
 		chartSvg.attr("width", width).attr("height", roomsData.length * rowHeight);
@@ -413,44 +433,71 @@ const GanttChart = () => {
 		// Create a group for jobs
 		const jobsGroup = chartSvg
 			.append("g")
-			.attr("class", "jobs-group")
+			.attr("class", "job-group")
 			.style("cursor", "ew-resize");
 
-		// Append rectangles to the jobs group (for each room)
 		jobsGroup
-			.selectAll("rect.job")
+			.selectAll(".job-group")
 			.data(roomsData)
 			.enter()
-			.append("rect")
-			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
-			.attr("y", (d, i) => i * rowHeight + barMargin)
-			.attr("width", (d) =>
-				calculateJobWidth(d.startDate, d.duration, dayWidth)
-			)
-			.attr("height", rowHeight - 2 * barMargin)
-			.attr(
-				"fill",
-				(d) => builders.find((builder) => builder.id === d.builderId).color
-			)
-			.attr("class", "job") // Add a class for job rectangles
-			.attr("rx", 5) // Set the x-axis corner radius
-			.attr("ry", 5) // Set the y-axis corner radius
-			.call(drag); // Apply drag behavior to rectangles
+			.append("g")
+			.attr("class", "job-group")
+			.attr("transform", (d, i) => `translate(0, ${i * rowHeight})`) // Position each group vertically
+			.each(function (d, i) {
+				const group = d3.select(this);
 
-		// Append text elements to the jobs group (for each room)
-		jobsGroup
-			.selectAll(".bar-text")
-			.data(roomsData)
-			.enter()
-			.append("text")
-			.attr(
-				"x",
-				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
-			)
-			.attr("y", (d, i) => i * rowHeight + rowHeight - 15 + 5)
-			.text((d) => d.name) // Room name
-			.attr("fill", "#fff")
-			.style("pointer-events", "none"); // Disable pointer events on text to avoid interfering with dragging
+				group
+					.append("rect")
+					.attr("x", (d) =>
+						calculateXPosition(d.startDate, startDate, dayWidth)
+					)
+					.attr("y", barMargin)
+					.attr("width", (d) =>
+						calculateJobWidth(d.startDate, d.duration, dayWidth)
+					)
+					.attr("height", rowHeight - 2 * barMargin)
+					.attr(
+						"fill",
+						(d) => builders.find((builder) => builder.id === d.builderId).color
+					)
+					.attr("class", "job")
+					.attr("rx", 5)
+					.attr("ry", 5)
+					.call(drag)
+					.on("mouseover", function (event, d) {
+						if (!d3.select(this).classed("dragging")) {
+							const tooltipHeight = 40;
+							const offset = 0;
+
+							let topPosition = event.pageY - tooltipHeight - offset;
+							// Ensure the tooltip doesn't go above the top of the window
+							topPosition = Math.max(topPosition, 5);
+
+							tooltip.transition().duration(200).style("opacity", 0.9);
+							tooltip
+								.html(`Duration: ${d.duration} hours`)
+								.style("left", event.pageX + 10 + "px")
+								.style("top", topPosition + "px");
+						}
+					})
+					.on("mouseout", function (d) {
+						if (!d3.select(this).classed("dragging")) {
+							tooltip.transition().duration(500).style("opacity", 0);
+						}
+					});
+
+				group
+					.append("text")
+					.attr(
+						"x",
+						(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
+					)
+					.attr("y", rowHeight - 15 + 5)
+					.text((d) => d.name)
+					.attr("fill", "#fff")
+					.attr("class", "bar-text")
+					.style("pointer-events", "none");
+			});
 
 		// Add scrolling behavior for the chart
 		const scrollableDiv = d3.select(scrollableRef.current);
