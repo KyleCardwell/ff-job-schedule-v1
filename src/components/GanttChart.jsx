@@ -336,37 +336,46 @@ const GanttChart = () => {
 		const drag = d3
 			.drag()
 			.on("start", function (event, d) {
-				// Hide the tooltip when dragging starts
 				tooltip.style("opacity", 0);
 				d3.select(this).classed("dragging", true);
+				d.dragStartX = d3.select(this).attr("x");
+				d.dragStartEventX = event.x;
 			})
 			.on("drag", function (event, d) {
-				const xPos = event.x;
-				const newStartDate = normalizeDate(startDate);
-				newStartDate.setDate(startDate.getDate() + Math.round(xPos / dayWidth));
+				const dx = event.x - d.dragStartEventX;
+				const newX = parseFloat(d.dragStartX) + dx;
 
-				// Update the position of the dragged job
-				const newX = Math.round(xPos / dayWidth) * dayWidth;
 				d3.select(this).attr("x", newX);
-
-				// Update the position of the corresponding text
 				d3.select(this.parentNode)
 					.select(".bar-text")
 					.attr("x", newX + 5);
 
-				// Update the job's start date in the local variable
-				d.startDate = newStartDate;
-
-				// Trigger scrolling when dragging near the edges
 				handleAutoScroll(event);
-
-				// Keep the tooltip hidden during drag
 				tooltip.style("opacity", 0);
 			})
 			.on("end", function (event, d) {
-				// Update Redux store with the new job start date
-				dispatch(updateJobStartDate(d.jobId, d.id, d.startDate));
+				const dx = event.x - d.dragStartEventX;
+				const newX = parseFloat(d.dragStartX) + dx;
+				const snappedX = Math.round(newX / dayWidth) * dayWidth;
+
+				const daysMoved = Math.round((snappedX - d.dragStartX) / dayWidth);
+				const newStartDate = new Date(d.startDate);
+				newStartDate.setDate(newStartDate.getDate() + daysMoved);
+
+				d3.select(this).transition().duration(200).attr("x", snappedX);
+				d3.select(this.parentNode)
+					.select(".bar-text")
+					.transition()
+					.duration(200)
+					.attr("x", snappedX + 5);
+
+				dispatch(
+					updateJobStartDate(d.jobId, d.id, normalizeDate(newStartDate))
+				);
 				d3.select(this).classed("dragging", false);
+
+				delete d.dragStartX;
+				delete d.dragStartEventX;
 			});
 
 		const tooltip = d3
