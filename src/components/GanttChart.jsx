@@ -362,16 +362,28 @@ const GanttChart = () => {
 				const newStartDate = new Date(d.startDate);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 
-				d3.select(this).transition().duration(200).attr("x", snappedX);
+				// Calculate new width
+				const newWidth = calculateJobWidth(newStartDate, d.duration, dayWidth);
+
+				// Apply transitions for both x and width
+				d3.select(this)
+					.transition()
+					.duration(300)
+					.attr("x", snappedX)
+					.attr("width", newWidth)
+					.on("end", () => {
+						// Update Redux store after the transition is complete
+						dispatch(
+							updateJobStartDate(d.jobId, d.id, normalizeDate(newStartDate))
+						);
+					});
+
 				d3.select(this.parentNode)
 					.select(".bar-text")
 					.transition()
-					.duration(200)
+					.duration(300)
 					.attr("x", snappedX + 5);
 
-				dispatch(
-					updateJobStartDate(d.jobId, d.id, normalizeDate(newStartDate))
-				);
 				d3.select(this).classed("dragging", false);
 
 				delete d.dragStartX;
