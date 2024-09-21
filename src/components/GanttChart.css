@@ -1,70 +1,77 @@
 .gantt-container {
   display: flex;
-  /* overflow: hidden; */
+  height: 600px;
+  overflow: hidden;
 }
 
-.gantt-main {
-  flex-grow: 1;
-  position: relative;
-  overflow-x: auto;
+.gantt-container svg {
+  margin: 0;
+  display: block;
 }
 
 .gantt-left {
-  /* width: 300px; Fixed width for job details */
-  background-color: #f4f4f4;
-  border-right: 1px solid #ccc;
-  position: sticky;
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid #bebebe;
+}
+
+.gantt-left-header {
+  height: 40px;
   background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
   z-index: 10;
+}
+
+.gantt-left-body {
+  flex-grow: 1;
+  overflow-y: scroll;
+  background-color: #f0f0f0;
 }
 
 .gantt-right {
-  flex-grow: 1; /* Take the rest of the space */
-  /* overflow: auto; Enable both horizontal and vertical scrolling */
-  background-color: #fff;
-  position: relative;
-}
-
-.gantt-row {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gantt-right-header {
   height: 40px;
-}
-
-.gantt-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  overflow: hidden;
   background-color: white;
+  z-index: 10;
+  flex-shrink: 0; /* Prevent the header from shrinking */
 }
 
-.gantt-cell {
-  width: 1000px; /* Adjust width as needed */
-  text-align: left;
-}
-
-.header {
-  font-weight: bold;
-}
-
-.gantt-scrollable {
+.gantt-right-body {
+  flex-grow: 1;
   overflow: auto;
-  height: 500px; /* Adjust as needed */
+  height: calc(100% - 40px); /* Subtract the header height */
 }
 
-.gantt-container, .gantt-left, .gantt-main, svg {
-  margin: 0;
-  padding: 0;
+.gantt-right svg {
+  display: block; /* Removes any extra space below inline SVG */
 }
 
-svg {
-  /* overflow: visible; */
-  display: block;
-  margin: 0;
-  padding: 0;
-  border: 0;
+.add-job-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
+.add-job-button:hover {
+  background-color: #45a049;
+}
+
+
+/* Job Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -113,3 +120,4 @@ svg {
   text-align: left;
   padding-left: 30px;
 }
+
