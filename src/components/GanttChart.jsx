@@ -117,6 +117,15 @@ const GanttChart = () => {
 		const chartSvg = d3.select(chartRef.current);
 		chartSvg.selectAll("*").remove(); // Clear previous SVG content
 
+		const leftColumnSvg = d3.select(leftColumnRef.current);
+		leftColumnSvg.selectAll("*").remove();
+
+		const leftHeaderSvg = d3.select(leftColumnHeaderRef.current);
+		leftHeaderSvg.selectAll("*").remove();
+
+		const headerSvg = d3.select(headerRef.current);
+		headerSvg.selectAll("*").remove();
+
 		const numDays = 180;
 		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
 		const barMargin = 3;
@@ -133,15 +142,26 @@ const GanttChart = () => {
 			return addDays(startDate, i);
 		});
 
-		chartSvg
-			.attr("width", width)
-			.attr("height", height)
-			.style("margin", "0")
-			.style("padding", "0");
+		const rightHeader = d3.select(".gantt-right-header");
+		const rightBody = d3.select(".gantt-right-body");
+		const leftBody = d3.select(".gantt-left-body");
 
-		const leftHeaderSvg = d3.select(leftColumnHeaderRef.current);
-		leftHeaderSvg.selectAll("*").remove();
-		leftHeaderSvg.attr("width", 300).attr("height", 40).style("margin", "0");
+		rightHeader.on("scroll", () => {
+			rightBody.node().scrollLeft = rightHeader.node().scrollLeft;
+		});
+
+		rightBody.on("scroll", () => {
+			rightHeader.node().scrollLeft = rightBody.node().scrollLeft;
+			leftBody.node().scrollTop = rightBody.node().scrollTop;
+		});
+
+		leftBody.on("scroll", () => {
+			rightBody.node().scrollTop = leftBody.node().scrollTop;
+		});
+
+		chartSvg.attr("width", width).attr("height", height);
+
+		leftHeaderSvg.attr("width", 300).attr("height", 40);
 
 		// Add the left column header with titles
 		leftHeaderSvg.append("g").each(function () {
@@ -151,7 +171,7 @@ const GanttChart = () => {
 			leftHeaderGroup
 				.append("text")
 				.attr("x", 10) // Adjust x for alignment
-				.attr("y", rowHeight / 2)
+				.attr("y", rowHeight / 2 + 6)
 				.text("Job #")
 				.attr("fill", "#000")
 				.attr("font-weight", "bold")
@@ -161,7 +181,7 @@ const GanttChart = () => {
 			leftHeaderGroup
 				.append("text")
 				.attr("x", 80) // Adjust x for alignment
-				.attr("y", rowHeight / 2)
+				.attr("y", rowHeight / 2 + 6)
 				.text("Job Name")
 				.attr("fill", "#000")
 				.attr("font-weight", "bold")
@@ -171,19 +191,14 @@ const GanttChart = () => {
 			leftHeaderGroup
 				.append("text")
 				.attr("x", 200) // Adjust x for alignment
-				.attr("y", rowHeight / 2)
+				.attr("y", rowHeight / 2 + 6)
 				.text("Room Name")
 				.attr("fill", "#000")
 				.attr("font-weight", "bold")
 				.attr("dominant-baseline", "middle");
 		});
 
-		const headerSvg = d3.select(headerRef.current);
-		headerSvg.selectAll("*").remove();
-		headerSvg
-			.attr("width", numDays * dayWidth)
-			.attr("height", 40)
-			.style("margin", "0");
+		headerSvg.attr("width", numDays * dayWidth).attr("height", 40);
 
 		// Add column headers with both date and day of the week
 		headerSvg
@@ -207,6 +222,7 @@ const GanttChart = () => {
 						.attr("width", dayWidth)
 						.attr("height", 50) // Adjust to cover the header
 						.attr("fill", "#e0e0e0"); // A slightly darker background for weekends
+						
 				}
 				group
 					.append("text")
@@ -215,6 +231,7 @@ const GanttChart = () => {
 					.text(d3.timeFormat("%b")(d))
 					.attr("fill", "#000")
 					.attr("font-size", "12px")
+					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
 				group
 					.append("text")
@@ -223,15 +240,17 @@ const GanttChart = () => {
 					.text(d3.timeFormat("%d")(d))
 					.attr("fill", "#000")
 					.attr("font-size", "12px")
+					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
 
 				group
 					.append("text")
 					.attr("x", i * dayWidth + 10)
-					.attr("y", 38) // Adjust vertical position for day of the week
+					.attr("y", 37) // Adjust vertical position for day of the week
 					.text(d3.timeFormat("%a")(d))
 					.attr("fill", "#000")
 					.attr("font-size", "10px")
+					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
 			});
 
@@ -260,15 +279,7 @@ const GanttChart = () => {
 			}))
 		);
 
-		const leftColumnSvg = d3.select(leftColumnRef.current);
-		leftColumnSvg.selectAll("*").remove();
-		leftColumnSvg
-			.attr("width", 300)
-			.attr(
-				"height",
-				jobs.reduce((acc, job) => acc + job.rooms.length * rowHeight, 0)
-			)
-			.style("margin", "0");
+		leftColumnSvg.attr("width", 300).attr("height", height);
 
 		leftColumnSvg.on("dblclick", (event) => {
 			const [x, y] = d3.pointer(event);
@@ -336,7 +347,6 @@ const GanttChart = () => {
 		const drag = d3
 			.drag()
 			.on("start", function (event, d) {
-				tooltip.style("opacity", 0);
 				d3.select(this).classed("dragging", true);
 				d.dragStartX = d3.select(this).attr("x");
 				d.dragStartEventX = event.x;
@@ -351,7 +361,6 @@ const GanttChart = () => {
 					.attr("x", newX + 5);
 
 				handleAutoScroll(event);
-				tooltip.style("opacity", 0);
 			})
 			.on("end", function (event, d) {
 				const dx = event.x - d.dragStartEventX;
@@ -390,17 +399,11 @@ const GanttChart = () => {
 				delete d.dragStartEventX;
 			});
 
-		const tooltip = d3
-			.select("body")
-			.append("div")
-			.attr("class", "tooltip")
-			.style("opacity", 0);
-
 		// Remove previous SVG elements
 		chartSvg.selectAll("*").remove().append("rect");
 
 		// Set SVG dimensions based on room count
-		chartSvg.attr("width", width).attr("height", roomsData.length * rowHeight);
+		chartSvg.attr("width", width).attr("height", height);
 
 		// Create row backgrounds for each room
 		chartSvg
@@ -484,28 +487,7 @@ const GanttChart = () => {
 					.attr("class", "job")
 					.attr("rx", 5)
 					.attr("ry", 5)
-					.call(drag)
-					.on("mouseover", function (event, d) {
-						if (!d3.select(this).classed("dragging")) {
-							const tooltipHeight = 40;
-							const offset = 0;
-
-							let topPosition = event.pageY - tooltipHeight - offset;
-							// Ensure the tooltip doesn't go above the top of the window
-							topPosition = Math.max(topPosition, 5);
-
-							tooltip.transition().duration(200).style("opacity", 0.9);
-							tooltip
-								.html(`Duration: ${d.duration} hours`)
-								.style("left", event.pageX + 10 + "px")
-								.style("top", topPosition + "px");
-						}
-					})
-					.on("mouseout", function (d) {
-						if (!d3.select(this).classed("dragging")) {
-							tooltip.transition().duration(500).style("opacity", 0);
-						}
-					});
+					.call(drag);
 
 				group
 					.append("text")
@@ -513,11 +495,22 @@ const GanttChart = () => {
 						"x",
 						(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
 					)
-					.attr("y", rowHeight - 15 + 5)
+					.attr("y", rowHeight / 2)
+					.attr("dy", ".35em")
 					.text((d) => d.name)
 					.attr("fill", "#fff")
 					.attr("class", "bar-text")
 					.style("pointer-events", "none");
+
+				group
+					.on("mouseover", function (event, d) {
+						d3.select(this)
+							.select(".bar-text")
+							.text(`${d.name} - ${d.duration} hours`);
+					})
+					.on("mouseout", function (event, d) {
+						d3.select(this).select(".bar-text").text(d.name);
+					});
 			});
 
 		// Add scrolling behavior for the chart
@@ -542,36 +535,51 @@ const GanttChart = () => {
 		const today = normalizeDate(new Date());
 		const todayXPosition = calculateXPosition(today, startDate, dayWidth);
 
+		console.log("Today:", today);
+		console.log("Start Date:", startDate);
+		console.log("Today X Position:", todayXPosition);
+
 		// scroll to today's date
-		if (scrollableRef.current) {
-			scrollableRef.current.scrollLeft = todayXPosition;
+		const rightHeaderScroll = d3.select(".gantt-right-header").node();
+		const rightBodyScroll = d3.select(".gantt-right-body").node();
+
+		if (rightHeaderScroll && rightBodyScroll) {
+			const scrollPosition = todayXPosition;
+			console.log("Scroll Position:", scrollPosition);
+			rightHeaderScroll.scrollLeft = scrollPosition;
+			rightBodyScroll.scrollLeft = scrollPosition;
 		}
 	}, []);
 
 	return (
 		<>
-			<div className="instructions">Double-click a job to edit rooms</div>
 			<div className="gantt-container">
 				<div className="gantt-left">
-					<svg ref={leftColumnHeaderRef} className="gantt-left-header" />
-					<div className="gantt-scrollable" ref={leftScrollableRef}>
+					<div className="gantt-left-header">
+						<svg ref={leftColumnHeaderRef} />
+					</div>
+					<div className="gantt-left-body">
 						<svg ref={leftColumnRef} />
 					</div>
 				</div>
-				<div className="gantt-main">
-					<svg ref={headerRef} className="gantt-header" />
-					<div className="gantt-scrollable" ref={scrollableRef}>
+				<div className="gantt-right">
+					<div className="gantt-right-header">
+						<svg ref={headerRef} />
+					</div>
+					<div className="gantt-right-body">
 						<svg ref={chartRef} />
 					</div>
 				</div>
-				<JobModal
-					isOpen={isModalOpen}
-					onClose={closeModal}
-					onSave={saveJob}
-					jobData={selectedJob}
-				/>
 			</div>
-			<button onClick={() => setIsModalOpen(true)}>Add Job</button>
+			<JobModal
+				isOpen={isModalOpen}
+				onClose={closeModal}
+				onSave={saveJob}
+				jobData={selectedJob}
+			/>
+			<button className="add-job-button" onClick={() => setIsModalOpen(true)}>
+				Add Job
+			</button>
 		</>
 	);
 };

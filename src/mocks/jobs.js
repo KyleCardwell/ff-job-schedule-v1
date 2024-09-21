@@ -1,7 +1,7 @@
 import { addDays } from 'date-fns';
 import { normalizeDate } from "../utils/dateUtils";
 
-const ogDate = normalizeDate("2024-09-10")
+const ogDate = normalizeDate("2024-09-16")
 
 export const newJobs = [
   {
