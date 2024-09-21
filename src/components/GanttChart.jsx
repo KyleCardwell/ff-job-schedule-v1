@@ -336,7 +336,6 @@ const GanttChart = () => {
 		const drag = d3
 			.drag()
 			.on("start", function (event, d) {
-				tooltip.style("opacity", 0);
 				d3.select(this).classed("dragging", true);
 				d.dragStartX = d3.select(this).attr("x");
 				d.dragStartEventX = event.x;
@@ -351,7 +350,6 @@ const GanttChart = () => {
 					.attr("x", newX + 5);
 
 				handleAutoScroll(event);
-				tooltip.style("opacity", 0);
 			})
 			.on("end", function (event, d) {
 				const dx = event.x - d.dragStartEventX;
@@ -389,12 +387,6 @@ const GanttChart = () => {
 				delete d.dragStartX;
 				delete d.dragStartEventX;
 			});
-
-		const tooltip = d3
-			.select("body")
-			.append("div")
-			.attr("class", "tooltip")
-			.style("opacity", 0);
 
 		// Remove previous SVG elements
 		chartSvg.selectAll("*").remove().append("rect");
@@ -484,28 +476,7 @@ const GanttChart = () => {
 					.attr("class", "job")
 					.attr("rx", 5)
 					.attr("ry", 5)
-					.call(drag)
-					.on("mouseover", function (event, d) {
-						if (!d3.select(this).classed("dragging")) {
-							const tooltipHeight = 40;
-							const offset = 0;
-
-							let topPosition = event.pageY - tooltipHeight - offset;
-							// Ensure the tooltip doesn't go above the top of the window
-							topPosition = Math.max(topPosition, 5);
-
-							tooltip.transition().duration(200).style("opacity", 0.9);
-							tooltip
-								.html(`Duration: ${d.duration} hours`)
-								.style("left", event.pageX + 10 + "px")
-								.style("top", topPosition + "px");
-						}
-					})
-					.on("mouseout", function (d) {
-						if (!d3.select(this).classed("dragging")) {
-							tooltip.transition().duration(500).style("opacity", 0);
-						}
-					});
+					.call(drag);
 
 				group
 					.append("text")
@@ -513,11 +484,22 @@ const GanttChart = () => {
 						"x",
 						(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
 					)
-					.attr("y", rowHeight - 15 + 5)
+					.attr("y", rowHeight / 2)
+					.attr("dy", ".35em")
 					.text((d) => d.name)
 					.attr("fill", "#fff")
 					.attr("class", "bar-text")
 					.style("pointer-events", "none");
+
+				group
+					.on("mouseover", function (event, d) {
+						d3.select(this)
+							.select(".bar-text")
+							.text(`${d.name} - ${d.duration} hours`);
+					})
+					.on("mouseout", function (event, d) {
+						d3.select(this).select(".bar-text").text(d.name);
+					});
 			});
 
 		// Add scrolling behavior for the chart
