@@ -1,15 +1,14 @@
+import { v4 as uuidv4 } from "uuid";
 import { Actions } from "../actions";
 
 const initialState = {
 	builders: [
-		{ id: 4, name: "No one", color: "#FFC0CC" },
-		{ id: 1, name: "Frosty", color: "#86CEEB" },
-		{ id: 2, name: "Patrick", color: "#4CAF51" },
-		{ id: 3, name: "Nick", color: "#800080" },
+		{ id: "1", name: "No one", color: "#FFC0CC" },
+		{ id: "2", name: "Frosty", color: "#86CEEB" },
+		{ id: "3", name: "Patrick", color: "#4CAF51" },
+		{ id: "4", name: "Nick", color: "#800080" },
 	], // Array to store builder objects with id, name, and color
 };
-
-const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export const builders = (state = initialState, action) => {
 	switch (action.type) {
@@ -19,7 +18,7 @@ export const builders = (state = initialState, action) => {
 				builders: [
 					...state.builders,
 					{
-						id: generateId(),
+						id: uuidv4(),
 						name: action.payload.name,
 						color: action.payload.color,
 					},

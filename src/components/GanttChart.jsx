@@ -11,7 +11,7 @@ import {
 } from "date-fns";
 import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
-import BuilderModal from './BuilderModal';
+import BuilderModal from "./BuilderModal";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs.jobs);
@@ -225,7 +225,6 @@ const GanttChart = () => {
 						.attr("width", dayWidth)
 						.attr("height", 50) // Adjust to cover the header
 						.attr("fill", "#e0e0e0"); // A slightly darker background for weekends
-						
 				}
 				group
 					.append("text")
@@ -556,20 +555,20 @@ const GanttChart = () => {
 
 	return (
 		<>
-		  <div className="action-buttons">
-        <button 
-          className="action-button add-job-button" 
-          onClick={() => setIsJobModalOpen(true)}
-        >
-          Add Job
-        </button>
-        <button 
-          className="action-button manage-builders-button" 
-          onClick={() => setIsBuilderModalOpen(true)}
-        >
-          Manage Builders
-        </button>
-      </div>
+			<div className="action-buttons">
+				<button
+					className="action-button add-job-button"
+					onClick={() => setIsJobModalOpen(true)}
+				>
+					Add Job
+				</button>
+				<button
+					className="action-button manage-builders-button"
+					onClick={() => setIsBuilderModalOpen(true)}
+				>
+					Manage Builders
+				</button>
+			</div>
 			<div className="gantt-container">
 				<div className="gantt-left">
 					<div className="gantt-left-header">
@@ -589,19 +588,19 @@ const GanttChart = () => {
 				</div>
 			</div>
 			<JobModal
-        isOpen={isJobModalOpen}
-        onClose={() => {
+				key={isJobModalOpen ? "open" : "closed"}
+				isOpen={isJobModalOpen}
+				onClose={() => {
 					setSelectedJob(null);
 					setIsJobModalOpen(false);
 				}}
-        onSave={saveJob}
-        jobData={selectedJob}
-      />
-      <BuilderModal
-        isOpen={isBuilderModalOpen}
-        onClose={() => setIsBuilderModalOpen(false)}
-      />
-    
+				onSave={saveJob}
+				jobData={selectedJob}
+			/>
+			<BuilderModal
+				isOpen={isBuilderModalOpen}
+				onClose={() => setIsBuilderModalOpen(false)}
+			/>
 		</>
 	);
 };

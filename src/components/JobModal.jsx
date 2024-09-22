@@ -13,7 +13,10 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 	const [jobName, setJobName] = useState("");
 	const [rooms, setRooms] = useState([]);
 	const [errors, setErrors] = useState({});
-	const builders = useSelector((state) => state.builders.builders);
+	const builders = useSelector(
+		(state) => state.builders.builders,
+		(prev, next) => JSON.stringify(prev) === JSON.stringify(next)
+	);
 	const nextJobNumber = useSelector((state) => state.jobs.nextJobNumber);
 	const newRoomNameRef = useRef(null);
 
@@ -33,23 +36,25 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 				setRooms([]);
 			}
 		}
-	}, [jobData, isOpen]);
+	}, [jobData, isOpen, builders]);
 
 	const handleRoomChange = (index, changes) => {
-    const updatedRooms = [...rooms];
-    if ('startDate' in changes) {
-      // Normalize the date when it's changed
-      changes.startDate = normalizeDate(changes.startDate);
-    }
-    updatedRooms[index] = { ...updatedRooms[index], ...changes };
-    setRooms(updatedRooms);
+		const updatedRooms = [...rooms];
+		if ("startDate" in changes) {
+			// Normalize the date when it's changed
+			changes.startDate = normalizeDate(changes.startDate);
+		}
+		updatedRooms[index] = { ...updatedRooms[index], ...changes };
+		setRooms(updatedRooms);
 
-	 // Clear errors for the changed fields
-	 const updatedErrors = { ...errors };
-	 Object.keys(changes).forEach(key => {
-		 delete updatedErrors[`room${index}${key.charAt(0).toUpperCase() + key.slice(1)}`];
-	 });
-	 setErrors(updatedErrors);
+		// Clear errors for the changed fields
+		const updatedErrors = { ...errors };
+		Object.keys(changes).forEach((key) => {
+			delete updatedErrors[
+				`room${index}${key.charAt(0).toUpperCase() + key.slice(1)}`
+			];
+		});
+		setErrors(updatedErrors);
 	};
 
 	const handleAddRoom = () => {
@@ -57,11 +62,11 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 			...rooms,
 			{
 				id: uuidv4(),
-				jobNumber: nextJobNumber,
-				name: undefined,
+				jobNumber: nextJobNumber.toString(),
+				name: "",
 				startDate: formatDateForInput(new Date()),
 				duration: undefined,
-				builderId: 4,
+				builderId: "1",
 			},
 		]);
 		dispatch(incrementJobNumber());
@@ -92,7 +97,15 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 			return; // Exit early if there are errors
 		}
 
-		const updatedJob = { ...jobData, name: jobName, rooms };
+		const updatedJob = {
+			id: jobData ? jobData.id : uuidv4(),
+			name: jobName,
+			rooms: rooms.map(room => ({
+				...room,
+				id: room.id || uuidv4(),
+				builderId: room.builderId || "1",
+			})),
+		};
 		onSave(updatedJob);
 		dispatch(updateJobAndRooms(updatedJob));
 		setErrors({}); // Reset errors on successful save
@@ -121,7 +134,11 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 
 				<h3>Rooms</h3>
 				{rooms.map((room, index) => (
-					<div className="roomGroup" key={index} style={{ backgroundColor: index % 2 ? "#e0e0e0" : "" }}>
+					<div
+						className="roomGroup"
+						key={index}
+						style={{ backgroundColor: index % 2 ? "#e0e0e0" : "" }}
+					>
 						<label>
 							Job #
 							<input
@@ -201,9 +218,9 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 						<label>
 							Builder
 							<select
-								value={room.builderId}
+								value={room.builderId || ""}
 								onChange={(e) =>
-									handleRoomChange(index, { builderId: Number(e.target.value) })
+									handleRoomChange(index, { builderId: e.target.value })
 								}
 								onFocus={() =>
 									setErrors((prev) => ({
