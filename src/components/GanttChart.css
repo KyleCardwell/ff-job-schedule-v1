@@ -54,20 +54,35 @@
   display: block; /* Removes any extra space below inline SVG */
 }
 
-.add-job-button {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.action-button {
   padding: 10px 20px;
-  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: opacity 0.3s ease;
 }
 
-.add-job-button:hover {
-  background-color: #45a049;
+.action-button:hover {
+  opacity: 0.9;
+}
+
+.add-job-button {
+  background-color: #4CAF50; /* Green */
+}
+
+.manage-builders-button {
+  background-color: #2196F3; /* Blue */
 }
 
 
@@ -121,3 +136,26 @@
   padding-left: 30px;
 }
 
+/* Builder Modal */
+.builder-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.builder-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+}
+
+.builder-list li button {
+  margin-left: 10px;
+}
+
+.error {
+  color: red;
+  font-size: 0.8em;
+}

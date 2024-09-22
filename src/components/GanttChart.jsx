@@ -11,6 +11,7 @@ import {
 } from "date-fns";
 import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
+import BuilderModal from './BuilderModal';
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs.jobs);
@@ -24,21 +25,23 @@ const GanttChart = () => {
 	const leftScrollableRef = useRef(null);
 
 	const [selectedJob, setSelectedJob] = useState(null);
-	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
-		setIsModalOpen(true);
+		setIsJobModalOpen(true);
 	};
 
-	const closeModal = () => {
-		setIsModalOpen(false);
+	const closeJobModal = () => {
+		setIsJobModalOpen(false);
 		setSelectedJob(null);
 	};
 
 	const saveJob = (updatedJob) => {
 		// Update the job in your state or dispatch an action to save it
-		setIsModalOpen(false);
+		setIsJobModalOpen(false);
+		setSelectedJob(null);
 	};
 
 	const countAllRooms = (jobs) => {
@@ -553,6 +556,20 @@ const GanttChart = () => {
 
 	return (
 		<>
+		  <div className="action-buttons">
+        <button 
+          className="action-button add-job-button" 
+          onClick={() => setIsJobModalOpen(true)}
+        >
+          Add Job
+        </button>
+        <button 
+          className="action-button manage-builders-button" 
+          onClick={() => setIsBuilderModalOpen(true)}
+        >
+          Manage Builders
+        </button>
+      </div>
 			<div className="gantt-container">
 				<div className="gantt-left">
 					<div className="gantt-left-header">
@@ -572,14 +589,19 @@ const GanttChart = () => {
 				</div>
 			</div>
 			<JobModal
-				isOpen={isModalOpen}
-				onClose={closeModal}
-				onSave={saveJob}
-				jobData={selectedJob}
-			/>
-			<button className="add-job-button" onClick={() => setIsModalOpen(true)}>
-				Add Job
-			</button>
+        isOpen={isJobModalOpen}
+        onClose={() => {
+					setSelectedJob(null);
+					setIsJobModalOpen(false);
+				}}
+        onSave={saveJob}
+        jobData={selectedJob}
+      />
+      <BuilderModal
+        isOpen={isBuilderModalOpen}
+        onClose={() => setIsBuilderModalOpen(false)}
+      />
+    
 		</>
 	);
 };

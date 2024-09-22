@@ -2,10 +2,10 @@ import { Actions } from "../actions";
 
 const initialState = {
 	builders: [
-		{ id: 4, name: "No one", color: "pink" },
-		{ id: 1, name: "Frosty", color: "skyblue" },
-		{ id: 2, name: "Patrick", color: "green" },
-		{ id: 3, name: "Nick", color: "purple" },
+		{ id: 4, name: "No one", color: "#FFC0CC" },
+		{ id: 1, name: "Frosty", color: "#86CEEB" },
+		{ id: 2, name: "Patrick", color: "#4CAF51" },
+		{ id: 3, name: "Nick", color: "#800080" },
 	], // Array to store builder objects with id, name, and color
 };
 
