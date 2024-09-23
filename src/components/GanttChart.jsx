@@ -583,7 +583,7 @@ const GanttChart = () => {
 					<div className="gantt-right-header">
 						<svg ref={headerRef} />
 					</div>
-					<div className="gantt-right-body">
+					<div className="gantt-right-body" ref={scrollableRef}>
 						<svg ref={chartRef} />
 					</div>
 				</div>
