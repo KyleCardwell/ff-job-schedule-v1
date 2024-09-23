@@ -549,7 +549,6 @@ const GanttChart = () => {
 
 		if (rightHeaderScroll && rightBodyScroll) {
 			const scrollPosition = todayXPosition;
-			rightHeaderScroll.scrollLeft = scrollPosition;
 			rightBodyScroll.scrollLeft = scrollPosition;
 		}
 	}, []);
