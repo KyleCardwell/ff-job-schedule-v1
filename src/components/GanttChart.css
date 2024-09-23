@@ -1,3 +1,4 @@
+/* Gantt Chart Container */
 .gantt-container {
   display: flex;
   height: 600px;
@@ -9,6 +10,7 @@
   display: block;
 }
 
+/* Gantt Left Column */
 .gantt-left {
   width: 300px;
   flex-shrink: 0;
@@ -30,6 +32,7 @@
   background-color: #f0f0f0;
 }
 
+/* Gantt Right Column */
 .gantt-right {
   display: flex;
   flex-direction: column;
@@ -54,6 +57,7 @@
   display: block; /* Removes any extra space below inline SVG */
 }
 
+/* Action Buttons */
 .action-buttons {
   display: flex;
   justify-content: flex-end;
@@ -85,8 +89,9 @@
   background-color: #2196F3; /* Blue */
 }
 
-
 /* Job Modal */
+
+/* Modal Overlay */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -104,31 +109,133 @@
   background-color: white;
   padding: 20px;
   border-radius: 8px;
-  max-width: 600px;
-  width: 100%;
+  max-width: 800px; /* Increased from 600px to allow more space */
+  width: 95%; /* Use percentage to make it responsive */
+  max-height: 90vh; /* Limit height to 90% of viewport height */
+  overflow-y: auto; /* Allow scrolling if content exceeds max-height */
   z-index: 10000;
 }
 
 .modal-actions {
   display: flex;
   justify-content: space-between;
+  margin-top: 10px;
 }
 
 .roomGroup {
-  display: flex;
-  padding: 2px 0 7px;
+  display: grid;
+  grid-template-columns: 50px 1fr 1fr 70px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 5px;
 }
 
-.jobNumber {
-  max-width: 40px;
+.roomGroup.header {
+  font-weight: bold;
+  background-color: #f0f0f0;
 }
 
-.duration {
-  max-width: 50px;
+.roomGroup.header span {
+  text-align: center;
+  padding: 5px;
 }
 
-.add-room-button {
-  margin-top: 20px;
+.roomGroup.even {
+  background-color: #ffffff;
+}
+
+.roomGroup.odd {
+  background-color: #f0f0f0;
+}
+
+.roomGroup.inactive {
+  background-color: #f0f0f0;
+  padding: 5px;
+  margin-bottom: 5px;
+  border-radius: 3px;
+}
+
+.roomGroup.inactive span {
+  margin-right: 10px;
+}
+
+.roomGroup input,
+.roomGroup select,
+.roomGroup span {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+input.error,
+select.error {
+  border: 2px solid red;
+}
+
+input,
+select {
+  transition: border-color 0.3s ease;
+}
+
+.roomGroup .jobNumber {
+  width: 50px;
+}
+.roomGroup .duration {
+  width: 70px;
+}
+
+.roomGroup .jobNumber input,
+.roomGroup .duration input {
+  width: 100%;
+  padding: 5px 2px;
+  text-align: center;
+}
+
+.roomGroup button {
+  white-space: nowrap;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border-color: #797979;
+  border-radius: 3px;
+  cursor: pointer;
+  max-width: 80px;
+}
+
+@media (max-width: 768px) {
+  .roomGroup {
+    grid-template-columns: 30px 1fr 30px;
+    gap: 10px;
+  }
+
+  .roomGroup.header {
+    display: none;
+  }
+
+  .roomGroup input,
+  .roomGroup select,
+  .roomGroup button {
+    grid-column: span 3;
+  }
+
+  .roomGroup .jobNumber,
+  .roomGroup .duration {
+    grid-column: span 1;
+  }
+}
+
+input.error,
+select.error {
+  border: 2px solid red;
+}
+
+/* Optional: Add a transition for a smoother visual effect */
+input,
+select {
+  transition: border-color 0.3s ease;
 }
 
 .instructions {
@@ -137,25 +244,119 @@
 }
 
 /* Builder Modal */
+.add-builder-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.add-builder-form input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.add-builder-form button {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.add-builder-form button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-builder-form button:hover {
+  background-color: #45a049;
+}
+
 .builder-list {
   list-style-type: none;
   padding: 0;
+  margin: 0;
 }
 
 .builder-list li {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 10px;
-  margin-bottom: 5px;
+  padding: 10px 60px;
+  margin-bottom: 10px;
   border-radius: 5px;
+  transition: all 0.3s ease;
+  min-height: 40px;
+  background-color: #f9f9f9;
 }
 
-.builder-list li button {
-  margin-left: 10px;
+.builder-name {
+  text-align: center;
+  font-weight: bold;
+}
+
+.edit-button,
+.delete-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.edit-button:hover,
+.delete-button:hover {
+  background-color: #e0e0e0;
+}
+
+.edit-button {
+  left: 10px;
+}
+
+.delete-button {
+  right: 10px;
+}
+
+.builder-list li[data-marked-for-deletion="true"] {
+  border: 2px solid red;
+  opacity: 0.7;
 }
 
 .error {
   color: red;
   font-size: 0.8em;
+  text-align: center;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .add-builder-form {
+    flex-direction: column;
+  }
+
+  .add-builder-form input,
+  .add-builder-form button {
+    width: 100%;
+  }
+
+  .builder-list li {
+    padding: 10px 40px;
+  }
+
+  .edit-button,
+  .delete-button {
+    padding: 3px 6px;
+    font-size: 0.8em;
+  }
+
+  .builder-name {
+    font-size: 0.9em;
+  }
 }
