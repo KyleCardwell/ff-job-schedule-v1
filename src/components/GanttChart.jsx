@@ -138,7 +138,15 @@ const GanttChart = () => {
 
 		const width = numDays * dayWidth;
 		const rowHeight = 30;
-		const height = totalRooms * rowHeight;
+
+		const countActiveRooms = (jobs) => {
+			return jobs.reduce(
+				(total, job) => total + job.rooms.filter((room) => room.active).length,
+				0
+			);
+		};
+
+		const height = countActiveRooms(jobs) * rowHeight;
 
 		// Create an array of dates for the column headers
 		const dates = Array.from({ length: numDays }, (_, i) => {
@@ -274,19 +282,17 @@ const GanttChart = () => {
 				jobsIndex: i,
 				jobId: job.id,
 				jobName: job.name,
-				jobNumber: room.jobNumber,
-				startDate: room.startDate,
-				duration: room.duration,
-				builderId: room.builderId,
 			}))
 		);
+
+		const activeRoomsData = roomsData.filter((room) => room.active);
 
 		leftColumnSvg.attr("width", 300).attr("height", height);
 
 		leftColumnSvg.on("dblclick", (event) => {
 			const [x, y] = d3.pointer(event);
 			const rowIndex = Math.floor(y / rowHeight); // Calculate which row was clicked based on y-coordinate
-			const room = roomsData[rowIndex]; // Get the room data based on the row index
+			const room = activeRoomsData[rowIndex]; // Get the room data based on the row index
 
 			if (room) {
 				const job = jobs.find((j) => j.id === room.jobId); // Find the job associated with the room
@@ -297,7 +303,7 @@ const GanttChart = () => {
 		// Background rows
 		leftColumnSvg
 			.selectAll(".row-background")
-			.data(roomsData)
+			.data(activeRoomsData)
 			.enter()
 			.append("rect")
 			.attr("x", 0)
@@ -311,7 +317,7 @@ const GanttChart = () => {
 		// Text elements for job number, job name, and room name
 		leftColumnSvg
 			.selectAll(".job-text")
-			.data(roomsData)
+			.data(activeRoomsData)
 			.enter()
 			.append("g") // Group text elements together
 			.attr(
@@ -410,7 +416,7 @@ const GanttChart = () => {
 		// Create row backgrounds for each room
 		chartSvg
 			.selectAll(".row-background")
-			.data(roomsData)
+			.data(activeRoomsData)
 			.enter()
 			.append("rect")
 			.attr("x", 0)
@@ -434,7 +440,7 @@ const GanttChart = () => {
 			.attr("x", (d, i) => i * dayWidth)
 			.attr("y", 0)
 			.attr("width", dayWidth)
-			.attr("height", roomsData.length * rowHeight) // Adjust height based on room count
+			.attr("height", activeRoomsData.length * rowHeight) // Adjust height based on room count
 			.attr("fill", (d) => {
 				const dayOfWeek = d3.timeFormat("%a")(d);
 				return dayOfWeek === "Sat" || dayOfWeek === "Sun"
@@ -452,7 +458,7 @@ const GanttChart = () => {
 			.attr("x1", (d, i) => i * dayWidth)
 			.attr("x2", (d, i) => i * dayWidth)
 			.attr("y1", 0)
-			.attr("y2", roomsData.length * rowHeight) // Adjust based on room count
+			.attr("y2", activeRoomsData.length * rowHeight) // Adjust based on room count
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
 
@@ -464,7 +470,7 @@ const GanttChart = () => {
 
 		jobsGroup
 			.selectAll(".job-group")
-			.data(roomsData)
+			.data(activeRoomsData)
 			.enter()
 			.append("g")
 			.attr("class", "job-group")
@@ -537,17 +543,12 @@ const GanttChart = () => {
 		const today = normalizeDate(new Date());
 		const todayXPosition = calculateXPosition(today, startDate, dayWidth);
 
-		console.log("Today:", today);
-		console.log("Start Date:", startDate);
-		console.log("Today X Position:", todayXPosition);
-
 		// scroll to today's date
 		const rightHeaderScroll = d3.select(".gantt-right-header").node();
 		const rightBodyScroll = d3.select(".gantt-right-body").node();
 
 		if (rightHeaderScroll && rightBodyScroll) {
 			const scrollPosition = todayXPosition;
-			console.log("Scroll Position:", scrollPosition);
 			rightHeaderScroll.scrollLeft = scrollPosition;
 			rightBodyScroll.scrollLeft = scrollPosition;
 		}

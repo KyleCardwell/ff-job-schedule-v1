@@ -114,7 +114,7 @@ const BuilderModal = ({ isOpen, onClose }) => {
 		<div className="modal-overlay">
 			<div className="modal-content">
 				<h2>Manage Builders</h2>
-				<div>
+				<div className="add-builder-form">
 					<input
 						type="text"
 						value={name}
