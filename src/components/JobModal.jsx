@@ -172,7 +172,9 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 				<input
 					type="text"
 					value={jobName}
-					onChange={(e) => setJobName(e.target.value)}
+					onChange={(e) => {
+						setErrors((prevErrors) => ({ ...prevErrors, jobName: undefined }));
+						setJobName(e.target.value)}}
 					placeholder="Job Name"
 					className={errors.jobName ? "error" : ""}
 					ref={jobNameInputRef}
