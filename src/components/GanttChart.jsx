@@ -8,6 +8,10 @@ import {
 	differenceInCalendarDays,
 	isSaturday,
 	isSunday,
+	isValid,
+	min,
+	max,
+	parseISO,
 } from "date-fns";
 import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
@@ -28,14 +32,56 @@ const GanttChart = () => {
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 
+	const roomsData = jobs.flatMap((job, i) =>
+		job.rooms.map((room) => ({
+			...room,
+			jobsIndex: i,
+			jobId: job.id,
+			jobName: job.name,
+		}))
+	);
+
+	const convertDate = (dateInput) => {
+		const date = new Date(dateInput);
+		return isValid(date) ? date.toISOString() : null;
+	};
+
+	const safeParseDate = (dateInput) => {
+		const date = new Date(dateInput);
+		return isValid(date) ? date : null;
+	};
+
+	const { earliestStartDate, latestStartDate } = roomsData.reduce(
+		(acc, job) => {
+			const normalizedDate = convertDate(job.startDate);
+			const date = safeParseDate(normalizedDate);
+
+			if (date) {
+				return {
+					earliestStartDate: acc.earliestStartDate
+						? acc.earliestStartDate.getTime() < date.getTime()
+							? acc.earliestStartDate
+							: date
+						: date,
+					latestStartDate: acc.latestStartDate
+						? acc.latestStartDate.getTime() > date.getTime()
+							? acc.latestStartDate
+							: date
+						: date,
+				};
+			}
+
+			return acc;
+		},
+		{ earliestStartDate: null, latestStartDate: null }
+	);
+
+	console.log("earliestStartDate", earliestStartDate);
+	console.log("latestStartDate", latestStartDate);
+
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
 		setIsJobModalOpen(true);
-	};
-
-	const closeJobModal = () => {
-		setIsJobModalOpen(false);
-		setSelectedJob(null);
 	};
 
 	const saveJob = (updatedJob) => {
@@ -50,7 +96,10 @@ const GanttChart = () => {
 
 	const totalRooms = countAllRooms(jobs);
 
-	const startDate = normalizeDate("2024-08-01"); // Initialize start date for the Gantt chart
+	const daysBeforeStart = 30
+	const daysAfterEnd = 90
+
+	const startDate = addDays(earliestStartDate, -daysBeforeStart) // Initialize start date for the Gantt chart
 	const dayWidth = 40;
 	const workdayHours = 8;
 
@@ -129,7 +178,7 @@ const GanttChart = () => {
 		const headerSvg = d3.select(headerRef.current);
 		headerSvg.selectAll("*").remove();
 
-		const numDays = 180;
+		const numDays = differenceInCalendarDays(latestStartDate, earliestStartDate) + daysBeforeStart + daysAfterEnd;
 		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
 		const barMargin = 3;
 		const weekendColor = "#c1c1c1"; // Darker color for weekends
@@ -275,15 +324,6 @@ const GanttChart = () => {
 			.attr("y2", height)
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
-
-		const roomsData = jobs.flatMap((job, i) =>
-			job.rooms.map((room) => ({
-				...room,
-				jobsIndex: i,
-				jobId: job.id,
-				jobName: job.name,
-			}))
-		);
 
 		const activeRoomsData = roomsData.filter((room) => room.active);
 

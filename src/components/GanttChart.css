@@ -28,8 +28,8 @@
 
 .gantt-left-body {
   flex-grow: 1;
-  overflow-y: scroll;
   background-color: #f0f0f0;
+  margin-bottom: 17px;
 }
 
 /* Gantt Right Column */
@@ -55,6 +55,7 @@
 
 .gantt-right svg {
   display: block; /* Removes any extra space below inline SVG */
+  margin-bottom: 17px;
 }
 
 /* Action Buttons */
