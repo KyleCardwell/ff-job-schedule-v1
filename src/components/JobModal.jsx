@@ -16,11 +16,18 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 	const builders = useSelector((state) => state.builders.builders);
 	const nextJobNumber = useSelector((state) => state.jobs.nextJobNumber);
 	const newRoomNameRef = useRef(null);
+	const jobNameInputRef = useRef(null);
 
 	const formatDateForInput = (date) => {
 		if (!date) return "";
 		return format(new Date(date), "yyyy-MM-dd");
 	};
+
+	useEffect(() => {
+		if (isOpen && jobNameInputRef.current) {
+			jobNameInputRef.current.focus();
+		}
+	}, [isOpen]);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -168,6 +175,7 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 					onChange={(e) => setJobName(e.target.value)}
 					placeholder="Job Name"
 					className={errors.jobName ? "error" : ""}
+					ref={jobNameInputRef}
 				/>
 
 				<h3>Active Rooms</h3>

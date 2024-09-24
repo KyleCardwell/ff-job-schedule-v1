@@ -1,7 +1,7 @@
 /* Gantt Chart Container */
 .gantt-container {
   display: flex;
-  height: 600px;
+  height: 700px;
   overflow: hidden;
 }
 
@@ -66,6 +66,11 @@
   margin-bottom: 10px;
 }
 
+.scroll-to-today-button {
+  margin-left: 300px;
+  margin-right: auto;
+}
+
 .action-button {
   padding: 10px 20px;
   color: white;
@@ -88,6 +93,10 @@
 
 .manage-builders-button {
   background-color: #2196F3; /* Blue */
+}
+
+.scroll-to-today-button {
+  background-color: #ff9500; /* Orange */
 }
 
 /* Job Modal */
@@ -239,6 +248,54 @@ select {
   transition: border-color 0.3s ease;
 }
 
+@media print {
+
+  .gantt-chart-container {
+    display: block !important;
+    height: auto !important;
+    overflow: unset
+  }
+
+  .gantt-container {
+    height: auto !important;
+    overflow: visible !important;
+    transform: scale(2.25);
+    transform-origin: top left;
+  }
+
+  .gantt-right-body {
+    height: auto !important;
+    overflow: unse !important;
+  }
+
+  .gantt-left-body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure the entire chart is visible */
+  svg {
+    height: auto !important;
+  }
+
+  /* Hide any elements you don't want to print */
+  .action-buttons {
+    display: none !important;
+  }
+
+  /* Preserve the horizontal scroll position */
+  .gantt-right-body {
+    transform-origin: left top;
+    transform: translateX(var(--print-translate-x, 0));
+  }
+
+  .builder-legend {
+    break-inside: avoid;
+    display: flex !important;
+    page-break-inside: avoid;
+  }
+}
+
 .instructions {
   text-align: left;
   padding-left: 30px;
@@ -360,4 +417,27 @@ select {
   .builder-name {
     font-size: 0.9em;
   }
+}
+
+.builder-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 5px;
+  padding: 10px;
+  margin-left: 300px; /* Align with the left edge of gantt-right */
+  width: calc(100% - 300px); /* Take up the remaining width */
+}
+
+.builder-legend-item {
+  display: flex;
+  align-items: center;
+  margin: 0 20px 10px 0;
+}
+
+.builder-color-box {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+  border: 1px solid #000;
 }
