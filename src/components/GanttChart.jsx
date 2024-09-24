@@ -9,9 +9,7 @@ import {
 	isSaturday,
 	isSunday,
 	isValid,
-	min,
-	max,
-	parseISO,
+	subDays,
 } from "date-fns";
 import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
@@ -76,9 +74,6 @@ const GanttChart = () => {
 		{ earliestStartDate: null, latestStartDate: null }
 	);
 
-	console.log("earliestStartDate", earliestStartDate);
-	console.log("latestStartDate", latestStartDate);
-
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
 		setIsJobModalOpen(true);
@@ -96,10 +91,10 @@ const GanttChart = () => {
 
 	const totalRooms = countAllRooms(jobs);
 
-	const daysBeforeStart = 30
-	const daysAfterEnd = 90
+	const daysBeforeStart = 30;
+	const daysAfterEnd = 90;
 
-	const startDate = addDays(earliestStartDate, -daysBeforeStart) // Initialize start date for the Gantt chart
+	const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
 	const dayWidth = 40;
 	const workdayHours = 8;
 
@@ -155,12 +150,12 @@ const GanttChart = () => {
 		return totalDays * dayWidth;
 	};
 
-	const calculateXPosition = (jobStartDate, startDate, dayWidth) => {
+	const calculateXPosition = (jobStartDate, chartStartDate, dayWidth) => {
 		const normalizedJobStartDate = normalizeDate(jobStartDate);
-		const normalizedStartDate = normalizeDate(startDate);
+		const normalizedChartStartDate = normalizeDate(chartStartDate);
 		const diffInDays = differenceInCalendarDays(
 			normalizedJobStartDate,
-			normalizedStartDate
+			normalizedChartStartDate
 		);
 		return diffInDays * dayWidth;
 	};
@@ -178,8 +173,10 @@ const GanttChart = () => {
 		const headerSvg = d3.select(headerRef.current);
 		headerSvg.selectAll("*").remove();
 
-		const numDays = differenceInCalendarDays(latestStartDate, earliestStartDate) + daysBeforeStart + daysAfterEnd;
-		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
+		const numDays =
+			differenceInCalendarDays(latestStartDate, earliestStartDate) +
+			daysBeforeStart +
+			daysAfterEnd;
 		const barMargin = 3;
 		const weekendColor = "#c1c1c1"; // Darker color for weekends
 		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
