@@ -8,10 +8,14 @@ import {
 	differenceInCalendarDays,
 	isSaturday,
 	isSunday,
+	isValid,
+	subDays,
+	startOfWeek,
 } from "date-fns";
 import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
 import BuilderModal from "./BuilderModal";
+import BuilderLegend from "./BuilderLegend";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs.jobs);
@@ -28,14 +32,53 @@ const GanttChart = () => {
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 
+	const roomsData = jobs.flatMap((job, i) =>
+		job.rooms.map((room) => ({
+			...room,
+			jobsIndex: i,
+			jobId: job.id,
+			jobName: job.name,
+		}))
+	);
+
+	const convertDate = (dateInput) => {
+		const date = new Date(dateInput);
+		return isValid(date) ? date.toISOString() : null;
+	};
+
+	const safeParseDate = (dateInput) => {
+		const date = new Date(dateInput);
+		return isValid(date) ? date : null;
+	};
+
+	const { earliestStartDate, latestStartDate } = roomsData.reduce(
+		(acc, job) => {
+			const normalizedDate = convertDate(job.startDate);
+			const date = safeParseDate(normalizedDate);
+
+			if (date) {
+				return {
+					earliestStartDate: acc.earliestStartDate
+						? acc.earliestStartDate.getTime() < date.getTime()
+							? acc.earliestStartDate
+							: date
+						: date,
+					latestStartDate: acc.latestStartDate
+						? acc.latestStartDate.getTime() > date.getTime()
+							? acc.latestStartDate
+							: date
+						: date,
+				};
+			}
+
+			return acc;
+		},
+		{ earliestStartDate: null, latestStartDate: null }
+	);
+
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
 		setIsJobModalOpen(true);
-	};
-
-	const closeJobModal = () => {
-		setIsJobModalOpen(false);
-		setSelectedJob(null);
 	};
 
 	const saveJob = (updatedJob) => {
@@ -50,7 +93,10 @@ const GanttChart = () => {
 
 	const totalRooms = countAllRooms(jobs);
 
-	const startDate = normalizeDate("2024-08-01"); // Initialize start date for the Gantt chart
+	const daysBeforeStart = 30;
+	const daysAfterEnd = 90;
+
+	const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
 	const dayWidth = 40;
 	const workdayHours = 8;
 
@@ -75,6 +121,17 @@ const GanttChart = () => {
 			container.scrollTop -= scrollSpeed; // Scroll up
 		} else if (clientY > bottom - buffer) {
 			container.scrollTop += scrollSpeed; // Scroll down
+		}
+	};
+
+	const scrollToToday = () => {
+		const today = new Date();
+		const mondayOfThisWeek = startOfWeek(today, { weekStartsOn: 1 }); // 1 represents Monday
+		const diffDays = differenceInCalendarDays(mondayOfThisWeek, startDate);
+		const scrollPosition = diffDays * dayWidth;
+		const ganttRightBody = document.querySelector('.gantt-right-body');
+		if (ganttRightBody) {
+			ganttRightBody.scrollLeft = scrollPosition;
 		}
 	};
 
@@ -106,12 +163,12 @@ const GanttChart = () => {
 		return totalDays * dayWidth;
 	};
 
-	const calculateXPosition = (jobStartDate, startDate, dayWidth) => {
+	const calculateXPosition = (jobStartDate, chartStartDate, dayWidth) => {
 		const normalizedJobStartDate = normalizeDate(jobStartDate);
-		const normalizedStartDate = normalizeDate(startDate);
+		const normalizedChartStartDate = normalizeDate(chartStartDate);
 		const diffInDays = differenceInCalendarDays(
 			normalizedJobStartDate,
-			normalizedStartDate
+			normalizedChartStartDate
 		);
 		return diffInDays * dayWidth;
 	};
@@ -129,8 +186,10 @@ const GanttChart = () => {
 		const headerSvg = d3.select(headerRef.current);
 		headerSvg.selectAll("*").remove();
 
-		const numDays = 180;
-		// const numDays = (visibleRange.end - visibleRange.start) / (1000 * 3600 * 24);
+		const numDays =
+			differenceInCalendarDays(latestStartDate, earliestStartDate) +
+			daysBeforeStart +
+			daysAfterEnd;
 		const barMargin = 3;
 		const weekendColor = "#c1c1c1"; // Darker color for weekends
 		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
@@ -275,15 +334,6 @@ const GanttChart = () => {
 			.attr("y2", height)
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
-
-		const roomsData = jobs.flatMap((job, i) =>
-			job.rooms.map((room) => ({
-				...room,
-				jobsIndex: i,
-				jobId: job.id,
-				jobName: job.name,
-			}))
-		);
 
 		const activeRoomsData = roomsData.filter((room) => room.active);
 
@@ -540,23 +590,55 @@ const GanttChart = () => {
 	}, [jobs, dispatch, builders, totalRooms, startDate]);
 
 	useEffect(() => {
-		const today = normalizeDate(new Date());
-		const todayXPosition = calculateXPosition(today, startDate, dayWidth);
+		scrollToToday();
+	}, []);
 
-		// scroll to today's date
-		const rightHeaderScroll = d3.select(".gantt-right-header").node();
-		const rightBodyScroll = d3.select(".gantt-right-body").node();
+	useEffect(() => {
+		let scrollLeft = 0;
+		let scrollTop = 0;
 
-		if (rightHeaderScroll && rightBodyScroll) {
-			const scrollPosition = todayXPosition;
-			rightHeaderScroll.scrollLeft = scrollPosition;
-			rightBodyScroll.scrollLeft = scrollPosition;
-		}
+		const handleBeforePrint = () => {
+			const ganttRightBody = document.querySelector(".gantt-right-body");
+			if (ganttRightBody) {
+				scrollLeft = ganttRightBody.scrollLeft;
+				scrollTop = ganttRightBody.scrollTop;
+				document.documentElement.style.setProperty(
+					"--print-translate-x",
+					`-${scrollLeft}px`
+				);
+				document.documentElement.style.setProperty(
+					"--print-translate-y",
+					`-${scrollTop}px`
+				);
+			}
+		};
+
+		const handleAfterPrint = () => {
+			const ganttRightBody = document.querySelector(".gantt-right-body");
+			if (ganttRightBody) {
+				ganttRightBody.scrollLeft = scrollLeft;
+				ganttRightBody.scrollTop = scrollTop;
+			}
+		};
+
+		window.addEventListener("beforeprint", handleBeforePrint);
+		window.addEventListener("afterprint", handleAfterPrint);
+
+		return () => {
+			window.removeEventListener("beforeprint", handleBeforePrint);
+			window.removeEventListener("afterprint", handleAfterPrint);
+		};
 	}, []);
 
 	return (
-		<>
+		<div className="gantt-chart-container">
 			<div className="action-buttons">
+				<button
+					className="action-button scroll-to-today-button"
+					onClick={scrollToToday}
+				>
+					Today
+				</button>
 				<button
 					className="action-button add-job-button"
 					onClick={() => setIsJobModalOpen(true)}
@@ -583,11 +665,12 @@ const GanttChart = () => {
 					<div className="gantt-right-header">
 						<svg ref={headerRef} />
 					</div>
-					<div className="gantt-right-body">
+					<div className="gantt-right-body" ref={scrollableRef}>
 						<svg ref={chartRef} />
 					</div>
 				</div>
 			</div>
+				<BuilderLegend />
 			<JobModal
 				key={isJobModalOpen ? "open" : "closed"}
 				isOpen={isJobModalOpen}
@@ -602,7 +685,7 @@ const GanttChart = () => {
 				isOpen={isBuilderModalOpen}
 				onClose={() => setIsBuilderModalOpen(false)}
 			/>
-		</>
+		</div>
 	);
 };
 
