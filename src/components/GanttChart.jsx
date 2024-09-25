@@ -250,7 +250,7 @@ const GanttChart = () => {
 			// Job Name header
 			leftHeaderGroup
 				.append("text")
-				.attr("x", 80) // Adjust x for alignment
+				.attr("x", 65) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
 				.text("Job Name")
 				.attr("fill", "#000")
@@ -260,7 +260,7 @@ const GanttChart = () => {
 			// Room Name header
 			leftHeaderGroup
 				.append("text")
-				.attr("x", 200) // Adjust x for alignment
+				.attr("x", 170) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
 				.text("Room Name")
 				.attr("fill", "#000")
@@ -388,7 +388,7 @@ const GanttChart = () => {
 				// Job name
 				group
 					.append("text")
-					.attr("x", 80)
+					.attr("x", 65)
 					.text(d.jobName)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
@@ -396,7 +396,7 @@ const GanttChart = () => {
 				// Room name
 				group
 					.append("text")
-					.attr("x", 200)
+					.attr("x", 170)
 					.text(d.name)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
