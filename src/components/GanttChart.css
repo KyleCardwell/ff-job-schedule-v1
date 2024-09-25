@@ -269,6 +269,11 @@ select {
     transform-origin: top left;
   }
 
+  .gantt-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   .gantt-right-body {
     height: auto !important;
     overflow: unse !important;
