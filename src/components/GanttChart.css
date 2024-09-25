@@ -1,13 +1,19 @@
 /* Gantt Chart Container */
 .gantt-container {
   display: flex;
-  height: 700px;
-  overflow: hidden;
+  flex-direction: column;
 }
 
 .gantt-container svg {
   margin: 0;
   display: block;
+}
+
+.gantt-content {
+  display: flex;
+  flex-direction: row;
+  height: 700px;
+  overflow: hidden;
 }
 
 /* Gantt Left Column */
@@ -259,7 +265,7 @@ select {
   .gantt-container {
     height: auto !important;
     overflow: visible !important;
-    transform: scale(2.25);
+    transform: scale(2.22);
     transform-origin: top left;
   }
 
@@ -290,9 +296,29 @@ select {
   }
 
   .builder-legend {
-    break-inside: avoid;
     display: flex !important;
-    page-break-inside: avoid;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    padding: 10px !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+    page-break-inside: avoid !important;
+    page-break-before: auto !important;
+  }
+
+  .builder-legend-item {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 20px 10px 0 !important;
+  }
+
+  .builder-color-box {
+    width: 20px !important;
+    height: 20px !important;
+    margin-right: 5px !important;
+    border: 1px solid #000 !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 }
 

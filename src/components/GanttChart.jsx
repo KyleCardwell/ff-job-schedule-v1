@@ -129,7 +129,7 @@ const GanttChart = () => {
 		const mondayOfThisWeek = startOfWeek(today, { weekStartsOn: 1 }); // 1 represents Monday
 		const diffDays = differenceInCalendarDays(mondayOfThisWeek, startDate);
 		const scrollPosition = diffDays * dayWidth;
-		const ganttRightBody = document.querySelector('.gantt-right-body');
+		const ganttRightBody = document.querySelector(".gantt-right-body");
 		if (ganttRightBody) {
 			ganttRightBody.scrollLeft = scrollPosition;
 		}
@@ -653,24 +653,28 @@ const GanttChart = () => {
 				</button>
 			</div>
 			<div className="gantt-container">
-				<div className="gantt-left">
-					<div className="gantt-left-header">
-						<svg ref={leftColumnHeaderRef} />
+				<div className="gantt-content">
+					<div className="gantt-left">
+						<div className="gantt-left-header">
+							<svg ref={leftColumnHeaderRef} />
+						</div>
+						<div className="gantt-left-body">
+							<svg ref={leftColumnRef} />
+						</div>
 					</div>
-					<div className="gantt-left-body">
-						<svg ref={leftColumnRef} />
+					<div className="gantt-right">
+						<div className="gantt-right-header">
+							<svg ref={headerRef} />
+						</div>
+						<div className="gantt-right-body" ref={scrollableRef}>
+							<svg ref={chartRef} />
+						</div>
 					</div>
 				</div>
-				<div className="gantt-right">
-					<div className="gantt-right-header">
-						<svg ref={headerRef} />
-					</div>
-					<div className="gantt-right-body" ref={scrollableRef}>
-						<svg ref={chartRef} />
-					</div>
+				<div className="gantt-footer">
+					<BuilderLegend />
 				</div>
 			</div>
-				<BuilderLegend />
 			<JobModal
 				key={isJobModalOpen ? "open" : "closed"}
 				isOpen={isJobModalOpen}
