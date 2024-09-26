@@ -733,8 +733,8 @@ const GanttChart = () => {
 				jobData={selectedJob}
 			/>
 			<BuilderModal
-				isOpen={isBuilderModalOpen}
-				onClose={() => setIsBuilderModalOpen(false)}
+				visible={isBuilderModalOpen}
+				onCancel={() => setIsBuilderModalOpen(false)}
 			/>
 			<HolidayModal
 				isOpen={isHolidayModalOpen}

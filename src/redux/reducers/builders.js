@@ -3,10 +3,10 @@ import { Actions } from "../actions";
 
 const initialState = {
 	builders: [
-		{ id: "1", name: "No one", color: "#FFC0CC" },
-		{ id: "2", name: "Frosty", color: "#86CEEB" },
-		{ id: "3", name: "Patrick", color: "#4CAF51" },
-		{ id: "4", name: "Nick", color: "#800080" },
+		{ id: "1", name: "No one", color: "#FFC0CC", timeOff: [] },
+		{ id: "2", name: "Frosty", color: "#86CEEB", timeOff: [] },
+		{ id: "3", name: "Patrick", color: "#4CAF51", timeOff: [] },
+		{ id: "4", name: "Nick", color: "#A32ACF", timeOff: [] },
 	], // Array to store builder objects with id, name, and color
 };
 
@@ -21,6 +21,7 @@ export const builders = (state = initialState, action) => {
 						id: uuidv4(),
 						name: action.payload.name,
 						color: action.payload.color,
+						timeOff: action.payload.timeOff,
 					},
 				], // Add new builder to the array
 			};

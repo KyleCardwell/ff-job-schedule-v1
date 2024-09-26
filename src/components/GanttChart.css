@@ -50,17 +50,17 @@
   overflow: hidden;
   background-color: white;
   z-index: 10;
-  flex-shrink: 0; /* Prevent the header from shrinking */
+  flex-shrink: 0;
 }
 
 .gantt-right-body {
   flex-grow: 1;
   overflow: auto;
-  height: calc(100% - 40px); /* Subtract the header height */
+  height: calc(100% - 40px);
 }
 
 .gantt-right svg {
-  display: block; /* Removes any extra space below inline SVG */
+  display: block;
   margin-bottom: 17px;
 }
 
@@ -70,11 +70,6 @@
   justify-content: flex-end;
   gap: 10px;
   margin-bottom: 10px;
-}
-
-.scroll-to-today-button {
-  margin-left: 300px;
-  margin-right: auto;
 }
 
 .action-button {
@@ -93,25 +88,16 @@
   opacity: 0.9;
 }
 
-.add-job-button {
-  background-color: #4CAF50; /* Green */
+.add-job-button { background-color: #4CAF50; }
+.manage-builders-button { background-color: #2196F3; }
+.scroll-to-today-button { 
+  background-color: #ff9500;
+  margin-left: 300px;
+  margin-right: auto;
 }
+.manage-holidays-button { background-color: #9C27B0; }
 
-.manage-builders-button {
-  background-color: #2196F3; /* Blue */
-}
-
-.scroll-to-today-button {
-  background-color: #ff9500; /* Orange */
-}
-
-.manage-holidays-button {
-  background-color: #9C27B0; /* Purple */
-}
-
-/* Job Modal */
-
-/* Modal Overlay */
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -129,19 +115,21 @@
   background-color: white;
   padding: 20px;
   border-radius: 8px;
-  max-width: 800px; /* Increased from 600px to allow more space */
-  width: 95%; /* Use percentage to make it responsive */
-  max-height: 90vh; /* Limit height to 90% of viewport height */
-  overflow-y: auto; /* Allow scrolling if content exceeds max-height */
+  max-width: 800px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
   z-index: 10000;
 }
 
 .modal-actions {
   display: flex;
   justify-content: space-between;
-  margin-top: 10px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
+/* Room Group Styles */
 .roomGroup {
   display: grid;
   grid-template-columns: 50px 1fr 1fr 70px 1fr auto;
@@ -162,13 +150,8 @@
   padding: 5px;
 }
 
-.roomGroup.even {
-  background-color: #ffffff;
-}
-
-.roomGroup.odd {
-  background-color: #f0f0f0;
-}
+.roomGroup.even { background-color: #ffffff; }
+.roomGroup.odd { background-color: #f0f0f0; }
 
 .roomGroup.inactive {
   background-color: #f0f0f0;
@@ -191,25 +174,8 @@
   box-sizing: border-box;
 }
 
-input.error,
-select.error {
-  border: 2px solid red;
-}
-
-input,
-select {
-  transition: border-color 0.3s ease;
-}
-
-.roomGroup .jobNumber {
-  width: 50px;
-}
+.roomGroup .jobNumber,
 .roomGroup .duration {
-  width: 70px;
-}
-
-.roomGroup .jobNumber input,
-.roomGroup .duration input {
   width: 100%;
   padding: 5px 2px;
   text-align: center;
@@ -225,243 +191,26 @@ select {
   max-width: 80px;
 }
 
-@media (max-width: 768px) {
-  .roomGroup {
-    grid-template-columns: 30px 1fr 30px;
-    gap: 10px;
-  }
-
-  .roomGroup.header {
-    display: none;
-  }
-
-  .roomGroup input,
-  .roomGroup select,
-  .roomGroup button {
-    grid-column: span 3;
-  }
-
-  .roomGroup .jobNumber,
-  .roomGroup .duration {
-    grid-column: span 1;
-  }
-}
-
+/* Form Styles */
 input.error,
 select.error {
   border: 2px solid red;
 }
 
-/* Optional: Add a transition for a smoother visual effect */
 input,
 select {
   transition: border-color 0.3s ease;
 }
 
-@media print {
-
-  .gantt-chart-container {
-    display: block !important;
-    height: auto !important;
-    overflow: unset
-  }
-
-  .gantt-container {
-    height: auto !important;
-    overflow: visible !important;
-    transform: scale(2.22);
-    transform-origin: top left;
-  }
-
-  .gantt-content {
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  .gantt-right-body {
-    height: auto !important;
-    overflow: unse !important;
-  }
-
-  .gantt-left-body {
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  /* Ensure the entire chart is visible */
-  svg {
-    height: auto !important;
-  }
-
-  /* Hide any elements you don't want to print */
-  .action-buttons {
-    display: none !important;
-  }
-
-  /* Preserve the horizontal scroll position */
-  .gantt-right-body {
-    transform-origin: left top;
-    transform: translateX(var(--print-translate-x, 0));
-  }
-
-  .builder-legend {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: flex-start !important;
-    padding: 10px !important;
-    margin-top: 20px !important;
-    width: 100% !important;
-    page-break-inside: avoid !important;
-    page-break-before: auto !important;
-  }
-
-  .builder-legend-item {
-    display: flex !important;
-    align-items: center !important;
-    margin: 0 20px 10px 0 !important;
-  }
-
-  .builder-color-box {
-    width: 20px !important;
-    height: 20px !important;
-    margin-right: 5px !important;
-    border: 1px solid #000 !important;
-    print-color-adjust: exact !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-}
-
-.instructions {
-  text-align: left;
-  padding-left: 30px;
-}
-
-/* Builder Modal */
-.add-builder-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.add-builder-form input {
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-.add-builder-form button {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.add-builder-form button {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.add-builder-form button:hover {
-  background-color: #45a049;
-}
-
-.builder-list {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-.builder-list li {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 10px 60px;
-  margin-bottom: 10px;
-  border-radius: 5px;
-  transition: all 0.3s ease;
-  min-height: 40px;
-  background-color: #f9f9f9;
-}
-
-.builder-name {
-  text-align: center;
-  font-weight: bold;
-}
-
-.edit-button,
-.delete-button {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 5px 10px;
-  background-color: #f0f0f0;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.edit-button:hover,
-.delete-button:hover {
-  background-color: #e0e0e0;
-}
-
-.edit-button {
-  left: 10px;
-}
-
-.delete-button {
-  right: 10px;
-}
-
-.builder-list li[data-marked-for-deletion="true"] {
-  border: 2px solid red;
-  opacity: 0.7;
-}
-
-.error {
-  color: red;
-  font-size: 0.8em;
-  text-align: center;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 600px) {
-  .add-builder-form {
-    flex-direction: column;
-  }
-
-  .add-builder-form input,
-  .add-builder-form button {
-    width: 100%;
-  }
-
-  .builder-list li {
-    padding: 10px 40px;
-  }
-
-  .edit-button,
-  .delete-button {
-    padding: 3px 6px;
-    font-size: 0.8em;
-  }
-
-  .builder-name {
-    font-size: 0.9em;
-  }
-}
-
+/* Builder Legend */
 .builder-legend {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
   margin-top: 5px;
   padding: 10px;
-  margin-left: 300px; /* Align with the left edge of gantt-right */
-  width: calc(100% - 300px); /* Take up the remaining width */
+  margin-left: 300px;
+  width: calc(100% - 300px);
 }
 
 .builder-legend-item {
@@ -543,4 +292,212 @@ select {
 
 .holiday-modal li button:hover {
   background-color: #d32f2f;
+}
+
+/* Builder Modal Styles */
+.builder-modal {
+  max-width: 600px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.add-builder-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.add-builder-form input[type="text"] {
+  flex-grow: 1;
+}
+
+.builder-item-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+.builder-item-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.builder-item {
+  padding: 10px;
+  transition: opacity 0.3s ease;
+  display: flex;
+}
+
+.builder-item.marked-for-deletion {
+  opacity: 0.5;
+}
+
+.builder-info {
+  display: flex;
+  gap: 10px;
+  flex-grow: 1;
+}
+
+.builder-info input[type="text"] {
+  flex-grow: 1;
+  max-width: 200px;
+}
+
+.builder-actions {
+  display: flex;
+  gap: 10px;
+  flex-grow: 1;
+  justify-content: flex-end;
+}
+
+.add-builder-button {
+  flex-grow: 1;
+  margin-left: 10px;
+}
+
+.time-off-container {
+  margin-top: 10px;
+}
+
+.time-off-period {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #383838;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.date-input-group label {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.add-time-off-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .roomGroup {
+    grid-template-columns: 30px 1fr 30px;
+    gap: 10px;
+  }
+
+  .roomGroup.header {
+    display: none;
+  }
+
+  .roomGroup input,
+  .roomGroup select,
+  .roomGroup button {
+    grid-column: span 3;
+  }
+
+  .roomGroup .jobNumber,
+  .roomGroup .duration {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .add-builder-form,
+  .builder-item-controls,
+  .builder-item,
+  .builder-actions,
+  .time-off-period,
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .add-builder-form input,
+  .add-builder-form button,
+  .modal-actions button {
+    width: 100%;
+  }
+  
+  .builder-info {
+    margin-bottom: 10px;
+  }
+
+  .add-builder-button {
+    margin-left: 0;
+  }
+
+  .builder-info input[type="text"] {
+    max-width: unset;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .gantt-chart-container {
+    display: block !important;
+    height: auto !important;
+    overflow: unset;
+  }
+
+  .gantt-container {
+    height: auto !important;
+    overflow: visible !important;
+    transform: scale(2.22);
+    transform-origin: top left;
+  }
+
+  .gantt-content,
+  .gantt-right-body,
+  .gantt-left-body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  svg {
+    height: auto !important;
+  }
+
+  .action-buttons {
+    display: none !important;
+  }
+
+  .gantt-right-body {
+    transform-origin: left top;
+    transform: translateX(var(--print-translate-x, 0));
+  }
+
+  .builder-legend {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    padding: 10px !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+    page-break-inside: avoid !important;
+    page-break-before: auto !important;
+  }
+
+  .builder-legend-item {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 20px 10px 0 !important;
+  }
+
+  .builder-color-box {
+    width: 20px !important;
+    height: 20px !important;
+    margin-right: 5px !important;
+    border: 1px solid #000 !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
 }

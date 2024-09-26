@@ -1,9 +1,9 @@
 import { Actions } from "../actions";
 
-export const addBuilder = (name, color) => {
+export const addBuilder = (name, color, timeOff) => {
 	return {
 		type: Actions.builders.ADD_BUILDER,
-		payload: { name, color },
+		payload: { name, color, timeOff },
 	};
 };
 
