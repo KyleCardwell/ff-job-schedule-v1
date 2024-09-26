@@ -16,11 +16,16 @@ import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
 import BuilderModal from "./BuilderModal";
 import BuilderLegend from "./BuilderLegend";
+import HolidayModal from "./HolidayModal";
+import Holidays from "date-holidays";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs.jobs);
 	const builders = useSelector((state) => state.builders.builders);
+	const holidays = useSelector((state) => state.holidays.holidays);
+
 	const dispatch = useDispatch();
+
 	const chartRef = useRef(null);
 	const headerRef = useRef(null); // For the fixed header
 	const leftColumnRef = useRef(null); // For the fixed left column
@@ -28,9 +33,11 @@ const GanttChart = () => {
 	const scrollableRef = useRef(null);
 	const leftScrollableRef = useRef(null);
 
+	const [holidayChecker, setHolidayChecker] = useState(null);
 	const [selectedJob, setSelectedJob] = useState(null);
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
+	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 
 	const roomsData = jobs.flatMap((job, i) =>
 		job.rooms.map((room) => ({
@@ -129,10 +136,17 @@ const GanttChart = () => {
 		const mondayOfThisWeek = startOfWeek(today, { weekStartsOn: 1 }); // 1 represents Monday
 		const diffDays = differenceInCalendarDays(mondayOfThisWeek, startDate);
 		const scrollPosition = diffDays * dayWidth;
-		const ganttRightBody = document.querySelector('.gantt-right-body');
+		const ganttRightBody = document.querySelector(".gantt-right-body");
 		if (ganttRightBody) {
 			ganttRightBody.scrollLeft = scrollPosition;
 		}
+	};
+
+	const isHoliday = (date) => {
+		if (!holidayChecker) return false;
+		const normalizedDate = normalizeDate(date);
+		const holiday = holidayChecker.isHoliday(normalizedDate);
+		return holiday && holidays.some((h) => h.name === holiday[0].name);
 	};
 
 	const totalJobHours = (startDate, jobHours) => {
@@ -144,7 +158,11 @@ const GanttChart = () => {
 		// Loop through each day in the range based on totalDays
 		for (let i = 0; i < totalDays; i++) {
 			// Check if the current day is a weekend
-			if (isSaturday(currentDate) || isSunday(currentDate)) {
+			if (
+				isSaturday(currentDate) ||
+				isSunday(currentDate) ||
+				isHoliday(currentDate)
+			) {
 				jobHours += 8;
 				totalDays += 1;
 			}
@@ -172,6 +190,12 @@ const GanttChart = () => {
 		);
 		return diffInDays * dayWidth;
 	};
+
+	useEffect(() => {
+		const hd = new Holidays();
+		hd.init("US"); // Initialize with US holidays. Change as needed.
+		setHolidayChecker(hd);
+	}, []);
 
 	useEffect(() => {
 		const chartSvg = d3.select(chartRef.current);
@@ -250,7 +274,7 @@ const GanttChart = () => {
 			// Job Name header
 			leftHeaderGroup
 				.append("text")
-				.attr("x", 80) // Adjust x for alignment
+				.attr("x", 65) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
 				.text("Job Name")
 				.attr("fill", "#000")
@@ -260,7 +284,7 @@ const GanttChart = () => {
 			// Room Name header
 			leftHeaderGroup
 				.append("text")
-				.attr("x", 200) // Adjust x for alignment
+				.attr("x", 170) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
 				.text("Room Name")
 				.attr("fill", "#000")
@@ -282,16 +306,17 @@ const GanttChart = () => {
 				const group = d3.select(this);
 
 				const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+				const isHolidayDate = isHoliday(d);
 
 				// Append a rectangle for weekends
-				if (isWeekend) {
+				if (isWeekend || isHolidayDate) {
 					group
 						.append("rect")
 						.attr("x", i * dayWidth)
 						.attr("y", 0)
 						.attr("width", dayWidth)
 						.attr("height", 50) // Adjust to cover the header
-						.attr("fill", "#e0e0e0"); // A slightly darker background for weekends
+						.attr("fill", isHolidayDate ? "lightblue" : "#e0e0e0"); // Light blue for holidays, grey for weekends
 				}
 				group
 					.append("text")
@@ -388,7 +413,7 @@ const GanttChart = () => {
 				// Job name
 				group
 					.append("text")
-					.attr("x", 80)
+					.attr("x", 65)
 					.text(d.jobName)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
@@ -396,7 +421,7 @@ const GanttChart = () => {
 				// Room name
 				group
 					.append("text")
-					.attr("x", 200)
+					.attr("x", 170)
 					.text(d.name)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
@@ -497,6 +522,20 @@ const GanttChart = () => {
 					? weekendColor
 					: "none"; // Darker color for weekends
 			})
+			.attr("opacity", 0.5);
+
+		// Add holiday backgrounds
+		chartSvg
+			.selectAll(".holiday-background")
+			.data(dates)
+			.enter()
+			.append("rect")
+			.attr("class", "holiday-background")
+			.attr("x", (d, i) => i * dayWidth)
+			.attr("y", 0)
+			.attr("width", dayWidth)
+			.attr("height", activeRoomsData.length * rowHeight)
+			.attr("fill", (d) => (isHoliday(d) ? "lightblue" : "none"))
 			.attr("opacity", 0.5);
 
 		// Draw vertical grid lines for each day
@@ -649,28 +688,40 @@ const GanttChart = () => {
 					className="action-button manage-builders-button"
 					onClick={() => setIsBuilderModalOpen(true)}
 				>
-					Manage Builders
+					Builders
+				</button>
+				<button
+					className="action-button manage-holidays-button"
+					onClick={() => {
+						setIsHolidayModalOpen(true);
+					}}
+				>
+					Holidays
 				</button>
 			</div>
 			<div className="gantt-container">
-				<div className="gantt-left">
-					<div className="gantt-left-header">
-						<svg ref={leftColumnHeaderRef} />
+				<div className="gantt-content">
+					<div className="gantt-left">
+						<div className="gantt-left-header">
+							<svg ref={leftColumnHeaderRef} />
+						</div>
+						<div className="gantt-left-body">
+							<svg ref={leftColumnRef} />
+						</div>
 					</div>
-					<div className="gantt-left-body">
-						<svg ref={leftColumnRef} />
+					<div className="gantt-right">
+						<div className="gantt-right-header">
+							<svg ref={headerRef} />
+						</div>
+						<div className="gantt-right-body" ref={scrollableRef}>
+							<svg ref={chartRef} />
+						</div>
 					</div>
 				</div>
-				<div className="gantt-right">
-					<div className="gantt-right-header">
-						<svg ref={headerRef} />
-					</div>
-					<div className="gantt-right-body" ref={scrollableRef}>
-						<svg ref={chartRef} />
-					</div>
+				<div className="gantt-footer">
+					<BuilderLegend />
 				</div>
 			</div>
-				<BuilderLegend />
 			<JobModal
 				key={isJobModalOpen ? "open" : "closed"}
 				isOpen={isJobModalOpen}
@@ -684,6 +735,10 @@ const GanttChart = () => {
 			<BuilderModal
 				isOpen={isBuilderModalOpen}
 				onClose={() => setIsBuilderModalOpen(false)}
+			/>
+			<HolidayModal
+				isOpen={isHolidayModalOpen}
+				onClose={() => setIsHolidayModalOpen(false)}
 			/>
 		</div>
 	);

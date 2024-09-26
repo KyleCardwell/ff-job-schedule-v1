@@ -11,5 +11,9 @@ export const Actions = {
 		DELETE_BUILDER: "DELETE_BUILDER",
 		UPDATE_BUILDER: "UPDATE_BUILDER",
 	},
+	holidays: {
+    ADD_HOLIDAY: "ADD_HOLIDAY",
+    REMOVE_HOLIDAY: "REMOVE_HOLIDAY",
+  },
 };
 
