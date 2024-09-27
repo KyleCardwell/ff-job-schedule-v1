@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
@@ -11,6 +11,8 @@ import {
 	isValid,
 	subDays,
 	startOfWeek,
+	isWithinInterval,
+	eachDayOfInterval,
 } from "date-fns";
 import JobModal from "./JobModal";
 import { normalizeDate } from "../utils/dateUtils";
@@ -32,6 +34,7 @@ const GanttChart = () => {
 	const leftColumnHeaderRef = useRef(null); // For the fixed left column
 	const scrollableRef = useRef(null);
 	const leftScrollableRef = useRef(null);
+	const timeOffSvgRef = useRef(null);
 
 	const [holidayChecker, setHolidayChecker] = useState(null);
 	const [selectedJob, setSelectedJob] = useState(null);
@@ -39,14 +42,16 @@ const GanttChart = () => {
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 
-	const roomsData = jobs.flatMap((job, i) =>
-		job.rooms.map((room) => ({
-			...room,
-			jobsIndex: i,
-			jobId: job.id,
-			jobName: job.name,
-		}))
-	);
+	const roomsData = useMemo(() => {
+		return jobs.flatMap((job, i) =>
+			job.rooms.map((room) => ({
+				...room,
+				jobsIndex: i,
+				jobId: job.id,
+				jobName: job.name,
+			}))
+		);
+	}, [jobs]);
 
 	const convertDate = (dateInput) => {
 		const date = new Date(dateInput);
@@ -88,8 +93,7 @@ const GanttChart = () => {
 		setIsJobModalOpen(true);
 	};
 
-	const saveJob = (updatedJob) => {
-		// Update the job in your state or dispatch an action to save it
+	const saveJob = () => {
 		setIsJobModalOpen(false);
 		setSelectedJob(null);
 	};
@@ -106,6 +110,11 @@ const GanttChart = () => {
 	const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
 	const dayWidth = 40;
 	const workdayHours = 8;
+
+	const numDays =
+		differenceInCalendarDays(latestStartDate, earliestStartDate) +
+		daysBeforeStart +
+		daysAfterEnd;
 
 	// Function to handle auto-scrolling when dragging near edges
 	const handleAutoScroll = (event) => {
@@ -147,6 +156,14 @@ const GanttChart = () => {
 		const normalizedDate = normalizeDate(date);
 		const holiday = holidayChecker.isHoliday(normalizedDate);
 		return holiday && holidays.some((h) => h.name === holiday[0].name);
+	};
+
+	const getNextWorkday = (date) => {
+		let nextDay = normalizeDate(date);
+		while (isSaturday(nextDay) || isSunday(nextDay) || isHoliday(nextDay)) {
+			nextDay = addDays(nextDay, 1);
+		}
+		return nextDay;
 	};
 
 	const totalJobHours = (startDate, jobHours) => {
@@ -191,6 +208,37 @@ const GanttChart = () => {
 		return diffInDays * dayWidth;
 	};
 
+	const timeOffData = useMemo(() => {
+		const xPositions = new Map();
+		return builders.flatMap((builder) =>
+			builder.timeOff.flatMap((period) => {
+				const periodStart = normalizeDate(period.start);
+				const periodEnd = normalizeDate(period.end);
+				const chartEndDate = addDays(normalizeDate(startDate), numDays - 1);
+
+				return eachDayOfInterval({ start: periodStart, end: periodEnd })
+					.filter((day) =>
+						isWithinInterval(normalizeDate(day), {
+							start: normalizeDate(startDate),
+							end: chartEndDate,
+						})
+					)
+					.map((day) => {
+						let x =
+							differenceInCalendarDays(
+								normalizeDate(day),
+								normalizeDate(startDate)
+							) * dayWidth;
+						while (xPositions.has(x)) {
+							x += 6;
+						}
+						xPositions.set(x, true);
+						return { x, color: builder.color };
+					});
+			})
+		);
+	}, [builders, startDate, numDays, dayWidth]);
+
 	useEffect(() => {
 		const hd = new Holidays();
 		hd.init("US"); // Initialize with US holidays. Change as needed.
@@ -210,10 +258,9 @@ const GanttChart = () => {
 		const headerSvg = d3.select(headerRef.current);
 		headerSvg.selectAll("*").remove();
 
-		const numDays =
-			differenceInCalendarDays(latestStartDate, earliestStartDate) +
-			daysBeforeStart +
-			daysAfterEnd;
+		const timeOffSvg = d3.select(timeOffSvgRef.current);
+		timeOffSvg.selectAll("*").remove();
+
 		const barMargin = 3;
 		const weekendColor = "#c1c1c1"; // Darker color for weekends
 		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
@@ -315,7 +362,7 @@ const GanttChart = () => {
 						.attr("x", i * dayWidth)
 						.attr("y", 0)
 						.attr("width", dayWidth)
-						.attr("height", 50) // Adjust to cover the header
+						.attr("height", 40) // Adjust to cover the header
 						.attr("fill", isHolidayDate ? "lightblue" : "#e0e0e0"); // Light blue for holidays, grey for weekends
 				}
 				group
@@ -451,8 +498,14 @@ const GanttChart = () => {
 				const snappedX = Math.round(newX / dayWidth) * dayWidth;
 
 				const daysMoved = Math.round((snappedX - d.dragStartX) / dayWidth);
-				const newStartDate = new Date(d.startDate);
+				let newStartDate = new Date(d.startDate);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
+
+				// Snap to next workday if it's a weekend or holiday
+				newStartDate = getNextWorkday(newStartDate);
+
+				// Calculate the final x position based on the new start date
+				const finalX = calculateXPosition(newStartDate, startDate, dayWidth);
 
 				// Calculate new width
 				const newWidth = calculateJobWidth(newStartDate, d.duration, dayWidth);
@@ -461,7 +514,7 @@ const GanttChart = () => {
 				d3.select(this)
 					.transition()
 					.duration(300)
-					.attr("x", snappedX)
+					.attr("x", finalX)
 					.attr("width", newWidth)
 					.on("end", () => {
 						// Update Redux store after the transition is complete
@@ -474,7 +527,7 @@ const GanttChart = () => {
 					.select(".bar-text")
 					.transition()
 					.duration(300)
-					.attr("x", snappedX + 5);
+					.attr("x", finalX + 5);
 
 				d3.select(this).classed("dragging", false);
 
@@ -551,6 +604,22 @@ const GanttChart = () => {
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
 
+		const timeOffGroup = chartSvg.append("g").attr("class", "time-off-group");
+
+		timeOffGroup
+			.selectAll(".time-off-line")
+			.data(timeOffData)
+			.enter()
+			.append("line")
+			.attr("class", "time-off-line")
+			.attr("x1", (d) => d.x + 3)
+			.attr("y1", 0)
+			.attr("x2", (d) => d.x + 3)
+			.attr("y2", height)
+			.attr("stroke", (d) => d.color)
+			.attr("stroke-width", 6)
+			.attr("opacity", 0.7);
+
 		// Create a group for jobs
 		const jobsGroup = chartSvg
 			.append("g")
@@ -626,7 +695,7 @@ const GanttChart = () => {
 
 			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
 		});
-	}, [jobs, dispatch, builders, totalRooms, startDate]);
+	}, [jobs, dispatch, builders, totalRooms, startDate, dayWidth]);
 
 	useEffect(() => {
 		scrollToToday();
@@ -733,8 +802,8 @@ const GanttChart = () => {
 				jobData={selectedJob}
 			/>
 			<BuilderModal
-				isOpen={isBuilderModalOpen}
-				onClose={() => setIsBuilderModalOpen(false)}
+				visible={isBuilderModalOpen}
+				onCancel={() => setIsBuilderModalOpen(false)}
 			/>
 			<HolidayModal
 				isOpen={isHolidayModalOpen}
