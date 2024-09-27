@@ -495,9 +495,16 @@ const GanttChart = () => {
 			.on("end", function (event, d) {
 				const dx = event.x - d.dragStartEventX;
 				const newX = parseFloat(d.dragStartX) + dx;
-				const snappedX = Math.round(newX / dayWidth) * dayWidth;
 
-				const daysMoved = Math.round((snappedX - d.dragStartX) / dayWidth);
+				// Calculate the day index and the percentage within the day
+				const dayIndex = Math.floor(newX / dayWidth);
+				const percentageWithinDay = (newX % dayWidth) / dayWidth;
+
+				// Determine whether to snap left or right
+				const snappedDayIndex =
+					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
+
+				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
 				let newStartDate = new Date(d.startDate);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 
