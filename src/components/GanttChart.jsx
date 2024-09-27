@@ -158,6 +158,14 @@ const GanttChart = () => {
 		return holiday && holidays.some((h) => h.name === holiday[0].name);
 	};
 
+	const getNextWorkday = (date) => {
+		let nextDay = normalizeDate(date);
+		while (isSaturday(nextDay) || isSunday(nextDay) || isHoliday(nextDay)) {
+			nextDay = addDays(nextDay, 1);
+		}
+		return nextDay;
+	};
+
 	const totalJobHours = (startDate, jobHours) => {
 		let currentDate = normalizeDate(startDate);
 
@@ -490,8 +498,14 @@ const GanttChart = () => {
 				const snappedX = Math.round(newX / dayWidth) * dayWidth;
 
 				const daysMoved = Math.round((snappedX - d.dragStartX) / dayWidth);
-				const newStartDate = new Date(d.startDate);
+				let newStartDate = new Date(d.startDate);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
+
+				// Snap to next workday if it's a weekend or holiday
+				newStartDate = getNextWorkday(newStartDate);
+
+				// Calculate the final x position based on the new start date
+				const finalX = calculateXPosition(newStartDate, startDate, dayWidth);
 
 				// Calculate new width
 				const newWidth = calculateJobWidth(newStartDate, d.duration, dayWidth);
@@ -500,7 +514,7 @@ const GanttChart = () => {
 				d3.select(this)
 					.transition()
 					.duration(300)
-					.attr("x", snappedX)
+					.attr("x", finalX)
 					.attr("width", newWidth)
 					.on("end", () => {
 						// Update Redux store after the transition is complete
@@ -513,7 +527,7 @@ const GanttChart = () => {
 					.select(".bar-text")
 					.transition()
 					.duration(300)
-					.attr("x", snappedX + 5);
+					.attr("x", finalX + 5);
 
 				d3.select(this).classed("dragging", false);
 

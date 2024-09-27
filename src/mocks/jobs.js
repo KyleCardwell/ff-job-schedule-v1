@@ -126,7 +126,7 @@ export const newJobs = [
 			{
 				id: uuidv4(),
 				builderId: "2",
-				startDate: addDays(ogDate, 19),
+				startDate: addDays(ogDate, 21),
 				duration: 8,
 				jobNumber: "246",
 				name: "Bedroom",
