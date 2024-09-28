@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
@@ -41,24 +41,40 @@ const GanttChart = () => {
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+	const [draggedJob, setDraggedJob] = useState(null);
+
+  const handleDragStart = useCallback((job) => {
+    setDraggedJob(job);
+  }, []);
+
+  const handleDragEnd = useCallback((job, newStartDate) => {
+    setDraggedJob(null);
+    // Update the job with the new start date and mark it as new
+    const updatedJob = { ...job, startDate: newStartDate, isNew: true };
+    // Dispatch an action to update the job in the Redux store
+    dispatch(updateJob(updatedJob));
+  }, [dispatch]);
 
 	const daysBeforeStart = 30;
 	const daysAfterEnd = 90;
 	const dayWidth = 40;
 	const workdayHours = 8;
+	const rowHeight = 30;
 
 	const roomsData = useMemo(() => {
-		return jobs.flatMap((job, i) =>
-			job.rooms.map((room) => ({
+		return jobs
+			.flatMap((job, i) =>
+				job.rooms.map((room) => ({
+					...room,
+					jobsIndex: i,
+					jobId: job.id,
+					jobName: job.name,
+				}))
+			)
+			.map((room, index) => ({
 				...room,
-				jobsIndex: i,
-				jobId: job.id,
-				jobName: job.name,
-			}))
-		).map((room, index) => ({
-			...room,
-			position: index
-		}));
+				position: index,
+			}));
 	}, [jobs]);
 
 	const convertDate = (dateInput) => {
@@ -224,7 +240,10 @@ const GanttChart = () => {
 				const previousJob = acc[index - 1];
 				const previousEndDate = addDays(
 					previousJob.startDate,
-					Math.ceil(totalJobHours(previousJob.startDate, previousJob.duration) / workdayHours)
+					Math.ceil(
+						totalJobHours(previousJob.startDate, previousJob.duration) /
+							workdayHours
+					)
 				);
 				const newStartDate = getNextWorkday(previousEndDate);
 				acc.push({ ...current, startDate: newStartDate, isNew: false });
@@ -327,13 +346,13 @@ const GanttChart = () => {
 		const timeOffSvg = d3.select(timeOffSvgRef.current);
 		timeOffSvg.selectAll("*").remove();
 
-		const barMargin = 3;
+		// const barMargin = 3;
 		const weekendColor = "#c1c1c1"; // Darker color for weekends
 		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
 		const strokeColor = "#bebebe"; // stroke color
 
 		const width = numDays * dayWidth;
-		const rowHeight = 30;
+		// const rowHeight = 30;
 
 		const countActiveRooms = (jobs) => {
 			return jobs.reduce(
@@ -540,74 +559,6 @@ const GanttChart = () => {
 					.attr("dominant-baseline", "middle");
 			});
 
-		const drag = d3
-			.drag()
-			.on("start", function (event, d) {
-				d3.select(this).classed("dragging", true);
-				d.dragStartX = d3.select(this).attr("x");
-				d.dragStartEventX = event.x;
-			})
-			.on("drag", function (event, d) {
-				const dx = event.x - d.dragStartEventX;
-				const newX = parseFloat(d.dragStartX) + dx;
-
-				d3.select(this).attr("x", newX);
-				d3.select(this.parentNode)
-					.select(".bar-text")
-					.attr("x", newX + 5);
-
-				handleAutoScroll(event);
-			})
-			.on("end", function (event, d) {
-				const dx = event.x - d.dragStartEventX;
-				const newX = parseFloat(d.dragStartX) + dx;
-
-				// Calculate the day index and the percentage within the day
-				const dayIndex = Math.floor(newX / dayWidth);
-				const percentageWithinDay = (newX % dayWidth) / dayWidth;
-
-				// Determine whether to snap left or right
-				const snappedDayIndex =
-					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
-
-				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
-				let newStartDate = new Date(d.startDate);
-				newStartDate.setDate(newStartDate.getDate() + daysMoved);
-
-				// Snap to next workday if it's a weekend or holiday
-				newStartDate = getNextWorkday(newStartDate);
-
-				// Calculate the final x position based on the new start date
-				const finalX = calculateXPosition(newStartDate, startDate, dayWidth);
-
-				// Calculate new width
-				const newWidth = calculateJobWidth(newStartDate, d.duration, dayWidth);
-
-				// Apply transitions for both x and width
-				d3.select(this)
-					.transition()
-					.duration(300)
-					.attr("x", finalX)
-					.attr("width", newWidth)
-					.on("end", () => {
-						// Update Redux store after the transition is complete
-						dispatch(
-							updateJobStartDate(d.jobId, d.id, normalizeDate(newStartDate))
-						);
-					});
-
-				d3.select(this.parentNode)
-					.select(".bar-text")
-					.transition()
-					.duration(300)
-					.attr("x", finalX + 5);
-
-				d3.select(this).classed("dragging", false);
-
-				delete d.dragStartX;
-				delete d.dragStartEventX;
-			});
-
 		// Remove previous SVG elements
 		chartSvg.selectAll("*").remove().append("rect");
 
@@ -693,6 +644,105 @@ const GanttChart = () => {
 			.attr("stroke-width", 6)
 			.attr("opacity", 0.7);
 
+		// Add scrolling behavior for the chart
+		const scrollableDiv = d3.select(scrollableRef.current);
+		scrollableDiv.on("scroll", () => {
+			const scrollLeft = scrollableDiv.node().scrollLeft;
+			const scrollTop = scrollableDiv.node().scrollTop;
+
+			headerSvg.attr("transform", `translate(${-scrollLeft}, 0)`);
+			leftColumnSvg.attr("transform", `translate(0, ${-scrollTop})`);
+		});
+
+		const leftScrollableDiv = d3.select(leftScrollableRef.current);
+		leftScrollableDiv.on("scroll", () => {
+			const scrollTop = leftScrollableDiv.node().scrollTop;
+
+			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
+		});
+	}, [jobs, dispatch, builders, totalRooms, startDate, dayWidth]);
+
+	useEffect(() => {
+		console.log(jobsByBuilder);
+		if (!chartRef.current) return;
+
+		const barMargin = 3;
+
+		const chartSvg = d3.select(chartRef.current);
+
+		// Remove previous job groups
+		chartSvg.selectAll(".job-group").remove();
+
+		const allRooms = Object.values(jobsByBuilder).flat();
+
+		const drag = d3
+			.drag()
+			.on("start", function (event, d) {
+				d3.select(this).classed("dragging", true);
+				d.dragStartX = d3.select(this).attr("x");
+				d.dragStartEventX = event.x;
+			})
+			.on("drag", function (event, d) {
+				const dx = event.x - d.dragStartEventX;
+				const newX = parseFloat(d.dragStartX) + dx;
+
+				d3.select(this).attr("x", newX);
+				d3.select(this.parentNode)
+					.select(".bar-text")
+					.attr("x", newX + 5);
+
+				handleAutoScroll(event);
+			})
+			.on("end", function (event, d) {
+				const dx = event.x - d.dragStartEventX;
+				const newX = parseFloat(d.dragStartX) + dx;
+
+				// Calculate the day index and the percentage within the day
+				const dayIndex = Math.floor(newX / dayWidth);
+				const percentageWithinDay = (newX % dayWidth) / dayWidth;
+
+				// Determine whether to snap left or right
+				const snappedDayIndex =
+					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
+
+				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
+				let newStartDate = new Date(d.startDate);
+				newStartDate.setDate(newStartDate.getDate() + daysMoved);
+
+				// Snap to next workday if it's a weekend or holiday
+				newStartDate = getNextWorkday(newStartDate);
+
+				// Calculate the final x position based on the new start date
+				const finalX = calculateXPosition(newStartDate, startDate, dayWidth);
+
+				// Calculate new width
+				const newWidth = calculateJobWidth(newStartDate, d.duration, dayWidth);
+
+				// Apply transitions for both x and width
+				d3.select(this)
+					.transition()
+					.duration(300)
+					.attr("x", finalX)
+					.attr("width", newWidth)
+					.on("end", () => {
+						// Update Redux store after the transition is complete
+						dispatch(
+							updateJobStartDate(d.jobId, d.id, normalizeDate(newStartDate))
+						);
+					});
+
+				d3.select(this.parentNode)
+					.select(".bar-text")
+					.transition()
+					.duration(300)
+					.attr("x", finalX + 5);
+
+				d3.select(this).classed("dragging", false);
+
+				delete d.dragStartX;
+				delete d.dragStartEventX;
+			});
+
 		// Create a group for jobs
 		const jobsGroup = chartSvg
 			.append("g")
@@ -701,11 +751,11 @@ const GanttChart = () => {
 
 		jobsGroup
 			.selectAll(".job-group")
-			.data(activeRoomsData)
+			.data(allRooms)
 			.enter()
 			.append("g")
 			.attr("class", "job-group")
-			.attr("transform", (d, i) => `translate(0, ${i * rowHeight})`) // Position each group vertically
+			.attr("transform", (d, i) => `translate(0, ${d.position * rowHeight})`) // Position each group vertically
 			.each(function (d, i) {
 				const group = d3.select(this);
 
@@ -751,24 +801,7 @@ const GanttChart = () => {
 						d3.select(this).select(".bar-text").text(d.name);
 					});
 			});
-
-		// Add scrolling behavior for the chart
-		const scrollableDiv = d3.select(scrollableRef.current);
-		scrollableDiv.on("scroll", () => {
-			const scrollLeft = scrollableDiv.node().scrollLeft;
-			const scrollTop = scrollableDiv.node().scrollTop;
-
-			headerSvg.attr("transform", `translate(${-scrollLeft}, 0)`);
-			leftColumnSvg.attr("transform", `translate(0, ${-scrollTop})`);
-		});
-
-		const leftScrollableDiv = d3.select(leftScrollableRef.current);
-		leftScrollableDiv.on("scroll", () => {
-			const scrollTop = leftScrollableDiv.node().scrollTop;
-
-			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
-		});
-	}, [jobs, dispatch, builders, totalRooms, startDate, dayWidth]);
+	}, [jobsByBuilder, builders, dayWidth, rowHeight, startDate]);
 
 	useEffect(() => {
 		scrollToToday();
