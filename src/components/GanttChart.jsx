@@ -20,6 +20,7 @@ import BuilderModal from "./BuilderModal";
 import BuilderLegend from "./BuilderLegend";
 import HolidayModal from "./HolidayModal";
 import Holidays from "date-holidays";
+import { getNextWorkday, isHoliday, sortAndAdjustDates, totalJobHours } from "../utils/helpers";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs.jobs);
@@ -42,18 +43,6 @@ const GanttChart = () => {
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 	const [draggedJob, setDraggedJob] = useState(null);
-
-  const handleDragStart = useCallback((job) => {
-    setDraggedJob(job);
-  }, []);
-
-  const handleDragEnd = useCallback((job, newStartDate) => {
-    setDraggedJob(null);
-    // Update the job with the new start date and mark it as new
-    const updatedJob = { ...job, startDate: newStartDate, isNew: true };
-    // Dispatch an action to update the job in the Redux store
-    dispatch(updateJob(updatedJob));
-  }, [dispatch]);
 
 	const daysBeforeStart = 30;
 	const daysAfterEnd = 90;
@@ -170,88 +159,6 @@ const GanttChart = () => {
 		}
 	};
 
-	const isHoliday = (date) => {
-		if (!holidayChecker) return false;
-		const normalizedDate = normalizeDate(date);
-		const holiday = holidayChecker.isHoliday(normalizedDate);
-		return holiday && holidays.some((h) => h.name === holiday[0].name);
-	};
-
-	const getNextWorkday = (date) => {
-		let nextDay = normalizeDate(date);
-		while (isSaturday(nextDay) || isSunday(nextDay) || isHoliday(nextDay)) {
-			nextDay = addDays(nextDay, 1);
-		}
-		return nextDay;
-	};
-
-	const totalJobHours = (startDate, jobHours) => {
-		let currentDate = normalizeDate(startDate);
-
-		// Calculate total days based on jobHours (e.g., 16 hours = 2 days)
-		let totalDays = Math.ceil(jobHours / workdayHours);
-
-		// Loop through each day in the range based on totalDays
-		for (let i = 0; i < totalDays; i++) {
-			// Check if the current day is a weekend
-			if (
-				isSaturday(currentDate) ||
-				isSunday(currentDate) ||
-				isHoliday(currentDate)
-			) {
-				jobHours += 8;
-				totalDays += 1;
-			}
-			// Move to the next day
-			currentDate = addDays(currentDate, 1);
-		}
-
-		return jobHours; // Total job hours
-	};
-
-	const sortAndAdjustDates = (jobsArray) => {
-		// First, sort the array by date and newness
-		const sortedArray = jobsArray.sort((a, b) => {
-			const dateA = new Date(a.startDate);
-			const dateB = new Date(b.startDate);
-
-			if (dateA.getTime() === dateB.getTime()) {
-				// If dates are the same, prioritize the new object
-				if (a.isNew && !b.isNew) return -1;
-				if (b.isNew && !a.isNew) return 1;
-				// If neither is new or both are new, maintain original order
-				return 0;
-			}
-
-			// Otherwise, sort by date
-			return dateA - dateB;
-		});
-
-		// Then, adjust the dates
-		return sortedArray.reduce((acc, current, index) => {
-			if (index === 0) {
-				// Keep the first object's date as is
-				acc.push({
-					...current,
-					startDate: normalizeDate(current.startDate),
-					isNew: false,
-				});
-			} else {
-				const previousJob = acc[index - 1];
-				const previousEndDate = addDays(
-					previousJob.startDate,
-					Math.ceil(
-						totalJobHours(previousJob.startDate, previousJob.duration) /
-							workdayHours
-					)
-				);
-				const newStartDate = getNextWorkday(previousEndDate);
-				acc.push({ ...current, startDate: newStartDate, isNew: false });
-			}
-			return acc;
-		}, []);
-	};
-
 	const jobsByBuilder = useMemo(() => {
 		const groupedJobs = roomsData.reduce((acc, job) => {
 			if (!acc[job.builderId]) {
@@ -267,7 +174,7 @@ const GanttChart = () => {
 
 		// Sort and adjust dates for each builder's jobs
 		Object.keys(groupedJobs).forEach((builderId) => {
-			groupedJobs[builderId] = sortAndAdjustDates(groupedJobs[builderId]);
+			groupedJobs[builderId] = sortAndAdjustDates(groupedJobs[builderId], workdayHours);
 		});
 
 		return groupedJobs;
@@ -277,7 +184,7 @@ const GanttChart = () => {
 
 	const calculateJobWidth = (jobStartDate, jobDuration, dayWidth) => {
 		// Calculate the number of days (each workday is 8 hours)
-		const totalDays = totalJobHours(jobStartDate, jobDuration) / workdayHours;
+		const totalDays = totalJobHours(jobStartDate, jobDuration, workdayHours	) / workdayHours;
 
 		// Return the width based on the total number of days
 		return totalDays * dayWidth;
@@ -438,7 +345,7 @@ const GanttChart = () => {
 				const group = d3.select(this);
 
 				const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-				const isHolidayDate = isHoliday(d);
+				const isHolidayDate = isHoliday(d, holidayChecker, holidays);
 
 				// Append a rectangle for weekends
 				if (isWeekend || isHolidayDate) {
@@ -612,7 +519,7 @@ const GanttChart = () => {
 			.attr("y", 0)
 			.attr("width", dayWidth)
 			.attr("height", activeRoomsData.length * rowHeight)
-			.attr("fill", (d) => (isHoliday(d) ? "lightblue" : "none"))
+			.attr("fill", (d) => (isHoliday(d, holidayChecker, holidays) ? "lightblue" : "none"))
 			.attr("opacity", 0.5);
 
 		// Draw vertical grid lines for each day
@@ -710,7 +617,7 @@ const GanttChart = () => {
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 
 				// Snap to next workday if it's a weekend or holiday
-				newStartDate = getNextWorkday(newStartDate);
+				newStartDate = getNextWorkday(newStartDate, holidayChecker);
 
 				// Calculate the final x position based on the new start date
 				const finalX = calculateXPosition(newStartDate, startDate, dayWidth);
