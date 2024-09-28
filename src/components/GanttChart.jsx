@@ -42,6 +42,11 @@ const GanttChart = () => {
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 
+	const daysBeforeStart = 30;
+	const daysAfterEnd = 90;
+	const dayWidth = 40;
+	const workdayHours = 8;
+
 	const roomsData = useMemo(() => {
 		return jobs.flatMap((job, i) =>
 			job.rooms.map((room) => ({
@@ -50,7 +55,10 @@ const GanttChart = () => {
 				jobId: job.id,
 				jobName: job.name,
 			}))
-		);
+		).map((room, index) => ({
+			...room,
+			position: index
+		}));
 	}, [jobs]);
 
 	const convertDate = (dateInput) => {
@@ -104,12 +112,7 @@ const GanttChart = () => {
 
 	const totalRooms = countAllRooms(jobs);
 
-	const daysBeforeStart = 30;
-	const daysAfterEnd = 90;
-
 	const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
-	const dayWidth = 40;
-	const workdayHours = 8;
 
 	const numDays =
 		differenceInCalendarDays(latestStartDate, earliestStartDate) +
@@ -189,6 +192,69 @@ const GanttChart = () => {
 
 		return jobHours; // Total job hours
 	};
+
+	const sortAndAdjustDates = (jobsArray) => {
+		// First, sort the array by date and newness
+		const sortedArray = jobsArray.sort((a, b) => {
+			const dateA = new Date(a.startDate);
+			const dateB = new Date(b.startDate);
+
+			if (dateA.getTime() === dateB.getTime()) {
+				// If dates are the same, prioritize the new object
+				if (a.isNew && !b.isNew) return -1;
+				if (b.isNew && !a.isNew) return 1;
+				// If neither is new or both are new, maintain original order
+				return 0;
+			}
+
+			// Otherwise, sort by date
+			return dateA - dateB;
+		});
+
+		// Then, adjust the dates
+		return sortedArray.reduce((acc, current, index) => {
+			if (index === 0) {
+				// Keep the first object's date as is
+				acc.push({
+					...current,
+					startDate: normalizeDate(current.startDate),
+					isNew: false,
+				});
+			} else {
+				const previousJob = acc[index - 1];
+				const previousEndDate = addDays(
+					previousJob.startDate,
+					Math.ceil(totalJobHours(previousJob.startDate, previousJob.duration) / workdayHours)
+				);
+				const newStartDate = getNextWorkday(previousEndDate);
+				acc.push({ ...current, startDate: newStartDate, isNew: false });
+			}
+			return acc;
+		}, []);
+	};
+
+	const jobsByBuilder = useMemo(() => {
+		const groupedJobs = roomsData.reduce((acc, job) => {
+			if (!acc[job.builderId]) {
+				acc[job.builderId] = [];
+			}
+			acc[job.builderId].push({
+				...job,
+				position: job.position,
+				isNew: job.isNew || false,
+			});
+			return acc;
+		}, {});
+
+		// Sort and adjust dates for each builder's jobs
+		Object.keys(groupedJobs).forEach((builderId) => {
+			groupedJobs[builderId] = sortAndAdjustDates(groupedJobs[builderId]);
+		});
+
+		return groupedJobs;
+	}, [roomsData]);
+
+	console.log("jobsByBuilder", jobsByBuilder);
 
 	const calculateJobWidth = (jobStartDate, jobDuration, dayWidth) => {
 		// Calculate the number of days (each workday is 8 hours)
