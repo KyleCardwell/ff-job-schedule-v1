@@ -2,15 +2,12 @@
 
 import { newJobs } from "../../mocks/jobs";
 import { Actions } from "../actions";
-import { addDays } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
 const initialState = JSON.parse(localStorage.getItem("ganttJobs")) || {
 	jobs: newJobs,
 	nextJobNumber: 101,
 };
-
-const workdayHours = 8;
 
 export const ganttReducer = (state = initialState, action) => {
 	switch (action.type) {
