@@ -15,6 +15,7 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 	const [errors, setErrors] = useState({});
 	const builders = useSelector((state) => state.builders.builders);
 	const nextJobNumber = useSelector((state) => state.jobs.nextJobNumber);
+	const jobs = useSelector((state) => state.jobs.jobs);
 	const newRoomNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
 
@@ -81,6 +82,7 @@ const JobModal = ({ isOpen, onClose, onSave, jobData }) => {
 			jobNumber: nextJobNumber.toString(),
 			active: true,
 			isNew: true,
+			jobsIndex: jobs.length,
 		};
 		setRooms((prevRooms) => [...prevRooms, newRoom]);
 		dispatch(incrementJobNumber());

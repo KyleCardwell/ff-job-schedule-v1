@@ -45,42 +45,55 @@ const GanttChart = () => {
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
-	const [localJobs, setLocalJobs] = useState(
-		jobs
-			.flatMap((job) =>
-				job.rooms.filter((room) => room.active).map((room) => ({
-					...room,
-					jobId: job.id,
-					jobName: job.name,
-				}))
-			)
-			.map((room, index) => ({
-				...room,
-				position: index,
-			}))
-	);
 
 	const daysBeforeStart = 30;
 	const daysAfterEnd = 90;
 	const dayWidth = 40;
 	const workdayHours = 8;
 	const rowHeight = 30;
+	const barMargin = 3;
 
-	const roomsData = useMemo(() => {
-		return jobs
+	const { roomsData, jobsByBuilder, flattenedJobs } = useMemo(() => {
+		const roomsData = jobs
 			.flatMap((job, i) =>
-				job.rooms.filter((room) => room.active).map((room) => ({
-					...room,
-					jobsIndex: i,
-					jobId: job.id,
-					jobName: job.name,
-				}))
+				job.rooms
+					.filter((room) => room.active)
+					.map((room) => ({
+						...room,
+						jobsIndex: i,
+						jobId: job.id,
+						jobName: job.name,
+					}))
 			)
 			.map((room, index) => ({
 				...room,
 				position: index,
 			}));
-	}, [jobs]);
+
+		const jobsByBuilder = roomsData.reduce((acc, job) => {
+			if (!acc[job.builderId]) {
+				acc[job.builderId] = [];
+			}
+			acc[job.builderId].push({
+				...job,
+				position: job.position,
+				isNew: job.isNew || false,
+			});
+			return acc;
+		}, {});
+
+		// Sort and adjust dates for each builder's jobs
+		Object.keys(jobsByBuilder).forEach((builderId) => {
+			jobsByBuilder[builderId] = sortAndAdjustDates(
+				jobsByBuilder[builderId],
+				workdayHours
+			);
+		});
+
+		const flattenedJobs = Object.values(jobsByBuilder).flat();
+
+		return { roomsData, jobsByBuilder, flattenedJobs };
+	}, [jobs, workdayHours]);
 
 	const convertDate = (dateInput) => {
 		const date = new Date(dateInput);
@@ -175,30 +188,6 @@ const GanttChart = () => {
 		}
 	};
 
-	const jobsByBuilder = useMemo(() => {
-		const groupedJobs = roomsData.reduce((acc, job) => {
-			if (!acc[job.builderId]) {
-				acc[job.builderId] = [];
-			}
-			acc[job.builderId].push({
-				...job,
-				position: job.position,
-				isNew: job.isNew || false,
-			});
-			return acc;
-		}, {});
-
-		// Sort and adjust dates for each builder's jobs
-		Object.keys(groupedJobs).forEach((builderId) => {
-			groupedJobs[builderId] = sortAndAdjustDates(
-				groupedJobs[builderId],
-				workdayHours
-			);
-		});
-
-		return groupedJobs;
-	}, [roomsData]);
-
 	const calculateJobWidth = (jobStartDate, jobDuration, dayWidth) => {
 		// Calculate the number of days (each workday is 8 hours)
 		const totalDays =
@@ -271,7 +260,6 @@ const GanttChart = () => {
 		const timeOffSvg = d3.select(timeOffSvgRef.current);
 		timeOffSvg.selectAll("*").remove();
 
-		// const barMargin = 3;
 		const weekendColor = "#c1c1c1"; // Darker color for weekends
 		const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
 		const strokeColor = "#bebebe"; // stroke color
@@ -587,18 +575,23 @@ const GanttChart = () => {
 
 			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
 		});
-	}, [jobs, dispatch, builders, totalRooms, startDate, dayWidth]);
-
-
-	useEffect(() => {
-		// Initialize localJobs with the data from Redux when the component mounts
-		setLocalJobs(Object.values(jobsByBuilder).flat());
-	}, [jobsByBuilder]);
+	}, [
+		jobs,
+		dispatch,
+		builders,
+		totalRooms,
+		startDate,
+		dayWidth,
+		holidayChecker,
+		holidays,
+		numDays,
+		roomsData,
+		timeOffData,
+	]);
 
 	useEffect(() => {
 		if (!chartRef.current) return;
 
-		const barMargin = 3;
 		const chartSvg = d3.select(chartRef.current);
 
 		// Define drag behavior
@@ -649,7 +642,7 @@ const GanttChart = () => {
 				const updatedDraggedJob = { ...d, startDate: newStartDate };
 
 				// Get the current builder's jobs and update the dragged job
-				const builderJobs = localJobs.filter(
+				const builderJobs = flattenedJobs.filter(
 					(job) => job.builderId === d.builderId
 				);
 				const updatedBuilderJobs = builderJobs.map((job) =>
@@ -696,19 +689,19 @@ const GanttChart = () => {
 					.end()
 					.then(() => {
 						// After transitions are complete, update localJobs and Redux
-						const updatedLocalJobs = localJobs.map((job) =>
+						const updatedLocalJobs = flattenedJobs.map((job) =>
 							job.builderId === d.builderId
 								? sortedBuilderJobs.find((sj) => sj.id === job.id) || job
 								: job
 						);
-						setLocalJobs(updatedLocalJobs);
+						// setLocalJobs(updatedLocalJobs);
 
-						const formattedJobs = Object.values(updatedLocalJobs.reduce((acc, job) => {
+						const formattedJobs = updatedLocalJobs.reduce((acc, job) => {
 							if (!acc[job.jobId]) {
 								acc[job.jobId] = {
 									id: job.jobId,
-									name: job.jobName, // Assuming the job name is the same for all rooms in a job
-									rooms: []
+									name: job.jobName,
+									rooms: [],
 								};
 							}
 							acc[job.jobId].rooms.push({
@@ -721,12 +714,20 @@ const GanttChart = () => {
 								jobNumber: job.jobNumber,
 								active: job.active,
 							});
-							return acc.sort((a, b) => a.jobNumber - b.jobNumber);
-						}, {}));
+							return acc;
+						}, {});
 
-            // Dispatch saveJobs action
-            dispatch(saveJobs(formattedJobs));
-          });
+						const sortedFormattedJobs = Object.values(formattedJobs).sort(
+							(a, b) => a.rooms[0].jobsIndex - b.rooms[0].jobsIndex
+						);
+
+						sortedFormattedJobs.forEach((job) => {
+							job.rooms.sort((a, b) => a.position - b.position);
+						});
+
+						// Dispatch saveJobs action
+						dispatch(saveJobs(sortedFormattedJobs));
+					});
 
 				d3.select(this).classed("dragging", false);
 
@@ -746,7 +747,7 @@ const GanttChart = () => {
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
 			.selectAll(".job-group")
-			.data(localJobs, (d) => d.id);
+			.data(flattenedJobs, (d) => d.id);
 
 		// Enter new elements
 		const enterGroups = jobGroups
@@ -791,8 +792,8 @@ const GanttChart = () => {
 				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
 			)
 			.attr("y", rowHeight / 2)
-			.text((d) => d.name)
-			.attr("fill", "#fff");
+			.text((d) => d.duration)
+			.attr("fill", "#ffffff");
 
 		// Remove old elements
 		jobGroups.exit().remove();
@@ -808,10 +809,10 @@ const GanttChart = () => {
 					.text(`${d.name} - ${d.duration} hours`);
 			})
 			.on("mouseout", function (event, d) {
-				d3.select(this).select(".bar-text").text(d.name);
+				d3.select(this).select(".bar-text").text(d.duration);
 			});
 	}, [
-		localJobs,
+		flattenedJobs,
 		builders,
 		dayWidth,
 		rowHeight,
