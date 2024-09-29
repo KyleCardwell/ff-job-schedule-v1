@@ -1,6 +1,7 @@
 // redux/ganttReducer.js
 
-import { newJobs } from "../../mocks/jobs";
+// import { newJobs } from "../../mocks/jobs";
+import { newJobs } from "../../mocks/jobsRealData";
 import { Actions } from "../actions";
 import { v4 as uuidv4 } from "uuid";
 
