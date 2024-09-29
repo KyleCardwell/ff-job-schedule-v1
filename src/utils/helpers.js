@@ -68,7 +68,7 @@ export const totalJobHours = (startDate, jobHours, workdayHours) => {
 		currentDate = addDays(currentDate, 1);
 	}
 
-	return jobHours; // Total job hours
+	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
 export const sortAndAdjustDates = (jobsArray, workdayHours) => {
