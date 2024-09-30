@@ -77,7 +77,6 @@ const GanttChart = () => {
 			acc[job.builderId].push({
 				...job,
 				position: job.position,
-				isNew: job.isNew || false,
 			});
 			return acc;
 		}, {});
@@ -88,7 +87,9 @@ const GanttChart = () => {
 				jobsByBuilder[builderId],
 				workdayHours,
 				holidayChecker,
-				holidays
+				holidays,
+				undefined,
+				undefined
 			);
 		});
 
@@ -658,7 +659,9 @@ const GanttChart = () => {
 					updatedBuilderJobs,
 					workdayHours,
 					holidayChecker,
-					holidays
+					holidays,
+					d.id,
+					newStartDate  
 				);
 
 				// Transition all jobs in the builder group
