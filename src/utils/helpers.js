@@ -38,16 +38,26 @@ export const isHoliday = (date, holidayChecker, holidays) => {
 	return holiday && holidays.some((h) => h.name === holiday[0].name);
 };
 
-export const getNextWorkday = (date) => {
+export const getNextWorkday = (date, holidayChecker, holidays) => {
 	let nextDay = normalizeDate(date);
-	while (isSaturday(nextDay) || isSunday(nextDay) || isHoliday(nextDay)) {
+	while (
+		isSaturday(nextDay) ||
+		isSunday(nextDay) ||
+		isHoliday(nextDay, holidayChecker, holidays)
+	) {
 		nextDay = addDays(nextDay, 1);
 	}
 	return nextDay;
 };
 
 // Updated sortAndAdjustDates function
-export const totalJobHours = (startDate, jobHours, workdayHours) => {
+export const totalJobHours = (
+	startDate,
+	jobHours,
+	workdayHours,
+	holidayChecker,
+	holidays
+) => {
 	let currentDate = normalizeDate(startDate);
 
 	// Calculate total days based on jobHours (e.g., 16 hours = 2 days)
@@ -59,7 +69,7 @@ export const totalJobHours = (startDate, jobHours, workdayHours) => {
 		if (
 			isSaturday(currentDate) ||
 			isSunday(currentDate) ||
-			isHoliday(currentDate)
+			isHoliday(currentDate, holidayChecker, holidays)
 		) {
 			jobHours += 8;
 			totalDays += 1;
@@ -71,7 +81,12 @@ export const totalJobHours = (startDate, jobHours, workdayHours) => {
 	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
-export const sortAndAdjustDates = (jobsArray, workdayHours) => {
+export const sortAndAdjustDates = (
+	jobsArray,
+	workdayHours,
+	holidayChecker,
+	holidays
+) => {
 	// First, sort the array by date and newness
 	const sortedArray = jobsArray.sort((a, b) => {
 		if (a.isNew && !b.isNew) return -1;
@@ -100,11 +115,13 @@ export const sortAndAdjustDates = (jobsArray, workdayHours) => {
 					totalJobHours(
 						previousJob.startDate,
 						previousJob.duration,
-						workdayHours
+						workdayHours,
+						holidayChecker,
+						holidays
 					) / workdayHours
 				)
 			);
-			const newStartDate = getNextWorkday(previousEndDate);
+			const newStartDate = getNextWorkday(previousEndDate, holidayChecker, holidays);
 			acc.push({ ...current, startDate: newStartDate, isNew: false });
 		}
 		return acc;

@@ -1,4 +1,8 @@
 /* Gantt Chart Container */
+h1 {
+  margin: 0 0 1rem 0;
+}
+
 .gantt-container {
   display: flex;
   flex-direction: column;
@@ -12,7 +16,7 @@
 .gantt-content {
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 250px);
+  height: calc(100vh - 180px);
 }
 
 /* Gantt Left Column */
