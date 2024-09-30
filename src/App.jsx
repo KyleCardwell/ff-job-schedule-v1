@@ -7,7 +7,6 @@ const App = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="App">
-        <h1>Forever Furniture Job Schedule</h1>
         <GanttChart />
       </div>
     </DndProvider>

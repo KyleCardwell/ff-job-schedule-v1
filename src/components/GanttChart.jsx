@@ -53,7 +53,7 @@ const GanttChart = () => {
 	const rowHeight = 30;
 	const barMargin = 3;
 
-	const { roomsData, jobsByBuilder, flattenedJobs } = useMemo(() => {
+	const { roomsData, flattenedJobs } = useMemo(() => {
 		const roomsData = jobs
 			.flatMap((job, i) =>
 				job.rooms
@@ -77,7 +77,6 @@ const GanttChart = () => {
 			acc[job.builderId].push({
 				...job,
 				position: job.position,
-				isNew: job.isNew || false,
 			});
 			return acc;
 		}, {});
@@ -86,14 +85,20 @@ const GanttChart = () => {
 		Object.keys(jobsByBuilder).forEach((builderId) => {
 			jobsByBuilder[builderId] = sortAndAdjustDates(
 				jobsByBuilder[builderId],
-				workdayHours
+				workdayHours,
+				holidayChecker,
+				holidays,
+				undefined,
+				undefined
 			);
 		});
 
 		const flattenedJobs = Object.values(jobsByBuilder).flat();
 
-		return { roomsData, jobsByBuilder, flattenedJobs };
-	}, [jobs, workdayHours]);
+		return { roomsData, flattenedJobs };
+	}, [holidayChecker, holidays, jobs]);
+
+	console.log("flattenedJobs", flattenedJobs);
 
 	const convertDate = (dateInput) => {
 		const date = new Date(dateInput);
@@ -191,7 +196,13 @@ const GanttChart = () => {
 	const calculateJobWidth = (jobStartDate, jobDuration, dayWidth) => {
 		// Calculate the number of days (each workday is 8 hours)
 		const totalDays =
-			totalJobHours(jobStartDate, jobDuration, workdayHours) / workdayHours;
+			totalJobHours(
+				jobStartDate,
+				jobDuration,
+				workdayHours,
+				holidayChecker,
+				holidays
+			) / workdayHours;
 
 		// Return the width based on the total number of days
 		return totalDays * dayWidth;
@@ -630,13 +641,7 @@ const GanttChart = () => {
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 
 				// Snap to next workday if it's a weekend or holiday
-				newStartDate = getNextWorkday(newStartDate, holidayChecker);
-
-				// Calculate the final x position based on the new start date
-				const finalX = calculateXPosition(newStartDate, startDate, dayWidth);
-
-				// Calculate new width
-				const newWidth = calculateJobWidth(newStartDate, d.duration, dayWidth);
+				newStartDate = getNextWorkday(newStartDate, holidayChecker, holidays);
 
 				// Update the dragged job
 				const updatedDraggedJob = { ...d, startDate: newStartDate };
@@ -652,7 +657,11 @@ const GanttChart = () => {
 				// Sort and adjust dates for the builder's jobs
 				const sortedBuilderJobs = sortAndAdjustDates(
 					updatedBuilderJobs,
-					workdayHours
+					workdayHours,
+					holidayChecker,
+					holidays,
+					d.id,
+					newStartDate  
 				);
 
 				// Transition all jobs in the builder group
@@ -688,42 +697,46 @@ const GanttChart = () => {
 					})
 					.end()
 					.then(() => {
-						// After transitions are complete, update localJobs and Redux
-						const updatedLocalJobs = flattenedJobs.map((job) =>
-							job.builderId === d.builderId
-								? sortedBuilderJobs.find((sj) => sj.id === job.id) || job
-								: job
-						);
-						// setLocalJobs(updatedLocalJobs);
+						// Create a map to hold jobs by their index
+						const jobMap = new Map();
 
-						const formattedJobs = updatedLocalJobs.reduce((acc, job) => {
-							if (!acc[job.jobId]) {
-								acc[job.jobId] = {
-									id: job.jobId,
-									name: job.jobName,
+						// Update jobs and populate jobMap
+						flattenedJobs.forEach((job) => {
+							const updatedJob =
+								sortedBuilderJobs.find((sj) => sj.id === job.id) || job;
+
+							if (!jobMap.has(updatedJob.jobsIndex)) {
+								jobMap.set(updatedJob.jobsIndex, {
+									id: updatedJob.jobId,
+									name: updatedJob.jobName,
 									rooms: [],
-								};
+								});
 							}
-							acc[job.jobId].rooms.push({
-								id: job.id,
-								builderId: job.builderId,
-								name: job.name,
-								startDate: normalizeDate(job.startDate),
-								duration: job.duration,
-								position: job.position,
-								jobNumber: job.jobNumber,
-								active: job.active,
+
+							jobMap.get(updatedJob.jobsIndex).rooms.push({
+								id: updatedJob.id,
+								builderId: updatedJob.builderId,
+								name: updatedJob.name,
+								startDate: normalizeDate(updatedJob.startDate),
+								duration: updatedJob.duration,
+								position: updatedJob.position,
+								jobNumber: updatedJob.jobNumber,
+								active: updatedJob.active,
 							});
-							return acc;
-						}, {});
-
-						const sortedFormattedJobs = Object.values(formattedJobs).sort(
-							(a, b) => a.rooms[0].jobsIndex - b.rooms[0].jobsIndex
-						);
-
-						sortedFormattedJobs.forEach((job) => {
-							job.rooms.sort((a, b) => a.position - b.position);
 						});
+
+						// Convert jobMap to array, sort by index, and sort rooms within each job by jobNumber
+						const sortedFormattedJobs = Array.from(jobMap.entries())
+							.sort(([indexA], [indexB]) => indexA - indexB)
+							.map(([_, job]) => ({
+								...job,
+								rooms: job.rooms.sort((a, b) => {
+									// Parse jobNumber as integer for proper numeric sorting
+									const aNum = parseInt(a.jobNumber, 10);
+									const bNum = parseInt(b.jobNumber, 10);
+									return aNum - bNum;
+								}),
+							}));
 
 						// Dispatch saveJobs action
 						dispatch(saveJobs(sortedFormattedJobs));
@@ -864,6 +877,7 @@ const GanttChart = () => {
 
 	return (
 		<div className="gantt-chart-container">
+			<h1>Forever Furniture Job Schedule</h1>
 			<div className="action-buttons">
 				<button
 					className="action-button scroll-to-today-button"

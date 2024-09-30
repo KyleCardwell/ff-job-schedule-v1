@@ -27,6 +27,7 @@ const initialState = {
 			],
 		},
 		{ id: "4", name: "Nick", color: "#A32ACF", timeOff: [] },
+		{ id: "5", name: "Dawayne", color: "#FF2E54", timeOff: [] },
 	], // Array to store builder objects with id, name, and color
 };
 
