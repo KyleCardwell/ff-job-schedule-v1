@@ -1,6 +1,6 @@
 /* Gantt Chart Container */
 h1 {
-  margin: 0 0 1rem 0;
+  margin: 0;
 }
 
 .gantt-container {
@@ -21,7 +21,6 @@ h1 {
 
 /* Gantt Left Column */
 .gantt-left {
-  width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -96,7 +95,7 @@ h1 {
 .manage-builders-button { background-color: #2196F3; }
 .scroll-to-today-button { 
   background-color: #ff9500;
-  margin-left: 300px;
+  margin-left: 280px;
   margin-right: auto;
 }
 .manage-holidays-button { background-color: #9C27B0; }
@@ -211,21 +210,21 @@ select {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
-  margin-top: 5px;
-  padding: 10px;
-  margin-left: 300px;
-  width: calc(100% - 300px);
+  /* margin-top: 5px; */
+  margin-left: 270px;
+  width: calc(100% - 270px);
+  font-size: 14px;
 }
 
 .builder-legend-item {
   display: flex;
   align-items: center;
-  margin: 0 20px 10px 0;
+  margin: 5px 20px 0 0;
 }
 
 .builder-color-box {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   margin-right: 5px;
   border: 1px solid #000;
 }
@@ -392,6 +391,57 @@ select {
   margin-top: 10px;
 }
 
+@media only screen 
+  and (min-device-width: 320px) 
+  and (max-device-width: 1024px)
+  and (-webkit-min-device-pixel-ratio: 2) {
+
+  .action-buttons {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    margin-bottom: 0;
+    z-index: 100;
+  }
+
+  .action-button {
+    display: none;
+    padding: 8px 15px;
+    font-size: 12px;
+  }
+
+  .action-buttons::before {
+    content: "Menu";
+    display: block;
+    padding: 8px 15px;
+    background-color: #333;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .action-buttons:hover .action-button {
+    display: block;
+  }
+
+  .scroll-to-today-button {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .gantt-content {
+    height: calc(100vh - 60px);
+  }
+
+  .builder-legend {
+    margin-left: 10px;
+    width: calc(100% - 20px);
+  }
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .roomGroup {
@@ -455,7 +505,7 @@ select {
   .gantt-container {
     height: auto !important;
     overflow: visible !important;
-    transform: scale(2.22);
+    transform: scale(2.88);
     transform-origin: top left;
   }
 
@@ -483,7 +533,7 @@ select {
     display: flex !important;
     flex-wrap: wrap !important;
     justify-content: flex-start !important;
-    padding: 10px !important;
+    /* padding: 10px 0 0 !important; */
     margin-top: 20px !important;
     width: 100% !important;
     page-break-inside: avoid !important;

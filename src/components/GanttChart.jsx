@@ -47,11 +47,13 @@ const GanttChart = () => {
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 
 	const daysBeforeStart = 30;
-	const daysAfterEnd = 90;
-	const dayWidth = 40;
+	const daysAfterEnd = 60;
+	const dayWidth = 30;
 	const workdayHours = 8;
-	const rowHeight = 30;
+	const rowHeight = 25;
 	const barMargin = 3;
+	const headerTextGap = 5;
+	const leftColumnWidth = 270;
 
 	const { roomsData, flattenedJobs } = useMemo(() => {
 		const roomsData = jobs
@@ -182,9 +184,11 @@ const GanttChart = () => {
 		}
 	};
 
-	const scrollToToday = () => {
-		const today = new Date();
-		const mondayOfThisWeek = startOfWeek(today, { weekStartsOn: 1 }); // 1 represents Monday
+	const scrollToMonday = (date) => {
+		const normalizedDate = normalizeDate(date);
+		const mondayOfThisWeek = startOfWeek(new Date(normalizedDate), {
+			weekStartsOn: 1,
+		}); // 1 represents Monday
 		const diffDays = differenceInCalendarDays(mondayOfThisWeek, startDate);
 		const scrollPosition = diffDays * dayWidth;
 		const ganttRightBody = document.querySelector(".gantt-right-body");
@@ -311,7 +315,7 @@ const GanttChart = () => {
 
 		chartSvg.attr("width", width).attr("height", height);
 
-		leftHeaderSvg.attr("width", 300).attr("height", 40);
+		leftHeaderSvg.attr("width", leftColumnWidth).attr("height", 40);
 
 		// Add the left column header with titles
 		leftHeaderSvg.append("g").each(function () {
@@ -322,7 +326,7 @@ const GanttChart = () => {
 				.append("text")
 				.attr("x", 10) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
-				.text("Job #")
+				.text("#")
 				.attr("fill", "#000")
 				.attr("font-weight", "bold")
 				.attr("dominant-baseline", "middle");
@@ -330,9 +334,9 @@ const GanttChart = () => {
 			// Job Name header
 			leftHeaderGroup
 				.append("text")
-				.attr("x", 65) // Adjust x for alignment
+				.attr("x", 50) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
-				.text("Job Name")
+				.text("Job")
 				.attr("fill", "#000")
 				.attr("font-weight", "bold")
 				.attr("dominant-baseline", "middle");
@@ -340,9 +344,9 @@ const GanttChart = () => {
 			// Room Name header
 			leftHeaderGroup
 				.append("text")
-				.attr("x", 170) // Adjust x for alignment
+				.attr("x", 130) // Adjust x for alignment
 				.attr("y", rowHeight / 2 + 6)
-				.text("Room Name")
+				.text("Room")
 				.attr("fill", "#000")
 				.attr("font-weight", "bold")
 				.attr("dominant-baseline", "middle");
@@ -357,6 +361,7 @@ const GanttChart = () => {
 			.enter()
 			.append("g")
 			.attr("class", "header")
+			.style("cursor", "pointer")
 			.each(function (d, i) {
 				// Group for each header
 				const group = d3.select(this);
@@ -376,32 +381,37 @@ const GanttChart = () => {
 				}
 				group
 					.append("text")
-					.attr("x", i * dayWidth + 10)
+					.attr("x", i * dayWidth + headerTextGap)
 					.attr("y", 10)
 					.text(d3.timeFormat("%b")(d))
 					.attr("fill", "#000")
-					.attr("font-size", "12px")
+					.attr("font-size", "11px")
 					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
 				group
 					.append("text")
-					.attr("x", i * dayWidth + 10)
+					.attr("x", i * dayWidth + headerTextGap)
 					.attr("y", 25)
 					.text(d3.timeFormat("%d")(d))
 					.attr("fill", "#000")
-					.attr("font-size", "12px")
+					.attr("font-size", "11px")
 					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
 
 				group
 					.append("text")
-					.attr("x", i * dayWidth + 10)
+					.attr("x", i * dayWidth + headerTextGap)
 					.attr("y", 37) // Adjust vertical position for day of the week
 					.text(d3.timeFormat("%a")(d))
 					.attr("fill", "#000")
-					.attr("font-size", "10px")
+					.attr("font-size", "9px")
 					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
+
+				// Add double-click event to the group
+				group.on("dblclick", () => {
+					scrollToMonday(d);
+				});
 			});
 
 		headerSvg
@@ -418,7 +428,7 @@ const GanttChart = () => {
 
 		const activeRoomsData = roomsData.filter((room) => room.active);
 
-		leftColumnSvg.attr("width", 300).attr("height", height);
+		leftColumnSvg.attr("width", leftColumnWidth).attr("height", height);
 
 		leftColumnSvg.on("dblclick", (event) => {
 			const [x, y] = d3.pointer(event);
@@ -439,7 +449,7 @@ const GanttChart = () => {
 			.append("rect")
 			.attr("x", 0)
 			.attr("y", (d, i) => i * rowHeight)
-			.attr("width", 300)
+			.attr("width", leftColumnWidth)
 			.attr("height", rowHeight)
 			.attr("fill", (d) =>
 				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
@@ -451,6 +461,7 @@ const GanttChart = () => {
 			.data(activeRoomsData)
 			.enter()
 			.append("g") // Group text elements together
+			.attr("font-size", "12px")
 			.attr(
 				"transform",
 				(d, i) => `translate(0, ${i * rowHeight + rowHeight / 2})`
@@ -469,7 +480,7 @@ const GanttChart = () => {
 				// Job name
 				group
 					.append("text")
-					.attr("x", 65)
+					.attr("x", 50)
 					.text(d.jobName)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
@@ -477,7 +488,7 @@ const GanttChart = () => {
 				// Room name
 				group
 					.append("text")
-					.attr("x", 170)
+					.attr("x", 130)
 					.text(d.name)
 					.attr("fill", "#000")
 					.attr("dominant-baseline", "middle");
@@ -661,7 +672,7 @@ const GanttChart = () => {
 					holidayChecker,
 					holidays,
 					d.id,
-					newStartDate  
+					newStartDate
 				);
 
 				// Transition all jobs in the builder group
@@ -767,7 +778,7 @@ const GanttChart = () => {
 			.enter()
 			.append("g")
 			.attr("class", "job-group")
-			.attr("transform", (d) => `translate(0, ${d.position * rowHeight})`);
+			.attr("transform", (d) => `translate(0, ${d.position * rowHeight})`).attr("font-size", "12px");
 
 		enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
 
@@ -833,9 +844,11 @@ const GanttChart = () => {
 		dispatch,
 		holidayChecker,
 		workdayHours,
+		holidays,
 	]);
+
 	useEffect(() => {
-		scrollToToday();
+		scrollToMonday(new Date());
 	}, []);
 
 	useEffect(() => {
@@ -881,7 +894,7 @@ const GanttChart = () => {
 			<div className="action-buttons">
 				<button
 					className="action-button scroll-to-today-button"
-					onClick={scrollToToday}
+					onClick={() => scrollToMonday(new Date())}
 				>
 					Today
 				</button>
