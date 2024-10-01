@@ -100,8 +100,6 @@ const GanttChart = () => {
 		return { roomsData, flattenedJobs };
 	}, [holidayChecker, holidays, jobs]);
 
-	console.log("flattenedJobs", flattenedJobs);
-
 	const convertDate = (dateInput) => {
 		const date = new Date(dateInput);
 		return isValid(date) ? date.toISOString() : null;
@@ -193,7 +191,10 @@ const GanttChart = () => {
 		const scrollPosition = diffDays * dayWidth;
 		const ganttRightBody = document.querySelector(".gantt-right-body");
 		if (ganttRightBody) {
-			ganttRightBody.scrollLeft = scrollPosition;
+			ganttRightBody.scrollTo({
+				left: scrollPosition,
+				behavior: 'smooth'
+			});
 		}
 	};
 
@@ -455,44 +456,64 @@ const GanttChart = () => {
 				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
 			); // Alternate colors
 
-		// Text elements for job number, job name, and room name
-		leftColumnSvg
-			.selectAll(".job-text")
+			const textGroups = leftColumnSvg
+			.selectAll(".job-text-group")
 			.data(activeRoomsData)
 			.enter()
-			.append("g") // Group text elements together
+			.append("g")
+			.attr("class", "job-text-group")
+			.attr("transform", (d, i) => `translate(0, ${i * rowHeight})`)
 			.attr("font-size", "12px")
-			.attr(
-				"transform",
-				(d, i) => `translate(0, ${i * rowHeight + rowHeight / 2})`
-			)
-			.each(function (d) {
-				const group = d3.select(this);
-
-				// Job number
-				group
-					.append("text")
-					.attr("x", 10)
-					.text(d.jobNumber)
-					.attr("fill", "#000")
-					.attr("dominant-baseline", "middle");
-
-				// Job name
-				group
-					.append("text")
-					.attr("x", 50)
-					.text(d.jobName)
-					.attr("fill", "#000")
-					.attr("dominant-baseline", "middle");
-
-				// Room name
-				group
-					.append("text")
-					.attr("x", 130)
-					.text(d.name)
-					.attr("fill", "#000")
-					.attr("dominant-baseline", "middle");
+			.attr("cursor", "pointer");
+	
+		textGroups.each(function(d) {
+			const group = d3.select(this);
+			
+			const jobNumberText = group.append("text")
+				.attr("class", "job-number")
+				.attr("x", 10)
+				.attr("y", rowHeight / 2)
+				.text(d.jobNumber)
+				.attr("fill", "#000")
+				.attr("dominant-baseline", "middle");
+	
+			const jobNameText = group.append("text")
+				.attr("class", "job-name")
+				.attr("x", 50)
+				.attr("y", rowHeight / 2)
+				.text(d.jobName)
+				.attr("fill", "#000")
+				.attr("dominant-baseline", "middle");
+	
+			const roomNameText = group.append("text")
+				.attr("class", "room-name")
+				.attr("x", 130)
+				.attr("y", rowHeight / 2)
+				.text(d.name)
+				.attr("fill", "#000")
+				.attr("dominant-baseline", "middle");
+	
+			// Add double-click event for job number and job name
+			jobNumberText.on("dblclick", (event) => {
+				event.stopPropagation();
+				const job = jobs.find(job => job.id === d.jobId);
+				setSelectedJob(job);
+				setIsJobModalOpen(true);
 			});
+	
+			jobNameText.on("dblclick", (event) => {
+				event.stopPropagation();
+				const job = jobs.find(job => job.id === d.jobId);
+				setSelectedJob(job);
+				setIsJobModalOpen(true);
+			});
+	
+			// Add double-click event for room name
+			roomNameText.on("dblclick", (event) => {
+				event.stopPropagation();
+				scrollToMonday(new Date(d.startDate));
+			});
+		});
 
 		// Remove previous SVG elements
 		chartSvg.selectAll("*").remove().append("rect");
@@ -778,7 +799,8 @@ const GanttChart = () => {
 			.enter()
 			.append("g")
 			.attr("class", "job-group")
-			.attr("transform", (d) => `translate(0, ${d.position * rowHeight})`).attr("font-size", "12px");
+			.attr("transform", (d) => `translate(0, ${d.position * rowHeight})`)
+			.attr("font-size", "12px");
 
 		enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
 
