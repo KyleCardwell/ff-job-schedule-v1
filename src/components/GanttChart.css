@@ -1,4 +1,9 @@
 /* Gantt Chart Container */
+.gantt-chart-container {
+  display: flex;
+  flex-direction: column;
+}
+
 h1 {
   margin: 0;
   font-size: 18px;
@@ -7,6 +12,7 @@ h1 {
 .gantt-container {
   display: flex;
   flex-direction: column;
+  flex-grow: 1;
 }
 
 .gantt-container svg {
@@ -17,7 +23,7 @@ h1 {
 .gantt-content {
   display: flex;
   flex-direction: row;
-  height: calc(100vh - 180px);
+  max-height: 90dvh;
 }
 
 /* Gantt Left Column */
@@ -76,6 +82,10 @@ h1 {
   margin-bottom: 10px;
 }
 
+.action-buttons > *:last-child {
+  margin-right: 10px;
+}
+
 .action-button {
   padding: 6px 12px;
   color: white;
@@ -100,6 +110,17 @@ h1 {
   margin-right: auto;
 }
 .manage-holidays-button { background-color: #9C27B0; }
+
+.gantt-footer {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff; /* Or any color that matches your design */
+  z-index: 10; /* Ensure it stays on top of other content */
+  /* padding: 10px; Add some padding if needed */
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1); /* Optional: adds a subtle shadow for visual separation */
+  display: flex;
+  flex-direction: row;
+}
 
 /* Modal Styles */
 .modal-overlay {
@@ -213,7 +234,6 @@ select {
   justify-content: flex-start;
   /* margin-top: 5px; */
   margin-left: 270px;
-  width: calc(100% - 270px);
   font-size: 14px;
 }
 
@@ -414,6 +434,10 @@ select {
     font-size: 12px;
   }
 
+  .action-buttons > *:last-child {
+    margin-right: unset;
+  }
+
   .action-buttons::before {
     content: "Menu";
     display: block;
@@ -434,13 +458,19 @@ select {
   }
 
   .gantt-content {
-    height: calc(100vh - 60px);
+    max-height: 85dvh;
   }
 
+  
   .builder-legend {
     margin-left: 10px;
-    width: calc(100% - 20px);
   }
+
+  @media (orientation: portrait) {
+    .gantt-content {
+      max-height: 90dvh;
+    }
+  };
 }
 
 /* Mobile Responsiveness */

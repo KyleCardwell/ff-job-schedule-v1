@@ -778,7 +778,8 @@ const GanttChart = () => {
 			.enter()
 			.append("g")
 			.attr("class", "job-group")
-			.attr("transform", (d) => `translate(0, ${d.position * rowHeight})`).attr("font-size", "12px");
+			.attr("transform", (d) => `translate(0, ${d.position * rowHeight})`)
+			.attr("font-size", "12px");
 
 		enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
 
