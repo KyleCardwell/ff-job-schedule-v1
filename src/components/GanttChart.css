@@ -1,6 +1,7 @@
 /* Gantt Chart Container */
 h1 {
   margin: 0;
+  font-size: 18px;
 }
 
 .gantt-container {
@@ -76,12 +77,12 @@ h1 {
 }
 
 .action-button {
-  padding: 10px 20px;
+  padding: 6px 12px;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   text-transform: uppercase;
   transition: opacity 0.3s ease;
@@ -505,7 +506,7 @@ select {
   .gantt-container {
     height: auto !important;
     overflow: visible !important;
-    transform: scale(2.88);
+    transform: scale(2.9);
     transform-origin: top left;
   }
 
