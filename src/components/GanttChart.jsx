@@ -24,6 +24,7 @@ import {
 	sortAndAdjustDates,
 	totalJobHours,
 } from "../utils/helpers";
+import { GridLoader } from "react-spinners";
 
 const GanttChart = () => {
 	const jobs = useSelector((state) => state.jobs.jobs);
@@ -45,7 +46,7 @@ const GanttChart = () => {
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
-	const [chartLoaded, setChartLoaded] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
 
 	const daysBeforeStart = 30;
 	const daysAfterEnd = 60;
@@ -277,12 +278,15 @@ const GanttChart = () => {
 		const diffDays = differenceInCalendarDays(mondayOfThisWeek, startDate);
 		const scrollPosition = diffDays * dayWidth;
 		const ganttRightBody = document.querySelector(".gantt-right-body");
-		if (ganttRightBody) {
-			ganttRightBody.scrollTo({
-				left: scrollPosition,
-				behavior: "smooth",
-			});
-		}
+
+		setTimeout(() => {
+			if (ganttRightBody) {
+				ganttRightBody.scrollTo({
+					left: scrollPosition,
+					behavior: "smooth",
+				});
+			}
+		}, 50);
 	};
 
 	const calculateJobWidth = (
@@ -939,7 +943,7 @@ const GanttChart = () => {
 				d3.select(this).select(".bar-text").text(d.name);
 				// .style("text-shadow", "none");
 			});
-		setChartLoaded(true);
+		setIsLoading(false);
 	}, [
 		flattenedJobs,
 		builders,
@@ -954,10 +958,8 @@ const GanttChart = () => {
 	]);
 
 	useEffect(() => {
-		if (chartLoaded) {
-			scrollToMonday(new Date());
-		}
-	}, [chartLoaded]);
+		scrollToMonday(new Date());
+	}, []);
 
 	useEffect(() => {
 		let scrollLeft = 0;
@@ -1050,6 +1052,14 @@ const GanttChart = () => {
 					<BuilderLegend />
 				</div>
 			</div>
+
+			{isLoading && (
+				<div className="loading-overlay">
+					<GridLoader color="maroon" size={15} />
+					<p>Loading Job Schedule...</p>
+				</div>
+			)}
+
 			<JobModal
 				key={isJobModalOpen ? "open" : "closed"}
 				isOpen={isJobModalOpen}
