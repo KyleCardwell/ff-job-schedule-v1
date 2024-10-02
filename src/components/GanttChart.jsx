@@ -45,6 +45,7 @@ const GanttChart = () => {
 	const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+	const [chartLoaded, setChartLoaded] = useState(false);
 
 	const daysBeforeStart = 30;
 	const daysAfterEnd = 60;
@@ -55,6 +56,20 @@ const GanttChart = () => {
 	const headerTextGap = 5;
 	const leftColumnWidth = 270;
 
+	// Calculate timeOffByBuilder independently
+	const timeOffByBuilder = useMemo(() => {
+		return builders.reduce((acc, builder) => {
+			acc[builder.id] = builder.timeOff.flatMap((period) =>
+				eachDayOfInterval({
+					start: normalizeDate(new Date(period.start)),
+					end: normalizeDate(new Date(period.end)),
+				}).map((day) => normalizeDate(day).toISOString())
+			);
+			return acc;
+		}, {});
+	}, [builders]);
+
+	// Calculate roomsData and flattenedJobs
 	const { roomsData, flattenedJobs } = useMemo(() => {
 		const roomsData = jobs
 			.flatMap((job, i) =>
@@ -91,49 +106,121 @@ const GanttChart = () => {
 				holidayChecker,
 				holidays,
 				undefined,
-				undefined
+				undefined,
+				timeOffByBuilder
 			);
 		});
 
 		const flattenedJobs = Object.values(jobsByBuilder).flat();
 
 		return { roomsData, flattenedJobs };
-	}, [holidayChecker, holidays, jobs]);
+	}, [jobs, holidayChecker, holidays, timeOffByBuilder]);
 
-	const convertDate = (dateInput) => {
-		const date = new Date(dateInput);
-		return isValid(date) ? date.toISOString() : null;
-	};
-
-	const safeParseDate = (dateInput) => {
-		const date = new Date(dateInput);
-		return isValid(date) ? date : null;
-	};
-
-	const { earliestStartDate, latestStartDate } = roomsData.reduce(
-		(acc, job) => {
-			const normalizedDate = convertDate(job.startDate);
-			const date = safeParseDate(normalizedDate);
-
-			if (date) {
+	// Calculate start and end dates
+	const { earliestStartDate, latestStartDate } = useMemo(() => {
+		return roomsData.reduce(
+			(acc, job) => {
+				const normalizedDate = normalizeDate(new Date(job.startDate));
 				return {
 					earliestStartDate: acc.earliestStartDate
-						? acc.earliestStartDate.getTime() < date.getTime()
+						? acc.earliestStartDate < normalizedDate
 							? acc.earliestStartDate
-							: date
-						: date,
+							: normalizedDate
+						: normalizedDate,
 					latestStartDate: acc.latestStartDate
-						? acc.latestStartDate.getTime() > date.getTime()
+						? acc.latestStartDate > normalizedDate
 							? acc.latestStartDate
-							: date
-						: date,
+							: normalizedDate
+						: normalizedDate,
 				};
-			}
+			},
+			{ earliestStartDate: null, latestStartDate: null }
+		);
+	}, [roomsData]);
 
-			return acc;
-		},
-		{ earliestStartDate: null, latestStartDate: null }
-	);
+	const startDate = useMemo(() => {
+		return addDays(earliestStartDate, -daysBeforeStart);
+	}, [earliestStartDate, daysBeforeStart]);
+
+	const numDays = useMemo(() => {
+		return (
+			differenceInCalendarDays(latestStartDate, earliestStartDate) +
+			daysBeforeStart +
+			daysAfterEnd
+		);
+	}, [earliestStartDate, latestStartDate, daysBeforeStart, daysAfterEnd]);
+
+	// Calculate timeOffData
+	const timeOffData = useMemo(() => {
+		const xPositions = new Map();
+		return builders.flatMap((builder) =>
+			builder.timeOff.flatMap((period) => {
+				const periodStart = normalizeDate(new Date(period.start));
+				const periodEnd = normalizeDate(new Date(period.end));
+				const chartEndDate = addDays(normalizeDate(startDate), numDays - 1);
+
+				return eachDayOfInterval({ start: periodStart, end: periodEnd })
+					.filter((day) =>
+						isWithinInterval(normalizeDate(day), {
+							start: normalizeDate(startDate),
+							end: chartEndDate,
+						})
+					)
+					.map((day) => {
+						let x =
+							differenceInCalendarDays(
+								normalizeDate(day),
+								normalizeDate(startDate)
+							) * dayWidth;
+						while (xPositions.has(x)) {
+							x += 6; //Width of the time off bar
+						}
+						xPositions.set(x, true);
+						return {
+							x,
+							color: builder.color,
+							builderId: builder.id,
+							date: normalizeDate(day),
+						};
+					});
+			})
+		);
+	}, [builders, startDate, numDays, dayWidth]);
+
+	// const convertDate = (dateInput) => {
+	// 	const date = new Date(dateInput);
+	// 	return isValid(date) ? date.toISOString() : null;
+	// };
+
+	// const safeParseDate = (dateInput) => {
+	// 	const date = new Date(dateInput);
+	// 	return isValid(date) ? date : null;
+	// };
+
+	// const { earliestStartDate, latestStartDate } = roomsData.reduce(
+	// 	(acc, job) => {
+	// 		const normalizedDate = convertDate(job.startDate);
+	// 		const date = safeParseDate(normalizedDate);
+
+	// 		if (date) {
+	// 			return {
+	// 				earliestStartDate: acc.earliestStartDate
+	// 					? acc.earliestStartDate.getTime() < date.getTime()
+	// 						? acc.earliestStartDate
+	// 						: date
+	// 					: date,
+	// 				latestStartDate: acc.latestStartDate
+	// 					? acc.latestStartDate.getTime() > date.getTime()
+	// 						? acc.latestStartDate
+	// 						: date
+	// 					: date,
+	// 			};
+	// 		}
+
+	// 		return acc;
+	// 	},
+	// 	{ earliestStartDate: null, latestStartDate: null }
+	// );
 
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
@@ -151,12 +238,12 @@ const GanttChart = () => {
 
 	const totalRooms = countAllRooms(jobs);
 
-	const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
+	// const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
 
-	const numDays =
-		differenceInCalendarDays(latestStartDate, earliestStartDate) +
-		daysBeforeStart +
-		daysAfterEnd;
+	// const numDays =
+	// 	differenceInCalendarDays(latestStartDate, earliestStartDate) +
+	// 	daysBeforeStart +
+	// 	daysAfterEnd;
 
 	// Function to handle auto-scrolling when dragging near edges
 	const handleAutoScroll = (event) => {
@@ -193,12 +280,17 @@ const GanttChart = () => {
 		if (ganttRightBody) {
 			ganttRightBody.scrollTo({
 				left: scrollPosition,
-				behavior: 'smooth'
+				behavior: "smooth",
 			});
 		}
 	};
 
-	const calculateJobWidth = (jobStartDate, jobDuration, dayWidth) => {
+	const calculateJobWidth = (
+		jobStartDate,
+		jobDuration,
+		dayWidth,
+		builderId
+	) => {
 		// Calculate the number of days (each workday is 8 hours)
 		const totalDays =
 			totalJobHours(
@@ -206,7 +298,9 @@ const GanttChart = () => {
 				jobDuration,
 				workdayHours,
 				holidayChecker,
-				holidays
+				holidays,
+				builderId,
+				timeOffByBuilder
 			) / workdayHours;
 
 		// Return the width based on the total number of days
@@ -222,37 +316,6 @@ const GanttChart = () => {
 		);
 		return diffInDays * dayWidth;
 	};
-
-	const timeOffData = useMemo(() => {
-		const xPositions = new Map();
-		return builders.flatMap((builder) =>
-			builder.timeOff.flatMap((period) => {
-				const periodStart = normalizeDate(period.start);
-				const periodEnd = normalizeDate(period.end);
-				const chartEndDate = addDays(normalizeDate(startDate), numDays - 1);
-
-				return eachDayOfInterval({ start: periodStart, end: periodEnd })
-					.filter((day) =>
-						isWithinInterval(normalizeDate(day), {
-							start: normalizeDate(startDate),
-							end: chartEndDate,
-						})
-					)
-					.map((day) => {
-						let x =
-							differenceInCalendarDays(
-								normalizeDate(day),
-								normalizeDate(startDate)
-							) * dayWidth;
-						while (xPositions.has(x)) {
-							x += 6;
-						}
-						xPositions.set(x, true);
-						return { x, color: builder.color };
-					});
-			})
-		);
-	}, [builders, startDate, numDays, dayWidth]);
 
 	useEffect(() => {
 		const hd = new Holidays();
@@ -456,7 +519,7 @@ const GanttChart = () => {
 				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
 			); // Alternate colors
 
-			const textGroups = leftColumnSvg
+		const textGroups = leftColumnSvg
 			.selectAll(".job-text-group")
 			.data(activeRoomsData)
 			.enter()
@@ -465,49 +528,52 @@ const GanttChart = () => {
 			.attr("transform", (d, i) => `translate(0, ${i * rowHeight})`)
 			.attr("font-size", "12px")
 			.attr("cursor", "pointer");
-	
-		textGroups.each(function(d) {
+
+		textGroups.each(function (d) {
 			const group = d3.select(this);
-			
-			const jobNumberText = group.append("text")
+
+			const jobNumberText = group
+				.append("text")
 				.attr("class", "job-number")
 				.attr("x", 10)
 				.attr("y", rowHeight / 2)
 				.text(d.jobNumber)
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
-	
-			const jobNameText = group.append("text")
+
+			const jobNameText = group
+				.append("text")
 				.attr("class", "job-name")
 				.attr("x", 50)
 				.attr("y", rowHeight / 2)
 				.text(d.jobName)
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
-	
-			const roomNameText = group.append("text")
+
+			const roomNameText = group
+				.append("text")
 				.attr("class", "room-name")
 				.attr("x", 130)
 				.attr("y", rowHeight / 2)
 				.text(d.name)
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
-	
+
 			// Add double-click event for job number and job name
 			jobNumberText.on("dblclick", (event) => {
 				event.stopPropagation();
-				const job = jobs.find(job => job.id === d.jobId);
+				const job = jobs.find((job) => job.id === d.jobId);
 				setSelectedJob(job);
 				setIsJobModalOpen(true);
 			});
-	
+
 			jobNameText.on("dblclick", (event) => {
 				event.stopPropagation();
-				const job = jobs.find(job => job.id === d.jobId);
+				const job = jobs.find((job) => job.id === d.jobId);
 				setSelectedJob(job);
 				setIsJobModalOpen(true);
 			});
-	
+
 			// Add double-click event for room name
 			roomNameText.on("dblclick", (event) => {
 				event.stopPropagation();
@@ -672,8 +738,14 @@ const GanttChart = () => {
 				let newStartDate = new Date(d.startDate);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 
-				// Snap to next workday if it's a weekend or holiday
-				newStartDate = getNextWorkday(newStartDate, holidayChecker, holidays);
+				// Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
+				newStartDate = getNextWorkday(
+					newStartDate,
+					holidayChecker,
+					holidays,
+					d.id,
+					timeOffByBuilder
+				);
 
 				// Update the dragged job
 				const updatedDraggedJob = { ...d, startDate: newStartDate };
@@ -693,7 +765,8 @@ const GanttChart = () => {
 					holidayChecker,
 					holidays,
 					d.id,
-					newStartDate
+					newStartDate,
+					timeOffByBuilder
 				);
 
 				// Transition all jobs in the builder group
@@ -716,7 +789,12 @@ const GanttChart = () => {
 								calculateXPosition(job.startDate, startDate, dayWidth)
 							)
 							.attr("width", (job) =>
-								calculateJobWidth(job.startDate, job.duration, dayWidth)
+								calculateJobWidth(
+									job.startDate,
+									job.duration,
+									dayWidth,
+									job.builderId
+								)
 							);
 
 						transition
@@ -823,7 +901,7 @@ const GanttChart = () => {
 			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
 			.attr("y", barMargin)
 			.attr("width", (d) =>
-				calculateJobWidth(d.startDate, d.duration, dayWidth)
+				calculateJobWidth(d.startDate, d.duration, dayWidth, d.builderId)
 			)
 			.attr("height", rowHeight - 2 * barMargin)
 			.attr(
@@ -833,13 +911,15 @@ const GanttChart = () => {
 
 		allGroups
 			.select("text")
+			.attr("class", "bar-text")
 			.attr(
 				"x",
 				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
 			)
 			.attr("y", rowHeight / 2)
-			.text((d) => d.duration)
-			.attr("fill", "#ffffff");
+			.text((d) => d.name)
+			.attr("fill", "#ffffff")
+			.style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.5)");
 
 		// Remove old elements
 		jobGroups.exit().remove();
@@ -853,10 +933,13 @@ const GanttChart = () => {
 				d3.select(this)
 					.select(".bar-text")
 					.text(`${d.name} - ${d.duration} hours`);
+				// .style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.6)");
 			})
 			.on("mouseout", function (event, d) {
-				d3.select(this).select(".bar-text").text(d.duration);
+				d3.select(this).select(".bar-text").text(d.name);
+				// .style("text-shadow", "none");
 			});
+		setChartLoaded(true);
 	}, [
 		flattenedJobs,
 		builders,
@@ -867,11 +950,14 @@ const GanttChart = () => {
 		holidayChecker,
 		workdayHours,
 		holidays,
+		timeOffByBuilder,
 	]);
 
 	useEffect(() => {
-		scrollToMonday(new Date());
-	}, []);
+		if (chartLoaded) {
+			scrollToMonday(new Date());
+		}
+	}, [chartLoaded]);
 
 	useEffect(() => {
 		let scrollLeft = 0;

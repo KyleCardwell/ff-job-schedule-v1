@@ -38,25 +38,38 @@ export const isHoliday = (date, holidayChecker, holidays) => {
 	return holiday && holidays.some((h) => h.name === holiday[0].name);
 };
 
-export const getNextWorkday = (date, holidayChecker, holidays) => {
+export const getNextWorkday = (
+	date,
+	holidayChecker,
+	holidays,
+	builderId,
+	timeOffByBuilder
+) => {
 	let nextDay = normalizeDate(date);
+
 	while (
 		isSaturday(nextDay) ||
 		isSunday(nextDay) ||
-		isHoliday(nextDay, holidayChecker, holidays)
+		isHoliday(nextDay, holidayChecker, holidays) ||
+		(builderId &&
+			timeOffByBuilder[builderId]?.some(
+				(timeOffDate) =>
+					normalizeDate(new Date(timeOffDate)).getTime() === nextDay.getTime()
+			))
 	) {
 		nextDay = addDays(nextDay, 1);
 	}
 	return nextDay;
 };
 
-// Updated sortAndAdjustDates function
 export const totalJobHours = (
 	startDate,
 	jobHours,
 	workdayHours,
 	holidayChecker,
-	holidays
+	holidays,
+	builderId,
+	timeOffByBuilder
 ) => {
 	let currentDate = normalizeDate(startDate);
 
@@ -69,7 +82,13 @@ export const totalJobHours = (
 		if (
 			isSaturday(currentDate) ||
 			isSunday(currentDate) ||
-			isHoliday(currentDate, holidayChecker, holidays)
+			isHoliday(currentDate, holidayChecker, holidays) ||
+			(builderId &&
+				timeOffByBuilder[builderId]?.some(
+					(timeOffDate) =>
+						normalizeDate(new Date(timeOffDate)).getTime() ===
+						currentDate.getTime()
+				))
 		) {
 			jobHours += 8;
 			totalDays += 1;
@@ -137,7 +156,8 @@ export const sortAndAdjustDates = (
 	holidayChecker,
 	holidays,
 	draggedJobId,
-	dropDate
+	dropDate,
+	timeOffByBuilder
 ) => {
 	let arrayToProcess = [...jobsArray];
 
@@ -191,14 +211,18 @@ export const sortAndAdjustDates = (
 						previousJob.duration,
 						workdayHours,
 						holidayChecker,
-						holidays
+						holidays,
+						current.builderId,
+						timeOffByBuilder
 					) / workdayHours
 				)
 			);
 			const newStartDate = getNextWorkday(
 				previousEndDate,
 				holidayChecker,
-				holidays
+				holidays,
+				current.builderId,
+				timeOffByBuilder
 			);
 			acc.push({ ...current, startDate: newStartDate });
 		}
