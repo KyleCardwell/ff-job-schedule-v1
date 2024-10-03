@@ -8,6 +8,7 @@ import {
 import { updateJobsAfterBuilderChanges } from "../redux/actions/ganttActions";
 import { format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
+import { addDays } from "date-fns";
 // import "./BuilderModal.css";
 
 const BuilderModal = ({ visible, onCancel }) => {
@@ -176,7 +177,10 @@ const BuilderModal = ({ visible, onCancel }) => {
 			<div className="modal-content builder-modal">
 				<h2>Manage Builders</h2>
 				<form>
-					<div className="builder-item-container" style={{border: "1px solid #383838"}}>
+					<div
+						className="builder-item-container"
+						style={{ border: "1px solid #383838" }}
+					>
 						<div className="builder-item">
 							<div className="builder-info">
 								<input
@@ -197,7 +201,11 @@ const BuilderModal = ({ visible, onCancel }) => {
 								/>
 							</div>
 
-							<button className="add-builder-button" type="button" onClick={handleAddBuilder}>
+							<button
+								className="add-builder-button"
+								type="button"
+								onClick={handleAddBuilder}
+							>
 								Add Builder
 							</button>
 						</div>

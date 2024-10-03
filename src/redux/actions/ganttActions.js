@@ -23,3 +23,13 @@ export const updateJobsAfterBuilderChanges = (builderId) => ({
 export const incrementJobNumber = () => ({
 	type: Actions.jobs.INCREMENT_JOB_NUMBER,
 });
+
+export const updateNextJobNumber = (nextNumber) => {
+	if (nextNumber > 999) {
+		nextNumber = 101;
+	}
+	return {
+		type: Actions.jobs.UPDATE_NEXT_JOB_NUMBER,
+		payload: nextNumber,
+	};
+};
