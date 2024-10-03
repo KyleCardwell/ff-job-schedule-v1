@@ -51,6 +51,11 @@ export const ganttReducer = (state = initialState, action) => {
 				nextJobNumber:
 					state.nextJobNumber === 999 ? 101 : state.nextJobNumber + 1,
 			};
+		case Actions.jobs.UPDATE_NEXT_JOB_NUMBER:
+			return {
+				...state,
+				nextJobNumber: action.payload,
+			};
 		case Actions.jobs.UPDATE_JOBS_AFTER_BUILDER_CHANGES:
 			return {
 				...state,

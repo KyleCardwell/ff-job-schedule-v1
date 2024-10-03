@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { useSelector, useDispatch } from "react-redux";
 import "./GanttChart.css";
-import { saveJobs, updateJobStartDate } from "../redux/actions/ganttActions";
+import { saveJobs } from "../redux/actions/ganttActions";
 import {
 	addDays,
 	differenceInCalendarDays,
-	isValid,
-	subDays,
 	startOfWeek,
 	isWithinInterval,
 	eachDayOfInterval,
@@ -71,7 +69,7 @@ const GanttChart = () => {
 	}, [builders]);
 
 	// Calculate roomsData and flattenedJobs
-	const { roomsData, flattenedJobs } = useMemo(() => {
+	const { roomsData, flattenedJobs, jobsByBuilder } = useMemo(() => {
 		const roomsData = jobs
 			.flatMap((job, i) =>
 				job.rooms
@@ -114,7 +112,7 @@ const GanttChart = () => {
 
 		const flattenedJobs = Object.values(jobsByBuilder).flat();
 
-		return { roomsData, flattenedJobs };
+		return { roomsData, flattenedJobs, jobsByBuilder };
 	}, [jobs, holidayChecker, holidays, timeOffByBuilder]);
 
 	// Calculate start and end dates
@@ -188,41 +186,6 @@ const GanttChart = () => {
 		);
 	}, [builders, startDate, numDays, dayWidth]);
 
-	// const convertDate = (dateInput) => {
-	// 	const date = new Date(dateInput);
-	// 	return isValid(date) ? date.toISOString() : null;
-	// };
-
-	// const safeParseDate = (dateInput) => {
-	// 	const date = new Date(dateInput);
-	// 	return isValid(date) ? date : null;
-	// };
-
-	// const { earliestStartDate, latestStartDate } = roomsData.reduce(
-	// 	(acc, job) => {
-	// 		const normalizedDate = convertDate(job.startDate);
-	// 		const date = safeParseDate(normalizedDate);
-
-	// 		if (date) {
-	// 			return {
-	// 				earliestStartDate: acc.earliestStartDate
-	// 					? acc.earliestStartDate.getTime() < date.getTime()
-	// 						? acc.earliestStartDate
-	// 						: date
-	// 					: date,
-	// 				latestStartDate: acc.latestStartDate
-	// 					? acc.latestStartDate.getTime() > date.getTime()
-	// 						? acc.latestStartDate
-	// 						: date
-	// 					: date,
-	// 			};
-	// 		}
-
-	// 		return acc;
-	// 	},
-	// 	{ earliestStartDate: null, latestStartDate: null }
-	// );
-
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
 		setIsJobModalOpen(true);
@@ -238,13 +201,6 @@ const GanttChart = () => {
 	};
 
 	const totalRooms = countAllRooms(jobs);
-
-	// const startDate = subDays(earliestStartDate, daysBeforeStart); // Initialize start date for the Gantt chart
-
-	// const numDays =
-	// 	differenceInCalendarDays(latestStartDate, earliestStartDate) +
-	// 	daysBeforeStart +
-	// 	daysAfterEnd;
 
 	// Function to handle auto-scrolling when dragging near edges
 	const handleAutoScroll = (event) => {
@@ -836,6 +792,7 @@ const GanttChart = () => {
 								position: updatedJob.position,
 								jobNumber: updatedJob.jobNumber,
 								active: updatedJob.active,
+								roomCreatedAt: updatedJob.roomCreatedAt,
 							});
 						});
 
@@ -845,10 +802,7 @@ const GanttChart = () => {
 							.map(([_, job]) => ({
 								...job,
 								rooms: job.rooms.sort((a, b) => {
-									// Parse jobNumber as integer for proper numeric sorting
-									const aNum = parseInt(a.jobNumber, 10);
-									const bNum = parseInt(b.jobNumber, 10);
-									return aNum - bNum;
+									return new Date(a.roomCreatedAt) - new Date(b.roomCreatedAt);
 								}),
 							}));
 
@@ -1069,6 +1023,11 @@ const GanttChart = () => {
 				}}
 				onSave={saveJob}
 				jobData={selectedJob}
+				jobsByBuilder={jobsByBuilder}
+				timeOffByBuilder={timeOffByBuilder}
+				holidayChecker={holidayChecker}
+				holidays={holidays}
+				workdayHours={workdayHours}
 			/>
 			<BuilderModal
 				visible={isBuilderModalOpen}
