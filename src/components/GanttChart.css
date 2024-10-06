@@ -184,12 +184,30 @@ h1 {
 /* Room Group Styles */
 .roomGroup {
 	display: grid;
-	grid-template-columns: 50px 1fr 70px 1fr 1fr 80px;
+	grid-template-columns: 50px 1.25fr 70px .75fr 1fr 1.25fr;
 	gap: 10px;
 	align-items: center;
 	padding: 10px;
 	margin-bottom: 5px;
 	border-radius: 5px;
+}
+
+/* .room-container {
+	display: flex;
+	flex-direction: column;
+} */
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-direction: row;
+}
+
+.work-period-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
 .roomGroup.header {
@@ -202,11 +220,16 @@ h1 {
 	padding: 5px;
 }
 
-.roomGroup.even {
+.roomContainer.even {
 	background-color: #ffffff;
 }
-.roomGroup.odd {
+.roomContainer.odd {
 	background-color: #f0f0f0;
+}
+
+.room-buttons {
+  display: flex;
+  justify-content: space-between;
 }
 
 .roomGroup.inactive {
@@ -245,6 +268,11 @@ h1 {
 	border-radius: 3px;
 	cursor: pointer;
 	/* max-width: 80px; */
+}
+
+.roomGroup span.room-name-input,
+.roomGroup span.job-number-input {
+  visibility: hidden;
 }
 
 /* Form Styles */
@@ -515,7 +543,7 @@ select {
 
 	.roomGroup input,
 	.roomGroup select,
-	.roomGroup button {
+	.roomGroup button, .room-buttons {
 		grid-column: span 3;
 	}
 
@@ -524,6 +552,12 @@ select {
 		/* grid-column: span 1; */
     max-width: 80px;
 	}
+
+  .roomGroup span.room-name-input,
+  .roomGroup span.job-number-input {
+    display: none;
+  }
+  
 }
 
 @media (max-width: 600px) {
