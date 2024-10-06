@@ -202,7 +202,7 @@ const BuilderModal = ({ visible, onCancel }) => {
 							</div>
 
 							<button
-								className="add-builder-button"
+								className="modal-action-button add add-builder-button"
 								type="button"
 								onClick={handleAddBuilder}
 							>
@@ -244,27 +244,39 @@ const BuilderModal = ({ visible, onCancel }) => {
 										/>
 									</div>
 									<div className="builder-actions">
-										{builder.id !== "1" && (
-											<button
-												type="button"
-												onClick={() => toggleTimeOffVisibility(builder.id)}
-												disabled={builder.markedForDeletion}
-											>
-												{timeOffVisibility[builder.id]
-													? "Hide Time Off"
-													: "Add/Edit Time Off"}
-											</button>
-										)}
-										{builder.id !== "1" && (
-											<button
-												type="button"
-												onClick={() => handleMarkForDeletion(builder.id)}
-											>
-												{builder.markedForDeletion
-													? "Undo Delete"
-													: "Delete Builder"}
-											</button>
-										)}
+										<button
+											className="modal-action-button add"
+											style={
+												index === 0
+													? {
+															visibility: "hidden",
+													  }
+													: {}
+											}
+											type="button"
+											onClick={() => toggleTimeOffVisibility(builder.id)}
+											disabled={builder.markedForDeletion}
+										>
+											{timeOffVisibility[builder.id]
+												? "Hide Time Off"
+												: "Add/Edit Time Off"}
+										</button>
+										<button
+											className="modal-action-button remove"
+											style={
+												index === 0
+													? {
+															visibility: "hidden",
+													  }
+													: {}
+											}
+											type="button"
+											onClick={() => handleMarkForDeletion(builder.id)}
+										>
+											{builder.markedForDeletion
+												? "Undo Delete"
+												: "Delete Builder"}
+										</button>
 									</div>
 								</div>
 
@@ -323,6 +335,7 @@ const BuilderModal = ({ visible, onCancel }) => {
 													/>
 												</div>
 												<button
+													className="modal-action-button remove"
 													type="button"
 													onClick={() =>
 														handleRemoveTimeOff(index, timeOffIndex)
@@ -337,7 +350,7 @@ const BuilderModal = ({ visible, onCancel }) => {
 											type="button"
 											onClick={() => handleAddTimeOff(index)}
 											disabled={builder.markedForDeletion}
-											className="add-time-off-button"
+											className="modal-action-button add add-time-off-button"
 										>
 											Add Time Off Period
 										</button>
@@ -348,8 +361,12 @@ const BuilderModal = ({ visible, onCancel }) => {
 					))}
 				</form>
 				<div className="modal-actions">
-					<button onClick={onCancel}>Cancel</button>
-					<button onClick={handleSave}>Save</button>
+					<button className="modal-action-button cancel" onClick={onCancel}>
+						Cancel
+					</button>
+					<button className="modal-action-button save" onClick={handleSave}>
+						Save
+					</button>
 				</div>
 			</div>
 		</div>

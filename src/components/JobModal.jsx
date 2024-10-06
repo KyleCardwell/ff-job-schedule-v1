@@ -575,12 +575,13 @@ const JobModal = ({
 													room.workPeriods[0]?.builderId
 												)
 											}
-											className="add-button"
+											className="modal-action-button add add-button"
 										>
 											+ Slot
 										</button>
 										{room.isNew ? (
 											<button
+												className="modal-action-button cancel"
 												onClick={() =>
 													handleCancelNewRoom(room.id, room.builderId)
 												}
@@ -588,7 +589,10 @@ const JobModal = ({
 												Cancel
 											</button>
 										) : (
-											<button onClick={() => handleRemoveRoom(room.id)}>
+											<button
+												className="modal-action-button remove"
+												onClick={() => handleRemoveRoom(room.id)}
+											>
 												- Room
 											</button>
 										)}
@@ -599,7 +603,7 @@ const JobModal = ({
 											onClick={() =>
 												handleRemoveWorkPeriod(room.id, workPeriod.id)
 											}
-											className="remove-button"
+											className="modal-action-button remove remove-button"
 										>
 											- Slot
 										</button>
@@ -609,7 +613,10 @@ const JobModal = ({
 						))}
 					</div>
 				))}
-				<button onClick={handleAddRoom} className="add-room-button">
+				<button
+					onClick={handleAddRoom}
+					className="modal-action-button add add-room-button"
+				>
 					Add Room
 				</button>
 
@@ -620,7 +627,10 @@ const JobModal = ({
 							<div key={room.id} className="roomGroup inactive">
 								<span>{room.jobNumber}</span>
 								<span>{room.name}</span>
-								<button onClick={() => handleRestoreRoom(room.id)}>
+								<button
+									className="modal-action-button save restore-room-button"
+									onClick={() => handleRestoreRoom(room.id)}
+								>
 									Restore
 								</button>
 							</div>
@@ -631,8 +641,12 @@ const JobModal = ({
 				{errors.rooms && <div className="error">{errors.rooms}</div>}
 
 				<div className="modal-actions">
-					<button onClick={onClose}>Cancel</button>
-					<button onClick={handleSave}>Save</button>
+					<button className="modal-action-button cancel" onClick={onClose}>
+						Cancel
+					</button>
+					<button className="modal-action-button save" onClick={handleSave}>
+						Save
+					</button>
 				</div>
 			</div>
 		</div>
