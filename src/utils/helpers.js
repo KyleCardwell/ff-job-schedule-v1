@@ -100,55 +100,6 @@ export const totalJobHours = (
 	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
-// Old sortAndAdjustDates function -
-// it works except for the case where the dragged job is dropped onto
-// the startDate that another job already has
-// export const sortAndAdjustDates = (
-// 	jobsArray,
-// 	workdayHours,
-// 	holidayChecker,
-// 	holidays
-// ) => {
-// 	// First, sort the array by date and newness
-// 	const sortedArray = jobsArray.sort((a, b) => {
-// 		if (a.isNew && !b.isNew) return -1;
-// 		if (b.isNew && !a.isNew) return 1;
-
-// 		const dateA = new Date(a.startDate);
-// 		const dateB = new Date(b.startDate);
-
-// 		return dateA - dateB;
-// 	});
-
-// 	// Then, adjust the dates
-// 	return sortedArray.reduce((acc, current, index) => {
-// 		if (index === 0) {
-// 			// Keep the first object's date as is
-// 			acc.push({
-// 				...current,
-// 				startDate: normalizeDate(current.startDate),
-// 				isNew: false,
-// 			});
-// 		} else {
-// 			const previousJob = acc[index - 1];
-// 			const previousEndDate = addDays(
-// 				previousJob.startDate,
-// 				Math.ceil(
-// 					totalJobHours(
-// 						previousJob.startDate,
-// 						previousJob.duration,
-// 						workdayHours,
-// 						holidayChecker,
-// 						holidays
-// 					) / workdayHours
-// 				)
-// 			);
-// 			const newStartDate = getNextWorkday(previousEndDate, holidayChecker, holidays);
-// 			acc.push({ ...current, startDate: newStartDate, isNew: false });
-// 		}
-// 		return acc;
-// 	}, []);
-// };
 
 export const sortAndAdjustDates = (
 	jobsArray,
@@ -193,38 +144,46 @@ export const sortAndAdjustDates = (
 		return dateA - dateB;
 	});
 
-	// Adjust the dates
+	// Adjust the dates and calculate endDates
 	return arrayToProcess.reduce((acc, current, index) => {
 		if (index === 0) {
 			// Keep the first object's date as is
-			acc.push({
-				...current,
-				startDate: normalizeDate(current.startDate),
-			});
-		} else {
-			const previousJob = acc[index - 1];
-			const previousEndDate = addDays(
-				previousJob.startDate,
-				Math.ceil(
-					totalJobHours(
-						previousJob.startDate,
-						previousJob.duration,
-						workdayHours,
-						holidayChecker,
-						holidays,
-						current.builderId,
-						timeOffByBuilder
-					) / workdayHours
-				)
-			);
-			const newStartDate = getNextWorkday(
-				previousEndDate,
+			const startDate = normalizeDate(current.startDate);
+			const jobHours = totalJobHours(
+				startDate,
+				current.duration,
+				workdayHours,
 				holidayChecker,
 				holidays,
 				current.builderId,
 				timeOffByBuilder
 			);
-			acc.push({ ...current, startDate: newStartDate });
+			const endDate = addDays(startDate, Math.ceil(jobHours / workdayHours));
+			acc.push({
+				...current,
+				startDate,
+				endDate,
+			});
+		} else {
+			const previousJob = acc[index - 1];
+			const newStartDate = getNextWorkday(
+				previousJob.endDate,
+				holidayChecker,
+				holidays,
+				current.builderId,
+				timeOffByBuilder
+			);
+			const jobHours = totalJobHours(
+				newStartDate,
+				current.duration,
+				workdayHours,
+				holidayChecker,
+				holidays,
+				current.builderId,
+				timeOffByBuilder
+			);
+			const endDate = addDays(newStartDate, Math.ceil(jobHours / workdayHours));
+			acc.push({ ...current, startDate: newStartDate, endDate });
 		}
 		return acc;
 	}, []);
