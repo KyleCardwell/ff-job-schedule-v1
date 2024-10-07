@@ -70,21 +70,84 @@ const GanttChart = () => {
 
 	// Calculate roomsData and flattenedJobs
 	const { roomsData, flattenedJobs, jobsByBuilder } = useMemo(() => {
+		let positionCounter = 0;
 		const roomsData = jobs
 			.flatMap((job, i) =>
 				job.rooms
 					.filter((room) => room.active)
-					.map((room) => ({
-						...room,
-						jobsIndex: i,
-						jobId: job.id,
-						jobName: job.name,
-					}))
+					.map((room) => {
+						const roomPosition = positionCounter++;
+
+						// Sort workPeriods by startDate
+						const sortedWorkPeriods = [...room.workPeriods].sort(
+							(a, b) => new Date(a.startDate) - new Date(b.startDate)
+						);
+
+						// Calculate end dates and intervals for all work periods
+						const workPeriodsWithIntervals = sortedWorkPeriods.map((wp) => {
+							const startDate = new Date(wp.startDate);
+							const endDate = addDays(
+								startDate,
+								Math.ceil(
+									totalJobHours(
+										wp.startDate,
+										wp.duration,
+										workdayHours,
+										holidayChecker,
+										holidays,
+										wp.builderId,
+										timeOffByBuilder
+									) / workdayHours - 1
+								)
+							);
+							return {
+								...wp,
+								interval: { start: startDate, end: endDate },
+							};
+						});
+
+						// Process workPeriods to handle overlaps
+						const processedWorkPeriods = workPeriodsWithIntervals.map(
+							(wp, index) => {
+								// Find overlapping work periods
+								const overlaps = workPeriodsWithIntervals.filter(
+									(otherWp, otherIndex) =>
+										otherIndex !== index && // Check all other work periods
+										(isWithinInterval(wp.interval.start, otherWp.interval) ||
+											isWithinInterval(wp.interval.end, otherWp.interval) ||
+											isWithinInterval(otherWp.interval.start, wp.interval))
+								);
+
+								const overlapCount = overlaps.length + 1;
+								const heightFactor =
+									overlapCount > 1 ? 1 / Math.min(overlapCount, 3) : 1;
+								const yOffsetFactor =
+									overlaps.filter((o) => o.interval.start < wp.interval.start)
+										.length / Math.min(overlapCount, 3);
+
+								return {
+									...wp,
+									roomId: room.id,
+									name: room.name,
+									jobsIndex: i,
+									jobId: job.id,
+									jobName: job.name,
+									jobNumber: room.jobNumber,
+									position: roomPosition,
+									active: room.active,
+									addRow: index === 0,
+									roomCreatedAt: room.roomCreatedAt,
+									heightFactor,
+									yOffsetFactor,
+									showText: index === workPeriodsWithIntervals.length - 1 || heightFactor === 1, // Show text for the earliest workPeriod
+								};
+							}
+						);
+
+						return processedWorkPeriods;
+					})
 			)
-			.map((room, index) => ({
-				...room,
-				position: index,
-			}));
+			.flat();
 
 		const jobsByBuilder = roomsData.reduce((acc, job) => {
 			if (!acc[job.builderId]) {
@@ -450,7 +513,9 @@ const GanttChart = () => {
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
 
-		const activeRoomsData = roomsData.filter((room) => room.active);
+		const activeRoomsData = roomsData.filter(
+			(room) => room.active && room.addRow
+		);
 
 		leftColumnSvg.attr("width", leftColumnWidth).attr("height", height);
 
@@ -661,6 +726,8 @@ const GanttChart = () => {
 	useEffect(() => {
 		if (!chartRef.current) return;
 
+		console.log("roomsData", roomsData);
+
 		const chartSvg = d3.select(chartRef.current);
 
 		// Define drag behavior
@@ -729,6 +796,8 @@ const GanttChart = () => {
 					timeOffByBuilder
 				);
 
+				console.log("sortedBuilderJobs", sortedBuilderJobs);
+
 				// Transition all jobs in the builder group
 				const jobGroups = chartSvg
 					.selectAll(".job-group")
@@ -771,28 +840,39 @@ const GanttChart = () => {
 						const jobMap = new Map();
 
 						// Update jobs and populate jobMap
-						flattenedJobs.forEach((job) => {
-							const updatedJob =
-								sortedBuilderJobs.find((sj) => sj.id === job.id) || job;
+						flattenedJobs.forEach((workPeriod) => {
+							const updatedWorkPeriod =
+								sortedBuilderJobs.find((sj) => sj.id === workPeriod.id) ||
+								workPeriod;
 
-							if (!jobMap.has(updatedJob.jobsIndex)) {
-								jobMap.set(updatedJob.jobsIndex, {
-									id: updatedJob.jobId,
-									name: updatedJob.jobName,
+							if (!jobMap.has(updatedWorkPeriod.jobsIndex)) {
+								jobMap.set(updatedWorkPeriod.jobsIndex, {
+									id: updatedWorkPeriod.jobId,
+									name: updatedWorkPeriod.jobName,
 									rooms: [],
 								});
 							}
 
-							jobMap.get(updatedJob.jobsIndex).rooms.push({
-								id: updatedJob.id,
-								builderId: updatedJob.builderId,
-								name: updatedJob.name,
-								startDate: normalizeDate(updatedJob.startDate),
-								duration: updatedJob.duration,
-								position: updatedJob.position,
-								jobNumber: updatedJob.jobNumber,
-								active: updatedJob.active,
-								roomCreatedAt: updatedJob.roomCreatedAt,
+							let room = jobMap
+								.get(updatedWorkPeriod.jobsIndex)
+								.rooms.find((r) => r.id === updatedWorkPeriod.roomId);
+							if (!room) {
+								room = {
+									id: updatedWorkPeriod.roomId,
+									name: updatedWorkPeriod.name,
+									jobNumber: updatedWorkPeriod.jobNumber,
+									active: updatedWorkPeriod.active,
+									roomCreatedAt: updatedWorkPeriod.roomCreatedAt,
+									workPeriods: [],
+								};
+								jobMap.get(updatedWorkPeriod.jobsIndex).rooms.push(room);
+							}
+
+							room.workPeriods.push({
+								id: updatedWorkPeriod.id,
+								builderId: updatedWorkPeriod.builderId,
+								startDate: normalizeDate(updatedWorkPeriod.startDate),
+								duration: updatedWorkPeriod.duration,
 							});
 						});
 
@@ -857,11 +937,14 @@ const GanttChart = () => {
 		allGroups
 			.select("rect")
 			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
-			.attr("y", barMargin)
+			.attr(
+				"y",
+				(d) => barMargin + (rowHeight - 2 * barMargin) * d.yOffsetFactor
+			)
 			.attr("width", (d) =>
 				calculateJobWidth(d.startDate, d.duration, dayWidth, d.builderId)
 			)
-			.attr("height", rowHeight - 2 * barMargin)
+			.attr("height", (d) => (rowHeight - 2 * barMargin) * d.heightFactor)
 			.attr(
 				"fill",
 				(d) => builders.find((builder) => builder.id === d.builderId).color
@@ -875,9 +958,10 @@ const GanttChart = () => {
 				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
 			)
 			.attr("y", rowHeight / 2)
-			.text((d) => d.name)
+			.text((d) => (d.showText ? `${d.name}` : ""))
 			.attr("fill", "#ffffff")
-			.style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.5)");
+			.style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.5)")
+			.style("display", (d) => (d.showText ? "block" : "none"));
 
 		// Remove old elements
 		jobGroups.exit().remove();

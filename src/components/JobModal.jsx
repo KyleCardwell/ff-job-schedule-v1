@@ -49,7 +49,21 @@ const JobModal = ({
 		if (isOpen) {
 			if (jobData) {
 				setJobName(jobData.name || "");
-				setLocalRooms(jobData.rooms || []);
+				setLocalRooms(
+					() =>
+						jobData.rooms.map((room) => ({
+							...room,
+							workPeriods: room.workPeriods.map((wp) => ({
+								...wp,
+								roomId: room.id,
+								name: room.name,
+								jobId: jobData.id,
+								jobName: jobData.name,
+								jobNumber: room.jobNumber,
+								roomCreatedAt: room.roomCreatedAt,
+							})),
+						})) || []
+				);
 			} else {
 				// Reset state for a new job
 				setJobName("");
@@ -93,128 +107,6 @@ const JobModal = ({
 		);
 	};
 
-	const handleBuilderChange = (roomId, newBuilderId) => {
-		setLocalRooms((prevRooms) => {
-			const updatedRooms = prevRooms.map((room) => {
-				if (room.id === roomId) {
-					const newStartDate = normalizeDate(
-						calculateNextAvailableDate(newBuilderId)
-					);
-
-					// Remove room from previous builder's jobs
-					if (room.builderId !== "1") {
-						setLocalJobsByBuilder((prev) => ({
-							...prev,
-							[room.builderId]: prev[room.builderId].filter(
-								(job) => job.id !== room.id
-							),
-						}));
-					}
-
-					// Add room to new builder's jobs
-					setLocalJobsByBuilder((prev) => ({
-						...prev,
-						[newBuilderId]: [
-							...(prev[newBuilderId] || []),
-							{
-								...room,
-								startDate: normalizeDate(newStartDate),
-								builderId: newBuilderId,
-							},
-						],
-					}));
-
-					return {
-						...room,
-						builderId: newBuilderId,
-						startDate: normalizeDate(newStartDate),
-					};
-				}
-				return room;
-			});
-			return updatedRooms;
-		});
-	};
-
-	const handleRoomChange = (roomId, changes) => {
-		setLocalRooms((prevRooms) => {
-			const updatedRooms = prevRooms.map((room) => {
-				if (room.id === roomId) {
-					let updatedRoom = { ...room, ...changes };
-
-					if ("startDate" in changes) {
-						updatedRoom.startDate = normalizeDate(changes.startDate);
-					}
-
-					if ("duration" in changes) {
-						// Convert empty string to undefined
-						updatedRoom.duration =
-							changes.duration === "" ? undefined : Number(changes.duration);
-					}
-
-					if ("jobNumber" in changes) {
-						updatedRoom.jobNumber = changes.jobNumber;
-					}
-
-					// Update the job in localJobsByBuilder
-					setLocalJobsByBuilder((prev) => {
-						const builderJobs = [...(prev[room.builderId] || [])];
-						const jobIndex = builderJobs.findIndex((job) => job.id === roomId);
-
-						if (jobIndex !== -1) {
-							builderJobs[jobIndex] = {
-								...builderJobs[jobIndex],
-								...updatedRoom,
-							};
-
-							// If startDate changed, re-sort the builder's jobs
-							if ("startDate" in changes) {
-								builderJobs.sort(
-									(a, b) => new Date(a.startDate) - new Date(b.startDate)
-								);
-							}
-						}
-
-						return {
-							...prev,
-							[room.builderId]: builderJobs,
-						};
-					});
-
-					// Validate duration
-					if ("duration" in changes) {
-						if (
-							changes.duration !== "" &&
-							changes.duration !== undefined &&
-							!isNaN(changes.duration)
-						) {
-							setErrors((prev) => {
-								const newErrors = { ...prev };
-								delete newErrors[`${roomId}Duration`];
-								return newErrors;
-							});
-						}
-					}
-
-					// Validate room name
-					if ("name" in changes) {
-						if (changes.name.trim() !== "") {
-							setErrors((prev) => {
-								const newErrors = { ...prev };
-								delete newErrors[`${roomId}Name`];
-								return newErrors;
-							});
-						}
-					}
-
-					return updatedRoom;
-				}
-				return room;
-			});
-			return updatedRooms;
-		});
-	};
-
 	const handleAddRoom = () => {
 		const defaultBuilderId = "1";
 		const newStartDate = normalizeDate(
@@ -231,6 +123,14 @@ const JobModal = ({
 			active: true,
 			isNew: true,
 			roomCreatedAt: new Date().toISOString(), // Add this line
+			workPeriods: [
+				{
+					id: uuidv4(),
+					builderId: defaultBuilderId,
+					startDate: normalizeDate(newStartDate),
+					duration: 8,
+				},
+			],
 		};
 
 		setLocalRooms((prevRooms) => [...prevRooms, newRoom]);
@@ -256,10 +156,199 @@ const JobModal = ({
 		);
 	};
 
-	const handleCancelNewRoom = (roomId) => {
+	const handleCancelNewRoom = (roomId, builderId) => {
 		setLocalRooms((prevRooms) =>
 			prevRooms.filter((room) => room.id !== roomId)
 		);
+
+		// Remove the room from localJobsByBuilder
+		setLocalJobsByBuilder((prev) => {
+			const updatedBuilderJobs = prev[builderId].filter(
+				(room) => room.id !== roomId
+			);
+			return {
+				...prev,
+				[builderId]: updatedBuilderJobs,
+			};
+		});
+	};
+
+	const handleAddWorkPeriod = (roomId, prevBuilderId = "1") => {
+		setLocalRooms((prevRooms) =>
+			prevRooms.map((room) => {
+				if (room.id === roomId) {
+					const newStartDate = normalizeDate(
+						calculateNextAvailableDate(prevBuilderId)
+					);
+					const newWorkPeriod = {
+						id: uuidv4(),
+						builderId: prevBuilderId,
+						startDate: normalizeDate(newStartDate),
+						duration: 8,
+					};
+					const updatedWorkPeriods = [
+						...(room.workPeriods || []),
+						newWorkPeriod,
+					];
+
+					// Update localJobsByBuilder
+					setLocalJobsByBuilder((prev) => {
+						const updatedJobs = prev[room.builderId]?.map((job) =>
+							job.id === roomId
+								? { ...job, workPeriods: updatedWorkPeriods }
+								: job
+						);
+
+						return {
+							...prev,
+							[room.builderId]: updatedJobs,
+						};
+					});
+
+					return {
+						...room,
+						workPeriods: updatedWorkPeriods,
+					};
+				}
+				return room;
+			})
+		);
+	};
+
+	const handleRemoveWorkPeriod = (roomId, workPeriodId) => {
+		setLocalRooms((prevRooms) =>
+			prevRooms.map((room) => {
+				if (room.id === roomId) {
+					const updatedWorkPeriods = room.workPeriods.filter(
+						(wp) => wp.id !== workPeriodId
+					);
+					// Update localJobsByBuilder
+					setLocalJobsByBuilder((prev) => {
+						const updatedJobs = Array.isArray(prev[room.builderId])
+							? prev[room.builderId].map((job) =>
+									job.id === roomId
+										? { ...job, workPeriods: updatedWorkPeriods }
+										: job
+							  )
+							: []; // Default to an empty array if prev[room.builderId] is not an array
+
+						return {
+							...prev,
+							[room.builderId]: updatedJobs,
+						};
+					});
+
+					return {
+						...room,
+						workPeriods: updatedWorkPeriods,
+					};
+				}
+				return room;
+			})
+		);
+	};
+
+	const handleWorkPeriodChange = (roomId, workPeriodId, changes) => {
+		setLocalRooms((prevRooms) => {
+			return prevRooms.map((room) => {
+				if (room.id === roomId) {
+					const updatedWorkPeriods = room.workPeriods.map((wp) => {
+						if (wp.id === workPeriodId) {
+							const updatedWp = { ...wp, ...changes };
+
+							// If builderId is changed, update the startDate
+							if (changes.builderId && changes.builderId !== wp.builderId) {
+								const newStartDate = normalizeDate(
+									calculateNextAvailableDate(changes.builderId)
+								);
+								updatedWp.startDate = normalizeDate(newStartDate);
+							}
+
+							// Handle startDate change
+							if (changes.startDate) {
+								updatedWp.startDate = normalizeDate(changes.startDate);
+							}
+
+							// Handle duration change
+							if (changes.duration) {
+								updatedWp.duration = parseFloat(changes.duration);
+							}
+
+							return updatedWp;
+						}
+						return wp;
+					});
+
+					// If jobNumber, name, or startDate is changed for the first work period, update all work periods in the room
+					if (
+						(changes.jobNumber !== undefined ||
+							changes.name !== undefined ||
+							changes.startDate) &&
+						workPeriodId === room.workPeriods[0].id
+					) {
+						updatedWorkPeriods.forEach((wp) => {
+							wp.jobNumber =
+								changes.jobNumber !== undefined
+									? changes.jobNumber
+									: wp.jobNumber;
+							wp.name = changes.name !== undefined ? changes.name : wp.name;
+							// ... other logic ...
+						});
+
+						// Also update the room's jobNumber and name
+						room.jobNumber =
+							changes.jobNumber !== undefined
+								? changes.jobNumber
+								: room.jobNumber;
+						room.name = changes.name !== undefined ? changes.name : room.name;
+					}
+
+					return { ...room, workPeriods: updatedWorkPeriods };
+				}
+				return room;
+			});
+		});
+
+		// Clear errors for the changed fields
+		setErrors((prevErrors) => {
+			const updatedErrors = { ...prevErrors };
+			Object.keys(changes).forEach((key) => {
+				delete updatedErrors[`${roomId}-${workPeriodId}-${key}`];
+			});
+			return updatedErrors;
+		});
+
+		// If builderId is changed, update localJobsByBuilder
+		if (changes.builderId) {
+			setLocalJobsByBuilder((prev) => {
+				const workPeriod = localRooms
+					.flatMap((r) => r.workPeriods)
+					.find((wp) => wp.id === workPeriodId);
+				if (!workPeriod) return prev;
+
+				const oldBuilderId = workPeriod.builderId;
+				const newBuilderId = changes.builderId;
+
+				const newStartDate = normalizeDate(
+					calculateNextAvailableDate(newBuilderId)
+				);
+
+				const updatedWorkPeriod = {
+					...workPeriod,
+					builderId: newBuilderId,
+					startDate: normalizeDate(newStartDate),
+					...changes,
+				};
+
+				return {
+					...prev,
+					[oldBuilderId]: prev[oldBuilderId].filter(
+						(wp) => wp.id !== workPeriodId
+					),
+					[newBuilderId]: [...(prev[newBuilderId] || []), updatedWorkPeriod],
+				};
+			});
+		}
 	};
 
 	const handleRestoreRoom = (roomId) => {
@@ -271,7 +360,6 @@ const JobModal = ({
 	};
 
 	const handleSave = () => {
-		// Initialize a new errors object
 		let newErrors = {};
 
 		// Check for blank job name
@@ -279,29 +367,48 @@ const JobModal = ({
 			newErrors.jobName = "Job name is required";
 		}
 
-		// Check for all potential errors in rooms
+		// Check for all potential errors in rooms and work periods
 		localRooms.forEach((room) => {
-			if (room.name.trim() === "") {
-				newErrors[`${room.id}Name`] = "Room name is required";
-			}
-			if (
-				room.duration === "" ||
-				room.duration === undefined ||
-				isNaN(room.duration)
-			) {
-				newErrors[`${room.id}Duration`] = "Valid duration is required";
-			} else if (Number(room.duration) <= 0) {
-				newErrors[`${room.id}Duration`] = "Duration must be greater than 0";
-			}
-			if (!room.builderId) {
-				newErrors[`${room.id}BuilderId`] = "Builder is required";
-			}
-			if (!room.startDate) {
-				newErrors[`${room.id}StartDate`] = "Start date is required";
-			}
-			if (!room.jobNumber || room.jobNumber.trim() === "") {
-				newErrors[`${room.id}JobNumber`] = "Job number is required";
-			}
+			room.workPeriods.forEach((workPeriod, index) => {
+				if (index === 0) {
+					// Validate job number (only for the first work period in each room)
+					if (!workPeriod.jobNumber || workPeriod.jobNumber.trim() === "") {
+						newErrors[`${room.id}-${workPeriod.id}-jobNumber`] =
+							"Job number is required";
+					}
+
+					// Validate room name (only for the first work period in each room)
+					if (!workPeriod.name || workPeriod.name.trim() === "") {
+						newErrors[`${room.id}-${workPeriod.id}-name`] =
+							"Room name is required";
+					}
+				}
+
+				// Validate duration for all work periods
+				if (
+					workPeriod.duration === "" ||
+					workPeriod.duration === undefined ||
+					isNaN(workPeriod.duration)
+				) {
+					newErrors[`${room.id}-${workPeriod.id}-duration`] =
+						"Valid duration is required";
+				} else if (Number(workPeriod.duration) <= 0) {
+					newErrors[`${room.id}-${workPeriod.id}-duration`] =
+						"Duration must be greater than 0";
+				}
+
+				// Validate builderId for all work periods
+				if (!workPeriod.builderId) {
+					newErrors[`${room.id}-${workPeriod.id}-builderId`] =
+						"Builder is required";
+				}
+
+				// Validate startDate for all work periods
+				if (!workPeriod.startDate) {
+					newErrors[`${room.id}-${workPeriod.id}-startDate`] =
+						"Start date is required";
+				}
+			});
 		});
 
 		// If there are any errors, set them and don't save
@@ -316,8 +423,12 @@ const JobModal = ({
 			name: jobName,
 			rooms: localRooms.map((room) => ({
 				...room,
-				duration: Number(room.duration), // Ensure duration is a number
-				startDate: normalizeDate(room.startDate), // Ensure date is normalized
+				workPeriods: room.workPeriods.map((wp) => ({
+					...wp,
+					duration: Number(wp.duration), // Ensure duration is a number
+					startDate: normalizeDate(wp.startDate), // Ensure date is normalized
+				})),
+				isNew: undefined,
 			})),
 		};
 
@@ -350,93 +461,162 @@ const JobModal = ({
 
 				<h3>Active Rooms</h3>
 				<div className="roomGroup header">
-					<span>Job #</span>
+					<span>Job</span>
 					<span>Room Name</span>
 					<span>Hours</span>
 					<span>Builder</span>
 					<span>Start Date</span>
 					<span>Actions</span>
 				</div>
+
 				{activeRooms.map((room, index) => (
 					<div
 						key={room.id}
-						className={`roomGroup ${index % 2 === 0 ? "even" : "odd"}`}
+						className={`roomContainer ${index % 2 === 0 ? "even" : "odd"}`}
 					>
-						<input
-							type="text"
-							value={room.jobNumber || ""}
-							onChange={(e) =>
-								handleRoomChange(room.id, { jobNumber: e.target.value })
-							}
-							placeholder="Job Number"
-							className={errors[`${room.id}JobNumber`] ? "error" : ""}
-						/>
-						{errors[`${room.id}JobNumber`] && (
-							<span className="error-message">
-								{errors[`${room.id}JobNumber`]}
-							</span>
-						)}
-						<input
-							type="text"
-							value={room.name}
-							onChange={(e) =>
-								handleRoomChange(room.id, { name: e.target.value })
-							}
-							placeholder="Room Name"
-							ref={index === activeRooms.length - 1 ? newRoomNameRef : null}
-							className={errors[`${room.id}Name`] ? "error" : ""}
-						/>
-						<input
-							type="number"
-							step="0.01"
-							min="0.01"
-							value={room.duration === undefined ? "" : room.duration}
-							onChange={(e) =>
-								handleRoomChange(room.id, {
-									duration: e.target.value,
-								})
-							}
-							onBlur={(e) =>
-								handleRoomChange(room.id, {
-									duration: parseFloat(parseFloat(e.target.value).toFixed(2)),
-								})
-							}
-							placeholder="Hours"
-							className={`duration ${
-								errors[`${room.id}Duration`] ? "error" : ""
-							}`}
-						/>
-						<select
-							value={room.builderId}
-							onChange={(e) => {
-								handleBuilderChange(room.id, e.target.value);
-							}}
-							className={errors[`${room.id}BuilderId`] ? "error" : ""}
-						>
-							{builders.map((builder) => (
-								<option key={builder.id} value={builder.id}>
-									{builder.name}
-								</option>
-							))}
-						</select>
-						<input
-							type="date"
-							value={formatDateForInput(room.startDate)}
-							onChange={(e) =>
-								handleRoomChange(room.id, { startDate: e.target.value })
-							}
-							className={errors[`${room.id}StartDate`] ? "error" : ""}
-						/>
-						{room.isNew ? (
-							<button onClick={() => handleCancelNewRoom(room.id)}>
-								Cancel
-							</button>
-						) : (
-							<button onClick={() => handleRemoveRoom(room.id)}>Remove</button>
-						)}
+						{room.workPeriods.map((workPeriod, index) => (
+							<div key={workPeriod.id} className="roomGroup">
+								{index === 0 ? (
+									<input
+										type="text"
+										value={room.jobNumber || ""}
+										onChange={(e) =>
+											handleWorkPeriodChange(room.id, workPeriod.id, {
+												jobNumber: e.target.value,
+											})
+										}
+										placeholder="Job Number"
+										className={`job-number-input ${
+											errors[`${room.id}-${workPeriod.id}-jobNumber`]
+												? "error"
+												: ""
+										}`}
+										// ref={jobNumberInputRefs[workPeriod.id]}
+									/>
+								) : (
+									<span className="job-number-input">
+										{index === 0 ? room.jobNumber : `${room.jobNumber}`}
+									</span>
+								)}
+								{index === 0 ? (
+									<input
+										type="text"
+										value={room.name}
+										onChange={(e) =>
+											handleWorkPeriodChange(room.id, workPeriod.id, {
+												name: e.target.value,
+											})
+										}
+										placeholder="Room Name"
+										className={`room-name-input ${
+											errors[`${room.id}-${workPeriod.id}-name`] ? "error" : ""
+										}`}
+									/>
+								) : (
+									<span className="room-name-input">{room.name}</span>
+								)}
+								<input
+									type="number"
+									step="0.01"
+									min="0.01"
+									value={workPeriod.duration || ""}
+									onChange={(e) => {
+										handleWorkPeriodChange(room.id, workPeriod.id, {
+											duration: parseFloat(e.target.value).toFixed(2),
+										});
+									}}
+									placeholder="Hours"
+									className={`duration-input ${
+										errors[`${room.id}-${workPeriod.id}-duration`]
+											? "error"
+											: ""
+									}`}
+								/>
+								<select
+									value={workPeriod.builderId}
+									onChange={(e) => {
+										handleWorkPeriodChange(room.id, workPeriod.id, {
+											builderId: e.target.value,
+										});
+									}}
+									className={`builder-select ${
+										errors[`${room.id}-${workPeriod.id}-builderId`]
+											? "error"
+											: ""
+									}`}
+								>
+									{builders.map((builder) => (
+										<option key={builder.id} value={builder.id}>
+											{builder.name}
+										</option>
+									))}
+								</select>
+								<input
+									type="date"
+									value={formatDateForInput(workPeriod.startDate)}
+									onChange={(e) =>
+										handleWorkPeriodChange(room.id, workPeriod.id, {
+											startDate: e.target.value,
+										})
+									}
+									className={`date-input ${
+										errors[`${room.id}-${workPeriod.id}-startDate`]
+											? "error"
+											: ""
+									}`}
+								/>
+
+								{index === 0 ? (
+									<div className="room-buttons">
+										<button
+											onClick={() =>
+												handleAddWorkPeriod(
+													room.id,
+													room.workPeriods[0]?.builderId
+												)
+											}
+											className="modal-action-button add add-button"
+										>
+											+ Slot
+										</button>
+										{room.isNew ? (
+											<button
+												className="modal-action-button cancel"
+												onClick={() =>
+													handleCancelNewRoom(room.id, room.builderId)
+												}
+											>
+												Cancel
+											</button>
+										) : (
+											<button
+												className="modal-action-button remove"
+												onClick={() => handleRemoveRoom(room.id)}
+											>
+												- Room
+											</button>
+										)}
+									</div>
+								) : (
+									<div className="room-buttons">
+										<button
+											onClick={() =>
+												handleRemoveWorkPeriod(room.id, workPeriod.id)
+											}
+											className="modal-action-button remove remove-button"
+										>
+											- Slot
+										</button>
+									</div>
+								)}
+							</div>
+						))}
 					</div>
 				))}
-				<button onClick={handleAddRoom} className="add-room-button">
+				<button
+					onClick={handleAddRoom}
+					className="modal-action-button add add-room-button"
+				>
 					Add Room
 				</button>
 
@@ -447,7 +627,10 @@ const JobModal = ({
 							<div key={room.id} className="roomGroup inactive">
 								<span>{room.jobNumber}</span>
 								<span>{room.name}</span>
-								<button onClick={() => handleRestoreRoom(room.id)}>
+								<button
+									className="modal-action-button save restore-room-button"
+									onClick={() => handleRestoreRoom(room.id)}
+								>
 									Restore
 								</button>
 							</div>
@@ -458,8 +641,12 @@ const JobModal = ({
 				{errors.rooms && <div className="error">{errors.rooms}</div>}
 
 				<div className="modal-actions">
-					<button onClick={onClose}>Cancel</button>
-					<button onClick={handleSave}>Save</button>
+					<button className="modal-action-button cancel" onClick={onClose}>
+						Cancel
+					</button>
+					<button className="modal-action-button save" onClick={handleSave}>
+						Save
+					</button>
 				</div>
 			</div>
 		</div>
