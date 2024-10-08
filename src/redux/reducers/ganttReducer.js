@@ -1,13 +1,15 @@
 // redux/ganttReducer.js
 
 // import { newJobs } from "../../mocks/jobs";
-import { newJobs } from "../../mocks/jobsRealData";
+// import { newJobs } from "../../mocks/jobsRealData";
 // import { newJobs } from "../../mocks/oneBuilder";
+import { newJobs, workPeriodsByBuilder } from "../../mocks/jobsV2";
 import { Actions } from "../actions";
 import { v4 as uuidv4 } from "uuid";
 
 const initialState = JSON.parse(localStorage.getItem("ganttJobs")) || {
 	jobs: newJobs,
+	workPeriodsByBuilder: workPeriodsByBuilder,
 	nextJobNumber: 101,
 };
 
@@ -67,6 +69,42 @@ export const ganttReducer = (state = initialState, action) => {
 							: room
 					),
 				})),
+			};
+		case Actions.jobs.UPDATE_JOB:
+			return {
+				...state,
+				jobs: state.jobs.map((job) =>
+					job.id === action.payload.jobId
+						? {
+								...job,
+								rooms: job.rooms.map((room) =>
+									room.id === action.payload.roomId
+										? {
+												...room,
+												workPeriods: room.workPeriods.map((wp) =>
+													wp.id === action.payload.id
+														? action.payload
+														: wp
+												),
+										  }
+										: room
+								),
+						  }
+						: job
+				),
+			};
+		case Actions.jobs.UPDATE_ALL_JOBS:
+			return {
+				...state,
+				jobs: action.payload,
+			};
+		case Actions.jobs.UPDATE_WORK_PERIODS_BY_BUILDER:
+			return {
+				...state,
+				workPeriodsByBuilder: {
+					...state.workPeriodsByBuilder,
+					[action.payload.builderId]: action.payload.workPeriods,
+				},
 			};
 		default:
 			return state;

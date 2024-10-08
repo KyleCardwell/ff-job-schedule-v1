@@ -100,7 +100,6 @@ export const totalJobHours = (
 	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
-
 export const sortAndAdjustDates = (
 	jobsArray,
 	workdayHours,
@@ -163,6 +162,7 @@ export const sortAndAdjustDates = (
 				...current,
 				startDate,
 				endDate,
+				workPeriodDuration: jobHours,
 			});
 		} else {
 			const previousJob = acc[index - 1];
@@ -207,4 +207,38 @@ export const reconstructJobsForRedux = (flatJobs) => {
 		});
 	});
 	return Object.values(jobMap);
+};
+
+// Helper function to calculate overlaps and adjust work periods
+export const calculateOverlapsAndAdjust = (workPeriods) => {
+	const sortedPeriods = [...workPeriods];
+	const adjustedPeriods = [];
+
+	for (let i = 0; i < sortedPeriods.length; i++) {
+		const current = sortedPeriods[i];
+		let overlaps = 0;
+		let maxOverlap = 0;
+
+		for (let j = 0; j < i; j++) {
+			const previous = adjustedPeriods[j];
+			if (new Date(current.startDate) < new Date(previous.endDate)) {
+				overlaps++;
+				maxOverlap = Math.max(maxOverlap, previous.yOffsetFactor + 1);
+			}
+		}
+
+		const heightFactor = 1 / (overlaps + 1);
+		const yOffsetFactor = maxOverlap * heightFactor;
+		const showText = heightFactor > 0.35;
+
+		adjustedPeriods.push({
+			...current,
+			heightFactor,
+			yOffsetFactor,
+			showText,
+			addRow: i === 0,
+		});
+	}
+
+	return adjustedPeriods;
 };

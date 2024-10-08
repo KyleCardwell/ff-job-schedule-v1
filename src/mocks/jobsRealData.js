@@ -23,6 +23,8 @@ export const newJobs = [
 						id: uuidv4(),
 						startDate: normalizeDate("2024-09-05"),
 						duration: 14.9,
+						workPreriodDuration: 16,
+						endDate: normalizeDate(addDays(normalizeDate("2024-09-05"), Math.ceil(14.9 / 8))),
 						builderId: "2",
 					},
 					{
