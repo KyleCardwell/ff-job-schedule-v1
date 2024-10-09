@@ -1,3 +1,4 @@
+import { sortAndAdjustDates } from "../../utils/helpers";
 import { Actions } from "../actions";
 
 export const saveJobs = (jobs) => ({
@@ -31,5 +32,53 @@ export const updateNextJobNumber = (nextNumber) => {
 	return {
 		type: Actions.jobs.UPDATE_NEXT_JOB_NUMBER,
 		payload: nextNumber,
+	};
+};
+
+export const updateWorkPeriod = (workPeriod) => ({
+	type: Actions.jobs.UPDATE_WORK_PERIOD,
+	payload: workPeriod,
+});
+
+export const updateWorkPeriodsByBuilder = (
+	singlePeriod,
+	workPeriods,
+	workdayHours,
+	holidayChecker,
+	holidays,
+	newStartDate,
+	timeOffByBuilder
+) => {
+	return (dispatch) => {
+		// This function now returns another function
+		const updatedBuilderWorkPeriods = workPeriods.map((workPeriod) =>
+			workPeriod.id === singlePeriod.id ? singlePeriod : workPeriod
+		);
+
+		console.log("builders workPeriods", updatedBuilderWorkPeriods);
+
+		const sortedBuilderWorkPeriods = sortAndAdjustDates(
+			updatedBuilderWorkPeriods,
+			workdayHours,
+			holidayChecker,
+			holidays,
+			singlePeriod.builderId,
+			newStartDate,
+			timeOffByBuilder
+		);
+
+		// Dispatch the original action
+		dispatch({
+			type: Actions.jobs.UPDATE_WORK_PERIODS_BY_BUILDER,
+			payload: {
+				builderId: singlePeriod.builderId,
+				workPeriods: sortedBuilderWorkPeriods,
+			},
+		});
+
+		// Dispatch the updateJob action
+		sortedBuilderWorkPeriods.forEach((wp) => {
+			dispatch(updateWorkPeriod(wp));
+		});
 	};
 };
