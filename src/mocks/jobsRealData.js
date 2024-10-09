@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { normalizeDate } from "../utils/helpers";
+import { normalizeDate } from "../utils/dateUtils";
 import { addDays, subWeeks, addSeconds } from "date-fns";
 
 const baseCreatedAt = subWeeks(new Date(), 4);

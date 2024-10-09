@@ -1,15 +1,15 @@
 // redux/ganttReducer.js
 
 // import { newJobs } from "../../mocks/jobs";
-import { newJobs } from "../../mocks/jobsRealData";
+// import { newJobs } from "../../mocks/jobsRealData";
 // import { newJobs } from "../../mocks/oneBuilder";
-// import { newJobs, workPeriodsByBuilder } from "../../mocks/jobsV2";
+import { newJobs, workPeriodsByBuilder } from "../../mocks/jobsV2";
 import { Actions } from "../actions";
 import { v4 as uuidv4 } from "uuid";
 
 const initialState = JSON.parse(localStorage.getItem("ganttJobs")) || {
   jobs: newJobs,
-  // workPeriodsByBuilder: workPeriodsByBuilder,
+  workPeriodsByBuilder: workPeriodsByBuilder,
   nextJobNumber: 101,
 };
 

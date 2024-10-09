@@ -200,7 +200,7 @@ const GanttChart = () => {
 		);
 	}, [roomsData]);
 
-	const startDate = useMemo(() => {
+	const chartStartDate = useMemo(() => {
 		return addDays(earliestStartDate, -daysBeforeStart);
 	}, [earliestStartDate, daysBeforeStart]);
 
@@ -219,12 +219,12 @@ const GanttChart = () => {
 			builder.timeOff.flatMap((period) => {
 				const periodStart = normalizeDate(new Date(period.start));
 				const periodEnd = normalizeDate(new Date(period.end));
-				const chartEndDate = addDays(normalizeDate(startDate), numDays - 1);
+				const chartEndDate = addDays(normalizeDate(chartStartDate), numDays - 1);
 
 				return eachDayOfInterval({ start: periodStart, end: periodEnd })
 					.filter((day) =>
 						isWithinInterval(normalizeDate(day), {
-							start: normalizeDate(startDate),
+							start: normalizeDate(chartStartDate),
 							end: chartEndDate,
 						})
 					)
@@ -232,7 +232,7 @@ const GanttChart = () => {
 						let x =
 							differenceInCalendarDays(
 								normalizeDate(day),
-								normalizeDate(startDate)
+								normalizeDate(chartStartDate)
 							) * dayWidth;
 						while (xPositions.has(x)) {
 							x += 6; //Width of the time off bar
@@ -247,7 +247,7 @@ const GanttChart = () => {
 					});
 			})
 		);
-	}, [builders, startDate, numDays, dayWidth]);
+	}, [builders, chartStartDate, numDays, dayWidth]);
 
 	const handleRowDoubleClick = (job) => {
 		setSelectedJob(job);
@@ -294,7 +294,7 @@ const GanttChart = () => {
 		const mondayOfThisWeek = startOfWeek(new Date(normalizedDate), {
 			weekStartsOn: 1,
 		}); // 1 represents Monday
-		const diffDays = differenceInCalendarDays(mondayOfThisWeek, startDate);
+		const diffDays = differenceInCalendarDays(mondayOfThisWeek, chartStartDate);
 		const scrollPosition = diffDays * dayWidth;
 		const ganttRightBody = document.querySelector(".gantt-right-body");
 
@@ -380,7 +380,7 @@ const GanttChart = () => {
 
 		// Create an array of dates for the column headers
 		const dates = Array.from({ length: numDays }, (_, i) => {
-			return addDays(startDate, i);
+			return addDays(chartStartDate, i);
 		});
 
 		const rightHeader = d3.select(".gantt-right-header");
@@ -714,7 +714,7 @@ const GanttChart = () => {
 		dispatch,
 		builders,
 		totalRooms,
-		startDate,
+		chartStartDate,
 		dayWidth,
 		holidayChecker,
 		holidays,
@@ -815,7 +815,7 @@ const GanttChart = () => {
 						transition
 							.select("rect")
 							.attr("x", (job) =>
-								calculateXPosition(job.startDate, startDate, dayWidth)
+								calculateXPosition(job.startDate, chartStartDate, dayWidth)
 							)
 							.attr("width", (job) =>
 								calculateJobWidth(
@@ -831,7 +831,7 @@ const GanttChart = () => {
 							.attr(
 								"x",
 								(job) =>
-									calculateXPosition(job.startDate, startDate, dayWidth) + 5
+									calculateXPosition(job.startDate, chartStartDate, dayWidth) + 5
 							);
 					})
 					.end()
@@ -936,7 +936,7 @@ const GanttChart = () => {
 
 		allGroups
 			.select("rect")
-			.attr("x", (d) => calculateXPosition(d.startDate, startDate, dayWidth))
+			.attr("x", (d) => calculateXPosition(d.startDate, chartStartDate, dayWidth))
 			.attr(
 				"y",
 				(d) => barMargin + (rowHeight - 2 * barMargin) * d.yOffsetFactor
@@ -955,7 +955,7 @@ const GanttChart = () => {
 			.attr("class", "bar-text")
 			.attr(
 				"x",
-				(d) => calculateXPosition(d.startDate, startDate, dayWidth) + 5
+				(d) => calculateXPosition(d.startDate, chartStartDate, dayWidth) + 5
 			)
 			.attr("y", rowHeight / 2)
 			.text((d) => (d.showText ? `${d.name}` : ""))
@@ -987,7 +987,7 @@ const GanttChart = () => {
 		builders,
 		dayWidth,
 		rowHeight,
-		startDate,
+		chartStartDate,
 		dispatch,
 		holidayChecker,
 		workdayHours,
