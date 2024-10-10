@@ -14,36 +14,89 @@ export const getChartData = (jobData) => {
   let earliestStartDate = new Date(8640000000000000); // Initialize with max date
   let latestStartDate = new Date(-8640000000000000); // Initialize with min date
 
-  const taskList = jobData.flatMap((job, i) => {
-    return job.rooms
-      .filter((room) => room.active)
-      .map((room) => {
-        const rowNumber = positionCounter++;
-        const roomStartDate = new Date(room.startDate);
+  const taskList = jobData
+    .flatMap((job, i) => {
+      return job.rooms
+        .filter((room) => room.active)
+        .map((room) => {
+          const rowNumber = positionCounter++;
 
-        // Update earliest and latest start dates
-        if (roomStartDate < earliestStartDate) {
-          earliestStartDate = roomStartDate;
-        }
-        if (roomStartDate > latestStartDate) {
-          latestStartDate = roomStartDate;
-        }
+          room.workPeriods.forEach((workPeriod) => {
+            const wpStartDate = new Date(workPeriod.startDate);
 
-        return {
-          ...room,
-          jobsIndex: i,
-          jobId: job.id,
-          jobName: job.name,
-          rowNumber,
-        };
-      });
-  }).flat();
+            // Update earliest and latest start dates
+            if (wpStartDate < earliestStartDate) {
+              earliestStartDate = wpStartDate;
+            }
+            if (wpStartDate > latestStartDate) {
+              latestStartDate = wpStartDate;
+            }
+          });
+
+          return {
+            ...room,
+            jobsIndex: i,
+            jobId: job.id,
+            jobName: job.name,
+            rowNumber,
+          };
+        });
+    })
+    .flat();
 
   return {
     taskList,
     earliestStartDate,
     latestStartDate,
   };
+};
+
+export const getTaskData = (jobData) => {
+  let positionCounter = 0;
+
+  const tasks = jobData.flatMap((job, jobIndex) => {
+    return job.rooms
+      .filter((room) => room.active)
+      .flatMap((room, roomIndex) => {
+				const rowNumber = positionCounter++;
+        return room.workPeriods.map((workPeriod, workPeriodIndex) => {
+
+          return {
+            ...workPeriod,
+            jobId: job.id,
+            jobName: job.name,
+            jobNumber: room.jobNumber,
+            roomId: room.id,
+            roomName: room.name,
+            jobIndex,
+            roomIndex,
+            workPeriodIndex,
+            rowNumber,
+          };
+        });
+      });
+  });
+
+  // Group work periods by builderId
+  const tasksByBuilder = tasks.reduce((acc, workPeriod) => {
+    const builderId = workPeriod.builderId;
+    if (!acc[builderId]) {
+      acc[builderId] = [];
+    }
+    acc[builderId].push(workPeriod);
+    return acc;
+  }, {});
+
+  // Sort tasks within each builder group by startDate
+  Object.keys(tasksByBuilder).forEach((builderId) => {
+    tasksByBuilder[builderId].sort(
+      (a, b) => new Date(a.startDate) - new Date(b.startDate)
+    );
+  });
+
+	console.log(tasks)
+
+  return { tasks, tasksByBuilder };
 };
 
 export const getPreviousMonday = (dateInput) => {

@@ -1,4 +1,5 @@
-import { newJobs } from "../../mocks/jobsV2";
+// import { newJobs } from "../../mocks/jobsV2";
+import { newJobs } from "../../mocks/jobsRealData";
 import { getChartData } from "../../utils/helpers";
 import { Actions } from "../actions";
 
@@ -18,6 +19,16 @@ export const chartDataReducer = (state = initialState, action) => {
       return {
         ...state,
         chartData: action.payload,
+      };
+    case Actions.chartData.UPDATE_EARLIEST_START_DATE:
+      return {
+        ...state,
+        earliestStartDate: action.payload,
+      };
+    case Actions.chartData.UPDATE_LATEST_START_DATE:
+      return {
+        ...state,
+        latestStartDate: action.payload,
       };
     default:
       return state;

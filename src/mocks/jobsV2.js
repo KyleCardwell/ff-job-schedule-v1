@@ -21,11 +21,11 @@ export const newJobs = [
 				workPeriods: [
 					{
 						id: uuidv4(),
-						startDate: normalizeDate("2024-09-05"),
+						startDate: normalizeDate("2024-09-06"),
 						duration: 14.9,
 						workPeriodDuration: 16,
 						endDate: normalizeDate(
-							addDays(normalizeDate("2024-09-05"), Math.ceil(14.9 / 8))
+							addDays(normalizeDate("2024-09-06"), Math.ceil(14.9 / 8))
 						),
 						builderId: "2",
 						heightFactor: 0.5,
@@ -34,7 +34,7 @@ export const newJobs = [
 					},
 					{
 						id: uuidv4(),
-						startDate: normalizeDate("2024-09-07"),
+						startDate: normalizeDate("2024-09-09"),
 						duration: 19,
 						workPeriodDuration: 24,
 						builderId: "4",
@@ -116,7 +116,7 @@ export const newJobs = [
 				workPeriods: [
 					{
 						id: uuidv4(),
-						startDate: normalizeDate("2024-08-02"),
+						startDate: normalizeDate("2024-08-13"),
 						duration: 13.84,
 						workPeriodDuration: 16,
 						builderId: "3",
@@ -157,7 +157,7 @@ export const newJobs = [
 			{
 				id: uuidv4(),
 				builderId: "1",
-				startDate: normalizeDate("2024-08-31"),
+				startDate: normalizeDate("2024-09-08"),
 				duration: 21.19,
 				jobNumber: "954",
 				name: "Laundry",
@@ -166,7 +166,7 @@ export const newJobs = [
 				workPeriods: [
 					{
 						id: uuidv4(),
-						startDate: normalizeDate("2024-08-31"),
+						startDate: normalizeDate("2024-09-18"),
 						duration: 21.19,
 						workPeriodDuration: 24,
 						builderId: "1",
@@ -188,7 +188,7 @@ export const newJobs = [
 				workPeriods: [
 					{
 						id: uuidv4(),
-						startDate: normalizeDate("2024-09-01"),
+						startDate: normalizeDate("2024-09-23"),
 						duration: 11.31,
 						workPeriodDuration: 16,
 						builderId: "1",

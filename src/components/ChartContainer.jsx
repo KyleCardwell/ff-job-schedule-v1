@@ -7,6 +7,10 @@ import { normalizeDate } from "../utils/dateUtils";
 import * as d3 from "d3";
 import Holidays from "date-holidays";
 import { isHoliday } from "../utils/helpers";
+import BuilderLegend from "./BuilderLegend";
+import BuilderModal from "./BuilderModal";
+import HolidayModal from "./HolidayModal";
+import TaskGroups from "./TaskGroups";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -39,6 +43,7 @@ export const ChartContainer = () => {
   const barMargin = 3;
   const headerTextGap = 5;
   const leftColumnWidth = 270;
+  const chartHeight = chartData.length * rowHeight;
 
   const chartStartDate = useMemo(() => {
     return addDays(earliestStartDate, -daysBeforeStart);
@@ -71,6 +76,30 @@ export const ChartContainer = () => {
     }, 50);
   };
 
+  // Function to handle auto-scrolling when dragging near edges
+  const handleAutoScroll = (event) => {
+    const container = scrollableRef.current;
+    const scrollSpeed = 20; // Speed of the auto-scroll
+    const buffer = 50; // Distance from edge to trigger scroll
+
+    const { left, right, top, bottom } = container.getBoundingClientRect();
+    const { clientX, clientY } = event.sourceEvent;
+
+    // Horizontal auto-scroll
+    if (clientX < left + buffer) {
+      container.scrollLeft -= scrollSpeed; // Scroll left
+    } else if (clientX > right - buffer) {
+      container.scrollLeft += scrollSpeed; // Scroll right
+    }
+
+    // Vertical auto-scroll
+    if (clientY < top + buffer) {
+      container.scrollTop -= scrollSpeed; // Scroll up
+    } else if (clientY > bottom - buffer) {
+      container.scrollTop += scrollSpeed; // Scroll down
+    }
+  };
+
   useEffect(() => {
     const hd = new Holidays();
     hd.init("US"); // Initialize with US holidays. Change as needed.
@@ -97,18 +126,7 @@ export const ChartContainer = () => {
     const alternateRowColors = ["#f9f9f9", "#e0e0e0"]; // Alternating colors for rows
     const strokeColor = "#bebebe"; // stroke color
 
-    const width = numDays * dayWidth;
-    // const rowHeight = 30;
-
-    // const countActiveRooms = (jobs) => {
-    //   return jobs.reduce(
-    //     (total, job) => total + job.rooms.filter((room) => room.active).length,
-    //     0
-    //   );
-    // };
-
-    // const height = countActiveRooms(jobs) * rowHeight;
-    const height = chartData.length * rowHeight;
+    const chartWidth = numDays * dayWidth;
 
     // Create an array of dates for the column headers
     const dates = Array.from({ length: numDays }, (_, i) => {
@@ -132,7 +150,7 @@ export const ChartContainer = () => {
       rightBody.node().scrollTop = leftBody.node().scrollTop;
     });
 
-    chartSvg.attr("width", width).attr("height", height);
+    chartSvg.attr("width", chartWidth).attr("height", chartHeight);
 
     leftHeaderSvg.attr("width", leftColumnWidth).attr("height", 40);
 
@@ -241,15 +259,11 @@ export const ChartContainer = () => {
       .attr("x1", (d, i) => i * dayWidth)
       .attr("x2", (d, i) => i * dayWidth)
       .attr("y1", 0)
-      .attr("y2", height)
+      .attr("y2", chartHeight)
       .attr("stroke", strokeColor)
       .attr("stroke-width", 1);
 
-    // const activeRoomsData = roomsData.filter(
-    //   (room) => room.active && room.addRow
-    // );
-
-    leftColumnSvg.attr("width", leftColumnWidth).attr("height", height);
+    leftColumnSvg.attr("width", leftColumnWidth).attr("height", chartHeight);
 
     // leftColumnSvg.on("dblclick", (event) => {
     //   const [x, y] = d3.pointer(event);
@@ -342,7 +356,7 @@ export const ChartContainer = () => {
     chartSvg.selectAll("*").remove().append("rect");
 
     // Set SVG dimensions based on room count
-    chartSvg.attr("width", width).attr("height", height);
+    chartSvg.attr("width", chartWidth).attr("height", chartHeight);
 
     // Create row backgrounds for each room
     chartSvg
@@ -352,14 +366,14 @@ export const ChartContainer = () => {
       .append("rect")
       .attr("x", 0)
       .attr("y", (d, i) => i * rowHeight)
-      .attr("width", width)
+      .attr("width", chartWidth)
       .attr("height", rowHeight)
       .attr("fill", (d) =>
         d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
       ) // Alternate colors
       .attr("stroke", strokeColor) // Set stroke color for bottom border
       .attr("stroke-width", 1) // Set stroke width
-      .attr("stroke-dasharray", `0,${rowHeight},${width},0`); // Apply stroke only to the bottom
+      .attr("stroke-dasharray", `0,${rowHeight},${chartWidth},0`); // Apply stroke only to the bottom
 
     // Draw weekend backgrounds
     chartSvg
@@ -409,22 +423,6 @@ export const ChartContainer = () => {
       .attr("stroke", strokeColor)
       .attr("stroke-width", 1);
 
-    const timeOffGroup = chartSvg.append("g").attr("class", "time-off-group");
-
-    // timeOffGroup
-    //   .selectAll(".time-off-line")
-    //   .data(timeOffData)
-    //   .enter()
-    //   .append("line")
-    //   .attr("class", "time-off-line")
-    //   .attr("x1", (d) => d.x + 3)
-    //   .attr("y1", 0)
-    //   .attr("x2", (d) => d.x + 3)
-    //   .attr("y2", height)
-    //   .attr("stroke", (d) => d.color)
-    //   .attr("stroke-width", 6)
-    //   .attr("opacity", 0.7);
-
     // Add scrolling behavior for the chart
     const scrollableDiv = d3.select(scrollableRef.current);
     scrollableDiv.on("scroll", () => {
@@ -441,14 +439,11 @@ export const ChartContainer = () => {
 
       chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
     });
-  }, [
-    chartStartDate,
-    dayWidth,
-    holidayChecker,
-    holidays,
-    numDays,
-    chartData,
-  ]);
+  }, [chartStartDate, dayWidth, holidayChecker, holidays, numDays, chartData]);
+
+  useEffect(() => {
+    scrollToMonday(new Date());
+  }, [])
 
   return (
     <div className="gantt-chart-container">
@@ -473,12 +468,30 @@ export const ChartContainer = () => {
             <div className="gantt-right-header">
               <svg ref={headerRef} />
             </div>
-            <div className="gantt-right-body" ref={scrollableRef}>
-              <svg ref={chartRef} />
+            <div
+              className="gantt-right-body"
+              ref={scrollableRef}
+            >
+              <svg className="inner-chart chart-svg" ref={chartRef} />
+              <TaskGroups
+                chartRef={chartRef}
+                barMargin={barMargin}
+                chartHeight={chartHeight}
+                numDays={numDays}
+                handleAutoScroll={handleAutoScroll}
+                setIsLoading={setIsLoading}
+                chartStartDate={chartStartDate}
+                rowHeight={rowHeight}
+                workdayHours={workdayHours}
+                holidayChecker={holidayChecker}
+                dayWidth={dayWidth}
+              />
             </div>
           </div>
         </div>
-        <div className="gantt-footer">{/* <BuilderLegend /> */}</div>
+        <div className="gantt-footer">
+          <BuilderLegend />
+        </div>
       </div>
 
       {isLoading && (
@@ -502,7 +515,7 @@ export const ChartContainer = () => {
         holidayChecker={holidayChecker}
         holidays={holidays}
         workdayHours={workdayHours}
-      />
+      /> */}
       <BuilderModal
         visible={isBuilderModalOpen}
         onCancel={() => setIsBuilderModalOpen(false)}
@@ -510,7 +523,7 @@ export const ChartContainer = () => {
       <HolidayModal
         isOpen={isHolidayModalOpen}
         onClose={() => setIsHolidayModalOpen(false)}
-      /> */}
+      />
     </div>
   );
 };

@@ -88,6 +88,13 @@ h1 {
 	flex-grow: 1;
 	overflow: auto;
 	height: calc(100% - 40px);
+	display: grid;
+	grid-template-columns: 1fr;
+}
+
+.gantt-right-body .inner-chart {
+	grid-column: 1;
+	grid-row: 1;
 }
 
 .gantt-right svg {
