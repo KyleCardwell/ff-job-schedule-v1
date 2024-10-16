@@ -33,6 +33,20 @@ export const taskDataReducer = (state = initialState, action) => {
         },
       };
     }
+    case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
+      const updatedTasks = action.payload;
+      const tasksByBuilder = updatedTasks.reduce((acc, task) => {
+        if (!acc[task.builderId]) acc[task.builderId] = [];
+        acc[task.builderId].push(task);
+        return acc;
+      }, {});
+
+      return {
+        ...state,
+        tasks: updatedTasks,
+        tasksByBuilder,
+      };
+    }
     default:
       return state;
   }

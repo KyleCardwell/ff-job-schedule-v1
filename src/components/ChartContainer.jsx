@@ -519,6 +519,11 @@ export const ChartContainer = () => {
       <BuilderModal
         visible={isBuilderModalOpen}
         onCancel={() => setIsBuilderModalOpen(false)}
+        holidays={holidays}
+        holidayChecker={holidayChecker}
+        workdayHours={workdayHours}
+        chartStartDate={chartStartDate}
+        dayWidth={dayWidth}
       />
       <HolidayModal
         isOpen={isHolidayModalOpen}
