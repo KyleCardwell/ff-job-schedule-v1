@@ -55,8 +55,6 @@ export const updateWorkPeriodsByBuilder = (
 			workPeriod.id === singlePeriod.id ? singlePeriod : workPeriod
 		);
 
-		console.log("builders workPeriods", updatedBuilderWorkPeriods);
-
 		const sortedBuilderWorkPeriods = sortAndAdjustDates(
 			updatedBuilderWorkPeriods,
 			workdayHours,

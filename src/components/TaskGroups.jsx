@@ -11,12 +11,13 @@ import * as d3 from "d3";
 import {
   getNextWorkday,
   sortAndAdjustDates,
-  totalJobHours,
 } from "../utils/helpers";
 import {
   updateEarliestStartDate,
   updateLatestStartDate,
+  updateOneBuilderChartData,
 } from "../redux/actions/chartData";
+import { updateTasksByOneBuilder } from "../redux/actions/taskData";
 
 const TaskGroups = ({
   chartRef,
@@ -35,11 +36,14 @@ const TaskGroups = ({
 
   const builders = useSelector((state) => state.builders.builders);
   const holidays = useSelector((state) => state.holidays.holidays);
-  const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
+  const { tasks, tasksByBuilder, multiWorkPeriodRooms } = useSelector(
+    (state) => state.taskData
+  );
   const { earliestStartDate, latestStartDate } = useSelector(
     (state) => state.chartData
   );
   const taskGroupsRef = useRef(null);
+
 
   // Calculate timeOffByBuilder independently
   const timeOffByBuilder = useMemo(() => {
@@ -94,52 +98,17 @@ const TaskGroups = ({
     );
   }, [builders, chartStartDate, numDays, dayWidth]);
 
-  const calculateXPosition = (jobStartDate) => {
-    const normalizedJobStartDate = normalizeDate(jobStartDate);
-    const normalizedChartStartDate = normalizeDate(chartStartDate);
-    const diffInDays = differenceInCalendarDays(
-      normalizedJobStartDate,
-      normalizedChartStartDate
-    );
-    return diffInDays * dayWidth;
-  };
-
-  const calculateJobWidth = (
-    jobStartDate,
-    jobDuration,
-    dayWidth,
-    builderId
-  ) => {
-    // Calculate the number of days (each workday is 8 hours)
-    const totalDays =
-      totalJobHours(
-        jobStartDate,
-        jobDuration,
-        workdayHours,
-        holidayChecker,
-        holidays,
-        builderId,
-        timeOffByBuilder
-      ) / workdayHours;
-
-    // Return the width based on the total number of days
-    return totalDays * dayWidth;
-  };
-
-  useEffect(() => {
-    console.log("chartRef", chartRef.current);
-    console.log("taskGroupsRef", taskGroupsRef.current);
-    console.log("tasks", tasks);
-  }, []);
-
   useEffect(() => {
     if (
       !chartRef.current ||
       !taskGroupsRef.current ||
       !tasks ||
-      tasks.length === 0
-    )
+      tasks.length === 0 ||
+      !Array.isArray(builders) ||
+      builders.length === 0
+    ) {
       return;
+    }
 
     const taskGroupsSvg = d3.select(taskGroupsRef.current);
 
@@ -191,29 +160,70 @@ const TaskGroups = ({
           dispatch(updateLatestStartDate(newStartDate));
         }
 
+        // // Check if the dragged workPeriod is in a multiWorkPeriodRoom
+        // const multiWorkPeriodRoom = multiWorkPeriodRooms.find(
+        //   (room) => room.id === d.roomId
+        // );
+
+        // let heightFactor = 1;
+        // let yOffsetFactor = 0;
+
+        // if (multiWorkPeriodRoom) {
+        //   // Find the other workPeriod in the same room
+        //   const otherWorkPeriod = multiWorkPeriodRoom.workPeriods.find(
+        //     (wp) => wp.id !== d.id
+        //   );
+
+        //   if (otherWorkPeriod) {
+        //     const otherStartDate = new Date(otherWorkPeriod.startDate);
+        //     const otherEndDate = new Date(otherWorkPeriod.endDate);
+
+        //     // Check if the new start date is within the other workPeriod's range
+        //     if (
+        //       newStartDate >= otherStartDate &&
+        //       newStartDate <= otherEndDate
+        //     ) {
+        //       heightFactor = 0.5;
+        //       yOffsetFactor = 0.5; // Place the dragged workPeriod above the other one
+        //     }
+        //   }
+        // }
+
         // Update the dragged job
-        const updatedDraggedJob = { ...d, startDate: newStartDate };
+        const updatedDraggedJob = {
+          ...d,
+          startDate: newStartDate,
+          // heightFactor,
+          // yOffsetFactor,
+        };
+
         // Get the current builder's jobs and update the dragged job
-        const builderJobs = tasksByBuilder[d.builderId];
-        const updatedBuilderJobs = builderJobs.map((job) =>
-          job.id === d.id ? updatedDraggedJob : job
+        const builderTasks = tasksByBuilder[d.builderId];
+        const updatedBuilderTasks = builderTasks.map((job) =>
+          job.id === d.id
+            ? {
+                ...updatedDraggedJob,
+                dragStartX: undefined,
+                dragStartEventX: undefined,
+              }
+            : job
         );
         // Sort and adjust dates for the builder's jobs
-        const sortedBuilderJobs = sortAndAdjustDates(
-          updatedBuilderJobs,
+        const sortedBuilderTasks = sortAndAdjustDates(
+          updatedBuilderTasks,
           workdayHours,
           holidayChecker,
           holidays,
           d.id,
           newStartDate,
-          timeOffByBuilder
+          timeOffByBuilder,
+          dayWidth,
+          chartStartDate
         );
-        console.log("sortedBuilderJobs", sortedBuilderJobs);
         // Transition all jobs in the builder group
         const jobGroups = taskGroupsSvg
-          .selectAll(".job-group")
-          .filter((job) => job.builderId === d.builderId)
-          .data(sortedBuilderJobs, (job) => job.id);
+          .selectAll(`.task-group-${d.builderId}`)
+          .data(sortedBuilderTasks, (job) => job.id);
 
         jobGroups
           .transition()
@@ -225,74 +235,26 @@ const TaskGroups = ({
           .call((transition) => {
             transition
               .select("rect")
-              .attr("x", (job) =>
-                calculateXPosition(job.startDate, chartStartDate, dayWidth)
+              .attr(
+                "x",
+                (job) =>
+                  // calculateXPosition(job.startDate, chartStartDate, dayWidth)
+                  job.xPosition
               )
-              .attr("width", (job) =>
-                calculateJobWidth(
-                  job.startDate,
-                  job.workPeriodDuration,
-                  dayWidth,
-                  job.builderId
-                )
-              );
+              .attr("width", (job) => job.workPeriodDuration);
             transition
               .select(".bar-text")
               .attr(
                 "x",
                 (job) =>
-                  calculateXPosition(job.startDate, chartStartDate, dayWidth) +
-                  5
+                  // calculateXPosition(job.startDate, chartStartDate, dayWidth)
+                 job.xPosition + 5
               );
           })
           .end()
           .then(() => {
-            // Create a map to hold jobs by their index
-            const jobMap = new Map();
-            // Update jobs and populate jobMap
-            tasks.forEach((workPeriod) => {
-              const updatedWorkPeriod =
-                sortedBuilderJobs.find((sj) => sj.id === workPeriod.id) ||
-                workPeriod;
-              if (!jobMap.has(updatedWorkPeriod.jobsIndex)) {
-                jobMap.set(updatedWorkPeriod.jobsIndex, {
-                  id: updatedWorkPeriod.jobId,
-                  name: updatedWorkPeriod.jobName,
-                  rooms: [],
-                });
-              }
-              let room = jobMap
-                .get(updatedWorkPeriod.jobsIndex)
-                .rooms.find((r) => r.id === updatedWorkPeriod.roomId);
-              if (!room) {
-                room = {
-                  id: updatedWorkPeriod.roomId,
-                  name: updatedWorkPeriod.name,
-                  jobNumber: updatedWorkPeriod.jobNumber,
-                  active: updatedWorkPeriod.active,
-                  roomCreatedAt: updatedWorkPeriod.roomCreatedAt,
-                  workPeriods: [],
-                };
-                jobMap.get(updatedWorkPeriod.jobsIndex).rooms.push(room);
-              }
-              room.workPeriods.push({
-                id: updatedWorkPeriod.id,
-                builderId: updatedWorkPeriod.builderId,
-                startDate: normalizeDate(updatedWorkPeriod.startDate),
-                duration: updatedWorkPeriod.duration,
-              });
-            });
-            // Convert jobMap to array, sort by index, and sort rooms within each job by jobNumber
-            const sortedFormattedJobs = Array.from(jobMap.entries())
-              .sort(([indexA], [indexB]) => indexA - indexB)
-              .map(([_, job]) => ({
-                ...job,
-                rooms: job.rooms.sort((a, b) => {
-                  return new Date(a.roomCreatedAt) - new Date(b.roomCreatedAt);
-                }),
-              }));
-            // Dispatch saveJobs action
-            // dispatch(saveJobs(sortedFormattedJobs));
+            dispatch(updateOneBuilderChartData(sortedBuilderTasks));
+            dispatch(updateTasksByOneBuilder(d.builderId, sortedBuilderTasks));
           });
         d3.select(this).classed("dragging", false);
         delete d.dragStartX;
@@ -332,7 +294,7 @@ const TaskGroups = ({
     const enterGroups = jobGroups
       .enter()
       .append("g")
-      .attr("class", "job-group")
+      .attr("class", (d) => `job-group task-group-${d.builderId}`)
       .attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
       .attr("font-size", "12px");
 
@@ -353,19 +315,12 @@ const TaskGroups = ({
 
     allGroups
       .select("rect")
-      .attr("x", (d) => calculateXPosition(d.startDate))
+      .attr("x", (d) => d.xPosition)
       .attr(
         "y",
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
-      .attr("width", (d) =>
-        calculateJobWidth(
-          d.startDate,
-          d.workPeriodDuration,
-          dayWidth,
-          d.builderId
-        )
-      )
+      .attr("width", (d) => d.workPeriodDuration)
       .attr(
         "height",
         (d) => (rowHeight - 2 * barMargin) * (d.heightFactor || 1)
@@ -377,7 +332,7 @@ const TaskGroups = ({
 
     allGroups
       .select("text")
-      .attr("x", (d) => calculateXPosition(d.startDate) + 5)
+      .attr("x", (d) => d.xPosition + 5)
       .attr("y", rowHeight / 2)
       .text((d) => d.roomName) // Always show the text
       .attr("fill", "#ffffff")
@@ -396,11 +351,9 @@ const TaskGroups = ({
         d3.select(this)
           .select(".bar-text")
           .text(`${d.roomName} - ${d.duration} hours`);
-        // .style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.6)");
       })
       .on("mouseout", function (event, d) {
         d3.select(this).select(".bar-text").text(d.roomName);
-        // .style("text-shadow", "none");
       });
   }, [
     builders,

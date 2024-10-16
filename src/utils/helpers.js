@@ -6,6 +6,9 @@ import {
   addDays,
   isSaturday,
   isSunday,
+  isWithinInterval,
+  isBefore,
+  differenceInCalendarDays,
 } from "date-fns";
 import { normalizeDate } from "./dateUtils";
 
@@ -51,16 +54,21 @@ export const getChartData = (jobData) => {
   };
 };
 
-export const getTaskData = (jobData) => {
+export const getTaskData = (jobData, workdayHours = 8, dayWidth = 30) => {
   let positionCounter = 0;
+  let multiWorkPeriodRooms = [];
 
   const tasks = jobData.flatMap((job, jobIndex) => {
     return job.rooms
       .filter((room) => room.active)
       .flatMap((room, roomIndex) => {
-				const rowNumber = positionCounter++;
-        return room.workPeriods.map((workPeriod, workPeriodIndex) => {
+        const rowNumber = positionCounter++;
 
+        if (room.workPeriods.length > 1) {
+          multiWorkPeriodRooms.push(room);
+        }
+
+        return room.workPeriods.map((workPeriod, workPeriodIndex) => {
           return {
             ...workPeriod,
             jobId: job.id,
@@ -71,6 +79,7 @@ export const getTaskData = (jobData) => {
             jobIndex,
             roomIndex,
             workPeriodIndex,
+            workPeriodDuration: workPeriod.workPeriodDuration,
             rowNumber,
           };
         });
@@ -94,9 +103,7 @@ export const getTaskData = (jobData) => {
     );
   });
 
-	console.log(tasks)
-
-  return { tasks, tasksByBuilder };
+  return { tasks, tasksByBuilder, multiWorkPeriodRooms };
 };
 
 export const getPreviousMonday = (dateInput) => {
@@ -185,6 +192,174 @@ export const totalJobHours = (
   return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
+// export const adjustMultiWorkPeriodTasks = (
+//   sortedBuilderTasks,
+//   multiWorkPeriodRooms
+// ) => {
+//   // Create a Map for efficient lookups
+//   const multiWorkPeriodMap = new Map(
+//     multiWorkPeriodRooms.map((room) => [room.id, room])
+//   );
+
+//   return sortedBuilderTasks.map((task) => {
+//     if (multiWorkPeriodMap.has(task.roomId)) {
+//       const room = multiWorkPeriodMap.get(task.roomId);
+
+//       // Sort workPeriods by startDate
+//       const sortedWorkPeriods = [...room.workPeriods].sort(
+//         (a, b) => new Date(a.startDate) - new Date(b.startDate)
+//       );
+
+//       // Find overlapping work periods
+//       const overlaps = sortedWorkPeriods.filter(
+//         (wp) =>
+//           wp.id !== task.id && // Check all other work periods
+//           (isWithinInterval(new Date(task.startDate), {
+//             start: new Date(wp.startDate),
+//             end: addDays(new Date(wp.startDate), wp.duration),
+//           }) ||
+//             isWithinInterval(addDays(new Date(task.startDate), task.duration), {
+//               start: new Date(wp.startDate),
+//               end: addDays(new Date(wp.startDate), wp.duration),
+//             }) ||
+//             isWithinInterval(new Date(wp.startDate), {
+//               start: new Date(task.startDate),
+//               end: addDays(new Date(task.startDate), task.duration),
+//             }))
+//       );
+
+//       const overlapCount = overlaps.length + 1;
+//       const heightFactor = overlapCount > 1 ? 1 / Math.min(overlapCount, 3) : 1;
+//       const yOffsetFactor =
+//         overlaps.filter((o) => new Date(o.startDate) < new Date(task.startDate))
+//           .length / Math.min(overlapCount, 3);
+
+//       return {
+//         ...task,
+//         heightFactor,
+//         yOffsetFactor,
+//         totalWorkPeriods: sortedWorkPeriods.length,
+//         showText:
+//           task.id === sortedWorkPeriods[sortedWorkPeriods.length - 1].id ||
+//           heightFactor === 1,
+//       };
+//     }
+//     // If it's not a multi-work period room, return the task with default values
+//     return {
+//       ...task,
+//       heightFactor: 1,
+//       yOffsetFactor: 0,
+//       totalWorkPeriods: 1,
+//       showText: true,
+//     };
+//   });
+// };
+
+// const adjustMultiWorkPeriodTasks = (sortedBuilderTasks, multiWorkPeriodRooms) => {
+//   // Create a Map for efficient lookups
+//   const multiWorkPeriodMap = new Map(
+//     multiWorkPeriodRooms.map((room) => [room.id, room])
+//   );
+
+//   return sortedBuilderTasks.map((task) => {
+//     if (multiWorkPeriodMap.has(task.roomId)) {
+//       const room = multiWorkPeriodMap.get(task.roomId);
+
+//       // Ensure workPeriods are sorted by startDate
+//       const [firstWP, secondWP] = room.workPeriods.sort(
+//         (a, b) => new Date(a.startDate) - new Date(b.startDate)
+//       );
+
+// 			// const isOverlapping = secondWP && isWithinInterval(
+//       //   new Date(secondWP.startDate),
+//       //   {
+//       //     start: new Date(firstWP.startDate),
+//       //     end: addDays(new Date(firstWP.startDate), firstWP.workPeriodDuration / 8 - 1)
+//       //   }
+//       // );
+
+// 			const isOverlapping = secondWP && isBefore(secondWP.startDate, firstWP.endDate)
+
+//       const heightFactor = isOverlapping ? 0.5 : 1;
+//       const yOffsetFactor = task.id === secondWP.id && isOverlapping ? 0.5 : 0;
+
+//       return {
+//         ...task,
+//         heightFactor,
+//         yOffsetFactor,
+//         totalWorkPeriods: room.workPeriods.length,
+//         showText: task.id === secondWP?.id || !isOverlapping,
+//       };
+//     }
+//     // If it's not a multi-work period room, return the task with default values
+//     return {
+//       ...task,
+//       heightFactor: 1,
+//       yOffsetFactor: 0,
+//       totalWorkPeriods: 1,
+//       showText: true,
+//     };
+//   });
+// };
+
+export const calculateXPosition = (
+  jobStartDate,
+  chartStartDate,
+  dayWidth = 30
+) => {
+  const normalizedJobStartDate = normalizeDate(jobStartDate);
+  const normalizedChartStartDate = normalizeDate(chartStartDate);
+  const diffInDays = differenceInCalendarDays(
+    normalizedJobStartDate,
+    normalizedChartStartDate
+  );
+  return diffInDays * dayWidth;
+};
+
+export const adjustMultiWorkPeriodTasks = (
+  sortedBuilderTasks,
+  multiWorkPeriodRooms
+) => {
+  // Create a Map for efficient lookups
+  const multiWorkPeriodMap = new Map(
+    multiWorkPeriodRooms.map((room) => [room.id, room])
+  );
+
+  return sortedBuilderTasks.map((task) => {
+    if (multiWorkPeriodMap.has(task.roomId)) {
+      const room = multiWorkPeriodMap.get(task.roomId);
+
+      // Ensure workPeriods are sorted by startDate
+      const [firstWP, secondWP] = room.workPeriods.sort(
+        (a, b) => new Date(a.startDate) - new Date(b.startDate)
+      );
+
+      const isOverlapping =
+        secondWP &&
+        isBefore(new Date(secondWP.startDate), new Date(firstWP.endDate));
+
+      const heightFactor = isOverlapping ? 0.5 : 1;
+      const yOffsetFactor = task.id === secondWP.id && isOverlapping ? 0.5 : 0;
+
+      return {
+        ...task,
+        heightFactor,
+        yOffsetFactor,
+        totalWorkPeriods: room.workPeriods.length,
+        showText: task.id === secondWP?.id || !isOverlapping,
+      };
+    }
+    // If it's not a multi-work period room, return the task with default values
+    return {
+      ...task,
+      heightFactor: 1,
+      yOffsetFactor: 0,
+      totalWorkPeriods: 1,
+      showText: true,
+    };
+  });
+};
+
 export const sortAndAdjustDates = (
   jobsArray,
   workdayHours,
@@ -192,7 +367,9 @@ export const sortAndAdjustDates = (
   holidays,
   draggedJobId,
   dropDate,
-  timeOffByBuilder
+  timeOffByBuilder,
+  dayWidth = 30,
+  chartStartDate
 ) => {
   let arrayToProcess = [...jobsArray];
 
@@ -242,11 +419,13 @@ export const sortAndAdjustDates = (
         current.builderId,
         timeOffByBuilder
       );
-      const endDate = addDays(startDate, Math.ceil(jobHours / workdayHours));
+      const newEndDate = addDays(startDate, Math.ceil(jobHours / workdayHours));
       acc.push({
         ...current,
-        startDate,
-        endDate,
+        startDate: normalizeDate(startDate),
+        endDate: normalizeDate(newEndDate),
+        workPeriodDuration: (jobHours / workdayHours) * dayWidth,
+        xPosition: calculateXPosition(startDate, chartStartDate, dayWidth),
       });
     } else {
       const previousJob = acc[index - 1];
@@ -267,10 +446,18 @@ export const sortAndAdjustDates = (
         timeOffByBuilder
       );
       const endDate = addDays(newStartDate, Math.ceil(jobHours / workdayHours));
-      acc.push({ ...current, startDate: newStartDate, endDate });
+      acc.push({
+        ...current,
+        startDate: normalizeDate(newStartDate),
+        endDate: normalizeDate(endDate),
+        workPeriodDuration: (jobHours / workdayHours) * dayWidth,
+        xPosition: calculateXPosition(newStartDate, chartStartDate, dayWidth),
+      });
     }
     return acc;
   }, []);
+
+  // return sortedTasks;
 };
 
 // Function to reconstruct the job structure for Redux
