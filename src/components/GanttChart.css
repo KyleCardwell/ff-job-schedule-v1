@@ -656,7 +656,8 @@ select {
 		overflow: visible !important;
 	}
 
-	svg {
+	svg.inner-svg,
+	svg.task-group-svg {
 		height: auto !important;
 	}
 

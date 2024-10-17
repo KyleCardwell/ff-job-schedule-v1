@@ -51,7 +51,10 @@ export const ChartContainer = () => {
 	const barMargin = 3;
 	const headerTextGap = 5;
 	const leftColumnWidth = 270;
-	const chartHeight = activeRoomsData.length * rowHeight;
+	const chartHeight = activeRoomsData.reduce(
+		(total, room) => total + room.heightAdjust * rowHeight,
+		0
+	);
 
 	const timeOffByBuilder = useMemo(() => {
 		return builders.reduce((acc, builder) => {
@@ -311,7 +314,7 @@ export const ChartContainer = () => {
 			.attr("x", 0)
 			.attr("y", (d, i) => i * rowHeight)
 			.attr("width", leftColumnWidth)
-			.attr("height", rowHeight)
+			.attr("height", (d) => d.heightAdjust * rowHeight)
 			.attr("fill", (d) =>
 				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
 			); // Alternate colors
@@ -333,8 +336,8 @@ export const ChartContainer = () => {
 				.append("text")
 				.attr("class", "job-number")
 				.attr("x", 10)
-				.attr("y", rowHeight / 2)
-				.text(d.jobNumber)
+				.attr("y", (d.heightAdjust * rowHeight) / 2)
+				.text(d.heightAdjust !== 0 ? d.jobNumber : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -342,8 +345,8 @@ export const ChartContainer = () => {
 				.append("text")
 				.attr("class", "job-name")
 				.attr("x", 50)
-				.attr("y", rowHeight / 2)
-				.text(d.jobName)
+				.attr("y", (d.heightAdjust * rowHeight) / 2)
+				.text(d.heightAdjust !== 0 ? d.jobName : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -351,8 +354,8 @@ export const ChartContainer = () => {
 				.append("text")
 				.attr("class", "room-name")
 				.attr("x", 130)
-				.attr("y", rowHeight / 2)
-				.text(d.name)
+				.attr("y", (d.heightAdjust * rowHeight) / 2)
+				.text(d.heightAdjust !== 0 ? d.name : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -394,14 +397,16 @@ export const ChartContainer = () => {
 			.attr("x", 0)
 			.attr("y", (d, i) => i * rowHeight)
 			.attr("width", chartWidth)
-			.attr("height", rowHeight)
+			.attr("height", (d) => d.heightAdjust * rowHeight)
 			.attr("fill", (d) =>
 				d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
 			) // Alternate colors
 			.attr("stroke", strokeColor) // Set stroke color for bottom border
 			.attr("stroke-width", 1) // Set stroke width
-			.attr("stroke-dasharray", `0,${rowHeight},${chartWidth},0`); // Apply stroke only to the bottom
-
+			.attr(
+				"stroke-dasharray",
+				(d) => `0,${d.heightAdjust * rowHeight},${chartWidth},0`
+			);
 		// Draw weekend backgrounds
 		chartSvg
 			.selectAll(".weekend-background")
@@ -478,6 +483,43 @@ export const ChartContainer = () => {
 
 	useEffect(() => {
 		scrollToMonday(new Date());
+	}, []);
+
+	useEffect(() => {
+		let scrollLeft = 0;
+		let scrollTop = 0;
+
+		const handleBeforePrint = () => {
+			const ganttRightBody = document.querySelector(".gantt-right-body");
+			if (ganttRightBody) {
+				scrollLeft = ganttRightBody.scrollLeft;
+				scrollTop = ganttRightBody.scrollTop;
+				document.documentElement.style.setProperty(
+					"--print-translate-x",
+					`-${scrollLeft}px`
+				);
+				document.documentElement.style.setProperty(
+					"--print-translate-y",
+					`-${scrollTop}px`
+				);
+			}
+		};
+
+		const handleAfterPrint = () => {
+			const ganttRightBody = document.querySelector(".gantt-right-body");
+			if (ganttRightBody) {
+				ganttRightBody.scrollLeft = scrollLeft;
+				ganttRightBody.scrollTop = scrollTop;
+			}
+		};
+
+		window.addEventListener("beforeprint", handleBeforePrint);
+		window.addEventListener("afterprint", handleAfterPrint);
+
+		return () => {
+			window.removeEventListener("beforeprint", handleBeforePrint);
+			window.removeEventListener("afterprint", handleAfterPrint);
+		};
 	}, []);
 
 	return (

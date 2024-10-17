@@ -41,24 +41,17 @@ const TaskGroups = ({
 	);
 	const taskGroupsRef = useRef(null);
 
-	const activeTasksData = useMemo(() => {
-		let rowCounter = 0;
-    let prevRoomId = null;
-    return tasks.reduce((acc, room) => {
-      if (room.active !== false) {
-        // Only increment rowCounter if it's a new room
-        if (room.roomId !== prevRoomId) {
-          rowCounter++;
-        }
+  const activeTasksData = useMemo(() => {
+    return tasks.reduce((acc, task, index) => {
+      if (task.active !== false) {
         acc.push({
-          ...room,
-          rowNumber: rowCounter - 1 // Subtract 1 because we incremented first
+          ...task,
+          rowNumber: index
         });
-        prevRoomId = room.roomId;
       }
       return acc;
     }, []);
-	}, [tasks]);
+  }, [tasks]);
 
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
@@ -212,10 +205,6 @@ const TaskGroups = ({
 				jobGroups
 					.transition()
 					.duration(300)
-					.attr(
-						"transform",
-						(job) => `translate(0, ${job.rowNumber * rowHeight})`
-					)
 					.call((transition) => {
 						transition
 							.select("rect")
@@ -267,46 +256,46 @@ const TaskGroups = ({
 			.attr("stroke-width", 6)
 			.attr("opacity", 0.6);
 
-		const adjustTaskHeights = (tasks) => {
-			return tasks.map((task, index) => {
-				let heightFactor = 1;
-				let yOffsetFactor = 0;
+		// const adjustTaskHeights = (tasks) => {
+		// 	return tasks.map((task, index) => {
+		// 		let heightFactor = 1;
+		// 		let yOffsetFactor = 0;
 
-				// Check all other tasks for overlaps
-				tasks.forEach((otherTask, otherIndex) => {
-					if (otherIndex !== index && otherTask.roomId === task.roomId) {
-						const taskStart = task.xPosition;
-						const taskEnd = task.xPosition + task.workPeriodDuration;
-						const otherTaskStart = otherTask.xPosition;
-						const otherTaskEnd =
-							otherTask.xPosition + otherTask.workPeriodDuration;
+		// 		// Check all other tasks for overlaps
+		// 		tasks.forEach((otherTask, otherIndex) => {
+		// 			if (otherIndex !== index && otherTask.roomId === task.roomId) {
+		// 				const taskStart = task.xPosition;
+		// 				const taskEnd = task.xPosition + task.workPeriodDuration;
+		// 				const otherTaskStart = otherTask.xPosition;
+		// 				const otherTaskEnd =
+		// 					otherTask.xPosition + otherTask.workPeriodDuration;
 
-						// Check for any overlap
-						if (
-							(taskStart < otherTaskEnd && taskStart >= otherTaskStart) ||
-							(otherTaskStart < taskEnd && otherTaskStart >= taskStart)
-						) {
-							heightFactor = 0.5;
-							// Only adjust yOffsetFactor if this task comes later in the array
-							if (index > otherIndex) {
-								yOffsetFactor = 0.5;
-							}
-						}
-					}
-				});
+		// 				// Check for any overlap
+		// 				if (
+		// 					(taskStart < otherTaskEnd && taskStart >= otherTaskStart) ||
+		// 					(otherTaskStart < taskEnd && otherTaskStart >= taskStart)
+		// 				) {
+		// 					heightFactor = 0.5;
+		// 					// Only adjust yOffsetFactor if this task comes later in the array
+		// 					if (index > otherIndex) {
+		// 						yOffsetFactor = 0.5;
+		// 					}
+		// 				}
+		// 			}
+		// 		});
 
-				return {
-					...task,
-					heightFactor,
-					yOffsetFactor,
-				};
-			});
-		};
+		// 		return {
+		// 			...task,
+		// 			heightFactor,
+		// 			yOffsetFactor,
+		// 		};
+		// 	});
+		// };
 
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
 			.selectAll(".job-group")
-			.data(adjustTaskHeights(activeTasksData), (d) => d.id);
+			.data(activeTasksData, (d) => d.id);
 
 		// Enter new elements
 		const enterGroups = jobGroups

@@ -36,23 +36,17 @@ export const chartDataReducer = (state = initialState, action) => {
 
 			return {
 				...state,
-				chartData: state.chartData.map((project) => {
-					const updatedWorkPeriods = project.workPeriods.map((wp) =>
-						updatedTasksMap.has(wp.id)
-							? { ...wp, ...updatedTasksMap.get(wp.id) }
-							: wp
-					);
-
-					// Sort the workPeriods by startDate
-					const sortedWorkPeriods = [...updatedWorkPeriods].sort(
-						(a, b) => new Date(a.startDate) - new Date(b.startDate)
-					);
-
-					return {
-						...project,
-						workPeriods: sortedWorkPeriods,
-						startDate: sortedWorkPeriods[0].startDate, // Update the project startDate
-					};
+				chartData: state.chartData.map((task) => {
+					if (updatedTasksMap.has(task.id)) {
+						const updatedTask = updatedTasksMap.get(task.id);
+						return {
+							...task,
+							...updatedTask,
+							startDate: updatedTask.startDate,
+							// Include any other fields that need to be explicitly updated
+						};
+					}
+					return task;
 				}),
 			};
 		}
