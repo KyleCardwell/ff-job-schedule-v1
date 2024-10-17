@@ -16,3 +16,10 @@ export const updateOneBuilderChartData = (taskList) => {
     payload: taskList,
   };
 };
+
+export const updateNextNobNumber = (nextJobNumber) => {
+  return {
+    type: Actions.chartData.UPDATE_NEXT_JOB_NUMBER,
+    payload: nextJobNumber,
+  }
+}

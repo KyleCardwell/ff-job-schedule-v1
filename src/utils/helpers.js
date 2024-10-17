@@ -20,7 +20,7 @@ export const getChartData = (jobData) => {
   const taskList = jobData
     .flatMap((job, i) => {
       return job.rooms
-        .filter((room) => room.active)
+        // .filter((room) => room.active)
         .map((room) => {
           const rowNumber = positionCounter++;
 
@@ -60,7 +60,7 @@ export const getTaskData = (jobData, workdayHours = 8, dayWidth = 30) => {
 
   const tasks = jobData.flatMap((job, jobIndex) => {
     return job.rooms
-      .filter((room) => room.active)
+      // .filter((room) => room.active)
       .flatMap((room, roomIndex) => {
         const rowNumber = positionCounter++;
 
@@ -81,6 +81,7 @@ export const getTaskData = (jobData, workdayHours = 8, dayWidth = 30) => {
             workPeriodIndex,
             workPeriodDuration: workPeriod.workPeriodDuration,
             rowNumber,
+            active: room.active,
           };
         });
       });

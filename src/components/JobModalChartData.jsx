@@ -39,28 +39,28 @@ const JobModal = ({
 		return format(new Date(date), "yyyy-MM-dd");
 	};
 
-	useEffect(() => {
-		if (isOpen && jobNameInputRef.current) {
-			jobNameInputRef.current.focus();
-		}
-	}, [isOpen]);
+	// useEffect(() => {
+	// 	if (isOpen && jobNameInputRef.current) {
+	// 		jobNameInputRef.current.focus();
+	// 	}
+	// }, [isOpen]);
 
 	// useEffect(() => {
 	// 	if (isOpen) {
 	// 		if (jobData) {
-	// 			setJobName(jobData.name || "");
+	// 			setJobName(jobData[0].jobName || "");
 	// 			setLocalRooms(
 	// 				() =>
-	// 					jobData.rooms.map((room) => ({
-	// 						...room,
-	// 						workPeriods: room.workPeriods.map((wp) => ({
+	// 					jobData.map((project) => ({
+	// 						...project,
+	// 						workPeriods: project.workPeriods.map((wp) => ({
 	// 							...wp,
-	// 							roomId: room.id,
-	// 							name: room.name,
+	// 							roomId: project.id,
+	// 							name: project.name,
 	// 							jobId: jobData.id,
 	// 							jobName: jobData.name,
-	// 							jobNumber: room.jobNumber,
-	// 							roomCreatedAt: room.roomCreatedAt,
+	// 							jobNumber: project.jobNumber,
+	// 							roomCreatedAt: project.roomCreatedAt,
 	// 						})),
 	// 					})) || []
 	// 			);
@@ -78,29 +78,48 @@ const JobModal = ({
 
 	useEffect(() => {
 		if (isOpen) {
-			if (jobData) {
+			if (jobData && jobData.length > 0) {
+				// Assuming all work periods have the same jobName
 				setJobName(jobData[0].jobName || "");
-				setLocalRooms(
-					() =>
-						jobData.map((project) => ({
-							...project,
-							workPeriods: project.workPeriods.map((wp) => ({
-								...wp,
-								roomId: project.id,
-								name: project.name,
-								jobId: jobData.id,
-								jobName: jobData.name,
-								jobNumber: project.jobNumber,
-								roomCreatedAt: project.roomCreatedAt,
-							})),
-						})) || []
-				);
+				
+				// Group work periods by roomId
+				const roomMap = {};
+				jobData.forEach(wp => {
+					if (!roomMap[wp.roomId]) {
+						roomMap[wp.roomId] = {
+							id: wp.roomId,
+							name: wp.roomName,
+							jobNumber: wp.jobNumber,
+							builderId: wp.builderId,
+							jobId: wp.jobId,
+							jobName: wp.jobName,
+							roomCreatedAt: wp.roomCreatedAt,
+							workPeriods: [],
+							active: wp.active,
+						};
+					}
+					roomMap[wp.roomId].workPeriods.push({
+						...wp,
+						roomId: wp.roomId,
+						name: wp.roomName,
+						jobId: wp.jobId,
+						jobName: wp.jobName,
+						jobNumber: wp.jobNumber,
+						roomCreatedAt: wp.roomCreatedAt,
+						active: wp.active,
+					});
+				});
+	
+				// Convert the room map to an array of projects
+				const projects = Object.values(roomMap);
+	
+				setLocalRooms(projects);
 			} else {
 				// Reset state for a new job
 				setJobName("");
 				setLocalRooms([]);
 			}
-
+	
 			setLocalJobsByBuilder(jobsByBuilder);
 			setNextJobNumber(jobNumberNext);
 			setErrors({});

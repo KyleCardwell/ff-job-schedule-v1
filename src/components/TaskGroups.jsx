@@ -41,6 +41,25 @@ const TaskGroups = ({
 	);
 	const taskGroupsRef = useRef(null);
 
+	const activeTasksData = useMemo(() => {
+		let rowCounter = 0;
+    let prevRoomId = null;
+    return tasks.reduce((acc, room) => {
+      if (room.active !== false) {
+        // Only increment rowCounter if it's a new room
+        if (room.roomId !== prevRoomId) {
+          rowCounter++;
+        }
+        acc.push({
+          ...room,
+          rowNumber: rowCounter - 1 // Subtract 1 because we incremented first
+        });
+        prevRoomId = room.roomId;
+      }
+      return acc;
+    }, []);
+	}, [tasks]);
+
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
 		return builders.reduce((acc, builder) => {
@@ -98,8 +117,8 @@ const TaskGroups = ({
 		if (
 			!chartRef.current ||
 			!taskGroupsRef.current ||
-			!tasks ||
-			tasks.length === 0 ||
+			!activeTasksData ||
+			activeTasksData.length === 0 ||
 			!Array.isArray(builders) ||
 			builders.length === 0
 		) {
@@ -156,41 +175,10 @@ const TaskGroups = ({
 					dispatch(updateLatestStartDate(newStartDate));
 				}
 
-				// // Check if the dragged workPeriod is in a multiWorkPeriodRoom
-				// const multiWorkPeriodRoom = multiWorkPeriodRooms.find(
-				//   (room) => room.id === d.roomId
-				// );
-
-				// let heightFactor = 1;
-				// let yOffsetFactor = 0;
-
-				// if (multiWorkPeriodRoom) {
-				//   // Find the other workPeriod in the same room
-				//   const otherWorkPeriod = multiWorkPeriodRoom.workPeriods.find(
-				//     (wp) => wp.id !== d.id
-				//   );
-
-				//   if (otherWorkPeriod) {
-				//     const otherStartDate = new Date(otherWorkPeriod.startDate);
-				//     const otherEndDate = new Date(otherWorkPeriod.endDate);
-
-				//     // Check if the new start date is within the other workPeriod's range
-				//     if (
-				//       newStartDate >= otherStartDate &&
-				//       newStartDate <= otherEndDate
-				//     ) {
-				//       heightFactor = 0.5;
-				//       yOffsetFactor = 0.5; // Place the dragged workPeriod above the other one
-				//     }
-				//   }
-				// }
-
 				// Update the dragged job
 				const updatedDraggedJob = {
 					...d,
 					startDate: newStartDate,
-					// heightFactor,
-					// yOffsetFactor,
 				};
 
 				// Get the current builder's jobs and update the dragged job
@@ -318,7 +306,7 @@ const TaskGroups = ({
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
 			.selectAll(".job-group")
-			.data(adjustTaskHeights(tasks), (d) => d.id);
+			.data(adjustTaskHeights(activeTasksData), (d) => d.id);
 
 		// Enter new elements
 		const enterGroups = jobGroups
@@ -395,7 +383,7 @@ const TaskGroups = ({
 		holidays,
 		timeOffByBuilder,
 		chartRef,
-		tasks,
+		activeTasksData,
 		setIsLoading,
 		barMargin,
 		handleAutoScroll,
