@@ -479,3 +479,4 @@ export const reconstructJobsForRedux = (flatJobs) => {
   });
   return Object.values(jobMap);
 };
+
