@@ -33,7 +33,7 @@ const TaskGroups = ({
 
 	const builders = useSelector((state) => state.builders.builders);
 	const holidays = useSelector((state) => state.holidays.holidays);
-	const { tasks, tasksByBuilder, multiWorkPeriodRooms } = useSelector(
+	const { tasks, tasksByBuilder } = useSelector(
 		(state) => state.taskData
 	);
 	const { earliestStartDate, latestStartDate } = useSelector(
@@ -41,17 +41,14 @@ const TaskGroups = ({
 	);
 	const taskGroupsRef = useRef(null);
 
-  const activeTasksData = useMemo(() => {
-    return tasks.reduce((acc, task, index) => {
-      if (task.active !== false) {
-        acc.push({
-          ...task,
-          rowNumber: index
-        });
-      }
-      return acc;
-    }, []);
-  }, [tasks]);
+	const activeTasksData = useMemo(() => {
+		return tasks
+			.filter((task) => task.active !== false)
+			.map((task, index) => ({
+				...task,
+				rowNumber: index,
+			}));
+	}, [tasks]);
 
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {

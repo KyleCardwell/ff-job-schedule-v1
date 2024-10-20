@@ -19,8 +19,8 @@ export const getChartData = (jobData) => {
 
 	const taskList = jobData.flatMap((job, i) => {
 		return job.rooms.flatMap((room) => {
-      const workPeriods = room.workPeriods.length
-			return room.workPeriods.map((workPeriod, wpIndex) => {
+			const workPeriods = room.workPeriods.length;
+			return room.workPeriods.map((workPeriod, workPeriodIndex) => {
 				const wpStartDate = new Date(workPeriod.startDate);
 				const rowNumber = positionCounter++;
 
@@ -41,7 +41,10 @@ export const getChartData = (jobData) => {
 					rowNumber,
 					jobNumber: room.jobNumber,
 					jobsIndex: i,
-          heightAdjust: wpIndex === 0 ? workPeriods : 0
+          workPeriodIndex,
+					heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
+					roomCreatedAt: room.roomCreatedAt,
+					active: room.active,
 				};
 			});
 		});
@@ -59,33 +62,32 @@ export const getTaskData = (jobData) => {
 	let multiWorkPeriodRooms = [];
 
 	const tasks = jobData.flatMap((job, jobIndex) => {
-		return (
-			job.rooms
-				.flatMap((room, roomIndex) => {
-					const rowNumber = positionCounter++;
+		return job.rooms.flatMap((room, roomIndex) => {
+			const rowNumber = positionCounter++;
+			const workPeriods = room.workPeriods.length;
+			if (room.workPeriods.length > 1) {
+				multiWorkPeriodRooms.push(room);
+			}
 
-					if (room.workPeriods.length > 1) {
-						multiWorkPeriodRooms.push(room);
-					}
-
-					return room.workPeriods.map((workPeriod, workPeriodIndex) => {
-						return {
-							...workPeriod,
-							jobId: job.id,
-							jobName: job.name,
-							jobNumber: room.jobNumber,
-							roomId: room.id,
-							roomName: room.name,
-							jobIndex,
-							roomIndex,
-							workPeriodIndex,
-							workPeriodDuration: workPeriod.workPeriodDuration,
-							rowNumber,
-							active: room.active,
-						};
-					});
-				})
-		);
+			return room.workPeriods.map((workPeriod, workPeriodIndex) => {
+				return {
+					...workPeriod,
+					jobId: job.id,
+					jobName: job.name,
+					jobNumber: room.jobNumber,
+					roomId: room.id,
+					roomName: room.name,
+					jobIndex,
+					roomIndex,
+					workPeriodIndex,
+					workPeriodDuration: workPeriod.workPeriodDuration,
+					rowNumber,
+					active: room.active,
+					roomCreatedAt: room.roomCreatedAt,
+          heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
+				};
+			});
+		});
 	});
 
 	// Group work periods by builderId

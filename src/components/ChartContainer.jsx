@@ -24,7 +24,7 @@ export const ChartContainer = () => {
 	const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
 
 	const activeRoomsData = useMemo(() => {
-		return chartData.filter((room) => room.active !== false);
+		return chartData.filter((room) => room.active);
 	}, [chartData]);
 
 	const chartRef = useRef(null);
@@ -370,7 +370,6 @@ export const ChartContainer = () => {
 			jobNameText.on("dblclick", (event) => {
 				event.stopPropagation();
 				const job = tasks.filter((task) => task.jobId === d.jobId);
-				console.log(job);
 				setSelectedJob(job);
 				setIsJobModalOpen(true);
 			});
@@ -479,6 +478,7 @@ export const ChartContainer = () => {
 		numDays,
 		activeRoomsData,
 		chartHeight,
+    tasks,
 	]);
 
 	useEffect(() => {
@@ -584,11 +584,13 @@ export const ChartContainer = () => {
 				}}
 				onSave={saveJob}
 				jobData={selectedJob}
-				jobsByBuilder={tasksByBuilder}
+				tasksByBuilder={tasksByBuilder}
 				timeOffByBuilder={timeOffByBuilder}
 				holidayChecker={holidayChecker}
 				holidays={holidays}
 				workdayHours={workdayHours}
+				chartStartDate={chartStartDate}
+				day
 			/>
 			<BuilderModal
 				visible={isBuilderModalOpen}

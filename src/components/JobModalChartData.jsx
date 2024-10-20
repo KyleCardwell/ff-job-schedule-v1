@@ -1,24 +1,29 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
-import {
-	updateJobAndRooms,
-	updateNextJobNumber,
-} from "../redux/actions/ganttActions";
+import { updateNextJobNumber } from "../redux/actions/ganttActions";
 import { addDays, format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
-import { getNextWorkday, totalJobHours } from "../utils/helpers";
+import {
+	getNextWorkday,
+	sortAndAdjustDates,
+	totalJobHours,
+} from "../utils/helpers";
+import { jobModalUpdateChartData } from "../redux/actions/chartData";
+import { jobModalUpdateTaskData } from "../redux/actions/taskData";
 
 const JobModal = ({
 	isOpen,
 	onClose,
 	onSave,
 	jobData,
-	jobsByBuilder,
+	tasksByBuilder,
 	timeOffByBuilder,
 	holidayChecker,
 	holidays,
 	workdayHours,
+	chartStartDate,
+	dayWidth,
 }) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
@@ -28,69 +33,34 @@ const JobModal = ({
 	const [localRooms, setLocalRooms] = useState([]);
 	const [errors, setErrors] = useState({});
 	const [localJobsByBuilder, setLocalJobsByBuilder] = useState({});
+	const [changedTaskIds, setChangedTaskIds] = useState({});
+	const [removedWorkPeriods, setRemovedWorkPeriods] = useState([]);
 
 	const [nextJobNumber, setNextJobNumber] = useState(null);
 
 	const newRoomNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
 
+	console.log("jobData", jobData);
 	const formatDateForInput = (date) => {
 		if (!date) return "";
 		return format(new Date(date), "yyyy-MM-dd");
 	};
-
-	// useEffect(() => {
-	// 	if (isOpen && jobNameInputRef.current) {
-	// 		jobNameInputRef.current.focus();
-	// 	}
-	// }, [isOpen]);
-
-	// useEffect(() => {
-	// 	if (isOpen) {
-	// 		if (jobData) {
-	// 			setJobName(jobData[0].jobName || "");
-	// 			setLocalRooms(
-	// 				() =>
-	// 					jobData.map((project) => ({
-	// 						...project,
-	// 						workPeriods: project.workPeriods.map((wp) => ({
-	// 							...wp,
-	// 							roomId: project.id,
-	// 							name: project.name,
-	// 							jobId: jobData.id,
-	// 							jobName: jobData.name,
-	// 							jobNumber: project.jobNumber,
-	// 							roomCreatedAt: project.roomCreatedAt,
-	// 						})),
-	// 					})) || []
-	// 			);
-	// 		} else {
-	// 			// Reset state for a new job
-	// 			setJobName("");
-	// 			setLocalRooms([]);
-	// 		}
-
-	// 		setLocalJobsByBuilder(jobsByBuilder);
-	// 		setNextJobNumber(jobNumberNext);
-	// 		setErrors({});
-	// 	}
-	// }, [jobData, isOpen, jobsByBuilder, jobNumberNext]);
 
 	useEffect(() => {
 		if (isOpen) {
 			if (jobData && jobData.length > 0) {
 				// Assuming all work periods have the same jobName
 				setJobName(jobData[0].jobName || "");
-				
+
 				// Group work periods by roomId
 				const roomMap = {};
-				jobData.forEach(wp => {
+				jobData.forEach((wp) => {
 					if (!roomMap[wp.roomId]) {
 						roomMap[wp.roomId] = {
 							id: wp.roomId,
 							name: wp.roomName,
 							jobNumber: wp.jobNumber,
-							builderId: wp.builderId,
 							jobId: wp.jobId,
 							jobName: wp.jobName,
 							roomCreatedAt: wp.roomCreatedAt,
@@ -98,33 +68,26 @@ const JobModal = ({
 							active: wp.active,
 						};
 					}
-					roomMap[wp.roomId].workPeriods.push({
-						...wp,
-						roomId: wp.roomId,
-						name: wp.roomName,
-						jobId: wp.jobId,
-						jobName: wp.jobName,
-						jobNumber: wp.jobNumber,
-						roomCreatedAt: wp.roomCreatedAt,
-						active: wp.active,
-					});
+
+					roomMap[wp.roomId].workPeriods.push(wp);
 				});
-	
+
 				// Convert the room map to an array of projects
 				const projects = Object.values(roomMap);
-	
+
 				setLocalRooms(projects);
 			} else {
 				// Reset state for a new job
 				setJobName("");
 				setLocalRooms([]);
 			}
-	
-			setLocalJobsByBuilder(jobsByBuilder);
+
+			setLocalJobsByBuilder(tasksByBuilder);
 			setNextJobNumber(jobNumberNext);
 			setErrors({});
 		}
-	}, [jobData, isOpen, jobsByBuilder, jobNumberNext]);
+		setChangedTaskIds(new Set());
+	}, [jobData, isOpen, tasksByBuilder, jobNumberNext]);
 
 	const calculateNextAvailableDate = (builderId) => {
 		const builderJobs = localJobsByBuilder[builderId] || [];
@@ -172,7 +135,7 @@ const JobModal = ({
 			name: "",
 			active: true,
 			isNew: true,
-			roomCreatedAt: new Date().toISOString(), // Add this line
+			roomCreatedAt: new Date().toISOString(),
 			workPeriods: [
 				{
 					id: uuidv4(),
@@ -189,6 +152,7 @@ const JobModal = ({
 			[defaultBuilderId]: [...(prev[defaultBuilderId] || []), newRoom],
 		}));
 		setNextJobNumber((prevNumber) => prevNumber + 1);
+		setChangedTaskIds((prev) => new Set(prev).add(newRoom.workPeriods[0].id));
 
 		// Focus on the new room name input
 		setTimeout(() => {
@@ -204,6 +168,14 @@ const JobModal = ({
 				room.id === roomId ? { ...room, active: false } : room
 			)
 		);
+
+		// Find the room and mark all its work periods as changed
+		const room = localRooms.find((r) => r.id === roomId);
+		if (room) {
+			room.workPeriods.forEach((wp) => {
+				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
+			});
+		}
 	};
 
 	const handleCancelNewRoom = (roomId, builderId) => {
@@ -221,6 +193,18 @@ const JobModal = ({
 				[builderId]: updatedBuilderJobs,
 			};
 		});
+
+		// Remove the room's work periods from changedTaskIds
+		setChangedTaskIds((prev) => {
+			const newSet = new Set(prev);
+			const roomToRemove = localRooms.find((room) => room.id === roomId);
+			if (roomToRemove) {
+				roomToRemove.workPeriods.forEach((wp) => {
+					newSet.delete(wp.id);
+				});
+			}
+			return newSet;
+		});
 	};
 
 	const handleAddWorkPeriod = (roomId, prevBuilderId = "1") => {
@@ -237,23 +221,24 @@ const JobModal = ({
 						duration: 8,
 					};
 					const updatedWorkPeriods = [
-						...(room.workPeriods || []),
+						...room.workPeriods.map((wp, index) => ({
+							...wp,
+							heightAdjust: index === 0 ? room.workPeriods.length + 1 : 0,
+						})),
 						newWorkPeriod,
 					];
 
 					// Update localJobsByBuilder
-					setLocalJobsByBuilder((prev) => {
-						const updatedJobs = prev[room.builderId]?.map((job) =>
+					setLocalJobsByBuilder((prev) => ({
+						...prev,
+						[prevBuilderId]: (prev[prevBuilderId] || []).map((job) =>
 							job.id === roomId
 								? { ...job, workPeriods: updatedWorkPeriods }
 								: job
-						);
+						),
+					}));
 
-						return {
-							...prev,
-							[room.builderId]: updatedJobs,
-						};
-					});
+					setChangedTaskIds((prev) => new Set(prev).add(newWorkPeriod.id));
 
 					return {
 						...room,
@@ -269,24 +254,26 @@ const JobModal = ({
 		setLocalRooms((prevRooms) =>
 			prevRooms.map((room) => {
 				if (room.id === roomId) {
-					const updatedWorkPeriods = room.workPeriods.filter(
-						(wp) => wp.id !== workPeriodId
-					);
-					// Update localJobsByBuilder
-					setLocalJobsByBuilder((prev) => {
-						const updatedJobs = Array.isArray(prev[room.builderId])
-							? prev[room.builderId].map((job) =>
-									job.id === roomId
-										? { ...job, workPeriods: updatedWorkPeriods }
-										: job
-							  )
-							: []; // Default to an empty array if prev[room.builderId] is not an array
+					const updatedWorkPeriods = room.workPeriods
+						.filter((wp) => wp.id !== workPeriodId)
+						.map((wp, index) => ({
+							...wp,
+							heightAdjust: index === 0 ? room.workPeriods.length - 1 : 0,
+						}));
 
-						return {
-							...prev,
-							[room.builderId]: updatedJobs,
-						};
-					});
+					// Update localJobsByBuilder
+					setLocalJobsByBuilder((prev) => ({
+						...prev,
+						[room.builderId]: (prev[room.builderId] || []).map((job) =>
+							job.id === roomId
+								? { ...job, workPeriods: updatedWorkPeriods }
+								: job
+						),
+					}));
+
+					setRemovedWorkPeriods((prev) => [...prev, workPeriodId]);
+
+					setChangedTaskIds((prev) => new Set(prev).add(workPeriodId));
 
 					return {
 						...room,
@@ -324,6 +311,7 @@ const JobModal = ({
 								updatedWp.duration = parseFloat(changes.duration);
 							}
 
+							setChangedTaskIds((prev) => new Set(prev).add(workPeriodId));
 							return updatedWp;
 						}
 						return wp;
@@ -342,7 +330,7 @@ const JobModal = ({
 									? changes.jobNumber
 									: wp.jobNumber;
 							wp.name = changes.name !== undefined ? changes.name : wp.name;
-							// ... other logic ...
+							setChangedTaskIds((prev) => new Set(prev).add(wp.id));
 						});
 
 						// Also update the room's jobNumber and name
@@ -399,6 +387,8 @@ const JobModal = ({
 				};
 			});
 		}
+		console.log("changedTaskIds", changedTaskIds);
+		console.log("jobData2", jobData);
 	};
 
 	const handleRestoreRoom = (roomId) => {
@@ -407,10 +397,23 @@ const JobModal = ({
 				room.id === roomId ? { ...room, active: true } : room
 			)
 		);
+
+		// Find the room and mark all its work periods as changed
+		const room = localRooms.find((r) => r.id === roomId);
+		if (room) {
+			room.workPeriods.forEach((wp) => {
+				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
+			});
+		}
 	};
 
 	const handleSave = () => {
 		let newErrors = {};
+
+		// Create a map of original tasks for quick lookup, including their original index
+		const originalTasksMap = new Map(
+			jobData.map((task, index) => [task.id, { ...task, originalIndex: index }])
+		);
 
 		// Check for blank job name
 		if (jobName.trim() === "") {
@@ -419,46 +422,55 @@ const JobModal = ({
 
 		// Check for all potential errors in rooms and work periods
 		localRooms.forEach((room) => {
-			room.workPeriods.forEach((workPeriod, index) => {
-				if (index === 0) {
-					// Validate job number (only for the first work period in each room)
-					if (!workPeriod.jobNumber || workPeriod.jobNumber.trim() === "") {
-						newErrors[`${room.id}-${workPeriod.id}-jobNumber`] =
-							"Job number is required";
+			const isRoomChanged = room.workPeriods.some((wp) =>
+				changedTaskIds.has(wp.id)
+			);
+			const isNewRoom = !originalTasksMap.has(room.workPeriods[0].id);
+
+			if (isRoomChanged || isNewRoom) {
+				room.workPeriods.forEach((workPeriod, index) => {
+					if (index === 0) {
+						// Validate job number (only for the first work period in each room)
+						if (!room.jobNumber || room.jobNumber.trim() === "") {
+							newErrors[`${room.id}-${workPeriod.id}-jobNumber`] =
+								"Job number is required";
+						}
+
+						// Validate room name (only for the first work period in each room)
+						if (!room.name || room.name.trim() === "") {
+							newErrors[`${room.id}-${workPeriod.id}-name`] =
+								"Room name is required";
+						}
 					}
 
-					// Validate room name (only for the first work period in each room)
-					if (!workPeriod.name || workPeriod.name.trim() === "") {
-						newErrors[`${room.id}-${workPeriod.id}-name`] =
-							"Room name is required";
+					if (changedTaskIds.has(workPeriod.id) || isNewRoom) {
+						// Validate duration for changed or new work periods
+						if (
+							workPeriod.duration === "" ||
+							workPeriod.duration === undefined ||
+							isNaN(workPeriod.duration)
+						) {
+							newErrors[`${room.id}-${workPeriod.id}-duration`] =
+								"Valid duration is required";
+						} else if (Number(workPeriod.duration) <= 0) {
+							newErrors[`${room.id}-${workPeriod.id}-duration`] =
+								"Duration must be greater than 0";
+						}
+
+						// Validate builderId for changed or new work periods
+						if (!workPeriod.builderId) {
+							newErrors[`${room.id}-${workPeriod.id}-builderId`] =
+								"Builder is required";
+						}
+
+						// Validate startDate for changed or new work periods
+						if (!workPeriod.startDate) {
+							newErrors[`${room.id}-${workPeriod.id}-startDate`] =
+								"Start date is required";
+						}
 					}
-				}
-
-				// Validate duration for all work periods
-				if (
-					workPeriod.duration === "" ||
-					workPeriod.duration === undefined ||
-					isNaN(workPeriod.duration)
-				) {
-					newErrors[`${room.id}-${workPeriod.id}-duration`] =
-						"Valid duration is required";
-				} else if (Number(workPeriod.duration) <= 0) {
-					newErrors[`${room.id}-${workPeriod.id}-duration`] =
-						"Duration must be greater than 0";
-				}
-
-				// Validate builderId for all work periods
-				if (!workPeriod.builderId) {
-					newErrors[`${room.id}-${workPeriod.id}-builderId`] =
-						"Builder is required";
-				}
-
-				// Validate startDate for all work periods
-				if (!workPeriod.startDate) {
-					newErrors[`${room.id}-${workPeriod.id}-startDate`] =
-						"Start date is required";
-				}
-			});
+				});
+			}
 		});
 
 		// If there are any errors, set them and don't save
@@ -467,24 +479,153 @@ const JobModal = ({
 			return;
 		}
 
-		// If we've made it here, there are no errors, so we can save
-		const updatedJob = {
-			...jobData,
-			name: jobName,
-			rooms: localRooms.map((room) => ({
-				...room,
-				workPeriods: room.workPeriods.map((wp) => ({
-					...wp,
-					duration: Number(wp.duration), // Ensure duration is a number
-					startDate: normalizeDate(wp.startDate), // Ensure date is normalized
-				})),
-				isNew: undefined,
-			})),
-		};
+		// Create an array to hold all tasks in their original order, including new ones
+		// let updatedTasks = new Array(jobData.length); // Pre-allocate array with the original size
+		let currentRoomId = null;
+		let insertIndex = -1;
 
+		const updatedTasks = localRooms.reduce((acc, room) => {
+			room.workPeriods.forEach((wp, index) => {
+				if (removedWorkPeriods.includes(wp.id)) {
+					return;
+				}
+
+				const taskData = {
+					id: wp.id,
+					roomId: room.id,
+					roomName: room.name,
+					jobId: room.jobId,
+					jobName: jobName,
+					jobNumber: room.jobNumber,
+					builderId: wp.builderId,
+					startDate: normalizeDate(wp.startDate),
+					duration: Number(wp.duration),
+					active: room.active,
+					roomCreatedAt: room.roomCreatedAt,
+					xPosition: wp.xPosition,
+					workPeriodDuration: wp.workPeriodDuration,
+					heightAdjust: index === 0 ? room.workPeriods.length : 0,
+				};
+
+				if (originalTasksMap.has(wp.id)) {
+					// Existing task: update it and keep its original position
+					const { originalIndex } = originalTasksMap.get(wp.id);
+					acc[originalIndex] = taskData;
+				} else {
+					// New task: insert it after the last task of the same room
+					if (currentRoomId !== room.id) {
+						insertIndex = acc.findIndex((t) => t && t.roomId === room.id);
+						if (insertIndex === -1) {
+							// If no tasks for this room exist yet, append to the end
+							insertIndex = acc.length;
+						} else {
+							// Find the last task of this room
+							while (
+								insertIndex < acc.length &&
+								acc[insertIndex] &&
+								acc[insertIndex].roomId === room.id
+							) {
+								insertIndex++;
+							}
+						}
+						currentRoomId = room.id;
+					}
+					// Insert the new task
+					acc.splice(insertIndex, 0, taskData);
+					insertIndex++;
+				}
+			});
+
+			return acc;
+		}, []);
+
+		// Remove any tasks that no longer exist and update active status
+		const changedTaskIdsSet = new Set(changedTaskIds);
+		const buildersWithChanges = new Set();
+		const updatedBuilderArrays = {};
+
+		updatedTasks?.forEach((task) => {
+			if (changedTaskIdsSet.has(task.id)) {
+				buildersWithChanges.add(task.builderId);
+
+				// Check if the builder has changed
+				const originalTask = originalTasksMap.get(task.id);
+				if (originalTask && originalTask.builderId !== task.builderId) {
+					// Add both the previous and new builders to buildersWithChanges
+					buildersWithChanges.add(originalTask.builderId);
+					buildersWithChanges.add(task.builderId);
+				}
+			}
+		});
+
+		removedWorkPeriods.forEach((removedId) => {
+			const originalTask = originalTasksMap.get(removedId);
+			if (originalTask) {
+				buildersWithChanges.add(originalTask.builderId);
+			}
+		});
+		// Apply sortAndAdjustDates for builders with changes
+		buildersWithChanges.forEach((builderId) => {
+			// Combine updated tasks with existing tasks from localJobsByBuilder
+			const existingBuilderTasks = localJobsByBuilder[builderId] || [];
+			const updatedBuilderTasks = updatedTasks.filter(
+				(task) => task.builderId === builderId
+			);
+
+			// Create a set of updated task IDs for efficient lookup
+			const updatedTaskIds = new Set(
+				updatedBuilderTasks.map((task) => task.id)
+			);
+
+			// Combine tasks, replacing existing tasks with updated ones, and filter out removed work periods
+			const combinedBuilderTasks = [
+				...existingBuilderTasks.filter((task) => !updatedTaskIds.has(task.id)),
+				...updatedBuilderTasks,
+			].filter((task) => !removedWorkPeriods.includes(task.id));
+
+			const sortedBuilderTasks = sortAndAdjustDates(
+				combinedBuilderTasks,
+				workdayHours,
+				holidayChecker,
+				holidays,
+				null,
+				null,
+				timeOffByBuilder,
+				dayWidth,
+				chartStartDate
+			);
+
+			// Store the updated builder array
+			updatedBuilderArrays[builderId] = sortedBuilderTasks;
+
+			// Update the tasks in updatedTasks with the sorted and adjusted data
+			sortedBuilderTasks.forEach((sortedTask) => {
+				const index = updatedTasks.findIndex(
+					(task) => task.id === sortedTask.id
+				);
+				if (index !== -1) {
+					updatedTasks[index] = sortedTask;
+				} else {
+					updatedTasks.push(sortedTask);
+				}
+			});
+		});
+
+		console.log("updatedTasks", updatedTasks);
+		const finalUpdatedTasks = updatedTasks.filter(
+			(task) => !removedWorkPeriods.includes(task.id)
+		);
+
+		dispatch(jobModalUpdateChartData(finalUpdatedTasks, removedWorkPeriods));
+		dispatch(
+			jobModalUpdateTaskData(
+				finalUpdatedTasks,
+				updatedBuilderArrays,
+				removedWorkPeriods
+			)
+		);
 		dispatch(updateNextJobNumber(nextJobNumber));
-		dispatch(updateJobAndRooms(updatedJob));
-		onSave(updatedJob);
+		onSave();
 		onClose();
 	};
 
@@ -541,7 +682,6 @@ const JobModal = ({
 												? "error"
 												: ""
 										}`}
-										// ref={jobNumberInputRefs[workPeriod.id]}
 									/>
 								) : (
 									<span className="job-number-input">

@@ -23,3 +23,8 @@ export const updateNextNobNumber = (nextJobNumber) => {
     payload: nextJobNumber,
   }
 }
+
+export const jobModalUpdateChartData = (updatedTasks, removedWorkPeriods) => ({
+  type: Actions.chartData.JOB_MODAL_UPDATE_CHART_DATA,
+  payload: { updatedTasks, removedWorkPeriods },
+});

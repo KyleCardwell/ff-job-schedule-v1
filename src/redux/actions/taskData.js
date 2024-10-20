@@ -66,3 +66,15 @@ export const updateTasksAfterBuilderChanges = (
 		});
 	};
 };
+
+export const jobModalUpdateTaskData = (
+	updatedTasks,
+	updatedBuilderArrays,
+	removedWorkPeriods
+) => {
+	console.log("updatedTasks", updatedTasks);
+	return {
+		type: Actions.taskData.JOB_MODAL_UPDATE_TASK_DATA,
+		payload: { updatedTasks, updatedBuilderArrays, removedWorkPeriods },
+	};
+};

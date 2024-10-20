@@ -50,6 +50,65 @@ export const chartDataReducer = (state = initialState, action) => {
 				}),
 			};
 		}
+		case Actions.chartData.JOB_MODAL_UPDATE_CHART_DATA: {
+			const { updatedTasks, removedWorkPeriods } = action.payload;
+
+			// First, remove the tasks that should be deleted
+			let updatedChartData = state.chartData.filter(
+				(task) => !removedWorkPeriods.includes(task.id)
+			);
+
+			updatedTasks.forEach((updatedTask) => {
+				const existingIndex = updatedChartData.findIndex(
+					(task) => task.id === updatedTask.id
+				);
+
+				if (existingIndex !== -1) {
+					// Update existing task
+					updatedChartData[existingIndex] = {
+						...updatedChartData[existingIndex],
+						...updatedTask,
+					};
+				} else {
+					// New task: find the correct position to insert
+					let insertIndex = updatedChartData.length; // Default to end of array
+
+					// Find the last task of the same room
+					const sameRoomLastIndex = updatedChartData.reduce(
+						(lastIndex, task, index) => {
+							return task.roomId === updatedTask.roomId ? index : lastIndex;
+						},
+						-1
+					);
+
+					if (sameRoomLastIndex !== -1) {
+						// Insert after the last task of the same room
+						insertIndex = sameRoomLastIndex + 1;
+					} else {
+						// If no tasks for this room, find the last task of the same job
+						const sameJobLastIndex = updatedChartData.reduce(
+							(lastIndex, task, index) => {
+								return task.jobId === updatedTask.jobId ? index : lastIndex;
+							},
+							-1
+						);
+
+						if (sameJobLastIndex !== -1) {
+							// Insert after the last task of the same job
+							insertIndex = sameJobLastIndex + 1;
+						}
+					}
+
+					// Insert the new task
+					updatedChartData.splice(insertIndex, 0, updatedTask);
+				}
+			});
+
+			return {
+				...state,
+				chartData: updatedChartData,
+			};
+		}
 		case Actions.jobs.UPDATE_NEXT_JOB_NUMBER:
 			return {
 				...state,
