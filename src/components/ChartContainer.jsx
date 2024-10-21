@@ -9,7 +9,7 @@ import Holidays from "date-holidays";
 import { isHoliday } from "../utils/helpers";
 import BuilderLegend from "./BuilderLegend";
 import BuilderModal from "./BuilderModal";
-import JobModal from "./JobModal";
+// import JobModal from "./JobModal";
 import JobModalChartData from "./JobModalChartData";
 import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
@@ -23,8 +23,11 @@ export const ChartContainer = () => {
 	const builders = useSelector((state) => state.builders.builders);
 	const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
 
-	const activeRoomsData = useMemo(() => {
-		return chartData.filter((room) => room.active);
+	const { activeRoomsData, lastJobsIndex } = useMemo(() => {
+		return {
+			activeRoomsData: chartData.filter((room) => room.active),
+			lastJobsIndex: chartData[chartData.length - 1].jobsIndex,
+		};
 	}, [chartData]);
 
 	const chartRef = useRef(null);
@@ -350,12 +353,12 @@ export const ChartContainer = () => {
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
-			const roomNameText = group
+			const taskNameText = group
 				.append("text")
 				.attr("class", "room-name")
 				.attr("x", 130)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.name : "")
+				.text(d.heightAdjust !== 0 ? d.taskName : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -375,7 +378,7 @@ export const ChartContainer = () => {
 			});
 
 			// Add double-click event for room name
-			roomNameText.on("dblclick", (event) => {
+			taskNameText.on("dblclick", (event) => {
 				event.stopPropagation();
 				scrollToMonday(new Date(d.startDate));
 			});
@@ -478,7 +481,7 @@ export const ChartContainer = () => {
 		numDays,
 		activeRoomsData,
 		chartHeight,
-    tasks,
+		tasks,
 	]);
 
 	useEffect(() => {
@@ -590,7 +593,8 @@ export const ChartContainer = () => {
 				holidays={holidays}
 				workdayHours={workdayHours}
 				chartStartDate={chartStartDate}
-				day
+				dayWidth={dayWidth}
+				lastJobsIndex={lastJobsIndex}
 			/>
 			<BuilderModal
 				visible={isBuilderModalOpen}

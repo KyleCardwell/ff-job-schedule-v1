@@ -6,8 +6,6 @@ import {
 	addDays,
 	isSaturday,
 	isSunday,
-	isWithinInterval,
-	isBefore,
 	differenceInCalendarDays,
 } from "date-fns";
 import { normalizeDate } from "./dateUtils";
@@ -35,7 +33,7 @@ export const getChartData = (jobData) => {
 				return {
 					...workPeriod,
 					roomId: room.id,
-					name: room.name,
+					taskName: room.name,
 					jobId: job.id,
 					jobName: job.name,
 					rowNumber,
@@ -61,7 +59,7 @@ export const getTaskData = (jobData) => {
 	let positionCounter = 0;
 	let multiWorkPeriodRooms = [];
 
-	const tasks = jobData.flatMap((job, jobIndex) => {
+	const tasks = jobData.flatMap((job, jobsIndex) => {
 		return job.rooms.flatMap((room, roomIndex) => {
 			const rowNumber = positionCounter++;
 			const workPeriods = room.workPeriods.length;
@@ -76,8 +74,8 @@ export const getTaskData = (jobData) => {
 					jobName: job.name,
 					jobNumber: room.jobNumber,
 					roomId: room.id,
-					roomName: room.name,
-					jobIndex,
+					taskName: room.name,
+					jobsIndex,
 					roomIndex,
 					workPeriodIndex,
 					workPeriodDuration: workPeriod.workPeriodDuration,
@@ -196,116 +194,6 @@ export const totalJobHours = (
 	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
-// export const adjustMultiWorkPeriodTasks = (
-//   sortedBuilderTasks,
-//   multiWorkPeriodRooms
-// ) => {
-//   // Create a Map for efficient lookups
-//   const multiWorkPeriodMap = new Map(
-//     multiWorkPeriodRooms.map((room) => [room.id, room])
-//   );
-
-//   return sortedBuilderTasks.map((task) => {
-//     if (multiWorkPeriodMap.has(task.roomId)) {
-//       const room = multiWorkPeriodMap.get(task.roomId);
-
-//       // Sort workPeriods by startDate
-//       const sortedWorkPeriods = [...room.workPeriods].sort(
-//         (a, b) => new Date(a.startDate) - new Date(b.startDate)
-//       );
-
-//       // Find overlapping work periods
-//       const overlaps = sortedWorkPeriods.filter(
-//         (wp) =>
-//           wp.id !== task.id && // Check all other work periods
-//           (isWithinInterval(new Date(task.startDate), {
-//             start: new Date(wp.startDate),
-//             end: addDays(new Date(wp.startDate), wp.duration),
-//           }) ||
-//             isWithinInterval(addDays(new Date(task.startDate), task.duration), {
-//               start: new Date(wp.startDate),
-//               end: addDays(new Date(wp.startDate), wp.duration),
-//             }) ||
-//             isWithinInterval(new Date(wp.startDate), {
-//               start: new Date(task.startDate),
-//               end: addDays(new Date(task.startDate), task.duration),
-//             }))
-//       );
-
-//       const overlapCount = overlaps.length + 1;
-//       const heightFactor = overlapCount > 1 ? 1 / Math.min(overlapCount, 3) : 1;
-//       const yOffsetFactor =
-//         overlaps.filter((o) => new Date(o.startDate) < new Date(task.startDate))
-//           .length / Math.min(overlapCount, 3);
-
-//       return {
-//         ...task,
-//         heightFactor,
-//         yOffsetFactor,
-//         totalWorkPeriods: sortedWorkPeriods.length,
-//         showText:
-//           task.id === sortedWorkPeriods[sortedWorkPeriods.length - 1].id ||
-//           heightFactor === 1,
-//       };
-//     }
-//     // If it's not a multi-work period room, return the task with default values
-//     return {
-//       ...task,
-//       heightFactor: 1,
-//       yOffsetFactor: 0,
-//       totalWorkPeriods: 1,
-//       showText: true,
-//     };
-//   });
-// };
-
-// const adjustMultiWorkPeriodTasks = (sortedBuilderTasks, multiWorkPeriodRooms) => {
-//   // Create a Map for efficient lookups
-//   const multiWorkPeriodMap = new Map(
-//     multiWorkPeriodRooms.map((room) => [room.id, room])
-//   );
-
-//   return sortedBuilderTasks.map((task) => {
-//     if (multiWorkPeriodMap.has(task.roomId)) {
-//       const room = multiWorkPeriodMap.get(task.roomId);
-
-//       // Ensure workPeriods are sorted by startDate
-//       const [firstWP, secondWP] = room.workPeriods.sort(
-//         (a, b) => new Date(a.startDate) - new Date(b.startDate)
-//       );
-
-// 			// const isOverlapping = secondWP && isWithinInterval(
-//       //   new Date(secondWP.startDate),
-//       //   {
-//       //     start: new Date(firstWP.startDate),
-//       //     end: addDays(new Date(firstWP.startDate), firstWP.workPeriodDuration / 8 - 1)
-//       //   }
-//       // );
-
-// 			const isOverlapping = secondWP && isBefore(secondWP.startDate, firstWP.endDate)
-
-//       const heightFactor = isOverlapping ? 0.5 : 1;
-//       const yOffsetFactor = task.id === secondWP.id && isOverlapping ? 0.5 : 0;
-
-//       return {
-//         ...task,
-//         heightFactor,
-//         yOffsetFactor,
-//         totalWorkPeriods: room.workPeriods.length,
-//         showText: task.id === secondWP?.id || !isOverlapping,
-//       };
-//     }
-//     // If it's not a multi-work period room, return the task with default values
-//     return {
-//       ...task,
-//       heightFactor: 1,
-//       yOffsetFactor: 0,
-//       totalWorkPeriods: 1,
-//       showText: true,
-//     };
-//   });
-// };
-
 export const calculateXPosition = (
 	jobStartDate,
 	chartStartDate,
@@ -319,50 +207,6 @@ export const calculateXPosition = (
 	);
 	return diffInDays * dayWidth;
 };
-
-// export const adjustMultiWorkPeriodTasks = (
-// 	sortedBuilderTasks,
-// 	multiWorkPeriodRooms
-// ) => {
-// 	// Create a Map for efficient lookups
-// 	const multiWorkPeriodMap = new Map(
-// 		multiWorkPeriodRooms.map((room) => [room.id, room])
-// 	);
-
-// 	return sortedBuilderTasks.map((task) => {
-// 		if (multiWorkPeriodMap.has(task.roomId)) {
-// 			const room = multiWorkPeriodMap.get(task.roomId);
-
-// 			// Ensure workPeriods are sorted by startDate
-// 			const [firstWP, secondWP] = room.workPeriods.sort(
-// 				(a, b) => new Date(a.startDate) - new Date(b.startDate)
-// 			);
-
-// 			const isOverlapping =
-// 				secondWP &&
-// 				isBefore(new Date(secondWP.startDate), new Date(firstWP.endDate));
-
-// 			const heightFactor = isOverlapping ? 0.5 : 1;
-// 			const yOffsetFactor = task.id === secondWP.id && isOverlapping ? 0.5 : 0;
-
-// 			return {
-// 				...task,
-// 				heightFactor,
-// 				yOffsetFactor,
-// 				totalWorkPeriods: room.workPeriods.length,
-// 				showText: task.id === secondWP?.id || !isOverlapping,
-// 			};
-// 		}
-// 		// If it's not a multi-work period room, return the task with default values
-// 		return {
-// 			...task,
-// 			heightFactor: 1,
-// 			yOffsetFactor: 0,
-// 			totalWorkPeriods: 1,
-// 			showText: true,
-// 		};
-// 	});
-// };
 
 export const sortAndAdjustDates = (
 	jobsArray,

@@ -338,7 +338,7 @@ const TaskGroups = ({
 			.select("text")
 			.attr("x", (d) => d.xPosition + 5)
 			.attr("y", rowHeight / 2)
-			.text((d) => d.roomName) // Always show the text
+			.text((d) => d.taskName) // Always show the text
 			.attr("fill", "#ffffff")
 			.attr("font-size", "12px")
 			// .attr("font-weight", "bold")
@@ -354,10 +354,10 @@ const TaskGroups = ({
 			.on("mouseover", function (event, d) {
 				d3.select(this)
 					.select(".bar-text")
-					.text(`${d.roomName} - ${d.duration} hours`);
+					.text(`${d.taskName} - ${d.duration} hours`);
 			})
 			.on("mouseout", function (event, d) {
-				d3.select(this).select(".bar-text").text(d.roomName);
+				d3.select(this).select(".bar-text").text(d.taskName);
 			});
 	}, [
 		builders,
