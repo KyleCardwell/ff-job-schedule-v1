@@ -1,15 +1,17 @@
 // redux/store.js
-import { createStore, applyMiddleware, compose } from "redux";
+import { configureStore } from "@reduxjs/toolkit";
 import rootReducer from "./reducers/rootReducer";
-// import { thunk } from "redux-thunk";
-import logger from 'redux-logger'
+import logger from "redux-logger";
 
-const store = createStore(
-	rootReducer,
-	compose(
-		applyMiddleware(logger),
-		window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
-	)
-);
+const store = configureStore({
+  reducer: rootReducer,
+  middleware: (getDefaultMiddleware) => {
+    const customizedMiddleware = getDefaultMiddleware({
+      serializableCheck: false,
+    });
+    return customizedMiddleware.concat(logger);
+  },
+  devTools: true,
+});
 
 export default store;

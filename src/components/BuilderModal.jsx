@@ -5,15 +5,23 @@ import {
 	deleteBuilder,
 	addBuilder,
 } from "../redux/actions/builders";
-import { updateJobsAfterBuilderChanges } from "../redux/actions/ganttActions";
 import { format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { addDays } from "date-fns";
+import { updateTasksAfterBuilderChanges } from "../redux/actions/taskData";
 // import "./BuilderModal.css";
 
-const BuilderModal = ({ visible, onCancel }) => {
+const BuilderModal = ({
+	visible,
+	onCancel,
+	workdayHours,
+	holidayChecker,
+	dayWidth,
+	chartStartDate,
+}) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
+	const holidays = useSelector((state) => state.holidays.holidays);
 
 	const [localBuilders, setLocalBuilders] = useState(builders);
 	const [newBuilder, setNewBuilder] = useState({ name: "", color: "#000000" });
@@ -138,6 +146,26 @@ const BuilderModal = ({ visible, onCancel }) => {
 		}));
 	};
 
+	// Helper function to compare timeOff arrays
+	const areTimeOffsEqual = (timeOff1, timeOff2) => {
+		if (timeOff1.length !== timeOff2.length) return false;
+		return timeOff1.every((period1, index) => {
+			const period2 = timeOff2[index];
+			return period1.start === period2.start && period1.end === period2.end;
+		});
+	};
+
+	// Helper function to check if a builder has changes
+	const hasChanges = (localBuilder) => {
+		const existingBuilder = builders.find((b) => b.id === localBuilder.id);
+		if (!existingBuilder) return true; // New builder
+		return (
+			existingBuilder.name !== localBuilder.name ||
+			existingBuilder.color !== localBuilder.color ||
+			!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff)
+		);
+	};
+
 	const handleSave = () => {
 		if (validateInputs()) {
 			const buildersToDelete = localBuilders
@@ -146,12 +174,27 @@ const BuilderModal = ({ visible, onCancel }) => {
 			const buildersToKeep = localBuilders.filter((b) => !b.markedForDeletion);
 
 			// Update or add builders
-			buildersToKeep.forEach((builder) => {
-				const existingBuilder = builders.find((b) => b.id === builder.id);
+			buildersToKeep.forEach((localBuilder) => {
+				const existingBuilder = builders.find((b) => b.id === localBuilder.id);
 				if (!existingBuilder) {
-					dispatch(addBuilder(builder.name, builder.color, builder.timeOff));
+					// This is a new builder, so add it
+					dispatch(
+						addBuilder(
+							localBuilder.name,
+							localBuilder.color,
+							localBuilder.timeOff
+						)
+					);
 				} else {
-					dispatch(updateBuilder(builder));
+					// Check if the builder has any changes
+					const hasChanges =
+						existingBuilder.name !== localBuilder.name ||
+						existingBuilder.color !== localBuilder.color ||
+						!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff);
+
+					if (hasChanges) {
+						dispatch(updateBuilder(localBuilder));
+					}
 				}
 			});
 
@@ -160,10 +203,23 @@ const BuilderModal = ({ visible, onCancel }) => {
 				dispatch(deleteBuilder(id));
 			});
 
-			// Update all jobs if any builders were deleted
-			if (buildersToDelete.length > 0) {
-				dispatch(updateJobsAfterBuilderChanges(buildersToDelete));
-			}
+			// // Update all jobs if any builders were deleted
+			// if (buildersToDelete.length > 0 || buildersToKeep.some(hasChanges)) {
+			// 	dispatch(updateJobsAfterBuilderChanges(buildersToDelete));
+			// }
+
+			// Update tasks after all builder changes
+			dispatch(
+				updateTasksAfterBuilderChanges(
+					buildersToKeep,
+					buildersToDelete,
+					workdayHours,
+					holidayChecker,
+					holidays,
+					dayWidth,
+					chartStartDate
+				)
+			);
 
 			setTimeOffVisibility({});
 			onCancel();

@@ -6,12 +6,106 @@ import {
 	addDays,
 	isSaturday,
 	isSunday,
+	differenceInCalendarDays,
 } from "date-fns";
+import { normalizeDate } from "./dateUtils";
 
-export const normalizeDate = (date) => {
-	const normalized = new Date(date);
-	normalized.setHours(0, 0, 0, 0); // Set time to 00:00:00
-	return normalized;
+export const getChartData = (jobData) => {
+	let positionCounter = 0;
+	let earliestStartDate = new Date(8640000000000000); // Initialize with max date
+	let latestStartDate = new Date(-8640000000000000); // Initialize with min date
+
+	const taskList = jobData.flatMap((job, i) => {
+		return job.rooms.flatMap((room) => {
+			const workPeriods = room.workPeriods.length;
+			return room.workPeriods.map((workPeriod, workPeriodIndex) => {
+				const wpStartDate = new Date(workPeriod.startDate);
+				const rowNumber = positionCounter++;
+
+				// Update earliest and latest start dates
+				if (wpStartDate < earliestStartDate) {
+					earliestStartDate = wpStartDate;
+				}
+				if (wpStartDate > latestStartDate) {
+					latestStartDate = wpStartDate;
+				}
+
+				return {
+					...workPeriod,
+					roomId: room.id,
+					taskName: room.name,
+					jobId: job.id,
+					jobName: job.name,
+					rowNumber,
+					jobNumber: room.jobNumber,
+					jobsIndex: i,
+          workPeriodIndex,
+					heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
+					roomCreatedAt: room.roomCreatedAt,
+					active: room.active,
+				};
+			});
+		});
+	});
+
+	return {
+		taskList,
+		earliestStartDate,
+		latestStartDate,
+	};
+};
+
+export const getTaskData = (jobData) => {
+	let positionCounter = 0;
+	let multiWorkPeriodRooms = [];
+
+	const tasks = jobData.flatMap((job, jobsIndex) => {
+		return job.rooms.flatMap((room, roomIndex) => {
+			const rowNumber = positionCounter++;
+			const workPeriods = room.workPeriods.length;
+			if (room.workPeriods.length > 1) {
+				multiWorkPeriodRooms.push(room);
+			}
+
+			return room.workPeriods.map((workPeriod, workPeriodIndex) => {
+				return {
+					...workPeriod,
+					jobId: job.id,
+					jobName: job.name,
+					jobNumber: room.jobNumber,
+					roomId: room.id,
+					taskName: room.name,
+					jobsIndex,
+					roomIndex,
+					workPeriodIndex,
+					workPeriodDuration: workPeriod.workPeriodDuration,
+					rowNumber,
+					active: room.active,
+					roomCreatedAt: room.roomCreatedAt,
+          heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
+				};
+			});
+		});
+	});
+
+	// Group work periods by builderId
+	const tasksByBuilder = tasks.reduce((acc, workPeriod) => {
+		const builderId = workPeriod.builderId;
+		if (!acc[builderId]) {
+			acc[builderId] = [];
+		}
+		acc[builderId].push(workPeriod);
+		return acc;
+	}, {});
+
+	// Sort tasks within each builder group by startDate
+	Object.keys(tasksByBuilder).forEach((builderId) => {
+		tasksByBuilder[builderId].sort(
+			(a, b) => new Date(a.startDate) - new Date(b.startDate)
+		);
+	});
+
+	return { tasks, tasksByBuilder, multiWorkPeriodRooms };
 };
 
 export const getPreviousMonday = (dateInput) => {
@@ -100,6 +194,19 @@ export const totalJobHours = (
 	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
+export const calculateXPosition = (
+	jobStartDate,
+	chartStartDate,
+	dayWidth = 30
+) => {
+	const normalizedJobStartDate = normalizeDate(jobStartDate);
+	const normalizedChartStartDate = normalizeDate(chartStartDate);
+	const diffInDays = differenceInCalendarDays(
+		normalizedJobStartDate,
+		normalizedChartStartDate
+	);
+	return diffInDays * dayWidth;
+};
 
 export const sortAndAdjustDates = (
 	jobsArray,
@@ -108,7 +215,9 @@ export const sortAndAdjustDates = (
 	holidays,
 	draggedJobId,
 	dropDate,
-	timeOffByBuilder
+	timeOffByBuilder,
+	dayWidth = 30,
+	chartStartDate
 ) => {
 	let arrayToProcess = [...jobsArray];
 
@@ -158,11 +267,13 @@ export const sortAndAdjustDates = (
 				current.builderId,
 				timeOffByBuilder
 			);
-			const endDate = addDays(startDate, Math.ceil(jobHours / workdayHours));
+			const newEndDate = addDays(startDate, Math.ceil(jobHours / workdayHours));
 			acc.push({
 				...current,
-				startDate,
-				endDate,
+				startDate: normalizeDate(startDate),
+				endDate: normalizeDate(newEndDate),
+				workPeriodDuration: (jobHours / workdayHours) * dayWidth,
+				xPosition: calculateXPosition(startDate, chartStartDate, dayWidth),
 			});
 		} else {
 			const previousJob = acc[index - 1];
@@ -183,10 +294,18 @@ export const sortAndAdjustDates = (
 				timeOffByBuilder
 			);
 			const endDate = addDays(newStartDate, Math.ceil(jobHours / workdayHours));
-			acc.push({ ...current, startDate: newStartDate, endDate });
+			acc.push({
+				...current,
+				startDate: normalizeDate(newStartDate),
+				endDate: normalizeDate(endDate),
+				workPeriodDuration: (jobHours / workdayHours) * dayWidth,
+				xPosition: calculateXPosition(newStartDate, chartStartDate, dayWidth),
+			});
 		}
 		return acc;
 	}, []);
+
+	// return sortedTasks;
 };
 
 // Function to reconstruct the job structure for Redux
