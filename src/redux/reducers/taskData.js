@@ -33,17 +33,51 @@ export const taskDataReducer = (state = initialState, action) => {
 				},
 			};
 		}
+		// case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
+		// 	const updatedTasks = action.payload;
+		// 	const tasksByBuilder = updatedTasks.reduce((acc, task) => {
+		// 		if (!acc[task.builderId]) acc[task.builderId] = [];
+		// 		acc[task.builderId].push(task);
+		// 		return acc;
+		// 	}, {});
+
+		// 	return {
+		// 		...state,
+		// 		tasks: updatedTasks,
+		// 		tasksByBuilder,
+		// 	};
+		// }
 		case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
 			const updatedTasks = action.payload;
-			const tasksByBuilder = updatedTasks.reduce((acc, task) => {
-				if (!acc[task.builderId]) acc[task.builderId] = [];
-				acc[task.builderId].push(task);
-				return acc;
-			}, {});
+			const updatedTasksMap = new Map(
+				updatedTasks.map((task) => [task.id, task])
+			);
+
+			// Create a new tasksByBuilder object
+			const tasksByBuilder = {};
+
+			// Update tasks while maintaining original order
+			const newTasks = state.tasks.map((task) => {
+				const updatedTask = updatedTasksMap.get(task.id);
+				if (updatedTask) {
+					// Add task to tasksByBuilder
+					if (!tasksByBuilder[updatedTask.builderId]) {
+						tasksByBuilder[updatedTask.builderId] = [];
+					}
+					tasksByBuilder[updatedTask.builderId].push(updatedTask);
+					return updatedTask;
+				}
+				// If task wasn't updated, add it to tasksByBuilder as is
+				if (!tasksByBuilder[task.builderId]) {
+					tasksByBuilder[task.builderId] = [];
+				}
+				tasksByBuilder[task.builderId].push(task);
+				return task;
+			});
 
 			return {
 				...state,
-				tasks: updatedTasks,
+				tasks: newTasks,
 				tasksByBuilder,
 			};
 		}

@@ -156,15 +156,15 @@ const BuilderModal = ({
 	};
 
 	// Helper function to check if a builder has changes
-	const hasChanges = (localBuilder) => {
-		const existingBuilder = builders.find((b) => b.id === localBuilder.id);
-		if (!existingBuilder) return true; // New builder
-		return (
-			existingBuilder.name !== localBuilder.name ||
-			existingBuilder.color !== localBuilder.color ||
-			!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff)
-		);
-	};
+	// const hasChanges = (localBuilder) => {
+	// 	const existingBuilder = builders.find((b) => b.id === localBuilder.id);
+	// 	if (!existingBuilder) return true; // New builder
+	// 	return (
+	// 		existingBuilder.name !== localBuilder.name ||
+	// 		existingBuilder.color !== localBuilder.color ||
+	// 		!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff)
+	// 	);
+	// };
 
 	const handleSave = () => {
 		if (validateInputs()) {
@@ -202,11 +202,6 @@ const BuilderModal = ({
 			buildersToDelete.forEach((id) => {
 				dispatch(deleteBuilder(id));
 			});
-
-			// // Update all jobs if any builders were deleted
-			// if (buildersToDelete.length > 0 || buildersToKeep.some(hasChanges)) {
-			// 	dispatch(updateJobsAfterBuilderChanges(buildersToDelete));
-			// }
 
 			// Update tasks after all builder changes
 			dispatch(
