@@ -438,6 +438,7 @@ const JobModal = ({
 				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
 			});
 		}
+		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
 	};
 
 	const handleSave = () => {
@@ -452,6 +453,12 @@ const JobModal = ({
 		if (jobName.trim() === "") {
 			newErrors.jobName = "Job name is required";
 		}
+
+		  // Check if at least one room is active
+			const activeRoomsExist = localRooms.some(room => room.active);
+			if (!activeRoomsExist) {
+				newErrors.general = "At least one active room is required";
+			}
 
 		// Check for all potential errors in rooms and work periods
 		localRooms.forEach((room) => {
@@ -877,6 +884,7 @@ const JobModal = ({
 						Save
 					</button>
 				</div>
+				{errors.general && <div className="error general-error">{errors.general}</div>}
 			</div>
 		</div>
 	);

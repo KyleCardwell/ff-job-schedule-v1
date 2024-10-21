@@ -1032,7 +1032,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-01"),
+        startDate: normalizeDate("2024-10-22"),
         duration: 40.17,
         jobNumber: "946",
         name: "Kitchen Perimeter",
@@ -1041,7 +1041,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-01"),
+            startDate: normalizeDate("2024-10-22"),
             duration: 40.17,
             workPeriodDuration: 240,
             builderId: "3",
@@ -1052,7 +1052,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-08"),
+        startDate: normalizeDate("2024-10-30"),
         duration: 19.4,
         jobNumber: "947",
         name: "Kitchen Hood",
@@ -1061,7 +1061,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-08"),
+            startDate: normalizeDate("2024-10-30"),
             duration: 19.4,
             workPeriodDuration: 90,
             builderId: "3",
@@ -1072,7 +1072,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-11"),
+        startDate: normalizeDate("2024-11-04"),
         duration: 16.1,
         jobNumber: "948",
         name: "Kitchen Island",
@@ -1081,7 +1081,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-11"),
+            startDate: normalizeDate("2024-11-04"),
             duration: 16.1,
             workPeriodDuration: 90,
             builderId: "3",
@@ -1092,7 +1092,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-15"),
+        startDate: normalizeDate("2024-11-07"),
         duration: 16.42,
         jobNumber: "949",
         name: "Dining Buffet",
@@ -1101,7 +1101,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-15"),
+            startDate: normalizeDate("2024-11-07"),
             duration: 16.42,
             workPeriodDuration: 150,
             builderId: "3",
@@ -1112,7 +1112,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-17"),
+        startDate: normalizeDate("2024-11-12"),
         duration: 2.66,
         jobNumber: "950",
         name: "Powder Bath",
@@ -1121,7 +1121,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-17"),
+            startDate: normalizeDate("2024-11-12"),
             duration: 2.66,
             workPeriodDuration: 30,
             builderId: "3",
@@ -1132,7 +1132,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-18"),
+        startDate: normalizeDate("2024-11-13"),
         duration: 24.79,
         jobNumber: "951",
         name: "Laundry",
@@ -1141,7 +1141,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-18"),
+            startDate: normalizeDate("2024-11-13"),
             duration: 24.79,
             workPeriodDuration: 180,
             builderId: "3",
@@ -1152,7 +1152,7 @@ export const newJobs = [
       {
         id: uuidv4(),
         builderId: "3",
-        startDate: normalizeDate("2024-10-23"),
+        startDate: normalizeDate("2024-11-19"),
         duration: 19,
         jobNumber: "952",
         name: "Mudroom",
@@ -1161,7 +1161,7 @@ export const newJobs = [
         workPeriods: [
           {
             id: uuidv4(),
-            startDate: normalizeDate("2024-10-23"),
+            startDate: normalizeDate("2024-11-19"),
             duration: 19,
             workPeriodDuration: 90,
             builderId: "3",
