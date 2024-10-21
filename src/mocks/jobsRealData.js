@@ -69,6 +69,26 @@ export const newJobs = [
           },
         ],
       },
+      {
+        id: uuidv4(),
+        builderId: "1",
+        startDate: normalizeDate("2024-06-26"),
+        duration: 1,
+        jobNumber: "917",
+        name: "Table and Ottomans",
+        active: true,
+        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 4), 0).toISOString(),
+        workPeriods: [
+          {
+            id: uuidv4(),
+            startDate: normalizeDate("2024-06-26"),
+            duration: 1,
+            workPeriodDuration: 30,
+            builderId: "1",
+            xPosition: 960,
+          },
+        ],
+      },
     ],
   },
   {
@@ -735,32 +755,32 @@ export const newJobs = [
       },
     ],
   },
-  {
-    id: uuidv4(),
-    name: "Peterson",
-    rooms: [
-      {
-        id: uuidv4(),
-        builderId: "1",
-        startDate: normalizeDate("2024-06-26"),
-        duration: 1,
-        jobNumber: "917",
-        name: "Table and Ottomans",
-        active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 4), 0).toISOString(),
-        workPeriods: [
-          {
-            id: uuidv4(),
-            startDate: normalizeDate("2024-06-26"),
-            duration: 1,
-            workPeriodDuration: 30,
-            builderId: "1",
-            xPosition: 960,
-          },
-        ],
-      },
-    ],
-  },
+  // {
+  //   id: uuidv4(),
+  //   name: "Peterson",
+  //   rooms: [
+  //     {
+  //       id: uuidv4(),
+  //       builderId: "1",
+  //       startDate: normalizeDate("2024-06-26"),
+  //       duration: 1,
+  //       jobNumber: "917",
+  //       name: "Table and Ottomans",
+  //       active: true,
+  //       roomCreatedAt: addSeconds(addDays(baseCreatedAt, 4), 0).toISOString(),
+  //       workPeriods: [
+  //         {
+  //           id: uuidv4(),
+  //           startDate: normalizeDate("2024-06-26"),
+  //           duration: 1,
+  //           workPeriodDuration: 30,
+  //           builderId: "1",
+  //           xPosition: 960,
+  //         },
+  //       ],
+  //     },
+  //   ],
+  // },
   {
     id: uuidv4(),
     name: "Tanner-Madi",
