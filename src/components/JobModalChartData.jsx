@@ -42,15 +42,10 @@ const JobModal = ({
 	const newTaskNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
 
-	console.log("jobData", jobData);
 	const formatDateForInput = (date) => {
 		if (!date) return "";
 		return format(new Date(date), "yyyy-MM-dd");
 	};
-
-	useEffect(() => {
-		console.log("localRooms", localRooms);
-	}, [localRooms]);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -150,7 +145,7 @@ const JobModal = ({
 			roomCreatedAt: new Date().toISOString(),
 			heightAdjust: 1,
 			workPeriodIndex: 0,
-			jobsIndex: lastJobsIndex + 1,
+			jobsIndex: jobData?.length > 0 ? jobData[0].jobsIndex : lastJobsIndex + 1,
 		};
 
 		const newTask = {
@@ -165,7 +160,6 @@ const JobModal = ({
 			workPeriods: [newWorkPeriod],
 		};
 
-
 		setLocalRooms((prevRooms) => [...prevRooms, newTask]);
 		setLocalJobsByBuilder((prev) => ({
 			...prev,
@@ -173,6 +167,8 @@ const JobModal = ({
 		}));
 		setNextJobNumber((prevNumber) => prevNumber + 1);
 		setChangedTaskIds((prev) => new Set(prev).add(newWorkPeriod.id));
+
+		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
 
 		// Focus on the new room name input
 		setTimeout(() => {
@@ -205,7 +201,7 @@ const JobModal = ({
 
 		// Remove the room from localJobsByBuilder
 		setLocalJobsByBuilder((prev) => {
-			const updatedBuilderJobs = prev[builderId].filter(
+			const updatedBuilderJobs = prev[builderId]?.filter(
 				(room) => room.id !== roomId
 			);
 			return {
@@ -344,6 +340,11 @@ const JobModal = ({
 								updatedWp.duration = parseFloat(changes.duration);
 							}
 
+							// Handle taskName change
+							if (changes.taskName !== undefined) {
+								updatedWp.taskName = changes.taskName.trim();
+							}
+
 							setChangedTaskIds((prev) => new Set(prev).add(workPeriodId));
 							return updatedWp;
 						}
@@ -446,7 +447,10 @@ const JobModal = ({
 
 		// Create a map of original tasks for quick lookup, including their original index
 		const originalTasksMap = new Map(
-			jobData?.map((task, index) => [task.id, { ...task, originalIndex: index }])
+			jobData?.map((task, index) => [
+				task.id,
+				{ ...task, originalIndex: index },
+			])
 		);
 
 		// Check for blank job name
@@ -454,11 +458,11 @@ const JobModal = ({
 			newErrors.jobName = "Job name is required";
 		}
 
-		  // Check if at least one room is active
-			const activeRoomsExist = localRooms.some(room => room.active);
-			if (!activeRoomsExist) {
-				newErrors.general = "At least one active room is required";
-			}
+		// Check if at least one room is active
+		const activeRoomsExist = localRooms.some((room) => room.active);
+		if (!activeRoomsExist) {
+			newErrors.general = "At least one active room is required";
+		}
 
 		// Check for all potential errors in rooms and work periods
 		localRooms.forEach((room) => {
@@ -519,66 +523,12 @@ const JobModal = ({
 			return;
 		}
 
-		// Create an array to hold all tasks in their original order, including new ones
-		// let updatedTasks = new Array(jobData.length); // Pre-allocate array with the original size
-		let currentRoomId = null;
-		let insertIndex = -1;
-
-		const updatedTasks = localRooms.reduce((acc, room) => {
-			room.workPeriods.forEach((wp, index) => {
-				if (removedWorkPeriods.includes(wp.id)) {
-					return;
-				}
-
-				const taskData = {
-					id: wp.id,
-					roomId: room.id,
-					taskName: room.taskName,
-					jobId: room.jobId,
-					jobName: jobName,
-					jobNumber: room.jobNumber,
-					builderId: wp.builderId,
-					startDate: normalizeDate(wp.startDate),
-					duration: Number(wp.duration),
-					active: room.active,
-					roomCreatedAt: room.roomCreatedAt,
-					xPosition: wp.xPosition,
-					workPeriodDuration: wp.workPeriodDuration,
-					heightAdjust: index === 0 ? room.workPeriods.length : 0,
-					jobsIndex: wp.jobsIndex,
-				};
-
-				if (originalTasksMap.has(wp.id)) {
-					// Existing task: update it and keep its original position
-					const { originalIndex } = originalTasksMap.get(wp.id);
-					acc[originalIndex] = taskData;
-				} else {
-					// New task: insert it after the last task of the same room
-					if (currentRoomId !== room.id) {
-						insertIndex = acc.findIndex((t) => t && t.roomId === room.id);
-						if (insertIndex === -1) {
-							// If no tasks for this room exist yet, append to the end
-							insertIndex = acc.length;
-						} else {
-							// Find the last task of this room
-							while (
-								insertIndex < acc.length &&
-								acc[insertIndex] &&
-								acc[insertIndex].roomId === room.id
-							) {
-								insertIndex++;
-							}
-						}
-						currentRoomId = room.id;
-					}
-					// Insert the new task
-					acc.splice(insertIndex, 0, taskData);
-					insertIndex++;
-				}
-			});
-
-			return acc;
-		}, []);
+		const updatedTasks = localRooms.flatMap((room) =>
+			room.workPeriods.map((wp) => ({
+				...wp,
+				active: room.active,
+			}))
+		);
 
 		// Remove any tasks that no longer exist and update active status
 		const changedTaskIdsSet = new Set(changedTaskIds);
@@ -641,9 +591,9 @@ const JobModal = ({
 
 			// Update the tasks in updatedTasks with the sorted and adjusted data
 			sortedBuilderTasks.forEach((sortedTask) => {
-				const index = updatedTasks.findIndex(
-					(task) => task.id === sortedTask.id
-				);
+				const index = updatedTasks.findIndex((task) => {
+					return task?.id === sortedTask.id;
+				});
 				if (index !== -1) {
 					updatedTasks[index] = sortedTask;
 				} else {
@@ -652,15 +602,10 @@ const JobModal = ({
 			});
 		});
 
-		console.log("updatedTasks", updatedTasks);
-		const finalUpdatedTasks = updatedTasks.filter(
-			(task) => !removedWorkPeriods.includes(task.id)
-		);
-
-		dispatch(jobModalUpdateChartData(finalUpdatedTasks, removedWorkPeriods));
+		dispatch(jobModalUpdateChartData(updatedTasks, removedWorkPeriods));
 		dispatch(
 			jobModalUpdateTaskData(
-				finalUpdatedTasks,
+				updatedTasks,
 				updatedBuilderArrays,
 				removedWorkPeriods
 			)
@@ -884,7 +829,9 @@ const JobModal = ({
 						Save
 					</button>
 				</div>
-				{errors.general && <div className="error general-error">{errors.general}</div>}
+				{errors.general && (
+					<div className="error general-error">{errors.general}</div>
+				)}
 			</div>
 		</div>
 	);
