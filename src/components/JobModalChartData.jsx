@@ -527,6 +527,7 @@ const JobModal = ({
 			room.workPeriods.map((wp) => ({
 				...wp,
 				active: room.active,
+				jobName: jobName,
 			}))
 		);
 
