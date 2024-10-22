@@ -3,11 +3,9 @@ import "./CompletedProjectCard.css";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
-const CompletedProjectCard = ({ rooms }) => {
-	const jobName = rooms[0].jobName;
-	const completedDate = new Date(
-		Math.max(...rooms.map((r) => new Date(r.completedDate)))
-	).toLocaleDateString();
+const CompletedProjectCard = ({ project }) => {
+	const jobName = project.name;
+	const completedDate = new Date(project.completedOn).toLocaleDateString();
 
 	return (
 		<div className="completed-job-card">
@@ -23,7 +21,7 @@ const CompletedProjectCard = ({ rooms }) => {
 						<span key={category}>{category}</span>
 					))}
 				</div>
-				{rooms.map((room, index) => (
+				{project.rooms.map((room, index) => (
 					<div
 						key={room.id}
 						className={`grid-row room-row ${index % 2 === 0 ? "even" : "odd"}`}
