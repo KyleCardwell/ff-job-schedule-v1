@@ -181,7 +181,8 @@ const TaskGroups = ({
 								dragStartEventX: undefined,
 						  }
 						: job
-				);
+				).filter((job) => job.active);
+
 				// Sort and adjust dates for the builder's jobs
 				const sortedBuilderTasks = sortAndAdjustDates(
 					updatedBuilderTasks,

@@ -145,6 +145,10 @@ h1 {
 	background-color: #9c27b0;
 }
 
+.completed-jobs-button {
+	background-color: #3e3e3e;
+}
+
 .gantt-footer {
 	position: sticky;
 	bottom: 0;

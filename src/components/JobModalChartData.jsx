@@ -170,7 +170,6 @@ const JobModal = ({
 
 		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
 
-		// Focus on the new room name input
 		setTimeout(() => {
 			if (newTaskNameRef.current) {
 				newTaskNameRef.current.focus();
@@ -181,7 +180,16 @@ const JobModal = ({
 	const handleRemoveRoom = (roomId) => {
 		setLocalRooms((prevRooms) =>
 			prevRooms.map((room) =>
-				room.id === roomId ? { ...room, active: false } : room
+				room.id === roomId
+					? {
+							...room,
+							active: false,
+							workPeriods: room.workPeriods.map((wp) => ({
+								...wp,
+								active: false,
+							})),
+					  }
+					: room
 			)
 		);
 
@@ -190,8 +198,30 @@ const JobModal = ({
 		if (room) {
 			room.workPeriods.forEach((wp) => {
 				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
+				setRemovedWorkPeriods((prev) => [...prev, wp.id]);
 			});
 		}
+
+		// Update localJobsByBuilder
+		setLocalJobsByBuilder((prev) => {
+			const updatedJobsByBuilder = { ...prev };
+			Object.keys(updatedJobsByBuilder).forEach((builderId) => {
+				updatedJobsByBuilder[builderId] = updatedJobsByBuilder[builderId].map(
+					(job) =>
+						job.id === roomId
+							? {
+									...job,
+									active: false,
+									workPeriods: job.workPeriods.map((wp) => ({
+										...wp,
+										active: false,
+									})),
+							  }
+							: job
+				);
+			});
+			return updatedJobsByBuilder;
+		});
 	};
 
 	const handleCancelNewRoom = (roomId, builderId) => {
@@ -426,19 +456,67 @@ const JobModal = ({
 	};
 
 	const handleRestoreRoom = (roomId) => {
-		setLocalRooms((prevRooms) =>
-			prevRooms.map((room) =>
-				room.id === roomId ? { ...room, active: true } : room
-			)
-		);
+		setLocalRooms((prevRooms) => {
+			const roomToRestore = prevRooms.find((room) => room.id === roomId);
+			if (!roomToRestore) return prevRooms;
+
+			const updatedRooms = prevRooms.filter((room) => room.id !== roomId);
+			const restoredRoom = {
+				...roomToRestore,
+				active: true,
+				workPeriods: roomToRestore.workPeriods.map((wp) => ({
+					...wp,
+					active: true,
+				})),
+			};
+
+			// Find the correct index to insert the restored room
+			const insertIndex = updatedRooms.findIndex(
+				(room) =>
+					new Date(room.roomCreatedAt) > new Date(restoredRoom.roomCreatedAt)
+			);
+
+			if (insertIndex === -1) {
+				// If no room with a later creation date is found, add to the end
+				updatedRooms.push(restoredRoom);
+			} else {
+				// Insert the restored room at the correct position
+				updatedRooms.splice(insertIndex, 0, restoredRoom);
+			}
+
+			return updatedRooms;
+		});
 
 		// Find the room and mark all its work periods as changed
 		const room = localRooms.find((r) => r.id === roomId);
 		if (room) {
 			room.workPeriods.forEach((wp) => {
 				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
+				setRemovedWorkPeriods((prev) => prev.filter((id) => id !== wp.id));
 			});
 		}
+
+		// Update localJobsByBuilder
+		setLocalJobsByBuilder((prev) => {
+			const updatedJobsByBuilder = { ...prev };
+			Object.keys(updatedJobsByBuilder).forEach((builderId) => {
+				updatedJobsByBuilder[builderId] = updatedJobsByBuilder[builderId].map(
+					(job) =>
+						job.id === roomId
+							? {
+									...job,
+									active: true,
+									workPeriods: job.workPeriods.map((wp) => ({
+										...wp,
+										active: true,
+									})),
+							  }
+							: job
+				);
+			});
+			return updatedJobsByBuilder;
+		});
+
 		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
 	};
 
@@ -571,12 +649,16 @@ const JobModal = ({
 
 			// Combine tasks, replacing existing tasks with updated ones, and filter out removed work periods
 			const combinedBuilderTasks = [
-				...existingBuilderTasks.filter((task) => !updatedTaskIds.has(task.id)),
+				...existingBuilderTasks.filter(
+					(task) =>
+						!updatedTaskIds.has(task.id) &&
+						!removedWorkPeriods.includes(task.id)
+				),
 				...updatedBuilderTasks,
-			].filter((task) => !removedWorkPeriods.includes(task.id));
+			];
 
 			const sortedBuilderTasks = sortAndAdjustDates(
-				combinedBuilderTasks,
+				combinedBuilderTasks.filter((task) => task.active),
 				workdayHours,
 				holidayChecker,
 				holidays,

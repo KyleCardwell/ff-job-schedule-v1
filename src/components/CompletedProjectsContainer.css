@@ -1,0 +1,19 @@
+.completed-jobs-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.completed-jobs-title {
+  padding: 20px;
+  background-color: #f0f0f0;
+  margin: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.completed-jobs-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+}

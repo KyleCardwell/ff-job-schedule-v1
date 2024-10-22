@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
+import "./GanttChart.css";
 import { useSelector } from "react-redux";
 import ChartActionButtons from "./ChartActionButtons";
 import { addDays, differenceInCalendarDays, startOfWeek } from "date-fns";
@@ -9,7 +10,6 @@ import Holidays from "date-holidays";
 import { isHoliday } from "../utils/helpers";
 import BuilderLegend from "./BuilderLegend";
 import BuilderModal from "./BuilderModal";
-// import JobModal from "./JobModal";
 import JobModalChartData from "./JobModalChartData";
 import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
