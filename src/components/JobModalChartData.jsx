@@ -32,6 +32,7 @@ const JobModal = ({
 	chartStartDate,
 	dayWidth,
 	lastJobsIndex,
+	clickedTask,
 }) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
@@ -49,6 +50,7 @@ const JobModal = ({
 
 	const [nextJobNumber, setNextJobNumber] = useState(null);
 
+	const clickedTaskRef = useRef(null);
 	const newTaskNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
 
@@ -101,6 +103,17 @@ const JobModal = ({
 			jobNameInputRef.current.focus();
 		}
 	}, [jobData, isOpen, tasksByBuilder, jobNumberNext]);
+
+	useEffect(() => {
+		if (isOpen && clickedTask) {
+			// Delay focus to ensure ref is set
+			setTimeout(() => {
+				clickedTaskRef.current?.focus();
+			}, 0);
+		} else if (isOpen && jobNameInputRef.current) {
+			jobNameInputRef.current.focus();
+		}
+	}, [isOpen, clickedTask]);
 
 	const calculateNextAvailableDate = (builderId) => {
 		const builderJobs = localJobsByBuilder[builderId] || [];
@@ -885,7 +898,9 @@ const JobModal = ({
 											errors[`${room.id}-${workPeriod.id}-name`] ? "error" : ""
 										}`}
 										ref={
-											index === activeRooms[0].workPeriods.length - 1
+											clickedTask?.id === workPeriod.id
+												? clickedTaskRef
+												: index === activeRooms[0].workPeriods.length - 1
 												? newTaskNameRef
 												: null
 										}
