@@ -9,8 +9,15 @@ import {
 	sortAndAdjustDates,
 	totalJobHours,
 } from "../utils/helpers";
-import { jobModalUpdateChartData } from "../redux/actions/chartData";
-import { jobModalUpdateTaskData } from "../redux/actions/taskData";
+import {
+	jobModalUpdateChartData,
+	removeCompletedJobFromChart,
+} from "../redux/actions/chartData";
+import {
+	jobModalUpdateTaskData,
+	removeCompletedJobFromTasks,
+} from "../redux/actions/taskData";
+import { markProjectAsCompleted } from "../redux/actions/completedProjects";
 
 const JobModal = ({
 	isOpen,
@@ -36,6 +43,9 @@ const JobModal = ({
 	const [localJobsByBuilder, setLocalJobsByBuilder] = useState({});
 	const [changedTaskIds, setChangedTaskIds] = useState({});
 	const [removedWorkPeriods, setRemovedWorkPeriods] = useState([]);
+	const [showCompleteConfirmation, setShowCompleteConfirmation] =
+		useState(false);
+	const [completedJobData, setCompletedJobData] = useState(null);
 
 	const [nextJobNumber, setNextJobNumber] = useState(null);
 
@@ -170,7 +180,6 @@ const JobModal = ({
 
 		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
 
-		// Focus on the new room name input
 		setTimeout(() => {
 			if (newTaskNameRef.current) {
 				newTaskNameRef.current.focus();
@@ -178,10 +187,19 @@ const JobModal = ({
 		}, 0);
 	};
 
-	const handleRemoveRoom = (roomId) => {
+	const handleInactiveRoom = (roomId) => {
 		setLocalRooms((prevRooms) =>
 			prevRooms.map((room) =>
-				room.id === roomId ? { ...room, active: false } : room
+				room.id === roomId
+					? {
+							...room,
+							active: false,
+							workPeriods: room.workPeriods.map((wp) => ({
+								...wp,
+								active: false,
+							})),
+					  }
+					: room
 			)
 		);
 
@@ -190,8 +208,30 @@ const JobModal = ({
 		if (room) {
 			room.workPeriods.forEach((wp) => {
 				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
+				setRemovedWorkPeriods((prev) => [...prev, wp.id]);
 			});
 		}
+
+		// Update localJobsByBuilder
+		setLocalJobsByBuilder((prev) => {
+			const updatedJobsByBuilder = { ...prev };
+			Object.keys(updatedJobsByBuilder).forEach((builderId) => {
+				updatedJobsByBuilder[builderId] = updatedJobsByBuilder[builderId].map(
+					(job) =>
+						job.id === roomId
+							? {
+									...job,
+									active: false,
+									workPeriods: job.workPeriods.map((wp) => ({
+										...wp,
+										active: false,
+									})),
+							  }
+							: job
+				);
+			});
+			return updatedJobsByBuilder;
+		});
 	};
 
 	const handleCancelNewRoom = (roomId, builderId) => {
@@ -426,20 +466,173 @@ const JobModal = ({
 	};
 
 	const handleRestoreRoom = (roomId) => {
-		setLocalRooms((prevRooms) =>
-			prevRooms.map((room) =>
-				room.id === roomId ? { ...room, active: true } : room
-			)
-		);
+		setLocalRooms((prevRooms) => {
+			const roomToRestore = prevRooms.find((room) => room.id === roomId);
+			if (!roomToRestore) return prevRooms;
+
+			const updatedRooms = prevRooms.filter((room) => room.id !== roomId);
+			const restoredRoom = {
+				...roomToRestore,
+				active: true,
+				workPeriods: roomToRestore.workPeriods.map((wp) => ({
+					...wp,
+					active: true,
+				})),
+			};
+
+			// Find the correct index to insert the restored room
+			const insertIndex = updatedRooms.findIndex(
+				(room) =>
+					new Date(room.roomCreatedAt) > new Date(restoredRoom.roomCreatedAt)
+			);
+
+			if (insertIndex === -1) {
+				// If no room with a later creation date is found, add to the end
+				updatedRooms.push(restoredRoom);
+			} else {
+				// Insert the restored room at the correct position
+				updatedRooms.splice(insertIndex, 0, restoredRoom);
+			}
+
+			return updatedRooms;
+		});
 
 		// Find the room and mark all its work periods as changed
 		const room = localRooms.find((r) => r.id === roomId);
 		if (room) {
 			room.workPeriods.forEach((wp) => {
 				setChangedTaskIds((prev) => new Set(prev).add(wp.id));
+				setRemovedWorkPeriods((prev) => prev.filter((id) => id !== wp.id));
 			});
 		}
+
+		// Update localJobsByBuilder
+		setLocalJobsByBuilder((prev) => {
+			const updatedJobsByBuilder = { ...prev };
+			Object.keys(updatedJobsByBuilder).forEach((builderId) => {
+				updatedJobsByBuilder[builderId] = updatedJobsByBuilder[builderId].map(
+					(job) =>
+						job.id === roomId
+							? {
+									...job,
+									active: true,
+									workPeriods: job.workPeriods.map((wp) => ({
+										...wp,
+										active: true,
+									})),
+							  }
+							: job
+				);
+			});
+			return updatedJobsByBuilder;
+		});
+
 		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
+	};
+
+	const sortAndAdjustBuilderTasks = (tasks, buildersToUpdate) => {
+		const updatedBuilderArrays = {};
+		const updatedTasks = [...tasks];
+
+		buildersToUpdate.forEach((builderId) => {
+			const builderTasks = tasks.filter(
+				(task) => task.builderId === builderId && task.active
+			);
+
+			const sortedBuilderTasks = sortAndAdjustDates(
+				builderTasks,
+				workdayHours,
+				holidayChecker,
+				holidays,
+				null,
+				null,
+				timeOffByBuilder,
+				dayWidth,
+				chartStartDate
+			);
+
+			updatedBuilderArrays[builderId] = sortedBuilderTasks;
+
+			sortedBuilderTasks.forEach((sortedTask) => {
+				const index = updatedTasks.findIndex(
+					(task) => task.id === sortedTask.id
+				);
+				if (index !== -1) {
+					updatedTasks[index] = sortedTask;
+				} else {
+					updatedTasks.push(sortedTask);
+				}
+			});
+		});
+
+		return { updatedTasks, updatedBuilderArrays };
+	};
+
+	const handleCompleteJob = () => {
+		const formattedCompletedJob = {
+			id: localRooms[0].jobId, // Assuming all rooms in a job have the same jobId
+			name: jobName,
+			completedOn: new Date().toISOString(), // Current date as completion date
+			rooms: localRooms.map((task) => ({
+				id: task.id,
+				jobNumber: task.jobNumber,
+				taskName: task.taskName,
+				active: task.active,
+				roomCreatedAt: task.roomCreatedAt,
+			})),
+		};
+		setShowCompleteConfirmation(true);
+		setCompletedJobData(formattedCompletedJob);
+	};
+
+	const confirmCompleteJob = () => {
+		dispatch(markProjectAsCompleted(completedJobData));
+
+		// Get all tasks for the completed job
+		const completedProjectTasks = localRooms.flatMap(
+			(room) => room.workPeriods
+		);
+
+		// Get unique builders involved in this job
+		const buildersInvolvedInJob = new Set(
+			completedProjectTasks.map((task) => task.builderId)
+		);
+
+		// Get all tasks (including those not in this job)
+		const allTasks = Object.values(localJobsByBuilder).flat();
+
+		// Remove completed job tasks
+		const remainingTasks = allTasks.filter(
+			(task) => task.jobId !== completedJobData.id
+		);
+
+		// Sort and adjust dates for affected builders
+		const { updatedTasks, updatedBuilderArrays } = sortAndAdjustBuilderTasks(
+			remainingTasks,
+			buildersInvolvedInJob
+		);
+
+		// Update chart and task data
+		dispatch(
+			jobModalUpdateChartData(
+				updatedTasks,
+				completedProjectTasks.map((task) => task.id)
+			)
+		);
+		dispatch(
+			jobModalUpdateTaskData(
+				updatedTasks,
+				updatedBuilderArrays,
+				completedProjectTasks.map((task) => task.id)
+			)
+		);
+
+		setShowCompleteConfirmation(false);
+		onClose();
+	};
+
+	const cancelCompleteJob = () => {
+		setShowCompleteConfirmation(false);
 	};
 
 	const handleSave = () => {
@@ -531,7 +724,6 @@ const JobModal = ({
 			}))
 		);
 
-		// Remove any tasks that no longer exist and update active status
 		const changedTaskIdsSet = new Set(changedTaskIds);
 		const buildersWithChanges = new Set();
 		const updatedBuilderArrays = {};
@@ -571,12 +763,16 @@ const JobModal = ({
 
 			// Combine tasks, replacing existing tasks with updated ones, and filter out removed work periods
 			const combinedBuilderTasks = [
-				...existingBuilderTasks.filter((task) => !updatedTaskIds.has(task.id)),
+				...existingBuilderTasks.filter(
+					(task) =>
+						!updatedTaskIds.has(task.id) &&
+						!removedWorkPeriods.includes(task.id)
+				),
 				...updatedBuilderTasks,
-			].filter((task) => !removedWorkPeriods.includes(task.id));
+			];
 
 			const sortedBuilderTasks = sortAndAdjustDates(
-				combinedBuilderTasks,
+				combinedBuilderTasks.filter((task) => task.active),
 				workdayHours,
 				holidayChecker,
 				holidays,
@@ -773,7 +969,7 @@ const JobModal = ({
 										) : (
 											<button
 												className="modal-action-button remove"
-												onClick={() => handleRemoveRoom(room.id)}
+												onClick={() => handleInactiveRoom(room.id)}
 											>
 												- Room
 											</button>
@@ -832,6 +1028,26 @@ const JobModal = ({
 				</div>
 				{errors.general && (
 					<div className="error general-error">{errors.general}</div>
+				)}
+
+				<button
+					className="modal-action-button complete-job"
+					onClick={handleCompleteJob}
+				>
+					Complete Job
+				</button>
+
+				{showCompleteConfirmation && (
+					<div className="confirmation-overlay">
+						<div className="confirmation-popup">
+							<h3>Are you sure you want to complete this job?</h3>
+							<p>If yes, it will be removed from the schedule.</p>
+							<div className="confirmation-actions">
+								<button onClick={confirmCompleteJob}>Yes, Complete Job</button>
+								<button onClick={cancelCompleteJob}>Cancel</button>
+							</div>
+						</div>
+					</div>
 				)}
 			</div>
 		</div>

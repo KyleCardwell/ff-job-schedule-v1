@@ -1,0 +1,52 @@
+.completed-jobs-page {
+	display: flex;
+	flex-direction: column;
+	height: 90vh;
+	overflow: hidden;
+}
+
+.completed-jobs-title {
+	padding: 20px;
+	background-color: #f0f0f0;
+	margin: 0;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.completed-jobs-container {
+	flex-grow: 1;
+	overflow-y: scroll;
+	padding: 20px;
+}
+
+@media print {
+	.completed-jobs-page {
+		overflow: visible !important;
+		height: auto !important;
+	}
+
+	.completed-jobs-page h1 {
+		position: sticky;
+		top: 0;
+		background-color: white;
+		padding: 10px 0;
+		margin-bottom: 10px;
+		border-bottom: 1px solid #000;
+		page-break-after: avoid;
+	}
+
+	@page {
+		margin-top: 50px; /* Adjust as needed */
+	}
+
+	/* .completed-jobs-page h1::after {
+		content: "Completed Jobs";
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		font-size: 18px;
+		text-align: center;
+		padding: 10px 0;
+		background-color: white;
+	} */
+}

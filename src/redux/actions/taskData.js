@@ -72,9 +72,13 @@ export const jobModalUpdateTaskData = (
 	updatedBuilderArrays,
 	removedWorkPeriods
 ) => {
-	console.log("updatedTasks", updatedTasks);
 	return {
 		type: Actions.taskData.JOB_MODAL_UPDATE_TASK_DATA,
 		payload: { updatedTasks, updatedBuilderArrays, removedWorkPeriods },
 	};
 };
+
+export const removeCompletedJobFromTasks = (jobId) => ({
+  type: Actions.taskData.REMOVE_COMPLETED_JOB_FROM_TASKS,
+  payload: jobId,
+});

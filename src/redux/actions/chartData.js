@@ -28,3 +28,8 @@ export const jobModalUpdateChartData = (updatedTasks, removedWorkPeriods) => ({
   type: Actions.chartData.JOB_MODAL_UPDATE_CHART_DATA,
   payload: { updatedTasks, removedWorkPeriods },
 });
+
+export const removeCompletedJobFromChart = (jobId) => ({
+  type: Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART,
+  payload: jobId,
+});

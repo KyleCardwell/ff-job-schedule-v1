@@ -4,6 +4,7 @@ import {
 	differenceInCalendarDays,
 	eachDayOfInterval,
 	isWithinInterval,
+	subDays,
 } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,6 +16,7 @@ import {
 	updateOneBuilderChartData,
 } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
+import { isEqual } from "lodash";
 
 const TaskGroups = ({
 	chartRef,
@@ -28,14 +30,14 @@ const TaskGroups = ({
 	holidayChecker,
 	workdayHours,
 	setIsLoading,
+	daysBeforeStart,
 }) => {
 	const dispatch = useDispatch();
 
 	const builders = useSelector((state) => state.builders.builders);
 	const holidays = useSelector((state) => state.holidays.holidays);
-	const { tasks, tasksByBuilder } = useSelector(
-		(state) => state.taskData
-	);
+	const { tasks } = useSelector((state) => state.taskData);
+	const { tasksByBuilder } = useSelector((state) => state.taskData, isEqual);
 	const { earliestStartDate, latestStartDate } = useSelector(
 		(state) => state.chartData
 	);
@@ -103,6 +105,28 @@ const TaskGroups = ({
 		);
 	}, [builders, chartStartDate, numDays, dayWidth]);
 
+	const updateAllBuilderTasks = (newEarliestDate, excludeBuilderId) => {
+		const updatedChartStartDate = normalizeDate(
+			subDays(newEarliestDate, daysBeforeStart)
+		);
+		Object.entries(tasksByBuilder).forEach(([builderId, builderTasks]) => {
+			if (builderId !== excludeBuilderId) {
+				const sortedTasks = sortAndAdjustDates(
+					builderTasks,
+					workdayHours,
+					holidayChecker,
+					holidays,
+					null,
+					null,
+					timeOffByBuilder,
+					dayWidth,
+					updatedChartStartDate
+				);
+				dispatch(updateTasksByOneBuilder(builderId, sortedTasks));
+			}
+		});
+	};
+
 	useEffect(() => {
 		if (
 			!chartRef.current ||
@@ -157,14 +181,6 @@ const TaskGroups = ({
 					timeOffByBuilder
 				);
 
-				// update earliest and latest start date
-				if (!earliestStartDate || newStartDate < earliestStartDate) {
-					dispatch(updateEarliestStartDate(newStartDate));
-				}
-				if (!latestStartDate || newStartDate > latestStartDate) {
-					dispatch(updateLatestStartDate(newStartDate));
-				}
-
 				// Update the dragged job
 				const updatedDraggedJob = {
 					...d,
@@ -173,15 +189,23 @@ const TaskGroups = ({
 
 				// Get the current builder's jobs and update the dragged job
 				const builderTasks = tasksByBuilder[d.builderId];
-				const updatedBuilderTasks = builderTasks.map((job) =>
-					job.id === d.id
-						? {
-								...updatedDraggedJob,
-								dragStartX: undefined,
-								dragStartEventX: undefined,
-						  }
-						: job
-				);
+				const updatedBuilderTasks = builderTasks
+					.map((job) =>
+						job.id === d.id
+							? {
+									...updatedDraggedJob,
+									dragStartX: undefined,
+									dragStartEventX: undefined,
+							  }
+							: job
+					)
+					.filter((job) => job.active);
+
+				const updatedChartStartDate =
+					newStartDate < earliestStartDate
+						? normalizeDate(subDays(newStartDate, daysBeforeStart))
+						: chartStartDate;
+
 				// Sort and adjust dates for the builder's jobs
 				const sortedBuilderTasks = sortAndAdjustDates(
 					updatedBuilderTasks,
@@ -192,7 +216,7 @@ const TaskGroups = ({
 					newStartDate,
 					timeOffByBuilder,
 					dayWidth,
-					chartStartDate
+					updatedChartStartDate
 				);
 				// Transition all jobs in the builder group
 				const jobGroups = taskGroupsSvg
@@ -205,24 +229,23 @@ const TaskGroups = ({
 					.call((transition) => {
 						transition
 							.select("rect")
-							.attr(
-								"x",
-								(job) =>
-									// calculateXPosition(job.startDate, chartStartDate, dayWidth)
-									job.xPosition
-							)
+							.attr("x", (job) => job.xPosition)
 							.attr("width", (job) => job.workPeriodDuration);
-						transition.select(".bar-text").attr(
-							"x",
-							(job) =>
-								// calculateXPosition(job.startDate, chartStartDate, dayWidth)
-								job.xPosition + 5
-						);
+						transition
+							.select(".bar-text")
+							.attr("x", (job) => job.xPosition + 5);
 					})
 					.end()
 					.then(() => {
 						dispatch(updateOneBuilderChartData(sortedBuilderTasks));
-						dispatch(updateTasksByOneBuilder(d.builderId, sortedBuilderTasks));
+						if (newStartDate < earliestStartDate) {
+							updateTasksByOneBuilder(d.builderId, sortedBuilderTasks);
+							updateAllBuilderTasks(newStartDate, d.builderId);
+						} else {
+							dispatch(
+								updateTasksByOneBuilder(d.builderId, sortedBuilderTasks)
+							);
+						}
 					});
 				d3.select(this).classed("dragging", false);
 				delete d.dragStartX;
@@ -252,42 +275,6 @@ const TaskGroups = ({
 			.attr("stroke", (d) => d.color)
 			.attr("stroke-width", 6)
 			.attr("opacity", 0.6);
-
-		// const adjustTaskHeights = (tasks) => {
-		// 	return tasks.map((task, index) => {
-		// 		let heightFactor = 1;
-		// 		let yOffsetFactor = 0;
-
-		// 		// Check all other tasks for overlaps
-		// 		tasks.forEach((otherTask, otherIndex) => {
-		// 			if (otherIndex !== index && otherTask.roomId === task.roomId) {
-		// 				const taskStart = task.xPosition;
-		// 				const taskEnd = task.xPosition + task.workPeriodDuration;
-		// 				const otherTaskStart = otherTask.xPosition;
-		// 				const otherTaskEnd =
-		// 					otherTask.xPosition + otherTask.workPeriodDuration;
-
-		// 				// Check for any overlap
-		// 				if (
-		// 					(taskStart < otherTaskEnd && taskStart >= otherTaskStart) ||
-		// 					(otherTaskStart < taskEnd && otherTaskStart >= taskStart)
-		// 				) {
-		// 					heightFactor = 0.5;
-		// 					// Only adjust yOffsetFactor if this task comes later in the array
-		// 					if (index > otherIndex) {
-		// 						yOffsetFactor = 0.5;
-		// 					}
-		// 				}
-		// 			}
-		// 		});
-
-		// 		return {
-		// 			...task,
-		// 			heightFactor,
-		// 			yOffsetFactor,
-		// 		};
-		// 	});
-		// };
 
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
