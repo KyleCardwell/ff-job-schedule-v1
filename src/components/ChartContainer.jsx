@@ -64,6 +64,7 @@ export const ChartContainer = () => {
 	const [selectedJob, setSelectedJob] = useState(null);
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+	const [clickedTask, setClickedTask] = useState(null);
 
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -325,6 +326,7 @@ export const ChartContainer = () => {
 			if (room) {
 				const job = tasks.filter((task) => task.jobId === room.jobId); // Find the job associated with the room
 				setSelectedJob(job);
+				setClickedTask(room);
 				setIsJobModalOpen(true);
 			}
 		});
@@ -388,6 +390,7 @@ export const ChartContainer = () => {
 				event.stopPropagation();
 				const job = tasks.filter((task) => task.jobId === d.jobId);
 				setSelectedJob(job);
+				setClickedTask(d);
 				setIsJobModalOpen(true);
 			});
 
@@ -395,6 +398,7 @@ export const ChartContainer = () => {
 				event.stopPropagation();
 				const job = tasks.filter((task) => task.jobId === d.jobId);
 				setSelectedJob(job);
+				setClickedTask(d);
 				setIsJobModalOpen(true);
 			});
 
@@ -617,6 +621,7 @@ export const ChartContainer = () => {
 				chartStartDate={chartStartDate}
 				dayWidth={dayWidth}
 				lastJobsIndex={lastJobsIndex}
+				clickedTask={clickedTask}
 			/>
 			<BuilderModal
 				visible={isBuilderModalOpen}
