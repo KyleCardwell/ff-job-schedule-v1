@@ -5,6 +5,30 @@ import { Actions } from "../actions";
 
 const { taskList, earliestStartDate, latestStartDate } = getChartData(newJobs);
 
+const updateDateRange = (state, updatedTasks) => {
+	let { earliestStartDate, latestStartDate } = state;
+	let needsUpdate = false;
+
+	updatedTasks.forEach((task) => {
+		const startDate = new Date(task.startDate);
+		if (startDate < earliestStartDate || startDate > latestStartDate) {
+			needsUpdate = true;
+		}
+	});
+
+	if (needsUpdate) {
+		const allTasks = [...state.chartData, ...updatedTasks];
+		earliestStartDate = new Date(
+			Math.min(...allTasks.map((t) => new Date(t.startDate)))
+		);
+		latestStartDate = new Date(
+			Math.max(...allTasks.map((t) => new Date(t.startDate)))
+		);
+	}
+
+	return { earliestStartDate, latestStartDate, needsUpdate };
+};
+
 const initialState = {
 	chartData: taskList,
 	earliestStartDate,
@@ -19,35 +43,37 @@ export const chartDataReducer = (state = initialState, action) => {
 				...state,
 				chartData: action.payload,
 			};
-		case Actions.chartData.UPDATE_EARLIEST_START_DATE:
-			return {
-				...state,
-				earliestStartDate: action.payload,
-			};
-		case Actions.chartData.UPDATE_LATEST_START_DATE:
-			return {
-				...state,
-				latestStartDate: action.payload,
-			};
+		// case Actions.chartData.UPDATE_EARLIEST_START_DATE:
+		// 	return {
+		// 		...state,
+		// 		earliestStartDate: action.payload,
+		// 	};
+		// case Actions.chartData.UPDATE_LATEST_START_DATE:
+		// 	return {
+		// 		...state,
+		// 		latestStartDate: action.payload,
+		// 	};
 		case Actions.chartData.UPDATE_ONE_BUILDER_CHART_DATA: {
 			const updatedTasksMap = new Map(
 				action.payload.map((task) => [task.id, task])
 			);
-
+			const updatedChartData = state.chartData.map((task) => {
+				if (updatedTasksMap.has(task.id)) {
+					const updatedTask = updatedTasksMap.get(task.id);
+					return {
+						...task,
+						...updatedTask,
+						startDate: updatedTask.startDate,
+					};
+				}
+				return task;
+			});
+			const { earliestStartDate, latestStartDate, needsUpdate } =
+				updateDateRange(state, action.payload);
 			return {
 				...state,
-				chartData: state.chartData.map((task) => {
-					if (updatedTasksMap.has(task.id)) {
-						const updatedTask = updatedTasksMap.get(task.id);
-						return {
-							...task,
-							...updatedTask,
-							startDate: updatedTask.startDate,
-							// Include any other fields that need to be explicitly updated
-						};
-					}
-					return task;
-				}),
+				chartData: updatedChartData,
+				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
 		}
 		case Actions.chartData.JOB_MODAL_UPDATE_CHART_DATA: {
@@ -104,11 +130,22 @@ export const chartDataReducer = (state = initialState, action) => {
 				}
 			});
 
+			const { earliestStartDate, latestStartDate, needsUpdate } =
+				updateDateRange(state, updatedTasks);
+
 			return {
 				...state,
 				chartData: updatedChartData,
+				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
 		}
+		case Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART:
+			return {
+				...state,
+				chartData: state.chartData.filter(
+					(item) => item.jobId !== action.payload
+				),
+			};
 		case Actions.jobs.UPDATE_NEXT_JOB_NUMBER:
 			return {
 				...state,

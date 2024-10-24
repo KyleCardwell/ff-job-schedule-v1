@@ -1,21 +1,3 @@
-// import React from "react";
-// // import { DndProvider } from "react-dnd";
-// // import { HTML5Backend } from "react-dnd-html5-backend";
-// import ErrorBoundary from "./components/ErrorBoundary";
-// import { ChartContainer } from "./components/ChartContainer";
-
-// const App = () => {
-// 	return (
-// 			<div className="App">
-// 				<ErrorBoundary>
-// 					<ChartContainer />
-// 				</ErrorBoundary>
-// 			</div>
-// 	);
-// };
-
-// export default App;
-
 import React from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import ErrorBoundary from "./components/ErrorBoundary";

@@ -2,7 +2,12 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import "./GanttChart.css";
 import { useSelector } from "react-redux";
 import ChartActionButtons from "./ChartActionButtons";
-import { addDays, differenceInCalendarDays, startOfWeek } from "date-fns";
+import {
+	addDays,
+	differenceInCalendarDays,
+	startOfWeek,
+	subDays,
+} from "date-fns";
 import { GridLoader } from "react-spinners";
 import { normalizeDate } from "../utils/dateUtils";
 import * as d3 from "d3";
@@ -24,9 +29,25 @@ export const ChartContainer = () => {
 	const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
 
 	const { activeRoomsData, lastJobsIndex } = useMemo(() => {
+		let currentJobId = null;
+		let jobsIndex = -1;
+
+		const activeRooms = chartData
+			.filter((room) => room.active)
+			.map((room) => {
+				if (room.jobId !== currentJobId) {
+					currentJobId = room.jobId;
+					jobsIndex++;
+				}
+				return {
+					...room,
+					jobsIndex: jobsIndex,
+				};
+			});
+
 		return {
-			activeRoomsData: chartData.filter((room) => room.active),
-			lastJobsIndex: chartData[chartData.length - 1].jobsIndex,
+			activeRoomsData: activeRooms,
+			lastJobsIndex: jobsIndex,
 		};
 	}, [chartData]);
 
@@ -72,7 +93,7 @@ export const ChartContainer = () => {
 	}, [builders]);
 
 	const chartStartDate = useMemo(() => {
-		return addDays(earliestStartDate, -daysBeforeStart);
+		return subDays(earliestStartDate, daysBeforeStart);
 	}, [earliestStartDate, daysBeforeStart]);
 
 	const numDays = useMemo(() => {
@@ -558,6 +579,7 @@ export const ChartContainer = () => {
 								handleAutoScroll={handleAutoScroll}
 								setIsLoading={setIsLoading}
 								chartStartDate={chartStartDate}
+								daysBeforeStart={daysBeforeStart}
 								rowHeight={rowHeight}
 								workdayHours={workdayHours}
 								holidayChecker={holidayChecker}

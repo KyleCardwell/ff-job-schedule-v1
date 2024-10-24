@@ -700,3 +700,65 @@ select {
 		-webkit-print-color-adjust: exact !important;
 	}
 }
+
+.modal-action-button.complete-job {
+	background-color: #4caf50;
+	color: white;
+	margin-top: 10px;
+}
+
+.confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 10001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.confirmation-popup {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: #f8f8f8;
+	border: 2px solid #333;
+	border-radius: 8px;
+	padding: 20px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	z-index: 1000;
+	width: 300px;
+	text-align: center;
+}
+.confirmation-popup p {
+	font-size: 16px;
+	margin-bottom: 20px;
+	color: #333;
+}
+
+.confirmation-actions {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 20px;
+}
+
+.confirmation-actions button {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.confirmation-actions button:first-child {
+	background-color: #4caf50;
+	color: white;
+}
+
+.confirmation-actions button:last-child {
+	background-color: #f44336;
+	color: white;
+}

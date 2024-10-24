@@ -3,12 +3,11 @@ import { newJobs } from "../../mocks/jobsRealData";
 import { getTaskData } from "../../utils/helpers";
 import { Actions } from "../actions";
 
-const { tasks, tasksByBuilder, multiWorkPeriodRooms } = getTaskData(newJobs);
+const { tasks, tasksByBuilder } = getTaskData(newJobs);
 
 const initialState = {
 	tasks,
 	tasksByBuilder,
-	multiWorkPeriodRooms: multiWorkPeriodRooms,
 };
 
 export const taskDataReducer = (state = initialState, action) => {
@@ -33,20 +32,6 @@ export const taskDataReducer = (state = initialState, action) => {
 				},
 			};
 		}
-		// case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
-		// 	const updatedTasks = action.payload;
-		// 	const tasksByBuilder = updatedTasks.reduce((acc, task) => {
-		// 		if (!acc[task.builderId]) acc[task.builderId] = [];
-		// 		acc[task.builderId].push(task);
-		// 		return acc;
-		// 	}, {});
-
-		// 	return {
-		// 		...state,
-		// 		tasks: updatedTasks,
-		// 		tasksByBuilder,
-		// 	};
-		// }
 		case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
 			const updatedTasks = action.payload;
 			const updatedTasksMap = new Map(
@@ -147,6 +132,17 @@ export const taskDataReducer = (state = initialState, action) => {
 				tasksByBuilder: updatedTasksByBuilder,
 			};
 		}
+		case Actions.taskData.REMOVE_COMPLETED_JOB_FROM_TASKS:
+			return {
+				...state,
+				tasks: state.tasks.filter((task) => task.jobId !== action.payload),
+				tasksByBuilder: Object.fromEntries(
+					Object.entries(state.tasksByBuilder).map(([builderId, tasks]) => [
+						builderId,
+						tasks.filter((task) => task.jobId !== action.payload),
+					])
+				),
+			};
 		default:
 			return state;
 	}
