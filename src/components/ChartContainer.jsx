@@ -622,6 +622,7 @@ export const ChartContainer = () => {
 				dayWidth={dayWidth}
 				lastJobsIndex={lastJobsIndex}
 				clickedTask={clickedTask}
+				setIsLoading={setIsLoading}
 			/>
 			<BuilderModal
 				visible={isBuilderModalOpen}

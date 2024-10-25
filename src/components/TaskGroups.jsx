@@ -346,6 +346,7 @@ const TaskGroups = ({
 			.on("mouseout", function (event, d) {
 				d3.select(this).select(".bar-text").text(d.taskName);
 			});
+		setIsLoading(false);
 	}, [
 		builders,
 		dayWidth,

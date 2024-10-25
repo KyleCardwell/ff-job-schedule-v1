@@ -38,6 +38,7 @@ export const getChartData = (jobData) => {
 					jobName: job.name,
 					rowNumber,
 					jobNumber: room.jobNumber,
+					projectCreatedAt: job.projectCreatedAt,
 					// jobsIndex: i,
           workPeriodIndex,
 					heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
@@ -76,7 +77,9 @@ export const getTaskData = (jobData) => {
 					roomId: room.id,
 					taskName: room.name,
 					jobsIndex,
+					roomCreatedAt: room.roomCreatedAt,
 					roomIndex,
+					projectCreatedAt: job.projectCreatedAt,
 					workPeriodIndex,
 					workPeriodDuration: workPeriod.workPeriodDuration,
 					rowNumber,
@@ -220,31 +223,6 @@ export const sortAndAdjustDates = (
 	chartStartDate
 ) => {
 	let arrayToProcess = [...jobsArray];
-
-	// // Handle drag and drop if applicable
-	// if (draggedJobId && dropDate) {
-	// 	const draggedJobIndex = arrayToProcess.findIndex(
-	// 		(job) => job.id === draggedJobId
-	// 	);
-
-	// 	if (draggedJobIndex !== -1) {
-	// 		// Remove the dragged job from the array
-	// 		const [draggedJob] = arrayToProcess.splice(draggedJobIndex, 1);
-
-	// 		// Find the index where to insert the dragged job
-	// 		const insertIndex = arrayToProcess.findIndex(
-	// 			(job) => normalizeDate(job.startDate) >= normalizeDate(dropDate)
-	// 		);
-
-	// 		if (insertIndex !== -1) {
-	// 			// Insert the dragged job at the found index
-	// 			arrayToProcess.splice(insertIndex, 0, draggedJob);
-	// 		} else {
-	// 			// If no job with a later date is found, append to the end
-	// 			arrayToProcess.push(draggedJob);
-	// 		}
-	// 	}
-	// }
 
 	// Sort the array by date
 	arrayToProcess.sort((a, b) => {
