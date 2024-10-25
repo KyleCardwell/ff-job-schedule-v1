@@ -33,6 +33,7 @@ const JobModal = ({
 	dayWidth,
 	lastJobsIndex,
 	clickedTask,
+	setIsLoading,
 }) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
@@ -53,6 +54,8 @@ const JobModal = ({
 	const clickedTaskRef = useRef(null);
 	const newTaskNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
+
+	const newProjectCreatedAt = new Date().toISOString();
 
 	const formatDateForInput = (date) => {
 		if (!date) return "";
@@ -151,6 +154,7 @@ const JobModal = ({
 		const newStartDate = normalizeDate(
 			calculateNextAvailableDate(defaultBuilderId)
 		);
+		const createdAt = new Date().toISOString();
 
 		const newWorkPeriod = {
 			id: uuidv4(),
@@ -165,7 +169,11 @@ const JobModal = ({
 			taskName: "",
 			active: true,
 			isNew: true,
-			roomCreatedAt: new Date().toISOString(),
+			roomCreatedAt: createdAt,
+			subTaskCreatedAt: createdAt,
+			projectCreatedAt: jobData
+				? jobData[0].projectCreatedAt
+				: newProjectCreatedAt,
 			heightAdjust: 1,
 			workPeriodIndex: 0,
 			jobsIndex: jobData?.length > 0 ? jobData[0].jobsIndex : lastJobsIndex + 1,
@@ -296,6 +304,10 @@ const JobModal = ({
 						active: true,
 						isNew: true,
 						roomCreatedAt: room.roomCreatedAt,
+						projectCreatedAt: jobData
+							? jobData[0].projectCreatedAt
+							: newProjectCreatedAt,
+						subTaskCreatedAt: new Date().toISOString(),
 						workPeriodIndex: room.workPeriods.length + 1,
 						workPeriodDuration: dayWidth,
 						heightAdjust: 0,
@@ -440,8 +452,43 @@ const JobModal = ({
 		setErrors((prevErrors) => {
 			const updatedErrors = { ...prevErrors };
 			Object.keys(changes).forEach((key) => {
-				delete updatedErrors[`${roomId}-${workPeriodId}-${key}`];
+				// Clear errors for all work periods in the room for shared fields
+				if (key === "jobNumber" || key === "taskName") {
+					Object.keys(updatedErrors).forEach((errorKey) => {
+						if (
+							errorKey.startsWith(`${roomId}-`) &&
+							errorKey.endsWith(`-${key}`)
+						) {
+							delete updatedErrors[errorKey];
+						}
+					});
+				} else {
+					// Clear error for the specific work period
+					delete updatedErrors[`${roomId}-${workPeriodId}-${key}`];
+				}
 			});
+
+			// Check if the changed field is now valid and remove the error if it is
+			if (changes.taskName !== undefined && changes.taskName.trim() !== "") {
+				delete updatedErrors[`${roomId}-${workPeriodId}-name`];
+			}
+			if (changes.jobNumber !== undefined && changes.jobNumber.trim() !== "") {
+				delete updatedErrors[`${roomId}-${workPeriodId}-jobNumber`];
+			}
+			if (
+				changes.duration !== undefined &&
+				!isNaN(changes.duration) &&
+				Number(changes.duration) > 0
+			) {
+				delete updatedErrors[`${roomId}-${workPeriodId}-duration`];
+			}
+			if (changes.builderId !== undefined) {
+				delete updatedErrors[`${roomId}-${workPeriodId}-builderId`];
+			}
+			if (changes.startDate !== undefined) {
+				delete updatedErrors[`${roomId}-${workPeriodId}-startDate`];
+			}
+
 			return updatedErrors;
 		});
 
@@ -592,6 +639,8 @@ const JobModal = ({
 				taskName: task.taskName,
 				active: task.active,
 				roomCreatedAt: task.roomCreatedAt,
+				projectCreatedAt: task.projectCreatedAt,
+				subTaskCreatedAt: task.subTaskCreatedAt,
 			})),
 		};
 		setShowCompleteConfirmation(true);
@@ -726,8 +775,21 @@ const JobModal = ({
 		// If there are any errors, set them and don't save
 		if (Object.keys(newErrors).length > 0) {
 			setErrors(newErrors);
+
+			// Find the first error
+			const firstErrorId = Object.keys(newErrors)[0];
+
+			// Use setTimeout to ensure the DOM has updated before we try to focus
+			setTimeout(() => {
+				const firstErrorElement = document.getElementById(firstErrorId);
+				if (firstErrorElement) {
+					firstErrorElement.focus();
+				}
+			}, 0);
 			return;
 		}
+
+		setIsLoading(true);
 
 		const updatedTasks = localRooms.flatMap((room) =>
 			room.workPeriods.map((wp) => ({
@@ -833,8 +895,17 @@ const JobModal = ({
 	return (
 		<div className="modal-overlay">
 			<div className="modal-content">
-				<h2>{jobData ? "Edit Job" : "Add New Job"}</h2>
+				<button
+					className="modal-action-button complete-job"
+					onClick={handleCompleteJob}
+				>
+					Complete Job
+				</button>
+				<div className="modal-header">
+					<h2>{jobData ? "Edit Job" : "Add New Job"}</h2>
+				</div>
 				<input
+					id={"jobName"}
 					type="text"
 					value={jobName}
 					onChange={(e) => {
@@ -865,6 +936,7 @@ const JobModal = ({
 							<div key={workPeriod.id} className="roomGroup">
 								{index === 0 ? (
 									<input
+										id={`${room.id}-${workPeriod.id}-jobNumber`}
 										type="text"
 										value={room.jobNumber || ""}
 										onChange={(e) =>
@@ -886,6 +958,7 @@ const JobModal = ({
 								)}
 								{index === 0 ? (
 									<input
+										id={`${room.id}-${workPeriod.id}-name`}
 										type="text"
 										value={room.taskName}
 										onChange={(e) =>
@@ -900,7 +973,7 @@ const JobModal = ({
 										ref={
 											clickedTask?.id === workPeriod.id
 												? clickedTaskRef
-												: index === activeRooms[0].workPeriods.length - 1
+												: index === 0
 												? newTaskNameRef
 												: null
 										}
@@ -909,6 +982,7 @@ const JobModal = ({
 									<span className="room-name-input">{room.taskName}</span>
 								)}
 								<input
+									id={`${room.id}-${workPeriod.id}-duration`}
 									type="number"
 									step="0.01"
 									min="0.01"
@@ -926,6 +1000,7 @@ const JobModal = ({
 									}`}
 								/>
 								<select
+									id={`${room.id}-${workPeriod.id}-builderId`}
 									value={workPeriod.builderId}
 									onChange={(e) => {
 										handleWorkPeriodChange(room.id, workPeriod.id, {
@@ -945,6 +1020,7 @@ const JobModal = ({
 									))}
 								</select>
 								<input
+									id={`${room.id}-${workPeriod.id}-startDate`}
 									type="date"
 									value={formatDateForInput(workPeriod.startDate)}
 									onChange={(e) =>
@@ -1044,13 +1120,6 @@ const JobModal = ({
 				{errors.general && (
 					<div className="error general-error">{errors.general}</div>
 				)}
-
-				<button
-					className="modal-action-button complete-job"
-					onClick={handleCompleteJob}
-				>
-					Complete Job
-				</button>
 
 				{showCompleteConfirmation && (
 					<div className="confirmation-overlay">
