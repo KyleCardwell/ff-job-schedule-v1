@@ -5,14 +5,17 @@ import { holidaysReducer } from "./holidays";
 import { chartDataReducer } from "./chartData";
 import { taskDataReducer } from "./taskData";
 import { completedProjectsReducer } from "./completedProjects";
+import authReducer from "../authSlice";
+import { projectsReducer } from "./projects";
 
 const rootReducer = combineReducers({
-	// jobs: ganttReducer,
+	auth: authReducer,
 	builders,
 	holidays: holidaysReducer,
 	chartData: chartDataReducer,
 	taskData: taskDataReducer,
 	completedProjects: completedProjectsReducer,
+	projects: projectsReducer,
 	// other reducers if needed
 });
 

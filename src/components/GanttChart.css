@@ -535,6 +535,14 @@ select {
 	width: 100%;
 	margin-top: 10px;
 }
+.logout-button {
+  background-color: #ff4444;
+  color: white;
+}
+
+.logout-button:hover {
+  background-color: #cc0000;
+}
 
 @media only screen and (min-device-width: 320px) and (max-device-width: 1024px) and (-webkit-min-device-pixel-ratio: 2) {
 	.action-buttons {
