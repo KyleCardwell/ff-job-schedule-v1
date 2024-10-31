@@ -464,6 +464,29 @@ select {
 	border-radius: 5px;
 	margin-bottom: 10px;
 }
+
+.default-builder-overlay {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.3);
+	color: white;
+	padding: 4px 12px;
+	border-radius: 0 5px 5px 0;
+	font-size: 0.85em;
+	pointer-events: none; /* This ensures the overlay doesn't interfere with clicks */
+	z-index: 1;
+	max-width: 250px;
+	text-align: center;
+
+	 /* Center text both vertically and horizontally */
+	 display: flex;
+	 align-items: center;
+	 justify-content: center;
+	 text-align: center; 
+}
+
 .builder-item-controls {
 	display: flex;
 	flex-direction: column;
@@ -536,12 +559,12 @@ select {
 	margin-top: 10px;
 }
 .logout-button {
-  background-color: #ff4444;
-  color: white;
+	background-color: #ff4444;
+	color: white;
 }
 
 .logout-button:hover {
-  background-color: #cc0000;
+	background-color: #cc0000;
 }
 
 @media only screen and (min-device-width: 320px) and (max-device-width: 1024px) and (-webkit-min-device-pixel-ratio: 2) {
@@ -631,6 +654,12 @@ select {
 	.roomGroup span.job-number-input {
 		display: none;
 	}
+
+	.default-builder-overlay {
+		max-width: 180px; 
+    text-align: center;
+    padding: 8px;  /* Slightly more padding for better touch targets */
+}
 }
 
 @media (max-width: 600px) {
@@ -660,6 +689,16 @@ select {
 	.builder-info input[type="text"] {
 		max-width: unset;
 	}
+
+	.default-builder-overlay {
+		max-width: none; 
+		top: auto;  /* Remove top positioning */
+    bottom: 0;  /* Position at bottom */
+    right: 0;
+    left: 0;    /* Stretch across full width */
+    text-align: center;
+    border-radius: 0 0 4px 4px;  /* Rounded corners only at bottom */
+    padding: 8px;  /* Slightly more padding for better touch targets */
 }
 
 /* Print Styles */
@@ -785,4 +824,33 @@ select {
 .confirmation-actions button:last-child {
 	background-color: #f44336;
 	color: white;
+}
+
+.empty-state-container {
+	display: flex;
+	flex-direction: column;
+	/* height: 100vh; */
+	margin-top: 30px;
+	padding: 20px;
+}
+
+.empty-state-message {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	flex: 1;
+	text-align: center;
+}
+
+.empty-state-message h2 {
+	margin-bottom: 16px;
+	color: #333;
+}
+
+.empty-state-message p {
+	color: #666;
+	font-size: 1.1em;
+	max-width: 400px;
+	line-height: 1.5;
 }

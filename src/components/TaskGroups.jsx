@@ -9,7 +9,7 @@ import {
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
 import * as d3 from "d3";
-import { getNextWorkday, sortAndAdjustDates } from "../utils/helpers";
+import { calculateXPosition, getNextWorkday, sortAndAdjustDates } from "../utils/helpers";
 import {
 	updateEarliestStartDate,
 	updateLatestStartDate,
@@ -49,8 +49,9 @@ const TaskGroups = ({
 			.map((task, index) => ({
 				...task,
 				rowNumber: index,
+				xPosition: calculateXPosition(task.startDate, chartStartDate, dayWidth),
 			}));
-	}, [tasks]);
+	}, [tasks, chartStartDate, dayWidth]);
 
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {

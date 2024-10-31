@@ -212,7 +212,8 @@ const BuilderModal = ({
 					holidayChecker,
 					holidays,
 					dayWidth,
-					chartStartDate
+					chartStartDate,
+					builders[0].id
 				)
 			);
 
@@ -264,11 +265,18 @@ const BuilderModal = ({
 					{localBuilders.map((builder, index) => (
 						<div
 							className="builder-item-container"
-							key={builder.id}
+							key={builder.id || index}
 							style={{
 								backgroundColor: builder.color,
+								position: "relative",
 							}}
 						>
+							{index === 0 && (
+								<div className="default-builder-overlay">
+									Your default builder cannot be deleted. <br />
+									You can change the name and color.
+								</div>
+							)}
 							<div className="builder-item-controls">
 								<div
 									className={`builder-item ${

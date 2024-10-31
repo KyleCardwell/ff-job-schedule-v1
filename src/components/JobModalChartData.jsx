@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 import { updateNextJobNumber } from "../redux/actions/ganttActions";
@@ -55,7 +55,7 @@ const JobModal = ({
 	const newTaskNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
 
-	const newProjectCreatedAt = new Date().toISOString();
+	const newProjectCreatedAt = useMemo(() => new Date().toISOString(), []);
 
 	const formatDateForInput = (date) => {
 		if (!date) return "";
@@ -171,12 +171,11 @@ const JobModal = ({
 			isNew: true,
 			roomCreatedAt: createdAt,
 			subTaskCreatedAt: createdAt,
-			projectCreatedAt: jobData
-				? jobData[0].projectCreatedAt
-				: newProjectCreatedAt,
+			projectCreatedAt:
+				localRooms[0]?.workPeriods[0].projectCreatedAt || newProjectCreatedAt,
 			heightAdjust: 1,
-			workPeriodIndex: 0,
-			jobsIndex: jobData?.length > 0 ? jobData[0].jobsIndex : lastJobsIndex + 1,
+			// workPeriodIndex: 0,
+			// jobsIndex: jobData?.length > 0 ? jobData[0].jobsIndex : lastJobsIndex + 1,
 		};
 
 		const newTask = {
@@ -255,33 +254,54 @@ const JobModal = ({
 		});
 	};
 
-	const handleCancelNewRoom = (roomId, builderId) => {
-		setLocalRooms((prevRooms) =>
-			prevRooms.filter((room) => room.id !== roomId)
-		);
+	const handleCancelNewRoom = (roomId) => {
+		// Find the room first to get all its work periods
+		const roomToRemove = localRooms.find((room) => room.id === roomId);
 
-		// Remove the room from localJobsByBuilder
-		setLocalJobsByBuilder((prev) => {
-			const updatedBuilderJobs = prev[builderId]?.filter(
-				(room) => room.id !== roomId
+		if (roomToRemove) {
+			// If this was the latest job number, decrement the nextJobNumber
+			if (roomToRemove.jobNumber === (nextJobNumber - 1).toString()) {
+				setNextJobNumber((prev) => prev - 1);
+			}
+
+			// Remove the room from localRooms
+			setLocalRooms((prevRooms) =>
+				prevRooms.filter((room) => room.id !== roomId)
 			);
-			return {
-				...prev,
-				[builderId]: updatedBuilderJobs,
-			};
-		});
 
-		// Remove the room's work periods from changedTaskIds
-		setChangedTaskIds((prev) => {
-			const newSet = new Set(prev);
-			const roomToRemove = localRooms.find((room) => room.id === roomId);
-			if (roomToRemove) {
+			// Remove all work periods from localJobsByBuilder
+			setLocalJobsByBuilder((prev) => {
+				const updatedJobsByBuilder = { ...prev };
+
+				// For each work period in the room
+				roomToRemove.workPeriods.forEach((wp) => {
+					const builderId = wp.builderId;
+					if (updatedJobsByBuilder[builderId]) {
+						updatedJobsByBuilder[builderId] = updatedJobsByBuilder[
+							builderId
+						].filter((job) => job.id !== wp.id);
+					}
+				});
+
+				return updatedJobsByBuilder;
+			});
+
+			// Remove all work periods from changedTaskIds
+			setChangedTaskIds((prev) => {
+				const newSet = new Set(prev);
 				roomToRemove.workPeriods.forEach((wp) => {
 					newSet.delete(wp.id);
 				});
-			}
-			return newSet;
-		});
+				return newSet;
+			});
+
+			// Remove all work periods from removedWorkPeriods
+			setRemovedWorkPeriods((prev) =>
+				prev.filter(
+					(id) => !roomToRemove.workPeriods.some((wp) => wp.id === id)
+				)
+			);
+		}
 	};
 
 	const handleAddWorkPeriod = (roomId, prevBuilderId = "1") => {
@@ -304,14 +324,12 @@ const JobModal = ({
 						active: true,
 						isNew: true,
 						roomCreatedAt: room.roomCreatedAt,
-						projectCreatedAt: jobData
-							? jobData[0].projectCreatedAt
-							: newProjectCreatedAt,
+						projectCreatedAt:
+							localRooms[0]?.workPeriods[0].projectCreatedAt ||
+							newProjectCreatedAt,
 						subTaskCreatedAt: new Date().toISOString(),
-						workPeriodIndex: room.workPeriods.length + 1,
 						workPeriodDuration: dayWidth,
 						heightAdjust: 0,
-						jobsIndex: room.workPeriods[0].jobsIndex,
 					};
 
 					const updatedWorkPeriods = [
@@ -1051,9 +1069,7 @@ const JobModal = ({
 										{room.isNew ? (
 											<button
 												className="modal-action-button cancel"
-												onClick={() =>
-													handleCancelNewRoom(room.id, room.builderId)
-												}
+												onClick={() => handleCancelNewRoom(room.id)}
 											>
 												Cancel
 											</button>

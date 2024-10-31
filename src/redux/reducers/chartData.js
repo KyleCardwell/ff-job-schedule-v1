@@ -21,8 +21,8 @@ const updateDateRange = (state, updatedTasks) => {
 
 	// Check if the dates need to be updated
 	if (
-		newEarliestStartDate < state.earliestStartDate ||
-		newLatestStartDate > state.latestStartDate
+		newEarliestStartDate !== state.earliestStartDate ||
+		newLatestStartDate !== state.latestStartDate
 	) {
 		needsUpdate = true;
 	}
@@ -35,7 +35,7 @@ const updateDateRange = (state, updatedTasks) => {
 };
 
 const initialState = {
-	chartData: taskList,
+	chartData: [],
 	earliestStartDate,
 	latestStartDate,
 	nextJobNumber: 101,
@@ -156,15 +156,13 @@ export const chartDataReducer = (state = initialState, action) => {
 
 			// Sort the tasks
 			updatedChartData.sort((a, b) => {
-				const projectComparison = a.projectCreatedAt.localeCompare(
-					b.projectCreatedAt
-				);
-				if (projectComparison !== 0) return projectComparison;
-
-				const roomComparison = a.roomCreatedAt.localeCompare(b.roomCreatedAt);
-				if (roomComparison !== 0) return roomComparison;
-
-				return a.subTaskCreatedAt.localeCompare(b.subTaskCreatedAt);
+				if (a.projectCreatedAt === b.projectCreatedAt) {
+					if (a.roomCreatedAt === b.roomCreatedAt) {
+						return a.subTaskCreatedAt.localeCompare(b.subTaskCreatedAt);
+					}
+					return a.roomCreatedAt.localeCompare(b.roomCreatedAt);
+				}
+				return a.projectCreatedAt.localeCompare(b.projectCreatedAt);
 			});
 
 			const { earliestStartDate, latestStartDate, needsUpdate } =

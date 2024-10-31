@@ -6,8 +6,8 @@ import { Actions } from "../actions";
 const { tasks, tasksByBuilder } = getTaskData(newJobs);
 
 const initialState = {
-	tasks,
-	tasksByBuilder,
+	tasks: [],
+	tasksByBuilder: {},
 };
 
 export const taskDataReducer = (state = initialState, action) => {

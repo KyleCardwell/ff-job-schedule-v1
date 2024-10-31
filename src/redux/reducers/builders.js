@@ -3,31 +3,31 @@ import { Actions } from "../actions";
 
 const initialState = {
 	builders: [
-		{ id: "1", name: "No one", color: "#FFC0CC", timeOff: [] },
-		{
-			id: "2",
-			name: "Frosty",
-			color: "#86CEEB",
-			timeOff: [
-				{
-					start: "2024-10-01T06:00:00.000Z",
-					end: "2024-10-08T06:00:00.000Z",
-				},
-			],
-		},
-		{
-			id: "3",
-			name: "Patrick",
-			color: "#4CAF51",
-			timeOff: [
-				{
-					start: "2024-10-04T06:00:00.000Z",
-					end: "2024-10-10T06:00:00.000Z",
-				},
-			],
-		},
-		{ id: "4", name: "Nick", color: "#A32ACF", timeOff: [] },
-		{ id: "5", name: "Dawayne", color: "#FF2E54", timeOff: [] },
+		{ name: "Unassigned", color: "#FFC0CC", timeOff: [] },
+		// {
+		// 	id: "2",
+		// 	name: "Frosty",
+		// 	color: "#86CEEB",
+		// 	timeOff: [
+		// 		{
+		// 			start: "2024-10-01T06:00:00.000Z",
+		// 			end: "2024-10-08T06:00:00.000Z",
+		// 		},
+		// 	],
+		// },
+		// {
+		// 	id: "3",
+		// 	name: "Patrick",
+		// 	color: "#4CAF51",
+		// 	timeOff: [
+		// 		{
+		// 			start: "2024-10-04T06:00:00.000Z",
+		// 			end: "2024-10-10T06:00:00.000Z",
+		// 		},
+		// 	],
+		// },
+		// { id: "4", name: "Nick", color: "#A32ACF", timeOff: [] },
+		// { id: "5", name: "Dawayne", color: "#FF2E54", timeOff: [] },
 	], // Array to store builder objects with id, name, and color
 };
 

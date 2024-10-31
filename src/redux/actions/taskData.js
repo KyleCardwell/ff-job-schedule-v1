@@ -2,6 +2,7 @@ import { sortAndAdjustDates } from "../../utils/helpers";
 import { Actions } from "../actions";
 import { eachDayOfInterval } from "date-fns";
 import { normalizeDate } from "../../utils/dateUtils";
+
 export const updateTasksByOneBuilder = (builderId, taskList) => {
 	return {
 		type: Actions.taskData.UPDATE_TASKS_BY_ONE_BUILDER,
@@ -16,7 +17,8 @@ export const updateTasksAfterBuilderChanges = (
 	holidayChecker,
 	holidays,
 	dayWidth,
-	chartStartDate
+	chartStartDate,
+	defaultBuilderId
 ) => {
 	return (dispatch, getState) => {
 		const state = getState();
@@ -36,7 +38,7 @@ export const updateTasksAfterBuilderChanges = (
 		// Handle deleted builders
 		const tasksAfterDeletion = allTasks.map((task) =>
 			deletedBuilderIds.includes(task.builderId)
-				? { ...task, builderId: "1" }
+				? { ...task, builderId: defaultBuilderId }
 				: task
 		);
 
@@ -79,6 +81,6 @@ export const jobModalUpdateTaskData = (
 };
 
 export const removeCompletedJobFromTasks = (jobId) => ({
-  type: Actions.taskData.REMOVE_COMPLETED_JOB_FROM_TASKS,
-  payload: jobId,
+	type: Actions.taskData.REMOVE_COMPLETED_JOB_FROM_TASKS,
+	payload: jobId,
 });

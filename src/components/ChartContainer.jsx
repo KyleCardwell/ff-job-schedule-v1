@@ -25,6 +25,10 @@ export const ChartContainer = () => {
 	const { earliestStartDate, latestStartDate, chartData } = useSelector(
 		(state) => state.chartData
 	);
+	// Get projects data from Redux
+	const projects = useSelector((state) => state.projects.data);
+	const databaseLoading = useSelector((state) => state.projects.loading);
+
 	const builders = useSelector((state) => state.builders.builders);
 	const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
 
@@ -559,43 +563,61 @@ export const ChartContainer = () => {
 				setIsBuilderModalOpen={setIsBuilderModalOpen}
 				setIsHolidayModalOpen={setIsHolidayModalOpen}
 			/>
-			<div className="gantt-container">
-				<div className="gantt-content">
-					<div className="gantt-left">
-						<div className="gantt-left-header">
-							<svg ref={leftColumnHeaderRef} />
-						</div>
-						<div className="gantt-left-body">
-							<svg ref={leftColumnRef} />
-						</div>
-					</div>
-					<div className="gantt-right">
-						<div className="gantt-right-header">
-							<svg ref={headerRef} />
-						</div>
-						<div className="gantt-right-body" ref={scrollableRef}>
-							<svg className="inner-chart chart-svg" ref={chartRef} />
-							<TaskGroups
-								chartRef={chartRef}
-								barMargin={barMargin}
-								chartHeight={chartHeight}
-								numDays={numDays}
-								handleAutoScroll={handleAutoScroll}
-								setIsLoading={setIsLoading}
-								chartStartDate={chartStartDate}
-								daysBeforeStart={daysBeforeStart}
-								rowHeight={rowHeight}
-								workdayHours={workdayHours}
-								holidayChecker={holidayChecker}
-								dayWidth={dayWidth}
-							/>
-						</div>
+
+			{!activeRoomsData || activeRoomsData.length === 0 ? (
+				<div className="empty-state-container">
+					<div className="empty-state-message">
+						<h2>Welcome to your Project Dashboard!</h2>
+						<p>You don't have any projects yet. </p>
+						<p>
+							<strong>Start</strong> by adding some employees using the <br />
+							<strong>Builders</strong> button.
+						</p>
+						<p>
+							<strong>Then</strong> add some projects by clicking on the <br />
+							<strong>Add Job</strong> button.
+						</p>
 					</div>
 				</div>
-				<div className="gantt-footer">
-					<BuilderLegend />
+			) : (
+				<div className="gantt-container">
+					<div className="gantt-content">
+						<div className="gantt-left">
+							<div className="gantt-left-header">
+								<svg ref={leftColumnHeaderRef} />
+							</div>
+							<div className="gantt-left-body">
+								<svg ref={leftColumnRef} />
+							</div>
+						</div>
+						<div className="gantt-right">
+							<div className="gantt-right-header">
+								<svg ref={headerRef} />
+							</div>
+							<div className="gantt-right-body" ref={scrollableRef}>
+								<svg className="inner-chart chart-svg" ref={chartRef} />
+								<TaskGroups
+									chartRef={chartRef}
+									barMargin={barMargin}
+									chartHeight={chartHeight}
+									numDays={numDays}
+									handleAutoScroll={handleAutoScroll}
+									setIsLoading={setIsLoading}
+									chartStartDate={chartStartDate}
+									daysBeforeStart={daysBeforeStart}
+									rowHeight={rowHeight}
+									workdayHours={workdayHours}
+									holidayChecker={holidayChecker}
+									dayWidth={dayWidth}
+								/>
+							</div>
+						</div>
+					</div>
+					<div className="gantt-footer">
+						<BuilderLegend />
+					</div>
 				</div>
-			</div>
+			)}
 
 			{isLoading && (
 				<div className="loading-overlay">
