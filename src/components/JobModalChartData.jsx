@@ -37,6 +37,7 @@ const JobModal = ({
 }) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
+	const employees = useSelector((state) => state.builders.employees);
 	const jobNumberNext = useSelector((state) => state.chartData.nextJobNumber);
 
 	const [jobName, setJobName] = useState("");
@@ -150,7 +151,7 @@ const JobModal = ({
 	};
 
 	const handleAddRoom = () => {
-		const defaultBuilderId = "1";
+		const defaultBuilderId = employees[0].id;
 		const newStartDate = normalizeDate(
 			calculateNextAvailableDate(defaultBuilderId)
 		);
@@ -913,12 +914,14 @@ const JobModal = ({
 	return (
 		<div className="modal-overlay">
 			<div className="modal-content">
-				<button
-					className="modal-action-button complete-job"
-					onClick={handleCompleteJob}
-				>
-					Complete Job
-				</button>
+				{jobData && (
+					<button
+						className="modal-action-button complete-job"
+						onClick={handleCompleteJob}
+					>
+						Complete Job
+					</button>
+				)}
 				<div className="modal-header">
 					<h2>{jobData ? "Edit Job" : "Add New Job"}</h2>
 				</div>
@@ -1031,9 +1034,9 @@ const JobModal = ({
 											: ""
 									}`}
 								>
-									{builders.map((builder) => (
+									{employees.map((builder) => (
 										<option key={builder.id} value={builder.id}>
-											{builder.name}
+											{builder.employee_name}
 										</option>
 									))}
 								</select>

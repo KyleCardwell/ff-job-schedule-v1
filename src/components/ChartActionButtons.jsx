@@ -3,11 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { clearSession } from "../redux/authSlice";
 import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabase";
 
-const supabase = createClient(
-	import.meta.env.VITE_FF_JS_SUPABASE_URL,
-	import.meta.env.VITE_FF_JS_SUPABASE_ANON_KEY
-);
 
 const ChartActionButtons = ({
 	scrollToMonday,

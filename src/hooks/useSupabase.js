@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../utils/supabase';
 
-const supabase = createClient(
-  import.meta.env.VITE_FF_JS_SUPABASE_URL,
-  import.meta.env.VITE_FF_JS_SUPABASE_ANON_KEY
-);
 
 export const useSupabaseQuery = (table, options = {}) => {
   const [data, setData] = useState(null);

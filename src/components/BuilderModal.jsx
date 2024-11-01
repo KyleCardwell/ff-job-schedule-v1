@@ -133,7 +133,7 @@ const BuilderModal = ({
 			...localEmployees,
 			{ ...newBuilder, id: Date.now(), timeOff: [], markedForDeletion: false },
 		]);
-		setNewBuilder({ name: "", color: "#000000" });
+		setNewBuilder({ employee_name: "", employee_color: "#000000" });
 		setErrors({});
 	};
 
@@ -521,7 +521,13 @@ const BuilderModal = ({
 					))}
 				</form>
 				<div className="modal-actions">
-					<button className="modal-action-button cancel" onClick={onCancel}>
+					<button
+						className="modal-action-button cancel"
+						onClick={() => {
+							onCancel();
+							setErrors({});
+						}}
+					>
 						Cancel
 					</button>
 					{saveError && <div className="error-message">{saveError}</div>}
