@@ -9,7 +9,11 @@ import {
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
 import * as d3 from "d3";
-import { calculateXPosition, getNextWorkday, sortAndAdjustDates } from "../utils/helpers";
+import {
+	calculateXPosition,
+	getNextWorkday,
+	sortAndAdjustDates,
+} from "../utils/helpers";
 import {
 	updateEarliestStartDate,
 	updateLatestStartDate,
@@ -107,28 +111,6 @@ const TaskGroups = ({
 		);
 	}, [employees, chartStartDate, numDays, dayWidth]);
 
-	const updateAllBuilderTasks = (newEarliestDate, excludeBuilderId) => {
-		const updatedChartStartDate = normalizeDate(
-			subDays(newEarliestDate, daysBeforeStart)
-		);
-		Object.entries(tasksByBuilder).forEach(([builderId, builderTasks]) => {
-			if (builderId !== excludeBuilderId) {
-				const sortedTasks = sortAndAdjustDates(
-					builderTasks,
-					workdayHours,
-					holidayChecker,
-					holidays,
-					null,
-					null,
-					timeOffByBuilder,
-					dayWidth,
-					updatedChartStartDate
-				);
-				dispatch(updateTasksByOneBuilder(builderId, sortedTasks));
-			}
-		});
-	};
-
 	useEffect(() => {
 		if (
 			!chartRef.current ||
@@ -203,11 +185,6 @@ const TaskGroups = ({
 					)
 					.filter((job) => job.active);
 
-				const updatedChartStartDate =
-					newStartDate < earliestStartDate
-						? normalizeDate(subDays(newStartDate, daysBeforeStart))
-						: chartStartDate;
-
 				// Sort and adjust dates for the builder's jobs
 				const sortedBuilderTasks = sortAndAdjustDates(
 					updatedBuilderTasks,
@@ -218,7 +195,7 @@ const TaskGroups = ({
 					newStartDate,
 					timeOffByBuilder,
 					dayWidth,
-					updatedChartStartDate
+					chartStartDate
 				);
 				// Transition all jobs in the builder group
 				const jobGroups = taskGroupsSvg
@@ -240,14 +217,7 @@ const TaskGroups = ({
 					.end()
 					.then(() => {
 						dispatch(updateOneBuilderChartData(sortedBuilderTasks));
-						if (newStartDate < earliestStartDate) {
-							updateTasksByOneBuilder(d.builderId, sortedBuilderTasks);
-							updateAllBuilderTasks(newStartDate, d.builderId);
-						} else {
-							dispatch(
-								updateTasksByOneBuilder(d.builderId, sortedBuilderTasks)
-							);
-						}
+						dispatch(updateTasksByOneBuilder(d.builderId, sortedBuilderTasks));
 					});
 				d3.select(this).classed("dragging", false);
 				delete d.dragStartX;
@@ -320,7 +290,8 @@ const TaskGroups = ({
 			)
 			.attr(
 				"fill",
-				(d) => employees.find((builder) => builder.id === d.builderId).employee_color
+				(d) =>
+					employees.find((builder) => builder.id === d.builderId).employee_color
 			);
 
 		allGroups

@@ -160,7 +160,7 @@ const JobModal = ({
 		const newWorkPeriod = {
 			id: uuidv4(),
 			jobId: localRooms[0]?.jobId || uuidv4(),
-			roomId: uuidv4(),
+			// roomId: uuidv4(),
 			jobName: jobName,
 			builderId: defaultBuilderId,
 			startDate: normalizeDate(newStartDate),
@@ -948,14 +948,14 @@ const JobModal = ({
 					<span>Actions</span>
 				</div>
 
-				{activeRooms.map((room, index) => (
+				{activeRooms.map((room, taskIndex) => (
 					<div
-						key={room.id}
-						className={`roomContainer ${index % 2 === 0 ? "even" : "odd"}`}
+						key={room.id || taskIndex}
+						className={`roomContainer ${taskIndex % 2 === 0 ? "even" : "odd"}`}
 					>
-						{room.workPeriods.map((workPeriod, index) => (
-							<div key={workPeriod.id} className="roomGroup">
-								{index === 0 ? (
+						{room.workPeriods.map((workPeriod, subTaskIndex) => (
+							<div key={workPeriod.id || subTaskIndex} className="roomGroup">
+								{taskIndex === 0 ? (
 									<input
 										id={`${room.id}-${workPeriod.id}-jobNumber`}
 										type="text"
@@ -974,10 +974,10 @@ const JobModal = ({
 									/>
 								) : (
 									<span className="job-number-input">
-										{index === 0 ? room.jobNumber : `${room.jobNumber}`}
+										{taskIndex === 0 ? room.jobNumber : `${room.jobNumber}`}
 									</span>
 								)}
-								{index === 0 ? (
+								{taskIndex === 0 ? (
 									<input
 										id={`${room.id}-${workPeriod.id}-name`}
 										type="text"
@@ -994,7 +994,7 @@ const JobModal = ({
 										ref={
 											clickedTask?.id === workPeriod.id
 												? clickedTaskRef
-												: index === 0
+												: taskIndex === 0
 												? newTaskNameRef
 												: null
 										}
@@ -1056,19 +1056,21 @@ const JobModal = ({
 									}`}
 								/>
 
-								{index === 0 ? (
+								{taskIndex === 0 ? (
 									<div className="room-buttons">
-										<button
-											onClick={() =>
-												handleAddWorkPeriod(
-													room.id,
-													room.workPeriods[0]?.builderId
-												)
-											}
-											className="modal-action-button add add-button"
-										>
-											+ Slot
-										</button>
+										{room.id !== undefined && (
+											<button
+												onClick={() =>
+													handleAddWorkPeriod(
+														room.id,
+														room.workPeriods[0]?.builderId
+													)
+												}
+												className="modal-action-button add add-button"
+											>
+												+ Slot
+											</button>
+										)}
 										{room.isNew ? (
 											<button
 												className="modal-action-button cancel"
@@ -1111,8 +1113,8 @@ const JobModal = ({
 				{inactiveRooms.length > 0 && (
 					<>
 						<h3>Inactive Rooms</h3>
-						{inactiveRooms.map((room) => (
-							<div key={room.id} className="roomGroup inactive">
+						{inactiveRooms.map((room, inactiveTaskIndex) => (
+							<div key={room.id || inactiveTaskIndex} className="roomGroup inactive">
 								<span>{room.jobNumber}</span>
 								<span>{room.taskName}</span>
 								<button
