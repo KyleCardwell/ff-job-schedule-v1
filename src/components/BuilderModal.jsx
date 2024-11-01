@@ -4,6 +4,8 @@ import {
 	updateBuilder,
 	deleteBuilder,
 	addBuilder,
+	addEmployees,
+	updateEmployees,
 } from "../redux/actions/builders";
 import { format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
@@ -21,19 +23,35 @@ const BuilderModal = ({
 }) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
+	const employees = useSelector((state) => state.builders.employees);
 	const holidays = useSelector((state) => state.holidays.holidays);
 
-	const [localBuilders, setLocalBuilders] = useState(builders);
+	const [localEmployees, setLocalEmployees] = useState(builders);
 	const [newBuilder, setNewBuilder] = useState({ name: "", color: "#000000" });
 	const [errors, setErrors] = useState({});
 	const [timeOffVisibility, setTimeOffVisibility] = useState({});
 
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveError, setSaveError] = useState(null);
+
 	useEffect(() => {
-		setLocalBuilders(
-			builders.map((builder) => ({ ...builder, markedForDeletion: false }))
+		   // If builders is empty or undefined, create default builder
+			 const defaultEmployee = {
+        employee_name: "Unassigned",
+        employee_color: "#FFC0CC",
+        timeOff: [],
+        markedForDeletion: false
+    };
+
+    const employeesToUse = employees?.length > 0 
+        ? employees 
+        : [defaultEmployee];
+
+		setLocalEmployees(
+			employeesToUse.map((employee) => ({ ...employee, markedForDeletion: false }))
 		);
 		setTimeOffVisibility({});
-	}, [builders, visible]);
+	}, [employees, visible]);
 
 	const formatDateForInput = (date) => {
 		if (!date) return "";
@@ -41,30 +59,30 @@ const BuilderModal = ({
 	};
 
 	const handleNameChange = (index, value) => {
-		const updatedBuilders = localBuilders.map((builder, i) =>
-			i === index ? { ...builder, name: value } : builder
+		const updatedBuilders = localEmployees.map((builder, i) =>
+			i === index ? { ...builder, employee_name: value } : builder
 		);
-		setLocalBuilders(updatedBuilders);
+		setLocalEmployees(updatedBuilders);
 	};
 
 	const handleColorChange = (index, value) => {
-		const updatedBuilders = localBuilders.map((builder, i) =>
-			i === index ? { ...builder, color: value } : builder
+		const updatedBuilders = localEmployees.map((builder, i) =>
+			i === index ? { ...builder, employee_color: value } : builder
 		);
-		setLocalBuilders(updatedBuilders);
+		setLocalEmployees(updatedBuilders);
 	};
 
 	const handleAddTimeOff = (index) => {
-		const updatedBuilders = localBuilders.map((builder, i) =>
+		const updatedBuilders = localEmployees.map((builder, i) =>
 			i === index
 				? { ...builder, timeOff: [...builder.timeOff, { start: "", end: "" }] }
 				: builder
 		);
-		setLocalBuilders(updatedBuilders);
+		setLocalEmployees(updatedBuilders);
 	};
 
 	const handleTimeOffChange = (builderIndex, timeOffIndex, field, value) => {
-		const updatedBuilders = localBuilders.map((builder, i) => {
+		const updatedBuilders = localEmployees.map((builder, i) => {
 			if (i === builderIndex) {
 				const updatedTimeOff = builder.timeOff.map((period, j) =>
 					j === timeOffIndex
@@ -81,11 +99,11 @@ const BuilderModal = ({
 			}
 			return builder;
 		});
-		setLocalBuilders(updatedBuilders);
+		setLocalEmployees(updatedBuilders);
 	};
 
 	const handleRemoveTimeOff = (builderIndex, timeOffIndex) => {
-		const updatedBuilders = localBuilders.map((builder, i) => {
+		const updatedBuilders = localEmployees.map((builder, i) => {
 			if (i === builderIndex) {
 				const updatedTimeOff = builder.timeOff.filter(
 					(_, j) => j !== timeOffIndex
@@ -94,25 +112,25 @@ const BuilderModal = ({
 			}
 			return builder;
 		});
-		setLocalBuilders(updatedBuilders);
+		setLocalEmployees(updatedBuilders);
 	};
 
 	const handleMarkForDeletion = (builderId) => {
-		const updatedBuilders = localBuilders.map((builder) =>
+		const updatedBuilders = localEmployees.map((builder) =>
 			builder.id === builderId
 				? { ...builder, markedForDeletion: !builder.markedForDeletion }
 				: builder
 		);
-		setLocalBuilders(updatedBuilders);
+		setLocalEmployees(updatedBuilders);
 	};
 
 	const handleAddBuilder = () => {
-		if (newBuilder.name.trim() === "") {
+		if (newBuilder.employee_name.trim() === "") {
 			setErrors({ newBuilderName: "Name is required" });
 			return;
 		}
-		setLocalBuilders([
-			...localBuilders,
+		setLocalEmployees([
+			...localEmployees,
 			{ ...newBuilder, id: Date.now(), timeOff: [], markedForDeletion: false },
 		]);
 		setNewBuilder({ name: "", color: "#000000" });
@@ -121,8 +139,8 @@ const BuilderModal = ({
 
 	const validateInputs = () => {
 		const newErrors = {};
-		localBuilders.forEach((builder, index) => {
-			if (builder.name.trim() === "") {
+		localEmployees.forEach((builder, index) => {
+			if (builder.employee_name.trim() === "") {
 				newErrors[`name-${index}`] = "Name is required";
 			}
 			builder.timeOff?.forEach((period, timeOffIndex) => {
@@ -148,8 +166,8 @@ const BuilderModal = ({
 
 	// Helper function to compare timeOff arrays
 	const areTimeOffsEqual = (timeOff1, timeOff2) => {
-		if (timeOff1.length !== timeOff2.length) return false;
-		return timeOff1.every((period1, index) => {
+		if (timeOff1?.length !== timeOff2?.length) return false;
+		return timeOff1?.every((period1, index) => {
 			const period2 = timeOff2[index];
 			return period1.start === period2.start && period1.end === period2.end;
 		});
@@ -166,59 +184,139 @@ const BuilderModal = ({
 	// 	);
 	// };
 
-	const handleSave = () => {
+	// const handleSave = () => {
+	// 	if (validateInputs()) {
+	// 		const buildersToDelete = localBuilders
+	// 			.filter((b) => b.markedForDeletion)
+	// 			.map((b) => b.id);
+	// 		const buildersToKeep = localBuilders.filter((b) => !b.markedForDeletion);
+
+	// 		// Update or add builders
+	// 		buildersToKeep.forEach((localBuilder) => {
+	// 			const existingBuilder = builders.find((b) => b.id === localBuilder.id);
+	// 			if (!existingBuilder) {
+	// 				// This is a new builder, so add it
+	// 				dispatch(
+	// 					addBuilder(
+	// 						localBuilder.name,
+	// 						localBuilder.color,
+	// 						localBuilder.timeOff
+	// 					)
+	// 				);
+	// 			} else {
+	// 				// Check if the builder has any changes
+	// 				const hasChanges =
+	// 					existingBuilder.name !== localBuilder.name ||
+	// 					existingBuilder.color !== localBuilder.color ||
+	// 					!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff);
+
+	// 				if (hasChanges) {
+	// 					dispatch(updateBuilder(localBuilder));
+	// 				}
+	// 			}
+	// 		});
+
+	// 		// Delete builders
+	// 		buildersToDelete.forEach((id) => {
+	// 			dispatch(deleteBuilder(id));
+	// 		});
+
+	// 		// Update tasks after all builder changes
+	// 		dispatch(
+	// 			updateTasksAfterBuilderChanges(
+	// 				buildersToKeep,
+	// 				buildersToDelete,
+	// 				workdayHours,
+	// 				holidayChecker,
+	// 				holidays,
+	// 				dayWidth,
+	// 				chartStartDate,
+	// 				builders[0].id
+	// 			)
+	// 		);
+
+	// 		setTimeOffVisibility({});
+	// 		onCancel();
+	// 	}
+	// };
+
+	const handleSave = async () => {
 		if (validateInputs()) {
-			const buildersToDelete = localBuilders
-				.filter((b) => b.markedForDeletion)
-				.map((b) => b.id);
-			const buildersToKeep = localBuilders.filter((b) => !b.markedForDeletion);
+			try {
+				setIsSaving(true);
+				setSaveError(null);
 
-			// Update or add builders
-			buildersToKeep.forEach((localBuilder) => {
-				const existingBuilder = builders.find((b) => b.id === localBuilder.id);
-				if (!existingBuilder) {
-					// This is a new builder, so add it
-					dispatch(
-						addBuilder(
-							localBuilder.name,
-							localBuilder.color,
-							localBuilder.timeOff
-						)
+				const buildersToDelete = localEmployees
+					.filter((b) => b.markedForDeletion)
+					.map((b) => b.id);
+				const buildersToKeep = localEmployees.filter(
+					(b) => !b.markedForDeletion
+				);
+
+				// Separate builders into updates and additions
+				const buildersToUpdate = [];
+				const buildersToAdd = [];
+
+				buildersToKeep.forEach((localBuilder) => {
+					const existingBuilder = employees.find(
+						(emp) => emp.id === localBuilder.id
 					);
-				} else {
-					// Check if the builder has any changes
-					const hasChanges =
-						existingBuilder.name !== localBuilder.name ||
-						existingBuilder.color !== localBuilder.color ||
-						!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff);
+					if (!existingBuilder) {
+						// This is a new builder
+						buildersToAdd.push({
+							employee_name: localBuilder.employee_name,
+							employee_color: localBuilder.employee_color,
+							timeOff: localBuilder.timeOff,
+						});
+					} else {
+						// Check if the builder has any changes
+						const hasChanges =
+							existingBuilder.employee_name !== localBuilder.employee_name ||
+							existingBuilder.employee_color !== localBuilder.employee_color ||
+							!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff);
 
-					if (hasChanges) {
-						dispatch(updateBuilder(localBuilder));
+						if (hasChanges) {
+							buildersToUpdate.push(localBuilder);
+						}
 					}
+				});
+
+				// Handle updates and additions in Supabase
+				if (buildersToUpdate.length > 0) {
+					await dispatch(updateEmployees(buildersToUpdate));
 				}
-			});
 
-			// Delete builders
-			buildersToDelete.forEach((id) => {
-				dispatch(deleteBuilder(id));
-			});
+				if (buildersToAdd.length > 0) {
+					await dispatch(addEmployees(buildersToAdd));
+				}
 
-			// Update tasks after all builder changes
-			dispatch(
-				updateTasksAfterBuilderChanges(
-					buildersToKeep,
-					buildersToDelete,
-					workdayHours,
-					holidayChecker,
-					holidays,
-					dayWidth,
-					chartStartDate,
-					builders[0].id
-				)
-			);
+				// // Delete builders from Supabase
+				// if (buildersToDelete.length > 0) {
+				// 	await dispatch(deleteBuilders(buildersToDelete));
+				// }
 
-			setTimeOffVisibility({});
-			onCancel();
+				// Update tasks after all builder changes
+				dispatch(
+					updateTasksAfterBuilderChanges(
+						buildersToKeep,
+						buildersToDelete,
+						workdayHours,
+						holidayChecker,
+						holidays,
+						dayWidth,
+						chartStartDate,
+						localEmployees[0].id
+					)
+				);
+
+				setTimeOffVisibility({});
+				onCancel();
+			} catch (error) {
+				console.error("Error saving builders:", error);
+				setSaveError("Failed to save changes. Please try again.");
+			} finally {
+				setIsSaving(false);
+			}
 		}
 	};
 
@@ -237,18 +335,21 @@ const BuilderModal = ({
 							<div className="builder-info">
 								<input
 									type="text"
-									value={newBuilder.name}
+									value={newBuilder.employee_name}
 									onChange={(e) =>
-										setNewBuilder({ ...newBuilder, name: e.target.value })
+										setNewBuilder({ ...newBuilder, employee_name: e.target.value })
 									}
 									placeholder="Builder Name"
 									className={errors.newBuilderName ? "error" : ""}
 								/>
 								<input
 									type="color"
-									value={newBuilder.color}
+									value={newBuilder.employee_color}
 									onChange={(e) =>
-										setNewBuilder({ ...newBuilder, color: e.target.value })
+										setNewBuilder({
+											...newBuilder,
+											employee_color: e.target.value,
+										})
 									}
 								/>
 							</div>
@@ -262,19 +363,19 @@ const BuilderModal = ({
 							</button>
 						</div>
 					</div>
-					{localBuilders.map((builder, index) => (
+					{localEmployees.map((builder, index) => (
 						<div
 							className="builder-item-container"
 							key={builder.id || index}
 							style={{
-								backgroundColor: builder.color,
+								backgroundColor: builder.employee_color,
 								position: "relative",
 							}}
 						>
 							{index === 0 && (
 								<div className="default-builder-overlay">
-									Your default builder cannot be deleted. <br />
-									You can change the name and color.
+									This default builder cannot be deleted. <br />
+									You may change the name and color.
 								</div>
 							)}
 							<div className="builder-item-controls">
@@ -286,7 +387,7 @@ const BuilderModal = ({
 									<div className="builder-info">
 										<input
 											type="text"
-											value={builder.name}
+											value={builder.employee_name}
 											onChange={(e) => handleNameChange(index, e.target.value)}
 											placeholder="Builder Name"
 											className={errors[`name-${index}`] ? "error" : ""}
@@ -294,7 +395,7 @@ const BuilderModal = ({
 										/>
 										<input
 											type="color"
-											value={builder.color}
+											value={builder.employee_color}
 											onChange={(e) => handleColorChange(index, e.target.value)}
 											disabled={builder.markedForDeletion}
 											style={{
@@ -423,8 +524,13 @@ const BuilderModal = ({
 					<button className="modal-action-button cancel" onClick={onCancel}>
 						Cancel
 					</button>
-					<button className="modal-action-button save" onClick={handleSave}>
-						Save
+					{saveError && <div className="error-message">{saveError}</div>}
+					<button
+						className="modal-action-button save"
+						onClick={handleSave}
+						disabled={isSaving}
+					>
+						{isSaving ? "Saving..." : "Save"}
 					</button>
 				</div>
 			</div>

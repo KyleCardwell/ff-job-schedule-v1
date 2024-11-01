@@ -570,11 +570,11 @@ export const ChartContainer = () => {
 						<h2>Welcome to your Project Dashboard!</h2>
 						<p>You don't have any projects yet. </p>
 						<p>
-							<strong>Start</strong> by adding some employees using the <br />
-							<strong>Builders</strong> button.
+							<strong>Start</strong> by adding employees using the <br />
+							<strong>Employees</strong> button.
 						</p>
 						<p>
-							<strong>Then</strong> add some projects by clicking on the <br />
+							<strong>Then</strong> add projects by clicking on the <br />
 							<strong>Add Job</strong> button.
 						</p>
 					</div>

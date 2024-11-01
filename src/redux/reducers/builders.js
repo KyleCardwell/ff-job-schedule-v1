@@ -3,7 +3,7 @@ import { Actions } from "../actions";
 
 const initialState = {
 	builders: [
-		{ name: "Unassigned", color: "#FFC0CC", timeOff: [] },
+		// { name: "Unassigned", color: "#FFC0CC", timeOff: [] },
 		// {
 		// 	id: "2",
 		// 	name: "Frosty",
@@ -29,6 +29,7 @@ const initialState = {
 		// { id: "4", name: "Nick", color: "#A32ACF", timeOff: [] },
 		// { id: "5", name: "Dawayne", color: "#FF2E54", timeOff: [] },
 	], // Array to store builder objects with id, name, and color
+	employees: [],
 };
 
 export const builders = (state = initialState, action) => {
@@ -63,6 +64,12 @@ export const builders = (state = initialState, action) => {
 						? { ...builder, ...action.payload } // Update the builder data
 						: builder
 				),
+			};
+
+		case Actions.employees.SET_EMPLOYEES:
+			return {
+				...state,
+				employees: [...action.payload],
 			};
 
 		default:

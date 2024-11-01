@@ -10,6 +10,7 @@ import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useSupabaseQuery } from "./hooks/useSupabase";
 import { fetchProjectDateRange, fetchProjects } from "./redux/actions/projects";
+import { fetchEmployees } from "./redux/actions/builders";
 // Initialize Supabase client
 const supabase = createClient(
 	import.meta.env.VITE_FF_JS_SUPABASE_URL,
@@ -19,10 +20,6 @@ const supabase = createClient(
 const App = () => {
 	const dispatch = useDispatch();
 	const { session, loading } = useSelector((state) => state.auth);
-
-	// const { data, isloading, error } = useSupabaseQuery("projects", {
-	// 	select: `*, tasks (*, subTasks (*))`,
-	// });
 
 	useEffect(() => {
 		// Get initial session
@@ -52,6 +49,7 @@ const App = () => {
 					select: `*, tasks (*, subTasks (*))`,
 				})
 			);
+			dispatch(fetchEmployees());
 
 		}
 	}, [session, dispatch]);

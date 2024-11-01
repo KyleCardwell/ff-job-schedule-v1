@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { clearSession } from "../redux/authSlice";
 import { createClient } from "@supabase/supabase-js";
 
@@ -17,6 +17,8 @@ const ChartActionButtons = ({
 }) => {
 	const location = useLocation();
 	const dispatch = useDispatch();
+
+	const employees = useSelector((state) => state.builders.employees);
 
 	const handleLogout = async () => {
 		const { error } = await supabase.auth.signOut();
@@ -35,17 +37,19 @@ const ChartActionButtons = ({
 					>
 						Today
 					</button>
-					<button
-						className="action-button add-job-button"
-						onClick={() => setIsJobModalOpen(true)}
-					>
-						Add Job
-					</button>
+					{employees.length > 0 && (
+						<button
+							className="action-button add-job-button"
+							onClick={() => setIsJobModalOpen(true)}
+						>
+							Add Job
+						</button>
+					)}
 					<button
 						className="action-button manage-builders-button"
 						onClick={() => setIsBuilderModalOpen(true)}
 					>
-						Builders
+						Employees
 					</button>
 					<button
 						className="action-button manage-holidays-button"

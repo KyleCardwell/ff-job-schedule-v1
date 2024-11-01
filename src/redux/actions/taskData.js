@@ -26,7 +26,7 @@ export const updateTasksAfterBuilderChanges = (
 
 		// Create a complete timeOffByBuilder object
 		const timeOffByBuilder = updatedBuilders.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff.flatMap((period) =>
+			acc[builder.id] = builder.timeOff?.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),

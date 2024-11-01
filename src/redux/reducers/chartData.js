@@ -35,7 +35,7 @@ const updateDateRange = (state, updatedTasks) => {
 };
 
 const initialState = {
-	chartData: [],
+	chartData: taskList,
 	earliestStartDate,
 	latestStartDate,
 	nextJobNumber: 101,

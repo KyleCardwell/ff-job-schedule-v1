@@ -35,6 +35,7 @@ const TaskGroups = ({
 	const dispatch = useDispatch();
 
 	const builders = useSelector((state) => state.builders.builders);
+	const employees = useSelector((state) => state.builders.employees);
 	const holidays = useSelector((state) => state.holidays.holidays);
 	const { tasks } = useSelector((state) => state.taskData);
 	const { tasksByBuilder } = useSelector((state) => state.taskData, isEqual);
@@ -55,8 +56,8 @@ const TaskGroups = ({
 
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
-		return builders.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff.flatMap((period) =>
+		return employees.reduce((acc, builder) => {
+			acc[builder.id] = builder.timeOff?.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
@@ -64,13 +65,13 @@ const TaskGroups = ({
 			);
 			return acc;
 		}, {});
-	}, [builders]);
+	}, [employees]);
 
 	// Calculate timeOffData
 	const timeOffData = useMemo(() => {
 		const xPositions = new Map();
-		return builders.flatMap((builder) =>
-			builder.timeOff.flatMap((period) => {
+		return employees.flatMap((builder) =>
+			builder.timeOff?.flatMap((period) => {
 				const periodStart = normalizeDate(new Date(period.start));
 				const periodEnd = normalizeDate(new Date(period.end));
 				const chartEndDate = addDays(
@@ -97,14 +98,14 @@ const TaskGroups = ({
 						xPositions.set(x, true);
 						return {
 							x,
-							color: builder.color,
+							employee_color: builder.employee_color,
 							builderId: builder.id,
 							date: normalizeDate(day),
 						};
 					});
 			})
 		);
-	}, [builders, chartStartDate, numDays, dayWidth]);
+	}, [employees, chartStartDate, numDays, dayWidth]);
 
 	const updateAllBuilderTasks = (newEarliestDate, excludeBuilderId) => {
 		const updatedChartStartDate = normalizeDate(
@@ -134,8 +135,8 @@ const TaskGroups = ({
 			!taskGroupsRef.current ||
 			!activeTasksData ||
 			activeTasksData.length === 0 ||
-			!Array.isArray(builders) ||
-			builders.length === 0
+			!Array.isArray(employees) ||
+			employees.length === 0
 		) {
 			return;
 		}
@@ -269,11 +270,11 @@ const TaskGroups = ({
 			.enter()
 			.append("line")
 			.attr("class", "time-off-line")
-			.attr("x1", (d) => d.x + 3)
+			.attr("x1", (d) => d?.x + 3)
 			.attr("y1", 0)
-			.attr("x2", (d) => d.x + 3)
+			.attr("x2", (d) => d?.x + 3)
 			.attr("y2", chartHeight)
-			.attr("stroke", (d) => d.color)
+			.attr("stroke", (d) => d?.employee_color)
 			.attr("stroke-width", 6)
 			.attr("opacity", 0.6);
 
@@ -319,7 +320,7 @@ const TaskGroups = ({
 			)
 			.attr(
 				"fill",
-				(d) => builders.find((builder) => builder.id === d.builderId).color
+				(d) => employees.find((builder) => builder.id === d.builderId).employee_color
 			);
 
 		allGroups
@@ -349,7 +350,7 @@ const TaskGroups = ({
 			});
 		setIsLoading(false);
 	}, [
-		builders,
+		employees,
 		dayWidth,
 		rowHeight,
 		chartStartDate,
