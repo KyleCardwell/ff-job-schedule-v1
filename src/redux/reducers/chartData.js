@@ -79,6 +79,7 @@ export const chartDataReducer = (state = initialState, action) => {
 						...task,
 						...updatedTask,
 						startDate: updatedTask.startDate,
+						subTask_width: updatedTask.subTask_width,
 					};
 				}
 				return task;

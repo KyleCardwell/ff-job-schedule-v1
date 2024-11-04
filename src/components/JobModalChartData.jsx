@@ -353,7 +353,12 @@ const JobModal = ({
 						),
 					}));
 
-					setChangedTaskIds((prev) => new Set(prev).add(newWorkPeriod.id));
+					setChangedTaskIds((prev) => {
+						const newSet = new Set(prev);
+						newSet.add(newWorkPeriod.id);
+						newSet.add(room.workPeriods[0].id); // Add first work period
+						return newSet;
+					});
 
 					return {
 						...room,
@@ -388,7 +393,12 @@ const JobModal = ({
 
 					setRemovedWorkPeriods((prev) => [...prev, workPeriodId]);
 
-					setChangedTaskIds((prev) => new Set(prev).add(workPeriodId));
+					setChangedTaskIds((prev) => {
+						const newSet = new Set(prev);
+						newSet.add(workPeriodId);
+						newSet.add(room.workPeriods[0].id); // Add first work period
+						return newSet;
+					});
 
 					return {
 						...room,
@@ -1047,7 +1057,7 @@ const JobModal = ({
 									value={workPeriod.employee_id}
 									onChange={(e) => {
 										handleWorkPeriodChange(room.id, workPeriod.id, {
-											employee_id: e.target.value,
+											employee_id: Number(e.target.value),
 										});
 									}}
 									className={`builder-select ${

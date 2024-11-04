@@ -39,8 +39,6 @@ export const getChartData = (jobData) => {
 					rowNumber,
 					jobNumber: room.jobNumber,
 					project_created_at: job.project_created_at,
-					// jobsIndex: i,
-					// workPeriodIndex,
 					heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
 					task_created_at: room.task_created_at,
 					active: room.active,

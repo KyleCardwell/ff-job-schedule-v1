@@ -12,7 +12,6 @@ const initialState = {
 
 export const taskDataReducer = (state = initialState, action) => {
 	switch (action.type) {
-
 		case Actions.taskData.FETCH_TASK_DATA_START:
 			return {
 				...state,
@@ -94,50 +93,27 @@ export const taskDataReducer = (state = initialState, action) => {
 			);
 			let updatedsubTasksByEmployee = { ...state.subTasksByEmployee };
 
+			// Replace or add the updated tasks
 			updatedTasks.forEach((updatedTask) => {
 				const existingIndex = updatedTasksState.findIndex(
 					(task) => task.id === updatedTask.id
 				);
-
 				if (existingIndex !== -1) {
-					// Update existing task
-					updatedTasksState[existingIndex] = {
-						...updatedTasksState[existingIndex],
-						...updatedTask,
-					};
+					updatedTasksState[existingIndex] = updatedTask;
 				} else {
-					// New task: find the correct position to insert
-					let insertIndex = updatedTasksState.length; // Default to end of array
-
-					// Find the last task of the same room
-					const sameRoomLastIndex = updatedTasksState.reduce(
-						(lastIndex, task, index) => {
-							return task.roomId === updatedTask.roomId ? index : lastIndex;
-						},
-						-1
-					);
-
-					if (sameRoomLastIndex !== -1) {
-						// Insert after the last task of the same room
-						insertIndex = sameRoomLastIndex + 1;
-					} else {
-						// If no tasks for this room, find the last task of the same job
-						const sameJobLastIndex = updatedTasksState.reduce(
-							(lastIndex, task, index) => {
-								return task.jobId === updatedTask.jobId ? index : lastIndex;
-							},
-							-1
-						);
-
-						if (sameJobLastIndex !== -1) {
-							// Insert after the last task of the same job
-							insertIndex = sameJobLastIndex + 1;
-						}
-					}
-
-					// Insert the new task
-					updatedTasksState.splice(insertIndex, 0, updatedTask);
+					updatedTasksState.push(updatedTask);
 				}
+			});
+
+			// Sort the tasks by created_at dates
+			updatedTasksState.sort((a, b) => {
+				if (a.project_created_at === b.project_created_at) {
+					if (a.task_created_at === b.task_created_at) {
+						return a.subTask_created_at.localeCompare(b.subTask_created_at);
+					}
+					return a.task_created_at.localeCompare(b.task_created_at);
+				}
+				return a.project_created_at.localeCompare(b.project_created_at);
 			});
 
 			// Update subTasksByEmployee with updatedBuilderArrays
