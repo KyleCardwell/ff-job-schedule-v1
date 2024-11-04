@@ -6,13 +6,13 @@ const BuilderLegend = () => {
 
   return (
     <div className="builder-legend">
-      {employees.map(builder => (
-        <div key={builder.id} className="builder-legend-item">
+      {employees.map(employee => (
+        <div key={employee.id} className="builder-legend-item">
           <div 
             className="builder-color-box" 
-            style={{ backgroundColor: builder.employee_color }}
+            style={{ backgroundColor: employee.employee_color }}
           ></div>
-          <span>{builder.employee_name}</span>
+          <span>{employee.employee_name}</span>
         </div>
       ))}
     </div>

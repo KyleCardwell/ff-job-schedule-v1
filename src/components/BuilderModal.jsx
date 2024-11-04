@@ -374,7 +374,7 @@ const BuilderModal = ({
 						>
 							{index === 0 && (
 								<div className="default-builder-overlay">
-									This default builder cannot be deleted. <br />
+									This default employee cannot be deleted. <br />
 									You may change the name and color.
 								</div>
 							)}

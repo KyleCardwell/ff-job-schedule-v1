@@ -5,7 +5,7 @@ const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
 const CompletedProjectCard = ({ project }) => {
 	const jobName = project.name;
-	const completedDate = new Date(project.completedOn).toLocaleDateString();
+	const completedDate = new Date(project.project_completed_at).toLocaleDateString();
 
 	return (
 		<div className="completed-job-card">

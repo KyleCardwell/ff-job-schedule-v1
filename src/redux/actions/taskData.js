@@ -3,10 +3,10 @@ import { Actions } from "../actions";
 import { eachDayOfInterval } from "date-fns";
 import { normalizeDate } from "../../utils/dateUtils";
 
-export const updateTasksByOneBuilder = (builderId, taskList) => {
+export const updateTasksByOneBuilder = (employee_id, taskList) => {
 	return {
 		type: Actions.taskData.UPDATE_TASKS_BY_ONE_BUILDER,
-		payload: { builderId, taskList },
+		payload: { employee_id, taskList },
 	};
 };
 
@@ -30,21 +30,21 @@ export const updateTasksAfterBuilderChanges = (
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
-				}).map((day) => normalizeDate(day).toISOString())
+				}).map((day) => normalizeDate(day))
 			);
 			return acc;
 		}, {});
 
 		// Handle deleted builders
 		const tasksAfterDeletion = allTasks.map((task) =>
-			deletedBuilderIds.includes(task.builderId)
+			deletedBuilderIds.includes(task.employee_id)
 				? { ...task, builderId: defaultBuilderId }
 				: task
 		);
 
 		// Update tasks for each builder
 		const updatedTasks = updatedBuilders.reduce((acc, builder) => {
-			const builderTasks = acc.filter((task) => task.builderId === builder.id);
+			const builderTasks = acc.filter((task) => task.employee_id === builder.id);
 			const sortedTasks = sortAndAdjustDates(
 				builderTasks,
 				workdayHours,
@@ -57,7 +57,7 @@ export const updateTasksAfterBuilderChanges = (
 				chartStartDate
 			);
 			return [
-				...acc.filter((task) => task.builderId !== builder.id),
+				...acc.filter((task) => task.employee_id !== builder.id),
 				...sortedTasks,
 			];
 		}, tasksAfterDeletion);

@@ -2,7 +2,7 @@ import { format, parseISO, startOfDay } from 'date-fns';
 
 export const normalizeDate = (date) => {
   const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-  return startOfDay(parsedDate);
+  return startOfDay(parsedDate).toISOString();
 };
 
 export const formatDateForInput = (date) => {

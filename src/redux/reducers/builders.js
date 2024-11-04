@@ -36,7 +36,7 @@ const ffBuilders = [
 
 const initialState = {
 	builders: [], // Array to store builder objects with id, name, and color
-	employees: ffBuilders,
+	employees: [],
 };
 
 export const builders = (state = initialState, action) => {

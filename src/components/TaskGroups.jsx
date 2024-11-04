@@ -15,8 +15,6 @@ import {
 	sortAndAdjustDates,
 } from "../utils/helpers";
 import {
-	updateEarliestStartDate,
-	updateLatestStartDate,
 	updateOneBuilderChartData,
 } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
@@ -42,15 +40,13 @@ const TaskGroups = ({
 	const employees = useSelector((state) => state.builders.employees);
 	const holidays = useSelector((state) => state.holidays.holidays);
 	const { tasks } = useSelector((state) => state.taskData);
-	const { tasksByBuilder } = useSelector((state) => state.taskData, isEqual);
-	const { earliestStartDate, latestStartDate } = useSelector(
-		(state) => state.chartData
-	);
+	const { subTasksByEmployee } = useSelector((state) => state.taskData, isEqual);
+
 	const taskGroupsRef = useRef(null);
 
 	const activeTasksData = useMemo(() => {
 		return tasks
-			.filter((task) => task.active !== false)
+			.filter((task) => task.task_active !== false)
 			.map((task, index) => ({
 				...task,
 				rowNumber: index,
@@ -65,7 +61,7 @@ const TaskGroups = ({
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
-				}).map((day) => normalizeDate(day).toISOString())
+				}).map((day) => normalizeDate(day))
 			);
 			return acc;
 		}, {});
@@ -161,29 +157,29 @@ const TaskGroups = ({
 					newStartDate,
 					holidayChecker,
 					holidays,
-					d.id,
+					d.employee_id,
 					timeOffByBuilder
 				);
 
 				// Update the dragged job
 				const updatedDraggedJob = {
 					...d,
-					startDate: newStartDate,
+					startDate: normalizeDate(newStartDate),
 				};
 
 				// Get the current builder's jobs and update the dragged job
-				const builderTasks = tasksByBuilder[d.builderId];
+				const builderTasks = subTasksByEmployee[d.employee_id];
 				const updatedBuilderTasks = builderTasks
-					.map((job) =>
-						job.id === d.id
+					.map((subTask) =>
+						subTask.id === d.id
 							? {
 									...updatedDraggedJob,
 									dragStartX: undefined,
 									dragStartEventX: undefined,
 							  }
-							: job
+							: subTask
 					)
-					.filter((job) => job.active);
+					.filter((job) => job.task_active);
 
 				// Sort and adjust dates for the builder's jobs
 				const sortedBuilderTasks = sortAndAdjustDates(
@@ -199,7 +195,7 @@ const TaskGroups = ({
 				);
 				// Transition all jobs in the builder group
 				const jobGroups = taskGroupsSvg
-					.selectAll(`.task-group-${d.builderId}`)
+					.selectAll(`.task-group-${d.employee_id}`)
 					.data(sortedBuilderTasks, (job) => job.id);
 
 				jobGroups
@@ -209,7 +205,7 @@ const TaskGroups = ({
 						transition
 							.select("rect")
 							.attr("x", (job) => job.xPosition)
-							.attr("width", (job) => job.workPeriodDuration);
+							.attr("width", (job) => job.subTask_width);
 						transition
 							.select(".bar-text")
 							.attr("x", (job) => job.xPosition + 5);
@@ -217,7 +213,7 @@ const TaskGroups = ({
 					.end()
 					.then(() => {
 						dispatch(updateOneBuilderChartData(sortedBuilderTasks));
-						dispatch(updateTasksByOneBuilder(d.builderId, sortedBuilderTasks));
+						dispatch(updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks));
 					});
 				d3.select(this).classed("dragging", false);
 				delete d.dragStartX;
@@ -257,7 +253,7 @@ const TaskGroups = ({
 		const enterGroups = jobGroups
 			.enter()
 			.append("g")
-			.attr("class", (d) => `job-group task-group-${d.builderId}`)
+			.attr("class", (d) => `job-group task-group-${d.employee_id}`)
 			.attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
 			.attr("font-size", "12px");
 
@@ -283,22 +279,22 @@ const TaskGroups = ({
 				"y",
 				(d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
 			)
-			.attr("width", (d) => d.workPeriodDuration)
+			.attr("width", (d) => d.subTask_width)
 			.attr(
 				"height",
-				(d) => (rowHeight - 2 * barMargin) * (d.heightFactor || 1)
+				(d) => (rowHeight - 2 * barMargin)
 			)
 			.attr(
 				"fill",
 				(d) =>
-					employees.find((builder) => builder.id === d.builderId).employee_color
+					employees.find((builder) => builder.id === d.employee_id).employee_color
 			);
 
 		allGroups
 			.select("text")
 			.attr("x", (d) => d.xPosition + 5)
 			.attr("y", rowHeight / 2)
-			.text((d) => d.taskName) // Always show the text
+			.text((d) => d.task_name) // Always show the text
 			.attr("fill", "#ffffff")
 			.attr("font-size", "12px")
 			// .attr("font-weight", "bold")
@@ -314,10 +310,10 @@ const TaskGroups = ({
 			.on("mouseover", function (event, d) {
 				d3.select(this)
 					.select(".bar-text")
-					.text(`${d.taskName} - ${d.duration} hours`);
+					.text(`${d.task_name} - ${d.duration} hours`);
 			})
 			.on("mouseout", function (event, d) {
-				d3.select(this).select(".bar-text").text(d.taskName);
+				d3.select(this).select(".bar-text").text(d.task_name);
 			});
 		setIsLoading(false);
 	}, [
@@ -334,7 +330,7 @@ const TaskGroups = ({
 		setIsLoading,
 		barMargin,
 		handleAutoScroll,
-		tasksByBuilder,
+		subTasksByEmployee,
 	]);
 
 	return (

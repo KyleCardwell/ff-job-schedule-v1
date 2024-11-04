@@ -6,21 +6,36 @@ export const supabase = createClient(
 );
 
 export const querySupabase = async (table, options = {}) => {
-  let query = supabase.from(table).select(options.select || '*');
+  if (options.query) {
+    // For raw SQL-style queries
+    let query = supabase
+      .from(table)
+      .select('*');
 
-  if (options.filters) {
-    options.filters.forEach(filter => {
-      query = query.filter(filter.column, filter.operator, filter.value);
-    });
+    // Apply the query function if provided
+    query = options.query(query);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  } else {
+    // Original simple query logic
+    let query = supabase.from(table).select(options.select || '*');
+
+    if (options.filters) {
+      options.filters.forEach(filter => {
+        query = query.filter(filter.column, filter.operator, filter.value);
+      });
+    }
+
+    if (options.orderBy) {
+      query = query.order(options.orderBy.column, { 
+        ascending: options.orderBy.ascending 
+      });
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
   }
-
-  if (options.orderBy) {
-    query = query.order(options.orderBy.column, { 
-      ascending: options.orderBy.ascending 
-    });
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
 };

@@ -60,7 +60,7 @@ export const updateWorkPeriodsByBuilder = (
 			workdayHours,
 			holidayChecker,
 			holidays,
-			singlePeriod.builderId,
+			singlePeriod.employee_id,
 			newStartDate,
 			timeOffByBuilder
 		);
@@ -69,7 +69,7 @@ export const updateWorkPeriodsByBuilder = (
 		dispatch({
 			type: Actions.jobs.UPDATE_WORK_PERIODS_BY_BUILDER,
 			payload: {
-				builderId: singlePeriod.builderId,
+				builderId: singlePeriod.employee_id,
 				workPeriods: sortedBuilderWorkPeriods,
 			},
 		});

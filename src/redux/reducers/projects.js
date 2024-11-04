@@ -65,6 +65,27 @@ export const projectsReducer = (state = initialState, action) => {
 					error: action.payload,
 				},
 			};
+
+		case Actions.projects.CREATE_PROJECT_START:
+			return {
+				...state,
+				loading: true,
+				error: null,
+			};
+
+		case Actions.projects.CREATE_PROJECT_SUCCESS:
+			return {
+				...state,
+				loading: false,
+				data: state.data ? [...state.data, action.payload] : [action.payload],
+			};
+
+		case Actions.projects.CREATE_PROJECT_ERROR:
+			return {
+				...state,
+				loading: false,
+				error: action.payload,
+			};
 		default:
 			return state;
 	}

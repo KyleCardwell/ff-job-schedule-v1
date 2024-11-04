@@ -7,8 +7,8 @@ const baseCreatedAt = subWeeks(new Date(), 4);
 export const newJobs = [
   {
     id: uuidv4(),
-    name: "Peterson",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 0).toISOString(),
+    project_name: "Peterson",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 0), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -18,14 +18,14 @@ export const newJobs = [
         jobNumber: "803",
         name: "Hall Storage Reface",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 0), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-06"),
             endDate: normalizeDate("2024-09-10"),
             duration: 14.9,
-            workPeriodDuration: 120,
+            subTask_width: 120,
             builderId: 13,
             xPosition: 3060,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 10).toISOString(),
@@ -35,7 +35,7 @@ export const newJobs = [
             startDate: normalizeDate("2024-09-10"),
             endDate: normalizeDate("2024-09-13"),
             duration: 19,
-            workPeriodDuration: 90,
+            subTask_width: 90,
             builderId: 14,
             xPosition: 3180,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 15).toISOString(),
@@ -50,14 +50,14 @@ export const newJobs = [
         jobNumber: "876",
         name: "Garage Niche",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 0), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-04"),
             endDate: normalizeDate("2024-09-06"),
             duration: 11.61,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 13,
             xPosition: 3000,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 20).toISOString()
@@ -67,7 +67,7 @@ export const newJobs = [
             startDate: normalizeDate("2024-09-10"),
             endDate: normalizeDate("2024-09-12"),
             duration: 11.61,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 13,
             xPosition: 3180,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 25).toISOString()
@@ -82,13 +82,13 @@ export const newJobs = [
         jobNumber: "917",
         name: "Table and Ottomans",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 30).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 0), 30).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-06-26"),
             duration: 1,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 12,
             xPosition: 900,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 0), 30).toISOString()
@@ -99,8 +99,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Frantzen",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 1), 0).toISOString(),
+    project_name: "Frantzen",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 1), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -110,13 +110,13 @@ export const newJobs = [
         jobNumber: "758",
         name: "Fly Room",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 1), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 1), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-30"),
             duration: 45.21,
-            workPeriodDuration: 330,
+            subTask_width: 330,
             builderId: 14,
             xPosition: 2850,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 1), 10).toISOString(),
@@ -127,8 +127,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Johnson",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 0).toISOString(),
+    project_name: "Johnson",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 2), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -138,13 +138,13 @@ export const newJobs = [
         jobNumber: "878",
         name: "Kitchen Refrigerator Wall",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-13"),
             duration: 17.06,
-            workPeriodDuration: 150,
+            subTask_width: 150,
             builderId: 14,
             xPosition: 3270,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 10).toISOString(),
@@ -159,13 +159,13 @@ export const newJobs = [
         jobNumber: "879",
         name: "Kitchen Range Wall",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-18"),
             duration: 27.46,
-            workPeriodDuration: 180,
+            subTask_width: 180,
             builderId: 14,
             xPosition: 3420,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 20).toISOString(),
@@ -180,13 +180,13 @@ export const newJobs = [
         jobNumber: "880",
         name: "Kitchen Storage Wall",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 30).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 30).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-24"),
             duration: 47.71,
-            workPeriodDuration: 240,
+            subTask_width: 240,
             builderId: 14,
             xPosition: 3600,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 30).toISOString(),
@@ -201,13 +201,13 @@ export const newJobs = [
         jobNumber: "881",
         name: "Kitchen Islands",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 40).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 40).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-02"),
             duration: 54.46,
-            workPeriodDuration: 270,
+            subTask_width: 270,
             builderId: 14,
             xPosition: 3840,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 40).toISOString(),
@@ -222,13 +222,13 @@ export const newJobs = [
         jobNumber: "882",
         name: "Dining Room",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 50).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 50).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-11"),
             duration: 30,
-            workPeriodDuration: 180,
+            subTask_width: 180,
             builderId: 14,
             xPosition: 4110,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 50).toISOString(),
@@ -243,13 +243,13 @@ export const newJobs = [
         jobNumber: "883",
         name: "Kids Playroom",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 60).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 60).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-09"),
             duration: 50.4,
-            workPeriodDuration: 270,
+            subTask_width: 270,
             builderId: 15,
             xPosition: 3150,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 60).toISOString(),
@@ -264,13 +264,13 @@ export const newJobs = [
         jobNumber: "884",
         name: "Scullery",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 70).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 70).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-12"),
             duration: 45.52,
-            workPeriodDuration: 240,
+            subTask_width: 240,
             builderId: 13,
             xPosition: 3240,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 70).toISOString(),
@@ -285,13 +285,13 @@ export const newJobs = [
         jobNumber: "885",
         name: "Laundry",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 80).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 80).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-20"),
             duration: 33.74,
-            workPeriodDuration: 210,
+            subTask_width: 210,
             builderId: 13,
             xPosition: 3480,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 80).toISOString(),
@@ -306,13 +306,13 @@ export const newJobs = [
         jobNumber: "886",
         name: "Entry Powder",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 90).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 90).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-18"),
             duration: 6,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 15,
             xPosition: 3420,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 90).toISOString(),
@@ -327,13 +327,13 @@ export const newJobs = [
         jobNumber: "887",
         name: "Master Bath",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 100).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 100).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-27"),
             duration: 38.86,
-            workPeriodDuration: 450,
+            subTask_width: 450,
             builderId: 13,
             xPosition: 3690,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 100).toISOString(),
@@ -348,13 +348,13 @@ export const newJobs = [
         jobNumber: "888",
         name: "Master Closet",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 110).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 110).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-14"),
             duration: 126.68,
-            workPeriodDuration: 660,
+            subTask_width: 660,
             builderId: 13,
             xPosition: 4200,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 110).toISOString(),
@@ -369,13 +369,13 @@ export const newJobs = [
         jobNumber: "889",
         name: "Garage Hall",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 120).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 120).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-11"),
             duration: 35.76,
-            workPeriodDuration: 210,
+            subTask_width: 210,
             builderId: 16,
             xPosition: 3210,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 120).toISOString(),
@@ -390,13 +390,13 @@ export const newJobs = [
         jobNumber: "890",
         name: "Bath 2",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 130).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 130).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-06"),
             duration: 28.19,
-            workPeriodDuration: 120,
+            subTask_width: 120,
             builderId: 16,
             xPosition: 2130,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 130).toISOString(),
@@ -411,13 +411,13 @@ export const newJobs = [
         jobNumber: "891",
         name: "Bath 3 Linen",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 140).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 140).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-12"),
             duration: 10.7,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 16,
             xPosition: 2310,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 140).toISOString(),
@@ -432,13 +432,13 @@ export const newJobs = [
         jobNumber: "892",
         name: "Bath 3 Vanity",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 150).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 150).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-14"),
             duration: 3.4,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 16,
             xPosition: 2370,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 150).toISOString(),
@@ -453,13 +453,13 @@ export const newJobs = [
         jobNumber: "893",
         name: "Bath 4",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 160).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 160).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-15"),
             duration: 18.89,
-            workPeriodDuration: 150,
+            subTask_width: 150,
             builderId: 16,
             xPosition: 2400,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 160).toISOString(),
@@ -474,13 +474,13 @@ export const newJobs = [
         jobNumber: "894",
         name: "Back Entry",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 170).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 170).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-04"),
             duration: 38.13,
-            workPeriodDuration: 210,
+            subTask_width: 210,
             builderId: 16,
             xPosition: 3000,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 170).toISOString(),
@@ -489,7 +489,7 @@ export const newJobs = [
             id: uuidv4(),
             startDate: normalizeDate("2024-10-07"),
             duration: 12,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 16,
             xPosition: 3990,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 170).toISOString(),
@@ -504,13 +504,13 @@ export const newJobs = [
         jobNumber: "895",
         name: "Loft",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 180).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 180).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-29"),
             duration: 18.7,
-            workPeriodDuration: 180,
+            subTask_width: 180,
             builderId: 16,
             xPosition: 2820,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 180).toISOString(),
@@ -525,13 +525,13 @@ export const newJobs = [
         jobNumber: "896",
         name: "Pool House Kitchenette",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 190).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 190).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-18"),
             duration: 13.54,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 16,
             xPosition: 3420,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 190).toISOString(),
@@ -546,13 +546,13 @@ export const newJobs = [
         jobNumber: "897",
         name: "Bonus Room",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 200).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 200).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-19"),
             duration: 138.24,
-            workPeriodDuration: 990,
+            subTask_width: 990,
             builderId: 15,
             xPosition: 3450,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 200).toISOString(),
@@ -567,13 +567,13 @@ export const newJobs = [
         jobNumber: "898",
         name: "Guest Kitchenette",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 210).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 210).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-20"),
             duration: 33.82,
-            workPeriodDuration: 210,
+            subTask_width: 210,
             builderId: 16,
             xPosition: 3480,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 210).toISOString(),
@@ -588,13 +588,13 @@ export const newJobs = [
         jobNumber: "899",
         name: "Lower Level Stair Hall",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 220).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 220).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-14"),
             duration: 52.82,
-            workPeriodDuration: 270,
+            subTask_width: 270,
             builderId: 16,
             xPosition: 4200,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 220).toISOString(),
@@ -609,13 +609,13 @@ export const newJobs = [
         jobNumber: "900",
         name: "Guest Bath",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 230).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 230).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-27"),
             duration: 8.63,
-            workPeriodDuration: 120,
+            subTask_width: 120,
             builderId: 16,
             xPosition: 3690,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 230).toISOString(),
@@ -630,13 +630,13 @@ export const newJobs = [
         jobNumber: "901",
         name: "Kaci's Room",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 240).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 240).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-01"),
             duration: 30.38,
-            workPeriodDuration: 120,
+            subTask_width: 120,
             builderId: 16,
             xPosition: 3810,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 240).toISOString(),
@@ -651,13 +651,13 @@ export const newJobs = [
         jobNumber: "902",
         name: "Back Entry Stair",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 250).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 250).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-28"),
             duration: 7.48,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 16,
             xPosition: 2790,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 250).toISOString(),
@@ -672,13 +672,13 @@ export const newJobs = [
         jobNumber: "903",
         name: "Library",
         active: false,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 260).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 260).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-03"),
             duration: 10,
-            workPeriodDuration: 10,
+            subTask_width: 10,
             builderId: 12,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 260).toISOString(),
           },
@@ -692,13 +692,13 @@ export const newJobs = [
         jobNumber: "904",
         name: "Office",
         active: false,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 270).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 270).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-03"),
             duration: 10,
-            workPeriodDuration: 10,
+            subTask_width: 10,
             builderId: 12,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 270).toISOString(),
           },
@@ -712,13 +712,13 @@ export const newJobs = [
         jobNumber: "905",
         name: "Garage",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 280).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 280).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-09"),
             duration: 20,
-            workPeriodDuration: 90,
+            subTask_width: 90,
             builderId: 16,
             xPosition: 4050,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 280).toISOString(),
@@ -733,13 +733,13 @@ export const newJobs = [
         jobNumber: "906",
         name: "Bath 2 Linen",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 290).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 290).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-20"),
             duration: 20,
-            workPeriodDuration: 90,
+            subTask_width: 90,
             builderId: 16,
             xPosition: 2550,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 290).toISOString(),
@@ -754,13 +754,13 @@ export const newJobs = [
         jobNumber: "907",
         name: "Bath 4 Linen",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 300).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 2), 300).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-23"),
             duration: 20,
-            workPeriodDuration: 150,
+            subTask_width: 150,
             builderId: 16,
             xPosition: 2640,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 2), 300).toISOString(),
@@ -771,8 +771,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Buie",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 3), 0).toISOString(),
+    project_name: "Buie",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 3), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -782,13 +782,13 @@ export const newJobs = [
         jobNumber: "914",
         name: "Console Table",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 3), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 3), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-30"),
             duration: 40,
-            workPeriodDuration: 240,
+            subTask_width: 240,
             builderId: 15,
             xPosition: 2850,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 3), 10).toISOString(),
@@ -799,8 +799,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Tanner-Madi",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 4), 0).toISOString(),
+    project_name: "Tanner-Madi",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 4), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -810,13 +810,13 @@ export const newJobs = [
         jobNumber: "920",
         name: "Dining Table",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 4), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 4), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-06-27"),
             duration: 1,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 12,
             xPosition: 930,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 4), 10).toISOString(),
@@ -827,8 +827,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Rosh",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 0).toISOString(),
+    project_name: "Rosh",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 5), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -838,13 +838,13 @@ export const newJobs = [
         jobNumber: "923",
         name: "Kitchenette",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 5), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-25"),
             duration: 7.39,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 12,
             xPosition: 1770,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 10).toISOString(),
@@ -859,13 +859,13 @@ export const newJobs = [
         jobNumber: "924",
         name: "Command Center",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 5), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-26"),
             duration: 14.09,
-            workPeriodDuration: 120,
+            subTask_width: 120,
             builderId: 12,
             xPosition: 1800,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 20).toISOString(),
@@ -880,13 +880,13 @@ export const newJobs = [
         jobNumber: "925",
         name: "Wellness Bath Vanity",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 30).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 5), 30).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-30"),
             duration: 2.17,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 12,
             xPosition: 1980,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 30).toISOString(),
@@ -901,13 +901,13 @@ export const newJobs = [
         jobNumber: "926",
         name: "Wellness Lockers",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 40).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 5), 40).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-31"),
             duration: 25.5,
-            workPeriodDuration: 180,
+            subTask_width: 180,
             builderId: 12,
             xPosition: 2010,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 40).toISOString(),
@@ -922,13 +922,13 @@ export const newJobs = [
         jobNumber: "927",
         name: "Laundry",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 50).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 5), 50).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-06"),
             duration: 9.2,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 12,
             xPosition: 2190,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 50).toISOString(),
@@ -943,13 +943,13 @@ export const newJobs = [
         jobNumber: "928",
         name: "Lower Level Bath",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 60).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 5), 60).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-08"),
             duration: 3.17,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 12,
             xPosition: 2310,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 5), 60).toISOString(),
@@ -960,8 +960,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Vickers",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 6), 0).toISOString(),
+    project_name: "Vickers",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 6), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -971,13 +971,13 @@ export const newJobs = [
         jobNumber: "942",
         name: "Kitchen Perimeter",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 6), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 6), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-12"),
             duration: 53.14,
-            workPeriodDuration: 330,
+            subTask_width: 330,
             builderId: 12,
             xPosition: 1380,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 6), 10).toISOString(),
@@ -992,13 +992,13 @@ export const newJobs = [
         jobNumber: "943",
         name: "Kitchen Island",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 6), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 6), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-23"),
             duration: 13.84,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 12,
             xPosition: 1710,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 6), 20).toISOString(),
@@ -1009,8 +1009,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Munshi",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 7), 0).toISOString(),
+    project_name: "Munshi",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 7), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -1020,13 +1020,13 @@ export const newJobs = [
         jobNumber: "944",
         name: "Kitchen Perimeter",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 7), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 7), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-06-28"),
             duration: 49.22,
-            workPeriodDuration: 360,
+            subTask_width: 360,
             builderId: 12,
             xPosition: 960,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 7), 10).toISOString(),
@@ -1041,13 +1041,13 @@ export const newJobs = [
         jobNumber: "945",
         name: "Kitchen Islands",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 7), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 7), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-07-10"),
             duration: 13.89,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 12,
             xPosition: 1320,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 7), 20).toISOString(),
@@ -1058,8 +1058,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Benson",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 0).toISOString(),
+    project_name: "Benson",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 8), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -1069,13 +1069,13 @@ export const newJobs = [
         jobNumber: "946",
         name: "Kitchen Perimeter",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-22"),
             duration: 40.17,
-            workPeriodDuration: 240,
+            subTask_width: 240,
             builderId: 15,
             xPosition: 4440,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 10).toISOString(),
@@ -1090,13 +1090,13 @@ export const newJobs = [
         jobNumber: "947",
         name: "Kitchen Hood",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-10-30"),
             duration: 19.4,
-            workPeriodDuration: 90,
+            subTask_width: 90,
             builderId: 15,
             xPosition: 4680,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 20).toISOString(),
@@ -1111,13 +1111,13 @@ export const newJobs = [
         jobNumber: "948",
         name: "Kitchen Island",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 30).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 30).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-11-04"),
             duration: 16.1,
-            workPeriodDuration: 90,
+            subTask_width: 90,
             builderId: 15,
             xPosition: 4830,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 30).toISOString(),
@@ -1132,13 +1132,13 @@ export const newJobs = [
         jobNumber: "949",
         name: "Dining Buffet",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 40).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 40).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-11-07"),
             duration: 16.42,
-            workPeriodDuration: 150,
+            subTask_width: 150,
             builderId: 15,
             xPosition: 4920,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 40).toISOString(),
@@ -1153,13 +1153,13 @@ export const newJobs = [
         jobNumber: "950",
         name: "Powder Bath",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 50).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 50).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-11-12"),
             duration: 2.66,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 15,
             xPosition: 5070,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 50).toISOString(),
@@ -1174,13 +1174,13 @@ export const newJobs = [
         jobNumber: "951",
         name: "Laundry",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 60).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 60).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-11-13"),
             duration: 24.79,
-            workPeriodDuration: 180,
+            subTask_width: 180,
             builderId: 15,
             xPosition: 5100,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 60).toISOString(),
@@ -1195,13 +1195,13 @@ export const newJobs = [
         jobNumber: "952",
         name: "Mudroom",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 70).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 8), 70).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-11-19"),
             duration: 19,
-            workPeriodDuration: 90,
+            subTask_width: 90,
             builderId: 15,
             xPosition: 5280,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 8), 70).toISOString(),
@@ -1212,8 +1212,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Williamsen",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 0).toISOString(),
+    project_name: "Williamsen",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 9), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -1223,13 +1223,13 @@ export const newJobs = [
         jobNumber: "953",
         name: "Kitchen",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 9), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-09"),
             duration: 88.35,
-            workPeriodDuration: 480,
+            subTask_width: 480,
             builderId: 12,
             xPosition: 2340,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 10).toISOString(),
@@ -1244,13 +1244,13 @@ export const newJobs = [
         jobNumber: "954",
         name: "Laundry",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 20).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 9), 20).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-27"),
             duration: 21.19,
-            workPeriodDuration: 150,
+            subTask_width: 150,
             builderId: 12,
             xPosition: 2820,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 20).toISOString(),
@@ -1265,13 +1265,13 @@ export const newJobs = [
         jobNumber: "955",
         name: "Bathroom",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 30).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 9), 30).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-08-30"),
             duration: 11.31,
-            workPeriodDuration: 60,
+            subTask_width: 60,
             builderId: 12,
             xPosition: 2970,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 9), 30).toISOString(),
@@ -1282,8 +1282,8 @@ export const newJobs = [
   },
   {
     id: uuidv4(),
-    name: "Marsden",
-    projectCreatedAt: addSeconds(addDays(baseCreatedAt, 10), 0).toISOString(),
+    project_name: "Marsden",
+    project_created_at: addSeconds(addDays(baseCreatedAt, 10), 0).toISOString(),
     rooms: [
       {
         id: uuidv4(),
@@ -1293,13 +1293,13 @@ export const newJobs = [
         jobNumber: "956",
         name: "Bookcase",
         active: true,
-        roomCreatedAt: addSeconds(addDays(baseCreatedAt, 10), 10).toISOString(),
+        task_created_at: addSeconds(addDays(baseCreatedAt, 10), 10).toISOString(),
         workPeriods: [
           {
             id: uuidv4(),
             startDate: normalizeDate("2024-09-04"),
             duration: 1,
-            workPeriodDuration: 30,
+            subTask_width: 30,
             builderId: 12,
             xPosition: 3030,
             subTaskCreatedAt: addSeconds(addDays(baseCreatedAt, 10), 10).toISOString(),

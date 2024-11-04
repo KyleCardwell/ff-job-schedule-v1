@@ -26,18 +26,18 @@ export const ChartContainer = () => {
 		(state) => state.chartData
 	);
 	// Get projects data from Redux
-	const projects = useSelector((state) => state.projects.data);
+	// const projects = useSelector((state) => state.projects.data);
 	const databaseLoading = useSelector((state) => state.projects.loading);
 
 	const builders = useSelector((state) => state.builders.builders);
-	const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
+	const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
 
 	const { activeRoomsData, lastJobsIndex } = useMemo(() => {
 		let currentJobId = null;
 		let jobsIndex = -1;
 
 		const activeRooms = chartData
-			.filter((room) => room.active)
+			.filter((room) => room.task_active)
 			.map((room) => {
 				if (room.jobId !== currentJobId) {
 					currentJobId = room.jobId;
@@ -91,7 +91,7 @@ export const ChartContainer = () => {
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
-				}).map((day) => normalizeDate(day).toISOString())
+				}).map((day) => normalizeDate(day))
 			);
 			return acc;
 		}, {});
@@ -367,7 +367,7 @@ export const ChartContainer = () => {
 				.attr("class", "job-number")
 				.attr("x", 10)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.jobNumber : "")
+				.text(d.heightAdjust !== 0 ? d.task_number : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -376,7 +376,7 @@ export const ChartContainer = () => {
 				.attr("class", "job-name")
 				.attr("x", 50)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.jobName : "")
+				.text(d.heightAdjust !== 0 ? d.project_name : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -385,7 +385,7 @@ export const ChartContainer = () => {
 				.attr("class", "room-name")
 				.attr("x", 130)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.taskName : "")
+				.text(d.heightAdjust !== 0 ? d.task_name : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -635,7 +635,7 @@ export const ChartContainer = () => {
 				}}
 				onSave={saveJob}
 				jobData={selectedJob}
-				tasksByBuilder={tasksByBuilder}
+				subTasksByEmployee={subTasksByEmployee}
 				timeOffByBuilder={timeOffByBuilder}
 				holidayChecker={holidayChecker}
 				holidays={holidays}
