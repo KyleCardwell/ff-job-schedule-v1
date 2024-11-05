@@ -7,7 +7,7 @@ const BuilderLegend = () => {
   return (
     <div className="builder-legend">
       {employees.map(employee => (
-        <div key={employee.id} className="builder-legend-item">
+        <div key={employee.employee_id} className="builder-legend-item">
           <div 
             className="builder-color-box" 
             style={{ backgroundColor: employee.employee_color }}

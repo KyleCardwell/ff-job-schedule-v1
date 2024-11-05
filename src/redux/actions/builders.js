@@ -30,7 +30,7 @@ export const fetchEmployees = () => async (dispatch) => {
 		const { data, error } = await supabase
 			.from("employees")
 			.select("*, timeOff:employeeTimeOff(*) ")
-			.order("id", { ascending: true });
+			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
 
@@ -52,7 +52,7 @@ export const addEmployees = (employees) => async (dispatch) => {
 				}))
 			)
 			.select()
-			.order("id", { ascending: true });
+			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
 
@@ -82,7 +82,7 @@ export const updateEmployees = (employees) => async (dispatch) => {
 						employee_name: employee.employee_name,
 						employee_color: employee.employee_color,
 					})
-					.eq("id", employee.id);
+					.eq("employee_id", employee.employee_id);
 
 				if (error) throw error;
 

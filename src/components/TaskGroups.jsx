@@ -33,6 +33,7 @@ const TaskGroups = ({
 	workdayHours,
 	setIsLoading,
 	daysBeforeStart,
+	scrollToMonday,
 }) => {
 	const dispatch = useDispatch();
 
@@ -57,7 +58,7 @@ const TaskGroups = ({
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
 		return employees.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff?.flatMap((period) =>
+			acc[builder.employee_id] = builder.timeOff?.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
@@ -99,7 +100,7 @@ const TaskGroups = ({
 						return {
 							x,
 							employee_color: builder.employee_color,
-							builderId: builder.id,
+							builderId: builder.employee_id,
 							date: normalizeDate(day),
 						};
 					});
@@ -171,7 +172,7 @@ const TaskGroups = ({
 				const builderTasks = subTasksByEmployee[d.employee_id];
 				const updatedBuilderTasks = builderTasks
 					.map((subTask) =>
-						subTask.id === d.id
+						subTask.subTask_id === d.subTask_id
 							? {
 									...updatedDraggedJob,
 									dragStartX: undefined,
@@ -187,7 +188,7 @@ const TaskGroups = ({
 					workdayHours,
 					holidayChecker,
 					holidays,
-					d.id,
+					d.subTask_id,
 					newStartDate,
 					timeOffByBuilder,
 					dayWidth,
@@ -196,7 +197,7 @@ const TaskGroups = ({
 				// Transition all jobs in the builder group
 				const jobGroups = taskGroupsSvg
 					.selectAll(`.task-group-${d.employee_id}`)
-					.data(sortedBuilderTasks, (job) => job.id);
+					.data(sortedBuilderTasks, (job) => job.subTask_id);
 
 				jobGroups
 					.transition()
@@ -247,7 +248,7 @@ const TaskGroups = ({
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
 			.selectAll(".job-group")
-			.data(activeTasksData, (d) => d.id);
+			.data(activeTasksData, (d) => d.subTask_id);
 
 		// Enter new elements
 		const enterGroups = jobGroups
@@ -287,7 +288,7 @@ const TaskGroups = ({
 			.attr(
 				"fill",
 				(d) =>
-					employees.find((builder) => builder.id === d.employee_id).employee_color
+					employees.find((builder) => builder.employee_id === d.employee_id).employee_color
 			);
 
 		allGroups
@@ -332,6 +333,10 @@ const TaskGroups = ({
 		handleAutoScroll,
 		subTasksByEmployee,
 	]);
+
+	useEffect(() => {
+		scrollToMonday(new Date());
+	}, [])
 
 	return (
 		<svg

@@ -15,7 +15,7 @@ const CompletedProjectsContainer = () => {
 			<ChartActionButtons />
 			<div className="completed-jobs-container">
 				{completedProjects.map((project) => (
-					<CompletedProjectCard key={project.id} project={project} />
+					<CompletedProjectCard key={project.project_id} project={project} />
 				))}
 			</div>
 		</div>

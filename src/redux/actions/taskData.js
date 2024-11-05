@@ -26,7 +26,7 @@ export const updateTasksAfterBuilderChanges = (
 
 		// Create a complete timeOffByBuilder object
 		const timeOffByBuilder = updatedBuilders.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff?.flatMap((period) =>
+			acc[builder.employee_id] = builder.timeOff?.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
@@ -38,26 +38,26 @@ export const updateTasksAfterBuilderChanges = (
 		// Handle deleted builders
 		const tasksAfterDeletion = allTasks.map((task) =>
 			deletedBuilderIds.includes(task.employee_id)
-				? { ...task, builderId: defaultBuilderId }
+				? { ...task, employee_id: defaultBuilderId }
 				: task
 		);
 
 		// Update tasks for each builder
 		const updatedTasks = updatedBuilders.reduce((acc, builder) => {
-			const builderTasks = acc.filter((task) => task.employee_id === builder.id);
+			const builderTasks = acc.filter((task) => task.employee_id === builder.employee_id);
 			const sortedTasks = sortAndAdjustDates(
 				builderTasks,
 				workdayHours,
 				holidayChecker,
 				holidays,
-				builder.id,
+				builder.employee_id,
 				null,
 				timeOffByBuilder,
 				dayWidth,
 				chartStartDate
 			);
 			return [
-				...acc.filter((task) => task.employee_id !== builder.id),
+				...acc.filter((task) => task.employee_id !== builder.employee_id),
 				...sortedTasks,
 			];
 		}, tasksAfterDeletion);

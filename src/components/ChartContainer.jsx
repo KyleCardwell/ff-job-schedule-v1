@@ -87,7 +87,7 @@ export const ChartContainer = () => {
 
 	const timeOffByBuilder = useMemo(() => {
 		return builders.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff.flatMap((period) =>
+			acc[builder.employee_id] = builder.timeOff.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
@@ -513,9 +513,9 @@ export const ChartContainer = () => {
 		tasks,
 	]);
 
-	useEffect(() => {
-		scrollToMonday(new Date());
-	}, []);
+	// useEffect(() => {
+	// 	scrollToMonday(new Date());
+	// }, []);
 
 	useEffect(() => {
 		let scrollLeft = 0;
@@ -609,6 +609,7 @@ export const ChartContainer = () => {
 									workdayHours={workdayHours}
 									holidayChecker={holidayChecker}
 									dayWidth={dayWidth}
+									scrollToMonday={scrollToMonday}
 								/>
 							</div>
 						</div>

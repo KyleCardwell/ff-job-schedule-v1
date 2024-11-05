@@ -52,7 +52,7 @@ export const updateWorkPeriodsByBuilder = (
 	return (dispatch) => {
 		// This function now returns another function
 		const updatedBuilderWorkPeriods = workPeriods.map((workPeriod) =>
-			workPeriod.id === singlePeriod.id ? singlePeriod : workPeriod
+			workPeriod.subTask_id === singlePeriod.subTask_id ? singlePeriod : workPeriod
 		);
 
 		const sortedBuilderWorkPeriods = sortAndAdjustDates(

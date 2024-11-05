@@ -23,7 +23,7 @@ export const completedProjectsReducer = (state = initialState, action) => {
 			return {
 				...state,
 				completedProjects: state.completedProjects.filter(
-					(project) => project.id !== action.payload
+					(project) => project.project_id !== action.payload
 				),
 			};
 		default:

@@ -47,9 +47,9 @@ export const builders = (state = initialState, action) => {
 				builders: [
 					...state.builders,
 					{
-						id: uuidv4(),
-						name: action.payload.name,
-						color: action.payload.color,
+						employee_id: uuidv4(),
+						employee_name: action.payload.employee_name,
+						employee_color: action.payload.employee_color,
 						timeOff: action.payload.timeOff,
 					},
 				], // Add new builder to the array
@@ -59,7 +59,7 @@ export const builders = (state = initialState, action) => {
 			return {
 				...state,
 				builders: state.builders.filter(
-					(builder) => builder.id !== action.payload
+					(builder) => builder.employee_id !== action.payload
 				), // Remove builder by id
 			};
 
@@ -67,7 +67,7 @@ export const builders = (state = initialState, action) => {
 			return {
 				...state,
 				builders: state.builders.map((builder) =>
-					builder.id === action.payload.id
+					builder.employee_id === action.payload.employee_id
 						? { ...builder, ...action.payload } // Update the builder data
 						: builder
 				),

@@ -37,12 +37,12 @@ export const taskDataReducer = (state = initialState, action) => {
 
 		case Actions.taskData.UPDATE_TASKS_BY_ONE_BUILDER: {
 			const updatedTasksMap = new Map(
-				action.payload.taskList.map((task) => [task.id, task])
+				action.payload.taskList.map((task) => [task.subTask_id, task])
 			);
 			return {
 				...state,
 				tasks: state.tasks.map((task) => {
-					return updatedTasksMap.get(task.id) || task;
+					return updatedTasksMap.get(task.subTask_id) || task;
 				}),
 				subTasksByEmployee: {
 					...state.subTasksByEmployee,
@@ -53,7 +53,7 @@ export const taskDataReducer = (state = initialState, action) => {
 		case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
 			const updatedTasks = action.payload;
 			const updatedTasksMap = new Map(
-				updatedTasks.map((task) => [task.id, task])
+				updatedTasks.map((task) => [task.subTask_id, task])
 			);
 
 			// Create a new subTasksByEmployee object
@@ -61,7 +61,7 @@ export const taskDataReducer = (state = initialState, action) => {
 
 			// Update tasks while maintaining original order
 			const newTasks = state.tasks.map((task) => {
-				const updatedTask = updatedTasksMap.get(task.id);
+				const updatedTask = updatedTasksMap.get(task.subTask_id);
 				if (updatedTask) {
 					// Add task to subTasksByEmployee
 					if (!subTasksByEmployee[updatedTask.employee_id]) {
@@ -89,14 +89,18 @@ export const taskDataReducer = (state = initialState, action) => {
 				action.payload;
 
 			let updatedTasksState = state.tasks.filter(
-				(task) => !removedWorkPeriods.includes(task.id)
+				(task) => !removedWorkPeriods.includes(task.subTask_id)
 			);
 			let updatedsubTasksByEmployee = { ...state.subTasksByEmployee };
 
+			const tasksToUpdate = updatedTasks.filter(
+				(task) => !removedWorkPeriods.includes(task.subTask_id)
+			);
+
 			// Replace or add the updated tasks
-			updatedTasks.forEach((updatedTask) => {
+			tasksToUpdate.forEach((updatedTask) => {
 				const existingIndex = updatedTasksState.findIndex(
-					(task) => task.id === updatedTask.id
+					(task) => task.subTask_id === updatedTask.subTask_id
 				);
 				if (existingIndex !== -1) {
 					updatedTasksState[existingIndex] = updatedTask;

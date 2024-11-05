@@ -9,14 +9,14 @@ const updateDateRange = (state, updatedTasks) => {
 	let needsUpdate = false;
 
 	// Sort the updated tasks by startDate
-	const sortedTasks = [...updatedTasks].sort(
+	const sortedTasks = [...updatedTasks]?.sort(
 		(a, b) => new Date(a.startDate) - new Date(b.startDate)
 	);
 
 	// Determine the new earliest and latest start dates
-	const newEarliestStartDate = new Date(sortedTasks[0].startDate);
+	const newEarliestStartDate = new Date(sortedTasks[0]?.startDate);
 	const newLatestStartDate = new Date(
-		sortedTasks[sortedTasks.length - 1].startDate
+		sortedTasks[sortedTasks.length - 1]?.startDate
 	);
 
 	// Check if the dates need to be updated
@@ -70,11 +70,11 @@ export const chartDataReducer = (state = initialState, action) => {
 
 		case Actions.chartData.UPDATE_ONE_BUILDER_CHART_DATA: {
 			const updatedTasksMap = new Map(
-				action.payload.map((task) => [task.id, task])
+				action.payload.map((task) => [task.subTask_id, task])
 			);
 			const updatedChartData = state.chartData.map((task) => {
-				if (updatedTasksMap.has(task.id)) {
-					const updatedTask = updatedTasksMap.get(task.id);
+				if (updatedTasksMap.has(task.subTask_id)) {
+					const updatedTask = updatedTasksMap.get(task.subTask_id);
 					return {
 						...task,
 						...updatedTask,
@@ -98,13 +98,17 @@ export const chartDataReducer = (state = initialState, action) => {
 
 			// Remove the tasks that should be deleted
 			let updatedChartData = state.chartData.filter(
-				(task) => !removedWorkPeriods.includes(task.id)
+				(task) => !removedWorkPeriods.includes(task.subTask_id)
+			);
+
+			const tasksToUpdate = updatedTasks.filter(
+				(task) => !removedWorkPeriods.includes(task.subTask_id)
 			);
 
 			// Replace or add the updated tasks
-			updatedTasks.forEach((updatedTask) => {
+			tasksToUpdate.forEach((updatedTask) => {
 				const existingIndex = updatedChartData.findIndex(
-					(task) => task.id === updatedTask.id
+					(task) => task.subTask_id === updatedTask.subTask_id
 				);
 				if (existingIndex !== -1) {
 					updatedChartData[existingIndex] = updatedTask;
