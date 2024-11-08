@@ -19,7 +19,7 @@ export const getChartData = (jobData) => {
 		return job.rooms.flatMap((room) => {
 			const workPeriods = room.workPeriods.length;
 			return room.workPeriods.map((workPeriod, workPeriodIndex) => {
-				const wpStartDate = new Date(workPeriod.startDate);
+				const wpStartDate = new Date(workPeriod.start_date);
 				const rowNumber = positionCounter++;
 
 				// Update earliest and latest start dates
@@ -34,7 +34,7 @@ export const getChartData = (jobData) => {
 					...workPeriod,
 					roomId: room.id,
 					taskName: room.name,
-					jobId: job.id,
+					project_id: job.id,
 					project_name: job.project_name,
 					rowNumber,
 					jobNumber: room.jobNumber,
@@ -79,7 +79,7 @@ export const getTaskData = (jobData) => {
 					roomIndex,
 					project_created_at: job.project_created_at,
 					workPeriodIndex,
-					subTask_width: workPeriod.subTask_width,
+					subtask_width: workPeriod.subtask_width,
 					rowNumber,
 					active: room.active,
 					task_created_at: room.task_created_at,
@@ -99,10 +99,10 @@ export const getTaskData = (jobData) => {
 		return acc;
 	}, {});
 
-	// Sort tasks within each builder group by startDate
+	// Sort tasks within each builder group by start_date
 	Object.keys(subTasksByEmployee).forEach((builderId) => {
 		subTasksByEmployee[builderId].sort(
-			(a, b) => new Date(a.startDate) - new Date(b.startDate)
+			(a, b) => new Date(a.start_date) - new Date(b.start_date)
 		);
 	});
 
@@ -158,7 +158,7 @@ export const getNextWorkday = (
 };
 
 export const totalJobHours = (
-	startDate,
+	start_date,
 	jobHours,
 	workdayHours,
 	holidayChecker,
@@ -166,7 +166,7 @@ export const totalJobHours = (
 	builderId,
 	timeOffByBuilder
 ) => {
-	let currentDate = normalizeDate(startDate);
+	let currentDate = normalizeDate(start_date);
 
 	// Calculate total days based on jobHours (e.g., 16 hours = 2 days)
 	let totalDays = Math.ceil(jobHours / workdayHours);
@@ -224,19 +224,19 @@ export const sortAndAdjustDates = (
 
 	// Sort the array by date
 	arrayToProcess.sort((a, b) => {
-		return a.startDate.localeCompare(b.startDate);
+		return a.start_date.localeCompare(b.start_date);
 	});
 
 	// Adjust the dates and calculate endDates
 	return arrayToProcess.reduce((acc, current, index) => {
-		const initialStartDate = normalizeDate(current.startDate);
+		const initialStartDate = normalizeDate(current.start_date);
 
-		const startDate =
+		const start_date =
 			index === 0
 				? initialStartDate
 				: normalizeDate(
 						getNextWorkday(
-							acc[index - 1].endDate,
+							acc[index - 1].end_date,
 							holidayChecker,
 							holidays,
 							current.employee_id,
@@ -245,7 +245,7 @@ export const sortAndAdjustDates = (
 				  );
 
 		const jobHours = totalJobHours(
-			startDate,
+			start_date,
 			current.duration,
 			workdayHours,
 			holidayChecker,
@@ -254,16 +254,16 @@ export const sortAndAdjustDates = (
 			timeOffByBuilder
 		);
 
-		const endDate = normalizeDate(
-			addDays(startDate, Math.ceil(jobHours / workdayHours))
+		const end_date = normalizeDate(
+			addDays(start_date, Math.ceil(jobHours / workdayHours))
 		);
 
 		acc.push({
 			...current,
-			startDate: startDate,
-			endDate: endDate,
-			subTask_width: (jobHours / workdayHours) * dayWidth,
-			xPosition: calculateXPosition(startDate, chartStartDate, dayWidth),
+			start_date: start_date,
+			end_date: end_date,
+			subtask_width: (jobHours / workdayHours) * dayWidth,
+			xPosition: calculateXPosition(start_date, chartStartDate, dayWidth),
 		});
 		return acc;
 	}, []);
@@ -273,13 +273,13 @@ export const sortAndAdjustDates = (
 export const reconstructJobsForRedux = (flatJobs) => {
 	const jobMap = {};
 	flatJobs.forEach((job) => {
-		if (!jobMap[job.jobId]) {
-			jobMap[job.jobId] = { id: job.jobId, name: job.jobName, rooms: [] };
+		if (!jobMap[job.project_id]) {
+			jobMap[job.project_id] = { id: job.project_id, name: job.jobName, rooms: [] };
 		}
-		jobMap[job.jobId].rooms.push({
+		jobMap[job.project_id].rooms.push({
 			id: job.id,
 			builderId: job.employee_id,
-			startDate: job.startDate,
+			start_date: job.start_date,
 			duration: job.duration,
 			jobNumber: job.jobNumber,
 			name: job.name,

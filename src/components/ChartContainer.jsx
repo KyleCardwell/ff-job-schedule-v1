@@ -19,6 +19,7 @@ import JobModalChartData from "./JobModalChartData";
 import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
 import { eachDayOfInterval } from "date-fns";
+import ErrorToast from "./ErrorToast";
 
 export const ChartContainer = () => {
 	const holidays = useSelector((state) => state.holidays.holidays);
@@ -39,8 +40,8 @@ export const ChartContainer = () => {
 		const activeRooms = chartData
 			.filter((room) => room.task_active)
 			.map((room) => {
-				if (room.jobId !== currentJobId) {
-					currentJobId = room.jobId;
+				if (room.project_id !== currentJobId) {
+					currentJobId = room.project_id;
 					jobsIndex++;
 				}
 				return {
@@ -69,6 +70,7 @@ export const ChartContainer = () => {
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 	const [clickedTask, setClickedTask] = useState(null);
+	const [databaseError, setDatabaseError] = useState(null);
 
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -155,6 +157,11 @@ export const ChartContainer = () => {
 		} else if (clientY > bottom - buffer) {
 			container.scrollTop += scrollSpeed; // Scroll down
 		}
+	};
+
+	const handleDatabaseError = (error) => {
+		setDatabaseError("Failed to update the database. Please try again.");
+		console.error("Database error:", error);
 	};
 
 	useEffect(() => {
@@ -328,7 +335,7 @@ export const ChartContainer = () => {
 			const room = activeRoomsData[rowIndex]; // Get the room data based on the row index
 
 			if (room) {
-				const job = tasks.filter((task) => task.jobId === room.jobId); // Find the job associated with the room
+				const job = tasks.filter((task) => task.project_id === room.project_id); // Find the job associated with the room
 				setSelectedJob(job);
 				setClickedTask(room);
 				setIsJobModalOpen(true);
@@ -392,7 +399,7 @@ export const ChartContainer = () => {
 			// Add double-click event for job number and job name
 			jobNumberText.on("dblclick", (event) => {
 				event.stopPropagation();
-				const job = tasks.filter((task) => task.jobId === d.jobId);
+				const job = tasks.filter((task) => task.project_id === d.project_id);
 				setSelectedJob(job);
 				setClickedTask(d);
 				setIsJobModalOpen(true);
@@ -400,7 +407,7 @@ export const ChartContainer = () => {
 
 			jobNameText.on("dblclick", (event) => {
 				event.stopPropagation();
-				const job = tasks.filter((task) => task.jobId === d.jobId);
+				const job = tasks.filter((task) => task.project_id === d.project_id);
 				setSelectedJob(job);
 				setClickedTask(d);
 				setIsJobModalOpen(true);
@@ -409,7 +416,7 @@ export const ChartContainer = () => {
 			// Add double-click event for room name
 			taskNameText.on("dblclick", (event) => {
 				event.stopPropagation();
-				scrollToMonday(new Date(d.startDate));
+				scrollToMonday(new Date(d.start_date));
 			});
 		});
 
@@ -513,10 +520,6 @@ export const ChartContainer = () => {
 		tasks,
 	]);
 
-	// useEffect(() => {
-	// 	scrollToMonday(new Date());
-	// }, []);
-
 	useEffect(() => {
 		let scrollLeft = 0;
 		let scrollTop = 0;
@@ -610,6 +613,7 @@ export const ChartContainer = () => {
 									holidayChecker={holidayChecker}
 									dayWidth={dayWidth}
 									scrollToMonday={scrollToMonday}
+									onDatabaseError={handleDatabaseError}
 								/>
 							</div>
 						</div>
@@ -625,6 +629,13 @@ export const ChartContainer = () => {
 					<GridLoader color="maroon" size={15} />
 					<p>Loading Job Schedule...</p>
 				</div>
+			)}
+
+			{databaseError && (
+				<ErrorToast
+					message={databaseError}
+					onClose={() => setDatabaseError(null)}
+				/>
 			)}
 
 			<JobModalChartData
@@ -647,6 +658,7 @@ export const ChartContainer = () => {
 				clickedTask={clickedTask}
 				setIsLoading={setIsLoading}
 			/>
+
 			<BuilderModal
 				visible={isBuilderModalOpen}
 				onCancel={() => setIsBuilderModalOpen(false)}
@@ -656,6 +668,7 @@ export const ChartContainer = () => {
 				chartStartDate={chartStartDate}
 				dayWidth={dayWidth}
 			/>
+
 			<HolidayModal
 				isOpen={isHolidayModalOpen}
 				onClose={() => setIsHolidayModalOpen(false)}

@@ -131,7 +131,7 @@ const BuilderModal = ({
 		}
 		setLocalEmployees([
 			...localEmployees,
-			{ ...newBuilder, id: Date.now(), timeOff: [], markedForDeletion: false },
+			{ ...newBuilder, employee_id: Date.now(), timeOff: [], markedForDeletion: false },
 		]);
 		setNewBuilder({ employee_name: "", employee_color: "#000000" });
 		setErrors({});

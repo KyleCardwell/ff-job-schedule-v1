@@ -17,7 +17,7 @@ export const updateOneBuilderChartData = (taskList) => {
   };
 };
 
-export const updateNextNobNumber = (nextJobNumber) => {
+export const updateNextJobNumber = (nextJobNumber) => {
   return {
     type: Actions.chartData.UPDATE_NEXT_JOB_NUMBER,
     payload: nextJobNumber,

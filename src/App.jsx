@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
@@ -9,17 +9,14 @@ import { setSession, clearSession } from "./redux/authSlice";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useSupabaseQuery } from "./hooks/useSupabase";
-import { fetchProjectDateRange, fetchProjects } from "./redux/actions/projects";
+import { fetchProjects } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
-// Initialize Supabase client
-const supabase = createClient(
-	import.meta.env.VITE_FF_JS_SUPABASE_URL,
-	import.meta.env.VITE_FF_JS_SUPABASE_ANON_KEY
-);
+import { supabase } from "./utils/supabase";
 
 const App = () => {
 	const dispatch = useDispatch();
 	const { session, loading } = useSelector((state) => state.auth);
+	const initialFetchDone = useRef(false);
 
 	useEffect(() => {
 		// Get initial session
@@ -35,6 +32,7 @@ const App = () => {
 				dispatch(setSession(session));
 			} else {
 				dispatch(clearSession());
+				initialFetchDone.current = false;
 			}
 		});
 
@@ -42,15 +40,14 @@ const App = () => {
 	}, [dispatch]);
 
 	useEffect(() => {
-		if (session) {
-			dispatch(fetchProjectDateRange());
+		if (session && !initialFetchDone.current) {
+			dispatch(fetchEmployees());
 			dispatch(
 				fetchProjects({
-					select: `*, tasks (*, subTasks (*))`,
+					select: `*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, subtasks (subtask_id, task_id, employee_id, duration, subtask_width, start_date, end_date, subtask_created_at))`,
 				})
 			);
-			dispatch(fetchEmployees());
-
+			initialFetchDone.current = true;
 		}
 	}, [session, dispatch]);
 

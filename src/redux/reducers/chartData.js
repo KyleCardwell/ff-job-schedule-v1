@@ -8,15 +8,15 @@ import { Actions } from "../actions";
 const updateDateRange = (state, updatedTasks) => {
 	let needsUpdate = false;
 
-	// Sort the updated tasks by startDate
+	// Sort the updated tasks by start_date
 	const sortedTasks = [...updatedTasks]?.sort(
-		(a, b) => new Date(a.startDate) - new Date(b.startDate)
+		(a, b) => new Date(a.start_date) - new Date(b.start_date)
 	);
 
 	// Determine the new earliest and latest start dates
-	const newEarliestStartDate = new Date(sortedTasks[0]?.startDate);
+	const newEarliestStartDate = new Date(sortedTasks[0]?.start_date);
 	const newLatestStartDate = new Date(
-		sortedTasks[sortedTasks.length - 1]?.startDate
+		sortedTasks[sortedTasks.length - 1]?.start_date
 	);
 
 	// Check if the dates need to be updated
@@ -54,9 +54,9 @@ export const chartDataReducer = (state = initialState, action) => {
 			return {
 				...state,
 				chartData: action.payload,
-				earliestStartDate: action.payload[0]?.startDate,
+				earliestStartDate: action.payload[0]?.start_date,
 				latestStartDate:
-					action.payload[action.payload.length - 1]?.startDate,
+					action.payload[action.payload.length - 1]?.start_date,
 				loading: false,
 				error: null,
 			};
@@ -70,16 +70,16 @@ export const chartDataReducer = (state = initialState, action) => {
 
 		case Actions.chartData.UPDATE_ONE_BUILDER_CHART_DATA: {
 			const updatedTasksMap = new Map(
-				action.payload.map((task) => [task.subTask_id, task])
+				action.payload.map((task) => [task.subtask_id, task])
 			);
 			const updatedChartData = state.chartData.map((task) => {
-				if (updatedTasksMap.has(task.subTask_id)) {
-					const updatedTask = updatedTasksMap.get(task.subTask_id);
+				if (updatedTasksMap.has(task.subtask_id)) {
+					const updatedTask = updatedTasksMap.get(task.subtask_id);
 					return {
 						...task,
 						...updatedTask,
-						startDate: updatedTask.startDate,
-						subTask_width: updatedTask.subTask_width,
+						start_date: updatedTask.start_date,
+						subtask_width: updatedTask.subtask_width,
 					};
 				}
 				return task;
@@ -98,17 +98,17 @@ export const chartDataReducer = (state = initialState, action) => {
 
 			// Remove the tasks that should be deleted
 			let updatedChartData = state.chartData.filter(
-				(task) => !removedWorkPeriods.includes(task.subTask_id)
+				(task) => !removedWorkPeriods.includes(task.subtask_id)
 			);
 
 			const tasksToUpdate = updatedTasks.filter(
-				(task) => !removedWorkPeriods.includes(task.subTask_id)
+				(task) => !removedWorkPeriods.includes(task.subtask_id)
 			);
 
 			// Replace or add the updated tasks
 			tasksToUpdate.forEach((updatedTask) => {
 				const existingIndex = updatedChartData.findIndex(
-					(task) => task.subTask_id === updatedTask.subTask_id
+					(task) => task.subtask_id === updatedTask.subtask_id
 				);
 				if (existingIndex !== -1) {
 					updatedChartData[existingIndex] = updatedTask;
@@ -121,7 +121,7 @@ export const chartDataReducer = (state = initialState, action) => {
 			updatedChartData.sort((a, b) => {
 				if (a.project_created_at === b.project_created_at) {
 					if (a.task_created_at === b.task_created_at) {
-						return a.subTask_created_at.localeCompare(b.subTask_created_at);
+						return a.subtask_created_at.localeCompare(b.subtask_created_at);
 					}
 					return a.task_created_at.localeCompare(b.task_created_at);
 				}
@@ -139,7 +139,7 @@ export const chartDataReducer = (state = initialState, action) => {
 		}
 		case Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART:
 			const updatedChartData = state.chartData.filter(
-				(item) => item.jobId !== action.payload
+				(item) => item.project_id !== action.payload
 			);
 			const { earliestStartDate, latestStartDate, needsUpdate } =
 				updateDateRange(state, updatedChartData);

@@ -348,54 +348,38 @@ select {
 }
 
 .complete-job-popup {
-  background-color: white;
-  padding: 24px;
-  border-radius: 8px;
-  width: 400px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  position: relative;
-  margin: auto;
+	background-color: white;
+	padding: 24px;
+	border-radius: 8px;
+	width: 400px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	position: relative;
+	margin: auto;
 }
 
 .complete-job-popup h3 {
-  margin: 0 0 16px 0;
-  font-size: 20px;
-  color: #333;
+	margin: 0 0 16px 0;
+	font-size: 20px;
+	color: #333;
 }
 
 .complete-job-popup p {
-  margin: 0 0 24px 0;
-  color: #666;
+	margin: 0 0 24px 0;
+	color: #666;
 }
 
 .complete-job-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+	display: flex;
+	justify-content: space-between;
 }
 
 .complete-job-actions button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
+	cursor: pointer;
+	transition: opacity 0.2s;
 }
 
 .complete-job-actions button:hover {
-  opacity: 0.9;
-}
-
-.complete-job-confirm {
-  background-color: #4caf50;
-  color: white;
-}
-
-.complete-job-cancel {
-  background-color: #f44336;
-  color: white;
+	opacity: 0.9;
 }
 
 /* Builder Legend */
@@ -531,11 +515,11 @@ select {
 	max-width: 250px;
 	text-align: center;
 
-	 /* Center text both vertically and horizontally */
-	 display: flex;
-	 align-items: center;
-	 justify-content: center;
-	 text-align: center; 
+	/* Center text both vertically and horizontally */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 }
 
 .builder-item-controls {
@@ -707,10 +691,10 @@ select {
 	}
 
 	.default-builder-overlay {
-		max-width: 180px; 
-    text-align: center;
-    padding: 8px;  /* Slightly more padding for better touch targets */
-}
+		max-width: 180px;
+		text-align: center;
+		padding: 8px; /* Slightly more padding for better touch targets */
+	}
 }
 
 @media (max-width: 600px) {
@@ -742,14 +726,15 @@ select {
 	}
 
 	.default-builder-overlay {
-		max-width: none; 
-		top: auto;  /* Remove top positioning */
-    bottom: 0;  /* Position at bottom */
-    right: 0;
-    left: 0;    /* Stretch across full width */
-    text-align: center;
-    border-radius: 0 0 4px 4px;  /* Rounded corners only at bottom */
-    padding: 8px;  /* Slightly more padding for better touch targets */
+		max-width: none;
+		top: auto; /* Remove top positioning */
+		bottom: 0; /* Position at bottom */
+		right: 0;
+		left: 0; /* Stretch across full width */
+		text-align: center;
+		border-radius: 0 0 4px 4px; /* Rounded corners only at bottom */
+		padding: 8px; /* Slightly more padding for better touch targets */
+	}
 }
 
 /* Print Styles */

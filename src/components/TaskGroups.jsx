@@ -14,11 +14,10 @@ import {
 	getNextWorkday,
 	sortAndAdjustDates,
 } from "../utils/helpers";
-import {
-	updateOneBuilderChartData,
-} from "../redux/actions/chartData";
+import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
 import { isEqual } from "lodash";
+import { updateSubtasksPositions } from "../redux/actions/projects";
 
 const TaskGroups = ({
 	chartRef,
@@ -34,6 +33,7 @@ const TaskGroups = ({
 	setIsLoading,
 	daysBeforeStart,
 	scrollToMonday,
+	onDatabaseError,
 }) => {
 	const dispatch = useDispatch();
 
@@ -41,9 +41,13 @@ const TaskGroups = ({
 	const employees = useSelector((state) => state.builders.employees);
 	const holidays = useSelector((state) => state.holidays.holidays);
 	const { tasks } = useSelector((state) => state.taskData);
-	const { subTasksByEmployee } = useSelector((state) => state.taskData, isEqual);
+	const { subTasksByEmployee } = useSelector(
+		(state) => state.taskData,
+		isEqual
+	);
 
 	const taskGroupsRef = useRef(null);
+	const previousTaskStateRef = useRef(null);
 
 	const activeTasksData = useMemo(() => {
 		return tasks
@@ -51,7 +55,11 @@ const TaskGroups = ({
 			.map((task, index) => ({
 				...task,
 				rowNumber: index,
-				xPosition: calculateXPosition(task.startDate, chartStartDate, dayWidth),
+				xPosition: calculateXPosition(
+					task.start_date,
+					chartStartDate,
+					dayWidth
+				),
 			}));
 	}, [tasks, chartStartDate, dayWidth]);
 
@@ -100,7 +108,7 @@ const TaskGroups = ({
 						return {
 							x,
 							employee_color: builder.employee_color,
-							builderId: builder.employee_id,
+							employee_id: builder.employee_id,
 							date: normalizeDate(day),
 						};
 					});
@@ -128,6 +136,12 @@ const TaskGroups = ({
 		const drag = d3
 			.drag()
 			.on("start", function (event, d) {
+				const employeeTasks = subTasksByEmployee[d.employee_id] || [];
+				previousTaskStateRef.current = {
+					employee_id: d.employee_id,
+					tasks: [...employeeTasks],
+				};
+
 				d3.select(this).classed("dragging", true);
 				d.dragStartX = d3.select(this).attr("x");
 				d.dragStartEventX = event.x;
@@ -151,7 +165,7 @@ const TaskGroups = ({
 				const snappedDayIndex =
 					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
 				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
-				let newStartDate = new Date(d.startDate);
+				let newStartDate = new Date(d.start_date);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 				// Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
 				newStartDate = getNextWorkday(
@@ -165,14 +179,14 @@ const TaskGroups = ({
 				// Update the dragged job
 				const updatedDraggedJob = {
 					...d,
-					startDate: normalizeDate(newStartDate),
+					start_date: normalizeDate(newStartDate),
 				};
 
 				// Get the current builder's jobs and update the dragged job
 				const builderTasks = subTasksByEmployee[d.employee_id];
 				const updatedBuilderTasks = builderTasks
 					.map((subTask) =>
-						subTask.subTask_id === d.subTask_id
+						subTask.subtask_id === d.subtask_id
 							? {
 									...updatedDraggedJob,
 									dragStartX: undefined,
@@ -188,7 +202,7 @@ const TaskGroups = ({
 					workdayHours,
 					holidayChecker,
 					holidays,
-					d.subTask_id,
+					d.subtask_id,
 					newStartDate,
 					timeOffByBuilder,
 					dayWidth,
@@ -197,7 +211,7 @@ const TaskGroups = ({
 				// Transition all jobs in the builder group
 				const jobGroups = taskGroupsSvg
 					.selectAll(`.task-group-${d.employee_id}`)
-					.data(sortedBuilderTasks, (job) => job.subTask_id);
+					.data(sortedBuilderTasks, (job) => job.subtask_id);
 
 				jobGroups
 					.transition()
@@ -206,15 +220,37 @@ const TaskGroups = ({
 						transition
 							.select("rect")
 							.attr("x", (job) => job.xPosition)
-							.attr("width", (job) => job.subTask_width);
+							.attr("width", (job) => job.subtask_width);
 						transition
 							.select(".bar-text")
 							.attr("x", (job) => job.xPosition + 5);
 					})
 					.end()
-					.then(() => {
-						dispatch(updateOneBuilderChartData(sortedBuilderTasks));
-						dispatch(updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks));
+					.then(async () => {
+						try {
+							dispatch(updateOneBuilderChartData(sortedBuilderTasks));
+							dispatch(
+								updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
+							);
+
+							await updateSubtasksPositions(sortedBuilderTasks);
+
+							previousTaskStateRef.current = null;
+						} catch (error) {
+							// Revert to previous state if database update fails
+							if (previousTaskStateRef.current) {
+								dispatch(
+									updateOneBuilderChartData(previousTaskStateRef.current.tasks)
+								);
+								dispatch(
+									updateTasksByOneBuilder(
+										previousTaskStateRef.current.employee_id,
+										previousTaskStateRef.current.tasks
+									)
+								);
+							}
+							onDatabaseError(error);
+						}
 					});
 				d3.select(this).classed("dragging", false);
 				delete d.dragStartX;
@@ -248,7 +284,7 @@ const TaskGroups = ({
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
 			.selectAll(".job-group")
-			.data(activeTasksData, (d) => d.subTask_id);
+			.data(activeTasksData, (d) => d.subtask_id);
 
 		// Enter new elements
 		const enterGroups = jobGroups
@@ -280,15 +316,13 @@ const TaskGroups = ({
 				"y",
 				(d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
 			)
-			.attr("width", (d) => d.subTask_width)
-			.attr(
-				"height",
-				(d) => (rowHeight - 2 * barMargin)
-			)
+			.attr("width", (d) => d.subtask_width)
+			.attr("height", (d) => rowHeight - 2 * barMargin)
 			.attr(
 				"fill",
 				(d) =>
-					employees.find((builder) => builder.employee_id === d.employee_id).employee_color
+					employees.find((builder) => builder.employee_id === d.employee_id)
+						.employee_color
 			);
 
 		allGroups
@@ -336,7 +370,7 @@ const TaskGroups = ({
 
 	useEffect(() => {
 		scrollToMonday(new Date());
-	}, [])
+	}, []);
 
 	return (
 		<svg

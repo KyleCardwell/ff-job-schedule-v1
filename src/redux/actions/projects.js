@@ -1,5 +1,8 @@
 import { Actions } from "../actions";
 import { querySupabase, supabase } from "../../utils/supabase";
+import { v4 as uuidv4 } from "uuid";
+import { jobModalUpdateChartData, updateNextJobNumber } from "./chartData";
+import { jobModalUpdateTaskData } from "./taskData";
 
 export const fetchProjects =
 	(options = {}) =>
@@ -12,7 +15,7 @@ export const fetchProjects =
 			const flattenedResult = result
 				.flatMap((project) =>
 					project.tasks.flatMap((task) =>
-						task.subTasks.map((subTask, index) => ({
+						task.subtasks.map((subTask, index) => ({
 							...subTask,
 							project_id: task.project_id,
 							project_name: project.project_name,
@@ -20,7 +23,7 @@ export const fetchProjects =
 							task_name: task.task_name,
 							task_created_at: task.task_created_at,
 							task_active: task.task_active,
-							heightAdjust: index === 0 ? task.subTasks.length : 0,
+							heightAdjust: index === 0 ? task.subtasks.length : 0,
 							task_number: task.task_number,
 						}))
 					)
@@ -36,7 +39,7 @@ export const fetchProjects =
 					);
 					if (taskCompare !== 0) return taskCompare;
 
-					return a.subTask_created_at.localeCompare(b.subTask_created_at);
+					return a.subtask_created_at.localeCompare(b.subtask_created_at);
 				});
 
 			// Create subTasksByEmployee from the sorted flattenedResult
@@ -83,180 +86,219 @@ export const fetchProjects =
 		}
 	};
 
-// export const fetchAllSubTasks = () => async (dispatch) => {
-// 	dispatch({ type: Actions.projects.FETCH_PROJECTS_START });
-
-// 	try {
-// 		const { data, error } = await supabase
-// 			.from("subTasks")
-// 			.select(
-// 				`
-//         *,
-//         tasks!inner (
-//           task_created_at,
-//           project_id,
-//           projects!inner (
-//             project_created_at
-//           )
-//         )
-//       `
-// 			)
-//       .order('project_created_at', { foreignTable: 'tasks.projects', ascending: true })
-//       .order('task_created_at', { foreignTable: 'tasks', ascending: true })
-//       .order('subTask_created_at', { ascending: true });
-
-// 		if (error) throw error;
-
-// 		const flattened = data.flatMap((item) => ({
-// 			...item,
-// 			...item.tasks,
-// 			...item.tasks.projects,
-// 			tasks: undefined,
-// 			projects: undefined,
-// 		}));
-
-// 		dispatch({
-// 			type: Actions.projects.FETCH_PROJECTS_SUCCESS,
-// 			payload: flattened,
-// 		});
-// 	} catch (error) {
-// 		console.error("Error fetching subtasks:", error);
-// 		dispatch({
-// 			type: Actions.projects.FETCH_PROJECTS_ERROR,
-// 			payload: error.message,
-// 		});
-// 	}
-// };
-
-export const fetchProjectDateRange = () => async (dispatch) => {
-	dispatch({ type: Actions.projects.FETCH_DATE_RANGE_START });
-
-	try {
-		const { data, error } = await supabase
-			.from("subTasks")
-			.select("startDate")
-			.order("startDate", { ascending: true });
-
-		if (error) throw error;
-
-		dispatch({
-			type: Actions.projects.FETCH_DATE_RANGE_SUCCESS,
-			payload: {
-				earliestStartDate: data[0]?.startDate, // First record has earliest date
-				latestStartDate: data[data.length - 1]?.startDate, // Last record has latest date
-			},
-		});
-	} catch (error) {
-		dispatch({
-			type: Actions.projects.FETCH_DATE_RANGE_ERROR,
-			payload: error.message,
-		});
-	}
-};
-
 export const saveProject = (projectData) => async (dispatch) => {
-	dispatch({ type: Actions.projects.CREATE_PROJECT_START });
+	dispatch({ type: Actions.projects.SAVE_PROJECT_START });
 
 	try {
 		const {
 			jobName,
-			localRooms,
+			projectId,
 			newProjectCreatedAt,
-			dayWidth,
+			updatedTasks,
+			removedWorkPeriods,
+			updatedBuilderArrays,
 			nextJobNumber,
 		} = projectData;
 
 		// 1. Create project
 		const { data: newProject, error: projectError } = await supabase
 			.from("projects")
-			.upsert({
-				project_name: jobName,
-				project_created_at: newProjectCreatedAt,
-			})
+			.upsert(
+				{
+					project_id: projectId,
+					project_name: jobName,
+					project_created_at: newProjectCreatedAt,
+				},
+				{ onConflict: "project_id", defaultToNull: false }
+			)
 			.select()
 			.single();
 
-		if (projectError) throw projectError;
+		if (projectError)
+			throw new Error(`Error creating project: ${projectError}`);
 
-		// 2. Create tasks (rooms)
-		const tasksData = localRooms.map((room) => ({
-			project_id: newProject.id,
-			task_number: room.task_number,
-			task_name: room.task_name,
-			task_active: room.task_active,
-			task_created_at: room.task_createed_at,
-		}));
+		// 2. Prepare tasks data with temp_task_id
+		const tasksData = updatedTasks.reduce((acc, task) => {
+			if (!acc[task.task_id]) {
+				acc[task.task_id] = {
+					task_id: task.taskIsNew ? undefined : task.task_id,
+					temp_task_id: task.temp_task_id,
+					project_id: task.taskIsNew ? newProject.project_id : task.project_id,
+					task_number: task.task_number,
+					task_name: task.task_name,
+					task_active: task.task_active,
+				};
+			}
+			return acc;
+		}, {});
 
+		console.log("tasksData", tasksData);
+		// 3. Create/Update tasks
 		const { data: newTasks, error: tasksError } = await supabase
 			.from("tasks")
-			.upsert(tasksData)
+			.upsert(Object.values(tasksData), {
+				onConflict: "task_id",
+				defaultToNull: false,
+			})
 			.select();
 
-		if (tasksError) throw tasksError;
+		if (tasksError) throw new Error(`Error creating tasks: ${tasksError}`);
+		console.log("newTasks", newTasks);
 
-		// 3. Create subtasks (work periods)
-		const subtasksData = localRooms.flatMap((room, roomIndex) =>
-			room.workPeriods.map((wp) => ({
-				// project_id: newProject.id,
-				task_id: newTasks[roomIndex].id,
-				employee_id: wp.employee_id,
-				startDate: wp.startDate,
-        endDate: wp.endDate,
-				duration: wp.duration,
-        subTask_width: wp.subTask_width,
-				// task_active: wp.task_active,
-				subTask_created_at: wp.subTask_created_at,
-			}))
-		);
+		// 4. Prepare subtasks data using the new task_ids
+		const subtasksData = updatedTasks.map((wp) => {
+			const newTask = newTasks.find(
+				(task) =>
+					task.task_id === wp.task_id || task.temp_task_id === wp.temp_task_id
+			);
 
-		const { data: newSubtasks, error: subtasksError } = await supabase
-			.from("subTasks")
-			.upsert(subtasksData)
-			.select();
-
-		if (subtasksError) throw subtasksError;
-
-		// 4. Format tasks for Redux
-		const formattedTasks = newSubtasks.map((subtask) => {
-			const task = newTasks.find((t) => t.id === subtask.task_id);
+			if (!newTask) {
+				console.log("could not find matching task for: ", wp);
+				throw new Error(
+					`Could not find matching task for work period ${wp.task_name}`
+				);
+			}
 			return {
-				id: subtask.id,
-				project_id: newProject.id,
-				project_name: newProject.name,
-				task_name: task.task_name,
-				task_number: task.task_number,
-				employee_id: subtask.employee_id,
-				startDate: subtask.startDate,
-				duration: subtask.duration,
-				task_active: subtask.task_active,
-				task_createed_at: task.task_created_at,
-				subTask_created_at: subtask.subTask_created_at,
-				project_created_at: newProject.project_created_at,
-				subTask_width: dayWidth,
+				subtask_id: wp.subTaskIsNew ? undefined : wp.subtask_id,
+				task_id: wp.subTaskIsNew ? newTask.task_id : wp.task_id,
+				temp_subtask_id: wp.temp_subtask_id,
+				employee_id: wp.employee_id,
+				start_date: wp.start_date,
+				end_date: wp.end_date,
+				duration: wp.duration,
+				subtask_width: wp.subtask_width,
+				subtask_created_at: wp.subtask_created_at,
 			};
 		});
 
-		// 5. Update Redux store
-		const { updatedTasks, updatedBuilderArrays } = sortAndAdjustBuilderTasks(
-			formattedTasks,
-			new Set(formattedTasks.map((task) => task.employee_id))
+		const { data: newSubtasks, error: subtasksError } = await supabase
+			.from("subtasks")
+			.upsert(subtasksData, {
+				onConflict: "subtask_id",
+				defaultToNull: false,
+			})
+			.select();
+
+		if (subtasksError)
+			throw new Error(`Error creating subtasks: ${subtasksError}`);
+		console.log("newSubtasks", newSubtasks);
+
+		// Format the new subtasks with all necessary data
+		const formattedSubtasks = newSubtasks.map((subtask) => {
+			const task = newTasks.find((t) => t.task_id === subtask.task_id);
+			const originalTask = updatedTasks.find(
+				(ut) =>
+					(ut.subtask_id && ut.subtask_id === subtask.subtask_id) || 
+            (ut.temp_subtask_id && ut.temp_subtask_id === subtask.temp_subtask_id)
+    );
+
+			console.log("Formatting subtask:", {
+				subtask_id: subtask.subtask_id,
+				temp_subtask_id: subtask.temp_subtask_id,
+				task_name: task.task_name,
+				originalTask: originalTask
+					? {
+							heightAdjust: originalTask.heightAdjust,
+							task_name: originalTask.task_name,
+							subtask_id: originalTask.subtask_id,
+							temp_subtask_id: originalTask.temp_subtask_id,
+					  }
+					: "not found",
+			});
+
+      if (!originalTask) {
+        console.error('Could not find original task for subtask:', subtask);
+        console.log('Available updatedTasks:', updatedTasks.map(t => ({
+            subtask_id: t.subtask_id,
+            temp_subtask_id: t.temp_subtask_id,
+            heightAdjust: t.heightAdjust
+        })));
+    }
+
+			return {
+				duration: subtask.duration,
+				employee_id: subtask.employee_id,
+				end_date: subtask.end_date,
+				heightAdjust: originalTask.heightAdjust, // From original data
+				project_created_at: originalTask.taskIsNew
+					? newProject.project_created_at
+					: originalTask.project_created_at,
+				project_id: originalTask.taskIsNew
+					? newProject.project_id
+					: originalTask.project_id,
+				project_name: newProject.project_name,
+				start_date: subtask.start_date,
+				subtask_created_at: subtask.subtask_created_at,
+				subtask_id: subtask.subtask_id, // From database
+				temp_subtask_id: subtask.temp_subtask_id,
+				subtask_width: subtask.subtask_width,
+				task_active: task.task_active,
+				task_created_at: task.task_created_at,
+				task_id: subtask.task_id, // From database
+				task_name: task.task_name,
+				task_number: task.task_number,
+			};
+		});
+
+		// Update the existing builder arrays with the new database records
+		const newBuilderArrays = Object.keys(updatedBuilderArrays).reduce(
+			(acc, builderId) => {
+				acc[builderId] = updatedBuilderArrays[builderId].map((task) => {
+					// Find the matching formatted subtask by task_number
+					const updatedTask = formattedSubtasks.find(
+						(subtask) =>
+							subtask.subtask_id === task.subtask_id ||
+							subtask.temp_subtask_id === task.temp_subtask_id
+					);
+					return updatedTask || task; // fallback to original task if no match found
+				});
+				return acc;
+			},
+			{}
 		);
 
-		dispatch(jobModalUpdateChartData(updatedTasks, []));
-		dispatch(jobModalUpdateTaskData(updatedTasks, updatedBuilderArrays, []));
+		// // Update Redux with the new database records and builder arrays
+		dispatch(jobModalUpdateChartData(formattedSubtasks, []));
+		dispatch(jobModalUpdateTaskData(formattedSubtasks, newBuilderArrays, []));
 		dispatch(updateNextJobNumber(nextJobNumber));
 
 		dispatch({
-			type: Actions.projects.CREATE_PROJECT_SUCCESS,
+			type: Actions.projects.SAVE_PROJECT_SUCCESS,
 			payload: newProject,
 		});
 
 		return { success: true };
 	} catch (error) {
 		dispatch({
-			type: Actions.projects.CREATE_PROJECT_ERROR,
+			type: Actions.projects.SAVE_PROJECT_ERROR,
 			payload: error.message,
 		});
 		return { success: false, error: error.message };
+	}
+};
+
+export const updateSubtasksPositions = async (tasks) => {
+	try {
+		const updates = tasks.map((task) => ({
+			subtask_id: task.subtask_id,
+			task_id: task.task_id,
+			employee_id: task.employee_id,
+			subtask_created_at: task.subtask_created_at,
+			start_date: task.start_date,
+			end_date: task.end_date,
+			duration: task.duration,
+			subtask_width: task.subtask_width,
+		}));
+
+		const { data, error } = await supabase
+			.from("subtasks")
+			.upsert(updates)
+			.select();
+
+		if (error) throw error;
+		return data;
+	} catch (error) {
+		console.error("Error updating subtasks positions:", error);
+		throw error;
 	}
 };
