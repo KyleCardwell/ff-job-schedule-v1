@@ -16,7 +16,6 @@ import {
 	jobModalUpdateTaskData,
 	removeCompletedJobFromTasks,
 } from "../redux/actions/taskData";
-import { markProjectAsCompleted } from "../redux/actions/completedProjects";
 import { saveProject } from "../redux/actions/projects";
 
 const JobModal = ({

@@ -21,13 +21,13 @@ const CompletedProjectCard = ({ project }) => {
 						<span key={category}>{category}</span>
 					))}
 				</div>
-				{project.rooms.map((room, index) => (
+				{project.tasks.map((task, index) => (
 					<div
-						key={room.task_id}
+						key={task.task_id}
 						className={`grid-row room-row ${index % 2 === 0 ? "even" : "odd"}`}
 					>
-						<span>{room.task_number}</span>
-						<span>{room.task_name}</span>
+						<span>{task.task_number}</span>
+						<span>{task.task_name}</span>
 						{categories.map((category) => (
 							<span key={category}>
 								<input type="checkbox" />

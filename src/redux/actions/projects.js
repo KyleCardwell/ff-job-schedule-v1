@@ -10,6 +10,11 @@ export const fetchProjectsOptions = {
 		"*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at))",
 };
 
+export const fetchCompletedProjectsOptions = {
+	select:
+		"*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at)",
+};
+
 export const fetchProjects =
 	(options = {}) =>
 	async (dispatch) => {
@@ -260,3 +265,46 @@ export const updateSubtasksPositions = async (tasks) => {
 		throw error;
 	}
 };
+
+export const fetchCompletedProjects =
+	(options = {}) =>
+	async (dispatch) => {
+		dispatch({
+			type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_START,
+		});
+
+		try {
+			const { data: result, error } = await supabase
+				.from("projects")
+				.select(fetchCompletedProjectsOptions.select)
+				.not("project_completed_at", "is", null)
+				.order("project_completed_at", { ascending: false }); // Most recent completions first
+
+			if (error) throw error;
+
+			// Just sort the tasks within each project
+			const processedResult = result.map((project) => ({
+				...project,
+				tasks: project.tasks
+					.sort((a, b) => a.task_created_at.localeCompare(b.task_created_at))
+					.map((task) => ({
+						task_id: task.task_id,
+						task_number: task.task_number,
+						task_name: task.task_name,
+						task_active: task.task_active,
+						task_created_at: task.task_created_at,
+					})),
+			}));
+
+			dispatch({
+				type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_SUCCESS,
+				payload: processedResult,
+			});
+		} catch (error) {
+			console.error("Error fetching completed projects:", error);
+			dispatch({
+				type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_ERROR,
+				payload: error.message,
+			});
+		}
+	};
