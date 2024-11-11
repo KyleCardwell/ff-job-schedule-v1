@@ -138,7 +138,7 @@ export const getNextWorkday = (
 	holidayChecker,
 	holidays,
 	builderId,
-	timeOffByBuilder
+	timeOffByBuilder = {}
 ) => {
 	let nextDay = normalizeDate(date);
 
@@ -164,7 +164,7 @@ export const totalJobHours = (
 	holidayChecker,
 	holidays,
 	builderId,
-	timeOffByBuilder
+	timeOffByBuilder = {}
 ) => {
 	let currentDate = normalizeDate(start_date);
 
@@ -174,16 +174,20 @@ export const totalJobHours = (
 	// Loop through each day in the range based on totalDays
 	for (let i = 0; i < totalDays; i++) {
 		// Check if the current day is a weekend
+		const isTimeOff =
+			builderId && timeOffByBuilder[builderId]
+				? timeOffByBuilder[builderId].some(
+						(timeOffDate) =>
+							normalizeDate(new Date(timeOffDate)).getTime() ===
+							currentDate.getTime()
+				  )
+				: false;
+
 		if (
 			isSaturday(currentDate) ||
 			isSunday(currentDate) ||
 			isHoliday(currentDate, holidayChecker, holidays) ||
-			(builderId &&
-				timeOffByBuilder[builderId]?.some(
-					(timeOffDate) =>
-						normalizeDate(new Date(timeOffDate)).getTime() ===
-						currentDate.getTime()
-				))
+			isTimeOff
 		) {
 			jobHours += 8;
 			totalDays += 1;
@@ -274,7 +278,11 @@ export const reconstructJobsForRedux = (flatJobs) => {
 	const jobMap = {};
 	flatJobs.forEach((job) => {
 		if (!jobMap[job.project_id]) {
-			jobMap[job.project_id] = { id: job.project_id, name: job.jobName, rooms: [] };
+			jobMap[job.project_id] = {
+				id: job.project_id,
+				name: job.jobName,
+				rooms: [],
+			};
 		}
 		jobMap[job.project_id].rooms.push({
 			id: job.id,

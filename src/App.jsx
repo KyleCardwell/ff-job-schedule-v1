@@ -9,9 +9,10 @@ import { setSession, clearSession } from "./redux/authSlice";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useSupabaseQuery } from "./hooks/useSupabase";
-import { fetchProjects } from "./redux/actions/projects";
+import { fetchProjects, fetchProjectsOptions } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
 import { supabase } from "./utils/supabase";
+import { fetchChartConfig } from "./redux/actions/chartConfig";
 
 const App = () => {
 	const dispatch = useDispatch();
@@ -41,11 +42,10 @@ const App = () => {
 
 	useEffect(() => {
 		if (session && !initialFetchDone.current) {
+			dispatch(fetchChartConfig());
 			dispatch(fetchEmployees());
 			dispatch(
-				fetchProjects({
-					select: `*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, subtasks (subtask_id, task_id, employee_id, duration, subtask_width, start_date, end_date, subtask_created_at))`,
-				})
+				fetchProjects(fetchProjectsOptions)
 			);
 			initialFetchDone.current = true;
 		}

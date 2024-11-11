@@ -6,6 +6,7 @@ import { taskDataReducer } from "./taskData";
 import { completedProjectsReducer } from "./completedProjects";
 import authReducer from "../authSlice";
 import { projectsReducer } from "./projects";
+import { chartConfigReducer } from "./chartConfig";
 
 const rootReducer = combineReducers({
 	auth: authReducer,
@@ -15,6 +16,7 @@ const rootReducer = combineReducers({
 	taskData: taskDataReducer,
 	completedProjects: completedProjectsReducer,
 	projects: projectsReducer,
+	chartConfig: chartConfigReducer,
 	// other reducers if needed
 });
 

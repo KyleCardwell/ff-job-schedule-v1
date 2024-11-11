@@ -657,6 +657,7 @@ export const ChartContainer = () => {
 				lastJobsIndex={lastJobsIndex}
 				clickedTask={clickedTask}
 				setIsLoading={setIsLoading}
+				onDatabaseError={handleDatabaseError}
 			/>
 
 			<BuilderModal

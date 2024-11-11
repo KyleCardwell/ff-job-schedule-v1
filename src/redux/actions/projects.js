@@ -1,8 +1,15 @@
 import { Actions } from "../actions";
 import { querySupabase, supabase } from "../../utils/supabase";
 import { v4 as uuidv4 } from "uuid";
-import { jobModalUpdateChartData, updateNextJobNumber } from "./chartData";
+import { jobModalUpdateChartData } from "./chartData";
 import { jobModalUpdateTaskData } from "./taskData";
+import { updateNextTaskNumber } from "./chartConfig";
+
+export const fetchProjectsOptions = {
+	select:
+		"*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at))",
+	filter: "project_completed_at.is.null",
+};
 
 export const fetchProjects =
 	(options = {}) =>
@@ -98,6 +105,7 @@ export const saveProject = (projectData) => async (dispatch) => {
 			removedWorkPeriods,
 			updatedBuilderArrays,
 			nextJobNumber,
+			chartConfigId,
 		} = projectData;
 
 		// 1. Create project
@@ -183,84 +191,22 @@ export const saveProject = (projectData) => async (dispatch) => {
 			throw new Error(`Error creating subtasks: ${subtasksError}`);
 		console.log("newSubtasks", newSubtasks);
 
-		// Format the new subtasks with all necessary data
-		const formattedSubtasks = newSubtasks.map((subtask) => {
-			const task = newTasks.find((t) => t.task_id === subtask.task_id);
-			const originalTask = updatedTasks.find(
-				(ut) =>
-					(ut.subtask_id && ut.subtask_id === subtask.subtask_id) || 
-            (ut.temp_subtask_id && ut.temp_subtask_id === subtask.temp_subtask_id)
-    );
+		// Delete removed work periods
+		if (removedWorkPeriods.length > 0) {
+			const { error: deleteError } = await supabase
+				.from("subtasks")
+				.delete()
+				.in("subtask_id", removedWorkPeriods);
 
-			console.log("Formatting subtask:", {
-				subtask_id: subtask.subtask_id,
-				temp_subtask_id: subtask.temp_subtask_id,
-				task_name: task.task_name,
-				originalTask: originalTask
-					? {
-							heightAdjust: originalTask.heightAdjust,
-							task_name: originalTask.task_name,
-							subtask_id: originalTask.subtask_id,
-							temp_subtask_id: originalTask.temp_subtask_id,
-					  }
-					: "not found",
-			});
+			if (deleteError) {
+				throw new Error(`Error deleting removed work periods: ${deleteError}`);
+			}
+		}
 
-      if (!originalTask) {
-        console.error('Could not find original task for subtask:', subtask);
-        console.log('Available updatedTasks:', updatedTasks.map(t => ({
-            subtask_id: t.subtask_id,
-            temp_subtask_id: t.temp_subtask_id,
-            heightAdjust: t.heightAdjust
-        })));
-    }
+		dispatch(updateNextTaskNumber(nextJobNumber, chartConfigId));
 
-			return {
-				duration: subtask.duration,
-				employee_id: subtask.employee_id,
-				end_date: subtask.end_date,
-				heightAdjust: originalTask.heightAdjust, // From original data
-				project_created_at: originalTask.taskIsNew
-					? newProject.project_created_at
-					: originalTask.project_created_at,
-				project_id: originalTask.taskIsNew
-					? newProject.project_id
-					: originalTask.project_id,
-				project_name: newProject.project_name,
-				start_date: subtask.start_date,
-				subtask_created_at: subtask.subtask_created_at,
-				subtask_id: subtask.subtask_id, // From database
-				temp_subtask_id: subtask.temp_subtask_id,
-				subtask_width: subtask.subtask_width,
-				task_active: task.task_active,
-				task_created_at: task.task_created_at,
-				task_id: subtask.task_id, // From database
-				task_name: task.task_name,
-				task_number: task.task_number,
-			};
-		});
-
-		// Update the existing builder arrays with the new database records
-		const newBuilderArrays = Object.keys(updatedBuilderArrays).reduce(
-			(acc, builderId) => {
-				acc[builderId] = updatedBuilderArrays[builderId].map((task) => {
-					// Find the matching formatted subtask by task_number
-					const updatedTask = formattedSubtasks.find(
-						(subtask) =>
-							subtask.subtask_id === task.subtask_id ||
-							subtask.temp_subtask_id === task.temp_subtask_id
-					);
-					return updatedTask || task; // fallback to original task if no match found
-				});
-				return acc;
-			},
-			{}
-		);
-
-		// // Update Redux with the new database records and builder arrays
-		dispatch(jobModalUpdateChartData(formattedSubtasks, []));
-		dispatch(jobModalUpdateTaskData(formattedSubtasks, newBuilderArrays, []));
-		dispatch(updateNextJobNumber(nextJobNumber));
+		// 5. Fetch fresh data
+		await dispatch(fetchProjects(fetchProjectsOptions));
 
 		dispatch({
 			type: Actions.projects.SAVE_PROJECT_SUCCESS,

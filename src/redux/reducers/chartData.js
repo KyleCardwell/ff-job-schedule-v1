@@ -38,7 +38,6 @@ const initialState = {
 	chartData: [],
 	earliestStartDate: null,
 	latestStartDate: null,
-	nextJobNumber: 101,
 };
 
 export const chartDataReducer = (state = initialState, action) => {
@@ -147,12 +146,6 @@ export const chartDataReducer = (state = initialState, action) => {
 				...state,
 				chartData: updatedChartData,
 				...(needsUpdate && { earliestStartDate, latestStartDate }),
-			};
-
-		case Actions.jobs.UPDATE_NEXT_JOB_NUMBER:
-			return {
-				...state,
-				nextJobNumber: action.payload,
 			};
 
 		default:

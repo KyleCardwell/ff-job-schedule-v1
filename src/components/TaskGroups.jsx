@@ -332,8 +332,9 @@ const TaskGroups = ({
 			.text((d) => d.task_name) // Always show the text
 			.attr("fill", "#ffffff")
 			.attr("font-size", "12px")
-			// .attr("font-weight", "bold")
-			.style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.5)")
+			.attr("stroke", "#424242") // Add black stroke
+			.attr("stroke-width", "2px") // Adjust thickness of the stroke
+			.attr("paint-order", "stroke") // Makes stroke appear behind the fill
 			.style("pointer-events", "none");
 
 		// // Remove old elements

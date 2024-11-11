@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
-import { updateNextJobNumber } from "../redux/actions/ganttActions";
 import { addDays, format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import {
@@ -35,21 +34,31 @@ const JobModal = ({
 	lastJobsIndex,
 	clickedTask,
 	setIsLoading,
+	onDatabaseError,
 }) => {
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
-	const employees = useSelector((state) => state.builders.employees);
-	const jobNumberNext = useSelector((state) => state.chartData.nextJobNumber);
+	const { employees } = useSelector((state) => state.builders);
+	const { chart_config_id: chartConfigId, next_task_number: jobNumberNext } =
+		useSelector((state) => state.chartConfig);
 
 	const [jobName, setJobName] = useState("");
 	const [localRooms, setLocalRooms] = useState([]);
 	const [errors, setErrors] = useState({});
 	const [localJobsByBuilder, setLocalJobsByBuilder] = useState({});
 	const [changedTaskIds, setChangedTaskIds] = useState({});
+	const [changedBuilderIds, setChangedBuilderIds] = useState(new Set());
 	const [removedWorkPeriods, setRemovedWorkPeriods] = useState([]);
 	const [showCompleteConfirmation, setShowCompleteConfirmation] =
 		useState(false);
 	const [completedJobData, setCompletedJobData] = useState(null);
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveError, setSaveError] = useState(null);
+
+	const [selectedEmployeeInput, setSelectedEmployeeInput] = useState({
+		workPeriodId: null,
+		previousValue: null,
+	});
 
 	const [nextJobNumber, setNextJobNumber] = useState(null);
 
@@ -234,6 +243,7 @@ const JobModal = ({
 		if (room) {
 			room.workPeriods.forEach((wp) => {
 				setChangedTaskIds((prev) => new Set(prev).add(wp.subtask_id));
+				setChangedBuilderIds((prev) => new Set([...prev, wp.employee_id]));
 			});
 		}
 
@@ -362,6 +372,8 @@ const JobModal = ({
 						return newSet;
 					});
 
+					setChangedBuilderIds((prev) => new Set([...prev, prevBuilderId]));
+
 					return {
 						...room,
 						workPeriods: updatedWorkPeriods,
@@ -377,7 +389,16 @@ const JobModal = ({
 			prevRooms.map((room) => {
 				if (room.task_id === task_id) {
 					const updatedWorkPeriods = room.workPeriods
-						.filter((wp) => wp.subtask_id !== workPeriodId)
+						.filter((wp) => {
+							if (wp.subtask_id === workPeriodId) {
+								// Track the builder who lost the work period
+								setChangedBuilderIds(
+									(prev) => new Set([...prev, wp.employee_id])
+								);
+								return false;
+							}
+							return true;
+						})
 						.map((wp, index) => ({
 							...wp,
 							heightAdjust: index === 0 ? room.workPeriods.length - 1 : 0,
@@ -393,7 +414,9 @@ const JobModal = ({
 						),
 					}));
 
-					setRemovedWorkPeriods((prev) => [...prev, workPeriodId]);
+					setRemovedWorkPeriods((prev) => [
+						...new Set([...prev, workPeriodId]),
+					]);
 
 					setChangedTaskIds((prev) => {
 						const newSet = new Set(prev);
@@ -412,13 +435,21 @@ const JobModal = ({
 		);
 	};
 
-	const handleWorkPeriodChange = (task_id, workPeriodId, changes) => {
+	const handleWorkPeriodChange = (
+		task_id,
+		workPeriodId,
+		changes,
+		oldBuilderId
+	) => {
 		setLocalRooms((prevRooms) => {
 			return prevRooms.map((room) => {
 				if (room.task_id === task_id) {
 					const updatedWorkPeriods = room.workPeriods.map((wp) => {
 						if (wp.subtask_id === workPeriodId) {
 							const updatedWp = { ...wp, ...changes };
+							setChangedBuilderIds(
+								(prev) => new Set([...prev, wp.employee_id])
+							);
 
 							// If employee_id is changed, update the start_date
 							if (
@@ -534,17 +565,15 @@ const JobModal = ({
 			return updatedErrors;
 		});
 
-		// If employee_id is changed, update localJobsByBuilder
-		if (changes.employee_id) {
+		if (changes.employee_id && oldBuilderId) {
+			setChangedBuilderIds(
+				(prev) => new Set([...prev, oldBuilderId, changes.employee_id])
+			);
 			setLocalJobsByBuilder((prev) => {
-				const workPeriod = localRooms
-					.flatMap((r) => r.workPeriods)
-					.find((wp) => wp.subtask_id === workPeriodId);
-				if (!workPeriod) return prev;
-
-				const oldBuilderId = workPeriod.employee_id;
+				const workPeriod = prev[oldBuilderId].find(
+					(wp) => wp.subtask_id === workPeriodId
+				);
 				const newBuilderId = changes.employee_id;
-
 				const newStartDate = normalizeDate(
 					calculateNextAvailableDate(newBuilderId)
 				);
@@ -552,16 +581,32 @@ const JobModal = ({
 				const updatedWorkPeriod = {
 					...workPeriod,
 					employee_id: newBuilderId,
-					start_date: normalizeDate(newStartDate),
-					...changes,
+					start_date: newStartDate,
 				};
+
+				// Sort and adjust both builders' tasks
+				const oldBuilderTasks = sortAndAdjustDates(
+					prev[oldBuilderId].filter((wp) => wp.subtask_id !== workPeriodId),
+					workdayHours,
+					holidayChecker,
+					holidays,
+					oldBuilderId,
+					timeOffByBuilder
+				);
+
+				const newBuilderTasks = sortAndAdjustDates(
+					[...(prev[newBuilderId] || []), updatedWorkPeriod],
+					workdayHours,
+					holidayChecker,
+					holidays,
+					newBuilderId,
+					timeOffByBuilder
+				);
 
 				return {
 					...prev,
-					[oldBuilderId]: prev[oldBuilderId].filter(
-						(wp) => wp.subtask_id !== workPeriodId
-					),
-					[newBuilderId]: [...(prev[newBuilderId] || []), updatedWorkPeriod],
+					[oldBuilderId]: oldBuilderTasks,
+					[newBuilderId]: newBuilderTasks,
 				};
 			});
 		}
@@ -572,44 +617,30 @@ const JobModal = ({
 			const roomToRestore = prevRooms.find((room) => room.task_id === task_id);
 			if (!roomToRestore) return prevRooms;
 
-			const updatedRooms = prevRooms.filter((room) => room.task_id !== task_id);
-			const restoredRoom = {
-				...roomToRestore,
-				task_active: true,
-				workPeriods: roomToRestore.workPeriods.map((wp) => ({
-					...wp,
-					task_active: true,
-				})),
-			};
-
-			// Find the correct index to insert the restored room
-			const insertIndex = updatedRooms.findIndex(
-				(room) =>
-					new Date(room.task_created_at) >
-					new Date(restoredRoom.task_created_at)
-			);
-
-			if (insertIndex === -1) {
-				// If no room with a later creation date is found, add to the end
-				updatedRooms.push(restoredRoom);
-			} else {
-				// Insert the restored room at the correct position
-				updatedRooms.splice(insertIndex, 0, restoredRoom);
-			}
+			// Just update the room's status and sort
+			const updatedRooms = prevRooms
+				.map((room) =>
+					room.task_id === task_id
+						? {
+								...room,
+								task_active: true,
+								workPeriods: room.workPeriods.map((wp) => {
+									setChangedTaskIds((prev) => new Set(prev).add(wp.subtask_id));
+									setChangedBuilderIds(
+										(prev) => new Set([...prev, wp.employee_id])
+									);
+									return {
+										...wp,
+										task_active: true,
+									};
+								}),
+						  }
+						: room
+				)
+				.sort((a, b) => a.task_created_at.localeCompare(b.task_created_at));
 
 			return updatedRooms;
 		});
-
-		// Find the room and mark all its work periods as changed
-		const room = localRooms.find((r) => r.task_id === task_id);
-		if (room) {
-			room.workPeriods.forEach((wp) => {
-				setChangedTaskIds((prev) => new Set(prev).add(wp.subtask_id));
-				setRemovedWorkPeriods((prev) =>
-					prev.filter((id) => id !== wp.subtask_id)
-				);
-			});
-		}
 
 		// Update localJobsByBuilder
 		setLocalJobsByBuilder((prev) => {
@@ -749,7 +780,8 @@ const JobModal = ({
 		setShowCompleteConfirmation(false);
 	};
 
-	const handleSave = () => {
+	const handleSave = async () => {
+		setSaveError(null);
 		let newErrors = {
 			messages: [],
 		};
@@ -846,117 +878,108 @@ const JobModal = ({
 			return;
 		}
 
-		setIsLoading(true);
+		try {
+			setIsLoading(true);
+			setIsSaving(true);
 
-		const updatedTasks = localRooms.flatMap((room) =>
-			room.workPeriods.map((wp) => ({
-				...wp,
-				task_active: room.task_active,
-				project_name: jobName,
-			}))
-		);
-
-		console.log("updatedTasks", updatedTasks);
-
-		const changedTaskIdsSet = new Set(changedTaskIds);
-		const buildersWithChanges = new Set();
-		const updatedBuilderArrays = {};
-
-		updatedTasks?.forEach((task) => {
-			if (changedTaskIdsSet.has(task.subtask_id)) {
-				buildersWithChanges.add(task.employee_id);
-
-				// Check if the builder has changed
-				const originalTask = originalTasksMap.get(task.subtask_id);
-				if (originalTask && originalTask.employee_id !== task.employee_id) {
-					// Add both the previous and new builders to buildersWithChanges
-					buildersWithChanges.add(originalTask.employee_id);
-					buildersWithChanges.add(task.employee_id);
-				}
-			}
-		});
-
-		removedWorkPeriods.forEach((removedId) => {
-			const originalTask = originalTasksMap.get(removedId);
-			if (originalTask) {
-				buildersWithChanges.add(originalTask.employee_id);
-			}
-		});
-		// Apply sortAndAdjustDates for builders with changes
-		buildersWithChanges.forEach((employee_id) => {
-			// Combine updated tasks with existing tasks from localJobsByBuilder
-			const existingBuilderTasks = localJobsByBuilder[employee_id] || [];
-			const updatedBuilderTasks = updatedTasks.filter(
-				(task) => task.employee_id === employee_id
+			const updatedTasks = localRooms.flatMap((room) =>
+				room.workPeriods.map((wp) => ({
+					...wp,
+					task_active: room.task_active,
+					project_name: jobName,
+				}))
 			);
 
-			// Create a set of updated task IDs for efficient lookup
-			const updatedTaskIds = new Set(
-				updatedBuilderTasks.map((task) => task.subtask_id)
-			);
+			const changedTaskIdsSet = new Set(changedTaskIds);
+			// const buildersWithChanges = new Set();
+			const updatedBuilderArrays = {};
 
-			// Combine tasks, replacing existing tasks with updated ones, and filter out removed work periods
-			const combinedBuilderTasks = [
-				...existingBuilderTasks.filter(
-					(task) =>
-						!updatedTaskIds.has(task.subtask_id) &&
-						!removedWorkPeriods.includes(task.subtask_id)
-				),
-				...updatedBuilderTasks,
-			];
-
-			const sortedBuilderTasks = sortAndAdjustDates(
-				combinedBuilderTasks.filter((task) => task.task_active),
-				workdayHours,
-				holidayChecker,
-				holidays,
-				null,
-				null,
-				timeOffByBuilder,
-				dayWidth,
-				chartStartDate
-			);
-
-			// Store the updated builder array
-			updatedBuilderArrays[employee_id] = sortedBuilderTasks;
-
-			// Update the tasks in updatedTasks with the sorted and adjusted data
-			sortedBuilderTasks.forEach((sortedTask) => {
-				const index = updatedTasks.findIndex((task) => {
-					return task?.subtask_id === sortedTask.subtask_id;
-				});
-				if (index !== -1) {
-					updatedTasks[index] = sortedTask;
-				} else {
-					updatedTasks.push(sortedTask);
-				}
+			changedBuilderIds.forEach((builderId) => {
+				updatedBuilderArrays[builderId] = localJobsByBuilder[builderId];
 			});
-		});
 
-		dispatch(
-			saveProject({
-				jobName,
-				projectId: jobData ? jobData[0].project_id : undefined,
-				newProjectCreatedAt: jobData
-					? jobData[0].project_created_at
-					: newProjectCreatedAt,
-				updatedTasks,
-				removedWorkPeriods,
-				updatedBuilderArrays,
-				nextJobNumber,
-			})
-		);
-		// dispatch(jobModalUpdateChartData(updatedTasks, removedWorkPeriods));
-		// dispatch(
-		// 	jobModalUpdateTaskData(
-		// 		updatedTasks,
-		// 		updatedBuilderArrays,
-		// 		removedWorkPeriods
-		// 	)
-		// );
-		// dispatch(updateNextJobNumber(nextJobNumber));
-		onSave();
-		onClose();
+			// Apply sortAndAdjustDates for builders with changes
+			changedBuilderIds.forEach((employee_id) => {
+				// Combine updated tasks with existing tasks from localJobsByBuilder
+				const existingBuilderTasks = localJobsByBuilder[employee_id] || [];
+				const updatedBuilderTasks = updatedTasks.filter(
+					(task) => task.employee_id === employee_id
+				);
+
+				// Create a set of updated task IDs for efficient lookup
+				const updatedTaskIds = new Set(
+					updatedBuilderTasks.map((task) => task.subtask_id)
+				);
+
+				// Combine tasks, replacing existing tasks with updated ones, and filter out removed work periods
+				const combinedBuilderTasks = [
+					...existingBuilderTasks.filter(
+						(task) =>
+							!updatedTaskIds.has(task.subtask_id) &&
+							!removedWorkPeriods.includes(task.subtask_id)
+					),
+					...updatedBuilderTasks,
+				];
+
+				const sortedBuilderTasks = sortAndAdjustDates(
+					combinedBuilderTasks.filter((task) => task.task_active),
+					workdayHours,
+					holidayChecker,
+					holidays,
+					null,
+					null,
+					timeOffByBuilder,
+					dayWidth,
+					chartStartDate
+				);
+
+				// Store the updated builder array
+				updatedBuilderArrays[employee_id] = sortedBuilderTasks;
+
+				// Update the tasks in updatedTasks with the sorted and adjusted data
+				sortedBuilderTasks.forEach((sortedTask) => {
+					const index = updatedTasks.findIndex((task) => {
+						return task?.subtask_id === sortedTask.subtask_id;
+					});
+					if (index !== -1) {
+						updatedTasks[index] = sortedTask;
+					} else {
+						updatedTasks.push(sortedTask);
+					}
+				});
+			});
+
+			const result = await dispatch(
+				saveProject({
+					jobName,
+					projectId: jobData ? jobData[0].project_id : undefined,
+					newProjectCreatedAt: jobData
+						? jobData[0].project_created_at
+						: newProjectCreatedAt,
+					updatedTasks,
+					removedWorkPeriods,
+					updatedBuilderArrays,
+					nextJobNumber,
+					chartConfigId,
+				})
+			);
+
+			// Check if the result has an error property
+			if (result.error) {
+				throw new Error(result.error?.message || "Failed to save project");
+			}
+
+			// If we get here, the save was successful
+			onSave();
+			onClose();
+		} catch (error) {
+			console.error("Error saving project:", error);
+			onDatabaseError("Failed to save project. Please try again.");
+			setSaveError("Failed to save project. Please try again.");
+		} finally {
+			setIsLoading(false);
+			setIsSaving(false);
+		}
 	};
 
 	if (!isOpen) return null;
@@ -1106,13 +1129,20 @@ const JobModal = ({
 									<select
 										id={`${room.task_id}-${workPeriod.subtask_id}-employee_id`}
 										value={workPeriod.employee_id}
+										onFocus={() => {
+											setSelectedEmployeeInput({
+												workPeriodId: workPeriod.subtask_id,
+												previousValue: workPeriod.employee_id,
+											});
+										}}
 										onChange={(e) => {
 											handleWorkPeriodChange(
 												room.task_id,
 												workPeriod.subtask_id,
 												{
 													employee_id: Number(e.target.value),
-												}
+												},
+												selectedEmployeeInput.previousValue
 											);
 										}}
 										className={`builder-select ${
@@ -1238,8 +1268,12 @@ const JobModal = ({
 						<button className="modal-action-button cancel" onClick={onClose}>
 							Cancel
 						</button>
-						<button className="modal-action-button save" onClick={handleSave}>
-							Save
+						<button
+							className="modal-action-button save"
+							onClick={handleSave}
+							disabled={isSaving}
+						>
+							{isSaving ? "Saving..." : "Save"}
 						</button>
 					</div>
 					{errors.messages && errors.messages.length > 0 && (
@@ -1251,13 +1285,21 @@ const JobModal = ({
 							))}
 						</div>
 					)}
+					{saveError && (
+						<div className="error-messages">
+							<div className="error general-error">{saveError}</div>
+						</div>
+					)}
 				</div>
 			) : (
 				<div className="complete-job-popup">
 					<h3>Are you sure you want to complete this job?</h3>
 					<p>If yes, it will be removed from the schedule.</p>
 					<div className="complete-job-actions">
-						<button className="modal-action-button cancel" onClick={cancelCompleteJob}>
+						<button
+							className="modal-action-button cancel"
+							onClick={cancelCompleteJob}
+						>
 							Cancel
 						</button>
 						<button
