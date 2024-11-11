@@ -5,15 +5,16 @@ export const supabase = createClient(
   import.meta.env.VITE_FF_JS_SUPABASE_ANON_KEY
 );
 
-export const querySupabase = async (table, options = {}) => {
-  if (options.query) {
+export const queryProjectsSupabase = async (options = {}) => {
+  if (options) {
     // For raw SQL-style queries
     let query = supabase
-      .from(table)
-      .select('*');
+      .from("projects")
+      .select(options)
+      .eq('project_completed_at', null);
 
     // Apply the query function if provided
-    query = options.query(query);
+    // query = options.query(query);
 
     const { data, error } = await query;
     if (error) throw error;

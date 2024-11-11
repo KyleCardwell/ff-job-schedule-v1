@@ -698,7 +698,7 @@ const JobModal = ({
 
 			sortedBuilderTasks.forEach((sortedTask) => {
 				const index = updatedTasks.findIndex(
-					(task) => task.task_id === sortedTask.task_id
+					(task) => task.subtask_id === sortedTask.subtask_id
 				);
 				if (index !== -1) {
 					updatedTasks[index] = sortedTask;
@@ -730,50 +730,69 @@ const JobModal = ({
 		setCompletedJobData(formattedCompletedJob);
 	};
 
-	const confirmCompleteJob = () => {
-		dispatch(markProjectAsCompleted(completedJobData));
-
-		// Get all tasks for the completed job
-		const completedProjectTasks = localRooms.flatMap(
-			(room) => room.workPeriods
-		);
-
-		// Get unique builders involved in this job
-		const buildersInvolvedInJob = new Set(
-			completedProjectTasks.map((task) => task.employee_id)
-		);
-
-		const removedSubTasks = completedProjectTasks.map(
-			(task) => task.subtask_id
-		);
-
-		// Get all tasks (including those not in this job)
-		const allTasks = Object.values(localJobsByBuilder).flat();
-
-		// Remove completed job tasks
-		const remainingTasks = allTasks.filter(
-			(task) => task.subtask_id !== completedJobData.subtask_id
-		);
-
-		// Sort and adjust dates for affected builders
-		const { updatedTasks, updatedBuilderArrays } = sortAndAdjustBuilderTasks(
-			remainingTasks,
-			buildersInvolvedInJob,
-			removedSubTasks
-		);
-
-		// Update chart and task data
-		dispatch(jobModalUpdateChartData(updatedTasks, removedSubTasks));
-		dispatch(
-			jobModalUpdateTaskData(
-				updatedTasks,
-				updatedBuilderArrays,
-				removedSubTasks
-			)
-		);
-
+	const confirmCompleteJob = async () => {
+		setSaveError(null);
 		setShowCompleteConfirmation(false);
-		onClose();
+
+		try {
+			setIsLoading(true);
+			setIsSaving(true);
+
+			// Get all tasks for the completed job
+			const completedProjectTasks = localRooms.flatMap(
+				(room) => room.workPeriods
+			);
+
+			// Get unique builders involved in this job
+			const buildersInvolvedInJob = new Set(
+				completedProjectTasks.map((task) => task.employee_id)
+			);
+
+			const removedSubTasks = completedProjectTasks.map(
+				(task) => task.subtask_id
+			);
+
+			// Get all tasks (including those not in this job)
+			const allTasks = Object.values(localJobsByBuilder).flat();
+
+			// Remove completed job tasks
+			const remainingTasks = allTasks.filter(
+				(task) => task.project_id !== completedJobData.project_id
+			);
+
+			// Sort and adjust dates for affected builders
+			const { updatedTasks, updatedBuilderArrays } = sortAndAdjustBuilderTasks(
+				remainingTasks,
+				buildersInvolvedInJob,
+				removedSubTasks
+			);
+
+			const result = await dispatch(saveProject({
+				jobName: jobData[0].project_name,
+				projectId: jobData[0].project_id,
+				newProjectCreatedAt: jobData[0].project_created_at,
+				updatedTasks,
+				removedWorkPeriods: removedSubTasks,
+				updatedBuilderArrays,
+				nextJobNumber,
+				chartConfigId,
+				projectCompletedAt: new Date().toISOString()
+		}));
+
+		// Check if the result has an error property
+		if (result.error) {
+				throw new Error(result.error?.message || 'Failed to complete project');
+		}
+
+			onClose();
+		} catch (error) {
+			console.error("Error completing project:", error);
+			onDatabaseError("Failed to complete project. Please try again.");
+			setSaveError("Failed to complete project. Please try again.");
+		} finally {
+			setIsLoading(false);
+			setIsSaving(false);
+		}
 	};
 
 	const cancelCompleteJob = () => {
@@ -1293,7 +1312,7 @@ const JobModal = ({
 				</div>
 			) : (
 				<div className="complete-job-popup">
-					<h3>Are you sure you want to complete this job?</h3>
+					<h3>Are you sure you want to complete the {jobData[0].project_name} job?</h3>
 					<p>If yes, it will be removed from the schedule.</p>
 					<div className="complete-job-actions">
 						<button

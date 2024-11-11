@@ -1,5 +1,5 @@
 import { Actions } from "../actions";
-import { querySupabase, supabase } from "../../utils/supabase";
+import { supabase } from "../../utils/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { jobModalUpdateChartData } from "./chartData";
 import { jobModalUpdateTaskData } from "./taskData";
@@ -8,7 +8,6 @@ import { updateNextTaskNumber } from "./chartConfig";
 export const fetchProjectsOptions = {
 	select:
 		"*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at))",
-	filter: "project_completed_at.is.null",
 };
 
 export const fetchProjects =
@@ -17,12 +16,23 @@ export const fetchProjects =
 		dispatch({ type: Actions.projects.FETCH_PROJECTS_START });
 
 		try {
-			const result = await querySupabase("projects", options);
+			const { data: result, error } = await supabase
+				.from("projects")
+				.select(fetchProjectsOptions.select)
+				.is("project_completed_at", null)
+				.order("project_created_at", { ascending: true });
+
+			if (error) throw error;
 
 			const flattenedResult = result
 				.flatMap((project) =>
-					project.tasks.flatMap((task) =>
-						task.subtasks.map((subTask, index) => ({
+					project.tasks.flatMap((task) => {
+						// Sort subtasks by created_at before mapping
+						const sortedSubtasks = [...task.subtasks].sort((a, b) =>
+							a.subtask_created_at.localeCompare(b.subtask_created_at)
+						);
+
+						return sortedSubtasks.map((subTask, index) => ({
 							...subTask,
 							project_id: task.project_id,
 							project_name: project.project_name,
@@ -30,10 +40,10 @@ export const fetchProjects =
 							task_name: task.task_name,
 							task_created_at: task.task_created_at,
 							task_active: task.task_active,
-							heightAdjust: index === 0 ? task.subtasks.length : 0,
+							heightAdjust: index === 0 ? sortedSubtasks.length : 0, // Use sortedSubtasks.length
 							task_number: task.task_number,
-						}))
-					)
+						}));
+					})
 				)
 				.sort((a, b) => {
 					const projectCompare = a.project_created_at.localeCompare(
@@ -106,6 +116,7 @@ export const saveProject = (projectData) => async (dispatch) => {
 			updatedBuilderArrays,
 			nextJobNumber,
 			chartConfigId,
+			projectCompletedAt = null,
 		} = projectData;
 
 		// 1. Create project
@@ -116,6 +127,7 @@ export const saveProject = (projectData) => async (dispatch) => {
 					project_id: projectId,
 					project_name: jobName,
 					project_created_at: newProjectCreatedAt,
+					project_completed_at: projectCompletedAt,
 				},
 				{ onConflict: "project_id", defaultToNull: false }
 			)
