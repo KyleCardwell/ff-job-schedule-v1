@@ -29,7 +29,7 @@ export const fetchEmployees = () => async (dispatch) => {
 	try {
 		const { data, error } = await supabase
 			.from("employees")
-			.select("*, timeOff:employee_time_off(*) ")
+			.select("employee_id, employee_name, employee_color, time_off")
 			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
@@ -49,6 +49,7 @@ export const addEmployees = (employees) => async (dispatch) => {
 				employees.map((employee) => ({
 					employee_name: employee.employee_name,
 					employee_color: employee.employee_color,
+					time_off: employee.time_off,
 				}))
 			)
 			.select()
@@ -81,6 +82,7 @@ export const updateEmployees = (employees) => async (dispatch) => {
 					.update({
 						employee_name: employee.employee_name,
 						employee_color: employee.employee_color,
+						time_off: employee.time_off,
 					})
 					.eq("employee_id", employee.employee_id);
 
@@ -92,9 +94,33 @@ export const updateEmployees = (employees) => async (dispatch) => {
 				});
 			})
 		);
+		return { success: true };
 	} catch (error) {
 		console.error("Error updating employees:", error);
-		throw error;
+		return { success: false, error: error.message };
 	}
 };
 
+export const deleteEmployees = (employeeIds) => async (dispatch) => {
+	try {
+			const { error } = await supabase
+					.from("employees")
+					.delete()
+					.in("employee_id", employeeIds);
+
+			if (error) throw error;
+
+			// Update Redux store for each deleted employee
+			employeeIds.forEach(id => {
+					dispatch({
+							type: Actions.employees.DELETE_EMPLOYEE,
+							payload: id
+					});
+			});
+
+			return { success: true };
+	} catch (error) {
+			console.error("Error deleting employees:", error);
+			return { success: false, error: error.message };
+	}
+};

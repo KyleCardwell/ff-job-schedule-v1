@@ -6,6 +6,7 @@ import {
 	addBuilder,
 	addEmployees,
 	updateEmployees,
+	deleteEmployees,
 } from "../redux/actions/builders";
 import { format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
@@ -35,20 +36,22 @@ const BuilderModal = ({
 	const [saveError, setSaveError] = useState(null);
 
 	useEffect(() => {
-		   // If builders is empty or undefined, create default builder
-			 const defaultEmployee = {
-        employee_name: "Unassigned",
-        employee_color: "#FFC0CC",
-        timeOff: [],
-        markedForDeletion: false
-    };
+		// If builders is empty or undefined, create default builder
+		const defaultEmployee = {
+			employee_name: "Unassigned",
+			employee_color: "#FFC0CC",
+			time_off: [],
+			markedForDeletion: false,
+		};
 
-    const employeesToUse = employees?.length > 0 
-        ? employees 
-        : [defaultEmployee];
+		const employeesToUse =
+			employees?.length > 0 ? employees : [defaultEmployee];
 
 		setLocalEmployees(
-			employeesToUse.map((employee) => ({ ...employee, markedForDeletion: false }))
+			employeesToUse.map((employee) => ({
+				...employee,
+				markedForDeletion: false,
+			}))
 		);
 		setTimeOffVisibility({});
 	}, [employees, visible]);
@@ -75,7 +78,10 @@ const BuilderModal = ({
 	const handleAddTimeOff = (index) => {
 		const updatedBuilders = localEmployees.map((builder, i) =>
 			i === index
-				? { ...builder, timeOff: [...builder.timeOff, { start: "", end: "" }] }
+				? {
+						...builder,
+						time_off: [...builder.time_off, { start: "", end: "" }],
+				  }
 				: builder
 		);
 		setLocalEmployees(updatedBuilders);
@@ -84,7 +90,7 @@ const BuilderModal = ({
 	const handleTimeOffChange = (builderIndex, timeOffIndex, field, value) => {
 		const updatedBuilders = localEmployees.map((builder, i) => {
 			if (i === builderIndex) {
-				const updatedTimeOff = builder.timeOff.map((period, j) =>
+				const updatedTimeOff = builder.time_off.map((period, j) =>
 					j === timeOffIndex
 						? {
 								...period,
@@ -95,7 +101,7 @@ const BuilderModal = ({
 						  }
 						: period
 				);
-				return { ...builder, timeOff: updatedTimeOff };
+				return { ...builder, time_off: updatedTimeOff };
 			}
 			return builder;
 		});
@@ -105,10 +111,10 @@ const BuilderModal = ({
 	const handleRemoveTimeOff = (builderIndex, timeOffIndex) => {
 		const updatedBuilders = localEmployees.map((builder, i) => {
 			if (i === builderIndex) {
-				const updatedTimeOff = builder.timeOff.filter(
+				const updatedTimeOff = builder.time_off.filter(
 					(_, j) => j !== timeOffIndex
 				);
-				return { ...builder, timeOff: updatedTimeOff };
+				return { ...builder, time_off: updatedTimeOff };
 			}
 			return builder;
 		});
@@ -131,7 +137,12 @@ const BuilderModal = ({
 		}
 		setLocalEmployees([
 			...localEmployees,
-			{ ...newBuilder, employee_id: Date.now(), timeOff: [], markedForDeletion: false },
+			{
+				...newBuilder,
+				employee_id: Date.now(),
+				time_off: [],
+				markedForDeletion: false,
+			},
 		]);
 		setNewBuilder({ employee_name: "", employee_color: "#000000" });
 		setErrors({});
@@ -143,7 +154,7 @@ const BuilderModal = ({
 			if (builder.employee_name.trim() === "") {
 				newErrors[`name-${index}`] = "Name is required";
 			}
-			builder.timeOff?.forEach((period, timeOffIndex) => {
+			builder.time_off?.forEach((period, timeOffIndex) => {
 				if (!period.start) {
 					newErrors[`start-${index}-${timeOffIndex}`] =
 						"Start date is required";
@@ -164,7 +175,7 @@ const BuilderModal = ({
 		}));
 	};
 
-	// Helper function to compare timeOff arrays
+	// Helper function to compare time_off arrays
 	const areTimeOffsEqual = (timeOff1, timeOff2) => {
 		if (timeOff1?.length !== timeOff2?.length) return false;
 		return timeOff1?.every((period1, index) => {
@@ -182,6 +193,7 @@ const BuilderModal = ({
 				const buildersToDelete = localEmployees
 					.filter((b) => b.markedForDeletion)
 					.map((b) => b.employee_id);
+
 				const buildersToKeep = localEmployees.filter(
 					(b) => !b.markedForDeletion
 				);
@@ -199,14 +211,17 @@ const BuilderModal = ({
 						buildersToAdd.push({
 							employee_name: localBuilder.employee_name,
 							employee_color: localBuilder.employee_color,
-							timeOff: localBuilder.timeOff,
+							time_off: localBuilder.time_off,
 						});
 					} else {
 						// Check if the builder has any changes
 						const hasChanges =
 							existingBuilder.employee_name !== localBuilder.employee_name ||
 							existingBuilder.employee_color !== localBuilder.employee_color ||
-							!areTimeOffsEqual(existingBuilder.timeOff, localBuilder.timeOff);
+							!areTimeOffsEqual(
+								existingBuilder.time_off,
+								localBuilder.time_off
+							);
 
 						if (hasChanges) {
 							buildersToUpdate.push(localBuilder);
@@ -214,22 +229,28 @@ const BuilderModal = ({
 					}
 				});
 
-				// Handle updates and additions in Supabase
+				// Handle updates
 				if (buildersToUpdate.length > 0) {
-					await dispatch(updateEmployees(buildersToUpdate));
+					const updateResult = await dispatch(
+						updateEmployees(buildersToUpdate)
+					);
+					if (!updateResult.success) {
+						throw new Error(updateResult.error || "Failed to update employees");
+					}
 				}
 
+				// Handle additions
 				if (buildersToAdd.length > 0) {
-					await dispatch(addEmployees(buildersToAdd));
+					const addResult = await dispatch(addEmployees(buildersToAdd));
+					if (!addResult) {
+						throw new Error("Failed to add new employees");
+					}
 				}
 
-				// // Delete builders from Supabase
-				// if (buildersToDelete.length > 0) {
-				// 	await dispatch(deleteBuilders(buildersToDelete));
-				// }
+				// Deleted builders will be updated inside the updateTasksAfterBuilderChanges action
 
 				// Update tasks after all builder changes
-				dispatch(
+				await dispatch(
 					updateTasksAfterBuilderChanges(
 						buildersToKeep,
 						buildersToDelete,
@@ -270,7 +291,10 @@ const BuilderModal = ({
 									type="text"
 									value={newBuilder.employee_name}
 									onChange={(e) =>
-										setNewBuilder({ ...newBuilder, employee_name: e.target.value })
+										setNewBuilder({
+											...newBuilder,
+											employee_name: e.target.value,
+										})
 									}
 									placeholder="Builder Name"
 									className={errors.newBuilderName ? "error" : ""}
@@ -347,7 +371,9 @@ const BuilderModal = ({
 													: {}
 											}
 											type="button"
-											onClick={() => toggleTimeOffVisibility(builder.employee_id)}
+											onClick={() =>
+												toggleTimeOffVisibility(builder.employee_id)
+											}
 											disabled={builder.markedForDeletion}
 										>
 											{timeOffVisibility[builder.employee_id]
@@ -375,7 +401,7 @@ const BuilderModal = ({
 
 								{timeOffVisibility[builder.employee_id] && (
 									<div className="time-off-container">
-										{builder.timeOff.map((period, timeOffIndex) => (
+										{builder.time_off.map((period, timeOffIndex) => (
 											<div className="time-off-period" key={timeOffIndex}>
 												<div className="date-input-group">
 													<label
@@ -404,7 +430,9 @@ const BuilderModal = ({
 													/>
 												</div>
 												<div className="date-input-group">
-													<label htmlFor={`end-${builder.employee_id}-${timeOffIndex}`}>
+													<label
+														htmlFor={`end-${builder.employee_id}-${timeOffIndex}`}
+													>
 														End:
 													</label>
 													<input

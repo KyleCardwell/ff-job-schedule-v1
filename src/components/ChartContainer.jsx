@@ -89,7 +89,7 @@ export const ChartContainer = () => {
 
 	const timeOffByBuilder = useMemo(() => {
 		return builders.reduce((acc, builder) => {
-			acc[builder.employee_id] = builder.timeOff.flatMap((period) =>
+			acc[builder.employee_id] = builder.time_off.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),

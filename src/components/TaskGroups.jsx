@@ -66,7 +66,7 @@ const TaskGroups = ({
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
 		return employees.reduce((acc, builder) => {
-			acc[builder.employee_id] = builder.timeOff?.flatMap((period) =>
+			acc[builder.employee_id] = builder.time_off?.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
@@ -80,7 +80,7 @@ const TaskGroups = ({
 	const timeOffData = useMemo(() => {
 		const xPositions = new Map();
 		return employees.flatMap((builder) =>
-			builder.timeOff?.flatMap((period) => {
+			builder.time_off?.flatMap((period) => {
 				const periodStart = normalizeDate(new Date(period.start));
 				const periodEnd = normalizeDate(new Date(period.end));
 				const chartEndDate = addDays(
@@ -318,12 +318,12 @@ const TaskGroups = ({
 			)
 			.attr("width", (d) => d.subtask_width)
 			.attr("height", (d) => rowHeight - 2 * barMargin)
-			.attr(
-				"fill",
-				(d) =>
-					employees.find((builder) => builder.employee_id === d.employee_id)
-						.employee_color
-			);
+			.attr("fill", (d) => {
+				const employee = employees.find(
+					(emp) => emp.employee_id === d.employee_id
+				);
+				return employee?.employee_color || "#808080"; // Fallback to gray if no color found
+			});
 
 		allGroups
 			.select("text")

@@ -79,6 +79,30 @@ export const builders = (state = initialState, action) => {
 				employees: [...action.payload],
 			};
 
+		case Actions.employees.UPDATE_EMPLOYEE:
+			return {
+				...state,
+				employees: state.employees.map((employee) =>
+					employee.employee_id === action.payload.employee_id
+						? { ...employee, ...action.payload }
+						: employee
+				),
+			};
+
+		case Actions.employees.ADD_EMPLOYEE:
+			return {
+				...state,
+				employees: [...state.employees, action.payload],
+			};
+
+		case Actions.employees.DELETE_EMPLOYEE:
+			return {
+				...state,
+				employees: state.employees.filter(
+					(employee) => employee.employee_id !== action.payload
+				),
+			};
+
 		default:
 			return state;
 	}

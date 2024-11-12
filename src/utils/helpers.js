@@ -149,7 +149,10 @@ export const getNextWorkday = (
 		(builderId &&
 			timeOffByBuilder[builderId]?.some(
 				(timeOffDate) =>
-					normalizeDate(new Date(timeOffDate)).getTime() === nextDay.getTime()
+					isSameDay(
+						normalizeDate(new Date(timeOffDate)),
+						nextDay
+					)
 			))
 	) {
 		nextDay = normalizeDate(addDays(nextDay, 1));
@@ -178,8 +181,10 @@ export const totalJobHours = (
 			builderId && timeOffByBuilder[builderId]
 				? timeOffByBuilder[builderId].some(
 						(timeOffDate) =>
-							normalizeDate(new Date(timeOffDate)).getTime() ===
-							currentDate.getTime()
+							isSameDay(
+								normalizeDate(new Date(timeOffDate)),
+								currentDate
+							)
 				  )
 				: false;
 
