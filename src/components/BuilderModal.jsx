@@ -131,21 +131,25 @@ const BuilderModal = ({
 	};
 
 	const handleAddBuilder = () => {
-		if (newBuilder.employee_name.trim() === "") {
-			setErrors({ newBuilderName: "Name is required" });
-			return;
-		}
-		setLocalEmployees([
-			...localEmployees,
-			{
-				...newBuilder,
-				employee_id: Date.now(),
-				time_off: [],
-				markedForDeletion: false,
-			},
-		]);
-		setNewBuilder({ employee_name: "", employee_color: "#000000" });
-		setErrors({});
+		const newBuilder = {
+			employee_name: "",
+			employee_color: "#000000",
+			time_off: [],
+			markedForDeletion: false,
+		};
+
+		setLocalEmployees((prev) => [...prev, newBuilder]);
+
+		// Focus on the new builder's name input after render
+		setTimeout(() => {
+			const inputs = document.querySelectorAll(
+				'.builder-info input[type="text"]'
+			);
+			const lastInput = inputs[inputs.length - 1];
+			if (lastInput) {
+				lastInput.focus();
+			}
+		}, 0);
 	};
 
 	const validateInputs = () => {
@@ -279,47 +283,8 @@ const BuilderModal = ({
 	return (
 		<div className="modal-overlay">
 			<div className="modal-content builder-modal">
-				<h2>Manage Builders</h2>
+				<h2>Manage Employees</h2>
 				<form>
-					<div
-						className="builder-item-container"
-						style={{ border: "1px solid #383838" }}
-					>
-						<div className="builder-item">
-							<div className="builder-info">
-								<input
-									type="text"
-									value={newBuilder.employee_name}
-									onChange={(e) =>
-										setNewBuilder({
-											...newBuilder,
-											employee_name: e.target.value,
-										})
-									}
-									placeholder="Builder Name"
-									className={errors.newBuilderName ? "error" : ""}
-								/>
-								<input
-									type="color"
-									value={newBuilder.employee_color}
-									onChange={(e) =>
-										setNewBuilder({
-											...newBuilder,
-											employee_color: e.target.value,
-										})
-									}
-								/>
-							</div>
-
-							<button
-								className="modal-action-button add add-builder-button"
-								type="button"
-								onClick={handleAddBuilder}
-							>
-								Add Builder
-							</button>
-						</div>
-					</div>
 					{localEmployees.map((builder, index) => (
 						<div
 							className="builder-item-container"
@@ -378,7 +343,7 @@ const BuilderModal = ({
 										>
 											{timeOffVisibility[builder.employee_id]
 												? "Hide Time Off"
-												: "Add/Edit Time Off"}
+												: "Edit Time Off"}
 										</button>
 										<button
 											className="modal-action-button remove"
@@ -394,7 +359,7 @@ const BuilderModal = ({
 										>
 											{builder.markedForDeletion
 												? "Undo Delete"
-												: "Delete Builder"}
+												: "Delete"}
 										</button>
 									</div>
 								</div>
@@ -480,6 +445,19 @@ const BuilderModal = ({
 							</div>
 						</div>
 					))}
+					<button
+						className="modal-action-button add add-builder-button"
+						type="button"
+						onClick={handleAddBuilder}
+						style={{
+							display: "block",
+							margin: "20px auto",
+							width: "auto",
+							padding: "8px 16px",
+						}}
+					>
+						Add Employee
+					</button>
 				</form>
 				<div className="modal-actions">
 					<button
