@@ -118,73 +118,116 @@ export const saveProject = (projectData) => async (dispatch) => {
 			newProjectCreatedAt,
 			updatedTasks,
 			removedWorkPeriods,
-			updatedBuilderArrays,
 			nextJobNumber,
 			chartConfigId,
 			projectCompletedAt = null,
 		} = projectData;
 
-		// 1. Create project
-		const { data: newProject, error: projectError } = await supabase
-			.from("projects")
-			.upsert(
-				{
-					project_id: projectId,
+		// 1. Create or update project
+		let newProject;
+		if (projectId) {
+			const { data, error: projectError } = await supabase
+				.from("projects")
+				.update({
 					project_name: jobName,
 					project_created_at: newProjectCreatedAt,
 					project_completed_at: projectCompletedAt,
-				},
-				{ onConflict: "project_id", defaultToNull: false }
-			)
-			.select()
-			.single();
+				})
+				.eq("project_id", projectId)
+				.select()
+				.single();
 
-		if (projectError)
-			throw new Error(`Error creating project: ${projectError}`);
+			if (projectError)
+				throw new Error(`Error updating project: ${projectError}`);
+			newProject = data;
+		} else {
+			const { data, error: projectError } = await supabase
+				.from("projects")
+				.insert({
+					project_name: jobName,
+					project_created_at: newProjectCreatedAt,
+					project_completed_at: projectCompletedAt,
+				})
+				.select()
+				.single();
 
-		// 2. Prepare tasks data with temp_task_id
-		const tasksData = updatedTasks.reduce((acc, task) => {
-			if (!acc[task.task_id]) {
-				acc[task.task_id] = {
-					task_id: task.taskIsNew ? undefined : task.task_id,
-					temp_task_id: task.temp_task_id,
-					project_id: task.taskIsNew ? newProject.project_id : task.project_id,
-					task_number: task.task_number,
-					task_name: task.task_name,
-					task_active: task.task_active,
-				};
+			if (projectError)
+				throw new Error(`Error creating project: ${projectError}`);
+			newProject = data;
+		}
+
+		// 2. Handle tasks - separate into new and existing
+		const tasksToUpdate = [];
+		const tasksToInsert = [];
+
+		Object.values(
+			updatedTasks.reduce((acc, task) => {
+				if (!acc[task.task_id]) {
+					const taskData = {
+						temp_task_id: task.temp_task_id,
+						project_id: task.taskIsNew
+							? newProject.project_id
+							: task.project_id,
+						task_number: task.task_number,
+						task_name: task.task_name,
+						task_active: task.task_active,
+					};
+
+					if (task.taskIsNew) {
+						tasksToInsert.push(taskData);
+					} else {
+						tasksToUpdate.push({ ...taskData, task_id: task.task_id });
+					}
+					acc[task.task_id] = taskData;
+				}
+				return acc;
+			}, {})
+		);
+
+		// Insert new tasks
+		let newTasks = [];
+		if (tasksToInsert.length > 0) {
+			const { data, error } = await supabase
+				.from("tasks")
+				.insert(tasksToInsert)
+				.select();
+			if (error) throw new Error(`Error inserting tasks: ${error}`);
+			newTasks = [...newTasks, ...data];
+		}
+
+		// Update existing tasks
+		if (tasksToUpdate.length > 0) {
+			// Process updates one at a time to avoid conflicts
+			for (const task of tasksToUpdate) {
+				const { temp_task_id, task_id, ...updateData } = task;
+				const { data, error } = await supabase
+					.from("tasks")
+					.update(updateData)
+					.eq("task_id", task_id) // Use .eq instead of .in
+					.select();
+
+				if (error) throw new Error(`Error updating task ${task_id}: ${error}`);
+				newTasks.push(data[0]);
 			}
-			return acc;
-		}, {});
+		}
 
-		console.log("tasksData", tasksData);
-		// 3. Create/Update tasks
-		const { data: newTasks, error: tasksError } = await supabase
-			.from("tasks")
-			.upsert(Object.values(tasksData), {
-				onConflict: "task_id",
-				defaultToNull: false,
-			})
-			.select();
+		// 3. Handle subtasks - separate into new and existing
+		const subtasksToUpdate = [];
+		const subtasksToInsert = [];
 
-		if (tasksError) throw new Error(`Error creating tasks: ${tasksError}`);
-		console.log("newTasks", newTasks);
-
-		// 4. Prepare subtasks data using the new task_ids
-		const subtasksData = updatedTasks.map((wp) => {
+		updatedTasks.forEach((wp) => {
 			const newTask = newTasks.find(
 				(task) =>
 					task.task_id === wp.task_id || task.temp_task_id === wp.temp_task_id
 			);
 
 			if (!newTask) {
-				console.log("could not find matching task for: ", wp);
 				throw new Error(
 					`Could not find matching task for work period ${wp.task_name}`
 				);
 			}
-			return {
-				subtask_id: wp.subTaskIsNew ? undefined : wp.subtask_id,
+
+			const subtaskData = {
 				task_id: wp.subTaskIsNew ? newTask.task_id : wp.task_id,
 				temp_subtask_id: wp.temp_subtask_id,
 				employee_id: wp.employee_id,
@@ -194,19 +237,41 @@ export const saveProject = (projectData) => async (dispatch) => {
 				subtask_width: wp.subtask_width,
 				subtask_created_at: wp.subtask_created_at,
 			};
+
+			if (wp.subTaskIsNew) {
+				subtasksToInsert.push(subtaskData);
+			} else {
+				subtasksToUpdate.push({ ...subtaskData, subtask_id: wp.subtask_id });
+			}
 		});
 
-		const { data: newSubtasks, error: subtasksError } = await supabase
-			.from("subtasks")
-			.upsert(subtasksData, {
-				onConflict: "subtask_id",
-				defaultToNull: false,
-			})
-			.select();
+		// Insert new subtasks
+		let newSubtasks = [];
+		if (subtasksToInsert.length > 0) {
+			const { data, error } = await supabase
+				.from("subtasks")
+				.insert(subtasksToInsert)
+				.select();
+			if (error) throw new Error(`Error inserting subtasks: ${error}`);
+			newSubtasks = [...newSubtasks, ...data];
+		}
 
-		if (subtasksError)
-			throw new Error(`Error creating subtasks: ${subtasksError}`);
-		console.log("newSubtasks", newSubtasks);
+		// Update existing subtasks
+		if (subtasksToUpdate.length > 0) {
+			// Process updates one at a time to avoid conflicts
+			for (const subtask of subtasksToUpdate) {
+				const { temp_subtask_id, subtask_id, ...updateData } = subtask;
+				const { data, error } = await supabase
+					.from("subtasks")
+					.update(updateData)
+					.eq("subtask_id", subtask_id) // Use .eq instead of .in
+					.select();
+
+				if (error)
+					throw new Error(`Error updating subtask ${subtask_id}: ${error}`);
+				newSubtasks.push(data[0]);
+			}
+		}
 
 		// Delete removed work periods
 		if (removedWorkPeriods.length > 0) {

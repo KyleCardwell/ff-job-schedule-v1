@@ -48,14 +48,14 @@ const ChartActionButtons = ({
 					>
 						Employees
 					</button>
-					<button
+					{/* <button
 						className="action-button manage-holidays-button"
 						onClick={() => {
 							setIsHolidayModalOpen(true);
 						}}
 					>
 						Holidays
-					</button>
+					</button> */}
 				</>
 			)}
 			<Link to={`${location.pathname === "/" ? "/completed" : "/"}`}>

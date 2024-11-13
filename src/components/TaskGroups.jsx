@@ -16,7 +16,7 @@ import {
 } from "../utils/helpers";
 import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
-import { isEqual } from "lodash";
+import { isEqual, omit } from "lodash";
 import { updateSubtasksPositions } from "../redux/actions/projects";
 
 const TaskGroups = ({
@@ -233,7 +233,28 @@ const TaskGroups = ({
 								updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
 							);
 
-							await updateSubtasksPositions(sortedBuilderTasks);
+							// Filter out unchanged tasks
+							const tasksToUpdate = sortedBuilderTasks.filter((task) => {
+								const originalTask = tasks.find(
+									(t) => t.subtask_id === task.subtask_id
+								);
+								if (!originalTask) {
+									return true; // Keep new tasks
+								}
+
+								// Debug the comparison
+								const cleanTask = omit(task, ["xPosition"]);
+								const cleanOriginal = omit(originalTask, ["xPosition"]);
+
+								const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+
+								if (!isTaskEqual) {
+									return true;
+								}
+								return false;
+							});
+
+							await updateSubtasksPositions(tasksToUpdate);
 
 							previousTaskStateRef.current = null;
 						} catch (error) {

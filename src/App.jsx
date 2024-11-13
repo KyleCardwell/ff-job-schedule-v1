@@ -14,6 +14,14 @@ import { fetchEmployees } from "./redux/actions/builders";
 import { supabase } from "./utils/supabase";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 
+const authContainerStyle = {
+  maxWidth: '400px',  // Adjust this width as needed
+  margin: '100px auto', // Centers the container and adds top margin
+  padding: '20px',
+  boxShadow: '0 0 10px rgba(0,0,0,0.1)', // Optional: adds subtle shadow
+  borderRadius: '8px', // Optional: rounds corners
+};
+
 const App = () => {
 	const dispatch = useDispatch();
 	const { session, loading } = useSelector((state) => state.auth);
@@ -44,9 +52,7 @@ const App = () => {
 		if (session && !initialFetchDone.current) {
 			dispatch(fetchChartConfig());
 			dispatch(fetchEmployees());
-			dispatch(
-				fetchProjects(fetchProjectsOptions)
-			);
+			dispatch(fetchProjects(fetchProjectsOptions));
 			initialFetchDone.current = true;
 		}
 	}, [session, dispatch]);
@@ -57,11 +63,13 @@ const App = () => {
 
 	if (!session) {
 		return (
-			<Auth
-				supabaseClient={supabase}
-				appearance={{ theme: ThemeSupa }}
-				providers={["google"]}
-			/>
+			<div style={authContainerStyle}>
+				<Auth
+					supabaseClient={supabase}
+					appearance={{ theme: ThemeSupa }}
+					providers={[]}
+				/>
+			</div>
 		);
 	}
 

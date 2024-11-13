@@ -17,6 +17,7 @@ import {
 	removeCompletedJobFromTasks,
 } from "../redux/actions/taskData";
 import { saveProject } from "../redux/actions/projects";
+import { isEqual, omit } from "lodash";
 
 const JobModal = ({
 	isOpen,
@@ -40,6 +41,7 @@ const JobModal = ({
 	const { employees } = useSelector((state) => state.builders);
 	const { chart_config_id: chartConfigId, next_task_number: jobNumberNext } =
 		useSelector((state) => state.chartConfig);
+	const unchangedTasks = useSelector((state) => state.taskData.tasks);
 
 	const [jobName, setJobName] = useState("");
 	const [localRooms, setLocalRooms] = useState([]);
@@ -130,9 +132,14 @@ const JobModal = ({
 	const calculateNextAvailableDate = (employee_id) => {
 		const builderJobs = localJobsByBuilder[employee_id] || [];
 
+		// Sort builder jobs by start_date
+		const sortedBuilderJobs = builderJobs.sort((a, b) =>
+			a.start_date.localeCompare(b.start_date)
+		);
+
 		let lastJobEndDate = normalizeDate(new Date());
-		if (builderJobs.length > 0) {
-			const lastJob = builderJobs[builderJobs.length - 1];
+		if (sortedBuilderJobs.length > 0) {
+			const lastJob = sortedBuilderJobs[sortedBuilderJobs.length - 1];
 			const lastJobDuration =
 				totalJobHours(
 					lastJob.start_date,
@@ -760,28 +767,29 @@ const JobModal = ({
 			);
 
 			// Sort and adjust dates for affected builders
-			const { updatedTasks, updatedBuilderArrays } = sortAndAdjustBuilderTasks(
+			const { updatedTasks } = sortAndAdjustBuilderTasks(
 				remainingTasks,
 				buildersInvolvedInJob,
 				removedSubTasks
 			);
 
-			const result = await dispatch(saveProject({
-				jobName: jobData[0].project_name,
-				projectId: jobData[0].project_id,
-				newProjectCreatedAt: jobData[0].project_created_at,
-				updatedTasks,
-				removedWorkPeriods: removedSubTasks,
-				updatedBuilderArrays,
-				nextJobNumber,
-				chartConfigId,
-				projectCompletedAt: new Date().toISOString()
-		}));
+			const result = await dispatch(
+				saveProject({
+					jobName: jobData[0].project_name,
+					projectId: jobData[0].project_id,
+					newProjectCreatedAt: jobData[0].project_created_at,
+					updatedTasks,
+					removedWorkPeriods: removedSubTasks,
+					nextJobNumber,
+					chartConfigId,
+					projectCompletedAt: new Date().toISOString(),
+				})
+			);
 
-		// Check if the result has an error property
-		if (result.error) {
-				throw new Error(result.error?.message || 'Failed to complete project');
-		}
+			// Check if the result has an error property
+			if (result.error) {
+				throw new Error(result.error?.message || "Failed to complete project");
+			}
 
 			onClose();
 		} catch (error) {
@@ -967,6 +975,27 @@ const JobModal = ({
 				});
 			});
 
+			// Filter out unchanged tasks
+			const tasksToUpdate = updatedTasks.filter((task) => {
+				const originalTask = unchangedTasks.find(
+					(t) => t.subtask_id === task.subtask_id
+				);
+				if (!originalTask) {
+					return true; // Keep new tasks
+				}
+
+				// Debug the comparison
+				const cleanTask = omit(task, ["xPosition"]);
+				const cleanOriginal = omit(originalTask, ["xPosition"]);
+
+				const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+
+				if (!isTaskEqual) {
+					return true;
+				}
+				return false;
+			});
+
 			const result = await dispatch(
 				saveProject({
 					jobName,
@@ -974,9 +1003,8 @@ const JobModal = ({
 					newProjectCreatedAt: jobData
 						? jobData[0].project_created_at
 						: newProjectCreatedAt,
-					updatedTasks,
+					updatedTasks: tasksToUpdate,
 					removedWorkPeriods,
-					updatedBuilderArrays,
 					nextJobNumber,
 					chartConfigId,
 				})
@@ -1311,7 +1339,9 @@ const JobModal = ({
 				</div>
 			) : (
 				<div className="complete-job-popup">
-					<h3>Are you sure you want to complete the {jobData[0].project_name} job?</h3>
+					<h3>
+						Are you sure you want to complete the {jobData[0].project_name} job?
+					</h3>
 					<p>If yes, it will be removed from the schedule.</p>
 					<div className="complete-job-actions">
 						<button
