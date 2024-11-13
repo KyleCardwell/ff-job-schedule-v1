@@ -1,10 +1,9 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { clearSession } from "../redux/authSlice";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../utils/supabase";
-
 
 const ChartActionButtons = ({
 	scrollToMonday,
@@ -14,13 +13,19 @@ const ChartActionButtons = ({
 }) => {
 	const location = useLocation();
 	const dispatch = useDispatch();
+	const navigate = useNavigate();
 
 	const employees = useSelector((state) => state.builders.employees);
 
 	const handleLogout = async () => {
-		const { error } = await supabase.auth.signOut();
-		if (!error) {
+		try {
+			const { error } = await supabase.auth.signOut();
+			if (error) throw error;
+
 			dispatch(clearSession());
+			navigate("/"); // Redirect to auth page after logout
+		} catch (error) {
+			console.error("Error signing out:", error.message);
 		}
 	};
 
