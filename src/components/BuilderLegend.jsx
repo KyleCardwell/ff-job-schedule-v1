@@ -2,17 +2,17 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 
 const BuilderLegend = () => {
-  const builders = useSelector(state => state.builders.builders);
+  const employees = useSelector(state => state.builders.employees);
 
   return (
     <div className="builder-legend">
-      {builders.map(builder => (
-        <div key={builder.id} className="builder-legend-item">
+      {employees.map(employee => (
+        <div key={employee.employee_id} className="builder-legend-item">
           <div 
             className="builder-color-box" 
-            style={{ backgroundColor: builder.color }}
+            style={{ backgroundColor: employee.employee_color }}
           ></div>
-          <span>{builder.name}</span>
+          <span>{employee.employee_name}</span>
         </div>
       ))}
     </div>

@@ -3,67 +3,85 @@ import { newJobs } from "../../mocks/jobsRealData";
 import { getTaskData } from "../../utils/helpers";
 import { Actions } from "../actions";
 
-const { tasks, tasksByBuilder } = getTaskData(newJobs);
+// const { tasks, tasksByBuilder } = getTaskData(newJobs);
 
 const initialState = {
-	tasks,
-	tasksByBuilder,
+	tasks: [],
+	subTasksByEmployee: {},
 };
 
 export const taskDataReducer = (state = initialState, action) => {
 	switch (action.type) {
-		case Actions.jobs.SAVE_JOBS:
+		case Actions.taskData.FETCH_TASK_DATA_START:
 			return {
 				...state,
-				taskData: action.payload,
+				loading: true,
+				error: null,
 			};
+
+		case Actions.taskData.FETCH_TASK_DATA_SUCCESS:
+			return {
+				...state,
+				tasks: action.payload.flattenedResult,
+				subTasksByEmployee: action.payload.subTasksByEmployee,
+				loading: false,
+				error: null,
+			};
+
+		case Actions.taskData.FETCH_TASK_DATA_ERROR:
+			return {
+				...state,
+				loading: false,
+				error: action.payload,
+			};
+
 		case Actions.taskData.UPDATE_TASKS_BY_ONE_BUILDER: {
 			const updatedTasksMap = new Map(
-				action.payload.taskList.map((task) => [task.id, task])
+				action.payload.taskList.map((task) => [task.subtask_id, task])
 			);
 			return {
 				...state,
 				tasks: state.tasks.map((task) => {
-					return updatedTasksMap.get(task.id) || task;
+					return updatedTasksMap.get(task.subtask_id) || task;
 				}),
-				tasksByBuilder: {
-					...state.tasksByBuilder,
-					[action.payload.builderId]: action.payload.taskList,
+				subTasksByEmployee: {
+					...state.subTasksByEmployee,
+					[action.payload.employee_id]: action.payload.taskList,
 				},
 			};
 		}
 		case Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES: {
 			const updatedTasks = action.payload;
 			const updatedTasksMap = new Map(
-				updatedTasks.map((task) => [task.id, task])
+				updatedTasks.map((task) => [task.subtask_id, task])
 			);
 
-			// Create a new tasksByBuilder object
-			const tasksByBuilder = {};
+			// Create a new subTasksByEmployee object
+			const subTasksByEmployee = {};
 
 			// Update tasks while maintaining original order
 			const newTasks = state.tasks.map((task) => {
-				const updatedTask = updatedTasksMap.get(task.id);
+				const updatedTask = updatedTasksMap.get(task.subtask_id);
 				if (updatedTask) {
-					// Add task to tasksByBuilder
-					if (!tasksByBuilder[updatedTask.builderId]) {
-						tasksByBuilder[updatedTask.builderId] = [];
+					// Add task to subTasksByEmployee
+					if (!subTasksByEmployee[updatedTask.employee_id]) {
+						subTasksByEmployee[updatedTask.employee_id] = [];
 					}
-					tasksByBuilder[updatedTask.builderId].push(updatedTask);
+					subTasksByEmployee[updatedTask.employee_id].push(updatedTask);
 					return updatedTask;
 				}
-				// If task wasn't updated, add it to tasksByBuilder as is
-				if (!tasksByBuilder[task.builderId]) {
-					tasksByBuilder[task.builderId] = [];
+				// If task wasn't updated, add it to subTasksByEmployee as is
+				if (!subTasksByEmployee[task.employee_id]) {
+					subTasksByEmployee[task.employee_id] = [];
 				}
-				tasksByBuilder[task.builderId].push(task);
+				subTasksByEmployee[task.employee_id].push(task);
 				return task;
 			});
 
 			return {
 				...state,
 				tasks: newTasks,
-				tasksByBuilder,
+				subTasksByEmployee,
 			};
 		}
 		case Actions.taskData.JOB_MODAL_UPDATE_TASK_DATA: {
@@ -71,75 +89,56 @@ export const taskDataReducer = (state = initialState, action) => {
 				action.payload;
 
 			let updatedTasksState = state.tasks.filter(
-				(task) => !removedWorkPeriods.includes(task.id)
+				(task) => !removedWorkPeriods.includes(task.subtask_id)
 			);
-			let updatedTasksByBuilder = { ...state.tasksByBuilder };
+			let updatedsubTasksByEmployee = { ...state.subTasksByEmployee };
 
-			updatedTasks.forEach((updatedTask) => {
+			const tasksToUpdate = updatedTasks.filter(
+				(task) => !removedWorkPeriods.includes(task.subtask_id)
+			);
+
+			// Replace or add the updated tasks
+			tasksToUpdate.forEach((updatedTask) => {
 				const existingIndex = updatedTasksState.findIndex(
-					(task) => task.id === updatedTask.id
+					(task) => task.subtask_id === updatedTask.subtask_id
 				);
-
 				if (existingIndex !== -1) {
-					// Update existing task
-					updatedTasksState[existingIndex] = {
-						...updatedTasksState[existingIndex],
-						...updatedTask,
-					};
+					updatedTasksState[existingIndex] = updatedTask;
 				} else {
-					// New task: find the correct position to insert
-					let insertIndex = updatedTasksState.length; // Default to end of array
-
-					// Find the last task of the same room
-					const sameRoomLastIndex = updatedTasksState.reduce(
-						(lastIndex, task, index) => {
-							return task.roomId === updatedTask.roomId ? index : lastIndex;
-						},
-						-1
-					);
-
-					if (sameRoomLastIndex !== -1) {
-						// Insert after the last task of the same room
-						insertIndex = sameRoomLastIndex + 1;
-					} else {
-						// If no tasks for this room, find the last task of the same job
-						const sameJobLastIndex = updatedTasksState.reduce(
-							(lastIndex, task, index) => {
-								return task.jobId === updatedTask.jobId ? index : lastIndex;
-							},
-							-1
-						);
-
-						if (sameJobLastIndex !== -1) {
-							// Insert after the last task of the same job
-							insertIndex = sameJobLastIndex + 1;
-						}
-					}
-
-					// Insert the new task
-					updatedTasksState.splice(insertIndex, 0, updatedTask);
+					updatedTasksState.push(updatedTask);
 				}
 			});
 
-			// Update tasksByBuilder with updatedBuilderArrays
+			// Sort the tasks by created_at dates
+			updatedTasksState.sort((a, b) => {
+				if (a.project_created_at === b.project_created_at) {
+					if (a.task_created_at === b.task_created_at) {
+						return a.subtask_created_at.localeCompare(b.subtask_created_at);
+					}
+					return a.task_created_at.localeCompare(b.task_created_at);
+				}
+				return a.project_created_at.localeCompare(b.project_created_at);
+			});
+
+			// Update subTasksByEmployee with updatedBuilderArrays
 			Object.entries(updatedBuilderArrays).forEach(([builderId, tasks]) => {
-				updatedTasksByBuilder[builderId] = tasks;
+				updatedsubTasksByEmployee[builderId] = tasks;
 			});
 
 			return {
 				...state,
 				tasks: updatedTasksState,
-				tasksByBuilder: updatedTasksByBuilder,
+				subTasksByEmployee: updatedsubTasksByEmployee,
 			};
 		}
 		case Actions.taskData.REMOVE_COMPLETED_JOB_FROM_TASKS:
 			return {
 				...state,
-				tasks: state.tasks.filter((task) => task.jobId !== action.payload),
-				tasksByBuilder: Object.fromEntries(
-					Object.entries(state.tasksByBuilder).map(([builderId, tasks]) => [
+				tasks: state.tasks.filter((task) => task.project_id !== action.payload),
+				subTasksByEmployee: Object.fromEntries(
+					Object.entries(state.subTasksByEmployee).map(([builderId, tasks]) => [
 						builderId,
-						tasks.filter((task) => task.jobId !== action.payload),
+						tasks.filter((task) => task.project_id !== action.payload),
 					])
 				),
 			};

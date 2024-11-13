@@ -19,24 +19,29 @@ import JobModalChartData from "./JobModalChartData";
 import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
 import { eachDayOfInterval } from "date-fns";
+import ErrorToast from "./ErrorToast";
 
 export const ChartContainer = () => {
 	const holidays = useSelector((state) => state.holidays.holidays);
 	const { earliestStartDate, latestStartDate, chartData } = useSelector(
 		(state) => state.chartData
 	);
+	// Get projects data from Redux
+	// const projects = useSelector((state) => state.projects.data);
+	const databaseLoading = useSelector((state) => state.projects.loading);
+
 	const builders = useSelector((state) => state.builders.builders);
-	const { tasks, tasksByBuilder } = useSelector((state) => state.taskData);
+	const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
 
 	const { activeRoomsData, lastJobsIndex } = useMemo(() => {
 		let currentJobId = null;
 		let jobsIndex = -1;
 
 		const activeRooms = chartData
-			.filter((room) => room.active)
+			.filter((room) => room.task_active)
 			.map((room) => {
-				if (room.jobId !== currentJobId) {
-					currentJobId = room.jobId;
+				if (room.project_id !== currentJobId) {
+					currentJobId = room.project_id;
 					jobsIndex++;
 				}
 				return {
@@ -65,6 +70,7 @@ export const ChartContainer = () => {
 	const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
 	const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 	const [clickedTask, setClickedTask] = useState(null);
+	const [databaseError, setDatabaseError] = useState(null);
 
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -83,11 +89,11 @@ export const ChartContainer = () => {
 
 	const timeOffByBuilder = useMemo(() => {
 		return builders.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff.flatMap((period) =>
+			acc[builder.employee_id] = builder.time_off.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
-				}).map((day) => normalizeDate(day).toISOString())
+				}).map((day) => normalizeDate(day))
 			);
 			return acc;
 		}, {});
@@ -151,6 +157,11 @@ export const ChartContainer = () => {
 		} else if (clientY > bottom - buffer) {
 			container.scrollTop += scrollSpeed; // Scroll down
 		}
+	};
+
+	const handleDatabaseError = (error) => {
+		setDatabaseError("Failed to update the database. Please try again.");
+		console.error("Database error:", error);
 	};
 
 	useEffect(() => {
@@ -324,7 +335,7 @@ export const ChartContainer = () => {
 			const room = activeRoomsData[rowIndex]; // Get the room data based on the row index
 
 			if (room) {
-				const job = tasks.filter((task) => task.jobId === room.jobId); // Find the job associated with the room
+				const job = tasks.filter((task) => task.project_id === room.project_id); // Find the job associated with the room
 				setSelectedJob(job);
 				setClickedTask(room);
 				setIsJobModalOpen(true);
@@ -363,7 +374,7 @@ export const ChartContainer = () => {
 				.attr("class", "job-number")
 				.attr("x", 10)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.jobNumber : "")
+				.text(d.heightAdjust !== 0 ? d.task_number : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -372,7 +383,7 @@ export const ChartContainer = () => {
 				.attr("class", "job-name")
 				.attr("x", 50)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.jobName : "")
+				.text(d.heightAdjust !== 0 ? d.project_name : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
@@ -381,14 +392,14 @@ export const ChartContainer = () => {
 				.attr("class", "room-name")
 				.attr("x", 130)
 				.attr("y", (d.heightAdjust * rowHeight) / 2)
-				.text(d.heightAdjust !== 0 ? d.taskName : "")
+				.text(d.heightAdjust !== 0 ? d.task_name : "")
 				.attr("fill", "#000")
 				.attr("dominant-baseline", "middle");
 
 			// Add double-click event for job number and job name
 			jobNumberText.on("dblclick", (event) => {
 				event.stopPropagation();
-				const job = tasks.filter((task) => task.jobId === d.jobId);
+				const job = tasks.filter((task) => task.project_id === d.project_id);
 				setSelectedJob(job);
 				setClickedTask(d);
 				setIsJobModalOpen(true);
@@ -396,7 +407,7 @@ export const ChartContainer = () => {
 
 			jobNameText.on("dblclick", (event) => {
 				event.stopPropagation();
-				const job = tasks.filter((task) => task.jobId === d.jobId);
+				const job = tasks.filter((task) => task.project_id === d.project_id);
 				setSelectedJob(job);
 				setClickedTask(d);
 				setIsJobModalOpen(true);
@@ -405,7 +416,7 @@ export const ChartContainer = () => {
 			// Add double-click event for room name
 			taskNameText.on("dblclick", (event) => {
 				event.stopPropagation();
-				scrollToMonday(new Date(d.startDate));
+				scrollToMonday(new Date(d.start_date));
 			});
 		});
 
@@ -510,10 +521,6 @@ export const ChartContainer = () => {
 	]);
 
 	useEffect(() => {
-		scrollToMonday(new Date());
-	}, []);
-
-	useEffect(() => {
 		let scrollLeft = 0;
 		let scrollTop = 0;
 
@@ -559,49 +566,76 @@ export const ChartContainer = () => {
 				setIsBuilderModalOpen={setIsBuilderModalOpen}
 				setIsHolidayModalOpen={setIsHolidayModalOpen}
 			/>
-			<div className="gantt-container">
-				<div className="gantt-content">
-					<div className="gantt-left">
-						<div className="gantt-left-header">
-							<svg ref={leftColumnHeaderRef} />
-						</div>
-						<div className="gantt-left-body">
-							<svg ref={leftColumnRef} />
-						</div>
-					</div>
-					<div className="gantt-right">
-						<div className="gantt-right-header">
-							<svg ref={headerRef} />
-						</div>
-						<div className="gantt-right-body" ref={scrollableRef}>
-							<svg className="inner-chart chart-svg" ref={chartRef} />
-							<TaskGroups
-								chartRef={chartRef}
-								barMargin={barMargin}
-								chartHeight={chartHeight}
-								numDays={numDays}
-								handleAutoScroll={handleAutoScroll}
-								setIsLoading={setIsLoading}
-								chartStartDate={chartStartDate}
-								daysBeforeStart={daysBeforeStart}
-								rowHeight={rowHeight}
-								workdayHours={workdayHours}
-								holidayChecker={holidayChecker}
-								dayWidth={dayWidth}
-							/>
-						</div>
+
+			{!activeRoomsData || activeRoomsData.length === 0 ? (
+				<div className="empty-state-container">
+					<div className="empty-state-message">
+						<h2>Welcome to your Project Dashboard!</h2>
+						<p>You don't have any projects yet. </p>
+						<p>
+							<strong>Start</strong> by adding employees using the <br />
+							<strong>Employees</strong> button.
+						</p>
+						<p>
+							<strong>Then</strong> add projects by clicking on the <br />
+							<strong>Add Job</strong> button.
+						</p>
 					</div>
 				</div>
-				<div className="gantt-footer">
-					<BuilderLegend />
+			) : (
+				<div className="gantt-container">
+					<div className="gantt-content">
+						<div className="gantt-left">
+							<div className="gantt-left-header">
+								<svg ref={leftColumnHeaderRef} />
+							</div>
+							<div className="gantt-left-body">
+								<svg ref={leftColumnRef} />
+							</div>
+						</div>
+						<div className="gantt-right">
+							<div className="gantt-right-header">
+								<svg ref={headerRef} />
+							</div>
+							<div className="gantt-right-body" ref={scrollableRef}>
+								<svg className="inner-chart chart-svg" ref={chartRef} />
+								<TaskGroups
+									chartRef={chartRef}
+									barMargin={barMargin}
+									chartHeight={chartHeight}
+									numDays={numDays}
+									handleAutoScroll={handleAutoScroll}
+									setIsLoading={setIsLoading}
+									chartStartDate={chartStartDate}
+									daysBeforeStart={daysBeforeStart}
+									rowHeight={rowHeight}
+									workdayHours={workdayHours}
+									holidayChecker={holidayChecker}
+									dayWidth={dayWidth}
+									scrollToMonday={scrollToMonday}
+									onDatabaseError={handleDatabaseError}
+								/>
+							</div>
+						</div>
+					</div>
+					<div className="gantt-footer">
+						<BuilderLegend />
+					</div>
 				</div>
-			</div>
+			)}
 
 			{isLoading && (
 				<div className="loading-overlay">
 					<GridLoader color="maroon" size={15} />
 					<p>Loading Job Schedule...</p>
 				</div>
+			)}
+
+			{databaseError && (
+				<ErrorToast
+					message={databaseError}
+					onClose={() => setDatabaseError(null)}
+				/>
 			)}
 
 			<JobModalChartData
@@ -613,7 +647,7 @@ export const ChartContainer = () => {
 				}}
 				onSave={saveJob}
 				jobData={selectedJob}
-				tasksByBuilder={tasksByBuilder}
+				subTasksByEmployee={subTasksByEmployee}
 				timeOffByBuilder={timeOffByBuilder}
 				holidayChecker={holidayChecker}
 				holidays={holidays}
@@ -623,7 +657,9 @@ export const ChartContainer = () => {
 				lastJobsIndex={lastJobsIndex}
 				clickedTask={clickedTask}
 				setIsLoading={setIsLoading}
+				onDatabaseError={handleDatabaseError}
 			/>
+
 			<BuilderModal
 				visible={isBuilderModalOpen}
 				onCancel={() => setIsBuilderModalOpen(false)}
@@ -633,6 +669,7 @@ export const ChartContainer = () => {
 				chartStartDate={chartStartDate}
 				dayWidth={dayWidth}
 			/>
+
 			<HolidayModal
 				isOpen={isHolidayModalOpen}
 				onClose={() => setIsHolidayModalOpen(false)}

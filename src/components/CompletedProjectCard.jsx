@@ -4,8 +4,8 @@ import "./CompletedProjectCard.css";
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
 const CompletedProjectCard = ({ project }) => {
-	const jobName = project.name;
-	const completedDate = new Date(project.completedOn).toLocaleDateString();
+	const jobName = project.project_name;
+	const completedDate = new Date(project.project_completed_at).toLocaleDateString();
 
 	return (
 		<div className="completed-job-card">
@@ -21,13 +21,13 @@ const CompletedProjectCard = ({ project }) => {
 						<span key={category}>{category}</span>
 					))}
 				</div>
-				{project.rooms.map((room, index) => (
+				{project.tasks.map((task, index) => (
 					<div
-						key={room.id}
+						key={task.task_id}
 						className={`grid-row room-row ${index % 2 === 0 ? "even" : "odd"}`}
 					>
-						<span>{room.jobNumber}</span>
-						<span>{room.taskName}</span>
+						<span>{task.task_number}</span>
+						<span>{task.task_name}</span>
 						{categories.map((category) => (
 							<span key={category}>
 								<input type="checkbox" />

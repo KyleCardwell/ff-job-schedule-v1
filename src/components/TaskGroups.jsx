@@ -9,14 +9,15 @@ import {
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
 import * as d3 from "d3";
-import { getNextWorkday, sortAndAdjustDates } from "../utils/helpers";
 import {
-	updateEarliestStartDate,
-	updateLatestStartDate,
-	updateOneBuilderChartData,
-} from "../redux/actions/chartData";
+	calculateXPosition,
+	getNextWorkday,
+	sortAndAdjustDates,
+} from "../utils/helpers";
+import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
-import { isEqual } from "lodash";
+import { isEqual, omit } from "lodash";
+import { updateSubtasksPositions } from "../redux/actions/projects";
 
 const TaskGroups = ({
 	chartRef,
@@ -31,45 +32,55 @@ const TaskGroups = ({
 	workdayHours,
 	setIsLoading,
 	daysBeforeStart,
+	scrollToMonday,
+	onDatabaseError,
 }) => {
 	const dispatch = useDispatch();
 
 	const builders = useSelector((state) => state.builders.builders);
+	const employees = useSelector((state) => state.builders.employees);
 	const holidays = useSelector((state) => state.holidays.holidays);
 	const { tasks } = useSelector((state) => state.taskData);
-	const { tasksByBuilder } = useSelector((state) => state.taskData, isEqual);
-	const { earliestStartDate, latestStartDate } = useSelector(
-		(state) => state.chartData
+	const { subTasksByEmployee } = useSelector(
+		(state) => state.taskData,
+		isEqual
 	);
+
 	const taskGroupsRef = useRef(null);
+	const previousTaskStateRef = useRef(null);
 
 	const activeTasksData = useMemo(() => {
 		return tasks
-			.filter((task) => task.active !== false)
+			.filter((task) => task.task_active !== false)
 			.map((task, index) => ({
 				...task,
 				rowNumber: index,
+				xPosition: calculateXPosition(
+					task.start_date,
+					chartStartDate,
+					dayWidth
+				),
 			}));
-	}, [tasks]);
+	}, [tasks, chartStartDate, dayWidth]);
 
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
-		return builders.reduce((acc, builder) => {
-			acc[builder.id] = builder.timeOff.flatMap((period) =>
+		return employees.reduce((acc, builder) => {
+			acc[builder.employee_id] = builder.time_off?.flatMap((period) =>
 				eachDayOfInterval({
 					start: normalizeDate(new Date(period.start)),
 					end: normalizeDate(new Date(period.end)),
-				}).map((day) => normalizeDate(day).toISOString())
+				}).map((day) => normalizeDate(day))
 			);
 			return acc;
 		}, {});
-	}, [builders]);
+	}, [employees]);
 
 	// Calculate timeOffData
 	const timeOffData = useMemo(() => {
 		const xPositions = new Map();
-		return builders.flatMap((builder) =>
-			builder.timeOff.flatMap((period) => {
+		return employees.flatMap((builder) =>
+			builder.time_off?.flatMap((period) => {
 				const periodStart = normalizeDate(new Date(period.start));
 				const periodEnd = normalizeDate(new Date(period.end));
 				const chartEndDate = addDays(
@@ -96,36 +107,14 @@ const TaskGroups = ({
 						xPositions.set(x, true);
 						return {
 							x,
-							color: builder.color,
-							builderId: builder.id,
+							employee_color: builder.employee_color,
+							employee_id: builder.employee_id,
 							date: normalizeDate(day),
 						};
 					});
 			})
 		);
-	}, [builders, chartStartDate, numDays, dayWidth]);
-
-	const updateAllBuilderTasks = (newEarliestDate, excludeBuilderId) => {
-		const updatedChartStartDate = normalizeDate(
-			subDays(newEarliestDate, daysBeforeStart)
-		);
-		Object.entries(tasksByBuilder).forEach(([builderId, builderTasks]) => {
-			if (builderId !== excludeBuilderId) {
-				const sortedTasks = sortAndAdjustDates(
-					builderTasks,
-					workdayHours,
-					holidayChecker,
-					holidays,
-					null,
-					null,
-					timeOffByBuilder,
-					dayWidth,
-					updatedChartStartDate
-				);
-				dispatch(updateTasksByOneBuilder(builderId, sortedTasks));
-			}
-		});
-	};
+	}, [employees, chartStartDate, numDays, dayWidth]);
 
 	useEffect(() => {
 		if (
@@ -133,8 +122,8 @@ const TaskGroups = ({
 			!taskGroupsRef.current ||
 			!activeTasksData ||
 			activeTasksData.length === 0 ||
-			!Array.isArray(builders) ||
-			builders.length === 0
+			!Array.isArray(employees) ||
+			employees.length === 0
 		) {
 			return;
 		}
@@ -147,6 +136,12 @@ const TaskGroups = ({
 		const drag = d3
 			.drag()
 			.on("start", function (event, d) {
+				const employeeTasks = subTasksByEmployee[d.employee_id] || [];
+				previousTaskStateRef.current = {
+					employee_id: d.employee_id,
+					tasks: [...employeeTasks],
+				};
+
 				d3.select(this).classed("dragging", true);
 				d.dragStartX = d3.select(this).attr("x");
 				d.dragStartEventX = event.x;
@@ -170,41 +165,36 @@ const TaskGroups = ({
 				const snappedDayIndex =
 					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
 				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
-				let newStartDate = new Date(d.startDate);
+				let newStartDate = new Date(d.start_date);
 				newStartDate.setDate(newStartDate.getDate() + daysMoved);
 				// Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
 				newStartDate = getNextWorkday(
 					newStartDate,
 					holidayChecker,
 					holidays,
-					d.id,
+					d.employee_id,
 					timeOffByBuilder
 				);
 
 				// Update the dragged job
 				const updatedDraggedJob = {
 					...d,
-					startDate: newStartDate,
+					start_date: normalizeDate(newStartDate),
 				};
 
 				// Get the current builder's jobs and update the dragged job
-				const builderTasks = tasksByBuilder[d.builderId];
+				const builderTasks = subTasksByEmployee[d.employee_id];
 				const updatedBuilderTasks = builderTasks
-					.map((job) =>
-						job.id === d.id
+					.map((subTask) =>
+						subTask.subtask_id === d.subtask_id
 							? {
 									...updatedDraggedJob,
 									dragStartX: undefined,
 									dragStartEventX: undefined,
 							  }
-							: job
+							: subTask
 					)
-					.filter((job) => job.active);
-
-				const updatedChartStartDate =
-					newStartDate < earliestStartDate
-						? normalizeDate(subDays(newStartDate, daysBeforeStart))
-						: chartStartDate;
+					.filter((job) => job.task_active);
 
 				// Sort and adjust dates for the builder's jobs
 				const sortedBuilderTasks = sortAndAdjustDates(
@@ -212,16 +202,16 @@ const TaskGroups = ({
 					workdayHours,
 					holidayChecker,
 					holidays,
-					d.id,
+					d.subtask_id,
 					newStartDate,
 					timeOffByBuilder,
 					dayWidth,
-					updatedChartStartDate
+					chartStartDate
 				);
 				// Transition all jobs in the builder group
 				const jobGroups = taskGroupsSvg
-					.selectAll(`.task-group-${d.builderId}`)
-					.data(sortedBuilderTasks, (job) => job.id);
+					.selectAll(`.task-group-${d.employee_id}`)
+					.data(sortedBuilderTasks, (job) => job.subtask_id);
 
 				jobGroups
 					.transition()
@@ -230,21 +220,57 @@ const TaskGroups = ({
 						transition
 							.select("rect")
 							.attr("x", (job) => job.xPosition)
-							.attr("width", (job) => job.workPeriodDuration);
+							.attr("width", (job) => job.subtask_width);
 						transition
 							.select(".bar-text")
 							.attr("x", (job) => job.xPosition + 5);
 					})
 					.end()
-					.then(() => {
-						dispatch(updateOneBuilderChartData(sortedBuilderTasks));
-						if (newStartDate < earliestStartDate) {
-							updateTasksByOneBuilder(d.builderId, sortedBuilderTasks);
-							updateAllBuilderTasks(newStartDate, d.builderId);
-						} else {
+					.then(async () => {
+						try {
+							dispatch(updateOneBuilderChartData(sortedBuilderTasks));
 							dispatch(
-								updateTasksByOneBuilder(d.builderId, sortedBuilderTasks)
+								updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
 							);
+
+							// Filter out unchanged tasks
+							const tasksToUpdate = sortedBuilderTasks.filter((task) => {
+								const originalTask = tasks.find(
+									(t) => t.subtask_id === task.subtask_id
+								);
+								if (!originalTask) {
+									return true; // Keep new tasks
+								}
+
+								// Debug the comparison
+								const cleanTask = omit(task, ["xPosition"]);
+								const cleanOriginal = omit(originalTask, ["xPosition"]);
+
+								const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+
+								if (!isTaskEqual) {
+									return true;
+								}
+								return false;
+							});
+
+							await updateSubtasksPositions(tasksToUpdate);
+
+							previousTaskStateRef.current = null;
+						} catch (error) {
+							// Revert to previous state if database update fails
+							if (previousTaskStateRef.current) {
+								dispatch(
+									updateOneBuilderChartData(previousTaskStateRef.current.tasks)
+								);
+								dispatch(
+									updateTasksByOneBuilder(
+										previousTaskStateRef.current.employee_id,
+										previousTaskStateRef.current.tasks
+									)
+								);
+							}
+							onDatabaseError(error);
 						}
 					});
 				d3.select(this).classed("dragging", false);
@@ -268,24 +294,24 @@ const TaskGroups = ({
 			.enter()
 			.append("line")
 			.attr("class", "time-off-line")
-			.attr("x1", (d) => d.x + 3)
+			.attr("x1", (d) => d?.x + 3)
 			.attr("y1", 0)
-			.attr("x2", (d) => d.x + 3)
+			.attr("x2", (d) => d?.x + 3)
 			.attr("y2", chartHeight)
-			.attr("stroke", (d) => d.color)
+			.attr("stroke", (d) => d?.employee_color)
 			.attr("stroke-width", 6)
 			.attr("opacity", 0.6);
 
 		// Bind data to job groups using localJobs
 		const jobGroups = jobsGroup
 			.selectAll(".job-group")
-			.data(activeTasksData, (d) => d.id);
+			.data(activeTasksData, (d) => d.subtask_id);
 
 		// Enter new elements
 		const enterGroups = jobGroups
 			.enter()
 			.append("g")
-			.attr("class", (d) => `job-group task-group-${d.builderId}`)
+			.attr("class", (d) => `job-group task-group-${d.employee_id}`)
 			.attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
 			.attr("font-size", "12px");
 
@@ -311,25 +337,25 @@ const TaskGroups = ({
 				"y",
 				(d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
 			)
-			.attr("width", (d) => d.workPeriodDuration)
-			.attr(
-				"height",
-				(d) => (rowHeight - 2 * barMargin) * (d.heightFactor || 1)
-			)
-			.attr(
-				"fill",
-				(d) => builders.find((builder) => builder.id === d.builderId).color
-			);
+			.attr("width", (d) => d.subtask_width)
+			.attr("height", (d) => rowHeight - 2 * barMargin)
+			.attr("fill", (d) => {
+				const employee = employees.find(
+					(emp) => emp.employee_id === d.employee_id
+				);
+				return employee?.employee_color || "#808080"; // Fallback to gray if no color found
+			});
 
 		allGroups
 			.select("text")
 			.attr("x", (d) => d.xPosition + 5)
 			.attr("y", rowHeight / 2)
-			.text((d) => d.taskName) // Always show the text
+			.text((d) => d.task_name) // Always show the text
 			.attr("fill", "#ffffff")
 			.attr("font-size", "12px")
-			// .attr("font-weight", "bold")
-			.style("text-shadow", "1px 1px 2px rgba(0, 0, 0, 0.5)")
+			.attr("stroke", "#424242") // Add black stroke
+			.attr("stroke-width", "2px") // Adjust thickness of the stroke
+			.attr("paint-order", "stroke") // Makes stroke appear behind the fill
 			.style("pointer-events", "none");
 
 		// // Remove old elements
@@ -341,14 +367,14 @@ const TaskGroups = ({
 			.on("mouseover", function (event, d) {
 				d3.select(this)
 					.select(".bar-text")
-					.text(`${d.taskName} - ${d.duration} hours`);
+					.text(`${d.task_name} - ${d.duration} hours`);
 			})
 			.on("mouseout", function (event, d) {
-				d3.select(this).select(".bar-text").text(d.taskName);
+				d3.select(this).select(".bar-text").text(d.task_name);
 			});
 		setIsLoading(false);
 	}, [
-		builders,
+		employees,
 		dayWidth,
 		rowHeight,
 		chartStartDate,
@@ -361,8 +387,12 @@ const TaskGroups = ({
 		setIsLoading,
 		barMargin,
 		handleAutoScroll,
-		tasksByBuilder,
+		subTasksByEmployee,
 	]);
+
+	useEffect(() => {
+		scrollToMonday(new Date());
+	}, []);
 
 	return (
 		<svg

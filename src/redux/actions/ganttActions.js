@@ -25,16 +25,6 @@ export const incrementJobNumber = () => ({
 	type: Actions.jobs.INCREMENT_JOB_NUMBER,
 });
 
-export const updateNextJobNumber = (nextNumber) => {
-	if (nextNumber > 999) {
-		nextNumber = 101;
-	}
-	return {
-		type: Actions.jobs.UPDATE_NEXT_JOB_NUMBER,
-		payload: nextNumber,
-	};
-};
-
 export const updateWorkPeriod = (workPeriod) => ({
 	type: Actions.jobs.UPDATE_WORK_PERIOD,
 	payload: workPeriod,
@@ -52,7 +42,7 @@ export const updateWorkPeriodsByBuilder = (
 	return (dispatch) => {
 		// This function now returns another function
 		const updatedBuilderWorkPeriods = workPeriods.map((workPeriod) =>
-			workPeriod.id === singlePeriod.id ? singlePeriod : workPeriod
+			workPeriod.subtask_id === singlePeriod.subtask_id ? singlePeriod : workPeriod
 		);
 
 		const sortedBuilderWorkPeriods = sortAndAdjustDates(
@@ -60,7 +50,7 @@ export const updateWorkPeriodsByBuilder = (
 			workdayHours,
 			holidayChecker,
 			holidays,
-			singlePeriod.builderId,
+			singlePeriod.employee_id,
 			newStartDate,
 			timeOffByBuilder
 		);
@@ -69,7 +59,7 @@ export const updateWorkPeriodsByBuilder = (
 		dispatch({
 			type: Actions.jobs.UPDATE_WORK_PERIODS_BY_BUILDER,
 			payload: {
-				builderId: singlePeriod.builderId,
+				builderId: singlePeriod.employee_id,
 				workPeriods: sortedBuilderWorkPeriods,
 			},
 		});

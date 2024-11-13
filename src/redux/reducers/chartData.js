@@ -3,26 +3,26 @@ import { newJobs } from "../../mocks/jobsRealData";
 import { getChartData } from "../../utils/helpers";
 import { Actions } from "../actions";
 
-const { taskList, earliestStartDate, latestStartDate } = getChartData(newJobs);
+// const { taskList, earliestStartDate, latestStartDate } = getChartData(newJobs);
 
 const updateDateRange = (state, updatedTasks) => {
 	let needsUpdate = false;
 
-	// Sort the updated tasks by startDate
-	const sortedTasks = [...updatedTasks].sort(
-		(a, b) => new Date(a.startDate) - new Date(b.startDate)
+	// Sort the updated tasks by start_date
+	const sortedTasks = [...updatedTasks]?.sort(
+		(a, b) => new Date(a.start_date) - new Date(b.start_date)
 	);
 
 	// Determine the new earliest and latest start dates
-	const newEarliestStartDate = new Date(sortedTasks[0].startDate);
+	const newEarliestStartDate = new Date(sortedTasks[0]?.start_date);
 	const newLatestStartDate = new Date(
-		sortedTasks[sortedTasks.length - 1].startDate
+		sortedTasks[sortedTasks.length - 1]?.start_date
 	);
 
 	// Check if the dates need to be updated
 	if (
-		newEarliestStartDate < state.earliestStartDate ||
-		newLatestStartDate > state.latestStartDate
+		newEarliestStartDate !== state.earliestStartDate ||
+		newLatestStartDate !== state.latestStartDate
 	) {
 		needsUpdate = true;
 	}
@@ -35,30 +35,50 @@ const updateDateRange = (state, updatedTasks) => {
 };
 
 const initialState = {
-	chartData: taskList,
-	earliestStartDate,
-	latestStartDate,
-	nextJobNumber: 101,
+	chartData: [],
+	earliestStartDate: null,
+	latestStartDate: null,
 };
 
 export const chartDataReducer = (state = initialState, action) => {
 	switch (action.type) {
-		case Actions.jobs.SAVE_JOBS:
+		case Actions.chartData.FETCH_CHART_DATA_START:
+			return {
+				...state,
+				loading: true,
+				error: null,
+			};
+
+		case Actions.chartData.FETCH_CHART_DATA_SUCCESS:
 			return {
 				...state,
 				chartData: action.payload,
+				earliestStartDate: action.payload[0]?.start_date,
+				latestStartDate:
+					action.payload[action.payload.length - 1]?.start_date,
+				loading: false,
+				error: null,
 			};
+
+		case Actions.chartData.FETCH_CHART_DATA_ERROR:
+			return {
+				...state,
+				loading: false,
+				error: action.payload,
+			};
+
 		case Actions.chartData.UPDATE_ONE_BUILDER_CHART_DATA: {
 			const updatedTasksMap = new Map(
-				action.payload.map((task) => [task.id, task])
+				action.payload.map((task) => [task.subtask_id, task])
 			);
 			const updatedChartData = state.chartData.map((task) => {
-				if (updatedTasksMap.has(task.id)) {
-					const updatedTask = updatedTasksMap.get(task.id);
+				if (updatedTasksMap.has(task.subtask_id)) {
+					const updatedTask = updatedTasksMap.get(task.subtask_id);
 					return {
 						...task,
 						...updatedTask,
-						startDate: updatedTask.startDate,
+						start_date: updatedTask.start_date,
+						subtask_width: updatedTask.subtask_width,
 					};
 				}
 				return task;
@@ -71,81 +91,23 @@ export const chartDataReducer = (state = initialState, action) => {
 				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
 		}
-		// case Actions.chartData.JOB_MODAL_UPDATE_CHART_DATA: {
-		// 	const { updatedTasks, removedWorkPeriods } = action.payload;
 
-		// 	// First, remove the tasks that should be deleted
-		// 	let updatedChartData = state.chartData.filter(
-		// 		(task) => !removedWorkPeriods.includes(task.id)
-		// 	);
-
-		// 	updatedTasks.forEach((updatedTask) => {
-		// 		const existingIndex = updatedChartData.findIndex(
-		// 			(task) => task.id === updatedTask.id
-		// 		);
-
-		// 		if (existingIndex !== -1) {
-		// 			// Update existing task
-		// 			updatedChartData[existingIndex] = {
-		// 				...updatedChartData[existingIndex],
-		// 				...updatedTask,
-		// 			};
-		// 		} else {
-		// 			// New task: find the correct position to insert
-		// 			let insertIndex = updatedChartData.length; // Default to end of array
-
-		// 			// Find the last task of the same room
-		// 			const sameRoomLastIndex = updatedChartData.reduce(
-		// 				(lastIndex, task, index) => {
-		// 					return task.roomId === updatedTask.roomId ? index : lastIndex;
-		// 				},
-		// 				-1
-		// 			);
-
-		// 			if (sameRoomLastIndex !== -1) {
-		// 				// Insert after the last task of the same room
-		// 				insertIndex = sameRoomLastIndex + 1;
-		// 			} else {
-		// 				// If no tasks for this room, find the last task of the same job
-		// 				const sameJobLastIndex = updatedChartData.reduce(
-		// 					(lastIndex, task, index) => {
-		// 						return task.jobId === updatedTask.jobId ? index : lastIndex;
-		// 					},
-		// 					-1
-		// 				);
-
-		// 				if (sameJobLastIndex !== -1) {
-		// 					// Insert after the last task of the same job
-		// 					insertIndex = sameJobLastIndex + 1;
-		// 				}
-		// 			}
-
-		// 			// Insert the new task
-		// 			updatedChartData.splice(insertIndex, 0, updatedTask);
-		// 		}
-		// 	});
-
-		// 	const { earliestStartDate, latestStartDate, needsUpdate } =
-		// 		updateDateRange(state, updatedChartData);
-
-		// 	return {
-		// 		...state,
-		// 		chartData: updatedChartData,
-		// 		...(needsUpdate && { earliestStartDate, latestStartDate }),
-		// 	};
-		// }
 		case Actions.chartData.JOB_MODAL_UPDATE_CHART_DATA: {
 			const { updatedTasks, removedWorkPeriods } = action.payload;
 
 			// Remove the tasks that should be deleted
 			let updatedChartData = state.chartData.filter(
-				(task) => !removedWorkPeriods.includes(task.id)
+				(task) => !removedWorkPeriods.includes(task.subtask_id)
+			);
+
+			const tasksToUpdate = updatedTasks.filter(
+				(task) => !removedWorkPeriods.includes(task.subtask_id)
 			);
 
 			// Replace or add the updated tasks
-			updatedTasks.forEach((updatedTask) => {
+			tasksToUpdate.forEach((updatedTask) => {
 				const existingIndex = updatedChartData.findIndex(
-					(task) => task.id === updatedTask.id
+					(task) => task.subtask_id === updatedTask.subtask_id
 				);
 				if (existingIndex !== -1) {
 					updatedChartData[existingIndex] = updatedTask;
@@ -156,15 +118,13 @@ export const chartDataReducer = (state = initialState, action) => {
 
 			// Sort the tasks
 			updatedChartData.sort((a, b) => {
-				const projectComparison = a.projectCreatedAt.localeCompare(
-					b.projectCreatedAt
-				);
-				if (projectComparison !== 0) return projectComparison;
-
-				const roomComparison = a.roomCreatedAt.localeCompare(b.roomCreatedAt);
-				if (roomComparison !== 0) return roomComparison;
-
-				return a.subTaskCreatedAt.localeCompare(b.subTaskCreatedAt);
+				if (a.project_created_at === b.project_created_at) {
+					if (a.task_created_at === b.task_created_at) {
+						return a.subtask_created_at.localeCompare(b.subtask_created_at);
+					}
+					return a.task_created_at.localeCompare(b.task_created_at);
+				}
+				return a.project_created_at.localeCompare(b.project_created_at);
 			});
 
 			const { earliestStartDate, latestStartDate, needsUpdate } =
@@ -178,7 +138,7 @@ export const chartDataReducer = (state = initialState, action) => {
 		}
 		case Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART:
 			const updatedChartData = state.chartData.filter(
-				(item) => item.jobId !== action.payload
+				(item) => item.project_id !== action.payload
 			);
 			const { earliestStartDate, latestStartDate, needsUpdate } =
 				updateDateRange(state, updatedChartData);
@@ -187,11 +147,7 @@ export const chartDataReducer = (state = initialState, action) => {
 				chartData: updatedChartData,
 				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
-		case Actions.jobs.UPDATE_NEXT_JOB_NUMBER:
-			return {
-				...state,
-				nextJobNumber: action.payload,
-			};
+
 		default:
 			return state;
 	}

@@ -2,11 +2,34 @@ import { completedJobs } from "../../mocks/jobsCompleted";
 import { Actions } from "../actions";
 
 const initialState = {
-	completedProjects: [...completedJobs],
+	completedProjects: [],
+	loading: false,
+	error: null,
 };
 
 export const completedProjectsReducer = (state = initialState, action) => {
 	switch (action.type) {
+		case Actions.completedProjects.FETCH_COMPLETED_PROJECTS_START:
+			return {
+				...state,
+				loading: true,
+				error: null,
+			};
+
+		case Actions.completedProjects.FETCH_COMPLETED_PROJECTS_SUCCESS:
+			return {
+				...state,
+				loading: false,
+				completedProjects: action.payload,
+				error: null,
+			};
+
+		case Actions.completedProjects.FETCH_COMPLETED_PROJECTS_ERROR:
+			return {
+				...state,
+				loading: false,
+				error: action.payload,
+			};
 		case Actions.completedProjects.UPDATE_COMPLETED_PROJECTS:
 			return {
 				...state,
@@ -23,7 +46,7 @@ export const completedProjectsReducer = (state = initialState, action) => {
 			return {
 				...state,
 				completedProjects: state.completedProjects.filter(
-					(project) => project.id !== action.payload
+					(project) => project.project_id !== action.payload
 				),
 			};
 		default:

@@ -1,34 +1,42 @@
 import { v4 as uuidv4 } from "uuid";
 import { Actions } from "../actions";
 
+const ffBuilders = [
+	{
+		id: 12,
+		employee_name: "Unassigned",
+		employee_color: "#FFC0CC",
+		timeOff: [],
+	},
+	{
+		id: 13,
+		employee_name: "Frosty",
+		employee_color: "#86CEEB",
+		timeOff: [
+			{
+				start: "2024-10-01T06:00:00.000Z",
+				end: "2024-10-08T06:00:00.000Z",
+			},
+		],
+	},
+	{ id: 14, employee_name: "Nick", employee_color: "#A32ACF", timeOff: [] },
+	{
+		id: 15,
+		employee_name: "Patrick",
+		employee_color: "#4CAF51",
+		timeOff: [
+			{
+				start: "2024-10-04T06:00:00.000Z",
+				end: "2024-10-10T06:00:00.000Z",
+			},
+		],
+	},
+	{ id: 16, employee_name: "Dawayne", employee_color: "#FF2E54", timeOff: [] },
+];
+
 const initialState = {
-	builders: [
-		{ id: "1", name: "No one", color: "#FFC0CC", timeOff: [] },
-		{
-			id: "2",
-			name: "Frosty",
-			color: "#86CEEB",
-			timeOff: [
-				{
-					start: "2024-10-01T06:00:00.000Z",
-					end: "2024-10-08T06:00:00.000Z",
-				},
-			],
-		},
-		{
-			id: "3",
-			name: "Patrick",
-			color: "#4CAF51",
-			timeOff: [
-				{
-					start: "2024-10-04T06:00:00.000Z",
-					end: "2024-10-10T06:00:00.000Z",
-				},
-			],
-		},
-		{ id: "4", name: "Nick", color: "#A32ACF", timeOff: [] },
-		{ id: "5", name: "Dawayne", color: "#FF2E54", timeOff: [] },
-	], // Array to store builder objects with id, name, and color
+	builders: [], // Array to store builder objects with id, name, and color
+	employees: [],
 };
 
 export const builders = (state = initialState, action) => {
@@ -39,9 +47,9 @@ export const builders = (state = initialState, action) => {
 				builders: [
 					...state.builders,
 					{
-						id: uuidv4(),
-						name: action.payload.name,
-						color: action.payload.color,
+						employee_id: uuidv4(),
+						employee_name: action.payload.employee_name,
+						employee_color: action.payload.employee_color,
 						timeOff: action.payload.timeOff,
 					},
 				], // Add new builder to the array
@@ -51,7 +59,7 @@ export const builders = (state = initialState, action) => {
 			return {
 				...state,
 				builders: state.builders.filter(
-					(builder) => builder.id !== action.payload
+					(builder) => builder.employee_id !== action.payload
 				), // Remove builder by id
 			};
 
@@ -59,9 +67,39 @@ export const builders = (state = initialState, action) => {
 			return {
 				...state,
 				builders: state.builders.map((builder) =>
-					builder.id === action.payload.id
+					builder.employee_id === action.payload.employee_id
 						? { ...builder, ...action.payload } // Update the builder data
 						: builder
+				),
+			};
+
+		case Actions.employees.SET_EMPLOYEES:
+			return {
+				...state,
+				employees: [...action.payload],
+			};
+
+		case Actions.employees.UPDATE_EMPLOYEE:
+			return {
+				...state,
+				employees: state.employees.map((employee) =>
+					employee.employee_id === action.payload.employee_id
+						? { ...employee, ...action.payload }
+						: employee
+				),
+			};
+
+		case Actions.employees.ADD_EMPLOYEE:
+			return {
+				...state,
+				employees: [...state.employees, action.payload],
+			};
+
+		case Actions.employees.DELETE_EMPLOYEE:
+			return {
+				...state,
+				employees: state.employees.filter(
+					(employee) => employee.employee_id !== action.payload
 				),
 			};
 

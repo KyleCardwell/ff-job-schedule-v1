@@ -19,7 +19,7 @@ export const getChartData = (jobData) => {
 		return job.rooms.flatMap((room) => {
 			const workPeriods = room.workPeriods.length;
 			return room.workPeriods.map((workPeriod, workPeriodIndex) => {
-				const wpStartDate = new Date(workPeriod.startDate);
+				const wpStartDate = new Date(workPeriod.start_date);
 				const rowNumber = positionCounter++;
 
 				// Update earliest and latest start dates
@@ -34,15 +34,13 @@ export const getChartData = (jobData) => {
 					...workPeriod,
 					roomId: room.id,
 					taskName: room.name,
-					jobId: job.id,
-					jobName: job.name,
+					project_id: job.id,
+					project_name: job.project_name,
 					rowNumber,
 					jobNumber: room.jobNumber,
-					projectCreatedAt: job.projectCreatedAt,
-					// jobsIndex: i,
-          workPeriodIndex,
+					project_created_at: job.project_created_at,
 					heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
-					roomCreatedAt: room.roomCreatedAt,
+					task_created_at: room.task_created_at,
 					active: room.active,
 				};
 			});
@@ -77,23 +75,23 @@ export const getTaskData = (jobData) => {
 					roomId: room.id,
 					taskName: room.name,
 					jobsIndex,
-					roomCreatedAt: room.roomCreatedAt,
+					task_created_at: room.task_created_at,
 					roomIndex,
-					projectCreatedAt: job.projectCreatedAt,
+					project_created_at: job.project_created_at,
 					workPeriodIndex,
-					workPeriodDuration: workPeriod.workPeriodDuration,
+					subtask_width: workPeriod.subtask_width,
 					rowNumber,
 					active: room.active,
-					roomCreatedAt: room.roomCreatedAt,
-          heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
+					task_created_at: room.task_created_at,
+					heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
 				};
 			});
 		});
 	});
 
 	// Group work periods by builderId
-	const tasksByBuilder = tasks.reduce((acc, workPeriod) => {
-		const builderId = workPeriod.builderId;
+	const subTasksByEmployee = tasks.reduce((acc, workPeriod) => {
+		const builderId = workPeriod.employee_id;
 		if (!acc[builderId]) {
 			acc[builderId] = [];
 		}
@@ -101,14 +99,14 @@ export const getTaskData = (jobData) => {
 		return acc;
 	}, {});
 
-	// Sort tasks within each builder group by startDate
-	Object.keys(tasksByBuilder).forEach((builderId) => {
-		tasksByBuilder[builderId].sort(
-			(a, b) => new Date(a.startDate) - new Date(b.startDate)
+	// Sort tasks within each builder group by start_date
+	Object.keys(subTasksByEmployee).forEach((builderId) => {
+		subTasksByEmployee[builderId].sort(
+			(a, b) => new Date(a.start_date) - new Date(b.start_date)
 		);
 	});
 
-	return { tasks, tasksByBuilder, multiWorkPeriodRooms };
+	return { tasks, subTasksByEmployee, multiWorkPeriodRooms };
 };
 
 export const getPreviousMonday = (dateInput) => {
@@ -140,7 +138,7 @@ export const getNextWorkday = (
 	holidayChecker,
 	holidays,
 	builderId,
-	timeOffByBuilder
+	timeOffByBuilder = {}
 ) => {
 	let nextDay = normalizeDate(date);
 
@@ -151,24 +149,27 @@ export const getNextWorkday = (
 		(builderId &&
 			timeOffByBuilder[builderId]?.some(
 				(timeOffDate) =>
-					normalizeDate(new Date(timeOffDate)).getTime() === nextDay.getTime()
+					isSameDay(
+						normalizeDate(new Date(timeOffDate)),
+						nextDay
+					)
 			))
 	) {
-		nextDay = addDays(nextDay, 1);
+		nextDay = normalizeDate(addDays(nextDay, 1));
 	}
 	return nextDay;
 };
 
 export const totalJobHours = (
-	startDate,
+	start_date,
 	jobHours,
 	workdayHours,
 	holidayChecker,
 	holidays,
 	builderId,
-	timeOffByBuilder
+	timeOffByBuilder = {}
 ) => {
-	let currentDate = normalizeDate(startDate);
+	let currentDate = normalizeDate(start_date);
 
 	// Calculate total days based on jobHours (e.g., 16 hours = 2 days)
 	let totalDays = Math.ceil(jobHours / workdayHours);
@@ -176,16 +177,22 @@ export const totalJobHours = (
 	// Loop through each day in the range based on totalDays
 	for (let i = 0; i < totalDays; i++) {
 		// Check if the current day is a weekend
+		const isTimeOff =
+			builderId && timeOffByBuilder[builderId]
+				? timeOffByBuilder[builderId].some(
+						(timeOffDate) =>
+							isSameDay(
+								normalizeDate(new Date(timeOffDate)),
+								currentDate
+							)
+				  )
+				: false;
+
 		if (
 			isSaturday(currentDate) ||
 			isSunday(currentDate) ||
 			isHoliday(currentDate, holidayChecker, holidays) ||
-			(builderId &&
-				timeOffByBuilder[builderId]?.some(
-					(timeOffDate) =>
-						normalizeDate(new Date(timeOffDate)).getTime() ===
-						currentDate.getTime()
-				))
+			isTimeOff
 		) {
 			jobHours += 8;
 			totalDays += 1;
@@ -226,77 +233,66 @@ export const sortAndAdjustDates = (
 
 	// Sort the array by date
 	arrayToProcess.sort((a, b) => {
-		const dateA = new Date(a.startDate);
-		const dateB = new Date(b.startDate);
-		return dateA - dateB;
+		return a.start_date.localeCompare(b.start_date);
 	});
 
 	// Adjust the dates and calculate endDates
 	return arrayToProcess.reduce((acc, current, index) => {
-		if (index === 0) {
-			// Keep the first object's date as is
-			const startDate = normalizeDate(current.startDate);
-			const jobHours = totalJobHours(
-				startDate,
-				current.duration,
-				workdayHours,
-				holidayChecker,
-				holidays,
-				current.builderId,
-				timeOffByBuilder
-			);
-			const newEndDate = addDays(startDate, Math.ceil(jobHours / workdayHours));
-			acc.push({
-				...current,
-				startDate: normalizeDate(startDate),
-				endDate: normalizeDate(newEndDate),
-				workPeriodDuration: (jobHours / workdayHours) * dayWidth,
-				xPosition: calculateXPosition(startDate, chartStartDate, dayWidth),
-			});
-		} else {
-			const previousJob = acc[index - 1];
-			const newStartDate = getNextWorkday(
-				previousJob.endDate,
-				holidayChecker,
-				holidays,
-				current.builderId,
-				timeOffByBuilder
-			);
-			const jobHours = totalJobHours(
-				newStartDate,
-				current.duration,
-				workdayHours,
-				holidayChecker,
-				holidays,
-				current.builderId,
-				timeOffByBuilder
-			);
-			const endDate = addDays(newStartDate, Math.ceil(jobHours / workdayHours));
-			acc.push({
-				...current,
-				startDate: normalizeDate(newStartDate),
-				endDate: normalizeDate(endDate),
-				workPeriodDuration: (jobHours / workdayHours) * dayWidth,
-				xPosition: calculateXPosition(newStartDate, chartStartDate, dayWidth),
-			});
-		}
+		const initialStartDate = normalizeDate(current.start_date);
+
+		const start_date =
+			index === 0
+				? initialStartDate
+				: normalizeDate(
+						getNextWorkday(
+							acc[index - 1].end_date,
+							holidayChecker,
+							holidays,
+							current.employee_id,
+							timeOffByBuilder
+						)
+				  );
+
+		const jobHours = totalJobHours(
+			start_date,
+			current.duration,
+			workdayHours,
+			holidayChecker,
+			holidays,
+			current.employee_id,
+			timeOffByBuilder
+		);
+
+		const end_date = normalizeDate(
+			addDays(start_date, Math.ceil(jobHours / workdayHours))
+		);
+
+		acc.push({
+			...current,
+			start_date: start_date,
+			end_date: end_date,
+			subtask_width: (jobHours / workdayHours) * dayWidth,
+			xPosition: calculateXPosition(start_date, chartStartDate, dayWidth),
+		});
 		return acc;
 	}, []);
-
-	// return sortedTasks;
 };
 
 // Function to reconstruct the job structure for Redux
 export const reconstructJobsForRedux = (flatJobs) => {
 	const jobMap = {};
 	flatJobs.forEach((job) => {
-		if (!jobMap[job.jobId]) {
-			jobMap[job.jobId] = { id: job.jobId, name: job.jobName, rooms: [] };
+		if (!jobMap[job.project_id]) {
+			jobMap[job.project_id] = {
+				id: job.project_id,
+				name: job.jobName,
+				rooms: [],
+			};
 		}
-		jobMap[job.jobId].rooms.push({
+		jobMap[job.project_id].rooms.push({
 			id: job.id,
-			builderId: job.builderId,
-			startDate: job.startDate,
+			builderId: job.employee_id,
+			start_date: job.start_date,
 			duration: job.duration,
 			jobNumber: job.jobNumber,
 			name: job.name,
