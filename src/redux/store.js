@@ -1,4 +1,3 @@
-// redux/store.js
 import { configureStore } from "@reduxjs/toolkit";
 import rootReducer from "./reducers/rootReducer";
 import logger from "redux-logger";
@@ -15,7 +14,7 @@ const store = configureStore({
 			return customizedMiddleware.concat(logger);
 		}
 
-		return customizedMiddleware.concat(logger);
+		return customizedMiddleware; // No logger in production
 	},
 	devTools: process.env.NODE_ENV === "development",
 });
