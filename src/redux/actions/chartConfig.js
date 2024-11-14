@@ -9,28 +9,6 @@ export const fetchChartConfig = () => async (dispatch) => {
 			.select("*")
 			.single();
 
-		if (error && error.code === "PGRST116") {
-			// No rows returned
-			// Create new config row with default values
-			const { data: newData, error: insertError } = await supabase
-				.from("chart_config")
-				.insert({
-					next_task_number: 101, // Default starting number
-					// Add any other default fields here
-				})
-				.select()
-				.single();
-
-			if (insertError) throw insertError;
-
-			dispatch({
-				type: Actions.chartConfig.FETCH_CONFIG_SUCCESS,
-				payload: newData,
-			});
-
-			return newData;
-		}
-
 		if (error) throw error;
 
 		dispatch({

@@ -271,7 +271,7 @@ const BuilderModal = ({
 				onCancel();
 			} catch (error) {
 				console.error("Error saving builders:", error);
-				setSaveError("Failed to save changes. Please try again.");
+				setSaveError("Failed to save Employees. Please try again.");
 			} finally {
 				setIsSaving(false);
 			}
