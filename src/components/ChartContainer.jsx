@@ -45,11 +45,12 @@ export const ChartContainer = () => {
 					}
 
 					const roomStartDate = new Date(room.start_date);
+					const roomEndDate = new Date(room.end_date);
 					if (roomStartDate < earliestStartDate) {
 						earliestStartDate = roomStartDate;
 					}
-					if (roomStartDate > latestStartDate) {
-						latestStartDate = roomStartDate;
+					if (roomEndDate > latestStartDate) {
+						latestStartDate = roomEndDate;
 					}
 
 					return {
@@ -90,8 +91,8 @@ export const ChartContainer = () => {
 
 	const [isLoading, setIsLoading] = useState(false);
 
-	const daysBeforeStart = 30;
-	const daysAfterEnd = 60;
+	const daysBeforeStart = 15;
+	const daysAfterEnd = 15;
 	const dayWidth = 30;
 	const workdayHours = 8;
 	const rowHeight = 25;
