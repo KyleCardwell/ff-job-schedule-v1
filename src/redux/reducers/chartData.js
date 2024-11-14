@@ -49,16 +49,19 @@ export const chartDataReducer = (state = initialState, action) => {
 				error: null,
 			};
 
-		case Actions.chartData.FETCH_CHART_DATA_SUCCESS:
+		case Actions.chartData.FETCH_CHART_DATA_SUCCESS: {
+			const { earliestStartDate, latestStartDate } = updateDateRange(state, [
+				...action.payload,
+			]);
 			return {
 				...state,
 				chartData: action.payload,
-				earliestStartDate: action.payload[0]?.start_date,
-				latestStartDate:
-					action.payload[action.payload.length - 1]?.start_date,
+				earliestStartDate,
+				latestStartDate,
 				loading: false,
 				error: null,
 			};
+		}
 
 		case Actions.chartData.FETCH_CHART_DATA_ERROR:
 			return {

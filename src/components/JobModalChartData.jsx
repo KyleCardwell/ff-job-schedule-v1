@@ -210,7 +210,6 @@ const JobModal = ({
 			workPeriods: [newWorkPeriod],
 		};
 
-		console.log("New local rooms", [...localRooms, newTask]);
 		setLocalRooms((prevRooms) => [...prevRooms, newTask]);
 		setLocalJobsByBuilder((prev) => ({
 			...prev,

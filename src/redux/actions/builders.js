@@ -40,8 +40,32 @@ export const fetchEmployees = () => async (dispatch) => {
 	}
 };
 
-export const addEmployees = (employees) => async (dispatch) => {
+export const addEmployees = (employees) => async (dispatch, getState) => {
 	try {
+		const state = getState();
+		const { chartConfig } = state;
+
+		// Check if chart_config_id is missing
+		if (!chartConfig.chart_config_id) {
+			// Create a new chart_config entry
+			const { data: newChartConfig, error: configError } = await supabase
+				.from("chart_config")
+				.insert({
+					next_task_number: 101, // Default starting number
+					// Add any other default fields here
+				})
+				.select()
+				.single();
+
+			if (configError) throw configError;
+
+			// Dispatch action to update chartConfig in Redux
+			dispatch({
+				type: Actions.chartConfig.FETCH_CONFIG_SUCCESS,
+				payload: newChartConfig,
+			});
+		}
+
 		// Insert multiple builders into Supabase
 		const { data, error } = await supabase
 			.from("employees")
@@ -103,24 +127,24 @@ export const updateEmployees = (employees) => async (dispatch) => {
 
 export const deleteEmployees = (employeeIds) => async (dispatch) => {
 	try {
-			const { error } = await supabase
-					.from("employees")
-					.delete()
-					.in("employee_id", employeeIds);
+		const { error } = await supabase
+			.from("employees")
+			.delete()
+			.in("employee_id", employeeIds);
 
-			if (error) throw error;
+		if (error) throw error;
 
-			// Update Redux store for each deleted employee
-			employeeIds.forEach(id => {
-					dispatch({
-							type: Actions.employees.DELETE_EMPLOYEE,
-							payload: id
-					});
+		// Update Redux store for each deleted employee
+		employeeIds.forEach((id) => {
+			dispatch({
+				type: Actions.employees.DELETE_EMPLOYEE,
+				payload: id,
 			});
+		});
 
-			return { success: true };
+		return { success: true };
 	} catch (error) {
-			console.error("Error deleting employees:", error);
-			return { success: false, error: error.message };
+		console.error("Error deleting employees:", error);
+		return { success: false, error: error.message };
 	}
 };
