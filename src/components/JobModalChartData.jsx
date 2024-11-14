@@ -64,6 +64,7 @@ const JobModal = ({
 	const [nextJobNumber, setNextJobNumber] = useState(null);
 
 	const clickedTaskRef = useRef(null);
+	const newTaskNumberRef = useRef(null);
 	const newTaskNameRef = useRef(null);
 	const jobNameInputRef = useRef(null);
 
@@ -221,8 +222,8 @@ const JobModal = ({
 		setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
 
 		setTimeout(() => {
-			if (newTaskNameRef.current) {
-				newTaskNameRef.current.focus();
+			if (newTaskNumberRef.current) {
+				newTaskNumberRef.current.focus();
 			}
 		}, 0);
 	};
@@ -1108,6 +1109,11 @@ const JobModal = ({
 													? "error"
 													: ""
 											}`}
+											ref={
+												subTaskIndex === 0
+													? newTaskNumberRef
+													: null
+											}
 										/>
 									) : (
 										<span className="job-number-input">

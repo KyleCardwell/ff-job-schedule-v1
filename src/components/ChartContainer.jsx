@@ -23,38 +23,54 @@ import ErrorToast from "./ErrorToast";
 
 export const ChartContainer = () => {
 	const holidays = useSelector((state) => state.holidays.holidays);
-	const { earliestStartDate, latestStartDate, chartData } = useSelector(
-		(state) => state.chartData
-	);
-	// Get projects data from Redux
-	// const projects = useSelector((state) => state.projects.data);
+	const { chartData } = useSelector((state) => state.chartData);
 	const databaseLoading = useSelector((state) => state.projects.loading);
 
 	const builders = useSelector((state) => state.builders.builders);
 	const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
 
-	const { activeRoomsData, lastJobsIndex } = useMemo(() => {
-		let currentJobId = null;
-		let jobsIndex = -1;
+	const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate } =
+		useMemo(() => {
+			let currentJobId = null;
+			let jobsIndex = -1;
+			let earliestStartDate = new Date(8640000000000000); // Initialize with max date
+			let latestStartDate = new Date(-8640000000000000); // Initialize with min date
 
-		const activeRooms = chartData
-			.filter((room) => room.task_active)
-			.map((room) => {
-				if (room.project_id !== currentJobId) {
-					currentJobId = room.project_id;
-					jobsIndex++;
-				}
-				return {
-					...room,
-					jobsIndex: jobsIndex,
-				};
-			});
+			const activeRooms = chartData
+				.filter((room) => room.task_active)
+				.map((room) => {
+					if (room.project_id !== currentJobId) {
+						currentJobId = room.project_id;
+						jobsIndex++;
+					}
 
-		return {
-			activeRoomsData: activeRooms,
-			lastJobsIndex: jobsIndex,
-		};
-	}, [chartData]);
+					const roomStartDate = new Date(room.start_date);
+					if (roomStartDate < earliestStartDate) {
+						earliestStartDate = roomStartDate;
+					}
+					if (roomStartDate > latestStartDate) {
+						latestStartDate = roomStartDate;
+					}
+
+					return {
+						...room,
+						jobsIndex: jobsIndex,
+					};
+				});
+
+			return {
+				activeRoomsData: activeRooms,
+				lastJobsIndex: jobsIndex,
+				earliestStartDate:
+					earliestStartDate === new Date(8640000000000000)
+						? null
+						: earliestStartDate,
+				latestStartDate:
+					latestStartDate === new Date(-8640000000000000)
+						? null
+						: latestStartDate,
+			};
+		}, [chartData]);
 
 	const chartRef = useRef(null);
 	const headerRef = useRef(null); // For the fixed header

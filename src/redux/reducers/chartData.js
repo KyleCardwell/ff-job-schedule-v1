@@ -3,41 +3,8 @@ import { newJobs } from "../../mocks/jobsRealData";
 import { getChartData } from "../../utils/helpers";
 import { Actions } from "../actions";
 
-// const { taskList, earliestStartDate, latestStartDate } = getChartData(newJobs);
-
-const updateDateRange = (state, updatedTasks) => {
-	let needsUpdate = false;
-
-	// Sort the updated tasks by start_date
-	const sortedTasks = [...updatedTasks]?.sort(
-		(a, b) => new Date(a.start_date) - new Date(b.start_date)
-	);
-
-	// Determine the new earliest and latest start dates
-	const newEarliestStartDate = new Date(sortedTasks[0]?.start_date);
-	const newLatestStartDate = new Date(
-		sortedTasks[sortedTasks.length - 1]?.start_date
-	);
-
-	// Check if the dates need to be updated
-	if (
-		newEarliestStartDate !== state.earliestStartDate ||
-		newLatestStartDate !== state.latestStartDate
-	) {
-		needsUpdate = true;
-	}
-
-	return {
-		earliestStartDate: newEarliestStartDate,
-		latestStartDate: newLatestStartDate,
-		needsUpdate,
-	};
-};
-
 const initialState = {
 	chartData: [],
-	earliestStartDate: null,
-	latestStartDate: null,
 };
 
 export const chartDataReducer = (state = initialState, action) => {
@@ -50,14 +17,9 @@ export const chartDataReducer = (state = initialState, action) => {
 			};
 
 		case Actions.chartData.FETCH_CHART_DATA_SUCCESS: {
-			const { earliestStartDate, latestStartDate } = updateDateRange(state, [
-				...action.payload,
-			]);
 			return {
 				...state,
 				chartData: action.payload,
-				earliestStartDate,
-				latestStartDate,
 				loading: false,
 				error: null,
 			};
@@ -86,12 +48,9 @@ export const chartDataReducer = (state = initialState, action) => {
 				}
 				return task;
 			});
-			const { earliestStartDate, latestStartDate, needsUpdate } =
-				updateDateRange(state, [...updatedChartData]);
 			return {
 				...state,
 				chartData: updatedChartData,
-				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
 		}
 
@@ -130,25 +89,19 @@ export const chartDataReducer = (state = initialState, action) => {
 				return a.project_created_at.localeCompare(b.project_created_at);
 			});
 
-			const { earliestStartDate, latestStartDate, needsUpdate } =
-				updateDateRange(state, updatedChartData);
-
 			return {
 				...state,
 				chartData: updatedChartData,
-				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
 		}
 		case Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART:
 			const updatedChartData = state.chartData.filter(
 				(item) => item.project_id !== action.payload
 			);
-			const { earliestStartDate, latestStartDate, needsUpdate } =
-				updateDateRange(state, updatedChartData);
+
 			return {
 				...state,
 				chartData: updatedChartData,
-				...(needsUpdate && { earliestStartDate, latestStartDate }),
 			};
 
 		default:
