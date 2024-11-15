@@ -18,6 +18,8 @@ import {
 } from "../redux/actions/taskData";
 import { saveProject } from "../redux/actions/projects";
 import { isEqual, omit } from "lodash";
+import { useCSVReader } from "react-papaparse";
+import { GridLoader } from "react-spinners";
 
 const JobModal = ({
 	isOpen,
@@ -37,6 +39,9 @@ const JobModal = ({
 	onDatabaseError,
 }) => {
 	const dispatch = useDispatch();
+
+	const { CSVReader } = useCSVReader();
+
 	const builders = useSelector((state) => state.builders.builders);
 	const { employees } = useSelector((state) => state.builders);
 	const { chart_config_id: chartConfigId, next_task_number: jobNumberNext } =
@@ -130,6 +135,24 @@ const JobModal = ({
 		}
 	}, [isOpen, clickedTask]);
 
+	// Add event listener for 'Esc' key when the modal is open
+	useEffect(() => {
+		const handleKeyDown = (event) => {
+			if (event.key === "Escape") {
+				onClose(); // Call the close function when 'Esc' is pressed
+			}
+		};
+
+		if (isOpen) {
+			window.addEventListener("keydown", handleKeyDown);
+		}
+
+		// Clean up the event listener when the component unmounts or modal closes
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [isOpen, onClose]);
+
 	const calculateNextAvailableDate = (employee_id) => {
 		const builderJobs = localJobsByBuilder[employee_id] || [];
 
@@ -166,10 +189,16 @@ const JobModal = ({
 		);
 	};
 
-	const handleAddRoom = () => {
-		const defaultBuilderId = employees[0].employee_id;
+	const handleAddRoom = ({
+		task_name,
+		employee_id,
+		start_date,
+		duration,
+		task_number,
+	}) => {
+		const defaultBuilderId = employee_id || employees[0].employee_id;
 		const newStartDate = normalizeDate(
-			calculateNextAvailableDate(defaultBuilderId)
+			start_date || calculateNextAvailableDate(defaultBuilderId)
 		);
 		const createdAt = new Date().toISOString();
 
@@ -182,10 +211,10 @@ const JobModal = ({
 			project_name: jobName,
 			employee_id: defaultBuilderId,
 			start_date: normalizeDate(newStartDate),
-			duration: workdayHours,
+			duration: duration || workdayHours,
 			subtask_width: dayWidth,
-			task_number: nextJobNumber.toString(),
-			task_name: "",
+			task_number: task_number || nextJobNumber.toString(),
+			task_name: task_name || "",
 			task_active: true,
 			taskIsNew: true,
 			subTaskIsNew: true,
@@ -808,6 +837,7 @@ const JobModal = ({
 
 	const handleSave = async () => {
 		setSaveError(null);
+		setIsSaving(true);
 		let newErrors = {
 			messages: [],
 		};
@@ -890,6 +920,7 @@ const JobModal = ({
 		// If there are any errors, set them and don't save
 		if (Object.keys(newErrors).length > 1 || newErrors.messages.length > 0) {
 			setErrors(newErrors);
+			setIsSaving(false); // Stop the spinner if there are validation errors
 
 			// Find the first error
 			const firstErrorId = Object.keys(newErrors)[0];
@@ -906,7 +937,6 @@ const JobModal = ({
 
 		try {
 			setIsLoading(true);
-			setIsSaving(true);
 
 			const updatedTasks = localRooms.flatMap((room) =>
 				room.workPeriods.map((wp) => ({
@@ -1028,6 +1058,51 @@ const JobModal = ({
 		}
 	};
 
+	// Function to map employee_name to employee_id
+	const getEmployeeIdByName = (employeeName) => {
+		const employee = employees.find(
+			(emp) => emp.employee_name === employeeName
+		);
+		return employee ? employee.employee_id : employees[0].employee_id;
+	};
+
+	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	const handleOnFileLoad = async ({ data }) => {
+		if (data.length === 0) return;
+
+		const headers = data[0]; // Extract headers from the first row
+		const rows = data.slice(1); // Extract the rest of the rows
+
+		let currentTaskNumber = nextJobNumber; // Use a local variable to track the task number
+
+		for (const row of rows) {
+			const rowData = row;
+			const rowObject = headers.reduce((acc, header, index) => {
+				acc[header] = rowData[index];
+				return acc;
+			}, {});
+
+			const employeeId = getEmployeeIdByName(rowObject.employee_id);
+
+			setChangedBuilderIds((prev) => new Set([...prev, employeeId]));
+
+			// Use the local variable for task_number
+			await handleAddRoom({
+				task_name: rowObject.task_name,
+				employee_id: employeeId,
+				start_date: rowObject.start_date,
+				duration: parseFloat(rowObject.duration),
+				task_number: currentTaskNumber.toString(), // Use the current task number
+			});
+
+			currentTaskNumber += 1; // Increment the local task number
+
+			// Pause for a few milliseconds
+			await sleep(5); // Adjust the milliseconds as needed
+		}
+	};
+
 	if (!isOpen) return null;
 
 	const activeRooms = localRooms.filter((room) => room.task_active);
@@ -1037,6 +1112,26 @@ const JobModal = ({
 		<div className="modal-overlay">
 			{!showCompleteConfirmation ? (
 				<div className="modal-content">
+					{isSaving && (
+						<div className="loading-overlay">
+							<GridLoader color="maroon" size={15} />
+							<p>Saving Tasks...</p>
+						</div>
+					)}
+					<CSVReader onUploadAccepted={handleOnFileLoad}>
+						{({ getRootProps, acceptedFile }) => (
+							<div className="csv-import-container">
+								<button
+									type="button"
+									{...getRootProps()}
+									className="modal-action-button"
+								>
+									Import CSV
+								</button>
+								<div>{acceptedFile && acceptedFile.name}</div>
+							</div>
+						)}
+					</CSVReader>
 					{jobData && (
 						<button
 							className="modal-action-button complete-job"
@@ -1109,11 +1204,7 @@ const JobModal = ({
 													? "error"
 													: ""
 											}`}
-											ref={
-												subTaskIndex === 0
-													? newTaskNumberRef
-													: null
-											}
+											ref={subTaskIndex === 0 ? newTaskNumberRef : null}
 										/>
 									) : (
 										<span className="job-number-input">
