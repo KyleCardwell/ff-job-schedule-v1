@@ -171,6 +171,7 @@ export const saveProject = (projectData) => async (dispatch) => {
 						task_number: task.task_number,
 						task_name: task.task_name,
 						task_active: task.task_active,
+						task_created_at: task.task_created_at,
 					};
 
 					if (task.taskIsNew) {
