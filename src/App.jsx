@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import { createClient } from "@supabase/supabase-js";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ChartContainer } from "./components/ChartContainer";
+import { ChartContainer } from "./components/ChartContainerGrid.jsx";
 import CompletedJobsContainer from "./components/CompletedProjectsContainer.jsx";
 import { setSession, clearSession } from "./redux/authSlice";
 import { Auth } from "@supabase/auth-ui-react";
@@ -75,7 +75,7 @@ const App = () => {
 
 	return (
 		<Router>
-			<div className="App">
+			<div className="App h-screen">
 				<ErrorBoundary>
 					<Routes>
 						<Route path="/" element={<ChartContainer />} />

@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { addDays } from "date-fns";
 import { updateTasksAfterBuilderChanges } from "../redux/actions/taskData";
-// import "./BuilderModal.css";
+import { buttonClass, modalContainerClass, modalOverlayClass } from "../assets/tailwindConstants";
 
 const BuilderModal = ({
 	visible,
@@ -281,38 +281,41 @@ const BuilderModal = ({
 	if (!visible) return null;
 
 	return (
-		<div className="modal-overlay">
-			<div className="modal-content builder-modal">
-				<h2>Manage Employees</h2>
+		<div className={modalOverlayClass}>
+			<div className={modalContainerClass}>
+				<h2 className="text-lg font-bold mb-5">Manage Employees</h2>
 				<form>
 					{localEmployees.map((builder, index) => (
 						<div
-							className="builder-item-container"
+							className="flex flex-col gap-2 p-4 mb-2 rounded relative"
 							key={builder.employee_id || index}
 							style={{
 								backgroundColor: builder.employee_color,
-								position: "relative",
 							}}
 						>
 							{index === 0 && (
-								<div className="default-builder-overlay">
+								<div className="absolute top-0 right-0 bottom-0 bg-black bg-opacity-20 text-white p-2 rounded-r z-10 flex items-center justify-center text-center">
 									This default employee cannot be deleted. <br />
 									You may change the name and color.
 								</div>
 							)}
-							<div className="builder-item-controls">
+							<div className="flex flex-col gap-2">
 								<div
-									className={`builder-item ${
-										builder.markedForDeletion ? "marked-for-deletion" : ""
+									className={`flex items-center gap-2 ${
+										builder.markedForDeletion ? "opacity-50" : ""
 									}`}
 								>
-									<div className="builder-info">
+									<div className="flex gap-2 flex-grow">
 										<input
 											type="text"
 											value={builder.employee_name}
 											onChange={(e) => handleNameChange(index, e.target.value)}
 											placeholder="Builder Name"
-											className={errors[`name-${index}`] ? "error" : ""}
+											className={`p-2 h-8 text-sm border ${
+												errors[`name-${index}`]
+													? "border-red-500"
+													: "border-gray-300"
+											} rounded`}
 											disabled={builder.markedForDeletion}
 										/>
 										<input
@@ -320,14 +323,12 @@ const BuilderModal = ({
 											value={builder.employee_color}
 											onChange={(e) => handleColorChange(index, e.target.value)}
 											disabled={builder.markedForDeletion}
-											style={{
-												minWidth: "50px",
-											}}
+											className="min-w-[60px] h-8"
 										/>
 									</div>
-									<div className="builder-actions">
+									<div className="flex gap-2 justify-between">
 										<button
-											className="modal-action-button add"
+											className={`${buttonClass} bg-blue-500`}
 											style={
 												index === 0
 													? {
@@ -346,7 +347,7 @@ const BuilderModal = ({
 												: "Edit Time Off"}
 										</button>
 										<button
-											className="modal-action-button remove"
+											className="text-white bg-red-500 rounded-md px-2 py-1"
 											style={
 												index === 0
 													? {
@@ -357,20 +358,22 @@ const BuilderModal = ({
 											type="button"
 											onClick={() => handleMarkForDeletion(builder.employee_id)}
 										>
-											{builder.markedForDeletion
-												? "Undo Delete"
-												: "Delete"}
+											{builder.markedForDeletion ? "Undo Delete" : "Delete"}
 										</button>
 									</div>
 								</div>
 
 								{timeOffVisibility[builder.employee_id] && (
-									<div className="time-off-container">
+									<div className="flex flex-col gap-2 items-center">
 										{builder.time_off.map((period, timeOffIndex) => (
-											<div className="time-off-period" key={timeOffIndex}>
-												<div className="date-input-group">
+											<div
+												className="flex gap-6 p-2 border border-white rounded"
+												key={timeOffIndex}
+											>
+												<div className="flex-grow gap-2">
 													<label
 														htmlFor={`start-${builder.employee_id}-${timeOffIndex}`}
+														className="text-sm"
 													>
 														Start:
 													</label>
@@ -386,17 +389,18 @@ const BuilderModal = ({
 																e.target.value
 															)
 														}
-														className={
+														className={`p-2 h-8 text-sm border ${
 															errors[`start-${index}-${timeOffIndex}`]
-																? "error"
-																: ""
-														}
+																? "border-red-500"
+																: "border-gray-300"
+														} rounded`}
 														disabled={builder.markedForDeletion}
 													/>
 												</div>
-												<div className="date-input-group">
+												<div className="flex-grow gap-2">
 													<label
 														htmlFor={`end-${builder.employee_id}-${timeOffIndex}`}
+														className="text-sm"
 													>
 														End:
 													</label>
@@ -412,16 +416,16 @@ const BuilderModal = ({
 																e.target.value
 															)
 														}
-														className={
+														className={`p-2 h-8 text-sm border ${
 															errors[`end-${index}-${timeOffIndex}`]
-																? "error"
-																: ""
-														}
+																? "border-red-500"
+																: "border-gray-300"
+														} rounded`}
 														disabled={builder.markedForDeletion}
 													/>
 												</div>
 												<button
-													className="modal-action-button remove"
+													className="text-white bg-red-500 rounded-md px-2 py-1"
 													type="button"
 													onClick={() =>
 														handleRemoveTimeOff(index, timeOffIndex)
@@ -436,7 +440,7 @@ const BuilderModal = ({
 											type="button"
 											onClick={() => handleAddTimeOff(index)}
 											disabled={builder.markedForDeletion}
-											className="modal-action-button add add-time-off-button"
+											className="text-white bg-green-500 rounded-md px-2 py-1 w-fit"
 										>
 											Add Time Off Period
 										</button>
@@ -446,7 +450,7 @@ const BuilderModal = ({
 						</div>
 					))}
 					<button
-						className="modal-action-button add add-builder-button"
+						className="text-white bg-green-500 rounded-md px-2 py-1"
 						type="button"
 						onClick={handleAddBuilder}
 						style={{
@@ -459,9 +463,9 @@ const BuilderModal = ({
 						Add Employee
 					</button>
 				</form>
-				<div className="modal-actions">
+				<div className="flex justify-between">
 					<button
-						className="modal-action-button cancel"
+						className="text-white bg-red-500 rounded-md px-2 py-1"
 						onClick={() => {
 							onCancel();
 							setErrors({});
@@ -469,9 +473,9 @@ const BuilderModal = ({
 					>
 						Cancel
 					</button>
-					{saveError && <div className="error-message">{saveError}</div>}
+					{saveError && <div className="text-red-500">{saveError}</div>}
 					<button
-						className="modal-action-button save"
+						className="text-white bg-blue-500 rounded-md px-2 py-1"
 						onClick={handleSave}
 						disabled={isSaving}
 					>

@@ -20,6 +20,11 @@ import { saveProject } from "../redux/actions/projects";
 import { isEqual, omit } from "lodash";
 import { useCSVReader } from "react-papaparse";
 import { GridLoader } from "react-spinners";
+import {
+	buttonClass,
+	modalContainerClass,
+	modalOverlayClass,
+} from "../assets/tailwindConstants";
 
 const JobModal = ({
 	isOpen,
@@ -1109,22 +1114,22 @@ const JobModal = ({
 	const inactiveRooms = localRooms.filter((room) => !room.task_active);
 
 	return (
-		<div className="modal-overlay">
+		<div className={modalOverlayClass}>
 			{!showCompleteConfirmation ? (
-				<div className="modal-content">
+				<div className={modalContainerClass}>
 					{isSaving && (
-						<div className="loading-overlay">
+						<div className="loading-overlay absolute inset-0 bg-white bg-opacity-80 flex flex-col justify-center items-center z-50">
 							<GridLoader color="maroon" size={15} />
 							<p>Saving Tasks...</p>
 						</div>
 					)}
 					<CSVReader onUploadAccepted={handleOnFileLoad}>
 						{({ getRootProps, acceptedFile }) => (
-							<div className="csv-import-container">
+							<div className="csv-import-container absolute top-5 left-5">
 								<button
 									type="button"
 									{...getRootProps()}
-									className="modal-action-button"
+									className={`${buttonClass} bg-blue-500`}
 								>
 									Import CSV
 								</button>
@@ -1134,14 +1139,14 @@ const JobModal = ({
 					</CSVReader>
 					{jobData && (
 						<button
-							className="modal-action-button complete-job"
+							className={`${buttonClass} bg-gray-800 absolute right-5`}
 							onClick={handleCompleteJob}
 						>
 							Complete Job
 						</button>
 					)}
-					<div className="modal-header">
-						<h2>{jobData ? "Edit Job" : "Add New Job"}</h2>
+					<div className="modal-header text-center mb-5 text-lg font-bold">
+						<h2 className="text-xxl">{jobData ? "Edit Job" : "Add New Job"}</h2>
 					</div>
 					<input
 						id={"jobName"}
@@ -1155,17 +1160,19 @@ const JobModal = ({
 							setJobName(e.target.value);
 						}}
 						placeholder="Job Name"
-						className={errors.jobName ? "error" : ""}
+						className={`w-full md:w-1/2 p-2 border ${
+							errors.jobName ? "border-red-500" : "border-gray-300"
+						} rounded mb-5`}
 						ref={jobNameInputRef}
 					/>
 					<div></div>
 
-					<h3>Active Rooms</h3>
-					<div className="roomGroup header">
+					<h3 className="text-lg font-bold mb-2">Active Rooms</h3>
+					<div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-200 font-bold">
 						<span>Job</span>
 						<span>Room Name</span>
 						<span>Hours</span>
-						<span>Builder</span>
+						<span>Employee</span>
 						<span>Start Date</span>
 						<span>Actions</span>
 					</div>
@@ -1174,13 +1181,16 @@ const JobModal = ({
 						<div
 							key={room.task_id || taskIndex}
 							className={`roomContainer ${
-								taskIndex % 2 === 0 ? "even" : "odd"
-							}`}
+								taskIndex % 2 === 0 ? "bg-white" : "bg-gray-200"
+							} mb-1 rounded`}
 						>
 							{room.workPeriods.map((workPeriod, subTaskIndex) => (
 								<div
 									key={workPeriod.subtask_id || subTaskIndex}
-									className="roomGroup"
+									className={`flex flex-col md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
+										subTaskIndex !== 0 &&
+										"border border-gray-500 md:border-none"
+									}`}
 								>
 									{subTaskIndex === 0 ? (
 										<input
@@ -1197,21 +1207,26 @@ const JobModal = ({
 												)
 											}
 											placeholder="Job Number"
-											className={`job-number-input ${
+											className={`job-number-input w-full pl-1 h-8 text-sm border ${
 												errors[
 													`${room.task_id}-${workPeriod.subtask_id}-task_number`
 												]
-													? "error"
-													: ""
-											}`}
+													? "border-red-500"
+													: "border-gray-300"
+											} rounded`}
 											ref={subTaskIndex === 0 ? newTaskNumberRef : null}
 										/>
 									) : (
-										<span className="job-number-input">
-											{taskIndex === 0
-												? room.task_number
-												: `${room.task_number}`}
-										</span>
+										<div className="flex items-center">
+											<p className="md:hidden">{`${room.task_name} Slot ${
+												subTaskIndex + 1
+											}`}</p>
+											<span className="hidden md:block md:invisible">
+												{taskIndex === 0
+													? room.task_number
+													: `${room.task_number}`}
+											</span>
+										</div>
 									)}
 									{subTaskIndex === 0 ? (
 										<input
@@ -1228,11 +1243,11 @@ const JobModal = ({
 												)
 											}
 											placeholder="Room Name"
-											className={`room-name-input ${
+											className={`room-name-input w-full pl-1 h-8 text-sm border ${
 												errors[`${room.task_id}-${workPeriod.subtask_id}-name`]
-													? "error"
-													: ""
-											}`}
+													? "border-red-500"
+													: "border-gray-300"
+											} rounded`}
 											ref={
 												clickedTask?.subtask_id === workPeriod.subtask_id
 													? clickedTaskRef
@@ -1242,7 +1257,9 @@ const JobModal = ({
 											}
 										/>
 									) : (
-										<span className="room-name-input">{room.task_name}</span>
+										<span className="hidden md:block md:invisible">
+											{room.task_name}
+										</span>
 									)}
 									<input
 										id={`${room.task_id}-${workPeriod.subtask_id}-duration`}
@@ -1260,13 +1277,13 @@ const JobModal = ({
 											);
 										}}
 										placeholder="Hours"
-										className={`duration-input ${
+										className={`duration-input w-full pl-1 h-8 text-sm border ${
 											errors[
 												`${room.task_id}-${workPeriod.subtask_id}-duration`
 											]
-												? "error"
-												: ""
-										}`}
+												? "border-red-500"
+												: "border-gray-300"
+										} rounded`}
 									/>
 									<select
 										id={`${room.task_id}-${workPeriod.subtask_id}-employee_id`}
@@ -1287,13 +1304,13 @@ const JobModal = ({
 												selectedEmployeeInput.previousValue
 											);
 										}}
-										className={`builder-select ${
+										className={`builder-select w-full pl-1 h-8 text-sm border ${
 											errors[
 												`${room.task_id}-${workPeriod.subtask_id}-employee_id`
 											]
-												? "error"
-												: ""
-										}`}
+												? "border-red-500"
+												: "border-gray-300"
+										} rounded`}
 									>
 										{employees.map((builder) => (
 											<option
@@ -1317,17 +1334,17 @@ const JobModal = ({
 												}
 											)
 										}
-										className={`date-input ${
+										className={`date-input w-full p-2 h-8 text-sm border ${
 											errors[
 												`${room.task_id}-${workPeriod.subtask_id}-start_date`
 											]
-												? "error"
-												: ""
-										}`}
+												? "border-red-500"
+												: "border-gray-300"
+										} rounded`}
 									/>
 
 									{subTaskIndex === 0 ? (
-										<div className="room-buttons">
+										<div className="flex flex-col gap-2 w-full md:flex-row justify-between">
 											{!room.taskIsNew && (
 												<button
 													onClick={() =>
@@ -1336,21 +1353,21 @@ const JobModal = ({
 															room.workPeriods[0]?.employee_id
 														)
 													}
-													className="modal-action-button add add-button"
+													className={`${buttonClass} bg-green-500`}
 												>
 													+ Slot
 												</button>
 											)}
 											{room.taskIsNew ? (
 												<button
-													className="modal-action-button cancel"
+													className={`${buttonClass} bg-red-500`}
 													onClick={() => handleCancelNewRoom(room.task_id)}
 												>
 													Cancel
 												</button>
 											) : (
 												<button
-													className="modal-action-button remove"
+													className={`${buttonClass} bg-red-500`}
 													onClick={() => handleInactiveRoom(room.task_id)}
 												>
 													- Room
@@ -1358,7 +1375,7 @@ const JobModal = ({
 											)}
 										</div>
 									) : (
-										<div className="room-buttons">
+										<div className="flex flex-col gap-2 w-full md:flex-row justify-between">
 											<button
 												onClick={() =>
 													handleRemoveWorkPeriod(
@@ -1366,7 +1383,7 @@ const JobModal = ({
 														workPeriod.subtask_id
 													)
 												}
-												className="modal-action-button remove remove-button"
+												className={`${buttonClass} bg-red-500`}
 											>
 												- Slot
 											</button>
@@ -1378,23 +1395,23 @@ const JobModal = ({
 					))}
 					<button
 						onClick={handleAddRoom}
-						className="modal-action-button add add-room-button"
+						className={`${buttonClass} bg-green-500 mt-2`}
 					>
 						Add Room
 					</button>
 
 					{inactiveRooms.length > 0 && (
 						<>
-							<h3>Inactive Rooms</h3>
+							<h3 className="text-lg font-bold mb-2 mt-5">Inactive Rooms</h3>
 							{inactiveRooms.map((room, inactiveTaskIndex) => (
 								<div
 									key={room.task_id || inactiveTaskIndex}
-									className="roomGroup inactive"
+									className="grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center mb-1 mx-0"
 								>
 									<span>{room.task_number}</span>
 									<span>{room.task_name}</span>
 									<button
-										className="modal-action-button save restore-room-button"
+										className={`${buttonClass} bg-blue-500`}
 										onClick={() => handleRestoreRoom(room.task_id)}
 									>
 										Restore
@@ -1406,12 +1423,12 @@ const JobModal = ({
 
 					{errors.rooms && <div className="error">{errors.rooms}</div>}
 
-					<div className="modal-actions">
-						<button className="modal-action-button cancel" onClick={onClose}>
+					<div className="modal-actions flex justify-between">
+						<button className={`${buttonClass} bg-red-500`} onClick={onClose}>
 							Cancel
 						</button>
 						<button
-							className="modal-action-button save"
+							className={`${buttonClass} bg-blue-500`}
 							onClick={handleSave}
 							disabled={isSaving}
 						>
@@ -1434,20 +1451,21 @@ const JobModal = ({
 					)}
 				</div>
 			) : (
-				<div className="complete-job-popup">
-					<h3>
-						Are you sure you want to complete the {jobData[0].project_name} job?
+				<div className={`${modalContainerClass} w-5/12`}>
+					<h3 className="text-lg font-bold mb-2">
+						Are you sure you want to complete the <br />{" "}
+						{jobData[0].project_name} project?
 					</h3>
-					<p>If yes, it will be removed from the schedule.</p>
-					<div className="complete-job-actions">
+					<p className="mb-5">If yes, it will be removed from the schedule.</p>
+					<div className="flex justify-between">
 						<button
-							className="modal-action-button cancel"
+							className={`${buttonClass} bg-red-500`}
 							onClick={cancelCompleteJob}
 						>
 							Cancel
 						</button>
 						<button
-							className="modal-action-button save"
+							className={`${buttonClass} bg-green-500`}
 							onClick={confirmCompleteJob}
 						>
 							Yes, Complete Job
@@ -1456,6 +1474,395 @@ const JobModal = ({
 				</div>
 			)}
 		</div>
+		// <div className={`${modalOverlayClass} ${isOpen ? "block" : "hidden"}`}>
+		// 	{!showCompleteConfirmation ? (
+		// 		<div
+		// 			className={`${modalContainerClass} w-[95%] md:max-w-[800px] max-h-[90vh] overflow-y-auto relative bg-white p-5 rounded-lg shadow-lg`}
+		// 		>
+		// 			{/* CSV Import Container */}
+		// 			<div className="absolute top-5 left-5">
+		// 				<CSVReader
+		// 					onUploadAccepted={(results) => {
+		// 						handleCSVUpload(results);
+		// 					}}
+		// 				>
+		// 					{({
+		// 						getRootProps,
+		// 						acceptedFile,
+		// 						ProgressBar,
+		// 						getRemoveFileProps,
+		// 					}) => (
+		// 						<div className="csv-import-container">
+		// 							<button
+		// 								type="button"
+		// 								{...getRootProps()}
+		// 								className={`${buttonClass} bg-blue-500`}
+		// 							>
+		// 								Import CSV
+		// 							</button>
+		// 							{acceptedFile && (
+		// 								<>
+		// 									<div className="mt-2">
+		// 										<button
+		// 											{...getRemoveFileProps()}
+		// 											className={`${buttonClass} bg-red-500`}
+		// 										>
+		// 											Remove
+		// 										</button>
+		// 									</div>
+		// 									<ProgressBar />
+		// 								</>
+		// 							)}
+		// 						</div>
+		// 					)}
+		// 				</CSVReader>
+		// 			</div>
+
+		// 			{/* Complete Job Button */}
+		// 			{jobData && jobData.length > 0 && (
+		// 				<button
+		// 					className={`${buttonClass} bg-gray-800 absolute top-5 right-5`}
+		// 					onClick={handleCompleteJob}
+		// 				>
+		// 					Complete Job
+		// 				</button>
+		// 			)}
+
+		// 			{/* Modal Header */}
+		// 			<div className="text-center mb-5">
+		// 				<h2 className="text-xl font-bold">
+		// 					{jobData && jobData.length > 0 ? "Edit Job" : "Add New Job"}
+		// 				</h2>
+		// 			</div>
+
+		// 			{/* Job Name Input */}
+		// 			<div className="mb-5">
+		// 				<input
+		// 					ref={jobNameInputRef}
+		// 					type="text"
+		// 					value={jobName}
+		// 					onChange={(e) => {
+		// 						setErrors((prevErrors) => ({
+		// 							...prevErrors,
+		// 							jobName: undefined,
+		// 						}));
+		// 						setJobName(e.target.value);
+		// 					}}
+		// 					placeholder="Job Name"
+		// 					className={`w-full p-2 border ${
+		// 						errors.jobName ? "border-red-500" : "border-gray-400"
+		// 					} rounded`}
+		// 				/>
+		// 				{errors.jobName && (
+		// 					<div className="text-red-500 text-sm mt-1">{errors.jobName}</div>
+		// 				)}
+		// 			</div>
+
+		// 			{/* Active Rooms Section */}
+		// 			<h3 className="text-lg font-bold mb-2">Active Rooms</h3>
+
+		// 			{/* Header Row - Hidden on Mobile */}
+		// 			<div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 bg-gray-600 font-bold rounded text-white">
+		// 				<span>Job #</span>
+		// 				<span>Room Name</span>
+		// 				<span>Hours</span>
+		// 				<span>Employee</span>
+		// 				<span>Start Date</span>
+		// 				<span>Actions</span>
+		// 			</div>
+
+		// 			{/* Room List */}
+		// 			{activeRooms.map((room, taskIndex) => (
+		// 				<div
+		// 					key={room.task_id || taskIndex}
+		// 					className={`mb-4 rounded ${
+		// 						taskIndex % 2 === 0 ? "bg-white" : "bg-gray-300"
+		// 					}`}
+		// 				>
+		// 					{room.workPeriods.map((workPeriod, subTaskIndex) => (
+		// 						<div
+		// 							key={workPeriod.subtask_id || subTaskIndex}
+		// 							className="grid grid-cols-1 md:grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center p-2"
+		// 						>
+		// 							{/* Mobile Labels & Inputs */}
+		// 							<div className="md:hidden grid grid-cols-2 gap-2 mb-2">
+		// 								<span className="font-bold">Job #:</span>
+		// 								<input
+		// 									type="text"
+		// 									value={room.task_number || ""}
+		// 									onChange={(e) =>
+		// 										handleRoomChange(room.task_id, {
+		// 											task_number: e.target.value,
+		// 										})
+		// 									}
+		// 									placeholder="Job #"
+		// 									className="w-full p-2 border border-gray-300 rounded"
+		// 									ref={subTaskIndex === 0 ? clickedTaskRef : null}
+		// 								/>
+		// 								<span className="font-bold">Room:</span>
+		// 								<input
+		// 									type="text"
+		// 									value={room.task_name || ""}
+		// 									onChange={(e) =>
+		// 										handleRoomChange(room.task_id, {
+		// 											task_name: e.target.value,
+		// 										})
+		// 									}
+		// 									placeholder="Room Name"
+		// 									className="w-full p-2 border border-gray-300 rounded"
+		// 								/>
+		// 							</div>
+
+		// 							{/* Desktop Inputs */}
+		// 							<div className="hidden md:block">
+		// 								<input
+		// 									type="text"
+		// 									value={room.task_number || ""}
+		// 									onChange={(e) =>
+		// 										handleRoomChange(room.task_id, {
+		// 											task_number: e.target.value,
+		// 										})
+		// 									}
+		// 									placeholder="Job #"
+		// 									className="w-full p-2 h-8 text-sm border border-gray-300 rounded"
+		// 									ref={subTaskIndex === 0 ? clickedTaskRef : null}
+		// 								/>
+		// 							</div>
+		// 							<div className="hidden md:block">
+		// 								<input
+		// 									type="text"
+		// 									value={room.task_name || ""}
+		// 									onChange={(e) =>
+		// 										handleRoomChange(room.task_id, {
+		// 											task_name: e.target.value,
+		// 										})
+		// 									}
+		// 									placeholder="Room Name"
+		// 									className="w-full p-2 h-8 text-sm border border-gray-300 rounded"
+		// 								/>
+		// 							</div>
+
+		// 							{/* Common Inputs for Both Mobile and Desktop */}
+		// 							<input
+		// 								type="number"
+		// 								step="0.01"
+		// 								min="0.01"
+		// 								value={workPeriod.duration || ""}
+		// 								onChange={(e) =>
+		// 									handleWorkPeriodChange(
+		// 										room.task_id,
+		// 										workPeriod.subtask_id,
+		// 										{
+		// 											duration: e.target.value,
+		// 										}
+		// 									)
+		// 								}
+		// 								placeholder="Hours"
+		// 								className={`w-full p-2 h-8 text-sm border ${
+		// 									errors[
+		// 										`${room.task_id}-${workPeriod.subtask_id}-duration`
+		// 									]
+		// 										? "border-red-500"
+		// 										: "border-gray-300"
+		// 								} rounded`}
+		// 							/>
+
+		// 							<select
+		// 								value={workPeriod.employee_id || ""}
+		// 								onChange={(e) =>
+		// 									handleWorkPeriodChange(
+		// 										room.task_id,
+		// 										workPeriod.subtask_id,
+		// 										{
+		// 											employee_id: e.target.value,
+		// 										}
+		// 									)
+		// 								}
+		// 								className={`w-full p-2 h-8 text-sm border ${
+		// 									errors[
+		// 										`${room.task_id}-${workPeriod.subtask_id}-employee_id`
+		// 									]
+		// 										? "border-red-500"
+		// 										: "border-gray-300"
+		// 								} rounded`}
+		// 							>
+		// 								<option value="">Select Employee</option>
+		// 								{employees.map((employee) => (
+		// 									<option
+		// 										key={employee.employee_id}
+		// 										value={employee.employee_id}
+		// 									>
+		// 										{employee.employee_name}
+		// 									</option>
+		// 								))}
+		// 							</select>
+
+		// 							<input
+		// 								type="date"
+		// 								value={formatDateForInput(workPeriod.start_date)}
+		// 								onChange={(e) =>
+		// 									handleWorkPeriodChange(
+		// 										room.task_id,
+		// 										workPeriod.subtask_id,
+		// 										{
+		// 											start_date: e.target.value,
+		// 										}
+		// 									)
+		// 								}
+		// 								className={`w-full p-2 h-8 text-sm border ${
+		// 									errors[
+		// 										`${room.task_id}-${workPeriod.subtask_id}-start_date`
+		// 									]
+		// 										? "border-red-500"
+		// 										: "border-gray-300"
+		// 								} rounded`}
+		// 							/>
+
+		// 							{/* Action Buttons */}
+		// 							<div className="flex flex-col md:flex-row gap-2">
+		// 								{subTaskIndex === 0 ? (
+		// 									<>
+		// 										{!room.taskIsNew && (
+		// 											<button
+		// 												onClick={() =>
+		// 													handleAddWorkPeriod(
+		// 														room.task_id,
+		// 														room.workPeriods[0]?.employee_id
+		// 													)
+		// 												}
+		// 												className={`${buttonClass} bg-green-500`}
+		// 											>
+		// 												+ Slot
+		// 											</button>
+		// 										)}
+		// 										{room.taskIsNew ? (
+		// 											<button
+		// 												className={`${buttonClass} bg-red-500`}
+		// 												onClick={() => handleCancelNewRoom(room.task_id)}
+		// 											>
+		// 												Cancel
+		// 											</button>
+		// 										) : (
+		// 											<button
+		// 												className={`${buttonClass} bg-red-500`}
+		// 												onClick={() => handleInactiveRoom(room.task_id)}
+		// 											>
+		// 												- Room
+		// 											</button>
+		// 										)}
+		// 									</>
+		// 								) : (
+		// 									<button
+		// 										onClick={() =>
+		// 											handleRemoveWorkPeriod(
+		// 												room.task_id,
+		// 												workPeriod.subtask_id
+		// 											)
+		// 										}
+		// 										className={`${buttonClass} bg-red-500`}
+		// 									>
+		// 										- Slot
+		// 									</button>
+		// 								)}
+		// 							</div>
+		// 						</div>
+		// 					))}
+		// 				</div>
+		// 			))}
+
+		// 			{/* Add Room Button */}
+		// 			<button
+		// 				onClick={handleAddRoom}
+		// 				className={`${buttonClass} bg-green-500 mt-4 w-full md:w-auto`}
+		// 			>
+		// 				Add Room
+		// 			</button>
+
+		// 			{/* Inactive Rooms Section */}
+		// 			{inactiveRooms.length > 0 && (
+		// 				<>
+		// 					<h3 className="text-lg font-bold mb-2 mt-5">Inactive Rooms</h3>
+		// 					{inactiveRooms.map((room, inactiveTaskIndex) => (
+		// 						<div
+		// 							key={room.task_id || inactiveTaskIndex}
+		// 							className="grid grid-cols-1 md:grid-cols-[50px_1.25fr_70px_1fr] gap-2 items-center mb-1 p-2 bg-gray-100 rounded"
+		// 						>
+		// 							<span>{room.task_number}</span>
+		// 							<span>{room.task_name}</span>
+		// 							<button
+		// 								className={`${buttonClass} bg-blue-500`}
+		// 								onClick={() => handleRestoreRoom(room.task_id)}
+		// 							>
+		// 								Restore
+		// 							</button>
+		// 						</div>
+		// 					))}
+		// 				</>
+		// 			)}
+
+		// 			{/* Error Messages */}
+		// 			{errors.rooms && (
+		// 				<div className="text-red-500 text-sm mt-2">{errors.rooms}</div>
+		// 			)}
+
+		// 			{/* Modal Actions */}
+		// 			<div className="flex flex-col md:flex-row justify-between gap-2 mt-5">
+		// 				<button
+		// 					className={`${buttonClass} bg-red-500 w-full md:w-auto`}
+		// 					onClick={onClose}
+		// 				>
+		// 					Cancel
+		// 				</button>
+		// 				<button
+		// 					className={`${buttonClass} bg-blue-500 w-full md:w-auto`}
+		// 					onClick={handleSave}
+		// 					disabled={isSaving}
+		// 				>
+		// 					{isSaving ? "Saving..." : "Save"}
+		// 				</button>
+		// 			</div>
+
+		// 			{/* Additional Error Messages */}
+		// 			{errors.messages && errors.messages.length > 0 && (
+		// 				<div className="mt-4">
+		// 					{errors.messages.map((message, index) => (
+		// 						<div key={index} className="text-red-500 text-sm">
+		// 							{message}
+		// 						</div>
+		// 					))}
+		// 				</div>
+		// 			)}
+		// 			{saveError && (
+		// 				<div className="text-red-500 text-sm mt-4">{saveError}</div>
+		// 			)}
+		// 		</div>
+		// 	) : (
+		// 		// Complete Job Confirmation Modal
+		// 		<div className={`${modalContainerClass} w-[95%] sm:w-5/12`}>
+		// 			<h3 className="text-lg font-bold mb-2 text-center">
+		// 				Are you sure you want to complete the <br />{" "}
+		// 				{jobData[0].project_name} project?
+		// 			</h3>
+		// 			<p className="mb-5 text-center">
+		// 				If yes, it will be removed from the schedule.
+		// 			</p>
+		// 			<div className="flex flex-col sm:flex-row justify-between gap-2">
+		// 				<button
+		// 					className={`${buttonClass} bg-red-500 w-full sm:w-auto`}
+		// 					onClick={cancelCompleteJob}
+		// 				>
+		// 					Cancel
+		// 				</button>
+		// 				<button
+		// 					className={`${buttonClass} bg-green-500 w-full sm:w-auto`}
+		// 					onClick={confirmCompleteJob}
+		// 				>
+		// 					Yes, Complete Job
+		// 				</button>
+		// 			</div>
+		// 		</div>
+		// 	)}
+		// </div>
 	);
 };
 
