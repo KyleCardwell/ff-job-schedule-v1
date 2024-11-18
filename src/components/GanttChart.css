@@ -102,7 +102,7 @@ h1 {
 	margin-bottom: 17px;
 }
 
-/* Action Buttons */
+/* Action Buttons
 .action-buttons {
 	display: flex;
 	justify-content: flex-end;
@@ -147,7 +147,7 @@ h1 {
 
 .completed-jobs-button {
 	background-color: #3e3e3e;
-}
+} */
 
 .gantt-footer {
 	position: sticky;
@@ -160,7 +160,7 @@ h1 {
 	flex-direction: row;
 }
 
-/* Modal Styles */
+/* Modal Styles
 .modal-overlay {
 	position: fixed;
 	top: 0;
@@ -172,7 +172,7 @@ h1 {
 	justify-content: center;
 	align-items: center;
 	z-index: 9999;
-}
+} */
 
 .loading-overlay {
 	position: absolute;
@@ -209,7 +209,7 @@ h1 {
 	right: 20px;
 }
 
-.modal-content {
+/* .modal-content {
 	background-color: white;
 	padding: 20px;
 	border-radius: 8px;
@@ -219,7 +219,7 @@ h1 {
 	overflow-y: auto;
 	z-index: 10000;
 	position: relative;
-}
+} */
 
 .modal-actions {
 	display: flex;
@@ -402,7 +402,7 @@ select {
 	opacity: 0.9;
 }
 
-/* Builder Legend */
+Builder Legend
 .builder-legend {
 	display: flex;
 	flex-wrap: wrap;
@@ -613,14 +613,14 @@ select {
 	width: 100%;
 	margin-top: 10px;
 }
-.logout-button {
+/* .logout-button {
 	background-color: #ff4444;
 	color: white;
 }
 
 .logout-button:hover {
 	background-color: #cc0000;
-}
+} */
 
 @media only screen and (min-device-width: 320px) and (max-device-width: 1024px) and (-webkit-min-device-pixel-ratio: 2) {
 	.action-buttons {

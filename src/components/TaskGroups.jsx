@@ -400,7 +400,7 @@ const TaskGroups = ({
 				width: numDays * dayWidth,
 				height: chartHeight,
 			}}
-			className="inner-chart task-groups-svg"
+			className="task-groups-svg absolute top-0 left-0"
 			ref={taskGroupsRef}
 		/>
 	);

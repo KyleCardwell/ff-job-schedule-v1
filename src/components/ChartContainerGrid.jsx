@@ -1,8 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import "./GanttChart.css";
 import { useSelector } from "react-redux";
-import ReactDataGrid from "react-data-grid";
-import "react-data-grid/lib/styles.css";
 import ChartActionButtons from "./ChartActionButtons";
 import {
 	addDays,
@@ -23,7 +20,6 @@ import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
 import { eachDayOfInterval } from "date-fns";
 import ErrorToast from "./ErrorToast";
-import DateHeaderRenderer from "./DateHeaderRenderer";
 
 export const ChartContainer = () => {
 	const holidays = useSelector((state) => state.holidays.holidays);
@@ -102,6 +98,7 @@ export const ChartContainer = () => {
 	const rowHeight = 25;
 	const barMargin = 3;
 	const headerTextGap = 5;
+	const headerHeight = 43;
 	const leftColumnWidth = 270;
 	const chartHeight = activeRoomsData.reduce(
 		(total, room) => total + room.heightAdjust * rowHeight,
@@ -144,11 +141,13 @@ export const ChartContainer = () => {
 		}); // 1 represents Monday
 		const diffDays = differenceInCalendarDays(mondayOfThisWeek, chartStartDate);
 		const scrollPosition = diffDays * dayWidth;
-		const ganttRightBody = document.querySelector(".gantt-right-body");
+
+		// Update the selector to use the ref for the scrollable div
+		const scrollableDiv = scrollableRef.current;
 
 		setTimeout(() => {
-			if (ganttRightBody) {
-				ganttRightBody.scrollTo({
+			if (scrollableDiv) {
+				scrollableDiv.scrollTo({
 					left: scrollPosition,
 					behavior: "smooth",
 				});
@@ -166,7 +165,7 @@ export const ChartContainer = () => {
 		const { clientX, clientY } = event.sourceEvent;
 
 		// Horizontal auto-scroll
-		if (clientX < left + buffer) {
+		if (clientX < left + buffer + leftColumnWidth) {
 			container.scrollLeft -= scrollSpeed; // Scroll left
 		} else if (clientX > right - buffer) {
 			container.scrollLeft += scrollSpeed; // Scroll right
@@ -218,26 +217,18 @@ export const ChartContainer = () => {
 			return addDays(chartStartDate, i);
 		});
 
-		const rightHeader = d3.select(".gantt-right-header");
-		const rightBody = d3.select(".gantt-right-body");
-		const leftBody = d3.select(".gantt-left-body");
-
-		rightHeader.on("scroll", () => {
-			rightBody.node().scrollLeft = rightHeader.node().scrollLeft;
-		});
-
-		rightBody.on("scroll", () => {
-			rightHeader.node().scrollLeft = rightBody.node().scrollLeft;
-			leftBody.node().scrollTop = rightBody.node().scrollTop;
-		});
-
-		leftBody.on("scroll", () => {
-			rightBody.node().scrollTop = leftBody.node().scrollTop;
-		});
-
 		chartSvg.attr("width", chartWidth).attr("height", chartHeight);
 
-		leftHeaderSvg.attr("width", leftColumnWidth).attr("height", 40);
+		leftHeaderSvg.attr("width", leftColumnWidth).attr("height", headerHeight);
+
+		// Add background rectangle first
+		leftHeaderSvg
+			.append("rect")
+			.attr("x", 0)
+			.attr("y", 0)
+			.attr("width", leftColumnWidth)
+			.attr("height", headerHeight)
+			.attr("fill", "#e5e7eb"); // This is the Tailwind gray-200 color
 
 		// Add the left column header with titles
 		leftHeaderSvg.append("g").each(function () {
@@ -274,7 +265,7 @@ export const ChartContainer = () => {
 				.attr("dominant-baseline", "middle");
 		});
 
-		headerSvg.attr("width", numDays * dayWidth).attr("height", 40);
+		headerSvg.attr("width", numDays * dayWidth).attr("height", headerHeight);
 
 		// Add column headers with both date and day of the week
 		headerSvg
@@ -298,9 +289,10 @@ export const ChartContainer = () => {
 						.attr("x", i * dayWidth)
 						.attr("y", 0)
 						.attr("width", dayWidth)
-						.attr("height", 40) // Adjust to cover the header
+						.attr("height", headerHeight) // Adjust to cover the header
 						.attr("fill", isHolidayDate ? "lightblue" : "#e0e0e0"); // Light blue for holidays, grey for weekends
 				}
+				// Month
 				group
 					.append("text")
 					.attr("x", i * dayWidth + headerTextGap)
@@ -310,16 +302,19 @@ export const ChartContainer = () => {
 					.attr("font-size", "11px")
 					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
+
+				// Date number
 				group
 					.append("text")
 					.attr("x", i * dayWidth + headerTextGap)
 					.attr("y", 25)
 					.text(d3.timeFormat("%d")(d))
 					.attr("fill", "#000")
-					.attr("font-size", "11px")
+					.attr("font-size", "14px")
 					.attr("font-weight", "bold")
 					.attr("text-anchor", "left");
 
+				// Day of the week
 				group
 					.append("text")
 					.attr("x", i * dayWidth + headerTextGap)
@@ -513,23 +508,6 @@ export const ChartContainer = () => {
 			.attr("y2", activeRoomsData.length * rowHeight) // Adjust based on room count
 			.attr("stroke", strokeColor)
 			.attr("stroke-width", 1);
-
-		// Add scrolling behavior for the chart
-		const scrollableDiv = d3.select(scrollableRef.current);
-		scrollableDiv.on("scroll", () => {
-			const scrollLeft = scrollableDiv.node().scrollLeft;
-			const scrollTop = scrollableDiv.node().scrollTop;
-
-			headerSvg.attr("transform", `translate(${-scrollLeft}, 0)`);
-			leftColumnSvg.attr("transform", `translate(0, ${-scrollTop})`);
-		});
-
-		const leftScrollableDiv = d3.select(leftScrollableRef.current);
-		leftScrollableDiv.on("scroll", () => {
-			const scrollTop = leftScrollableDiv.node().scrollTop;
-
-			chartSvg.attr("transform", `translate(0, ${-scrollTop})`);
-		});
 	}, [
 		chartStartDate,
 		dayWidth,
@@ -546,28 +524,61 @@ export const ChartContainer = () => {
 		let scrollTop = 0;
 
 		const handleBeforePrint = () => {
-			const ganttRightBody = document.querySelector(".gantt-right-body");
-			if (ganttRightBody) {
-				scrollLeft = ganttRightBody.scrollLeft;
-				scrollTop = ganttRightBody.scrollTop;
-				document.documentElement.style.setProperty(
+			const scrollableContainer = scrollableRef.current;
+			if (scrollableContainer) {
+				scrollLeft = scrollableContainer.scrollLeft;
+				scrollTop = scrollableContainer.scrollTop;
+
+				// Apply the transform directly to the grid container for printing
+				scrollableContainer.style.setProperty(
 					"--print-translate-x",
 					`-${scrollLeft}px`
 				);
-				document.documentElement.style.setProperty(
+				scrollableContainer.style.setProperty(
 					"--print-translate-y",
 					`-${scrollTop}px`
 				);
+
+				// Add margin to the left column in print view
+				const leftColumnHeader = leftColumnHeaderRef?.current?.parentElement;
+				if (leftColumnHeader) {
+					leftColumnHeader.style.setProperty(
+						"--print-margin-left",
+						`${scrollLeft}px`
+					);
+				}
+
+				// Add margin to the left column in print view
+				const leftColumn = leftColumnRef?.current?.parentElement;
+				if (leftColumn) {
+					leftColumn.style.setProperty(
+						"--print-margin-left",
+						`${scrollLeft}px`
+					);
+				}
 			}
 		};
 
 		const handleAfterPrint = () => {
-			const ganttRightBody = document.querySelector(".gantt-right-body");
-			if (ganttRightBody) {
-				ganttRightBody.scrollLeft = scrollLeft;
-				ganttRightBody.scrollTop = scrollTop;
+			const scrollableContainer = scrollableRef.current;
+			if (scrollableContainer) {
+				// Reset the transform and restore scroll position
+				scrollableContainer.style.removeProperty("--print-translate-x");
+				scrollableContainer.style.removeProperty("--print-translate-y");
+				scrollableContainer.scrollLeft = scrollLeft;
+				scrollableContainer.scrollTop = scrollTop;
 			}
 		};
+
+		const leftColumnHeader = leftColumnHeaderRef?.current?.parentElement;
+		if (leftColumnHeader) {
+			leftColumnHeader.style.removeProperty("--print-margin-left");
+		}
+
+		const leftColumn = leftColumnRef?.current?.parentElement;
+		if (leftColumn) {
+			leftColumn.style.removeProperty("--print-margin-left");
+		}
 
 		window.addEventListener("beforeprint", handleBeforePrint);
 		window.addEventListener("afterprint", handleAfterPrint);
@@ -578,43 +589,11 @@ export const ChartContainer = () => {
 		};
 	}, []);
 
-	const generateDateColumns = (startDate, numDays) => {
-    const dateColumns = [];
-    for (let i = 0; i < numDays; i++) {
-        const currentDate = addDays(startDate, i);
-        dateColumns.push({
-            key: `date-${i}`,
-            name: format(currentDate, 'dd'), // Format the date as needed
-            width: 20, // Set a default width
-						headerRenderer: DateHeaderRenderer(currentDate),
-        });
-    }
-    return dateColumns;
-};
-
-	// Define static columns
-	const taskInfoColumns = [
-		{ key: "task_number", name: "#", width: 30, frozen: true, resizable: true },
-		{ key: "project_name", name: "Project", width: 120, frozen: true, resizable: true },
-		{ key: "task_name", name: "Task", width: 120, frozen: true, resizable: true },
-		// Add more static columns as needed
-	];
-	// Define columns for the data grid
-	const dateColumns = generateDateColumns(chartStartDate, numDays);
-
-	const rdgColumns = [...taskInfoColumns, ...dateColumns];
-
-	// Define rows for the data grid
-	const rdgRows = activeRoomsData.map((room) => ({
-		task_number: room.task_number,
-		project_name: room.project_name,
-		task_name: room.task_name,
-		// Map other necessary fields
-	}));
-
 	return (
-		<div className="gantt-chart-container">
-			<h1>Forever Furniture Job Schedule</h1>
+		<div className="flex flex-col h-screen print:block print:h-auto print:overflow-visible">
+			<div className="flex justify-start ml-2 md:justify-center md:ml-0">
+				<h1 className="text-2xl font-bold">Forever Furniture Job Schedule</h1>
+			</div>
 			<ChartActionButtons
 				scrollToMonday={scrollToMonday}
 				setIsJobModalOpen={setIsJobModalOpen}
@@ -638,39 +617,46 @@ export const ChartContainer = () => {
 					</div>
 				</div>
 			) : (
-				<div className="gantt-container">
-					<div className="gantt-content">
-						<div className="gantt-left">
-							<div className="gantt-left-header">
-								<svg ref={leftColumnHeaderRef} />
-							</div>
-							<div className="gantt-left-body">
-								<svg ref={leftColumnRef} />
-							</div>
+				<div className="flex-grow overflow-auto print:h-auto print:overflow-visible">
+					<div
+						className="grid overflow-auto max-h-[90dvh] mobLan:max-h-[80dvh] print:h-auto print:overflow-visible print:transform print:origin-top-left"
+						style={{
+							gridTemplateColumns: `${leftColumnWidth}px ${
+								dayWidth * numDays
+							}px`,
+							transform:
+								"translate(var(--print-translate-x, 0), var(--print-translate-y, 0))",
+						}}
+						ref={scrollableRef}
+					>
+						<div className="sticky top-0 left-0 z-[40] print:relative print:ml-[var(--print-margin-left,0)]">
+							<svg ref={leftColumnHeaderRef} />
 						</div>
-						<div className="gantt-right">
-							<div className="gantt-right-header">
-								<svg ref={headerRef} />
-							</div>
-							<div className="gantt-right-body" ref={scrollableRef}>
-								<svg className="inner-chart chart-svg" ref={chartRef} />
-								<TaskGroups
-									chartRef={chartRef}
-									barMargin={barMargin}
-									chartHeight={chartHeight}
-									numDays={numDays}
-									handleAutoScroll={handleAutoScroll}
-									setIsLoading={setIsLoading}
-									chartStartDate={chartStartDate}
-									daysBeforeStart={daysBeforeStart}
-									rowHeight={rowHeight}
-									workdayHours={workdayHours}
-									holidayChecker={holidayChecker}
-									dayWidth={dayWidth}
-									scrollToMonday={scrollToMonday}
-									onDatabaseError={handleDatabaseError}
-								/>
-							</div>
+						<div className="bg-gray-200 sticky top-0 z-[20]">
+							<svg ref={headerRef} />
+						</div>
+
+						<div className="sticky left-0 relative z-[30] print:relative print:ml-[var(--print-margin-left,0)]">
+							<svg ref={leftColumnRef} />
+						</div>
+						<div className="relative z-10">
+							<svg className="absolute top-0 left-0" ref={chartRef} />
+							<TaskGroups
+								chartRef={chartRef}
+								barMargin={barMargin}
+								chartHeight={chartHeight}
+								numDays={numDays}
+								handleAutoScroll={handleAutoScroll}
+								setIsLoading={setIsLoading}
+								chartStartDate={chartStartDate}
+								daysBeforeStart={daysBeforeStart}
+								rowHeight={rowHeight}
+								workdayHours={workdayHours}
+								holidayChecker={holidayChecker}
+								dayWidth={dayWidth}
+								scrollToMonday={scrollToMonday}
+								onDatabaseError={handleDatabaseError}
+							/>
 						</div>
 					</div>
 					<div className="gantt-footer">
@@ -678,17 +664,6 @@ export const ChartContainer = () => {
 					</div>
 				</div>
 			)}
-
-			<ReactDataGrid
-				columns={rdgColumns}
-				rows={rdgRows}
-				defaultColumnOptions={
-					{
-						// sortable: true,
-						// resizable: true,
-					}
-				}
-			/>
 
 			{isLoading && (
 				<div className="loading-overlay">
