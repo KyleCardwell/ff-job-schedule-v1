@@ -18,7 +18,7 @@ import BuilderModal from "./BuilderModal";
 import JobModalChartData from "./JobModalChartData";
 import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
-import { eachDayOfInterval } from "date-fns";
+import { eachDayOfInterval, parseISO } from "date-fns";
 import ErrorToast from "./ErrorToast";
 
 export const ChartContainer = () => {
@@ -44,8 +44,8 @@ export const ChartContainer = () => {
 						jobsIndex++;
 					}
 
-					const roomStartDate = new Date(room.start_date);
-					const roomEndDate = new Date(room.end_date);
+					const roomStartDate = parseISO(normalizeDate(room.start_date));
+					const roomEndDate = parseISO(normalizeDate(room.end_date));
 					if (roomStartDate < earliestStartDate) {
 						earliestStartDate = roomStartDate;
 					}
@@ -136,10 +136,13 @@ export const ChartContainer = () => {
 
 	const scrollToMonday = (date) => {
 		const normalizedDate = normalizeDate(date);
-		const mondayOfThisWeek = startOfWeek(new Date(normalizedDate), {
+		const mondayOfThisWeek = startOfWeek(parseISO(normalizedDate), {
 			weekStartsOn: 1,
 		}); // 1 represents Monday
-		const diffDays = differenceInCalendarDays(mondayOfThisWeek, chartStartDate);
+		const diffDays = differenceInCalendarDays(
+			mondayOfThisWeek,
+			parseISO(normalizeDate(chartStartDate))
+		);
 		const scrollPosition = diffDays * dayWidth;
 
 		// Update the selector to use the ref for the scrollable div
@@ -214,9 +217,9 @@ export const ChartContainer = () => {
 
 		// Create an array of dates for the column headers
 		const dates = Array.from({ length: numDays }, (_, i) => {
-			return addDays(chartStartDate, i);
+			const date = addDays(parseISO(normalizeDate(chartStartDate)), i);
+			return date;
 		});
-
 		chartSvg.attr("width", chartWidth).attr("height", chartHeight);
 
 		leftHeaderSvg.attr("width", leftColumnWidth).attr("height", headerHeight);
@@ -279,8 +282,12 @@ export const ChartContainer = () => {
 				// Group for each header
 				const group = d3.select(this);
 
-				const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-				const isHolidayDate = isHoliday(d, holidayChecker, holidays);
+				const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+				const isHolidayDate = isHoliday(
+					normalizeDate(d),
+					holidayChecker,
+					holidays
+				);
 
 				// Append a rectangle for weekends
 				if (isWeekend || isHolidayDate) {
@@ -533,10 +540,6 @@ export const ChartContainer = () => {
 				scrollableContainer.style.setProperty(
 					"--print-translate-x",
 					`-${scrollLeft}px`
-				);
-				scrollableContainer.style.setProperty(
-					"--print-translate-y",
-					`-${scrollTop}px`
 				);
 
 				// Add margin to the left column in print view
