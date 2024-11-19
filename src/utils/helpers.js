@@ -147,12 +147,8 @@ export const getNextWorkday = (
 		isSunday(nextDay) ||
 		isHoliday(nextDay, holidayChecker, holidays) ||
 		(builderId &&
-			timeOffByBuilder[builderId]?.some(
-				(timeOffDate) =>
-					isSameDay(
-						normalizeDate(new Date(timeOffDate)),
-						nextDay
-					)
+			timeOffByBuilder[builderId]?.some((timeOffDate) =>
+				isSameDay(normalizeDate(new Date(timeOffDate)), nextDay)
 			))
 	) {
 		nextDay = normalizeDate(addDays(nextDay, 1));
@@ -179,12 +175,8 @@ export const totalJobHours = (
 		// Check if the current day is a weekend
 		const isTimeOff =
 			builderId && timeOffByBuilder[builderId]
-				? timeOffByBuilder[builderId].some(
-						(timeOffDate) =>
-							isSameDay(
-								normalizeDate(new Date(timeOffDate)),
-								currentDate
-							)
+				? timeOffByBuilder[builderId].some((timeOffDate) =>
+						isSameDay(normalizeDate(new Date(timeOffDate)), currentDate)
 				  )
 				: false;
 
@@ -204,17 +196,43 @@ export const totalJobHours = (
 	return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
+// export const calculateXPosition = (
+// 	jobStartDate,
+// 	chartStartDate,
+// 	dayWidth = 30
+// ) => {
+// 	const normalizedJobStartDate = normalizeDate(jobStartDate);
+// 	const normalizedChartStartDate = normalizeDate(chartStartDate);
+// 	const diffInDays = differenceInCalendarDays(
+// 		normalizedJobStartDate,
+// 		normalizedChartStartDate
+// 	);
+// 	return diffInDays * dayWidth;
+// };
+
 export const calculateXPosition = (
 	jobStartDate,
 	chartStartDate,
 	dayWidth = 30
 ) => {
+	// Ensure we're working with normalized date strings
 	const normalizedJobStartDate = normalizeDate(jobStartDate);
 	const normalizedChartStartDate = normalizeDate(chartStartDate);
-	const diffInDays = differenceInCalendarDays(
-		normalizedJobStartDate,
-		normalizedChartStartDate
+
+	// Parse the normalized dates
+	const jobDate = parseISO(normalizedJobStartDate);
+	const chartDate = parseISO(normalizedChartStartDate);
+
+	// Create UTC dates for comparison
+	const jobUTC = new Date(
+		Date.UTC(jobDate.getFullYear(), jobDate.getMonth(), jobDate.getDate())
 	);
+
+	const chartUTC = new Date(
+		Date.UTC(chartDate.getFullYear(), chartDate.getMonth(), chartDate.getDate())
+	);
+
+	const diffInDays = differenceInCalendarDays(jobUTC, chartUTC);
 	return diffInDays * dayWidth;
 };
 
@@ -233,7 +251,17 @@ export const sortAndAdjustDates = (
 
 	// Sort the array by date
 	arrayToProcess.sort((a, b) => {
-		return a.start_date.localeCompare(b.start_date);
+		const dateComparison = a.start_date.localeCompare(b.start_date);
+		if (dateComparison === 0) {
+			// If dates are equal, consider drag direction
+			if (a.isDragged) {
+				return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
+			}
+			if (b.isDragged) {
+				return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
+			}
+		}
+		return dateComparison;
 	});
 
 	// Adjust the dates and calculate endDates
@@ -267,8 +295,11 @@ export const sortAndAdjustDates = (
 			addDays(start_date, Math.ceil(jobHours / workdayHours))
 		);
 
+		// Create new task object without isDragged flag
+		const { isDragged, ...taskWithoutDragFlag } = current;
+
 		acc.push({
-			...current,
+			...taskWithoutDragFlag,
 			start_date: start_date,
 			end_date: end_date,
 			subtask_width: (jobHours / workdayHours) * dayWidth,

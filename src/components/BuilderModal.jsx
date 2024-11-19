@@ -9,10 +9,14 @@ import {
 	deleteEmployees,
 } from "../redux/actions/builders";
 import { format } from "date-fns";
-import { normalizeDate } from "../utils/dateUtils";
-import { addDays } from "date-fns";
+import { formatDateForInput, normalizeDate } from "../utils/dateUtils";
+import { addDays, parseISO } from "date-fns";
 import { updateTasksAfterBuilderChanges } from "../redux/actions/taskData";
-import { buttonClass, modalContainerClass, modalOverlayClass } from "../assets/tailwindConstants";
+import {
+	buttonClass,
+	modalContainerClass,
+	modalOverlayClass,
+} from "../assets/tailwindConstants";
 
 const BuilderModal = ({
 	visible,
@@ -56,11 +60,6 @@ const BuilderModal = ({
 		setTimeOffVisibility({});
 	}, [employees, visible]);
 
-	const formatDateForInput = (date) => {
-		if (!date) return "";
-		return format(new Date(date), "yyyy-MM-dd");
-	};
-
 	const handleNameChange = (index, value) => {
 		const updatedBuilders = localEmployees.map((builder, i) =>
 			i === index ? { ...builder, employee_name: value } : builder
@@ -80,7 +79,29 @@ const BuilderModal = ({
 			i === index
 				? {
 						...builder,
-						time_off: [...builder.time_off, { start: "", end: "" }],
+						time_off: [
+							...builder.time_off,
+							{
+								start: normalizeDate(
+									new Date(
+										Date.UTC(
+											new Date().getUTCFullYear(),
+											new Date().getUTCMonth(),
+											new Date().getUTCDate()
+										)
+									)
+								),
+								end: normalizeDate(
+									new Date(
+										Date.UTC(
+											new Date().getUTCFullYear(),
+											new Date().getUTCMonth(),
+											new Date().getUTCDate()
+										)
+									)
+								),
+							},
+						],
 				  }
 				: builder
 		);
@@ -184,7 +205,44 @@ const BuilderModal = ({
 		if (timeOff1?.length !== timeOff2?.length) return false;
 		return timeOff1?.every((period1, index) => {
 			const period2 = timeOff2[index];
-			return period1.start === period2.start && period1.end === period2.end;
+			// Compare normalized dates
+			const start1 = normalizeDate(
+				new Date(
+					Date.UTC(
+						new Date(period1.start).getUTCFullYear(),
+						new Date(period1.start).getUTCMonth(),
+						new Date(period1.start).getUTCDate()
+					)
+				)
+			);
+			const start2 = normalizeDate(
+				new Date(
+					Date.UTC(
+						new Date(period2.start).getUTCFullYear(),
+						new Date(period2.start).getUTCMonth(),
+						new Date(period2.start).getUTCDate()
+					)
+				)
+			);
+			const end1 = normalizeDate(
+				new Date(
+					Date.UTC(
+						new Date(period1.end).getUTCFullYear(),
+						new Date(period1.end).getUTCMonth(),
+						new Date(period1.end).getUTCDate()
+					)
+				)
+			);
+			const end2 = normalizeDate(
+				new Date(
+					Date.UTC(
+						new Date(period2.end).getUTCFullYear(),
+						new Date(period2.end).getUTCMonth(),
+						new Date(period2.end).getUTCDate()
+					)
+				)
+			);
+			return start1 === start2 && end1 === end2;
 		});
 	};
 

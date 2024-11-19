@@ -5,6 +5,7 @@ import {
 	eachDayOfInterval,
 	isWithinInterval,
 	subDays,
+	parseISO,
 } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
@@ -56,8 +57,8 @@ const TaskGroups = ({
 				...task,
 				rowNumber: index,
 				xPosition: calculateXPosition(
-					task.start_date,
-					chartStartDate,
+					normalizeDate(task.start_date), // Ensure we pass a normalized date
+					normalizeDate(chartStartDate),
 					dayWidth
 				),
 			}));
@@ -66,12 +67,31 @@ const TaskGroups = ({
 	// Calculate timeOffByBuilder independently
 	const timeOffByBuilder = useMemo(() => {
 		return employees.reduce((acc, builder) => {
-			acc[builder.employee_id] = builder.time_off?.flatMap((period) =>
-				eachDayOfInterval({
-					start: normalizeDate(new Date(period.start)),
-					end: normalizeDate(new Date(period.end)),
-				}).map((day) => normalizeDate(day))
-			);
+			acc[builder.employee_id] = builder.time_off?.flatMap((period) => {
+				const periodStart = parseISO(period.start);
+				const periodEnd = parseISO(period.end);
+
+				const startUTC = new Date(
+					Date.UTC(
+						periodStart.getUTCFullYear(),
+						periodStart.getUTCMonth(),
+						periodStart.getUTCDate()
+					)
+				);
+
+				const endUTC = new Date(
+					Date.UTC(
+						periodEnd.getUTCFullYear(),
+						periodEnd.getUTCMonth(),
+						periodEnd.getUTCDate()
+					)
+				);
+
+				return eachDayOfInterval({
+					start: startUTC,
+					end: endUTC,
+				}).map((day) => normalizeDate(day));
+			});
 			return acc;
 		}, {});
 	}, [employees]);
@@ -81,30 +101,28 @@ const TaskGroups = ({
 		const xPositions = new Map();
 		return employees.flatMap((builder) =>
 			builder.time_off?.flatMap((period) => {
-				const periodStart = normalizeDate(new Date(period.start));
-				const periodEnd = normalizeDate(new Date(period.end));
-				const chartEndDate = addDays(
-					normalizeDate(chartStartDate),
-					numDays - 1
-				);
+				const periodStart = parseISO(normalizeDate(period.start));
+				const periodEnd = parseISO(normalizeDate(period.end));
+				const chartStart = parseISO(normalizeDate(chartStartDate));
 
-				return eachDayOfInterval({ start: periodStart, end: periodEnd })
+				return eachDayOfInterval({
+					start: periodStart,
+					end: periodEnd,
+				})
 					.filter((day) =>
-						isWithinInterval(normalizeDate(day), {
-							start: normalizeDate(chartStartDate),
-							end: chartEndDate,
+						isWithinInterval(day, {
+							start: chartStart,
+							end: addDays(chartStart, numDays - 1),
 						})
 					)
 					.map((day) => {
-						let x =
-							differenceInCalendarDays(
-								normalizeDate(day),
-								normalizeDate(chartStartDate)
-							) * dayWidth;
+						let x = differenceInCalendarDays(day, chartStart) * dayWidth;
+
 						while (xPositions.has(x)) {
-							x += 6; //Width of the time off bar
+							x += 6;
 						}
 						xPositions.set(x, true);
+
 						return {
 							x,
 							employee_color: builder.employee_color,
@@ -165,8 +183,14 @@ const TaskGroups = ({
 				const snappedDayIndex =
 					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
 				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
-				let newStartDate = new Date(d.start_date);
-				newStartDate.setDate(newStartDate.getDate() + daysMoved);
+				// let newStartDate = new Date(d.start_date);
+				let newStartDate = new Date(
+					Date.UTC(
+						new Date(d.start_date).getFullYear(), // Use local date components
+						new Date(d.start_date).getMonth(),
+						new Date(d.start_date).getDate() + daysMoved
+					)
+				);
 				// Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
 				newStartDate = getNextWorkday(
 					newStartDate,
@@ -180,6 +204,8 @@ const TaskGroups = ({
 				const updatedDraggedJob = {
 					...d,
 					start_date: normalizeDate(newStartDate),
+					isDragged: true,
+					draggedLeft: dx < 0,
 				};
 
 				// Get the current builder's jobs and update the dragged job
