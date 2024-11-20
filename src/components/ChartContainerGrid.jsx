@@ -605,6 +605,7 @@ export const ChartContainer = () => {
         setIsBuilderModalOpen={setIsBuilderModalOpen}
         setIsHolidayModalOpen={setIsHolidayModalOpen}
         setIsSettingsModalOpen={setIsSettingsModalOpen}
+        leftColumnWidth={leftColumnWidth}
       />
 
       {!activeRoomsData || activeRoomsData.length === 0 ? (

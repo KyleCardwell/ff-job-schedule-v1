@@ -12,6 +12,7 @@ const ChartActionButtons = ({
   setIsBuilderModalOpen,
   setIsHolidayModalOpen,
   setIsSettingsModalOpen,
+  leftColumnWidth,
 }) => {
   const location = useLocation();
   const dispatch = useDispatch();
@@ -38,14 +39,18 @@ const ChartActionButtons = ({
       <div className="hidden mobLan:hidden flex-grow md:flex gap-2 justify-end">
         {location.pathname === "/" && (
           <div className="flex flex-grow gap-2 justify-end">
+            <div className={`w-[${leftColumnWidth}px] flex flex-start`}>
+              {employees.length > 0 && (
+                <button
+                  className={`${buttonClass} bg-blue-500 ml-2`}
+                  onClick={() => setIsSettingsModalOpen(true)}
+                >
+                  Settings
+                </button>
+              )}
+            </div>
             <button
-              className={`${buttonClass} bg-blue-500 md:ml-2`}
-              onClick={() => setIsSettingsModalOpen(true)}
-            >
-              Settings
-            </button>
-            <button
-              className={`${buttonClass} bg-orange-500 ml-[180px] mr-auto`}
+              className={`${buttonClass} bg-orange-500 ml-1 mr-auto`}
               onClick={() => scrollToMonday(new Date())}
             >
               Today
@@ -104,15 +109,17 @@ const ChartActionButtons = ({
         >
           {location.pathname === "/" && (
             <>
-              <button
-                className={`${buttonClass} bg-blue-500 w-full text-left`}
-                onClick={() => {
-                  setIsSettingsModalOpen(true);
-                  setIsMenuOpen(false);
-                }}
-              >
-                Settings
-              </button>
+              {employees.length > 0 && (
+                <button
+                  className={`${buttonClass} bg-blue-500 w-full text-left`}
+                  onClick={() => {
+                    setIsSettingsModalOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Settings
+                </button>
+              )}
               <button
                 className={`${buttonClass} bg-orange-500 w-full text-left`}
                 onClick={() => {
