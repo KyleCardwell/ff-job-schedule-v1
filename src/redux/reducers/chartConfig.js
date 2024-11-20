@@ -3,6 +3,8 @@ import { Actions } from "../actions";
 const initialState = {
 	chart_config_id: null,
 	next_task_number: null,
+	min_task_number: null,
+	max_task_number: null,
 	loading: false,
 	error: null,
 };
@@ -22,6 +24,9 @@ export const chartConfigReducer = (state = initialState, action) => {
 				loading: false,
 				chart_config_id: action.payload.chart_config_id,
 				next_task_number: action.payload.next_task_number,
+				min_task_number: action.payload.min_task_number,
+				max_task_number: action.payload.max_task_number,
+				error: null,
 			};
 
 		case Actions.chartConfig.FETCH_CONFIG_ERROR:
