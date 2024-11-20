@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ChartContainer } from "./components/ChartContainerGrid.jsx";
 import CompletedJobsContainer from "./components/CompletedProjectsContainer.jsx";
