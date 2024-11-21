@@ -15,7 +15,7 @@ export const normalizeDate = (date) => {
 									0,
 									0
 							)
-					).toISOString();
+					).toISOString().replace('.000Z', '+00:00');
 			}
 
 			// If it's already a Date object
@@ -32,7 +32,7 @@ export const normalizeDate = (date) => {
 											0,
 											0
 									)
-							).toISOString();
+							).toISOString().replace('.000Z', '+00:00');
 					}
 					return new Date(
 							Date.UTC(
@@ -44,7 +44,7 @@ export const normalizeDate = (date) => {
 									0,
 									0
 							)
-					).toISOString();
+					).toISOString().replace('.000Z', '+00:00');
 			}
 
 			// If it's a string
@@ -62,7 +62,7 @@ export const normalizeDate = (date) => {
 											0,
 											0
 									)
-							).toISOString();
+							).toISOString().replace('.000Z', '+00:00');
 					}
 					return new Date(
 							Date.UTC(
@@ -74,7 +74,7 @@ export const normalizeDate = (date) => {
 									0,
 									0
 							)
-					).toISOString();
+					).toISOString().replace('.000Z', '+00:00');
 			}
 
 			// If we get here, it's an unsupported type
@@ -89,7 +89,7 @@ export const normalizeDate = (date) => {
 							0,
 							0
 					)
-			).toISOString();
+			).toISOString().replace('.000Z', '+00:00');
 	} catch (error) {
 			const now = new Date();
 			return new Date(
@@ -102,7 +102,7 @@ export const normalizeDate = (date) => {
 							0,
 							0
 					)
-			).toISOString();
+			).toISOString().replace('.000Z', '+00:00');
 	}
 };
 
