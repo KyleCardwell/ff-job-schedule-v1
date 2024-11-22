@@ -39,7 +39,10 @@ const ChartActionButtons = ({
       <div className="hidden mobLan:hidden flex-grow md:flex gap-2 justify-end">
         {location.pathname === "/" && (
           <div className="flex flex-grow gap-2 justify-end">
-            <div className={`w-[${leftColumnWidth}px] flex flex-start`}>
+            <div
+              className={`flex flex-start`}
+              style={{ width: leftColumnWidth }}
+            >
               {employees.length > 0 && (
                 <button
                   className={`${buttonClass} bg-blue-500 ml-2`}
@@ -50,7 +53,7 @@ const ChartActionButtons = ({
               )}
             </div>
             <button
-              className={`${buttonClass} bg-orange-500 ml-1 mr-auto`}
+              className={`${buttonClass} bg-orange-500 mr-auto`}
               onClick={() => scrollToMonday(new Date())}
             >
               Today
