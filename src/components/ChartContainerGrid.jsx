@@ -27,7 +27,7 @@ export const ChartContainer = () => {
   const { chartData } = useSelector((state) => state.chartData);
   const databaseLoading = useSelector((state) => state.projects.loading);
 
-  const builders = useSelector((state) => state.builders.builders);
+  const builders = useSelector((state) => state.builders.employees);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
 
   const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate } =
@@ -101,7 +101,8 @@ export const ChartContainer = () => {
   const barMargin = 3;
   const headerTextGap = 5;
   const headerHeight = 43;
-  const leftColumnWidth = 270;
+  const leftColumnWidth = 280;
+  const employeeColorWidth = 5;
   const chartHeight = activeRoomsData.reduce(
     (total, room) => total + room.heightAdjust * rowHeight,
     0
@@ -213,6 +214,7 @@ export const ChartContainer = () => {
 
     const weekendColor = "#b9c0c9"; // Darker color for weekends
     const alternateRowColors = ["#f9f9f9", "#e5e7eb"]; // Alternating colors for rows
+    const alternateAttentionColors = ["#faf16e", "#f3e520"];
     const strokeColor = "#aab1ba"; // stroke color
 
     const chartWidth = numDays * dayWidth;
@@ -377,9 +379,33 @@ export const ChartContainer = () => {
       .attr("y", (d, i) => i * rowHeight)
       .attr("width", leftColumnWidth)
       .attr("height", (d) => d.heightAdjust * rowHeight)
-      .attr("fill", (d) =>
-        d.jobsIndex % 2 === 0 ? alternateRowColors[0] : alternateRowColors[1]
-      ); // Alternate colors
+      .attr("fill", (d) => {
+        if (d.needs_attention) {
+          return d.jobsIndex % 2 === 0
+            ? alternateAttentionColors[0]
+            : alternateAttentionColors[1];
+        }
+
+        return d.jobsIndex % 2 === 0
+          ? alternateRowColors[0]
+          : alternateRowColors[1];
+      }); // Alternate colors
+
+    // Add right border with employee color
+    leftColumnSvg
+      .selectAll(".row-border")
+      .data(activeRoomsData)
+      .enter()
+      .append("rect")
+      .attr("class", "row-border")
+      .attr("x", leftColumnWidth - employeeColorWidth)
+      .attr("y", (d, i) => i * rowHeight)
+      .attr("width", employeeColorWidth) // 4px wide border
+      .attr("height", rowHeight)
+      .attr("fill", (d) => {
+        const employee = builders.find((b) => b.employee_id === d.employee_id);
+        return employee?.employee_color || "#000000";
+      });
 
     const textGroups = leftColumnSvg
       .selectAll(".job-text-group")

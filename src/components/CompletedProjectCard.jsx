@@ -10,7 +10,7 @@ const CompletedProjectCard = ({ project }) => {
 	return (
 		<div className="completed-job-card">
 			<div className="card-header">
-				<h2>{jobName}</h2>
+				<h2 className="text-lg font-bold">{jobName}</h2>
 				<span className="completed-date">{completedDate}</span>
 			</div>
 			<div className="room-grid">

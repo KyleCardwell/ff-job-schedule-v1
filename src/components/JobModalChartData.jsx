@@ -1,21 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, format, parseISO, sub } from "date-fns";
 import { formatDateForInput, normalizeDate } from "../utils/dateUtils";
 import {
   getNextWorkday,
   sortAndAdjustDates,
   totalJobHours,
 } from "../utils/helpers";
-import {
-  jobModalUpdateChartData,
-  removeCompletedJobFromChart,
-} from "../redux/actions/chartData";
-import {
-  jobModalUpdateTaskData,
-  removeCompletedJobFromTasks,
-} from "../redux/actions/taskData";
 import { saveProject } from "../redux/actions/projects";
 import { isEqual, omit } from "lodash";
 import { useCSVReader } from "react-papaparse";
@@ -25,6 +17,7 @@ import {
   modalContainerClass,
   modalOverlayClass,
 } from "../assets/tailwindConstants";
+import { Field, Label, Switch } from "@headlessui/react";
 
 const JobModal = ({
   isOpen,
@@ -58,6 +51,8 @@ const JobModal = ({
   const unchangedTasks = useSelector((state) => state.taskData.tasks);
 
   const [jobName, setJobName] = useState("");
+  const [depositDate, setDepositDate] = useState("");
+  const [needsAttention, setNeedsAttention] = useState(false);
   const [localRooms, setLocalRooms] = useState([]);
   const [errors, setErrors] = useState({});
   const [localJobsByBuilder, setLocalJobsByBuilder] = useState({});
@@ -67,6 +62,9 @@ const JobModal = ({
   const [showCompleteConfirmation, setShowCompleteConfirmation] =
     useState(false);
   const [completedJobData, setCompletedJobData] = useState(null);
+  const [completedSubTasksToDelete, setCompletedSubTasksToDelete] = useState(
+    new Set()
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
@@ -89,6 +87,8 @@ const JobModal = ({
       if (jobData && jobData.length > 0) {
         // Assuming all work periods have the same project_name
         setJobName(jobData[0].project_name || "");
+        setDepositDate(formatDateForInput(jobData[0].deposit_date) || "");
+        setNeedsAttention(jobData[0].needs_attention || false);
 
         // Group work periods by task_id
         const roomMap = {};
@@ -115,6 +115,8 @@ const JobModal = ({
       } else {
         // Reset state for a new job
         setJobName("");
+        setDepositDate("");
+        setNeedsAttention(false);
         setLocalRooms([]);
       }
 
@@ -765,15 +767,23 @@ const JobModal = ({
       project_id: localRooms[0].project_id, // Assuming all rooms in a job have the same project_id
       project_name: jobName,
       project_completed_at: new Date().toISOString(), // Current date as completion date
-      rooms: localRooms.map((task) => ({
-        task_id: task.task_id,
-        task_number: task.task_number,
-        task_name: task.task_name,
-        task_active: task.task_active,
-        task_created_at: task.task_created_at,
-        project_created_at: task.project_created_at,
-        subtask_created_at: task.subtask_created_at,
-      })),
+      rooms: localRooms.map((task) => {
+        const subtaskIdsToDelete = task.workPeriods
+          .slice(1)
+          .map((wp) => wp.subtask_id);
+        setCompletedSubTasksToDelete(
+          (prev) => new Set([...prev, ...subtaskIdsToDelete])
+        );
+        return {
+          task_id: task.task_id,
+          task_number: task.task_number,
+          task_name: task.task_name,
+          task_active: task.task_active,
+          task_created_at: task.task_created_at,
+          project_created_at: task.project_created_at,
+          workPeriods: [task.workPeriods[0]],
+        };
+      }),
     };
     setShowCompleteConfirmation(true);
     setCompletedJobData(formattedCompletedJob);
@@ -797,10 +807,6 @@ const JobModal = ({
         completedProjectTasks.map((task) => task.employee_id)
       );
 
-      const removedSubTasks = completedProjectTasks.map(
-        (task) => task.subtask_id
-      );
-
       // Get all tasks (including those not in this job)
       const allTasks = Object.values(localJobsByBuilder).flat();
 
@@ -813,19 +819,42 @@ const JobModal = ({
       const { updatedTasks } = sortAndAdjustBuilderTasks(
         remainingTasks,
         buildersInvolvedInJob,
-        removedSubTasks
+        [...completedSubTasksToDelete]
       );
+
+      // Filter out unchanged tasks
+      const tasksToUpdate = updatedTasks.filter((task) => {
+        const originalTask = unchangedTasks.find(
+          (t) => t.subtask_id === task.subtask_id
+        );
+        if (!originalTask) {
+          return true; // Keep new tasks
+        }
+
+        // Debug the comparison
+        const cleanTask = omit(task, ["xPosition"]);
+        const cleanOriginal = omit(originalTask, ["xPosition"]);
+
+        const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+
+        if (!isTaskEqual) {
+          return true;
+        }
+        return false;
+      });
 
       const result = await dispatch(
         saveProject({
           jobName: jobData[0].project_name,
           projectId: jobData[0].project_id,
           newProjectCreatedAt: jobData[0].project_created_at,
-          updatedTasks,
-          removedWorkPeriods: removedSubTasks,
+          updatedTasks: tasksToUpdate,
+          removedWorkPeriods: [], // Do not remove any subtasks for now
+          //   removedWorkPeriods: [...completedSubTasksToDelete],
           nextJobNumber,
           chartConfigId,
           projectCompletedAt: new Date().toISOString(),
+          needsAttention: false,
         })
       );
 
@@ -868,6 +897,10 @@ const JobModal = ({
     if (!jobName || jobName.trim().length < 1) {
       newErrors.project_name = "Project name is required";
       newErrors.messages.push("Project name is required");
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        jobName: true,
+      }));
     }
 
     // Check if at least one room is active
@@ -1043,6 +1076,8 @@ const JobModal = ({
       const result = await dispatch(
         saveProject({
           jobName,
+          depositDate: depositDate ? normalizeDate(depositDate) : null,
+          needsAttention: needsAttention,
           projectId: jobData ? jobData[0].project_id : undefined,
           newProjectCreatedAt: jobData
             ? jobData[0].project_created_at
@@ -1166,27 +1201,59 @@ const JobModal = ({
                 Complete Job
               </button>
             </div>
+            <div className="flex gap-8 items-center mb-5">
+              <div className="md:w-1/4">
+                <label labelfor="depositDate">Deposit Date</label>
+                <input
+                  type="date"
+                  value={depositDate}
+                  onChange={(e) => setDepositDate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="Deposit Date"
+                />
+              </div>
 
-            <div className="jobDataContainer flex-grow overflow-auto min-h-0">
-              <input
-                id={"jobName"}
-                type="text"
-                value={jobName}
-                onChange={(e) => {
-                  setErrors((prevErrors) => ({
-                    ...prevErrors,
-                    jobName: undefined,
-                  }));
-                  setJobName(e.target.value);
-                }}
-                placeholder="Job Name"
-                className={`w-full md:w-1/2 p-2 border ${
-                  errors.jobName ? "border-red-500" : "border-gray-300"
-                } rounded mb-5`}
-                ref={jobNameInputRef}
-              />
-              <div></div>
+              <div className="flex-1">
+                <label labelfor="jobName">Name</label>
+                <input
+                  id="jobName"
+                  type="text"
+                  value={jobName}
+                  onChange={(e) => {
+                    setErrors((prevErrors) => ({
+                      ...prevErrors,
+                      jobName: undefined,
+                    }));
+                    setJobName(e.target.value);
+                  }}
+                  placeholder="Job Name"
+                  className={`w-full p-2 border ${
+                    errors.jobName ? "border-red-500" : "border-gray-300"
+                  } rounded`}
+                  ref={jobNameInputRef}
+                />
+              </div>
 
+              <div className="flex flex-col items-center justify-center md:w-1/4">
+                <Field className="flex items-center mt-2 md:mr-4">
+                  <Switch
+                    checked={needsAttention}
+                    onChange={setNeedsAttention}
+                    className="group relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 data-[checked]:bg-indigo-600"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out group-data-[checked]:translate-x-5"
+                    />
+                  </Switch>
+                  <Label as="span" className="ml-3 text-md">
+                    Highlight
+                  </Label>
+                </Field>
+              </div>
+            </div>
+
+            <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
               <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
               <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-200 font-bold">
                 <span>Job</span>
@@ -1443,7 +1510,7 @@ const JobModal = ({
             </div>
             {errors.rooms && <div className="error">{errors.rooms}</div>}
 
-            <div classname="flex justify-center">
+            <div className="flex justify-center">
               <button
                 onClick={handleAddRoom}
                 className={`${buttonClass} bg-green-500 mt-3`}

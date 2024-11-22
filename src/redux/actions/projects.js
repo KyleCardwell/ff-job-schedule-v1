@@ -47,6 +47,8 @@ export const fetchProjects =
 							task_active: task.task_active,
 							heightAdjust: index === 0 ? sortedSubtasks.length : 0, // Use sortedSubtasks.length
 							task_number: task.task_number,
+							needs_attention: project.needs_attention,
+							deposit_date: project.deposit_date,
 						}));
 					})
 				)
@@ -121,6 +123,8 @@ export const saveProject = (projectData) => async (dispatch) => {
 			nextJobNumber,
 			chartConfigId,
 			projectCompletedAt = null,
+			needsAttention,
+			depositDate
 		} = projectData;
 
 		// 1. Create or update project
@@ -132,6 +136,8 @@ export const saveProject = (projectData) => async (dispatch) => {
 					project_name: jobName,
 					project_created_at: newProjectCreatedAt,
 					project_completed_at: projectCompletedAt,
+					needs_attention: needsAttention,
+					deposit_date: depositDate,
 				})
 				.eq("project_id", projectId)
 				.select()
@@ -147,6 +153,8 @@ export const saveProject = (projectData) => async (dispatch) => {
 					project_name: jobName,
 					project_created_at: newProjectCreatedAt,
 					project_completed_at: projectCompletedAt,
+					needs_attention: needsAttention,
+					deposit_date: depositDate,
 				})
 				.select()
 				.single();
