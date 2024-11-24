@@ -75,11 +75,11 @@ export const ChartContainer = () => {
     }, [chartData]);
 
   const chartRef = useRef(null);
-  const headerRef = useRef(null); // For the fixed header
   const leftColumnRef = useRef(null); // For the fixed left column
   const leftColumnHeaderRef = useRef(null); // For the fixed left column
+  const headerRef = useRef(null); // For the fixed header
+  const monthHeaderRef = useRef(null); // Add new ref for month header
   const scrollableRef = useRef(null);
-  const leftScrollableRef = useRef(null);
   const timeOffSvgRef = useRef(null);
 
   const [holidayChecker, setHolidayChecker] = useState(null);
@@ -97,16 +97,22 @@ export const ChartContainer = () => {
   const daysAfterEnd = 15;
   const dayWidth = 30;
   const workdayHours = 8;
+
   const rowHeight = 25;
   const barMargin = 3;
-  const headerTextGap = 5;
-  const headerHeight = 43;
-  const leftColumnWidth = 280;
-  const employeeColorWidth = 5;
   const chartHeight = activeRoomsData.reduce(
     (total, room) => total + room.heightAdjust * rowHeight,
     0
   );
+
+  const monthHeaderHeight = 20;
+  const dayHeaderHeight = 25;
+  const headerHeight = monthHeaderHeight + dayHeaderHeight;
+  const headerTextGap = 5;
+  const alternateMonthColors = ["bg-slate-200", "bg-slate-300"];
+
+  const leftColumnWidth = 280;
+  const employeeColorWidth = 5;
 
   const timeOffByBuilder = useMemo(() => {
     return builders.reduce((acc, builder) => {
@@ -131,6 +137,52 @@ export const ChartContainer = () => {
       daysAfterEnd
     );
   }, [earliestStartDate, latestStartDate, daysBeforeStart, daysAfterEnd]);
+
+  // Create an array of dates for the column headers
+  const dates = useMemo(() => {
+    return Array.from({ length: numDays }, (_, i) => {
+      const date = addDays(parseISO(normalizeDate(chartStartDate)), i);
+      return date;
+    });
+  }, [numDays, chartStartDate]);
+
+  const monthHeaders = useMemo(() => {
+    const months = new Set();
+    let currentMonth = null;
+    let monthStartIndex = 0;
+
+    dates.forEach((date, index) => {
+      const monthKey = format(date, "MMMM yyyy");
+      const monthNumber = parseInt(format(date, "M")); // Get month number (1-12)
+
+      if (monthKey !== currentMonth) {
+        if (currentMonth) {
+          months.add({
+            key: currentMonth,
+            monthNumber,
+            startDate: dates[monthStartIndex],
+            width: (index - monthStartIndex) * dayWidth,
+            xPosition: monthStartIndex * dayWidth,
+          });
+        }
+        currentMonth = monthKey;
+        monthStartIndex = index;
+      }
+
+      // If this is the last date, add the final month
+      if (index === dates.length - 1) {
+        months.add({
+          key: currentMonth,
+          monthNumber,
+          startDate: dates[monthStartIndex],
+          width: (index - monthStartIndex + 1) * dayWidth,
+          xPosition: monthStartIndex * dayWidth,
+        });
+      }
+    });
+
+    return Array.from(months);
+  }, [dates, dayWidth]);
 
   const saveJob = () => {
     setIsJobModalOpen(false);
@@ -206,6 +258,9 @@ export const ChartContainer = () => {
     const leftHeaderSvg = d3.select(leftColumnHeaderRef.current);
     leftHeaderSvg.selectAll("*").remove();
 
+    const monthHeaderSvg = d3.select(monthHeaderRef.current);
+    monthHeaderSvg.selectAll("*").remove();
+
     const headerSvg = d3.select(headerRef.current);
     headerSvg.selectAll("*").remove();
 
@@ -219,11 +274,11 @@ export const ChartContainer = () => {
 
     const chartWidth = numDays * dayWidth;
 
-    // Create an array of dates for the column headers
-    const dates = Array.from({ length: numDays }, (_, i) => {
-      const date = addDays(parseISO(normalizeDate(chartStartDate)), i);
-      return date;
-    });
+    // // Create an array of dates for the column headers
+    // const dates = Array.from({ length: numDays }, (_, i) => {
+    //   const date = addDays(parseISO(normalizeDate(chartStartDate)), i);
+    //   return date;
+    // });
     chartSvg.attr("width", chartWidth).attr("height", chartHeight);
 
     leftHeaderSvg.attr("width", leftColumnWidth).attr("height", headerHeight);
@@ -272,7 +327,7 @@ export const ChartContainer = () => {
         .attr("dominant-baseline", "middle");
     });
 
-    headerSvg.attr("width", numDays * dayWidth).attr("height", headerHeight);
+    headerSvg.attr("width", numDays * dayWidth).attr("height", dayHeaderHeight);
 
     // Add column headers with both date and day of the week
     headerSvg
@@ -303,22 +358,22 @@ export const ChartContainer = () => {
             .attr("height", headerHeight) // Adjust to cover the header
             .attr("fill", isHolidayDate ? "lightblue" : weekendColor); // Light blue for holidays, grey for weekends
         }
-        // Month
-        group
-          .append("text")
-          .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 10)
-          .text(d3.timeFormat("%b")(d))
-          .attr("fill", "#000")
-          .attr("font-size", "11px")
-          .attr("font-weight", "bold")
-          .attr("text-anchor", "left");
+        // // Month
+        // group
+        //   .append("text")
+        //   .attr("x", i * dayWidth + headerTextGap)
+        //   .attr("y", 10)
+        //   .text(d3.timeFormat("%b")(d))
+        //   .attr("fill", "#000")
+        //   .attr("font-size", "11px")
+        //   .attr("font-weight", "bold")
+        //   .attr("text-anchor", "left");
 
         // Date number
         group
           .append("text")
           .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 25)
+          .attr("y", 13)
           .text(d3.timeFormat("%d")(d))
           .attr("fill", "#000")
           .attr("font-size", "14px")
@@ -329,7 +384,7 @@ export const ChartContainer = () => {
         group
           .append("text")
           .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 37) // Adjust vertical position for day of the week
+          .attr("y", 23) // Adjust vertical position for day of the week
           .text(d3.timeFormat("%a")(d))
           .attr("fill", "#000")
           .attr("font-size", "9px")
@@ -666,6 +721,36 @@ export const ChartContainer = () => {
               <svg ref={leftColumnHeaderRef} />
             </div>
             <div className="bg-gray-200 sticky top-0 z-[20]">
+              <div
+                className="flex"
+                style={{ height: `${monthHeaderHeight}px` }}
+              >
+                {monthHeaders.map((month) => (
+                  <div
+                    key={month.key}
+                    className={`flex items-center font-bold text-md ${
+                      alternateMonthColors[month.monthNumber % 2]
+                    }`}
+                    style={{
+                      width: `${month.width}px`,
+                      height: `${monthHeaderHeight}px`,
+                      borderRight: "1px solid #e5e7eb",
+                      printColorAdjust: "exact",
+                      WebkitPrintColorAdjust: "exact",
+                      MozPrintColorAdjust: "exact",
+                    }}
+                  >
+                    <div
+                      className="sticky px-2"
+                      style={{
+                        left: `${leftColumnWidth}px`,
+                      }}
+                    >
+                      {month.key}
+                    </div>
+                  </div>
+                ))}
+              </div>
               <svg ref={headerRef} />
             </div>
 
