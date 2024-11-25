@@ -38,7 +38,6 @@ const TaskGroups = ({
 }) => {
 	const dispatch = useDispatch();
 
-	const builders = useSelector((state) => state.builders.builders);
 	const employees = useSelector((state) => state.builders.employees);
 	const holidays = useSelector((state) => state.holidays.holidays);
 	const { tasks } = useSelector((state) => state.taskData);
