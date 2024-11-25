@@ -21,6 +21,8 @@ import TaskGroups from "./TaskGroups";
 import { eachDayOfInterval, parseISO } from "date-fns";
 import ErrorToast from "./ErrorToast";
 import ChartSettingsModal from "./ChartSettingsModal";
+import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
+import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
 
 export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays.holidays);
@@ -81,6 +83,7 @@ export const ChartContainer = () => {
   const monthHeaderRef = useRef(null); // Add new ref for month header
   const scrollableRef = useRef(null);
   const timeOffSvgRef = useRef(null);
+  const employeesScheduledRef = useRef(null);
 
   const [holidayChecker, setHolidayChecker] = useState(null);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
@@ -90,6 +93,7 @@ export const ChartContainer = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [clickedTask, setClickedTask] = useState(null);
   const [databaseError, setDatabaseError] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -104,9 +108,11 @@ export const ChartContainer = () => {
     (total, room) => total + room.heightAdjust * rowHeight,
     0
   );
+  const spanBarHeight = 6;
 
   const monthHeaderHeight = 20;
   const dayHeaderHeight = 25;
+  const employeesScheduledHeight = (builders.length + 1) * spanBarHeight;
   const headerHeight = monthHeaderHeight + dayHeaderHeight;
   const headerTextGap = 5;
   const alternateMonthColors = ["bg-slate-200", "bg-slate-300"];
@@ -264,6 +270,9 @@ export const ChartContainer = () => {
     const headerSvg = d3.select(headerRef.current);
     headerSvg.selectAll("*").remove();
 
+    const employeesScheduledSvg = d3.select(employeesScheduledRef.current);
+    employeesScheduledSvg.selectAll("*").remove();
+
     const timeOffSvg = d3.select(timeOffSvgRef.current);
     timeOffSvg.selectAll("*").remove();
 
@@ -274,11 +283,10 @@ export const ChartContainer = () => {
 
     const chartWidth = numDays * dayWidth;
 
-    // // Create an array of dates for the column headers
-    // const dates = Array.from({ length: numDays }, (_, i) => {
-    //   const date = addDays(parseISO(normalizeDate(chartStartDate)), i);
-    //   return date;
-    // });
+    const headerDatesVisibleHeight = isExpanded
+      ? dayHeaderHeight + employeesScheduledHeight
+      : dayHeaderHeight;
+
     chartSvg.attr("width", chartWidth).attr("height", chartHeight);
 
     leftHeaderSvg.attr("width", leftColumnWidth).attr("height", headerHeight);
@@ -327,7 +335,9 @@ export const ChartContainer = () => {
         .attr("dominant-baseline", "middle");
     });
 
-    headerSvg.attr("width", numDays * dayWidth).attr("height", dayHeaderHeight);
+    headerSvg
+      .attr("width", numDays * dayWidth)
+      .attr("height", headerDatesVisibleHeight);
 
     // Add column headers with both date and day of the week
     headerSvg
@@ -355,19 +365,9 @@ export const ChartContainer = () => {
             .attr("x", i * dayWidth)
             .attr("y", 0)
             .attr("width", dayWidth)
-            .attr("height", headerHeight) // Adjust to cover the header
+            .attr("height", headerDatesVisibleHeight) // Adjust to cover the header
             .attr("fill", isHolidayDate ? "lightblue" : weekendColor); // Light blue for holidays, grey for weekends
         }
-        // // Month
-        // group
-        //   .append("text")
-        //   .attr("x", i * dayWidth + headerTextGap)
-        //   .attr("y", 10)
-        //   .text(d3.timeFormat("%b")(d))
-        //   .attr("fill", "#000")
-        //   .attr("font-size", "11px")
-        //   .attr("font-weight", "bold")
-        //   .attr("text-anchor", "left");
 
         // Date number
         group
@@ -601,7 +601,9 @@ export const ChartContainer = () => {
   }, [
     chartStartDate,
     dayWidth,
+    builders,
     holidayChecker,
+    isExpanded,
     holidays,
     numDays,
     activeRoomsData,
@@ -717,10 +719,45 @@ export const ChartContainer = () => {
             }}
             ref={scrollableRef}
           >
-            <div className="sticky top-0 left-0 z-[40] print:relative print:ml-[var(--print-margin-left,0)]">
+            <div className="sticky top-0 left-0 z-[40] print:relative print:ml-[var(--print-margin-left,0)] relative">
               <svg ref={leftColumnHeaderRef} />
+              <div
+                className="bg-gray-200 absolute top-0 right-0 z-[41] w-1/6 flex items-center justify-center cursor-pointer"
+                style={{ height: `${headerHeight}px` }}
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                <svg
+                  className={`w-6 h-6 transition-transform duration-300 ${
+                    isExpanded ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+              <div
+                className={`overflow-hidden ${
+                  isExpanded ? "opacity-100 z-[21]" : "opacity-0 h-0"
+                } absolute bottom-0`}
+                style={{
+                  height: isExpanded ? `${employeesScheduledHeight}px` : 0,
+                }}
+              >
+                <EmployeeScheduleSpanLabels
+                  leftColumnWidth={leftColumnWidth}
+                  employeesScheduledHeight={employeesScheduledHeight}
+                  spanBarHeight={spanBarHeight}
+                />
+              </div>
             </div>
-            <div className="bg-gray-200 sticky top-0 z-[20]">
+            <div className="bg-gray-200 sticky top-0 z-[20] relative">
               <div
                 className="flex"
                 style={{ height: `${monthHeaderHeight}px` }}
@@ -730,7 +767,7 @@ export const ChartContainer = () => {
                     key={month.key}
                     className={`flex items-center font-bold text-md ${
                       alternateMonthColors[month.monthNumber % 2]
-                    }`}
+                    } text-nowrap`}
                     style={{
                       width: `${month.width}px`,
                       height: `${monthHeaderHeight}px`,
@@ -751,7 +788,26 @@ export const ChartContainer = () => {
                   </div>
                 ))}
               </div>
+
               <svg ref={headerRef} />
+
+              <div
+                className={`overflow-hidden ${
+                  isExpanded ? "opacity-100 z-[21]" : "opacity-0 h-0"
+                } absolute bottom-0`}
+                style={{
+                  height: isExpanded ? `${employeesScheduledHeight}px` : 0,
+                }}
+              >
+                <EmployeeScheduleSpans
+                  chartRef={chartRef}
+                  chartStartDate={chartStartDate}
+                  numDays={numDays}
+                  dayWidth={dayWidth}
+                  leftColumnWidth={leftColumnWidth}
+                  spanBarHeight={spanBarHeight}
+                />
+              </div>
             </div>
 
             <div className="sticky top-0 left-0 relative z-[30] print:relative print:ml-[var(--print-margin-left,0)]">
