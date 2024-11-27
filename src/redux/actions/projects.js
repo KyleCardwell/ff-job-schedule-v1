@@ -1,19 +1,16 @@
 import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
-import { v4 as uuidv4 } from "uuid";
-import { jobModalUpdateChartData } from "./chartData";
-import { jobModalUpdateTaskData } from "./taskData";
 import { updateNextTaskNumber } from "./chartConfig";
 import { binarySearch } from "../../utils/helpers";
 
 export const fetchProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at))",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at))",
 };
 
 export const fetchCompletedProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at)",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration)",
 };
 
 export const fetchProjects =
@@ -50,6 +47,7 @@ export const fetchProjects =
               task_number: task.task_number,
               needs_attention: project.needs_attention,
               deposit_date: project.deposit_date,
+			  est_duration: task.est_duration,
             }));
           })
         )
@@ -205,7 +203,7 @@ export const saveProject = (projectData) => async (dispatch) => {
           };
 
           if (task.taskIsNew) {
-            tasksToInsert.push(taskData);
+            tasksToInsert.push({ ...taskData, est_duration: task.duration });
           } else {
             tasksToUpdate.push({ ...taskData, task_id: task.task_id });
           }

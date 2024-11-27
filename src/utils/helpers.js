@@ -144,11 +144,36 @@ export const getPreviousMonday = (dateInput) => {
   return normalizeDate(subWeeks(startOfCurrentWeek, 1));
 };
 
-export const isHoliday = (date, holidayChecker, holidays) => {
-  if (!holidayChecker) return false;
+// export const isHoliday = (date, holidayChecker, holidays) => {
+//   if (!holidayChecker) return false;
+//   const normalizedDate = normalizeDate(date);
+//   const holiday = holidayChecker.isHoliday(normalizedDate);
+//   return holiday && holidays.some((h) => h.name === holiday[0].name);
+// };
+export const isHoliday = (
+  date,
+  holidayChecker,
+  { standardHolidays, customHolidays }
+) => {
+  if (!date) return false;
+
   const normalizedDate = normalizeDate(date);
-  const holiday = holidayChecker.isHoliday(normalizedDate);
-  return holiday && holidays.some((h) => h.name === holiday[0].name);
+
+  // Check custom holidays first
+  if (customHolidays?.length > 0) {
+    const isCustomHoliday = customHolidays.some((holiday) =>
+      isSameDay(parseISO(holiday.name), parseISO(normalizedDate))
+    );
+    if (isCustomHoliday) return true;
+  }
+
+  // Then check standard holidays
+  if (holidayChecker && standardHolidays?.length > 0) {
+    const holiday = holidayChecker.isHoliday(normalizedDate);
+    return holiday && standardHolidays.some((h) => h.name === holiday[0].name);
+  }
+
+  return false;
 };
 
 export const getNextWorkday = (

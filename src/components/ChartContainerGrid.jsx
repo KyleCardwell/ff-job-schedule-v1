@@ -25,7 +25,7 @@ import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
 
 export const ChartContainer = () => {
-  const holidays = useSelector((state) => state.holidays.holidays);
+  const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const databaseLoading = useSelector((state) => state.projects.loading);
 
@@ -888,6 +888,10 @@ export const ChartContainer = () => {
       <HolidayModal
         isOpen={isHolidayModalOpen}
         onClose={() => setIsHolidayModalOpen(false)}
+        workdayHours={workdayHours}
+        holidayChecker={holidayChecker}
+        dayWidth={dayWidth}
+        chartStartDate={chartStartDate}
       />
 
       <ChartSettingsModal

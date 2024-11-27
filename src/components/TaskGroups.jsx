@@ -39,7 +39,7 @@ const TaskGroups = ({
   const dispatch = useDispatch();
 
   const employees = useSelector((state) => state.builders.employees);
-  const holidays = useSelector((state) => state.holidays.holidays);
+  const holidays = useSelector((state) => state.holidays);
   const { tasks } = useSelector((state) => state.taskData);
   const { subTasksByEmployee } = useSelector(
     (state) => state.taskData,
@@ -519,7 +519,7 @@ const TaskGroups = ({
       .on("mouseover", function (event, d) {
         d3.select(this)
           .select(".bar-text")
-          .text(`${d.task_name} - ${d.duration} hours`);
+          .text(`${d.task_name} - Est. ${d.est_duration} Hrs`);
       })
       .on("mouseout", function (event, d) {
         d3.select(this).select(".bar-text").text(d.task_name);

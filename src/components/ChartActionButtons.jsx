@@ -72,14 +72,14 @@ const ChartActionButtons = ({
             >
               Employees
             </button>
-            {/* <button
+            <button
               className={`${buttonClass} bg-purple-500`}
               onClick={() => {
                 setIsHolidayModalOpen(true);
               }}
             >
               Holidays
-            </button> */}
+            </button>
           </div>
         )}
         <Link to={`${location.pathname === "/" ? "/completed" : "/"}`}>
@@ -152,7 +152,7 @@ const ChartActionButtons = ({
               >
                 Employees
               </button>
-              {/* <button
+              <button
                 className={`${buttonClass} bg-purple-500 w-full text-left`}
                 onClick={() => {
                   setIsHolidayModalOpen(true);
@@ -160,7 +160,7 @@ const ChartActionButtons = ({
                 }}
               >
                 Holidays
-              </button> */}
+              </button>
             </>
           )}
           <Link
