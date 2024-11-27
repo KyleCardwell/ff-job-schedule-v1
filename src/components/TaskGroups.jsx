@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-	addDays,
-	differenceInCalendarDays,
-	eachDayOfInterval,
-	isWithinInterval,
-	subDays,
-	parseISO,
+  addDays,
+  differenceInCalendarDays,
+  eachDayOfInterval,
+  isWithinInterval,
+  subDays,
+  parseISO,
 } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
 import * as d3 from "d3";
 import {
-	calculateXPosition,
-	getNextWorkday,
-	sortAndAdjustDates,
+  calculateAdjustedWidth,
+  calculateXPosition,
+  getNextWorkday,
+  sortAndAdjustDates,
 } from "../utils/helpers";
 import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
@@ -21,414 +22,547 @@ import { isEqual, omit } from "lodash";
 import { updateSubtasksPositions } from "../redux/actions/projects";
 
 const TaskGroups = ({
-	chartRef,
-	barMargin,
-	chartHeight,
-	numDays,
-	handleAutoScroll,
-	dayWidth,
-	rowHeight,
-	chartStartDate,
-	holidayChecker,
-	workdayHours,
-	setIsLoading,
-	daysBeforeStart,
-	scrollToMonday,
-	onDatabaseError,
+  chartRef,
+  barMargin,
+  chartHeight,
+  numDays,
+  handleAutoScroll,
+  dayWidth,
+  rowHeight,
+  chartStartDate,
+  holidayChecker,
+  workdayHours,
+  setIsLoading,
+  scrollToMonday,
+  onDatabaseError,
 }) => {
-	const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
-	const employees = useSelector((state) => state.builders.employees);
-	const holidays = useSelector((state) => state.holidays.holidays);
-	const { tasks } = useSelector((state) => state.taskData);
-	const { subTasksByEmployee } = useSelector(
-		(state) => state.taskData,
-		isEqual
-	);
+  const employees = useSelector((state) => state.builders.employees);
+  const holidays = useSelector((state) => state.holidays.holidays);
+  const { tasks } = useSelector((state) => state.taskData);
+  const { subTasksByEmployee } = useSelector(
+    (state) => state.taskData,
+    isEqual
+  );
 
-	const taskGroupsRef = useRef(null);
-	const previousTaskStateRef = useRef(null);
+  const taskGroupsRef = useRef(null);
+  const previousTaskStateRef = useRef(null);
 
-	const activeTasksData = useMemo(() => {
-		return tasks
-			.filter((task) => task.task_active !== false)
-			.map((task, index) => ({
-				...task,
-				rowNumber: index,
-				xPosition: calculateXPosition(
-					normalizeDate(task.start_date), // Ensure we pass a normalized date
-					normalizeDate(chartStartDate),
-					dayWidth
-				),
-			}));
-	}, [tasks, chartStartDate, dayWidth]);
+  const activeTasksData = useMemo(() => {
+    return tasks
+      .filter((task) => task.task_active !== false)
+      .map((task, index) => ({
+        ...task,
+        rowNumber: index,
+        xPosition: calculateXPosition(
+          normalizeDate(task.start_date), // Ensure we pass a normalized date
+          normalizeDate(chartStartDate),
+          dayWidth
+        ),
+      }));
+  }, [tasks, chartStartDate, dayWidth]);
 
-	// Calculate timeOffByBuilder independently
-	const timeOffByBuilder = useMemo(() => {
-		return employees.reduce((acc, builder) => {
-			acc[builder.employee_id] = builder.time_off?.flatMap((period) => {
-				const periodStart = parseISO(period.start);
-				const periodEnd = parseISO(period.end);
+  // Calculate timeOffByBuilder independently
+  const timeOffByBuilder = useMemo(() => {
+    return employees.reduce((acc, builder) => {
+      acc[builder.employee_id] = builder.time_off?.flatMap((period) => {
+        const periodStart = parseISO(normalizeDate(period.start));
+        const periodEnd = parseISO(normalizeDate(period.end));
 
-				const startUTC = new Date(
-					Date.UTC(
-						periodStart.getUTCFullYear(),
-						periodStart.getUTCMonth(),
-						periodStart.getUTCDate()
-					)
-				);
+        return eachDayOfInterval({
+          start: periodStart,
+          end: periodEnd,
+        }).map((day) => normalizeDate(day));
+      });
+      return acc;
+    }, {});
+  }, [employees]);
 
-				const endUTC = new Date(
-					Date.UTC(
-						periodEnd.getUTCFullYear(),
-						periodEnd.getUTCMonth(),
-						periodEnd.getUTCDate()
-					)
-				);
+  // Calculate timeOffData
+  const timeOffData = useMemo(() => {
+    const xPositions = new Map();
+    return employees.flatMap((builder) =>
+      builder.time_off?.flatMap((period) => {
+        const periodStart = parseISO(normalizeDate(period.start));
+        const periodEnd = parseISO(normalizeDate(period.end));
+        const chartStart = parseISO(normalizeDate(chartStartDate));
 
-				return eachDayOfInterval({
-					start: startUTC,
-					end: endUTC,
-				}).map((day) => normalizeDate(day));
-			});
-			return acc;
-		}, {});
-	}, [employees]);
+        return eachDayOfInterval({
+          start: periodStart,
+          end: periodEnd,
+        })
+          .filter((day) =>
+            isWithinInterval(day, {
+              start: chartStart,
+              end: addDays(chartStart, numDays - 1),
+            })
+          )
+          .map((day) => {
+            let x = differenceInCalendarDays(day, chartStart) * dayWidth;
 
-	// Calculate timeOffData
-	const timeOffData = useMemo(() => {
-		const xPositions = new Map();
-		return employees.flatMap((builder) =>
-			builder.time_off?.flatMap((period) => {
-				const periodStart = parseISO(normalizeDate(period.start));
-				const periodEnd = parseISO(normalizeDate(period.end));
-				const chartStart = parseISO(normalizeDate(chartStartDate));
+            while (xPositions.has(x)) {
+              x += 6;
+            }
+            xPositions.set(x, true);
 
-				return eachDayOfInterval({
-					start: periodStart,
-					end: periodEnd,
-				})
-					.filter((day) =>
-						isWithinInterval(day, {
-							start: chartStart,
-							end: addDays(chartStart, numDays - 1),
-						})
-					)
-					.map((day) => {
-						let x = differenceInCalendarDays(day, chartStart) * dayWidth;
+            return {
+              x,
+              employee_color: builder.employee_color,
+              employee_id: builder.employee_id,
+              date: normalizeDate(day),
+            };
+          });
+      })
+    );
+  }, [employees, chartStartDate, numDays, dayWidth]);
 
-						while (xPositions.has(x)) {
-							x += 6;
-						}
-						xPositions.set(x, true);
+  useEffect(() => {
+    if (
+      !chartRef.current ||
+      !taskGroupsRef.current ||
+      !activeTasksData ||
+      activeTasksData.length === 0 ||
+      !Array.isArray(employees) ||
+      employees.length === 0
+    ) {
+      return;
+    }
 
-						return {
-							x,
-							employee_color: builder.employee_color,
-							employee_id: builder.employee_id,
-							date: normalizeDate(day),
-						};
-					});
-			})
-		);
-	}, [employees, chartStartDate, numDays, dayWidth]);
+    const taskGroupsSvg = d3.select(taskGroupsRef.current);
 
-	useEffect(() => {
-		if (
-			!chartRef.current ||
-			!taskGroupsRef.current ||
-			!activeTasksData ||
-			activeTasksData.length === 0 ||
-			!Array.isArray(employees) ||
-			employees.length === 0
-		) {
-			return;
-		}
+    // Clear existing content
+    taskGroupsSvg.selectAll("*").remove();
+    // Define drag behavior
+    const drag = d3
+      .drag()
+      .on("start", function (event, d) {
+        const employeeTasks = subTasksByEmployee[d.employee_id] || [];
+        previousTaskStateRef.current = {
+          employee_id: d.employee_id,
+          tasks: [...employeeTasks],
+        };
 
-		const taskGroupsSvg = d3.select(taskGroupsRef.current);
+        d3.select(this).classed("dragging", true);
+        d.dragStartX = d3.select(this).attr("x");
+        d.dragStartEventX = event.x;
+      })
+      .on("drag", function (event, d) {
+        const dx = event.x - d.dragStartEventX;
+        const newX = parseFloat(d.dragStartX) + dx;
+        d3.select(this).attr("x", newX);
+        d3.select(this.parentNode)
+          .select(".bar-text")
+          .attr("x", newX + 5);
+        handleAutoScroll(event);
+      })
+      .on("end", function (event, d) {
+        const dx = event.x - d.dragStartEventX;
+        const newX = parseFloat(d.dragStartX) + dx;
+        // Calculate the day index and the percentage within the day
+        const dayIndex = Math.floor(newX / dayWidth);
+        const percentageWithinDay = (newX % dayWidth) / dayWidth;
+        // Determine whether to snap left or right
+        const snappedDayIndex =
+          percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
+        const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
+        // let newStartDate = new Date(d.start_date);
+        let newStartDate = new Date(
+          Date.UTC(
+            new Date(d.start_date).getFullYear(), // Use local date components
+            new Date(d.start_date).getMonth(),
+            new Date(d.start_date).getDate() + daysMoved
+          )
+        );
+        // Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
+        newStartDate = getNextWorkday(
+          newStartDate,
+          holidayChecker,
+          holidays,
+          d.employee_id,
+          timeOffByBuilder
+        );
 
-		// Clear existing content
-		taskGroupsSvg.selectAll("*").remove();
-		// Define drag behavior
-		const drag = d3
-			.drag()
-			.on("start", function (event, d) {
-				const employeeTasks = subTasksByEmployee[d.employee_id] || [];
-				previousTaskStateRef.current = {
-					employee_id: d.employee_id,
-					tasks: [...employeeTasks],
-				};
+        // Update the dragged job
+        const updatedDraggedJob = {
+          ...d,
+          start_date: normalizeDate(newStartDate),
+          isDragged: true,
+          draggedLeft: dx < 0,
+        };
 
-				d3.select(this).classed("dragging", true);
-				d.dragStartX = d3.select(this).attr("x");
-				d.dragStartEventX = event.x;
-			})
-			.on("drag", function (event, d) {
-				const dx = event.x - d.dragStartEventX;
-				const newX = parseFloat(d.dragStartX) + dx;
-				d3.select(this).attr("x", newX);
-				d3.select(this.parentNode)
-					.select(".bar-text")
-					.attr("x", newX + 5);
-				handleAutoScroll(event);
-			})
-			.on("end", function (event, d) {
-				const dx = event.x - d.dragStartEventX;
-				const newX = parseFloat(d.dragStartX) + dx;
-				// Calculate the day index and the percentage within the day
-				const dayIndex = Math.floor(newX / dayWidth);
-				const percentageWithinDay = (newX % dayWidth) / dayWidth;
-				// Determine whether to snap left or right
-				const snappedDayIndex =
-					percentageWithinDay <= 0.67 ? dayIndex : dayIndex + 1;
-				const daysMoved = snappedDayIndex - Math.floor(d.dragStartX / dayWidth);
-				// let newStartDate = new Date(d.start_date);
-				let newStartDate = new Date(
-					Date.UTC(
-						new Date(d.start_date).getFullYear(), // Use local date components
-						new Date(d.start_date).getMonth(),
-						new Date(d.start_date).getDate() + daysMoved
-					)
-				);
-				// Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
-				newStartDate = getNextWorkday(
-					newStartDate,
-					holidayChecker,
-					holidays,
-					d.employee_id,
-					timeOffByBuilder
-				);
+        // Get the current builder's jobs and update the dragged job
+        const builderTasks = subTasksByEmployee[d.employee_id];
+        const updatedBuilderTasks = builderTasks
+          .map((subTask) =>
+            subTask.subtask_id === d.subtask_id
+              ? {
+                  ...updatedDraggedJob,
+                  dragStartX: undefined,
+                  dragStartEventX: undefined,
+                }
+              : subTask
+          )
+          .filter((job) => job.task_active);
 
-				// Update the dragged job
-				const updatedDraggedJob = {
-					...d,
-					start_date: normalizeDate(newStartDate),
-					isDragged: true,
-					draggedLeft: dx < 0,
-				};
+        // Sort and adjust dates for the builder's jobs
+        const sortedBuilderTasks = sortAndAdjustDates(
+          updatedBuilderTasks,
+          workdayHours,
+          holidayChecker,
+          holidays,
+          d.subtask_id,
+          newStartDate,
+          timeOffByBuilder,
+          dayWidth,
+          chartStartDate
+        );
+        // Transition all jobs in the builder group
+        const jobGroups = taskGroupsSvg
+          .selectAll(`.task-group-${d.employee_id}`)
+          .data(sortedBuilderTasks, (job) => job.subtask_id);
 
-				// Get the current builder's jobs and update the dragged job
-				const builderTasks = subTasksByEmployee[d.employee_id];
-				const updatedBuilderTasks = builderTasks
-					.map((subTask) =>
-						subTask.subtask_id === d.subtask_id
-							? {
-									...updatedDraggedJob,
-									dragStartX: undefined,
-									dragStartEventX: undefined,
-							  }
-							: subTask
-					)
-					.filter((job) => job.task_active);
+        jobGroups
+          .transition()
+          .duration(300)
+          .call((transition) => {
+            transition
+              .select("rect")
+              .attr("x", (job) => job.xPosition)
+              .attr("width", (job) => job.subtask_width);
+            transition
+              .select(".bar-text")
+              .attr("x", (job) => job.xPosition + 5);
+          })
+          .end()
+          .then(async () => {
+            try {
+              dispatch(updateOneBuilderChartData(sortedBuilderTasks));
+              dispatch(
+                updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
+              );
 
-				// Sort and adjust dates for the builder's jobs
-				const sortedBuilderTasks = sortAndAdjustDates(
-					updatedBuilderTasks,
-					workdayHours,
-					holidayChecker,
-					holidays,
-					d.subtask_id,
-					newStartDate,
-					timeOffByBuilder,
-					dayWidth,
-					chartStartDate
-				);
-				// Transition all jobs in the builder group
-				const jobGroups = taskGroupsSvg
-					.selectAll(`.task-group-${d.employee_id}`)
-					.data(sortedBuilderTasks, (job) => job.subtask_id);
+              // Filter out unchanged tasks
+              const tasksToUpdate = sortedBuilderTasks.filter((task) => {
+                const originalTask = tasks.find(
+                  (t) => t.subtask_id === task.subtask_id
+                );
+                if (!originalTask) {
+                  return true; // Keep new tasks
+                }
 
-				jobGroups
-					.transition()
-					.duration(300)
-					.call((transition) => {
-						transition
-							.select("rect")
-							.attr("x", (job) => job.xPosition)
-							.attr("width", (job) => job.subtask_width);
-						transition
-							.select(".bar-text")
-							.attr("x", (job) => job.xPosition + 5);
-					})
-					.end()
-					.then(async () => {
-						try {
-							dispatch(updateOneBuilderChartData(sortedBuilderTasks));
-							dispatch(
-								updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
-							);
+                // Debug the comparison
+                const cleanTask = omit(task, ["xPosition"]);
+                const cleanOriginal = omit(originalTask, ["xPosition"]);
 
-							// Filter out unchanged tasks
-							const tasksToUpdate = sortedBuilderTasks.filter((task) => {
-								const originalTask = tasks.find(
-									(t) => t.subtask_id === task.subtask_id
-								);
-								if (!originalTask) {
-									return true; // Keep new tasks
-								}
+                const isTaskEqual = isEqual(cleanTask, cleanOriginal);
 
-								// Debug the comparison
-								const cleanTask = omit(task, ["xPosition"]);
-								const cleanOriginal = omit(originalTask, ["xPosition"]);
+                if (!isTaskEqual) {
+                  return true;
+                }
+                return false;
+              });
 
-								const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+              await updateSubtasksPositions(tasksToUpdate);
 
-								if (!isTaskEqual) {
-									return true;
-								}
-								return false;
-							});
+              previousTaskStateRef.current = null;
+            } catch (error) {
+              // Revert to previous state if database update fails
+              if (previousTaskStateRef.current) {
+                dispatch(
+                  updateOneBuilderChartData(previousTaskStateRef.current.tasks)
+                );
+                dispatch(
+                  updateTasksByOneBuilder(
+                    previousTaskStateRef.current.employee_id,
+                    previousTaskStateRef.current.tasks
+                  )
+                );
+              }
+              onDatabaseError(error);
+            }
+          });
+        d3.select(this).classed("dragging", false);
+        delete d.dragStartX;
+        delete d.dragStartEventX;
+      });
 
-							await updateSubtasksPositions(tasksToUpdate);
+    const resize = d3
+      .drag()
+      .on("start", function (event, d) {
+        const employeeTasks = subTasksByEmployee[d.employee_id] || [];
+        previousTaskStateRef.current = {
+          employee_id: d.employee_id,
+          tasks: [...employeeTasks],
+        };
+        d.resizeStartWidth = d3
+          .select(this.parentNode)
+          .select("rect")
+          .attr("width");
+        d.resizeStartX = event.x;
+      })
+      .on("drag", function (event, d) {
+        const rect = d3.select(this.parentNode).select("rect");
+        const dx = event.x - d.resizeStartX;
+        const newWidth = Math.max(
+          dayWidth,
+          parseFloat(d.resizeStartWidth) + dx
+        );
+        rect.attr("width", newWidth);
+        handleAutoScroll(event);
+      })
+      .on("end", function (event, d) {
+        const rect = d3.select(this.parentNode).select("rect");
+        const newWidth = parseFloat(rect.attr("width"));
 
-							previousTaskStateRef.current = null;
-						} catch (error) {
-							// Revert to previous state if database update fails
-							if (previousTaskStateRef.current) {
-								dispatch(
-									updateOneBuilderChartData(previousTaskStateRef.current.tasks)
-								);
-								dispatch(
-									updateTasksByOneBuilder(
-										previousTaskStateRef.current.employee_id,
-										previousTaskStateRef.current.tasks
-									)
-								);
-							}
-							onDatabaseError(error);
-						}
-					});
-				d3.select(this).classed("dragging", false);
-				delete d.dragStartX;
-				delete d.dragStartEventX;
-			});
+        // Calculate adjusted width and duration
+        const newDuration = calculateAdjustedWidth(
+          d.start_date,
+          newWidth,
+          dayWidth,
+          holidayChecker,
+          holidays,
+          d.employee_id,
+          timeOffByBuilder,
+          workdayHours
+        );
 
-		const timeOffGroup = taskGroupsSvg
-			.append("g")
-			.attr("class", "time-off-group");
+        // Update the resized job
+        const updatedResizedJob = {
+          ...d,
+          subtask_width: newWidth,
+          duration: newDuration,
+        };
 
-		// Create a group for jobs
-		const jobsGroup = taskGroupsSvg
-			.append("g")
-			.attr("class", "jobs-group")
-			.style("cursor", "ew-resize");
+        // Get the current builder's jobs and update the resized job
+        const builderTasks = subTasksByEmployee[d.employee_id];
+        const updatedBuilderTasks = builderTasks.map((subTask) =>
+          subTask.subtask_id === d.subtask_id
+            ? {
+                ...updatedResizedJob,
+                resizeStartWidth: undefined,
+                resizeStartX: undefined,
+              }
+            : subTask
+        );
+        //   .filter((job) => job.task_active);
 
-		timeOffGroup
-			.selectAll(".time-off-line")
-			.data(timeOffData)
-			.enter()
-			.append("line")
-			.attr("class", "time-off-line")
-			.attr("x1", (d) => d?.x + 3)
-			.attr("y1", 0)
-			.attr("x2", (d) => d?.x + 3)
-			.attr("y2", chartHeight)
-			.attr("stroke", (d) => d?.employee_color)
-			.attr("stroke-width", 6)
-			.attr("opacity", 0.6);
+        // Sort and adjust dates for the builder's jobs
+        const sortedBuilderTasks = sortAndAdjustDates(
+          updatedBuilderTasks,
+          workdayHours,
+          holidayChecker,
+          holidays,
+          d.subtask_id,
+          d.start_date,
+          timeOffByBuilder,
+          dayWidth,
+          chartStartDate
+        );
 
-		// Bind data to job groups using localJobs
-		const jobGroups = jobsGroup
-			.selectAll(".job-group")
-			.data(activeTasksData, (d) => d.subtask_id);
+        // Transition all jobs in the builder group
+        const jobGroups = taskGroupsSvg
+          .selectAll(`.task-group-${d.employee_id}`)
+          .data(sortedBuilderTasks, (job) => job.subtask_id);
 
-		// Enter new elements
-		const enterGroups = jobGroups
-			.enter()
-			.append("g")
-			.attr("class", (d) => `job-group task-group-${d.employee_id}`)
-			.attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
-			.attr("font-size", "12px");
+        jobGroups
+          .transition()
+          .duration(300)
+          .call((transition) => {
+            transition
+              .select("rect")
+              .attr("x", (job) => job.xPosition)
+              .attr("width", (job) => job.subtask_width);
+            transition
+              .select(".bar-text")
+              .attr("x", (job) => job.xPosition + 5);
+          })
+          .end()
+          .then(async () => {
+            try {
+              dispatch(updateOneBuilderChartData(sortedBuilderTasks));
+              dispatch(
+                updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
+              );
 
-		enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
-		enterGroups
-			.append("text")
-			.attr("class", "bar-text")
-			.attr("dy", ".35em")
-			.style("pointer-events", "none");
+              // Filter out unchanged tasks
+              const tasksToUpdate = sortedBuilderTasks.filter((task) => {
+                const originalTask = tasks.find(
+                  (t) => t.subtask_id === task.subtask_id
+                );
+                if (!originalTask) {
+                  return true;
+                }
+                const cleanTask = omit(task, ["xPosition"]);
+                const cleanOriginal = omit(originalTask, ["xPosition"]);
+                return !isEqual(cleanTask, cleanOriginal);
+              });
 
-		// Update all elements (both new and existing)
-		const allGroups = enterGroups.merge(jobGroups);
+              await updateSubtasksPositions(tasksToUpdate);
+              previousTaskStateRef.current = null;
+            } catch (error) {
+              if (previousTaskStateRef.current) {
+                dispatch(
+                  updateOneBuilderChartData(previousTaskStateRef.current.tasks)
+                );
+                dispatch(
+                  updateTasksByOneBuilder(
+                    previousTaskStateRef.current.employee_id,
+                    previousTaskStateRef.current.tasks
+                  )
+                );
+              }
+              onDatabaseError(error);
+            }
+          });
+      });
 
-		allGroups.attr(
-			"transform",
-			(d) => `translate(0, ${d.rowNumber * rowHeight})`
-		);
+    const timeOffGroup = taskGroupsSvg
+      .append("g")
+      .attr("class", "time-off-group");
 
-		allGroups
-			.select("rect")
-			.attr("x", (d) => d.xPosition)
-			.attr(
-				"y",
-				(d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
-			)
-			.attr("width", (d) => d.subtask_width)
-			.attr("height", (d) => rowHeight - 2 * barMargin)
-			.attr("fill", (d) => {
-				const employee = employees.find(
-					(emp) => emp.employee_id === d.employee_id
-				);
-				return employee?.employee_color || "#808080"; // Fallback to gray if no color found
-			});
+    // Create a group for jobs
+    const jobsGroup = taskGroupsSvg
+      .append("g")
+      .attr("class", "jobs-group")
+      .style("cursor", "ew-resize");
 
-		allGroups
-			.select("text")
-			.attr("x", (d) => d.xPosition + 5)
-			.attr("y", rowHeight / 2)
-			.text((d) => d.task_name) // Always show the text
-			.attr("fill", "#ffffff")
-			.attr("font-size", "12px")
-			.attr("stroke", "#424242") // Add black stroke
-			.attr("stroke-width", "2px") // Adjust thickness of the stroke
-			.attr("paint-order", "stroke") // Makes stroke appear behind the fill
-			.style("pointer-events", "none");
+    timeOffGroup
+      .selectAll(".time-off-line")
+      .data(timeOffData)
+      .enter()
+      .append("line")
+      .attr("class", "time-off-line")
+      .attr("x1", (d) => d?.x + 3)
+      .attr("y1", 0)
+      .attr("x2", (d) => d?.x + 3)
+      .attr("y2", chartHeight)
+      .attr("stroke", (d) => d?.employee_color)
+      .attr("stroke-width", 6)
+      .attr("opacity", 0.6);
 
-		// // Remove old elements
-		jobGroups.exit().remove();
-		// Apply drag behavior
-		allGroups.select("rect").call(drag);
-		// Event listeners
-		allGroups
-			.on("mouseover", function (event, d) {
-				d3.select(this)
-					.select(".bar-text")
-					.text(`${d.task_name} - ${d.duration} hours`);
-			})
-			.on("mouseout", function (event, d) {
-				d3.select(this).select(".bar-text").text(d.task_name);
-			});
-		setIsLoading(false);
-	}, [
-		employees,
-		dayWidth,
-		rowHeight,
-		chartStartDate,
-		holidayChecker,
-		workdayHours,
-		holidays,
-		timeOffByBuilder,
-		chartRef,
-		activeTasksData,
-		setIsLoading,
-		barMargin,
-		handleAutoScroll,
-		subTasksByEmployee,
-	]);
+    // Bind data to job groups using localJobs
+    const jobGroups = jobsGroup
+      .selectAll(".job-group")
+      .data(activeTasksData, (d) => d.subtask_id);
 
-	useEffect(() => {
-		scrollToMonday(new Date());
-	}, []);
+    // Enter new elements
+    const enterGroups = jobGroups
+      .enter()
+      .append("g")
+      .attr("class", (d) => `job-group task-group-${d.employee_id}`)
+      .attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
+      .attr("font-size", "12px");
 
-	return (
-		<svg
-			style={{
-				width: numDays * dayWidth,
-				height: chartHeight,
-			}}
-			className="task-groups-svg absolute top-0 left-0"
-			ref={taskGroupsRef}
-		/>
-	);
+    enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
+    enterGroups
+      .append("text")
+      .attr("class", "bar-text")
+      .attr("dy", ".35em")
+      .style("pointer-events", "none");
+
+    // Add resize handle to each task group
+    enterGroups
+      .append("rect")
+      .attr("class", "resize-handle")
+      .attr("width", 16)
+      .attr("height", (d) => rowHeight - 2 * barMargin)
+      .attr(
+        "y",
+        (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
+      )
+      .style("cursor", "col-resize")
+      .style("fill", "transparent");
+
+    // Update all elements (both new and existing)
+    const allGroups = enterGroups.merge(jobGroups);
+
+    allGroups.attr(
+      "transform",
+      (d) => `translate(0, ${d.rowNumber * rowHeight})`
+    );
+
+    allGroups
+      .select("rect")
+      .attr("x", (d) => d.xPosition)
+      .attr(
+        "y",
+        (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
+      )
+      .attr("width", (d) => d.subtask_width)
+      .attr("height", (d) => rowHeight - 2 * barMargin)
+      .attr("fill", (d) => {
+        const employee = employees.find(
+          (emp) => emp.employee_id === d.employee_id
+        );
+        return employee?.employee_color || "#808080"; // Fallback to gray if no color found
+      });
+
+    allGroups
+      .select("text")
+      .attr("x", (d) => d.xPosition + 5)
+      .attr("y", rowHeight / 2)
+      .text((d) => d.task_name) // Always show the text
+      .attr("fill", "#ffffff")
+      .attr("font-size", "12px")
+      .attr("stroke", "#424242") // Add black stroke
+      .attr("stroke-width", "2px") // Adjust thickness of the stroke
+      .attr("paint-order", "stroke") // Makes stroke appear behind the fill
+      .style("pointer-events", "none");
+
+    // // Remove old elements
+    jobGroups.exit().remove();
+    // Apply drag behavior
+    allGroups.select("rect").call(drag);
+    // Event listeners
+    allGroups
+      .on("mouseover", function (event, d) {
+        d3.select(this)
+          .select(".bar-text")
+          .text(`${d.task_name} - ${d.duration} hours`);
+      })
+      .on("mouseout", function (event, d) {
+        d3.select(this).select(".bar-text").text(d.task_name);
+      });
+
+    // Update resize handle positions
+    allGroups
+      .select(".resize-handle")
+      .attr("x", (d) => d.xPosition + d.subtask_width - 4)
+      .call(resize);
+
+    setIsLoading(false);
+  }, [
+    employees,
+    dayWidth,
+    rowHeight,
+    chartStartDate,
+    holidayChecker,
+    workdayHours,
+    holidays,
+    timeOffByBuilder,
+    chartRef,
+    activeTasksData,
+    setIsLoading,
+    barMargin,
+    handleAutoScroll,
+    subTasksByEmployee,
+  ]);
+
+  useEffect(() => {
+    scrollToMonday(new Date());
+  }, []);
+
+  return (
+    <svg
+      style={{
+        width: numDays * dayWidth,
+        height: chartHeight,
+      }}
+      className="task-groups-svg absolute top-0 left-0"
+      ref={taskGroupsRef}
+    />
+  );
 };
 
 export default TaskGroups;

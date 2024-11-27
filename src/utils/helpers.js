@@ -214,6 +214,46 @@ export const totalJobHours = (
   return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
 };
 
+export const calculateAdjustedWidth = (
+  startDate,
+  requestedWidth,
+  dayWidth,
+  holidayChecker,
+  holidays,
+  builderId,
+  timeOffByBuilder = {},
+  workdayHours
+) => {
+  const requestedDays = Math.max(1, Math.ceil(requestedWidth / dayWidth));
+  let currentDate = parseISO(normalizeDate(startDate));
+  let nonWorkDays = 0;
+
+  // Count non-work days within the requested range
+  for (let i = 0; i < requestedDays; i++) {
+    const isTimeOff =
+      builderId && timeOffByBuilder[builderId]
+        ? timeOffByBuilder[builderId].some((timeOffDate) => {
+            const normalizedTimeOff = parseISO(timeOffDate);
+            return isSameDay(normalizedTimeOff, currentDate);
+          })
+        : false;
+
+    if (
+      isSaturday(currentDate) ||
+      isSunday(currentDate) ||
+      isHoliday(currentDate, holidayChecker, holidays) ||
+      isTimeOff
+    ) {
+      nonWorkDays++;
+    }
+
+    currentDate = addDays(currentDate, 1);
+  }
+
+  const workDays = Math.max(1, requestedDays - nonWorkDays);
+  return workDays * workdayHours;
+};
+
 // export const calculateXPosition = (
 // 	jobStartDate,
 // 	chartStartDate,

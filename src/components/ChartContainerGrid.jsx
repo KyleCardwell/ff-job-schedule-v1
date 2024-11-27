@@ -93,7 +93,7 @@ export const ChartContainer = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [clickedTask, setClickedTask] = useState(null);
   const [databaseError, setDatabaseError] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
 
