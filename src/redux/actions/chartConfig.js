@@ -16,6 +16,14 @@ export const fetchChartConfig = () => async (dispatch) => {
       payload: data,
     });
 
+    dispatch({
+      type: Actions.holidays.FETCH_HOLIDAYS_SUCCESS,
+      payload: {
+        standardHolidays: data.standard_holidays || [],
+        customHolidays: data.custom_holidays || [],
+      },
+    });
+
     return data;
   } catch (error) {
     dispatch({

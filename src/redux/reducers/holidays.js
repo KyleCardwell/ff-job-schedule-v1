@@ -1,29 +1,50 @@
 import { Actions } from "../actions";
 
 const initialState = {
-  holidays: [
-    { name: "New Year's Day" },
-    { name: "Memorial Day" },
-    { name: "Independence Day" },
-    { name: "Labor Day" },
-    { name: "Thanksgiving Day" },
-    { name: "Christmas Day" },
-  ],
+  standardHolidays: [],
+  customHolidays: [],
+  loading: false,
+  error: null,
 };
 
 export const holidaysReducer = (state = initialState, action) => {
   switch (action.type) {
-    case Actions.holidays.ADD_HOLIDAY:
+    // case Actions.holidays.ADD_HOLIDAY:
+    //   return {
+    //     ...state,
+    //     holidays: [...state.holidays, action.payload],
+    //   };
+    // case Actions.holidays.REMOVE_HOLIDAY:
+    //   return {
+    //     ...state,
+    //     holidays: state.holidays.filter(
+    //       (holiday) => holiday.name !== action.payload
+    //     ),
+    //   };
+    case Actions.holidays.FETCH_HOLIDAYS_START:
       return {
         ...state,
-        holidays: [...state.holidays, action.payload],
+        loading: true,
+        error: null,
       };
-    case Actions.holidays.REMOVE_HOLIDAY:
+
+    case Actions.holidays.FETCH_HOLIDAYS_SUCCESS:
       return {
         ...state,
-        holidays: state.holidays.filter(
-          (holiday) => holiday.name !== action.payload
-        ),
+        loading: false,
+        standardHolidays: action.payload.standardHolidays,
+        customHolidays: action.payload.customHolidays,
+        holidays: [
+          ...action.payload.standardHolidays,
+          ...action.payload.customHolidays,
+        ],
+      };
+
+    case Actions.holidays.FETCH_HOLIDAYS_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
       };
     default:
       return state;

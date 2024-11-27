@@ -29,7 +29,7 @@ const BuilderModal = ({
 	const dispatch = useDispatch();
 	const builders = useSelector((state) => state.builders.builders);
 	const employees = useSelector((state) => state.builders.employees);
-	const holidays = useSelector((state) => state.holidays.holidays);
+	const holidays = useSelector((state) => state.holidays);
 
 	const [localEmployees, setLocalEmployees] = useState(builders);
 	const [newBuilder, setNewBuilder] = useState({ name: "", color: "#000000" });
