@@ -28,7 +28,7 @@ const EmployeeScheduleSpanLabels = ({
         {employees.map((employee) => (
           <div
             className="mx-2"
-            key={employee.id}
+            key={employee.employee_id}
             style={{
               height: `${spanBarHeight}px`,
               backgroundColor: employee.employee_color,
