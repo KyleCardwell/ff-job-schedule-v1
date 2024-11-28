@@ -6,7 +6,7 @@ const BuilderLegend = () => {
 
 	return (
 		<div
-			className="flex flex-wrap justify-start ml-[270px] text-sm"
+			className="flex flex-wrap justify-start text-sm"
 			style={{
 				printColorAdjust: "exact",
 				WebkitPrintColorAdjust: "exact",
