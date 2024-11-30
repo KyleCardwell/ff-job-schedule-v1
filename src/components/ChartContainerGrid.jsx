@@ -12,7 +12,7 @@ import { GridLoader } from "react-spinners";
 import { normalizeDate } from "../utils/dateUtils";
 import * as d3 from "d3";
 import Holidays from "date-holidays";
-import { isHoliday, totalJobHours } from "../utils/helpers";
+import { isHoliday } from "../utils/helpers";
 import BuilderLegend from "./BuilderLegend";
 import BuilderModal from "./BuilderModal";
 import JobModalChartData from "./JobModalChartData";
@@ -28,9 +28,10 @@ export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const databaseLoading = useSelector((state) => state.projects.loading);
+  const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
 
   const employees = useSelector((state) => state.builders.employees);
-  const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
 
   const [holidayChecker, setHolidayChecker] = useState(null);
 
@@ -45,83 +46,50 @@ export const ChartContainer = () => {
     setHolidayChecker(hd);
   }, []);
 
-  const {
-    activeRoomsData,
-    lastJobsIndex,
-    earliestStartDate,
-    latestStartDate,
-    estimatedCompletionDate,
-  } = useMemo(() => {
-    let currentJobId = null;
-    let jobsIndex = -1;
-    let earliestStartDate = new Date(8640000000000000); // Initialize with max date
-    let latestStartDate = new Date(-8640000000000000); // Initialize with min date
-    const currentDate = normalizeDate(subDays(new Date(), 5));
-    let totalDuration = 0;
+  const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate } =
+    useMemo(() => {
+      let currentJobId = null;
+      let jobsIndex = -1;
+      let earliestStartDate = new Date(8640000000000000); // Initialize with max date
+      let latestStartDate = new Date(-8640000000000000); // Initialize with min date
 
-    const activeRooms = chartData
-      .filter((room) => room.task_active)
-      .map((room) => {
-        if (room.project_id !== currentJobId) {
-          currentJobId = room.project_id;
-          jobsIndex++;
-        }
+      const activeRooms = chartData
+        .filter((room) => room.task_active)
+        .map((room) => {
+          if (room.project_id !== currentJobId) {
+            currentJobId = room.project_id;
+            jobsIndex++;
+          }
 
-        const roomStartDate = parseISO(normalizeDate(room.start_date));
-        const roomEndDate = parseISO(normalizeDate(room.end_date));
-        const isAssignedToFirstEmployee =
-          room.employee_id === employees[0]?.employee_id;
+          const roomStartDate = parseISO(normalizeDate(room.start_date));
+          const roomEndDate = parseISO(normalizeDate(room.end_date));
 
-        if (
-          normalizeDate(room.start_date) >= currentDate ||
-          isAssignedToFirstEmployee
-        ) {
-          totalDuration += room.duration || 0;
-        }
+          if (roomStartDate < earliestStartDate) {
+            earliestStartDate = roomStartDate;
+          }
+          if (roomEndDate > latestStartDate) {
+            latestStartDate = roomEndDate;
+          }
 
-        if (roomStartDate < earliestStartDate) {
-          earliestStartDate = roomStartDate;
-        }
-        if (roomEndDate > latestStartDate) {
-          latestStartDate = roomEndDate;
-        }
+          return {
+            ...room,
+            jobsIndex: jobsIndex,
+          };
+        });
 
-        return {
-          ...room,
-          jobsIndex: jobsIndex,
-        };
-      });
-
-    const estimatedTotalDays =
-      totalJobHours(
-        currentDate,
-        totalDuration,
-        workdayHours,
-        holidayChecker,
-        holidays,
-        0,
-        {}
-      ) / workdayHours;
-
-    const estimatedCompletionDate = addDays(
-      parseISO(currentDate),
-      estimatedTotalDays / Math.max(1, employees.length - 1)
-    );
-
-    return {
-      activeRoomsData: activeRooms,
-      lastJobsIndex: jobsIndex,
-      earliestStartDate:
-        earliestStartDate === new Date(8640000000000000)
-          ? null
-          : earliestStartDate,
-      latestStartDate:
-        latestStartDate === new Date(-8640000000000000)
-          ? null
-          : latestStartDate,
-      estimatedCompletionDate,
-    };
-  }, [chartData, employees, workdayHours, holidays]);
+      return {
+        activeRoomsData: activeRooms,
+        lastJobsIndex: jobsIndex,
+        earliestStartDate:
+          earliestStartDate === new Date(8640000000000000)
+            ? null
+            : earliestStartDate,
+        latestStartDate:
+          latestStartDate === new Date(-8640000000000000)
+            ? null
+            : latestStartDate,
+      };
+    }, [chartData, employees, workdayHours, holidays]);
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column
@@ -871,6 +839,7 @@ export const ChartContainer = () => {
                 dayWidth={dayWidth}
                 scrollToMonday={scrollToMonday}
                 onDatabaseError={handleDatabaseError}
+                setEstimatedCompletionDate={setEstimatedCompletionDate}
               />
             </div>
           </div>
@@ -881,7 +850,8 @@ export const ChartContainer = () => {
           className="flex items-center justify-center px-2 font-bold print:invisible"
           style={{ width: `${leftColumnWidth}px` }}
         >
-          {`Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
+          {estimatedCompletionDate &&
+            `Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
         </div>
         <BuilderLegend />
       </div>

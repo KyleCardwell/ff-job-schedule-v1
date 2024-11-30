@@ -15,6 +15,7 @@ import {
   calculateXPosition,
   getNextWorkday,
   sortAndAdjustDates,
+  totalJobHours,
 } from "../utils/helpers";
 import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
@@ -35,6 +36,7 @@ const TaskGroups = ({
   setIsLoading,
   scrollToMonday,
   onDatabaseError,
+  setEstimatedCompletionDate,
 }) => {
   const dispatch = useDispatch();
 
@@ -48,20 +50,69 @@ const TaskGroups = ({
 
   const taskGroupsRef = useRef(null);
   const previousTaskStateRef = useRef(null);
+  const hasRunEffect = useRef(false);
+
+  // Get loading states from Redux
+  const { loading: employeesLoading } = useSelector((state) => state.builders);
+  const { loading: taskDataLoading } = useSelector((state) => state.taskData);
+  const { loading: holidaysLoading } = useSelector((state) => state.holidays);
 
   const activeTasksData = useMemo(() => {
-    return tasks
+    const currentDate = normalizeDate(new Date());
+    let totalDuration = 0;
+
+    // Map tasks and accumulate duration
+    const mappedTasks = tasks
       .filter((task) => task.task_active !== false)
-      .map((task, index) => ({
-        ...task,
-        rowNumber: index,
-        xPosition: calculateXPosition(
-          normalizeDate(task.start_date), // Ensure we pass a normalized date
-          normalizeDate(chartStartDate),
-          dayWidth
-        ),
-      }));
-  }, [tasks, chartStartDate, dayWidth]);
+      .map((task, index) => {
+        // Update totalDuration if task is relevant
+        if (
+          task.start_date >= currentDate ||
+          task.employee_id === employees[0]?.employee_id
+        ) {
+          totalDuration += task.duration || 0;
+        }
+
+        return {
+          ...task,
+          rowNumber: index,
+          xPosition: calculateXPosition(
+            normalizeDate(task.start_date),
+            normalizeDate(chartStartDate),
+            dayWidth
+          ),
+        };
+      });
+
+    // Calculate estimated completion date after all tasks are processed
+    const estimatedTotalDays =
+      totalJobHours(
+        currentDate,
+        totalDuration,
+        workdayHours,
+        holidayChecker,
+        holidays,
+        0,
+        {}
+      ) / workdayHours;
+
+    const estimCompletionDate = addDays(
+      parseISO(currentDate),
+      estimatedTotalDays / Math.max(1, employees.length - 1)
+    );
+
+    setEstimatedCompletionDate(normalizeDate(estimCompletionDate));
+    return mappedTasks;
+  }, [
+    tasks,
+    chartStartDate,
+    dayWidth,
+    workdayHours,
+    holidays,
+    holidayChecker,
+    employees,
+    setEstimatedCompletionDate,
+  ]);
 
   // Calculate timeOffByBuilder independently
   const timeOffByBuilder = useMemo(() => {
@@ -547,6 +598,87 @@ const TaskGroups = ({
     barMargin,
     handleAutoScroll,
     subTasksByEmployee,
+  ]);
+
+  // Move unassigne tasks to start at today
+  useEffect(() => {
+    if (
+      hasRunEffect.current ||
+      employeesLoading ||
+      taskDataLoading ||
+      holidaysLoading ||
+      !employees?.length ||
+      !subTasksByEmployee ||
+      !Object.keys(subTasksByEmployee).length ||
+      !holidays
+    ) {
+      return;
+    }
+
+    const firstEmployeeId = employees[0].employee_id;
+    const employeeTasks = [...subTasksByEmployee[firstEmployeeId]];
+
+    if (!employeeTasks?.length) {
+      hasRunEffect.current = true;
+      return;
+    }
+
+    const today = normalizeDate(new Date());
+    const firstTask = employeeTasks[0];
+
+    if (firstTask.start_date.localeCompare(today) < 0) {
+      employeeTasks[0] = {
+        ...employeeTasks[0],
+        start_date: getNextWorkday(
+          today,
+          holidayChecker,
+          holidays,
+          firstEmployeeId
+        ),
+      };
+      // Adjust tasks for the first employee
+      const adjustedTasks = sortAndAdjustDates(
+        employeeTasks,
+        workdayHours,
+        holidayChecker,
+        holidays,
+        firstEmployeeId,
+        null,
+        {},
+        dayWidth,
+        chartStartDate,
+        true
+      );
+
+      // Update the database and redux store
+      updateSubtasksPositions(adjustedTasks)
+        .then(() => {
+          dispatch(updateTasksByOneBuilder(firstEmployeeId, adjustedTasks));
+          hasRunEffect.current = true;
+        })
+        .catch((error) => {
+          console.error("Error updating tasks:", error);
+          if (onDatabaseError) {
+            onDatabaseError(error);
+          }
+          hasRunEffect.current = true;
+        });
+    } else {
+      hasRunEffect.current = true;
+    }
+  }, [
+    employees,
+    subTasksByEmployee,
+    holidays,
+    employeesLoading,
+    taskDataLoading,
+    holidaysLoading,
+    workdayHours,
+    holidayChecker,
+    dayWidth,
+    chartStartDate,
+    dispatch,
+    onDatabaseError,
   ]);
 
   useEffect(() => {
