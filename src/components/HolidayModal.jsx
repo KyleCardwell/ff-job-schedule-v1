@@ -45,7 +45,10 @@ const HolidayModal = ({
 
       const hd = new Holidays("US");
       const allHolidays = hd.getHolidays(new Date().getFullYear());
-      setAvailableHolidays(allHolidays.map((h) => h.name));
+      const filteredHolidays = allHolidays.filter(
+        (h) => h.type === "public" || h.type === "bank" || h.type === "school"
+      );
+      setAvailableHolidays(filteredHolidays.map((h) => h.name));
     }
   }, [isOpen, standardHolidays, customHolidays]);
 
@@ -149,7 +152,7 @@ const HolidayModal = ({
             <h3 className="text-md font-semibold sticky top-0 bg-white">
               Standard Holidays
             </h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 px-2">
               <select
                 value={selectedHoliday}
                 onChange={(e) => setSelectedHoliday(e.target.value)}
@@ -176,7 +179,7 @@ const HolidayModal = ({
                 {localStandardHolidays.map((holiday) => (
                   <div
                     key={holiday.name}
-                    className="flex justify-between items-center bg-gray-50 p-2 rounded"
+                    className="flex justify-between items-center bg-gray-100 p-2 rounded"
                   >
                     <span className="text-sm">{holiday.name}</span>
                     <button
@@ -196,19 +199,21 @@ const HolidayModal = ({
             <h3 className="text-md font-semibold sticky top-0 bg-white">
               Custom Holidays
             </h3>
-            <button
-              onClick={handleAddCustomDate}
-              className={`${buttonClass} bg-green-500 w-full`}
-            >
-              Add Custom Date
-            </button>
+            <div className="px-2">
+              <button
+                onClick={handleAddCustomDate}
+                className={`${buttonClass} bg-green-500 w-full`}
+              >
+                Add Custom Date
+              </button>
+            </div>
 
             <div className="h-1/3 md:h-3/4 overflow-y-auto">
               <div className="space-y-2">
                 {localCustomHolidays.map((holiday, index) => (
                   <div
                     key={index}
-                    className="flex gap-2 items-center bg-gray-50 p-2 rounded"
+                    className="flex gap-2 items-center bg-gray-100 p-2 rounded"
                   >
                     <input
                       type="date"

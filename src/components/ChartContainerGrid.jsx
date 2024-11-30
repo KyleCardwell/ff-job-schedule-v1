@@ -257,12 +257,6 @@ export const ChartContainer = () => {
     console.error("Database error:", error);
   };
 
-  // useEffect(() => {
-  //   const hd = new Holidays();
-  //   hd.init("US"); // Initialize with US holidays. Change as needed.
-  //   setHolidayChecker(hd);
-  // }, []);
-
   useEffect(() => {
     const chartSvg = d3.select(chartRef.current);
     chartSvg.selectAll("*").remove(); // Clear previous SVG content
