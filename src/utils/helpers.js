@@ -328,11 +328,13 @@ export const sortAndAdjustDates = (
   dropDate,
   timeOffByBuilder,
   dayWidth = 30,
-  chartStartDate
+  chartStartDate,
+  skipSort = false
 ) => {
   let arrayToProcess = [...jobsArray];
 
   // Sort the array by date
+ if (!skipSort) {
   arrayToProcess.sort((a, b) => {
     const dateComparison = a.start_date.localeCompare(b.start_date);
     if (dateComparison === 0) {
@@ -346,6 +348,7 @@ export const sortAndAdjustDates = (
     }
     return dateComparison;
   });
+}
 
   // Adjust the dates and calculate endDates
   return arrayToProcess.reduce((acc, current, index) => {

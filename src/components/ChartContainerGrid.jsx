@@ -28,9 +28,23 @@ export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const databaseLoading = useSelector((state) => state.projects.loading);
-
-  const builders = useSelector((state) => state.builders.employees);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
+
+  const employees = useSelector((state) => state.builders.employees);
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
+
+  const [holidayChecker, setHolidayChecker] = useState(null);
+
+  const daysBeforeStart = 15;
+  const daysAfterEnd = 15;
+  const dayWidth = 30;
+  const workdayHours = 8;
+
+  useEffect(() => {
+    const hd = new Holidays();
+    hd.init("US"); // Initialize with US holidays. Change as needed.
+    setHolidayChecker(hd);
+  }, []);
 
   const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate } =
     useMemo(() => {
@@ -49,6 +63,7 @@ export const ChartContainer = () => {
 
           const roomStartDate = parseISO(normalizeDate(room.start_date));
           const roomEndDate = parseISO(normalizeDate(room.end_date));
+
           if (roomStartDate < earliestStartDate) {
             earliestStartDate = roomStartDate;
           }
@@ -74,7 +89,7 @@ export const ChartContainer = () => {
             ? null
             : latestStartDate,
       };
-    }, [chartData]);
+    }, [chartData, employees, workdayHours, holidays]);
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column
@@ -85,7 +100,6 @@ export const ChartContainer = () => {
   const timeOffSvgRef = useRef(null);
   const employeesScheduledRef = useRef(null);
 
-  const [holidayChecker, setHolidayChecker] = useState(null);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
@@ -97,11 +111,6 @@ export const ChartContainer = () => {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const daysBeforeStart = 15;
-  const daysAfterEnd = 15;
-  const dayWidth = 30;
-  const workdayHours = 8;
-
   const rowHeight = 25;
   const barMargin = 3;
   const chartHeight = activeRoomsData.reduce(
@@ -112,7 +121,7 @@ export const ChartContainer = () => {
 
   const monthHeaderHeight = 20;
   const dayHeaderHeight = 25;
-  const employeesScheduledHeight = (builders.length + 1) * spanBarHeight;
+  const employeesScheduledHeight = (employees.length + 1) * spanBarHeight;
   const headerHeight = monthHeaderHeight + dayHeaderHeight;
   const headerTextGap = 5;
   const alternateMonthColors = ["bg-slate-200", "bg-slate-300"];
@@ -121,7 +130,7 @@ export const ChartContainer = () => {
   const employeeColorWidth = 5;
 
   const timeOffByBuilder = useMemo(() => {
-    return builders.reduce((acc, builder) => {
+    return employees.reduce((acc, builder) => {
       acc[builder.employee_id] = builder.time_off.flatMap((period) =>
         eachDayOfInterval({
           start: normalizeDate(new Date(period.start)),
@@ -130,7 +139,7 @@ export const ChartContainer = () => {
       );
       return acc;
     }, {});
-  }, [builders]);
+  }, [employees]);
 
   const chartStartDate = useMemo(() => {
     return subDays(earliestStartDate, daysBeforeStart);
@@ -247,12 +256,6 @@ export const ChartContainer = () => {
     setDatabaseError("Failed to update the database. Please try again.");
     console.error("Database error:", error);
   };
-
-  useEffect(() => {
-    const hd = new Holidays();
-    hd.init("US"); // Initialize with US holidays. Change as needed.
-    setHolidayChecker(hd);
-  }, []);
 
   useEffect(() => {
     const chartSvg = d3.select(chartRef.current);
@@ -458,7 +461,7 @@ export const ChartContainer = () => {
       .attr("width", employeeColorWidth) // 4px wide border
       .attr("height", rowHeight)
       .attr("fill", (d) => {
-        const employee = builders.find((b) => b.employee_id === d.employee_id);
+        const employee = employees.find((b) => b.employee_id === d.employee_id);
         return employee?.employee_color || "#000000";
       });
 
@@ -601,7 +604,7 @@ export const ChartContainer = () => {
   }, [
     chartStartDate,
     dayWidth,
-    builders,
+    employees,
     holidayChecker,
     isExpanded,
     holidays,
@@ -830,12 +833,20 @@ export const ChartContainer = () => {
                 dayWidth={dayWidth}
                 scrollToMonday={scrollToMonday}
                 onDatabaseError={handleDatabaseError}
+                setEstimatedCompletionDate={setEstimatedCompletionDate}
               />
             </div>
           </div>
         </div>
       )}
-      <div className="gantt-footer pb-2 pt-1">
+      <div className="flex gantt-footer pb-2 pt-1">
+        <div
+          className="flex items-center justify-center px-2 font-bold print:invisible"
+          style={{ width: `${leftColumnWidth}px` }}
+        >
+          {estimatedCompletionDate &&
+            `Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
+        </div>
         <BuilderLegend />
       </div>
 
