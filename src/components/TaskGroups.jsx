@@ -4,8 +4,8 @@ import {
   differenceInCalendarDays,
   eachDayOfInterval,
   isWithinInterval,
-  subDays,
   parseISO,
+  differenceInDays,
 } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
@@ -51,6 +51,7 @@ const TaskGroups = ({
   const taskGroupsRef = useRef(null);
   const previousTaskStateRef = useRef(null);
   const hasRunEffect = useRef(false);
+  const totalDurationRef = useRef(0);
 
   // Get loading states from Redux
   const { loading: employeesLoading } = useSelector((state) => state.builders);
@@ -59,18 +60,28 @@ const TaskGroups = ({
 
   const activeTasksData = useMemo(() => {
     const currentDate = normalizeDate(new Date());
-    let totalDuration = 0;
+    const defaultEmployeeId = employees[0]?.employee_id;
+
+    // Reset the total duration at the start of each calculation
+    totalDurationRef.current = 0;
 
     // Map tasks and accumulate duration
     const mappedTasks = tasks
       .filter((task) => task.task_active !== false)
       .map((task, index) => {
         // Update totalDuration if task is relevant
-        if (
-          task.start_date >= currentDate ||
-          task.employee_id === employees[0]?.employee_id
+        if (task.end_date >= currentDate && task.start_date <= currentDate) {
+          const remainingDays = differenceInDays(
+            new Date(task.end_date),
+            new Date(currentDate)
+          );
+          const remainingHours = remainingDays * workdayHours;
+          totalDurationRef.current += remainingHours;
+        } else if (
+          task.employee_id === defaultEmployeeId ||
+          task.start_date >= currentDate
         ) {
-          totalDuration += task.duration || 0;
+          totalDurationRef.current += task.duration || 0;
         }
 
         return {
@@ -84,27 +95,10 @@ const TaskGroups = ({
         };
       });
 
-    // Calculate estimated completion date after all tasks are processed
-    const estimatedTotalDays =
-      totalJobHours(
-        currentDate,
-        totalDuration,
-        workdayHours,
-        holidayChecker,
-        holidays,
-        0,
-        {}
-      ) / workdayHours;
-
-    const estimCompletionDate = addDays(
-      parseISO(currentDate),
-      estimatedTotalDays / Math.max(1, employees.length - 1)
-    );
-
-    setEstimatedCompletionDate(normalizeDate(estimCompletionDate));
     return mappedTasks;
   }, [
     tasks,
+    subTasksByEmployee,
     chartStartDate,
     dayWidth,
     workdayHours,
@@ -167,6 +161,39 @@ const TaskGroups = ({
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
+
+  // Calculate and update estimated completion date using the accumulated duration
+  useEffect(() => {
+    if (!tasks.length || !employees.length) return;
+
+    const currentDate = normalizeDate(new Date());
+    const estimatedTotalDays =
+      totalJobHours(
+        currentDate,
+        totalDurationRef.current,
+        workdayHours,
+        holidayChecker,
+        holidays,
+        0,
+        {}
+      ) / workdayHours;
+
+    const estimCompletionDate = addDays(
+      parseISO(currentDate),
+      estimatedTotalDays / Math.max(1, employees.length - 1)
+    );
+
+    setEstimatedCompletionDate(normalizeDate(estimCompletionDate));
+  }, [
+    tasks,
+    employees,
+    workdayHours,
+    holidayChecker,
+    holidays,
+    subTasksByEmployee,
+    totalDurationRef.current,
+    setEstimatedCompletionDate,
+  ]);
 
   useEffect(() => {
     if (
