@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import ChartActionButtons from "./ChartActionButtons";
 import {
   addDays,
@@ -23,8 +23,11 @@ import ErrorToast from "./ErrorToast";
 import ChartSettingsModal from "./ChartSettingsModal";
 import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
+import { saveHolidays } from "../redux/actions/holidays";
 
 export const ChartContainer = () => {
+  const dispatch = useDispatch();
+
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const databaseLoading = useSelector((state) => state.projects.loading);
@@ -613,6 +616,21 @@ export const ChartContainer = () => {
     chartHeight,
     tasks,
   ]);
+
+  useEffect(() => {
+    if (holidays?.customHolidays?.length) {
+      const filteredCustomHolidays = holidays.customHolidays.filter(
+        (holiday) => holiday.name.localeCompare(chartStartDate) < 0
+      );
+
+      // If we filtered out any holidays, update them
+      if (filteredCustomHolidays.length !== holidays.customHolidays.length) {
+        dispatch(
+          saveHolidays(holidays.standardHolidays, filteredCustomHolidays)
+        );
+      }
+    }
+  }, [chartStartDate, holidays?.customHolidays, holidays?.standardHolidays]);
 
   useEffect(() => {
     let scrollLeft = 0;
