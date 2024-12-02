@@ -620,7 +620,8 @@ export const ChartContainer = () => {
   useEffect(() => {
     if (holidays?.customHolidays?.length) {
       const filteredCustomHolidays = holidays.customHolidays.filter(
-        (holiday) => holiday.name.localeCompare(chartStartDate) < 0
+        (holiday) =>
+          holiday.name.localeCompare(normalizeDate(chartStartDate)) >= 0
       );
 
       // If we filtered out any holidays, update them
