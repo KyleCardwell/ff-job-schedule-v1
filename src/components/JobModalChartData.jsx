@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
-import { addDays, format, parseISO, sub } from "date-fns";
+import { addDays, parseISO } from "date-fns";
 import { formatDateForInput, normalizeDate } from "../utils/dateUtils";
 import {
   getNextWorkday,
@@ -31,7 +31,6 @@ const JobModal = ({
   workdayHours,
   chartStartDate,
   dayWidth,
-  lastJobsIndex,
   clickedTask,
   setIsLoading,
   onDatabaseError,
