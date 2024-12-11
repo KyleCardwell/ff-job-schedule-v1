@@ -1122,14 +1122,14 @@ const JobModal = ({
     const headers = data[0]; // Extract headers from the first row
     const rows = data.slice(1); // Extract the rest of the rows
 
-    if (jobName === "" && rows[0].project_name !== undefined) {
-      setJobName(rows[0].project_name);
-    }
-
     let currentTaskNumber = nextJobNumber; // Use a local variable to track the task number
+    let jobNameChanged = false;
 
     for (const row of rows) {
       const rowData = row;
+
+      if (rowData.length === 1) continue;
+
       const rowObject = headers.reduce((acc, header, index) => {
         acc[header] = rowData[index];
         return acc;
@@ -1150,6 +1150,11 @@ const JobModal = ({
 
       if (!rowObject.task_number) {
         currentTaskNumber += 1; // Increment the local task number
+      }
+
+      if (!jobNameChanged && jobName === "") {
+        setJobName(rowObject.project_name);
+        jobNameChanged = true;
       }
 
       // Pause for a few milliseconds
@@ -1173,7 +1178,7 @@ const JobModal = ({
                 <p>Saving Tasks...</p>
               </div>
             )}
-            <div className="flex-shrink-0 flex justify-center mb-4">
+            <div className="flex justify-center mb-4">
               <CSVReader onUploadAccepted={handleOnFileLoad}>
                 {({ getRootProps, acceptedFile }) => (
                   <div className="csv-import-container absolute left-5">
@@ -1184,7 +1189,6 @@ const JobModal = ({
                     >
                       Import CSV
                     </button>
-                    <div>{acceptedFile && acceptedFile.name}</div>
                   </div>
                 )}
               </CSVReader>
@@ -1253,14 +1257,17 @@ const JobModal = ({
             </div>
 
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
+              <div className="sticky top-0 bg-white">
+
               <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
-              <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-200 font-bold">
+              <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
                 <span>Job</span>
                 <span>Room Name</span>
                 <span>Hours</span>
                 <span>Employee</span>
                 <span>Start Date</span>
                 <span>Actions</span>
+              </div>
               </div>
 
               {activeRooms.map((room, taskIndex) => (
