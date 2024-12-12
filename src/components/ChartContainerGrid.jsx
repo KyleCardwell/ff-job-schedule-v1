@@ -784,12 +784,12 @@ export const ChartContainer = () => {
                 className="flex"
                 style={{ height: `${monthHeaderHeight}px` }}
               >
-                {monthHeaders.map((month, index) => (
+                {monthHeaders.map((month) => (
                   <div
                     key={month.key}
                     className={`flex items-center font-bold text-md ${
                       alternateMonthColors[month.monthNumber % 2]
-                    } text-nowrap relative`}
+                    } text-nowrap`}
                     style={{
                       width: `${month.width}px`,
                       height: `${monthHeaderHeight}px`,
@@ -800,9 +800,10 @@ export const ChartContainer = () => {
                     }}
                   >
                     <div
-                      className={`${
-                        index === 0 && month.width < 150 ? "absolute right-0 pr-2" : `sticky px-2 left-[${leftColumnWidth}px]`
-                      }`}
+                      className="sticky px-2"
+                      style={{
+                        left: `${leftColumnWidth}px`,
+                      }}
                     >
                       {month.key}
                     </div>
