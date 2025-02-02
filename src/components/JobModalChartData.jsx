@@ -788,6 +788,70 @@ const JobModal = ({
     setCompletedJobData(formattedCompletedJob);
   };
 
+  const adjustBuilderTasksForCompletedJob = (
+    builders,
+    tasksByBuilder,
+    completedTaskIds
+  ) => {
+    if (!builders.length || !Object.keys(tasksByBuilder).length)
+      return tasksByBuilder;
+
+    // Create a deep copy of tasksByBuilder
+    const newTasksByBuilder = {...tasksByBuilder};
+
+    builders.forEach((builderId) => {
+      // Create a deep copy of tasks array
+      const tasks = tasksByBuilder[builderId].map((task) => ({ ...task }));
+      newTasksByBuilder[builderId] = tasks;
+
+      let accumulatedDuration = 0;
+      let previousNonCompletedIndex = -1;
+
+      // Find the starting index (first non-completed task)
+      let startIndex = 0;
+      while (
+        startIndex < tasks.length &&
+        completedTaskIds.includes(tasks[startIndex].subtask_id)
+      ) {
+        startIndex++;
+      }
+
+      // Find the last non-completed task index
+      let lastNonCompletedTaskIndex = -1;
+      for (let i = tasks.length - 1; i >= 0; i--) {
+        if (!completedTaskIds.includes(tasks[i].subtask_id)) {
+          lastNonCompletedTaskIndex = i;
+          break;
+        }
+      }
+
+      // If no non-completed tasks, exit early
+      if (lastNonCompletedTaskIndex === -1) return;
+
+      for (let i = startIndex; i <= lastNonCompletedTaskIndex; i++) {
+        const task = tasks[i];
+        const isCompleted = completedTaskIds.includes(task.subtask_id);
+
+        if (isCompleted) {
+          accumulatedDuration += task.duration;
+        } else {
+          if (previousNonCompletedIndex !== -1) {
+            // Create a new task object with updated duration
+            tasks[previousNonCompletedIndex] = {
+              ...tasks[previousNonCompletedIndex],
+              duration:
+                tasks[previousNonCompletedIndex].duration + accumulatedDuration,
+            };
+          }
+          previousNonCompletedIndex = i;
+          accumulatedDuration = 0;
+        }
+      }
+    });
+
+    return newTasksByBuilder;
+  };
+
   const confirmCompleteJob = async () => {
     setSaveError(null);
     setShowCompleteConfirmation(false);
@@ -801,13 +865,23 @@ const JobModal = ({
         (room) => room.workPeriods
       );
 
+      const completedTaskIds = new Set(
+        completedProjectTasks.map((task) => task.subtask_id)
+      );
+
       // Get unique builders involved in this job
       const buildersInvolvedInJob = new Set(
         completedProjectTasks.map((task) => task.employee_id)
       );
 
+      const adjustedLocalJobsByBuilder = adjustBuilderTasksForCompletedJob(
+        [...buildersInvolvedInJob],
+        localJobsByBuilder,
+        [...completedTaskIds]
+      );
+
       // Get all tasks (including those not in this job)
-      const allTasks = Object.values(localJobsByBuilder).flat();
+      const allTasks = Object.values(adjustedLocalJobsByBuilder).flat();
 
       // Remove completed job tasks
       const remainingTasks = allTasks.filter(
@@ -1258,16 +1332,15 @@ const JobModal = ({
 
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
               <div className="sticky top-0 bg-white">
-
-              <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
-              <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
-                <span>Job</span>
-                <span>Room Name</span>
-                <span>Hours</span>
-                <span>Employee</span>
-                <span>Start Date</span>
-                <span>Actions</span>
-              </div>
+                <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
+                <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
+                  <span>Job</span>
+                  <span>Room Name</span>
+                  <span>Hours</span>
+                  <span>Employee</span>
+                  <span>Start Date</span>
+                  <span>Actions</span>
+                </div>
               </div>
 
               {activeRooms.map((room, taskIndex) => (
