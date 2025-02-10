@@ -62,21 +62,21 @@ const TaskGroups = ({
     const currentDate = normalizeDate(new Date());
     const defaultEmployeeId = employees[0]?.employee_id;
 
-    // Reset the total duration at the start of each calculation
+    // Reset the total duration
     totalDurationRef.current = 0;
 
-    // Map tasks and accumulate duration
-    const mappedTasks = tasks
-      .filter((task) => task.task_active !== false)
-      .map((task, index) => {
-        // Update totalDuration if task is relevant
+    // Single pass through tasks array
+    return tasks
+      .reduce((acc, task, index) => {
+        if (task.task_active === false) return acc;
+        
+        // Calculate duration for all tasks
         if (task.end_date >= currentDate && task.start_date <= currentDate) {
           const remainingDays = differenceInDays(
             new Date(task.end_date),
             new Date(currentDate)
           );
-          const remainingHours = remainingDays * workdayHours;
-          totalDurationRef.current += remainingHours;
+          totalDurationRef.current += remainingDays * workdayHours;
         } else if (
           task.employee_id === defaultEmployeeId ||
           task.start_date >= currentDate
@@ -84,18 +84,21 @@ const TaskGroups = ({
           totalDurationRef.current += task.duration || 0;
         }
 
-        return {
-          ...task,
-          rowNumber: index,
-          xPosition: calculateXPosition(
-            normalizeDate(task.start_date),
-            normalizeDate(chartStartDate),
-            dayWidth
-          ),
-        };
-      });
-
-    return mappedTasks;
+        // Only include non-defaultEmployeeId tasks in the return array
+        if (task.employee_id !== defaultEmployeeId) {
+          acc.tasks.push({
+            ...task,
+            rowNumber: acc.activeCount,
+            xPosition: calculateXPosition(
+              normalizeDate(task.start_date),
+              normalizeDate(chartStartDate),
+              dayWidth
+            ),
+          });
+        }
+        acc.activeCount++;
+        return acc;
+      }, { tasks: [], activeCount: 0 }).tasks;
   }, [
     tasks,
     subTasksByEmployee,
@@ -627,86 +630,86 @@ const TaskGroups = ({
     subTasksByEmployee,
   ]);
 
-  // Move unassigne tasks to start at today
-  useEffect(() => {
-    if (
-      hasRunEffect.current ||
-      employeesLoading ||
-      taskDataLoading ||
-      holidaysLoading ||
-      !employees?.length ||
-      !subTasksByEmployee ||
-      !Object.keys(subTasksByEmployee).length ||
-      !holidays
-    ) {
-      return;
-    }
+  // Move unassigned tasks to start at today
+  // useEffect(() => {
+  //   if (
+  //     hasRunEffect.current ||
+  //     employeesLoading ||
+  //     taskDataLoading ||
+  //     holidaysLoading ||
+  //     !employees?.length ||
+  //     !subTasksByEmployee ||
+  //     !Object.keys(subTasksByEmployee).length ||
+  //     !holidays
+  //   ) {
+  //     return;
+  //   }
 
-    const firstEmployeeId = employees[0].employee_id;
-    const employeeTasks = [...subTasksByEmployee[firstEmployeeId]];
+  //   const firstEmployeeId = employees[0].employee_id;
+  //   const employeeTasks = [...subTasksByEmployee[firstEmployeeId]];
 
-    if (!employeeTasks?.length) {
-      hasRunEffect.current = true;
-      return;
-    }
+  //   if (!employeeTasks?.length) {
+  //     hasRunEffect.current = true;
+  //     return;
+  //   }
 
-    const today = normalizeDate(new Date());
-    const firstTask = employeeTasks[0];
+  //   const today = normalizeDate(new Date());
+  //   const firstTask = employeeTasks[0];
 
-    if (firstTask.start_date.localeCompare(today) < 0) {
-      employeeTasks[0] = {
-        ...employeeTasks[0],
-        start_date: getNextWorkday(
-          today,
-          holidayChecker,
-          holidays,
-          firstEmployeeId
-        ),
-      };
-      // Adjust tasks for the first employee
-      const adjustedTasks = sortAndAdjustDates(
-        employeeTasks,
-        workdayHours,
-        holidayChecker,
-        holidays,
-        firstEmployeeId,
-        null,
-        {},
-        dayWidth,
-        chartStartDate,
-        true
-      );
+  //   if (firstTask.start_date.localeCompare(today) < 0) {
+  //     employeeTasks[0] = {
+  //       ...employeeTasks[0],
+  //       start_date: getNextWorkday(
+  //         today,
+  //         holidayChecker,
+  //         holidays,
+  //         firstEmployeeId
+  //       ),
+  //     };
+  //     // Adjust tasks for the first employee
+  //     const adjustedTasks = sortAndAdjustDates(
+  //       employeeTasks,
+  //       workdayHours,
+  //       holidayChecker,
+  //       holidays,
+  //       firstEmployeeId,
+  //       null,
+  //       {},
+  //       dayWidth,
+  //       chartStartDate,
+  //       true
+  //     );
 
-      // Update the database and redux store
-      updateSubtasksPositions(adjustedTasks)
-        .then(() => {
-          dispatch(updateTasksByOneBuilder(firstEmployeeId, adjustedTasks));
-          hasRunEffect.current = true;
-        })
-        .catch((error) => {
-          console.error("Error updating tasks:", error);
-          if (onDatabaseError) {
-            onDatabaseError(error);
-          }
-          hasRunEffect.current = true;
-        });
-    } else {
-      hasRunEffect.current = true;
-    }
-  }, [
-    employees,
-    subTasksByEmployee,
-    holidays,
-    employeesLoading,
-    taskDataLoading,
-    holidaysLoading,
-    workdayHours,
-    holidayChecker,
-    dayWidth,
-    chartStartDate,
-    dispatch,
-    onDatabaseError,
-  ]);
+  //     // Update the database and redux store
+  //     updateSubtasksPositions(adjustedTasks)
+  //       .then(() => {
+  //         dispatch(updateTasksByOneBuilder(firstEmployeeId, adjustedTasks));
+  //         hasRunEffect.current = true;
+  //       })
+  //       .catch((error) => {
+  //         console.error("Error updating tasks:", error);
+  //         if (onDatabaseError) {
+  //           onDatabaseError(error);
+  //         }
+  //         hasRunEffect.current = true;
+  //       });
+  //   } else {
+  //     hasRunEffect.current = true;
+  //   }
+  // }, [
+  //   employees,
+  //   subTasksByEmployee,
+  //   holidays,
+  //   employeesLoading,
+  //   taskDataLoading,
+  //   holidaysLoading,
+  //   workdayHours,
+  //   holidayChecker,
+  //   dayWidth,
+  //   chartStartDate,
+  //   dispatch,
+  //   onDatabaseError,
+  // ]);
 
   useEffect(() => {
     scrollToMonday(new Date());
