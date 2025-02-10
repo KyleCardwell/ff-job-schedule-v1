@@ -30,10 +30,10 @@ export const ChartContainer = () => {
 
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
-  const databaseLoading = useSelector((state) => state.projects.loading);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
 
   const employees = useSelector((state) => state.builders.employees);
+  const defaultEmployeeId = employees[0]?.employee_id;
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
 
   const [holidayChecker, setHolidayChecker] = useState(null);
@@ -49,12 +49,13 @@ export const ChartContainer = () => {
     setHolidayChecker(hd);
   }, []);
 
-  const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate } =
+  const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate, someTaskAssigned } =
     useMemo(() => {
       let currentJobId = null;
       let jobsIndex = -1;
       let earliestStartDate = new Date(8640000000000000); // Initialize with max date
       let latestStartDate = new Date(-8640000000000000); // Initialize with min date
+      let someTaskAssigned = false;
 
       const activeRooms = chartData
         .filter((room) => room.task_active)
@@ -64,14 +65,17 @@ export const ChartContainer = () => {
             jobsIndex++;
           }
 
-          const roomStartDate = parseISO(normalizeDate(room.start_date));
-          const roomEndDate = parseISO(normalizeDate(room.end_date));
+          if (room.employee_id !== defaultEmployeeId) {
+            someTaskAssigned = true;
+            const roomStartDate = parseISO(normalizeDate(room.start_date));
+            const roomEndDate = parseISO(normalizeDate(room.end_date));
 
-          if (roomStartDate < earliestStartDate) {
-            earliestStartDate = roomStartDate;
-          }
-          if (roomEndDate > latestStartDate) {
-            latestStartDate = roomEndDate;
+            if (roomStartDate < earliestStartDate) {
+              earliestStartDate = roomStartDate;
+            }
+            if (roomEndDate > latestStartDate) {
+              latestStartDate = roomEndDate;
+            }
           }
 
           return {
@@ -83,6 +87,7 @@ export const ChartContainer = () => {
       return {
         activeRoomsData: activeRooms,
         lastJobsIndex: jobsIndex,
+        someTaskAssigned,
         earliestStartDate:
           earliestStartDate === new Date(8640000000000000)
             ? null
@@ -124,7 +129,7 @@ export const ChartContainer = () => {
 
   const monthHeaderHeight = 20;
   const dayHeaderHeight = 25;
-  const employeesScheduledHeight = (employees.length + 1) * spanBarHeight;
+  const employeesScheduledHeight = employees.length * spanBarHeight;
   const headerHeight = monthHeaderHeight + dayHeaderHeight;
   const headerTextGap = 5;
   const alternateMonthColors = ["bg-slate-200", "bg-slate-300"];
@@ -287,7 +292,7 @@ export const ChartContainer = () => {
     const alternateAttentionColors = ["#faf16e", "#f3e520"];
     const strokeColor = "#aab1ba"; // stroke color
 
-    const chartWidth = numDays * dayWidth;
+    const chartWidth = numDays * dayWidth || 300;
 
     const headerDatesVisibleHeight = isExpanded
       ? dayHeaderHeight + employeesScheduledHeight
@@ -743,94 +748,100 @@ export const ChartContainer = () => {
           >
             <div className="sticky top-0 left-0 z-[40] print:relative print:ml-[var(--print-margin-left,0)] relative">
               <svg ref={leftColumnHeaderRef} />
-              <div
-                className="bg-gray-200 absolute top-0 right-0 z-[41] w-1/6 flex items-center justify-center cursor-pointer"
-                style={{ height: `${headerHeight}px` }}
-                onClick={() => setIsExpanded(!isExpanded)}
-              >
-                <svg
-                  className={`w-6 h-6 transition-transform duration-300 ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              {someTaskAssigned && (
+                <div
+                  className="bg-gray-200 absolute top-0 right-0 z-[41] w-1/6 flex items-center justify-center cursor-pointer"
+                  style={{ height: `${headerHeight}px` }}
+                  onClick={() => setIsExpanded(!isExpanded)}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={3}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-              <div
-                className={`overflow-hidden ${
-                  isExpanded ? "opacity-100 z-[21]" : "opacity-0 h-0"
-                } absolute bottom-0`}
-                style={{
-                  height: isExpanded ? `${employeesScheduledHeight}px` : 0,
-                }}
-              >
-                <EmployeeScheduleSpanLabels
-                  leftColumnWidth={leftColumnWidth}
-                  employeesScheduledHeight={employeesScheduledHeight}
-                  spanBarHeight={spanBarHeight}
-                />
-              </div>
-            </div>
-            <div className="bg-gray-200 sticky top-0 z-[20] relative">
-              <div
-                className="flex"
-                style={{ height: `${monthHeaderHeight}px` }}
-              >
-                {monthHeaders.map((month) => (
-                  <div
-                    key={month.key}
-                    className={`flex items-center font-bold text-md ${
-                      alternateMonthColors[month.monthNumber % 2]
-                    } text-nowrap`}
-                    style={{
-                      width: `${month.width}px`,
-                      height: `${monthHeaderHeight}px`,
-                      borderRight: "1px solid #e5e7eb",
-                      printColorAdjust: "exact",
-                      WebkitPrintColorAdjust: "exact",
-                      MozPrintColorAdjust: "exact",
-                    }}
+                  <svg
+                    className={`w-6 h-6 transition-transform duration-300 ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              )}
+              {someTaskAssigned && (
+                <div
+                  className={`overflow-hidden ${
+                    isExpanded ? "opacity-100 z-[21]" : "opacity-0 h-0"
+                  } absolute bottom-0`}
+                  style={{
+                    height: isExpanded ? `${employeesScheduledHeight}px` : 0,
+                  }}
+                >
+                  <EmployeeScheduleSpanLabels
+                    leftColumnWidth={leftColumnWidth}
+                    employeesScheduledHeight={employeesScheduledHeight}
+                    spanBarHeight={spanBarHeight}
+                  />
+                </div>
+              )}
+            </div>
+            {someTaskAssigned && (
+              <div className="bg-gray-200 sticky top-0 z-[20] relative">
+                <div
+                  className="flex"
+                  style={{ height: `${monthHeaderHeight}px` }}
+                >
+                  {monthHeaders.map((month) => (
                     <div
-                      className="sticky px-2"
+                      key={month.key}
+                      className={`flex items-center font-bold text-md ${
+                        alternateMonthColors[month.monthNumber % 2]
+                      } text-nowrap`}
                       style={{
-                        left: `${leftColumnWidth}px`,
+                        width: `${month.width}px`,
+                        height: `${monthHeaderHeight}px`,
+                        borderRight: "1px solid #e5e7eb",
+                        printColorAdjust: "exact",
+                        WebkitPrintColorAdjust: "exact",
+                        MozPrintColorAdjust: "exact",
                       }}
                     >
-                      {month.key}
+                      <div
+                        className="sticky px-2"
+                        style={{
+                          left: `${leftColumnWidth}px`,
+                        }}
+                      >
+                        {month.key}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <svg ref={headerRef} />
+                <svg ref={headerRef} />
 
-              <div
-                className={`overflow-hidden ${
-                  isExpanded ? "opacity-100 z-[21]" : "opacity-0 h-0"
-                } absolute bottom-0`}
-                style={{
-                  height: isExpanded ? `${employeesScheduledHeight}px` : 0,
-                }}
-              >
-                <EmployeeScheduleSpans
-                  chartRef={chartRef}
-                  chartStartDate={chartStartDate}
-                  numDays={numDays}
-                  dayWidth={dayWidth}
-                  leftColumnWidth={leftColumnWidth}
-                  spanBarHeight={spanBarHeight}
-                />
+                <div
+                  className={`overflow-hidden ${
+                    isExpanded ? "opacity-100 z-[21]" : "opacity-0 h-0"
+                  } absolute bottom-0`}
+                  style={{
+                    height: isExpanded ? `${employeesScheduledHeight}px` : 0,
+                  }}
+                >
+                  <EmployeeScheduleSpans
+                    chartRef={chartRef}
+                    chartStartDate={chartStartDate}
+                    numDays={numDays}
+                    dayWidth={dayWidth}
+                    leftColumnWidth={leftColumnWidth}
+                    spanBarHeight={spanBarHeight}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="sticky top-0 left-0 relative z-[30] print:relative print:ml-[var(--print-margin-left,0)]">
               <svg ref={leftColumnRef} />
@@ -866,7 +877,7 @@ export const ChartContainer = () => {
           {estimatedCompletionDate &&
             `Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
         </div>
-        <BuilderLegend />
+        {activeRoomsData?.length > 0 && <BuilderLegend />}
       </div>
 
       {isLoading && (

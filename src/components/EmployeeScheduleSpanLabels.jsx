@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 const EmployeeScheduleSpanLabels = ({
@@ -6,7 +6,8 @@ const EmployeeScheduleSpanLabels = ({
   employeesScheduledHeight,
   spanBarHeight,
 }) => {
-  const employees = useSelector((state) => state.builders.employees);
+  const allEmployees = useSelector((state) => state.builders.employees);
+  const employees = useMemo(() => allEmployees.slice(1), [allEmployees]);
 
   return (
     <div

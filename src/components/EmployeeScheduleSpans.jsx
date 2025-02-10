@@ -16,11 +16,12 @@ const EmployeeScheduleSpans = ({
   const employeesScheduledRef = useRef(null);
   const { subTasksByEmployee } = useSelector((state) => state.taskData);
   const employees = useSelector((state) => state.builders.employees);
+  const defaultEmployeeId = employees[0]?.employee_id;
 
   const employeeScheduleSpans = useMemo(() => {
     const spans = {};
     Object.entries(subTasksByEmployee).forEach(([employee_id, tasks]) => {
-      if (tasks.length === 0) return;
+      if (tasks.length === 0 || +employee_id === defaultEmployeeId) return;
 
       const firstTask = tasks[0];
       const lastTask = tasks[tasks.length - 1];
@@ -44,6 +45,7 @@ const EmployeeScheduleSpans = ({
         width: lastTaskXPosition + lastTask.subtask_width - firstTaskXPosition,
       };
     });
+
     return spans;
   }, [subTasksByEmployee, chartStartDate, dayWidth, employees]);
 
