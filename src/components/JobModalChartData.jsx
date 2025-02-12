@@ -18,6 +18,7 @@ import {
   modalOverlayClass,
 } from "../assets/tailwindConstants";
 import { Field, Label, Switch } from "@headlessui/react";
+import { createProjectFinancials } from "../redux/actions/financialsData";
 
 const JobModal = ({
   isOpen,
@@ -935,6 +936,8 @@ const JobModal = ({
       if (result.error) {
         throw new Error(result.error?.message || "Failed to complete project");
       }
+
+      await dispatch(createProjectFinancials(localRooms));
 
       onClose();
     } catch (error) {

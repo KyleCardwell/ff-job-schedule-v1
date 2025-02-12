@@ -18,23 +18,22 @@ export const createProjectFinancials = (tasks) => {
     try {
       const projectFinancialsData = tasks.map((task) => ({
         task_id: task.task_id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       }));
 
       const { data, error } = await supabase
         .from("project_financials")
         .insert(projectFinancialsData)
-        .select();
+        // .select();
 
       if (error) throw error;
 
-      dispatch({
-        type: Actions.CREATE_PROJECT_FINANCIALS,
-        payload: data,
-      });
+    //   dispatch({
+    //     type: Actions.financialsData.CREATE_PROJECT_FINANCIALS,
+    //     payload: data,
+    //   });
 
-      return data;
+    //   return data;
+    return "successfully created project financials";
     } catch (error) {
       dispatch(setError(error.message));
       throw error;
@@ -61,7 +60,7 @@ export const fetchProjectFinancials = (projectId) => {
       if (error) throw error;
 
       dispatch({
-        type: Actions.FETCH_PROJECT_FINANCIALS,
+        type: Actions.financialsData.FETCH_PROJECT_FINANCIALS,
         payload: data,
       });
 
