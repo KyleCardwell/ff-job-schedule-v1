@@ -22,18 +22,45 @@ export const createProjectFinancials = (tasks) => {
 
       const { data, error } = await supabase
         .from("project_financials")
-        .insert(projectFinancialsData)
-        // .select();
+        .insert(projectFinancialsData);
+      // .select();
 
       if (error) throw error;
 
-    //   dispatch({
-    //     type: Actions.financialsData.CREATE_PROJECT_FINANCIALS,
-    //     payload: data,
-    //   });
+      //   dispatch({
+      //     type: Actions.financialsData.CREATE_PROJECT_FINANCIALS,
+      //     payload: data,
+      //   });
 
-    //   return data;
-    return "successfully created project financials";
+      //   return data;
+      return "successfully created project financials";
+    } catch (error) {
+      dispatch(setError(error.message));
+      throw error;
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+};
+
+export const fetchTaskFinancials = (taskId) => {
+  return async (dispatch) => {
+    dispatch(setLoading(true));
+    try {
+      const { data, error } = await supabase
+        .from("project_financials")
+        .select(`*`)
+        .eq("task_id", taskId)
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.financialsData.FETCH_TASK_FINANCIALS,
+        payload: data,
+      });
+
+      return data;
     } catch (error) {
       dispatch(setError(error.message));
       throw error;

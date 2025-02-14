@@ -27,6 +27,13 @@ export const financialsDataReducer = (state = initialState, action) => {
         error: null,
       };
 
+    case Actions.financialsData.FETCH_TASK_FINANCIALS:
+      return {
+        ...state,
+        financials: action.payload,
+        error: null,
+      };
+
     case Actions.financialsData.FETCH_PROJECT_FINANCIALS:
       return {
         ...state,
@@ -37,4 +44,4 @@ export const financialsDataReducer = (state = initialState, action) => {
     default:
       return state;
   }
-}
+};
