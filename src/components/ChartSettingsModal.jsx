@@ -87,6 +87,10 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     }
   };
 
+  const handleRemoveEmployeeType = (id) => {
+    setEmployeeTypes(prev => prev.filter(type => type.id !== id));
+  };
+
   const handleAddEmployeeType = () => {
     setEmployeeTypes(prev => [...prev, { id: uuidv4(), name: '' }]);
   };
@@ -228,12 +232,12 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
             </div>
           </div>
 
-          <div className="flex flex-col">
+          <div className="flex flex-col justify-center items-center">
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Employee Types
             </label>
             {employeeTypes.map((type) => (
-              <div key={type.id} className="flex flex-row gap-2">
+              <div key={type.id} className="flex flex-row gap-2 mb-2">
                 <input
                   type="text"
                   value={type.name}
@@ -241,6 +245,15 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
                   placeholder="Enter employee type"
                   className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <button
+                  onClick={() => handleRemoveEmployeeType(type.id)}
+                  className="p-1 text-red-500 hover:text-red-700 focus:outline-none"
+                  title="Remove employee type"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
             ))}
             <button
