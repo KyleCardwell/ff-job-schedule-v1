@@ -7,11 +7,13 @@ import {
 } from "../assets/tailwindConstants";
 import { saveSettings } from "../redux/actions/chartConfig";
 import { GridLoader } from "react-spinners";
+import { v4 as uuidv4 } from 'uuid';
 
 const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
   const dispatch = useDispatch();
   const chartConfig = useSelector((state) => state.chartConfig);
   const [settings, setSettings] = useState({});
+  const [employeeTypes, setEmployeeTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -37,6 +39,21 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
         "Max task number must be greater than min task number";
     }
 
+    // Validate employee types
+    const duplicateTypes = employeeTypes.filter(
+      (type, index) => 
+        employeeTypes.findIndex(t => t.name.toLowerCase() === type.name.toLowerCase()) !== index
+    );
+    
+    if (duplicateTypes.length > 0) {
+      newErrors.employeeTypes = "Duplicate employee types are not allowed";
+    }
+
+    const emptyTypes = employeeTypes.some(type => !type.name.trim());
+    if (emptyTypes) {
+      newErrors.employeeTypes = "Empty employee types are not allowed";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -59,6 +76,21 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     }
   };
 
+  const handleEmployeeTypeChange = (id, name) => {
+    setEmployeeTypes(prev => 
+      prev.map(type => 
+        type.id === id ? { ...type, name } : type
+      )
+    );
+    if (errors.employeeTypes) {
+      setErrors(prev => ({ ...prev, employeeTypes: null }));
+    }
+  };
+
+  const handleAddEmployeeType = () => {
+    setEmployeeTypes(prev => [...prev, { id: uuidv4(), name: '' }]);
+  };
+
   const handleCancel = () => {
     // Reset settings to original values
     setSettings({
@@ -66,6 +98,13 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
       minTaskNumber: chartConfig.min_task_number,
       maxTaskNumber: chartConfig.max_task_number,
     });
+    setEmployeeTypes(
+      (chartConfig.employee_type || []).map(type => {
+        return typeof type === 'string' 
+          ? { id: uuidv4(), name: type } // Convert old string format
+          : type; // Keep existing object format
+      })
+    );
     // Clear any errors
     setErrors({});
     onClose();
@@ -76,7 +115,13 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
 
     try {
       setIsSaving(true);
-      await dispatch(saveSettings(settings));
+      await dispatch(saveSettings({
+        ...settings,
+        employee_type: employeeTypes.map(type => ({
+          id: type.id,
+          name: type.name.trim()
+        }))
+      }));
       onClose();
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -95,11 +140,15 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
       nextTaskNumber: chartConfig.next_task_number,
       minTaskNumber: chartConfig.min_task_number,
       maxTaskNumber: chartConfig.max_task_number,
-      // dayWidth: 30,
-      // rowHeight: 25,
-      // daysBeforeStart: 15,
-      // daysAfterEnd: 15,
     });
+    // Initialize from existing types, preserving their ids if they exist
+    setEmployeeTypes(
+      (chartConfig.employee_type || []).map(type => {
+        return typeof type === 'string' 
+          ? { id: uuidv4(), name: type } // Convert old string format
+          : type; // Keep existing object format
+      })
+    );
   }, [chartConfig]);
 
   if (!isOpen) return null;
@@ -179,70 +228,33 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
             </div>
           </div>
 
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Day Width (px)
+          <div className="flex flex-col">
+            <label className="block text-sm font-bold text-gray-700 mb-1">
+              Employee Types
             </label>
-            <input
-              type="number"
-              value={settings.dayWidth}
-              onChange={(e) =>
-                setSettings({ ...settings, dayWidth: parseInt(e.target.value) })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
+            {employeeTypes.map((type) => (
+              <div key={type.id} className="flex flex-row gap-2">
+                <input
+                  type="text"
+                  value={type.name}
+                  onChange={(e) => handleEmployeeTypeChange(type.id, e.target.value)}
+                  placeholder="Enter employee type"
+                  className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            ))}
+            <button
+              onClick={handleAddEmployeeType}
+              className="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Add Employee Type
+            </button>
+            {errors.employeeTypes && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.employeeTypes}
+              </p>
+            )}
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Row Height (px)
-            </label>
-            <input
-              type="number"
-              value={settings.rowHeight}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  rowHeight: parseInt(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Days Before Start
-            </label>
-            <input
-              type="number"
-              value={settings.daysBeforeStart}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  daysBeforeStart: parseInt(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Days After End
-            </label>
-            <input
-              type="number"
-              value={settings.daysAfterEnd}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  daysAfterEnd: parseInt(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div> */}
         </div>
 
         <div className="mt-6 flex justify-between space-x-3">

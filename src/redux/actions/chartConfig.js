@@ -75,6 +75,7 @@ export const saveSettings = (settings) => async (dispatch, getState) => {
         next_task_number: settings.nextTaskNumber,
         min_task_number: settings.minTaskNumber,
         max_task_number: settings.maxTaskNumber,
+        employee_type: settings.employee_type
       })
       .eq("chart_config_id", state.chartConfig.chart_config_id)
       .select()
