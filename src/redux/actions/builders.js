@@ -29,7 +29,7 @@ export const fetchEmployees = () => async (dispatch) => {
 	try {
 		const { data, error } = await supabase
 			.from("employees")
-			.select("employee_id, employee_name, employee_color, time_off")
+			.select("employee_id, employee_name, employee_color, time_off, employee_type, employee_rate")
 			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
@@ -74,6 +74,8 @@ export const addEmployees = (employees) => async (dispatch, getState) => {
 					employee_name: employee.employee_name,
 					employee_color: employee.employee_color,
 					time_off: employee.time_off,
+					employee_type: employee.employee_type,
+					employee_rate: employee.employee_rate,
 				}))
 			)
 			.select()
@@ -99,29 +101,34 @@ export const addEmployees = (employees) => async (dispatch, getState) => {
 export const updateEmployees = (employees) => async (dispatch) => {
 	try {
 		// Process updates in parallel using Promise.all
-		await Promise.all(
-			employees.map(async (employee) => {
-				const { error } = await supabase
-					.from("employees")
-					.update({
-						employee_name: employee.employee_name,
-						employee_color: employee.employee_color,
-						time_off: employee.time_off,
-					})
-					.eq("employee_id", employee.employee_id);
+		const updatePromises = employees.map(async (employee) => {
+			const { data, error } = await supabase
+				.from("employees")
+				.update({
+					employee_name: employee.employee_name,
+					employee_color: employee.employee_color,
+					time_off: employee.time_off,
+					employee_type: employee.employee_type,
+					employee_rate: employee.employee_rate,
+				})
+				.eq("employee_id", employee.employee_id)
+				.select();
 
-				if (error) throw error;
+			if (error) throw error;
 
-				dispatch({
-					type: Actions.employees.UPDATE_EMPLOYEE,
-					payload: employee,
-				});
-			})
-		);
-		return { success: true };
+			dispatch({
+				type: Actions.employees.UPDATE_EMPLOYEE,
+				payload: data[0],
+			});
+
+			return data[0];
+		});
+
+		const results = await Promise.all(updatePromises);
+		return results;
 	} catch (error) {
 		console.error("Error updating employees:", error);
-		return { success: false, error: error.message };
+		throw error;
 	}
 };
 

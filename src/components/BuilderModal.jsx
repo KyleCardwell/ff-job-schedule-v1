@@ -31,6 +31,7 @@ const BuilderModal = ({
   const builders = useSelector((state) => state.builders.builders);
   const employees = useSelector((state) => state.builders.employees);
   const holidays = useSelector((state) => state.holidays);
+  const chartConfig = useSelector((state) => state.chartConfig);
 
   const [localEmployees, setLocalEmployees] = useState(builders);
   const [newBuilder, setNewBuilder] = useState({ name: "", color: "#000000" });
@@ -46,6 +47,8 @@ const BuilderModal = ({
       employee_name: "Unassigned",
       employee_color: "#FFC0CC",
       time_off: [],
+      employee_type: {},
+      employee_rate: null,
       markedForDeletion: false,
     };
 
@@ -73,6 +76,23 @@ const BuilderModal = ({
       i === index ? { ...builder, employee_color: value } : builder
     );
     setLocalEmployees(updatedBuilders);
+  };
+
+  const handleEmployeeTypeChange = (index, selectedType) => {
+    const updatedEmployees = localEmployees.map((employee, i) =>
+      i === index
+        ? {
+            ...employee,
+            employee_type: selectedType
+              ? {
+                  id: selectedType.id,
+                  name: selectedType.name,
+                }
+              : null,
+          }
+        : employee
+    );
+    setLocalEmployees(updatedEmployees);
   };
 
   const handleAddTimeOff = (index) => {
@@ -282,6 +302,7 @@ const BuilderModal = ({
               employee_name: localBuilder.employee_name,
               employee_color: localBuilder.employee_color,
               time_off: localBuilder.time_off,
+              employee_type: localBuilder.employee_type,
             });
           } else {
             // Check if the builder has any changes
@@ -291,7 +312,8 @@ const BuilderModal = ({
               !areTimeOffsEqual(
                 existingBuilder.time_off,
                 localBuilder.time_off
-              );
+              ) ||
+              existingBuilder.employee_type !== localBuilder.employee_type;
 
             if (hasChanges) {
               buildersToUpdate.push(localBuilder);
@@ -377,26 +399,68 @@ const BuilderModal = ({
                     builder.markedForDeletion ? "opacity-50" : ""
                   }`}
                 >
-                  <div className="flex gap-2 flex-grow">
-                    <input
-                      type="text"
-                      value={builder.employee_name}
-                      onChange={(e) => handleNameChange(index, e.target.value)}
-                      placeholder="Builder Name"
-                      className={`p-2 h-8 text-sm border ${
-                        errors[`name-${index}`]
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      } rounded`}
-                      disabled={builder.markedForDeletion}
-                    />
-                    <input
-                      type="color"
-                      value={builder.employee_color}
-                      onChange={(e) => handleColorChange(index, e.target.value)}
-                      disabled={builder.markedForDeletion}
-                      className="min-w-[60px] h-8"
-                    />
+                  <div className="flex gap-4 flex-grow">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={builder.employee_name}
+                        onChange={(e) =>
+                          handleNameChange(index, e.target.value)
+                        }
+                        placeholder="Builder Name"
+                        className={`p-2 h-8 text-sm border ${
+                          errors[`name-${index}`]
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } rounded`}
+                        disabled={builder.markedForDeletion}
+                      />
+                    </div>
+                    <div className="w-16">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Color
+                      </label>
+                      <input
+                        type="color"
+                        value={builder.employee_color}
+                        onChange={(e) =>
+                          handleColorChange(index, e.target.value)
+                        }
+                        disabled={builder.markedForDeletion}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-9"
+                      />
+                    </div>
+                    <div className="flex-1 px-4">
+                      {index > 0 ? (
+                        <>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Type
+                          </label>
+                          <select
+                            value={builder.employee_type?.id || ""}
+                            onChange={(e) => {
+                              const selectedType =
+                                chartConfig.employee_type.find(
+                                  (t) => t.id === e.target.value
+                                );
+                              handleEmployeeTypeChange(index, selectedType);
+                            }}
+                          >
+                            <option value="">Select Type</option>
+                            {chartConfig.employee_type?.map((type) => (
+                              <option key={type.id} value={type.id}>
+                                {type.name}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      ) : (
+                        <div className="mt-1 h-9" />
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2 justify-between">
                     <button
