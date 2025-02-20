@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { buttonClass } from "../../assets/tailwindConstants";
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion";
 import { useSelector } from "react-redux";
+import { v4 as uuidv4 } from "uuid";
 
 const FinancialsInputSection = ({
   sectionName,
@@ -20,7 +21,7 @@ const FinancialsInputSection = ({
 
   const handleAddHoursRow = ({ type_id }) => {
     const newRow = {
-      id: Date.now(),
+      id: uuidv4(),
       employee_id: "",
       hours: 0,
       type_id
@@ -32,7 +33,7 @@ const FinancialsInputSection = ({
 
   const handleAddInvoiceRow = () => {
     const newRow = {
-      id: Date.now(),
+      id: uuidv4(),
       invoice: "",
       cost: 0
     };
@@ -68,7 +69,7 @@ const FinancialsInputSection = ({
 
   const rowsTotal = useMemo(() => {
     return localInputRows.reduce((sum, row) => {
-      return sum + (isHoursSection ? (row.hours || 0) : (row.cost || 0));
+      return sum + (isHoursSection ? row.hours || 0 : row.cost || 0);
     }, 0);
   }, [localInputRows, isHoursSection]);
 
@@ -80,20 +81,19 @@ const FinancialsInputSection = ({
       >
         <h3 className="text-lg font-medium text-gray-900">{sectionName}</h3>
         <div className="flex items-center gap-4">
-          <div className="text-sm space-x-4">
-            <span className="font-medium">
-              Est: {isHoursSection ? `${estimate} hrs` : `$${estimate.toLocaleString()}`}
-            </span>
-            <span className="font-medium">
-              Act: {isHoursSection ? `${rowsTotal} hrs` : `$${rowsTotal.toLocaleString()}`}
-            </span>
-            <span className={`font-medium ${estimate - rowsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {isHoursSection ? 
-                `Δ: ${(estimate - rowsTotal).toFixed(1)} hrs` : 
-                `Δ: $${(estimate - rowsTotal).toLocaleString()}`
-              }
-            </span>
-          </div>
+          {!isHoursSection && (
+            <div className="text-sm space-x-4">
+              <span className="font-medium">
+                Est: ${estimate.toLocaleString()}
+              </span>
+              <span className="font-medium">
+                Act: ${rowsTotal.toLocaleString()}
+              </span>
+              <span className={`font-medium ${estimate - rowsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                Δ: ${(estimate - rowsTotal).toLocaleString()}
+              </span>
+            </div>
+          )}
           <div className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
             <svg className="w-5 h-5 text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
               <path d="M19 9l-7 7-7-7"></path>
@@ -107,9 +107,8 @@ const FinancialsInputSection = ({
       }`}>
         <div className="p-4 space-y-4 bg-white">
           {isHoursSection ? (
-            // Hours section with employee type accordions
-            <div className="space-y-2">
-              {chartConfig.employee_type?.map((type) => (
+            <div className="space-y-4">
+              {chartConfig.employee_type?.map(type => (
                 <EmployeeTypeAccordion
                   key={type.id}
                   type={type}
@@ -117,32 +116,32 @@ const FinancialsInputSection = ({
                   rows={localInputRows}
                   onAddRow={handleAddHoursRow}
                   onInputChange={handleInputChange}
+                  estimates={estimate?.estimates || {}}
                 />
               ))}
             </div>
           ) : (
-            // Invoice section
             <>
               {localInputRows.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 font-medium text-sm text-gray-600 px-4 mb-2">
-                  <div>Invoice #</div>
-                  <div>Cost ($)</div>
+                  <span>Invoice</span>
+                  <span>Cost</span>
                 </div>
               )}
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2">
                 {localInputRows.map((row) => (
-                  <div key={row.id} className="grid grid-cols-2 gap-4 items-center bg-gray-50 p-4 rounded-lg">
+                  <div key={row.id} className="grid grid-cols-2 gap-4 items-center">
                     <input
                       type="text"
                       value={row.invoice || ''}
-                      onChange={(e) => handleInputChange(row.id, "invoice", e.target.value)}
+                      onChange={(e) => handleInputChange(row.id, 'invoice', e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Invoice #"
+                      placeholder="Invoice number"
                     />
                     <input
                       type="number"
-                      value={row.cost === 0 ? '' : row.cost}
-                      onChange={(e) => handleInputChange(row.id, "cost", e.target.value)}
+                      value={row.cost || ''}
+                      onChange={(e) => handleInputChange(row.id, 'cost', e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Cost"
                     />
@@ -151,7 +150,7 @@ const FinancialsInputSection = ({
               </div>
               <button
                 onClick={handleAddInvoiceRow}
-                className={`${buttonClass} bg-gray-400 hover:bg-gray-300`}
+                className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
               >
                 Add Row
               </button>

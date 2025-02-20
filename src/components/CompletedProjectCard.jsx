@@ -5,7 +5,11 @@ import "./CompletedProjectCard.css";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
-const CompletedProjectCard = ({ project, setIsFinancialsInputModalOpen }) => {
+const CompletedProjectCard = ({
+  project,
+  setIsFinancialsInputModalOpen,
+  setSelectedTask,
+}) => {
   const dispatch = useDispatch();
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const jobName = project.project_name;
@@ -13,12 +17,13 @@ const CompletedProjectCard = ({ project, setIsFinancialsInputModalOpen }) => {
     project.project_completed_at
   ).toLocaleDateString();
 
-  const handleEditClick = (taskId) => {
+  const handleEditClick = (taskId, taskName, taskNumber) => {
     dispatch(fetchTaskFinancials(taskId))
       .then((data) => {
         console.log("Fetched financial data:", data);
         // Handle the fetched data as needed
-		setIsFinancialsInputModalOpen(true);
+        setSelectedTask(`${project.project_name} - ${taskNumber} - ${taskName}`);
+        setIsFinancialsInputModalOpen(true);
       })
       .catch((error) => {
         console.error("Error fetching financial data:", error);
@@ -52,7 +57,7 @@ const CompletedProjectCard = ({ project, setIsFinancialsInputModalOpen }) => {
             <span>{task.task_number}</span>
             <div className="relative">
               <button
-                onClick={() => handleEditClick(task.task_id)}
+                onClick={() => handleEditClick(task.task_id, task.task_name, task.task_number)}
                 className={`absolute left-2 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 ${
                   hoveredTaskId === task.task_id ? "opacity-100" : "opacity-0"
                 }`}
