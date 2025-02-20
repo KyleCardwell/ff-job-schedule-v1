@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 import { Field, Label, Switch } from "@headlessui/react";
@@ -10,37 +10,75 @@ import {
   modalContainerClass,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
-import FinancialsInputSection from "./FinancialsInputSection";
 import FinancialsAccordion from "./FinancialsAccordion";
 
-const FinancialsInputModal = ({ isOpen, onClose, onSave, setIsLoading }) => {
+const FinancialsInputModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  setIsLoading,
+  selectedTask,
+}) => {
   const dispatch = useDispatch();
 
   const { CSVReader } = useCSVReader();
 
   const { employees } = useSelector((state) => state.builders);
+  const financialSections = useSelector(
+    (state) => state?.financialsData?.financials ?? {}
+  );
+
+  console.log('Financial Sections:', financialSections); // Debug log
 
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
-  const sections = [
-    {
-      id: "cabinets",
-      sectionName: "Cabinets",
-      estimate: 0,
-      actual_cost: 0,
-      inputRows: [],
-    },
-    {
-      id: "hours",
-      sectionName: "Hours",
-      estimate: 0,
-      actual_cost: 0,
-      inputRows: [],
-    },
-    // Add more sections as needed
-  ];
+  const [localSections, setLocalSections] = useState([]);
+
+  useEffect(() => {
+    if (!financialSections) return;
+
+    const sectionTypes = [
+      { id: 'hours', label: 'Hours' },
+      { id: 'cabinets', label: 'Cabinets' },
+      { id: 'doors', label: 'Doors' },
+      { id: 'drawers', label: 'Drawers' },
+      { id: 'other', label: 'Other' },
+    ];
+
+    const initialSections = sectionTypes.map(({ id, label }) => ({
+      id,
+      sectionName: label,
+      estimate: financialSections[id]?.estimate ?? 0,
+      actual_cost: financialSections[id]?.actual_cost ?? 0,
+      inputRows: [...(financialSections[id]?.data ?? [])].map(row => ({...row})),
+    }));
+
+    setLocalSections(initialSections);
+  }, [financialSections]);
+
+  const handleSectionUpdate = (sectionId, updates) => {
+    setLocalSections(prevSections => 
+      prevSections.map(section => 
+        section.id === sectionId 
+          ? { ...section, ...updates }
+          : section
+      )
+    );
+  };
+
+  const totals = useMemo(() => {
+    return localSections.reduce((acc, section) => {
+      acc.estimate += section.estimate;
+      // Calculate actual from input rows for each section
+      const sectionActual = section.inputRows.reduce((sum, row) => {
+        return sum + (section.id === 'hours' ? (row.hours || 0) : (row.cost || 0));
+      }, 0);
+      acc.actual += sectionActual;
+      return acc;
+    }, { estimate: 0, actual: 0 });
+  }, [localSections]);
 
   const handleOnFileLoad = () => {};
 
@@ -57,35 +95,53 @@ const FinancialsInputModal = ({ isOpen, onClose, onSave, setIsLoading }) => {
             <p>Saving Data...</p>
           </div>
         )}
-        <div className="flex justify-center mb-4">
-          <CSVReader onUploadAccepted={handleOnFileLoad}>
-            {({ getRootProps, acceptedFile }) => (
-              <div className="csv-import-container absolute left-5">
-                <button
-                  type="button"
-                  {...getRootProps()}
-                  className={`${buttonClass} bg-blue-500`}
-                >
-                  Import CSV
-                </button>
-              </div>
-            )}
-          </CSVReader>
-          <h2 className="text-lg font-bold">Job Costing</h2>
+        <div className="flex justify-between items-center mb-4 relative">
+          <div className="absolute left-5">
+            <CSVReader onUploadAccepted={handleOnFileLoad}>
+              {({ getRootProps, acceptedFile }) => (
+                <div className="csv-import-container">
+                  <button
+                    type="button"
+                    {...getRootProps()}
+                    className={`${buttonClass} bg-blue-500`}
+                  >
+                    Import CSV
+                  </button>
+                </div>
+              )}
+            </CSVReader>
+          </div>
+          <h2 className="text-lg font-bold w-full text-center">{selectedTask}</h2>
         </div>
-        <div className="flex gap-8 items-center mb-5">Title</div>
 
-        {/* <div className="flex column">
-        <FinancialsInputSection 
-        sectionName="Cabinets"
-        inputRows={[]}
-        /> */}
+        <div className="flex justify-end items-center mb-6 bg-gray-50 p-4 rounded-lg">
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-600">Estimate:</span>
+              <span className="font-bold">${totals.estimate.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-600">Actual:</span>
+              <span className="font-bold">${totals.actual.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-600">Profit:</span>
+              <span className={`font-bold ${totals.estimate - totals.actual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${(totals.estimate - totals.actual).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </div>
 
-        <FinancialsAccordion sections={sections} />
+        <FinancialsAccordion 
+          sections={localSections} 
+          employees={employees}
+          onSectionUpdate={handleSectionUpdate}
+        />
 
         {errors.rooms && <div className="error">{errors.rooms}</div>}
 
-        <div className="modal-actions flex-shrink-0 flex justify-between">
+        <div className="modal-actions flex-shrink-0 flex justify-between mt-2">
           <button className={`${buttonClass} bg-red-500`} onClick={onClose}>
             Cancel
           </button>

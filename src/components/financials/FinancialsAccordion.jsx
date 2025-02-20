@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import FinancialsInputSection from "./FinancialsInputSection";
 
-const FinancialsAccordion = ({ sections }) => {
+const FinancialsAccordion = ({ sections, employees, onSectionUpdate }) => {
   const [openSectionId, setOpenSectionId] = useState(null);
 
   const handleToggleSection = (sectionId) => {
@@ -14,8 +14,11 @@ const FinancialsAccordion = ({ sections }) => {
         <FinancialsInputSection
           key={section.id}
           {...section}
+          sectionId={section.id}
+          employees={employees}
           isExpanded={openSectionId === section.id}
           onToggle={() => handleToggleSection(section.id)}
+          onUpdate={(updates) => onSectionUpdate(section.id, updates)}
         />
       ))}
     </div>

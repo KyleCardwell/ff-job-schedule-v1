@@ -14,6 +14,7 @@ const CompletedProjectsContainer = () => {
 
   const [isFinancialsInputModalOpen, setIsFinancialsInputModalOpen] =
     useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   useEffect(() => {
     dispatch(fetchCompletedProjects());
@@ -37,12 +38,14 @@ const CompletedProjectsContainer = () => {
             key={project.project_id}
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
+			setSelectedTask={setSelectedTask}
           />
         ))}
       </div>
       <FinancialsInputModal
         isOpen={isFinancialsInputModalOpen}
         onClose={() => setIsFinancialsInputModalOpen(false)}
+		selectedTask={selectedTask}
       />
     </div>
   );
