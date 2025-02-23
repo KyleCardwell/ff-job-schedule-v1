@@ -38,14 +38,14 @@ const CompletedProjectsContainer = () => {
             key={project.project_id}
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
-			setSelectedTask={setSelectedTask}
+            setSelectedTask={setSelectedTask}
           />
         ))}
       </div>
       <FinancialsInputModal
         isOpen={isFinancialsInputModalOpen}
         onClose={() => setIsFinancialsInputModalOpen(false)}
-		selectedTask={selectedTask}
+        selectedTask={selectedTask}
       />
     </div>
   );

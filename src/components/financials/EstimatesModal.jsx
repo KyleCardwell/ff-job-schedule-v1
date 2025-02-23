@@ -11,11 +11,10 @@ const EstimatesModal = ({ isOpen, onClose, localSections, setLocalSections }) =>
         if (section.id === sectionId) {
           if (typeId) {
             // Update specific employee type estimate in hours section
-            const updatedEstimates = section.estimates || {};
             return {
               ...section,
               estimates: {
-                ...updatedEstimates,
+                ...section.estimates,
                 [typeId]: parseFloat(value) || 0
               }
             };

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { buttonClass } from "../../assets/tailwindConstants";
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
+import _ from "lodash";
 
 const FinancialsInputSection = ({
   sectionName,
@@ -19,6 +20,20 @@ const FinancialsInputSection = ({
   const isHoursSection = sectionId === 'hours';
   const chartConfig = useSelector((state) => state.chartConfig);
 
+  // Initialize local state from props only once
+  useEffect(() => {
+    setLocalInputRows(inputRows);
+  }, []); // Empty dependency array for initial setup only
+
+  const handleUpdateRows = useCallback((newRows) => {
+    setLocalInputRows(newRows);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    // Only pass the rows array since FinancialsAccordion adds the sectionId
+    onUpdate?.(localInputRows);
+  }, [onUpdate, localInputRows]);
+
   const handleAddHoursRow = ({ type_id }) => {
     const newRow = {
       id: uuidv4(),
@@ -27,8 +42,9 @@ const FinancialsInputSection = ({
       type_id
     };
     const updatedRows = [...localInputRows, newRow];
-    setLocalInputRows(updatedRows);
-    updateTotal(updatedRows);
+    handleUpdateRows(updatedRows);
+    // Update parent immediately when adding a row
+    onUpdate?.(updatedRows);
   };
 
   const handleAddInvoiceRow = () => {
@@ -38,33 +54,25 @@ const FinancialsInputSection = ({
       cost: 0
     };
     const updatedRows = [...localInputRows, newRow];
-    setLocalInputRows(updatedRows);
-    updateTotal(updatedRows);
+    handleUpdateRows(updatedRows);
+    // Update parent immediately when adding a row
+    onUpdate?.(updatedRows);
   };
 
   const handleInputChange = (rowId, field, value) => {
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
+        const parsedValue = field === 'hours' || field === 'cost' 
+          ? parseFloat(value) || 0 
+          : value;
         return {
           ...row,
-          [field]: field === 'hours' || field === 'cost' ? parseFloat(value) || 0 : value
+          [field]: parsedValue
         };
       }
       return row;
     });
-    setLocalInputRows(updatedRows);
-    updateTotal(updatedRows);
-  };
-
-  const updateTotal = (rows) => {
-    const total = rows.reduce((sum, row) => {
-      const value = isHoursSection ? (row.hours || 0) : (row.cost || 0);
-      return sum + value;
-    }, 0);
-    onUpdate?.({ 
-      actual_cost: total, 
-      inputRows: rows
-    });
+    handleUpdateRows(updatedRows);
   };
 
   const rowsTotal = useMemo(() => {
@@ -116,6 +124,7 @@ const FinancialsInputSection = ({
                   rows={localInputRows}
                   onAddRow={handleAddHoursRow}
                   onInputChange={handleInputChange}
+                  onBlur={handleBlur}
                   estimates={estimate?.estimates || {}}
                 />
               ))}
@@ -135,6 +144,7 @@ const FinancialsInputSection = ({
                       type="text"
                       value={row.invoice || ''}
                       onChange={(e) => handleInputChange(row.id, 'invoice', e.target.value)}
+                      onBlur={handleBlur}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Invoice number"
                     />
@@ -142,6 +152,7 @@ const FinancialsInputSection = ({
                       type="number"
                       value={row.cost || ''}
                       onChange={(e) => handleInputChange(row.id, 'cost', e.target.value)}
+                      onBlur={handleBlur}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Cost"
                     />
