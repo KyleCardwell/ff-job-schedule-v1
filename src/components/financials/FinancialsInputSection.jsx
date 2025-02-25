@@ -10,41 +10,82 @@ const FinancialsInputSection = ({
   estimate,
   actual_cost,
   inputRows = [],
+  data = [], // Add data prop for hours section
   onUpdate,
   isExpanded,
   onToggle,
   sectionId,
   employees = [],
 }) => {
-  const [localInputRows, setLocalInputRows] = useState(inputRows);
+  const [localInputRows, setLocalInputRows] = useState([]);
+  const [localData, setLocalData] = useState([]); // For hours section
   const isHoursSection = sectionId === 'hours';
   const chartConfig = useSelector((state) => state.chartConfig);
 
   // Initialize local state from props only once
   useEffect(() => {
-    setLocalInputRows(inputRows);
-  }, []); // Empty dependency array for initial setup only
+    if (isHoursSection) {
+      setLocalData(data);
+    } else {
+      setLocalInputRows(inputRows);
+    }
+  }, []); 
 
   const handleUpdateRows = useCallback((newRows) => {
-    setLocalInputRows(newRows);
-  }, []);
+    if (isHoursSection) {
+      setLocalData(newRows);
+    } else {
+      setLocalInputRows(newRows);
+    }
+  }, [isHoursSection]);
 
   const handleBlur = useCallback(() => {
-    // Only pass the rows array since FinancialsAccordion adds the sectionId
-    onUpdate?.(localInputRows);
-  }, [onUpdate, localInputRows]);
+    if (isHoursSection) {
+      onUpdate?.(localData);
+    } else {
+      onUpdate?.(localInputRows);
+    }
+  }, [onUpdate, localInputRows, localData, isHoursSection]);
 
-  const handleAddHoursRow = ({ type_id }) => {
+  const handleAddHoursRow = (type_id) => {
     const newRow = {
       id: uuidv4(),
       employee_id: "",
       hours: 0,
       type_id
     };
-    const updatedRows = [...localInputRows, newRow];
-    handleUpdateRows(updatedRows);
-    // Update parent immediately when adding a row
-    onUpdate?.(updatedRows);
+    
+    const typeData = localData.find(d => d.type_id === type_id);
+    if (typeData) {
+      const updatedData = localData.map(d => {
+        if (d.type_id === type_id) {
+          return {
+            ...d,
+            inputRows: [...(d.inputRows || []), newRow]
+          };
+        }
+        return d;
+      });
+      handleUpdateRows(updatedData);
+      onUpdate?.(updatedData);
+    }
+  };
+
+  const handleHoursInputChange = (rowId, field, value, type_id) => {
+    const updatedData = localData.map(typeData => {
+      if (typeData.type_id === type_id) {
+        const updatedRows = (typeData.data || []).map(row => {
+          if (row.id === rowId) {
+            const parsedValue = field === 'hours' ? parseFloat(value) || 0 : value;
+            return { ...row, [field]: parsedValue };
+          }
+          return row;
+        });
+        return { ...typeData, data: updatedRows };
+      }
+      return typeData;
+    });
+    handleUpdateRows(updatedData);
   };
 
   const handleAddInvoiceRow = () => {
@@ -76,10 +117,17 @@ const FinancialsInputSection = ({
   };
 
   const rowsTotal = useMemo(() => {
-    return localInputRows.reduce((sum, row) => {
-      return sum + (isHoursSection ? row.hours || 0 : row.cost || 0);
-    }, 0);
-  }, [localInputRows, isHoursSection]);
+    if (isHoursSection) {
+      return (localData || []).reduce((sum, typeData) => {
+        return sum + ((typeData?.data || []).reduce((sum, row) => 
+          sum + (row?.hours || 0), 0) || 0);
+      }, 0);
+    } else {
+      return (localInputRows || []).reduce((sum, row) => {
+        return sum + (row?.cost || 0);
+      }, 0);
+    }
+  }, [localInputRows, localData, isHoursSection]);
 
   return (
     <div className="border border-gray-200 rounded-lg">
@@ -116,18 +164,35 @@ const FinancialsInputSection = ({
         <div className="p-4 space-y-4 bg-white">
           {isHoursSection ? (
             <div className="space-y-4">
-              {chartConfig.employee_type?.map(type => (
-                <EmployeeTypeAccordion
-                  key={type.id}
-                  type={type}
-                  employees={employees}
-                  rows={localInputRows}
-                  onAddRow={handleAddHoursRow}
-                  onInputChange={handleInputChange}
-                  onBlur={handleBlur}
-                  estimates={estimate?.estimates || {}}
-                />
-              ))}
+              {chartConfig.employee_type?.map(type => {
+                const typeData = localData.find(d => d.type_id === type.id) || {
+                  type_id: type.id,
+                  type_name: type.name,
+                  estimate: 0,
+                  actual_cost: 0,
+                  data: []
+                };
+                return (
+                  <EmployeeTypeAccordion
+                    key={type.id}
+                    type={type}
+                    employees={employees}
+                    typeData={typeData}
+                    onAddRow={handleAddHoursRow}
+                    onInputChange={(rowId, field, value) => handleHoursInputChange(rowId, field, value, type.id)}
+                    onEstimateChange={(type_id, value) => {
+                      const updatedData = localData.map(td => 
+                        td.type_id === type_id 
+                          ? { ...td, estimate: parseFloat(value) || 0 }
+                          : td
+                      );
+                      handleUpdateRows(updatedData);
+                      onUpdate?.(updatedData);
+                    }}
+                    onBlur={handleBlur}
+                  />
+                );
+              })}
             </div>
           ) : (
             <>

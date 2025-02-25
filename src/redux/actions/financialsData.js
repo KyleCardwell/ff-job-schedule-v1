@@ -104,37 +104,37 @@ export const fetchProjectFinancials = (projectId) => {
 export const saveProjectFinancials = (financialsId, sections) => {
   return async (dispatch) => {
     try {
-      // Transform sections into the database format
-      const financialsData = sections.reduce((acc, section) => {
-        // Each section should update its corresponding column
-        acc[section.id] = {
+      console.log('Saving sections:', sections); // Debug log
+
+      // Create update object directly
+      const updateData = sections.reduce((acc, section) => {
+        // Each section already has the correct structure, just need to stringify
+        acc[section.id] = JSON.stringify({
           estimate: section.estimate || 0,
-          actual_cost: section.id === 'hours'
-            ? (section.data || []).reduce((sum, row) => sum + (parseFloat(row.hours) || 0), 0)
-            : (section.inputRows || []).reduce((sum, row) => sum + (parseFloat(row.cost) || 0), 0),
-          data: section.id === 'hours' ? section.data : section.inputRows
-        };
+          actual_cost: section.actual_cost || 0,
+          data: section.id === 'hours' ? section.data : section.inputRows || []
+        });
+
+        console.log(`${section.id} data:`, acc[section.id]); // Debug log
         return acc;
       }, {});
+
+      // Add timestamp to update data
+      updateData.financials_updated_at = new Date().toISOString();
+
+      console.log('Update data:', updateData); // Debug log
 
       // Update the project_financials table
       const { data, error } = await supabase
         .from('project_financials')
-        .update({
-          hours: financialsData.hours,
-          cabinets: financialsData.cabinets,
-          doors: financialsData.doors,
-          drawers: financialsData.drawers,
-          other: financialsData.other,
-          financials_updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('financials_id', financialsId);
 
       if (error) throw error;
 
       dispatch({
         type: Actions.financialsData.SAVE_PROJECT_FINANCIALS_SUCCESS,
-        payload: { financials: financialsData }
+        payload: { financials: sections }
       });
 
       return { success: true };

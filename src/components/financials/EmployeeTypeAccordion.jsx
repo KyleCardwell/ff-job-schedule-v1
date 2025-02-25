@@ -4,23 +4,22 @@ import React, { useState, useMemo } from "react";
 const EmployeeTypeAccordion = ({
   type,
   employees,
-  rows,
+  typeData = { estimate: 0, actual_cost: 0, inputRows: [] },
   onAddRow,
   onInputChange,
-  onBlur,
-  estimates = {}
+  onEstimateChange,
+  onBlur
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const typeRows = rows.filter((row) => row.type_id === type.id);
   const availableEmployees = employees.filter(
     (e) => e.employee_type?.id === type.id
   );
 
   const actualHours = useMemo(() => 
-    typeRows.reduce((sum, row) => sum + (row.hours || 0), 0),
-    [typeRows]
+    (typeData?.inputRows || []).reduce((sum, row) => sum + (row.hours || 0), 0),
+    [typeData?.inputRows]
   );
-  const estimatedHours = estimates[type.id] || 0;
+  const estimatedHours = typeData?.estimate || 0;
   const difference = estimatedHours - actualHours;
 
   return (
@@ -50,7 +49,18 @@ const EmployeeTypeAccordion = ({
         isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
       }`}>
         <div className="p-4 space-y-2">
-          {typeRows.map((row) => (
+          <div className="grid grid-cols-2 gap-4 items-center bg-gray-100 p-4 rounded-lg">
+            <label className="text-sm font-medium text-gray-700">Estimated Hours</label>
+            <input
+              type="number"
+              value={estimatedHours === 0 ? "" : estimatedHours}
+              onChange={(e) => onEstimateChange(type.id, e.target.value)}
+              onBlur={onBlur}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Estimated Hours"
+            />
+          </div>
+          {(typeData?.inputRows || []).map((row) => (
             <div key={row.id} className="grid grid-cols-2 gap-4 items-center bg-gray-50 p-4 rounded-lg">
               <select
                 value={row.employee_id || ""}
@@ -77,7 +87,7 @@ const EmployeeTypeAccordion = ({
             </div>
           ))}
           <button
-            onClick={() => onAddRow({ type_id: type.id })}
+            onClick={() => onAddRow(type.id)}
             className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
           >
             Add Row

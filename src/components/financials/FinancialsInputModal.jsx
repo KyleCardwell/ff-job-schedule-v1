@@ -31,8 +31,6 @@ const FinancialsInputModal = ({
   );
   const chartConfig = useSelector((state) => state.chartConfig);
 
-  console.log("Financial Sections:", financialSections); // Debug log
-
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -56,38 +54,58 @@ const FinancialsInputModal = ({
     const initialSections = sectionTypes.map(({ id, label }) => {
       // For hours section, we'll store employee type data instead of generic input rows
       if (id === "hours") {
+        const hoursData = financialSections[id] || {};
+
+        // Create employee type structure
+        const employeeTypeData = chartConfig.employee_type?.map(type => {
+          const typeData = hoursData.data?.[type.id] || {
+            id: type.id,
+            name: type.name,
+            estimate: 0,
+            actual_cost: 0,
+            inputRows: []
+          };
+
+          return {
+            type_id: type.id,
+            type_name: type.name,
+            estimate: typeData.estimate || 0,
+            actual_cost: typeData.actual_cost || 0,
+            inputRows: typeData.inputRows || []
+          };
+        }) || [];
+
+        // Calculate total estimate from employee type estimates
+        const totalEstimate = employeeTypeData.reduce((sum, type) => sum + (type.estimate || 0), 0);
+
         return {
           id,
           sectionName: label,
-          estimate: financialSections[id]?.estimate ?? 0,
-          actual_cost: financialSections[id]?.actual_cost ?? 0,
-          // Store employee type IDs and their data
-          data:
-            chartConfig.employee_type?.map((type) => ({
-              type_id: type.id,
-              type_name: type.name, // Store name for reference, but use id as source of truth
-              hours: (financialSections[id]?.data || [])
-                .filter((row) => row.type_id === type.id)
-                .reduce((sum, row) => sum + (row.hours || 0), 0),
-            })) || [],
+          estimate: totalEstimate,
+          actual_cost: hoursData.actual_cost || 0,
+          data: employeeTypeData
         };
       }
 
-      // For non-hours sections, keep the existing structure
+      // For non-hours sections
+      const sectionData = financialSections[id] || {};
+
       return {
         id,
         sectionName: label,
-        estimate: financialSections[id]?.estimate ?? 0,
-        actual_cost: financialSections[id]?.actual_cost ?? 0,
-        inputRows: [...(financialSections[id]?.data ?? [])].map((row) => ({
+        estimate: sectionData.estimate || 0,
+        actual_cost: sectionData.actual_cost || 0,
+        inputRows: (sectionData.data || []).map((row) => ({
           ...row,
           id: row.id || uuidv4(),
         })),
       };
     });
 
+    
     setLocalSections(initialSections);
-  }, [financialSections]);
+    console.log('local sections', localSections)
+  }, [financialSections, chartConfig.employee_type]);
 
   useEffect(() => {
     // Update totals whenever localSections changes
@@ -101,11 +119,10 @@ const FinancialsInputModal = ({
           // For hours section, use data array if it exists
           const sectionActual = Array.isArray(section.data)
             ? section.data.reduce(
-                (sum, row) => sum + (parseFloat(row.hours) || 0),
+                (sum, row) => sum + (parseFloat(row.actual_cost) || 0),
                 0
               )
             : 0;
-          console.log("Hours section actual:", sectionActual); // Debug log
           acc.actual += sectionActual;
         } else {
           // For non-hours sections, use inputRows array
@@ -115,7 +132,6 @@ const FinancialsInputModal = ({
                 0
               )
             : 0;
-          console.log(`${section.id} section actual:`, sectionActual); // Debug log
           acc.actual += sectionActual;
         }
 
@@ -123,12 +139,10 @@ const FinancialsInputModal = ({
       },
       { estimate: 0, actual: 0 }
     );
-    console.log("New totals:", newTotals); // Debug log
     setModalTotals(newTotals);
   }, [localSections]);
 
   const handleSectionUpdate = (sectionId, newData) => {
-    console.log("Section Update:", sectionId, newData); // Debug log
     setLocalSections((prevSections) =>
       prevSections.map((section) => {
         if (section.id === sectionId) {
@@ -140,7 +154,9 @@ const FinancialsInputModal = ({
                 ? newData.map((row) => ({
                     ...row,
                     type_id: row.type_id,
-                    hours: parseFloat(row.hours) || 0,
+                    estimate: parseFloat(row.estimate) || 0,
+                    actual_cost: parseFloat(row.actual_cost) || 0,
+                    data: row.data || []
                   }))
                 : [],
             };
