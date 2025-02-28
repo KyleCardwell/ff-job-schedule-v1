@@ -29,7 +29,7 @@ const FinancialsInputSection = ({
     } else {
       setLocalInputRows(inputRows);
     }
-  }, []); 
+  }, [data, inputRows]); // Update when props change
 
   const handleUpdateRows = useCallback((newRows) => {
     if (isHoursSection) {
@@ -55,37 +55,36 @@ const FinancialsInputSection = ({
       type_id
     };
     
-    const typeData = localData.find(d => d.type_id === type_id);
-    if (typeData) {
-      const updatedData = localData.map(d => {
-        if (d.type_id === type_id) {
-          return {
-            ...d,
-            inputRows: [...(d.inputRows || []), newRow]
-          };
-        }
-        return d;
-      });
-      handleUpdateRows(updatedData);
-      onUpdate?.(updatedData);
-    }
+    // For hours section, we update the localData array
+    const updatedData = localData.map(typeData => {
+      if (typeData.type_id === type_id) {
+        return {
+          ...typeData,
+          inputRows: [...(typeData.inputRows || []), newRow]
+        };
+      }
+      return typeData;
+    });
+    handleUpdateRows(updatedData);
+    onUpdate?.(updatedData);
   };
 
   const handleHoursInputChange = (rowId, field, value, type_id) => {
     const updatedData = localData.map(typeData => {
       if (typeData.type_id === type_id) {
-        const updatedRows = (typeData.data || []).map(row => {
+        const updatedRows = (typeData.inputRows || []).map(row => {
           if (row.id === rowId) {
             const parsedValue = field === 'hours' ? parseFloat(value) || 0 : value;
             return { ...row, [field]: parsedValue };
           }
           return row;
         });
-        return { ...typeData, data: updatedRows };
+        return { ...typeData, inputRows: updatedRows };
       }
       return typeData;
     });
     handleUpdateRows(updatedData);
+    onUpdate?.(updatedData);
   };
 
   const handleAddInvoiceRow = () => {
@@ -119,7 +118,7 @@ const FinancialsInputSection = ({
   const rowsTotal = useMemo(() => {
     if (isHoursSection) {
       return (localData || []).reduce((sum, typeData) => {
-        return sum + ((typeData?.data || []).reduce((sum, row) => 
+        return sum + ((typeData?.inputRows || []).reduce((sum, row) => 
           sum + (row?.hours || 0), 0) || 0);
       }, 0);
     } else {
@@ -170,7 +169,7 @@ const FinancialsInputSection = ({
                   type_name: type.name,
                   estimate: 0,
                   actual_cost: 0,
-                  data: []
+                  inputRows: []
                 };
                 return (
                   <EmployeeTypeAccordion
@@ -180,15 +179,6 @@ const FinancialsInputSection = ({
                     typeData={typeData}
                     onAddRow={handleAddHoursRow}
                     onInputChange={(rowId, field, value) => handleHoursInputChange(rowId, field, value, type.id)}
-                    onEstimateChange={(type_id, value) => {
-                      const updatedData = localData.map(td => 
-                        td.type_id === type_id 
-                          ? { ...td, estimate: parseFloat(value) || 0 }
-                          : td
-                      );
-                      handleUpdateRows(updatedData);
-                      onUpdate?.(updatedData);
-                    }}
                     onBlur={handleBlur}
                   />
                 );

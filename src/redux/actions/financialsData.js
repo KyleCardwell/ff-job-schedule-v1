@@ -104,25 +104,34 @@ export const fetchProjectFinancials = (projectId) => {
 export const saveProjectFinancials = (financialsId, sections) => {
   return async (dispatch) => {
     try {
-      console.log('Saving sections:', sections); // Debug log
-
       // Create update object directly
       const updateData = sections.reduce((acc, section) => {
-        // Each section already has the correct structure, just need to stringify
-        acc[section.id] = JSON.stringify({
-          estimate: section.estimate || 0,
-          actual_cost: section.actual_cost || 0,
-          data: section.id === 'hours' ? section.data : section.inputRows || []
-        });
-
-        console.log(`${section.id} data:`, acc[section.id]); // Debug log
+        if (section.id === 'hours') {
+          // For hours section, maintain the employee type data structure
+          acc[section.id] = {
+            estimate: section.estimate || 0,
+            actual_cost: section.actual_cost || 0,
+            data: section.data.map(typeData => ({
+              type_id: typeData.type_id,
+              type_name: typeData.type_name,
+              estimate: typeData.estimate || 0,
+              actual_cost: typeData.actual_cost || 0,
+              inputRows: typeData.inputRows || [] // Use inputRows consistently
+            }))
+          };
+        } else {
+          // For non-hours sections
+          acc[section.id] = {
+            estimate: section.estimate || 0,
+            actual_cost: section.actual_cost || 0,
+            data: section.inputRows || []
+          };
+        }
         return acc;
       }, {});
 
       // Add timestamp to update data
       updateData.financials_updated_at = new Date().toISOString();
-
-      console.log('Update data:', updateData); // Debug log
 
       // Update the project_financials table
       const { data, error } = await supabase

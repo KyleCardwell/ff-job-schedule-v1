@@ -7,7 +7,6 @@ const EmployeeTypeAccordion = ({
   typeData = { estimate: 0, actual_cost: 0, inputRows: [] },
   onAddRow,
   onInputChange,
-  onEstimateChange,
   onBlur
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -49,17 +48,6 @@ const EmployeeTypeAccordion = ({
         isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
       }`}>
         <div className="p-4 space-y-2">
-          <div className="grid grid-cols-2 gap-4 items-center bg-gray-100 p-4 rounded-lg">
-            <label className="text-sm font-medium text-gray-700">Estimated Hours</label>
-            <input
-              type="number"
-              value={estimatedHours === 0 ? "" : estimatedHours}
-              onChange={(e) => onEstimateChange(type.id, e.target.value)}
-              onBlur={onBlur}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Estimated Hours"
-            />
-          </div>
           {(typeData?.inputRows || []).map((row) => (
             <div key={row.id} className="grid grid-cols-2 gap-4 items-center bg-gray-50 p-4 rounded-lg">
               <select

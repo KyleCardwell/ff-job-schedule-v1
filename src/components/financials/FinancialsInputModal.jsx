@@ -55,12 +55,14 @@ const FinancialsInputModal = ({
       // For hours section, we'll store employee type data instead of generic input rows
       if (id === "hours") {
         const hoursData = financialSections[id] || {};
+        console.log('Hours data from DB:', hoursData);
 
         // Create employee type structure
         const employeeTypeData = chartConfig.employee_type?.map(type => {
-          const typeData = hoursData.data?.[type.id] || {
-            id: type.id,
-            name: type.name,
+          // Find the type data in the array
+          const typeData = hoursData.data?.find(t => t.type_id === type.id) || {
+            type_id: type.id,
+            type_name: type.name,
             estimate: 0,
             actual_cost: 0,
             inputRows: []

@@ -8,21 +8,17 @@ const EstimatesModal = ({ isOpen, onClose, localSections, setLocalSections }) =>
   console.log('local sections', localSections)
 
   const handleEstimateChange = (sectionId, value, typeId = null) => {
-    console.log('Updating estimate:', { sectionId, value, typeId }); // Debug log
-
     setLocalSections(prevSections => {
       const newSections = prevSections.map(section => {
         if (section.id === sectionId) {
           if (section.id === 'hours' && typeId) {
-            console.log('Current section data:', section.data); // Debug log
-
             // Update specific employee type estimate in hours section
             const updatedData = section.data.map(typeData => {
               if (typeData.type_id === typeId) {
-                console.log('Updating type:', typeData.type_id, 'with value:', value); // Debug log
                 return {
                   ...typeData,
-                  estimate: parseFloat(value) || 0
+                  estimate: parseFloat(value) || 0,
+                  data: typeData.data || [] // Preserve data array
                 };
               }
               return typeData;
@@ -30,7 +26,6 @@ const EstimatesModal = ({ isOpen, onClose, localSections, setLocalSections }) =>
 
             // Calculate total estimate from all employee types
             const totalEstimate = updatedData.reduce((sum, type) => sum + (type.estimate || 0), 0);
-            console.log('New total estimate:', totalEstimate); // Debug log
 
             return {
               ...section,
@@ -48,7 +43,6 @@ const EstimatesModal = ({ isOpen, onClose, localSections, setLocalSections }) =>
         return section;
       });
 
-      console.log('Updated sections:', newSections); // Debug log
       return newSections;
     });
   };
