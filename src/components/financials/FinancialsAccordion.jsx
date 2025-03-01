@@ -9,7 +9,7 @@ const FinancialsAccordion = ({ sections, employees, onSectionUpdate }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div>
       {sections.map((section) => (
         <FinancialsInputSection
           key={section.id}

@@ -55,37 +55,43 @@ const FinancialsInputModal = ({
       // For hours section, we'll store employee type data instead of generic input rows
       if (id === "hours") {
         const hoursData = financialSections[id] || {};
-        console.log('Hours data from DB:', hoursData);
+        console.log("Hours data from DB:", hoursData);
 
         // Create employee type structure
-        const employeeTypeData = chartConfig.employee_type?.map(type => {
-          // Find the type data in the array
-          const typeData = hoursData.data?.find(t => t.type_id === type.id) || {
-            type_id: type.id,
-            type_name: type.name,
-            estimate: 0,
-            actual_cost: 0,
-            inputRows: []
-          };
+        const employeeTypeData =
+          chartConfig.employee_type?.map((type) => {
+            // Find the type data in the array
+            const typeData = hoursData.data?.find(
+              (t) => t.type_id === type.id
+            ) || {
+              type_id: type.id,
+              type_name: type.name,
+              estimate: 0,
+              actual_cost: 0,
+              inputRows: [],
+            };
 
-          return {
-            type_id: type.id,
-            type_name: type.name,
-            estimate: typeData.estimate || 0,
-            actual_cost: typeData.actual_cost || 0,
-            inputRows: typeData.inputRows || []
-          };
-        }) || [];
+            return {
+              type_id: type.id,
+              type_name: type.name,
+              estimate: typeData.estimate || 0,
+              actual_cost: typeData.actual_cost || 0,
+              inputRows: typeData.inputRows || [],
+            };
+          }) || [];
 
         // Calculate total estimate from employee type estimates
-        const totalEstimate = employeeTypeData.reduce((sum, type) => sum + (type.estimate || 0), 0);
+        const totalEstimate = employeeTypeData.reduce(
+          (sum, type) => sum + (type.estimate || 0),
+          0
+        );
 
         return {
           id,
           sectionName: label,
           estimate: totalEstimate,
           actual_cost: hoursData.actual_cost || 0,
-          data: employeeTypeData
+          data: employeeTypeData,
         };
       }
 
@@ -104,9 +110,8 @@ const FinancialsInputModal = ({
       };
     });
 
-    
     setLocalSections(initialSections);
-    console.log('local sections', localSections)
+    console.log("local sections", localSections);
   }, [financialSections, chartConfig.employee_type]);
 
   useEffect(() => {
@@ -158,7 +163,7 @@ const FinancialsInputModal = ({
                     type_id: row.type_id,
                     estimate: parseFloat(row.estimate) || 0,
                     actual_cost: parseFloat(row.actual_cost) || 0,
-                    data: row.data || []
+                    data: row.data || [],
                   }))
                 : [],
             };
@@ -210,20 +215,25 @@ const FinancialsInputModal = ({
     <>
       {isOpen && (
         <div className={modalOverlayClass}>
-          <div className={modalContainerClass}>
-            <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+          <div className={`${modalContainerClass} max-h-[90vh] flex flex-col`}>
+            {isSaving && (
+              <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
+                <GridLoader color="maroon" size={15} />
+                <p>Saving...</p>
+              </div>
+            )}
+
+            {/* Fixed Header */}
+            <div className="flex-none bg-white px-4 pt-5">
               <div className="flex justify-between mb-4">
                 <CSVReader onUploadAccepted={handleOnFileLoad}>
                   {({ getRootProps, acceptedFile }) => (
-                    <div className="csv-import-container">
-                      <button
-                        type="button"
-                        {...getRootProps()}
-                        className={`${buttonClass} bg-blue-500 truncate`}
-                      >
-                        Import CSV
-                      </button>
-                    </div>
+                    <button
+                      {...getRootProps()}
+                      className={`${buttonClass} bg-blue-500 hover:bg-blue-700`}
+                    >
+                      Upload CSV
+                    </button>
                   )}
                 </CSVReader>
                 <h2 className="text-lg font-bold w-full text-center">
@@ -237,7 +247,7 @@ const FinancialsInputModal = ({
                 </button>
               </div>
 
-              <div className="flex justify-end items-center mb-6 bg-gray-50 p-4 rounded-lg">
+              <div className="flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-600">Estimate:</span>
@@ -268,47 +278,47 @@ const FinancialsInputModal = ({
                   </div>
                 </div>
               </div>
+            </div>
 
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto min-h-0 px-4">
               <FinancialsAccordion
                 sections={localSections}
                 employees={employees}
                 onSectionUpdate={handleSectionUpdate}
               />
-
-              {errors.rooms && <div className="error">{errors.rooms}</div>}
-
-              <div className="modal-actions flex-shrink-0 flex justify-between mt-4">
-                <button
-                  className={`${buttonClass} bg-red-500`}
-                  onClick={onClose}
-                >
-                  Cancel
-                </button>
-                <button
-                  className={`${buttonClass} bg-blue-500`}
-                  onClick={handleSave}
-                  disabled={isSaving}
-                >
-                  {isSaving ? "Saving..." : "Save"}
-                </button>
-              </div>
-              {errors.messages && errors.messages.length > 0 && (
-                <div className="error-messages">
-                  {errors.messages.map((message, index) => (
-                    <div key={index} className="error general-error">
-                      {message}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {saveError && (
-                <div className="error-messages">
-                  <div className="error general-error">{saveError}</div>
-                </div>
-              )}
             </div>
+
+            {/* Fixed Footer */}
+            <div className="modal-actions flex-shrink-0 flex justify-between mt-4">
+              <button className={`${buttonClass} bg-red-500`} onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                className={`${buttonClass} bg-blue-500`}
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+            {errors.messages && errors.messages.length > 0 && (
+              <div className="error-messages">
+                {errors.messages.map((message, index) => (
+                  <div key={index} className="error general-error">
+                    {message}
+                  </div>
+                ))}
+              </div>
+            )}
+            {saveError && (
+              <div className="error-messages">
+                <div className="error general-error">{saveError}</div>
+              </div>
+            )}
           </div>
         </div>
+        // </div>
       )}
 
       <EstimatesModal

@@ -19,6 +19,7 @@ const FinancialsInputSection = ({
 }) => {
   const [localInputRows, setLocalInputRows] = useState([]);
   const [localData, setLocalData] = useState([]); // For hours section
+  const [expandedTypeId, setExpandedTypeId] = useState(null);
   const isHoursSection = sectionId === 'hours';
   const chartConfig = useSelector((state) => state.chartConfig);
 
@@ -115,6 +116,10 @@ const FinancialsInputSection = ({
     handleUpdateRows(updatedRows);
   };
 
+  const handleToggleType = (typeId) => {
+    setExpandedTypeId(current => current === typeId ? null : typeId);
+  };
+
   const rowsTotal = useMemo(() => {
     if (isHoursSection) {
       return (localData || []).reduce((sum, typeData) => {
@@ -129,7 +134,7 @@ const FinancialsInputSection = ({
   }, [localInputRows, localData, isHoursSection]);
 
   return (
-    <div className="border border-gray-200 rounded-lg">
+    <div className="border border-gray-200 rounded-lg mb-4">
       <button
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors duration-150 ease-in-out"
@@ -180,6 +185,8 @@ const FinancialsInputSection = ({
                     onAddRow={handleAddHoursRow}
                     onInputChange={(rowId, field, value) => handleHoursInputChange(rowId, field, value, type.id)}
                     onBlur={handleBlur}
+                    isExpanded={expandedTypeId === type.id}
+                    onToggle={handleToggleType}
                   />
                 );
               })}

@@ -1,5 +1,5 @@
 // EmployeeTypeAccordion.jsx
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 
 const EmployeeTypeAccordion = ({
   type,
@@ -7,9 +7,10 @@ const EmployeeTypeAccordion = ({
   typeData = { estimate: 0, actual_cost: 0, inputRows: [] },
   onAddRow,
   onInputChange,
-  onBlur
+  onBlur,
+  isExpanded,
+  onToggle
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const availableEmployees = employees.filter(
     (e) => e.employee_type?.id === type.id
   );
@@ -24,7 +25,7 @@ const EmployeeTypeAccordion = ({
   return (
     <div className="border border-gray-100 rounded-lg mb-4">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => onToggle(type.id)}
         className="w-full px-4 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors duration-150 ease-in-out rounded-lg"
       >
         <h4 className="text-sm font-medium text-gray-700">{type.name}</h4>

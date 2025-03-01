@@ -76,10 +76,10 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     }
   };
 
-  const handleEmployeeTypeChange = (id, name) => {
+  const handleEmployeeTypeChange = (id, field, value) => {
     setEmployeeTypes(prev => 
       prev.map(type => 
-        type.id === id ? { ...type, name } : type
+        type.id === id ? { ...type, [field]: value } : type
       )
     );
     if (errors.employeeTypes) {
@@ -92,7 +92,7 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
   };
 
   const handleAddEmployeeType = () => {
-    setEmployeeTypes(prev => [...prev, { id: uuidv4(), name: '' }]);
+    setEmployeeTypes(prev => [...prev, { id: uuidv4(), name: '', rate: 0 }]);
   };
 
   const handleCancel = () => {
@@ -104,9 +104,10 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     });
     setEmployeeTypes(
       (chartConfig.employee_type || []).map(type => {
-        return typeof type === 'string' 
-          ? { id: uuidv4(), name: type } // Convert old string format
-          : type; // Keep existing object format
+        if (typeof type === 'string') {
+          return { id: uuidv4(), name: type, rate: 0 }; // Convert old string format
+        }
+        return { ...type, rate: type.rate || 0 }; // Keep existing object format with rate
       })
     );
     // Clear any errors
@@ -123,7 +124,8 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
         ...settings,
         employee_type: employeeTypes.map(type => ({
           id: type.id,
-          name: type.name.trim()
+          name: type.name.trim(),
+          rate: type.rate
         }))
       }));
       onClose();
@@ -148,9 +150,10 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     // Initialize from existing types, preserving their ids if they exist
     setEmployeeTypes(
       (chartConfig.employee_type || []).map(type => {
-        return typeof type === 'string' 
-          ? { id: uuidv4(), name: type } // Convert old string format
-          : type; // Keep existing object format
+        if (typeof type === 'string') {
+          return { id: uuidv4(), name: type, rate: 0 }; // Convert old string format
+        }
+        return { ...type, rate: type.rate || 0 }; // Keep existing object format with rate
       })
     );
   }, [chartConfig]);
@@ -232,41 +235,43 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
             </div>
           </div>
 
-          <div className="flex flex-col justify-center items-center">
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              Employee Types
-            </label>
+          <div className="space-y-4 mb-4">
+            <h3 className="text-lg font-semibold">Employee Types</h3>
+            {errors.employeeTypes && (
+              <p className="text-sm text-red-500">{errors.employeeTypes}</p>
+            )}
             {employeeTypes.map((type) => (
-              <div key={type.id} className="flex flex-row gap-2 mb-2">
+              <div key={type.id} className="flex flex-row gap-2 mb-2 justify-center">
                 <input
                   type="text"
                   value={type.name}
-                  onChange={(e) => handleEmployeeTypeChange(type.id, e.target.value)}
-                  placeholder="Enter employee type"
-                  className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => handleEmployeeTypeChange(type.id, 'name', e.target.value)}
+                  placeholder="Employee Type Name"
+                  className="p-2rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <input
+                  type="number"
+                  value={type.rate || ''}
+                  onChange={(e) => handleEmployeeTypeChange(type.id, 'rate', parseFloat(e.target.value) || 0)}
+                  placeholder="Hourly Rate"
+                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
                 <button
                   onClick={() => handleRemoveEmployeeType(type.id)}
-                  className="p-1 text-red-500 hover:text-red-700 focus:outline-none"
-                  title="Remove employee type"
+                  className="p-2 text-red-600 hover:text-red-800"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
                 </button>
               </div>
             ))}
             <button
               onClick={handleAddEmployeeType}
-              className="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              className="mt-2 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               Add Employee Type
             </button>
-            {errors.employeeTypes && (
-              <p className="mt-1 text-sm text-red-500">
-                {errors.employeeTypes}
-              </p>
-            )}
           </div>
         </div>
 
