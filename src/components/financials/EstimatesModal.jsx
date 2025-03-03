@@ -61,8 +61,8 @@ const EstimatesModal = ({ isOpen, onClose, localSections, setLocalSections }) =>
         <div className="p-6">
           <div className="space-y-6">
             <div>
-              <h4 className="text-base font-medium text-gray-800 border-b pb-2">Hours</h4>
-              <div className="space-y-3 pl-4">
+              <h4 className="text-base font-semibold text-gray-800 border-b pb-2">Hours</h4>
+              <div className="space-y-3 pl-4 pt-4">
                 {chartConfig.employee_type?.map((type) => {
                   const typeData = hoursSection?.data?.find(t => t.type_id === type.id);
                   console.log('Type data for', type.id, ':', typeData); // Debug log
@@ -84,8 +84,8 @@ const EstimatesModal = ({ isOpen, onClose, localSections, setLocalSections }) =>
             </div>
 
             <div>
-              <h4 className="text-base font-medium text-gray-800 border-b pb-2">Prices</h4>
-              <div className="space-y-3 pl-4">
+              <h4 className="text-base font-semibold text-gray-800 border-b pb-2">Prices</h4>
+              <div className="space-y-3 pl-4 pt-4">
                 {priceSections.map(section => (
                   <div key={section.id} className="flex items-center gap-4">
                     <h3 className="text-sm font-medium text-gray-700 w-32">{section.sectionName}</h3>

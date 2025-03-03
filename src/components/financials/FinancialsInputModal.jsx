@@ -115,68 +115,59 @@ const FinancialsInputModal = ({
   }, [financialSections, chartConfig.employee_type]);
 
   useEffect(() => {
-    // Update totals whenever localSections changes
-    const newTotals = localSections.reduce(
+    const totals = localSections.reduce(
       (acc, section) => {
-        // Add estimate
-        acc.estimate += section.estimate || 0;
-
-        // Calculate actual based on section type
         if (section.id === "hours") {
-          // For hours section, use data array if it exists
-          const sectionActual = Array.isArray(section.data)
-            ? section.data.reduce(
-                (sum, row) => sum + (parseFloat(row.actual_cost) || 0),
-                0
-              )
-            : 0;
-          acc.actual += sectionActual;
-        } else {
-          // For non-hours sections, use inputRows array
-          const sectionActual = Array.isArray(section.inputRows)
-            ? section.inputRows.reduce(
-                (sum, row) => sum + (parseFloat(row.cost) || 0),
-                0
-              )
-            : 0;
-          acc.actual += sectionActual;
+          // For hours section, multiply estimated hours by employee type rates
+          const estimateTotal = section.data?.reduce((typeAcc, typeData) => {
+            const employeeType = chartConfig.employee_type?.find(
+              (type) => type.id === typeData.type_id
+            );
+            const rate = employeeType?.rate || 0;
+            
+            // Multiply estimate by rate for each type
+            return typeAcc + ((typeData.estimate || 0) * rate);
+          }, 0) || 0;
+
+          return {
+            estimate: acc.estimate + estimateTotal,
+            actual: acc.actual + (section.actual_cost || 0),
+          };
         }
 
-        return acc;
+        // For non-hours sections
+        const sectionActual = section.inputRows?.reduce(
+          (sum, row) => sum + (parseFloat(row.cost) || 0),
+          0
+        ) || 0;
+
+        return {
+          estimate: acc.estimate + (section.estimate || 0),
+          actual: acc.actual + sectionActual,
+        };
       },
       { estimate: 0, actual: 0 }
     );
-    setModalTotals(newTotals);
-  }, [localSections]);
+
+    setModalTotals(totals);
+  }, [localSections, chartConfig.employee_type]);
 
   const handleSectionUpdate = (sectionId, newData) => {
     setLocalSections((prevSections) =>
       prevSections.map((section) => {
         if (section.id === sectionId) {
-          if (sectionId === "hours") {
-            // For hours, maintain the array structure with type_id and hours
+          if (section.id === "hours") {
+            // For hours section, keep the data array structure
             return {
               ...section,
-              data: Array.isArray(newData)
-                ? newData.map((row) => ({
-                    ...row,
-                    type_id: row.type_id,
-                    estimate: parseFloat(row.estimate) || 0,
-                    actual_cost: parseFloat(row.actual_cost) || 0,
-                    data: row.data || [],
-                  }))
-                : [],
+              data: newData
             };
           } else {
-            // For non-hours sections, maintain the array of cost entries
+            // For non-hours sections, update with new data and calculate actual_cost
             return {
               ...section,
-              inputRows: Array.isArray(newData)
-                ? newData.map((row) => ({
-                    ...row,
-                    cost: parseFloat(row.cost) || 0,
-                  }))
-                : [],
+              ...newData,
+              actual_cost: newData.inputRows?.reduce((sum, row) => sum + (parseFloat(row.cost) || 0), 0) || 0
             };
           }
         }

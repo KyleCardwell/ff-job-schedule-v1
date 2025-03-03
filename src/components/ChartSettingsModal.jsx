@@ -240,38 +240,43 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
             {errors.employeeTypes && (
               <p className="text-sm text-red-500">{errors.employeeTypes}</p>
             )}
-            {employeeTypes.map((type) => (
-              <div key={type.id} className="flex flex-row gap-2 mb-2 justify-center">
-                <input
-                  type="text"
-                  value={type.name}
-                  onChange={(e) => handleEmployeeTypeChange(type.id, 'name', e.target.value)}
-                  placeholder="Employee Type Name"
-                  className="p-2rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-                <input
-                  type="number"
-                  value={type.rate || ''}
-                  onChange={(e) => handleEmployeeTypeChange(type.id, 'rate', parseFloat(e.target.value) || 0)}
-                  placeholder="Hourly Rate"
-                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-                <button
-                  onClick={() => handleRemoveEmployeeType(type.id)}
-                  className="p-2 text-red-600 hover:text-red-800"
-                >
-                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </button>
+            <div className="flex flex-col items-center">
+              <div className="grid grid-cols-[20ch_15ch_5ch] gap-2 mb-2">
+                <label className="block text-sm font-bold text-gray-700">Category</label>
+                <label className="block text-sm font-bold text-gray-700">Hourly Rate</label>
+                <div></div>
               </div>
-            ))}
-            <button
-              onClick={handleAddEmployeeType}
-              className="mt-2 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            >
-              Add Employee Type
-            </button>
+              {employeeTypes.map((type) => (
+                <div key={type.id} className="grid grid-cols-[20ch_15ch_5ch] gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={type.name}
+                    onChange={(e) => handleEmployeeTypeChange(type.id, "name", e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[20ch]"
+                  />
+                  <input
+                    type="number"
+                    value={type.rate || ""}
+                    onChange={(e) => handleEmployeeTypeChange(type.id, 'rate', parseFloat(e.target.value) || 0)}
+                    className="w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm max-w-[15ch]"
+                  />
+                  <button
+                    onClick={() => handleRemoveEmployeeType(type.id)}
+                    className="p-2 text-red-600 hover:text-red-800"
+                  >
+                    <svg className="h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                      <path d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={handleAddEmployeeType}
+                className="mt-2 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                Add Employee Type
+              </button>
+            </div>
           </div>
         </div>
 

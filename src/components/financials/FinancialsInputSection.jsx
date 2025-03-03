@@ -67,7 +67,8 @@ const FinancialsInputSection = ({
       return typeData;
     });
     handleUpdateRows(updatedData);
-    onUpdate?.(updatedData);
+    // For hours section, just pass the updated data array
+    onUpdate(updatedData);
   };
 
   const handleHoursInputChange = (rowId, field, value, type_id) => {
@@ -85,7 +86,8 @@ const FinancialsInputSection = ({
       return typeData;
     });
     handleUpdateRows(updatedData);
-    onUpdate?.(updatedData);
+    // For hours section, just pass the updated data array
+    onUpdate(updatedData);
   };
 
   const handleAddInvoiceRow = () => {
@@ -96,14 +98,18 @@ const FinancialsInputSection = ({
     };
     const updatedRows = [...localInputRows, newRow];
     handleUpdateRows(updatedRows);
-    // Update parent immediately when adding a row
-    onUpdate?.(updatedRows);
+    // Update parent with complete section data
+    onUpdate({
+      estimate,
+      actual_cost: updatedRows.reduce((sum, row) => sum + (row.cost || 0), 0),
+      inputRows: updatedRows
+    });
   };
 
   const handleInputChange = (rowId, field, value) => {
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
-        const parsedValue = field === 'hours' || field === 'cost' 
+        const parsedValue = field === 'cost' 
           ? parseFloat(value) || 0 
           : value;
         return {
@@ -114,6 +120,11 @@ const FinancialsInputSection = ({
       return row;
     });
     handleUpdateRows(updatedRows);
+    onUpdate({
+      estimate,
+      actual_cost: updatedRows.reduce((sum, row) => sum + (row.cost || 0), 0),
+      inputRows: updatedRows
+    });
   };
 
   const handleToggleType = (typeId) => {
