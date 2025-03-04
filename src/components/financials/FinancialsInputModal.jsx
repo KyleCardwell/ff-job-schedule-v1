@@ -309,7 +309,6 @@ const FinancialsInputModal = ({
             )}
           </div>
         </div>
-        // </div>
       )}
 
       <EstimatesModal
