@@ -118,20 +118,22 @@ const FinancialsInputModal = ({
     const totals = localSections.reduce(
       (acc, section) => {
         if (section.id === "hours") {
-          // For hours section, multiply estimated hours by employee type rates
+          // For hours section, sum up the actual costs from each type
+          const actualTotal = section.data?.reduce((sum, typeData) => 
+            sum + (typeData.actual_cost || 0), 0) || 0;
+
+          // For estimate, multiply estimated hours by employee type rates
           const estimateTotal = section.data?.reduce((typeAcc, typeData) => {
             const employeeType = chartConfig.employee_type?.find(
               (type) => type.id === typeData.type_id
             );
             const rate = employeeType?.rate || 0;
-            
-            // Multiply estimate by rate for each type
             return typeAcc + ((typeData.estimate || 0) * rate);
           }, 0) || 0;
 
           return {
             estimate: acc.estimate + estimateTotal,
-            actual: acc.actual + (section.actual_cost || 0),
+            actual: acc.actual + actualTotal,
           };
         }
 

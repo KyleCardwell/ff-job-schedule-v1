@@ -36,6 +36,7 @@ const EmployeeTypeAccordion = ({
             <span className={`${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               Δ: <span className="font-medium">{difference.toFixed(1)} hrs</span>
             </span>
+            <span className="text-gray-600">Cost: <span className="font-medium">${(typeData?.actual_cost || 0).toFixed(2)}</span></span>
           </div>
           <div className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
             <svg className="w-4 h-4 text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">

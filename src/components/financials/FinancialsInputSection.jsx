@@ -77,16 +77,27 @@ const FinancialsInputSection = ({
         const updatedRows = (typeData.inputRows || []).map(row => {
           if (row.id === rowId) {
             const parsedValue = field === 'hours' ? parseFloat(value) || 0 : value;
-            return { ...row, [field]: parsedValue };
+            const updatedRow = { ...row, [field]: parsedValue };
+            
+            // If employee changed or hours changed, update actual_cost
+            if (field === 'employee_id' || field === 'hours') {
+              const selectedEmployee = employees.find(e => e.employee_id === +updatedRow.employee_id);
+              updatedRow.actual_cost = selectedEmployee ? 
+                (selectedEmployee.employee_rate * updatedRow.hours) : 0;
+            }
+            
+            return updatedRow;
           }
           return row;
         });
-        return { ...typeData, inputRows: updatedRows };
+        
+        // Calculate total actual_cost for this type
+        const actual_cost = updatedRows.reduce((sum, row) => sum + (row.actual_cost || 0), 0);
+        return { ...typeData, inputRows: updatedRows, actual_cost };
       }
       return typeData;
     });
     handleUpdateRows(updatedData);
-    // For hours section, just pass the updated data array
     onUpdate(updatedData);
   };
 
