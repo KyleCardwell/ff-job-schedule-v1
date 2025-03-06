@@ -72,6 +72,11 @@ const FinancialsInputSection = ({
   };
 
   const handleHoursInputChange = (rowId, field, value, type_id) => {
+    if (field === "delete") {
+      handleDeleteRow(rowId, type_id);
+      return;
+    }
+
     const updatedData = localData.map(typeData => {
       if (typeData.type_id === type_id) {
         const updatedRows = (typeData.inputRows || []).map(row => {
@@ -118,6 +123,11 @@ const FinancialsInputSection = ({
   };
 
   const handleInputChange = (rowId, field, value) => {
+    if (field === "delete") {
+      handleDeleteRow(rowId);
+      return;
+    }
+
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
         const parsedValue = field === 'cost' 
@@ -138,6 +148,28 @@ const FinancialsInputSection = ({
     });
   };
 
+  const handleDeleteRow = (rowId, type_id = null) => {
+    if (isHoursSection) {
+      // For hours section, remove row from the specific type
+      const updatedData = localData.map(typeData => {
+        if (typeData.type_id === type_id) {
+          const updatedRows = typeData.inputRows.filter(row => row.id !== rowId);
+          // Recalculate actual_cost for this type
+          const actual_cost = updatedRows.reduce((sum, row) => sum + (row.actual_cost || 0), 0);
+          return { ...typeData, inputRows: updatedRows, actual_cost };
+        }
+        return typeData;
+      });
+      handleUpdateRows(updatedData);
+      onUpdate(updatedData);
+    } else {
+      // For non-hours sections
+      const updatedRows = localInputRows.filter(row => row.id !== rowId);
+      handleUpdateRows(updatedRows);
+      onUpdate(updatedRows);
+    }
+  };
+
   const handleToggleType = (typeId) => {
     setExpandedTypeId(current => current === typeId ? null : typeId);
   };
@@ -155,6 +187,27 @@ const FinancialsInputSection = ({
     }
   }, [localInputRows, localData, isHoursSection]);
 
+  // Calculate totals for hours section
+  const hoursTotals = useMemo(() => {
+    if (!isHoursSection) return null;
+    
+    return localData.reduce((acc, typeData) => {
+      // Find the employee type to get its rate
+      const employeeType = chartConfig.employee_type?.find(
+        (type) => type.id === typeData.type_id
+      );
+      const rate = employeeType?.rate || 0;
+
+      // Multiply estimate hours by rate for this type
+      const typeEstimate = (typeData.estimate || 0) * rate;
+      
+      return {
+        estimate: acc.estimate + typeEstimate,
+        actual: acc.actual + (typeData.actual_cost || 0)
+      };
+    }, { estimate: 0, actual: 0 });
+  }, [isHoursSection, localData, chartConfig.employee_type]);
+
   return (
     <div className="border border-gray-200 rounded-lg mb-4">
       <button
@@ -163,19 +216,29 @@ const FinancialsInputSection = ({
       >
         <h3 className="text-lg font-medium text-gray-900">{sectionName}</h3>
         <div className="flex items-center gap-4">
-          {!isHoursSection && (
-            <div className="text-sm space-x-4">
-              <span className="font-medium">
-                Est: ${estimate.toLocaleString()}
-              </span>
-              <span className="font-medium">
-                Act: ${rowsTotal.toLocaleString()}
-              </span>
-              <span className={`font-medium ${estimate - rowsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                Δ: ${(estimate - rowsTotal).toLocaleString()}
-              </span>
-            </div>
-          )}
+          <div className="text-sm space-x-4">
+            {isHoursSection ? (
+              <>
+                <span className="text-gray-600">Est: <span className="font-medium">${hoursTotals.estimate.toFixed(2)}</span></span>
+                <span className="text-gray-600">Act: <span className="font-medium">${hoursTotals.actual.toFixed(2)}</span></span>
+                <span className={`${hoursTotals.estimate - hoursTotals.actual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  Δ: <span className="font-medium">${(hoursTotals.estimate - hoursTotals.actual).toFixed(2)}</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-medium">
+                  Est: ${estimate.toLocaleString()}
+                </span>
+                <span className="text-sm font-medium">
+                  Act: ${rowsTotal.toLocaleString()}
+                </span>
+                <span className={`text-sm font-medium ${estimate - rowsTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  Δ: ${(estimate - rowsTotal).toLocaleString()}
+                </span>
+              </>
+            )}
+          </div>
           <div className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
             <svg className="w-5 h-5 text-gray-500" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
               <path d="M19 9l-7 7-7-7"></path>
@@ -209,6 +272,7 @@ const FinancialsInputSection = ({
                     onBlur={handleBlur}
                     isExpanded={expandedTypeId === type.id}
                     onToggle={handleToggleType}
+                    onDeleteRow={(rowId) => handleDeleteRow(rowId, type.id)}
                   />
                 );
               })}
@@ -216,30 +280,37 @@ const FinancialsInputSection = ({
           ) : (
             <>
               {localInputRows.length > 0 && (
-                <div className="grid grid-cols-2 gap-4 font-medium text-sm text-gray-600 px-4 mb-2">
+                <div className="grid grid-cols-3 gap-4 font-medium text-sm text-gray-600 px-4 mb-2">
                   <span>Invoice</span>
                   <span>Cost</span>
+                  <span></span>
                 </div>
               )}
               <div className="space-y-2">
                 {localInputRows.map((row) => (
-                  <div key={row.id} className="grid grid-cols-2 gap-4 items-center">
+                  <div key={row.id} className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center">
                     <input
                       type="text"
                       value={row.invoice || ''}
                       onChange={(e) => handleInputChange(row.id, 'invoice', e.target.value)}
-                      onBlur={handleBlur}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Invoice number"
+                      placeholder="Invoice"
                     />
                     <input
                       type="number"
-                      value={row.cost || ''}
+                      value={row.cost === 0 ? '' : row.cost}
                       onChange={(e) => handleInputChange(row.id, 'cost', e.target.value)}
-                      onBlur={handleBlur}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Cost"
                     />
+                    <button
+                      onClick={() => handleDeleteRow(row.id)}
+                      className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 ))}
               </div>
