@@ -142,7 +142,7 @@ export const saveProjectFinancials = (financialsId, sections) => {
       if (error) throw error;
 
       dispatch({
-        type: Actions.financialsData.SAVE_PROJECT_FINANCIALS_SUCCESS,
+        type: Actions.financialsData.SAVE_TASK_FINANCIALS_SUCCESS,
         payload: { financials: sections }
       });
 
@@ -150,7 +150,7 @@ export const saveProjectFinancials = (financialsId, sections) => {
     } catch (error) {
       console.error('Error saving project financials:', error);
       dispatch({
-        type: Actions.financialsData.SAVE_PROJECT_FINANCIALS_ERROR,
+        type: Actions.financialsData.SAVE_TASK_FINANCIALS_ERROR,
         payload: error.message
       });
       return { success: false, error: error.message };

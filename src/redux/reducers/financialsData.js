@@ -1,7 +1,8 @@
 import { Actions } from "../actions";
 
 const initialState = {
-  financials: [],
+  taskFinancials: [],
+  projectFinancials: [],
   loading: false,
   error: null,
 };
@@ -23,21 +24,21 @@ export const financialsDataReducer = (state = initialState, action) => {
     case Actions.financialsData.CREATE_PROJECT_FINANCIALS:
       return {
         ...state,
-        financials: [...state.financials, ...action.payload],
+        taskFinancials: [...state.taskFinancials, ...action.payload],
         error: null,
       };
 
     case Actions.financialsData.FETCH_TASK_FINANCIALS:
       return {
         ...state,
-        financials: action.payload,
+        taskFinancials: action.payload,
         error: null,
       };
 
     case Actions.financialsData.FETCH_PROJECT_FINANCIALS:
       return {
         ...state,
-        financials: action.payload,
+        projectFinancials: action.payload,
         error: null,
       };
 

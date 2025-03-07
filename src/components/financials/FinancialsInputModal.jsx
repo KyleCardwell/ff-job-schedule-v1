@@ -27,7 +27,7 @@ const FinancialsInputModal = ({
 
   const { employees } = useSelector((state) => state.builders);
   const financialSections = useSelector(
-    (state) => state?.financialsData?.financials ?? {}
+    (state) => state?.financialsData?.taskFinancials ?? {}
   );
   const chartConfig = useSelector((state) => state.chartConfig);
 
