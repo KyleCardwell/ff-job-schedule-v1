@@ -24,7 +24,7 @@ export const financialsDataReducer = (state = initialState, action) => {
     case Actions.financialsData.CREATE_PROJECT_FINANCIALS:
       return {
         ...state,
-        taskFinancials: [...state.taskFinancials, ...action.payload],
+        // taskFinancials: [...state.taskFinancials, ...action.payload],
         error: null,
       };
 
