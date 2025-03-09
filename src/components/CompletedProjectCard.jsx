@@ -39,7 +39,7 @@ const CompletedProjectCard = ({
     <div className="completed-job-card">
       <div className="card-header">
         <h2 className="text-lg font-bold">{jobName}</h2>
-        <span className="completed-date">{completedDate}</span>
+        <span className="completed-date">Completed: {completedDate}</span>
       </div>
       <div className="room-grid">
         <div className="grid-row grid-header">
@@ -48,7 +48,6 @@ const CompletedProjectCard = ({
           {categories.map((category) => (
             <span key={category}>{category}</span>
           ))}
-          {/* <span>Actions</span> */}
         </div>
         {project.tasks.map((task, index) => (
           <div
@@ -83,16 +82,6 @@ const CompletedProjectCard = ({
                 <input type="checkbox" />
               </span>
             ))}
-            {/* <span className="relative">
-							<button
-								onClick={() => handleEditClick(task.task_id)}
-								className={`absolute right-2 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 ${
-									hoveredTaskId === task.task_id ? "opacity-100" : "opacity-0"
-								}`}
-							>
-								Edit
-							</button>
-						</span> */}
           </div>
         ))}
       </div>

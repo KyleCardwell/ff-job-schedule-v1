@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import CompletedProjectCard from "./CompletedProjectCard";
-import "./CompletedProjectsContainer.css";
 import ChartActionButtons from "./ChartActionButtons";
 import { fetchCompletedProjects } from "../redux/actions/projects";
 import FinancialsInputModal from "./financials/FinancialsInputModal";
+import ProjectSearchFilter from "./ProjectSearchFilter";
+import "./CompletedProjectsContainer.css";
 
 const CompletedProjectsContainer = () => {
   const dispatch = useDispatch();
@@ -12,27 +13,31 @@ const CompletedProjectsContainer = () => {
     (state) => state.completedProjects
   );
 
-  const [isFinancialsInputModalOpen, setIsFinancialsInputModalOpen] =
-    useState(false);
+  const [isFinancialsInputModalOpen, setIsFinancialsInputModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+
+  const handleFilterChange = (filters) => {
+    dispatch(fetchCompletedProjects(filters));
+  };
 
   useEffect(() => {
     dispatch(fetchCompletedProjects());
   }, [dispatch]);
 
   if (loading) {
-    return <div className="loading">Loading completed projects...</div>;
+    return <div className="text-center py-8 text-gray-600">Loading completed projects...</div>;
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>;
+    return <div className="text-center py-8 text-red-600">Error: {error}</div>;
   }
 
   return (
-    <div className="completed-jobs-page">
-      <h1>Completed Jobs</h1>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Completed Jobs</h1>
       <ChartActionButtons />
-      <div className="completed-jobs-container">
+      <ProjectSearchFilter onFilterChange={handleFilterChange} />
+      <div className="space-y-6">
         {completedProjects?.map((project) => (
           <CompletedProjectCard
             key={project.project_id}

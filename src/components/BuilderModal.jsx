@@ -475,7 +475,7 @@ const BuilderModal = ({
                             handleColorChange(index, e.target.value)
                           }
                           disabled={builder.markedForDeletion}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-9"
+                          className="block w-full rounded-md focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-9"
                         />
                       </div>
                       <div className="flex-1 px-4">
@@ -493,7 +493,7 @@ const BuilderModal = ({
                                   );
                                 handleEmployeeTypeChange(index, selectedType);
                               }}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-9"
                             >
                               <option value="">Select Type</option>
                               {chartConfig.employee_type?.map((type) => (
@@ -515,7 +515,7 @@ const BuilderModal = ({
                                     type="number"
                                     value={builder.employee_rate || ''}
                                     onChange={(e) => handleEmployeeRateChange(index, e.target.value)}
-                                    className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                    className="pl-7 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-9"
                                     placeholder="0.00"
                                     step="0.01"
                                     min="0"
@@ -525,13 +525,13 @@ const BuilderModal = ({
                             )}
                           </>
                         ) : (
-                          <div className="mt-1 h-9" />
+                          <div className="h-9" />
                         )}
                       </div>
                     </div>
                     <div className="flex gap-2 justify-between">
                       <button
-                        className={`${buttonClass} bg-blue-500`}
+                        className={`${buttonClass} bg-blue-500 h-9`}
                         style={
                           index === 0
                             ? {
@@ -550,7 +550,7 @@ const BuilderModal = ({
                           : "Edit Time Off"}
                       </button>
                       <button
-                        className="text-white bg-red-500 rounded-md px-2 py-1"
+                        className={`${buttonClass} border-2 border-red-500 h-9 bg-white`}
                         style={
                           index === 0
                             ? {
@@ -563,7 +563,7 @@ const BuilderModal = ({
                           handleMarkForDeletion(builder.employee_id)
                         }
                       >
-                        {builder.markedForDeletion ? "Undo Delete" : "Delete"}
+                        <span className="text-red-500">{builder.markedForDeletion ? "Undo Delete" : "Delete"}</span>
                       </button>
                     </div>
                   </div>
