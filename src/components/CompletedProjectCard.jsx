@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { fetchTaskFinancials } from "../redux/actions/financialsData";
+import { useNavigate } from "react-router-dom";
+import { fetchProjectFinancials, fetchTaskFinancials } from "../redux/actions/financialsData";
+import { buttonClass } from "../assets/tailwindConstants";
 import "./CompletedProjectCard.css";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
@@ -11,34 +13,58 @@ const CompletedProjectCard = ({
   setSelectedTask,
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
+  const [hoveredProjectId, setHoveredProjectId] = useState(null);
   const jobName = project.project_name;
   const completedDate = new Date(
     project.project_completed_at
   ).toLocaleDateString();
 
-  const handleEditClick = (taskId, taskName, taskNumber) => {
-    dispatch(fetchTaskFinancials(taskId))
-      .then((data) => {
-        console.log("Fetched financial data:", data);
-        // Handle the fetched data as needed
-        setSelectedTask({
-          task_id: taskId,
-          task_name: taskName,
-          task_number: taskNumber,
-          project_name: project.project_name,
-        });
-        setIsFinancialsInputModalOpen(true);
-      })
-      .catch((error) => {
-        console.error("Error fetching financial data:", error);
+  const handleEditClick = async (taskId, taskName, taskNumber) => {
+    try {
+      const data = await dispatch(fetchTaskFinancials(taskId, project.project_id));
+      setSelectedTask({
+        task_id: taskId,
+        task_name: taskName,
+        task_number: taskNumber,
+        project_name: project.project_name,
       });
+      setIsFinancialsInputModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching financial data:", error);
+    }
+  };
+
+  const handleViewClick = async () => {
+    try {
+      await dispatch(fetchProjectFinancials(project.project_id));
+      navigate(`/completed/${project.project_id}`);
+    } catch (error) {
+      console.error("Error fetching financial data:", error);
+    }
   };
 
   return (
-    <div className="completed-job-card">
-      <div className="card-header">
-        <h2 className="text-lg font-bold">{jobName}</h2>
+    <div
+      className="completed-job-card"
+      onMouseEnter={() => setHoveredProjectId(project.project_id)}
+      onMouseLeave={() => setHoveredProjectId(null)}
+    >
+      <div className="card-header flex justify-between items-center">
+        <div className="flex gap-4">
+          <h2 className="text-lg font-bold">{jobName}</h2>
+          <button
+            onClick={handleViewClick}
+            className={`${buttonClass} bg-blue-500 ${
+              hoveredProjectId === project.project_id
+                ? "opacity-100"
+                : "opacity-0"
+            }`}
+          >
+            View
+          </button>
+        </div>
         <span className="completed-date">Completed: {completedDate}</span>
       </div>
       <div className="room-grid">

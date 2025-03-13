@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ChartContainer } from "./components/ChartContainerGrid.jsx";
 import CompletedJobsContainer from "./components/CompletedProjectsContainer.jsx";
+import CompletedProjectView from "./components/completedProjects/CompletedProjectView";
 import { setSession, clearSession } from "./redux/authSlice";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -14,11 +15,11 @@ import { supabase } from "./utils/supabase";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 
 const authContainerStyle = {
-  maxWidth: '400px',  // Adjust this width as needed
-  margin: '100px auto', // Centers the container and adds top margin
+  maxWidth: '400px',
+  margin: '100px auto',
   padding: '20px',
-  boxShadow: '0 0 10px rgba(0,0,0,0.1)', // Optional: adds subtle shadow
-  borderRadius: '8px', // Optional: rounds corners
+  boxShadow: '0 0 10px rgba(0,0,0,0.1)',
+  borderRadius: '8px',
 };
 
 const App = () => {
@@ -79,6 +80,7 @@ const App = () => {
 					<Routes>
 						<Route path="/" element={<ChartContainer />} />
 						<Route path="/completed" element={<CompletedJobsContainer />} />
+						<Route path="/completed/:projectId" element={<CompletedProjectView />} />
 					</Routes>
 				</ErrorBoundary>
 			</div>
