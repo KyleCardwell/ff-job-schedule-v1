@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ChartContainer } from "./components/ChartContainerGrid.jsx";
 import CompletedJobsContainer from "./components/CompletedProjectsContainer.jsx";
-import { setSession, clearSession } from "./redux/authSlice";
+import { setSession, clearSession, setUserTeam, clearAuth } from "./redux/authSlice";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useSupabaseQuery } from "./hooks/useSupabase";
@@ -26,10 +26,43 @@ const App = () => {
 	const { session, loading } = useSelector((state) => state.auth);
 	const initialFetchDone = useRef(false);
 
+	const fetchUserData = async (user) => {
+		try {
+			const { data: teamMemberData, error: teamMemberError } = await supabase
+				.from('team_members')
+				.select(`*`)
+				.eq('user_id', user.id)
+				.single();
+
+			if (teamMemberError) throw teamMemberError;
+
+			const { data: roleData, error: roleError } = await supabase
+				.from('roles')
+				.select('permissions')
+				.eq('role_id', teamMemberData.role_id)
+				.single();
+
+			if (roleError) throw roleError;
+
+			dispatch(setUserTeam({
+				teamId: teamMemberData.team_id,
+				teamName: teamMemberData.team_name,
+				roleId: teamMemberData.role_id,
+				permissions: roleData.permissions
+			}));
+
+		} catch (error) {
+			console.error('Error fetching user data:', error);
+		}
+	};
+
 	useEffect(() => {
 		// Get initial session
 		supabase.auth.getSession().then(({ data: { session } }) => {
-			dispatch(setSession(session));
+			if (session) {
+				dispatch(setSession(session));
+				fetchUserData(session.user);
+			}
 		});
 
 		// Listen for auth changes
@@ -38,8 +71,10 @@ const App = () => {
 		} = supabase.auth.onAuthStateChange((_event, session) => {
 			if (session) {
 				dispatch(setSession(session));
+				fetchUserData(session.user);
 			} else {
 				dispatch(clearSession());
+				dispatch(clearAuth());
 				initialFetchDone.current = false;
 			}
 		});
