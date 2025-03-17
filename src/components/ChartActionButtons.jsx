@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { clearSession } from "../redux/authSlice";
+import { clearAuth } from "../redux/authSlice";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../utils/supabase";
 import { buttonClass } from "../assets/tailwindConstants";
@@ -17,17 +17,18 @@ const ChartActionButtons = ({
   const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Add this line
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const employees = useSelector((state) => state.builders.employees);
 
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
+
       if (error) throw error;
 
-      dispatch(clearSession());
-      navigate("/"); // Redirect to auth page after logout
+      dispatch(clearAuth());
+      navigate("/");
     } catch (error) {
       console.error("Error signing out:", error.message);
     }

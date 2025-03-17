@@ -10,7 +10,7 @@ import { supabase } from "./utils/supabase";
 import { fetchProjects, fetchProjectsOptions } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
-import { setSession, clearSession, clearAuth, setUserTeam, setLoading } from "./redux/authSlice";
+import { setSession, clearAuth, setUserTeam, setLoading } from "./redux/authSlice";
 
 const authContainerStyle = {
   maxWidth: '400px',
@@ -28,7 +28,6 @@ const App = () => {
 
 	const fetchUserData = useCallback(async (session) => {
 		if (!session) {
-			dispatch(clearSession());
 			dispatch(clearAuth());
 			initialFetchDone.current = false;
 			return;
@@ -70,7 +69,7 @@ const App = () => {
 			dispatch(setSession(session));
 		} catch (error) {
 			console.error('Error fetching user data:', error);
-			dispatch(clearSession());
+			dispatch(clearAuth());
 		} finally {
 			dispatch(setLoading(false));
 		}
