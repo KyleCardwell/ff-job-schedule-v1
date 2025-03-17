@@ -2,40 +2,55 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   session: null,
-  loading: true,
+  loading: false,
+  error: null,
   teamId: null,
   teamName: null,
   roleId: null,
-  permissions: null,
+  permissions: null
 };
 
-export const authSlice = createSlice({
+const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+    setSession: (state, action) => {
+      state.session = action.payload;
+      state.loading = false;
+      state.error = null;
+    },
     setUserTeam: (state, action) => {
       state.teamId = action.payload.teamId;
       state.teamName = action.payload.teamName;
       state.roleId = action.payload.roleId;
       state.permissions = action.payload.permissions;
+      state.error = null;
     },
-    setSession: (state, action) => {
-      state.session = action.payload;
+    setError: (state, action) => {
+      state.error = action.payload;
       state.loading = false;
+    },
+    clearAuth: (state) => {
+      return { ...initialState, loading: false };
     },
     clearSession: (state) => {
       state.session = null;
       state.loading = false;
-    },
-    clearAuth: (state) => {
-      state.user = null;
-      state.teamId = null;
-      state.teamName = null;
-      state.roleId = null;
-      state.permissions = null;
+      state.error = null;
     }
-  },
+  }
 });
 
-export const { setSession, clearSession, setUser, setUserTeam, clearAuth } = authSlice.actions;
-export default authSlice.reducer; 
+export const {
+  setLoading,
+  setSession,
+  setUserTeam,
+  setError,
+  clearAuth,
+  clearSession
+} = authSlice.actions;
+
+export default authSlice.reducer;
