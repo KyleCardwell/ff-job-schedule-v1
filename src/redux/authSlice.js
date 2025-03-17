@@ -35,11 +35,6 @@ const authSlice = createSlice({
     },
     clearAuth: (state) => {
       return { ...initialState, loading: false };
-    },
-    clearSession: (state) => {
-      state.session = null;
-      state.loading = false;
-      state.error = null;
     }
   }
 });
@@ -49,8 +44,7 @@ export const {
   setSession,
   setUserTeam,
   setError,
-  clearAuth,
-  clearSession
+  clearAuth
 } = authSlice.actions;
 
 export default authSlice.reducer;
