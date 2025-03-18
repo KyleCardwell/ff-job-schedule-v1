@@ -102,11 +102,13 @@ export const fetchProjectFinancials = (projectId) => {
           *,
           tasks:task_id (
             task_name,
-            task_number
+            task_number,
+            task_created_at
           )
         `
         )
-        .eq("project_id", projectId);
+        .eq("project_id", projectId)
+        .order('tasks(task_created_at)', { ascending: true });
 
       if (error?.code === "PGRST116" || data.length < 1) {
         dispatch(setError("Project not found"));

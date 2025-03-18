@@ -239,16 +239,16 @@ const FinancialsInputSection = ({
           <div className="text-sm space-x-4">
             {isHoursSection ? (
               <>
-                <span className="text-gray-600">
+                <span className="">
                   Est:{" "}
                   <span className="font-medium">
-                    ${hoursTotals.estimate.toFixed(2)}
+                    ${hoursTotals.estimate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </span>
-                <span className="text-gray-600">
+                <span className="">
                   Act:{" "}
                   <span className="font-medium">
-                    ${hoursTotals.actual.toFixed(2)}
+                    ${hoursTotals.actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </span>
                 <span
@@ -260,7 +260,7 @@ const FinancialsInputSection = ({
                 >
                   Δ:{" "}
                   <span className="font-medium">
-                    ${(hoursTotals.estimate - hoursTotals.actual).toFixed(2)}
+                    ${(hoursTotals.estimate - hoursTotals.actual).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </span>
               </>
