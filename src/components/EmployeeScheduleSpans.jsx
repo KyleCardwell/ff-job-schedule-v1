@@ -42,6 +42,7 @@ const EmployeeScheduleSpans = ({
         color: employees.find((b) => b.employee_id === +employee_id)
           ?.employee_color,
         xPosition: firstTaskXPosition,
+        yPosition: employees.findIndex((b) => b.employee_id === +employee_id) - 1,
         width: lastTaskXPosition + lastTask.subtask_width - firstTaskXPosition,
       };
     });
@@ -61,7 +62,7 @@ const EmployeeScheduleSpans = ({
       .enter()
       .append("rect")
       .attr("x", (d) => d.xPosition)
-      .attr("y", (d, i) => i * spanBarHeight + (spanBarHeight/2))
+      .attr("y", (d) => d.yPosition * spanBarHeight + (spanBarHeight/2))
       .attr("width", (d) => d.width)
       .attr("height", 6)
       .attr("fill", (d) => d.color || "#2d2d2d");
