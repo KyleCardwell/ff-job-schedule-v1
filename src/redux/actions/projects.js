@@ -47,7 +47,7 @@ export const fetchProjects =
               task_number: task.task_number,
               needs_attention: project.needs_attention,
               deposit_date: project.deposit_date,
-			  est_duration: task.est_duration,
+              est_duration: task.est_duration,
             }));
           })
         )
@@ -147,15 +147,17 @@ export const saveProject = (projectData) => async (dispatch) => {
       depositDate,
     } = projectData;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const { data: teamData } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', user.id)
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
       .single();
 
     if (!teamData?.team_id) {
-      throw new Error('No team found for user');
+      throw new Error("No team found for user");
     }
 
     // 1. Create or update project
