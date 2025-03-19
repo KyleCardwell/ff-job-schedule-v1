@@ -19,6 +19,7 @@ import {
 } from "../assets/tailwindConstants";
 import { Field, Label, Switch } from "@headlessui/react";
 import { createProjectFinancials } from "../redux/actions/financialsData";
+import { usePermissions } from "../hooks/usePermissions";
 
 const JobModal = ({
   isOpen,
@@ -37,6 +38,8 @@ const JobModal = ({
   onDatabaseError,
 }) => {
   const dispatch = useDispatch();
+
+  const { canEditSchedule } = usePermissions();
 
   const { CSVReader } = useCSVReader();
 
@@ -798,7 +801,7 @@ const JobModal = ({
       return tasksByBuilder;
 
     // Create a deep copy of tasksByBuilder
-    const newTasksByBuilder = {...tasksByBuilder};
+    const newTasksByBuilder = { ...tasksByBuilder };
 
     builders.forEach((builderId) => {
       // Create a deep copy of tasks array
@@ -1262,39 +1265,44 @@ const JobModal = ({
                     <button
                       type="button"
                       {...getRootProps()}
-                      className={`${buttonClass} bg-blue-500`}
+                      className={`${buttonClass} bg-blue-500 ${
+                        !canEditSchedule ? "hidden" : ""
+                      }`}
                     >
                       Import CSV
                     </button>
                   </div>
                 )}
               </CSVReader>
-              <h2 className="text-lg font-bold">
-                {jobData ? "Edit Job" : "Add New Job"}
-              </h2>
+              {canEditSchedule ? (
+                <h2 className="text-lg font-bold">
+                  {jobData ? "Edit Job" : "Add New Job"}
+                </h2>
+              ) : (
+                <h2 className="text-lg font-bold">{jobName}</h2>
+              )}
               <button
                 className={`${
-                  !jobData ? "hidden" : ""
+                  !jobData || !canEditSchedule ? "hidden" : ""
                 } ${buttonClass} bg-gray-800 absolute right-5`}
                 onClick={handleCompleteJob}
               >
                 Complete Job
               </button>
             </div>
-            <div className="flex gap-8 items-center mb-5">
+            <div className={`flex gap-8 items-center mb-5 ${!canEditSchedule ? "hidden" : ""}`}>
               <div className="md:w-1/4">
-                <label labelfor="depositDate">Deposit Date</label>
+                <label htmlFor="depositDate">Deposit Date</label>
                 <input
+                  id="depositDate"
                   type="date"
                   value={depositDate}
                   onChange={(e) => setDepositDate(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded"
-                  placeholder="Deposit Date"
                 />
               </div>
 
-              <div className="flex-1">
-                <label labelfor="jobName">Name</label>
+              <div className="md:w-1/4">
                 <input
                   id="jobName"
                   type="text"
@@ -1315,7 +1323,7 @@ const JobModal = ({
               </div>
 
               <div className="flex flex-col items-center justify-center md:w-1/4">
-                <Field className="flex items-center mt-2 md:mr-4">
+                <Field className={`flex items-center mt-2 md:mr-4`}>
                   <Switch
                     checked={needsAttention}
                     onChange={setNeedsAttention}
@@ -1362,29 +1370,35 @@ const JobModal = ({
                       }`}
                     >
                       {subTaskIndex === 0 ? (
-                        <input
-                          id={`${room.task_id}-${workPeriod.subtask_id}-task_number`}
-                          type="text"
-                          value={room.task_number || ""}
-                          onChange={(e) =>
-                            handleWorkPeriodChange(
-                              room.task_id,
-                              workPeriod.subtask_id,
-                              {
-                                task_number: e.target.value,
-                              }
-                            )
-                          }
-                          placeholder="Job Number"
-                          className={`job-number-input w-full pl-1 h-8 text-sm border ${
-                            errors[
-                              `${room.task_id}-${workPeriod.subtask_id}-task_number`
-                            ]
-                              ? "border-red-500"
-                              : "border-gray-300"
-                          } rounded`}
-                          ref={subTaskIndex === 0 ? newTaskNumberRef : null}
-                        />
+                        canEditSchedule ? (
+                          <input
+                            id={`${room.task_id}-${workPeriod.subtask_id}-task_number`}
+                            type="text"
+                            value={room.task_number || ""}
+                            onChange={(e) =>
+                              handleWorkPeriodChange(
+                                room.task_id,
+                                workPeriod.subtask_id,
+                                {
+                                  task_number: e.target.value,
+                                }
+                              )
+                            }
+                            placeholder="Job Number"
+                            className={`job-number-input w-full pl-1 h-8 text-sm border ${
+                              errors[
+                                `${room.task_id}-${workPeriod.subtask_id}-task_number`
+                              ]
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            } rounded`}
+                            ref={subTaskIndex === 0 ? newTaskNumberRef : null}
+                          />
+                        ) : (
+                          <div className="w-full pl-1 h-8 text-sm">
+                            {room.task_number || ""}
+                          </div>
+                        )
                       ) : (
                         <div className="flex items-center">
                           <p className="md:hidden">{`${room.task_name} Slot ${
@@ -1398,124 +1412,153 @@ const JobModal = ({
                         </div>
                       )}
                       {subTaskIndex === 0 ? (
-                        <input
-                          id={`${room.task_id}-${workPeriod.subtask_id}-name`}
-                          type="text"
-                          value={room.task_name}
-                          onChange={(e) =>
-                            handleWorkPeriodChange(
-                              room.task_id,
-                              workPeriod.subtask_id,
-                              {
-                                task_name: e.target.value,
-                              }
-                            )
-                          }
-                          placeholder="Room Name"
-                          className={`room-name-input w-full pl-1 h-8 text-sm border ${
-                            errors[
-                              `${room.task_id}-${workPeriod.subtask_id}-name`
-                            ]
-                              ? "border-red-500"
-                              : "border-gray-300"
-                          } rounded`}
-                          ref={
-                            clickedTask?.subtask_id === workPeriod.subtask_id
-                              ? clickedTaskRef
-                              : subTaskIndex === 0
-                              ? newTaskNameRef
-                              : null
-                          }
-                        />
+                        canEditSchedule ? (
+                          <input
+                            id={`${room.task_id}-${workPeriod.subtask_id}-name`}
+                            type="text"
+                            value={room.task_name}
+                            onChange={(e) =>
+                              handleWorkPeriodChange(
+                                room.task_id,
+                                workPeriod.subtask_id,
+                                {
+                                  task_name: e.target.value,
+                                }
+                              )
+                            }
+                            placeholder="Room Name"
+                            className={`room-name-input w-full pl-1 h-8 text-sm border ${
+                              errors[
+                                `${room.task_id}-${workPeriod.subtask_id}-name`
+                              ]
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            } rounded`}
+                            ref={
+                              clickedTask?.subtask_id === workPeriod.subtask_id
+                                ? clickedTaskRef
+                                : subTaskIndex === 0
+                                ? newTaskNameRef
+                                : null
+                            }
+                          />
+                        ) : (
+                          <div className="w-full pl-1 h-8 text-sm">
+                            {room.task_name}
+                          </div>
+                        )
                       ) : (
                         <span className="hidden md:block md:invisible">
                           {room.task_name}
                         </span>
                       )}
-                      <input
-                        id={`${room.task_id}-${workPeriod.subtask_id}-duration`}
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={workPeriod.duration || ""}
-                        onChange={(e) => {
-                          handleWorkPeriodChange(
-                            room.task_id,
-                            workPeriod.subtask_id,
-                            {
-                              duration: parseFloat(e.target.value).toFixed(2),
-                            }
-                          );
-                        }}
-                        placeholder="Hours"
-                        className={`duration-input w-full pl-1 h-8 text-sm border ${
-                          errors[
-                            `${room.task_id}-${workPeriod.subtask_id}-duration`
-                          ]
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded`}
-                      />
-                      <select
-                        id={`${room.task_id}-${workPeriod.subtask_id}-employee_id`}
-                        value={workPeriod.employee_id}
-                        onFocus={() => {
-                          setSelectedEmployeeInput({
-                            workPeriodId: workPeriod.subtask_id,
-                            previousValue: workPeriod.employee_id,
-                          });
-                        }}
-                        onChange={(e) => {
-                          handleWorkPeriodChange(
-                            room.task_id,
-                            workPeriod.subtask_id,
-                            {
-                              employee_id: Number(e.target.value),
-                            },
-                            selectedEmployeeInput.previousValue
-                          );
-                        }}
-                        className={`builder-select w-full pl-1 h-8 text-sm border ${
-                          errors[
-                            `${room.task_id}-${workPeriod.subtask_id}-employee_id`
-                          ]
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded`}
-                      >
-                        {employees.map((builder) => (
-                          <option
-                            key={builder.employee_id}
-                            value={builder.employee_id}
-                          >
-                            {builder.employee_name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        id={`${room.task_id}-${workPeriod.subtask_id}-start_date`}
-                        type="date"
-                        value={formatDateForInput(workPeriod.start_date)}
-                        onChange={(e) =>
-                          handleWorkPeriodChange(
-                            room.task_id,
-                            workPeriod.subtask_id,
-                            {
-                              start_date: e.target.value,
-                            }
-                          )
-                        }
-                        className={`date-input w-full p-2 h-8 text-sm border ${
-                          errors[
-                            `${room.task_id}-${workPeriod.subtask_id}-start_date`
-                          ]
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded`}
-                      />
-
+                      {canEditSchedule ? (
+                        <input
+                          id={`${room.task_id}-${workPeriod.subtask_id}-duration`}
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={workPeriod.duration || ""}
+                          onChange={(e) => {
+                            handleWorkPeriodChange(
+                              room.task_id,
+                              workPeriod.subtask_id,
+                              {
+                                duration: parseFloat(e.target.value).toFixed(2),
+                              }
+                            );
+                          }}
+                          placeholder="Hours"
+                          className={`duration-input w-full pl-1 h-8 text-sm border ${
+                            errors[
+                              `${room.task_id}-${workPeriod.subtask_id}-duration`
+                            ]
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded`}
+                        />
+                      ) : (
+                        <div className="w-full pl-1 h-8 text-sm">
+                          {workPeriod.duration || ""}
+                        </div>
+                      )}
+                      {canEditSchedule ? (
+                        <select
+                          id={`${room.task_id}-${workPeriod.subtask_id}-employee_id`}
+                          value={workPeriod.employee_id}
+                          onFocus={() => {
+                            setSelectedEmployeeInput({
+                              workPeriodId: workPeriod.subtask_id,
+                              previousValue: workPeriod.employee_id,
+                            });
+                          }}
+                          onChange={(e) => {
+                            handleWorkPeriodChange(
+                              room.task_id,
+                              workPeriod.subtask_id,
+                              {
+                                employee_id: Number(e.target.value),
+                              },
+                              selectedEmployeeInput.previousValue
+                            );
+                          }}
+                          className={`builder-select w-full pl-1 h-8 text-sm border ${
+                            errors[
+                              `${room.task_id}-${workPeriod.subtask_id}-employee_id`
+                            ]
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded`}
+                        >
+                          {employees.map((builder) => (
+                            <option
+                              key={builder.employee_id}
+                              value={builder.employee_id}
+                            >
+                              {builder.employee_name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="w-full pl-1 h-8 text-sm">
+                          {employees.find(
+                            (e) => e.employee_id === workPeriod.employee_id
+                          )?.employee_name || ""}
+                        </div>
+                      )}
+                      {canEditSchedule ? (
+                        <input
+                          id={`${room.task_id}-${workPeriod.subtask_id}-start_date`}
+                          type="date"
+                          value={formatDateForInput(workPeriod.start_date)}
+                          onChange={(e) =>
+                            handleWorkPeriodChange(
+                              room.task_id,
+                              workPeriod.subtask_id,
+                              {
+                                start_date: e.target.value,
+                              }
+                            )
+                          }
+                          className={`date-input w-full p-2 h-8 text-sm border ${
+                            errors[
+                              `${room.task_id}-${workPeriod.subtask_id}-start_date`
+                            ]
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded`}
+                        />
+                      ) : (
+                        <div className="w-full pl-1 h-8 text-sm">
+                          {formatDateForInput(workPeriod.start_date)}
+                        </div>
+                      )}
                       {subTaskIndex === 0 ? (
-                        <div className="flex flex-col gap-2 w-full md:flex-row justify-between">
+                        <div
+                          className={`flex flex-col gap-2 w-full md:flex-row justify-between ${
+                            !canEditSchedule ? "hidden" : ""
+                          }`}
+                        >
                           {!room.taskIsNew && (
                             <button
                               onClick={() =>
@@ -1554,7 +1597,9 @@ const JobModal = ({
                                 workPeriod.subtask_id
                               )
                             }
-                            className={`${buttonClass} bg-red-500`}
+                            className={`${buttonClass} bg-red-500 ${
+                              !canEditSchedule ? "hidden" : ""
+                            }`}
                           >
                             - Slot
                           </button>
@@ -1580,7 +1625,9 @@ const JobModal = ({
                       <span>{room.task_number}</span>
                       <span>{room.task_name}</span>
                       <button
-                        className={`${buttonClass} bg-blue-500`}
+                        className={`${buttonClass} bg-blue-500 ${
+                          !canEditSchedule ? "hidden" : ""
+                        }`}
                         onClick={() => handleRestoreRoom(room.task_id)}
                       >
                         Restore
@@ -1595,17 +1642,25 @@ const JobModal = ({
             <div className="flex justify-center">
               <button
                 onClick={handleAddRoom}
-                className={`${buttonClass} bg-green-500 mt-3`}
+                className={`${buttonClass} bg-green-500 mt-3 ${
+                  !canEditSchedule ? "hidden" : ""
+                }`}
               >
                 Add Room
               </button>
             </div>
-            <div className="modal-actions flex-shrink-0 flex justify-between">
+            <div
+              className={`modal-actions flex-shrink-0 flex justify-between ${
+                !canEditSchedule ? "mt-4" : ""
+              }`}
+            >
               <button className={`${buttonClass} bg-red-500`} onClick={onClose}>
-                Cancel
+                {canEditSchedule ? "Cancel" : "Close"}
               </button>
               <button
-                className={`${buttonClass} bg-blue-500`}
+                className={`${buttonClass} bg-blue-500 ${
+                  !canEditSchedule ? "hidden" : ""
+                }`}
                 onClick={handleSave}
                 disabled={isSaving}
               >

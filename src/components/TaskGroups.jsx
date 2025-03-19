@@ -526,7 +526,7 @@ const TaskGroups = ({
     const jobsGroup = taskGroupsSvg
       .append("g")
       .attr("class", "jobs-group")
-      .style("cursor", "ew-resize");
+      .style("cursor", canEditSchedule ? "ew-resize" : "default");
 
     timeOffGroup
       .selectAll(".time-off-line")
@@ -572,7 +572,7 @@ const TaskGroups = ({
         "y",
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
-      .style("cursor", "col-resize")
+      .style("cursor", canEditSchedule ? "col-resize" : "default")
       .style("fill", "transparent");
 
     // Update all elements (both new and existing)
@@ -631,17 +631,6 @@ const TaskGroups = ({
       .select(".resize-handle")
       .attr("x", (d) => d.xPosition + d.subtask_width - 4)
       .call(resize);
-
-    // Add cursor style based on permissions
-    taskGroupsSvg
-      .selectAll(".bar-group rect")
-      .style("cursor", canEditSchedule ? "move" : "default");
-
-    // Update cursor for resize handles based on permissions
-    taskGroupsSvg
-      .selectAll(".resize-handle")
-      .style("cursor", canEditSchedule ? "ew-resize" : "default")
-      .style("display", canEditSchedule ? "block" : "none");
 
     setIsLoading(false);
   }, [
