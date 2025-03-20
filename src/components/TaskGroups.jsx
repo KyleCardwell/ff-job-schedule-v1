@@ -21,6 +21,7 @@ import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
 import { isEqual, omit } from "lodash";
 import { updateSubtasksPositions } from "../redux/actions/projects";
+import { usePermissions } from "../hooks/usePermissions";
 
 const TaskGroups = ({
   chartRef,
@@ -39,6 +40,7 @@ const TaskGroups = ({
   setEstimatedCompletionDate,
 }) => {
   const dispatch = useDispatch();
+  const { canEditSchedule } = usePermissions();
 
   const employees = useSelector((state) => state.builders.employees);
   const holidays = useSelector((state) => state.holidays);
@@ -218,6 +220,9 @@ const TaskGroups = ({
     const drag = d3
       .drag()
       .on("start", function (event, d) {
+        // Skip drag if user doesn't have permission
+        if (!canEditSchedule) return;
+
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
           employee_id: d.employee_id,
@@ -229,6 +234,9 @@ const TaskGroups = ({
         d.dragStartEventX = event.x;
       })
       .on("drag", function (event, d) {
+        // Skip drag if user doesn't have permission
+        if (!canEditSchedule) return;
+
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
         d3.select(this).attr("x", newX);
@@ -238,6 +246,9 @@ const TaskGroups = ({
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
+        // Skip drag if user doesn't have permission
+        if (!canEditSchedule) return;
+
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
         // Calculate the day index and the percentage within the day
@@ -371,6 +382,9 @@ const TaskGroups = ({
     const resize = d3
       .drag()
       .on("start", function (event, d) {
+        // Skip resize if user doesn't have permission
+        if (!canEditSchedule) return;
+
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
           employee_id: d.employee_id,
@@ -383,6 +397,9 @@ const TaskGroups = ({
         d.resizeStartX = event.x;
       })
       .on("drag", function (event, d) {
+        // Skip resize if user doesn't have permission
+        if (!canEditSchedule) return;
+
         const rect = d3.select(this.parentNode).select("rect");
         const dx = event.x - d.resizeStartX;
         const newWidth = Math.max(
@@ -393,6 +410,9 @@ const TaskGroups = ({
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
+        // Skip resize if user doesn't have permission
+        if (!canEditSchedule) return;
+
         const rect = d3.select(this.parentNode).select("rect");
         const newWidth = parseFloat(rect.attr("width"));
 
@@ -506,7 +526,7 @@ const TaskGroups = ({
     const jobsGroup = taskGroupsSvg
       .append("g")
       .attr("class", "jobs-group")
-      .style("cursor", "ew-resize");
+      .style("cursor", canEditSchedule ? "ew-resize" : "default");
 
     timeOffGroup
       .selectAll(".time-off-line")
@@ -552,7 +572,7 @@ const TaskGroups = ({
         "y",
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
-      .style("cursor", "col-resize")
+      .style("cursor", canEditSchedule ? "col-resize" : "default")
       .style("fill", "transparent");
 
     // Update all elements (both new and existing)
@@ -628,6 +648,7 @@ const TaskGroups = ({
     barMargin,
     handleAutoScroll,
     subTasksByEmployee,
+    canEditSchedule,
   ]);
 
   // Move unassigned tasks to start at today

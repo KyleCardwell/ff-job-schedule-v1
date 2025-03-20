@@ -7,8 +7,9 @@ import { completedProjectsReducer } from "./completedProjects";
 import authReducer from "../authSlice";
 import { projectsReducer } from "./projects";
 import { chartConfigReducer } from "./chartConfig";
+import { financialsDataReducer } from "./financialsData";
 
-const rootReducer = combineReducers({
+const appReducer = combineReducers({
 	auth: authReducer,
 	builders,
 	holidays: holidaysReducer,
@@ -17,7 +18,18 @@ const rootReducer = combineReducers({
 	completedProjects: completedProjectsReducer,
 	projects: projectsReducer,
 	chartConfig: chartConfigReducer,
-	// other reducers if needed
+	financialsData: financialsDataReducer,
 });
+
+// Root reducer that handles resetting state
+const rootReducer = (state, action) => {
+	// When clearAuth is dispatched, reset all state to undefined
+	// This will cause each reducer to return its initial state
+	if (action.type === 'auth/clearAuth') {
+		state = undefined;
+	}
+
+	return appReducer(state, action);
+};
 
 export default rootReducer;

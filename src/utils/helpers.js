@@ -418,3 +418,66 @@ export const reconstructJobsForRedux = (flatJobs) => {
   });
   return Object.values(jobMap);
 };
+
+export const calculateFinancialTotals = (sections, chartConfig, adjustments = null) => {
+  const totals = sections.reduce(
+    (acc, section) => {
+      if (section.id === "hours") {
+        // For hours section, sum up the actual costs from each type
+        const actualTotal =
+          section.data?.reduce(
+            (sum, typeData) => sum + (typeData.actual_cost || 0),
+            0
+          ) || 0;
+
+        // For estimate, multiply estimated hours by employee type rates
+        const estimateTotal =
+          section.data?.reduce((typeAcc, typeData) => {
+            const employeeType = chartConfig.employee_type?.find(
+              (type) => type.id === typeData.type_id
+            );
+            const rate = employeeType?.rate || 0;
+            return typeAcc + (typeData.estimate || 0) * rate;
+          }, 0) || 0;
+
+        return {
+          estimate: acc.estimate + estimateTotal,
+          actual: acc.actual + actualTotal,
+        };
+      }
+
+      // For non-hours sections
+      const sectionActual =
+        section.inputRows?.reduce(
+          (sum, row) => sum + (parseFloat(row.cost) || 0),
+          0
+        ) || 0;
+
+      return {
+        estimate: acc.estimate + (section.estimate || 0),
+        actual: acc.actual + sectionActual,
+      };
+    },
+    { estimate: 0, actual: 0 }
+  );
+
+  if (adjustments) {
+    // Calculate final totals with adjustments
+    const subtotal = totals.estimate;
+    const profitAmount = subtotal * (adjustments.profit / 100);
+    const commissionAmount = subtotal * (adjustments.commission / 100);
+    const discountAmount = subtotal * (adjustments.discount / 100);
+    // Round up to nearest 5
+    const adjustedEstimate =
+      (Math.ceil((subtotal + profitAmount + commissionAmount - discountAmount) / 5) * 5) *
+      adjustments.quantity;
+
+    return {
+      subtotal,
+      total: adjustedEstimate,
+      actual: totals.actual,
+    };
+  }
+
+  return totals;
+};

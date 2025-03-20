@@ -47,7 +47,7 @@ export const fetchProjects =
               task_number: task.task_number,
               needs_attention: project.needs_attention,
               deposit_date: project.deposit_date,
-			  est_duration: task.est_duration,
+              est_duration: task.est_duration,
             }));
           })
         )
@@ -147,15 +147,17 @@ export const saveProject = (projectData) => async (dispatch) => {
       depositDate,
     } = projectData;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const { data: teamData } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('user_id', user.id)
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
       .single();
 
     if (!teamData?.team_id) {
-      throw new Error('No team found for user');
+      throw new Error("No team found for user");
     }
 
     // 1. Create or update project
@@ -374,22 +376,47 @@ export const updateSubtasksPositions = async (tasks) => {
 };
 
 export const fetchCompletedProjects =
-  (options = {}) =>
+  ({ searchTerm = "", dateRange = {}, categories = [] } = {}) =>
   async (dispatch) => {
     dispatch({
       type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_START,
     });
 
     try {
-      const { data: result, error } = await supabase
+      let query = supabase
         .from("projects")
         .select(fetchCompletedProjectsOptions.select)
-        .not("project_completed_at", "is", null)
-        .order("project_completed_at", { ascending: false }); // Most recent completions first
+        .not("project_completed_at", "is", null);
+
+      // Add search filter if searchTerm is provided
+      if (searchTerm) {
+        query = query.ilike("project_name", `%${searchTerm}%`);
+      }
+
+      // Add date range filters if provided
+      if (dateRange.start) {
+        query = query.gte("project_completed_at", dateRange.start);
+      }
+      if (dateRange.end) {
+        // Add one day to include the end date fully
+        const endDate = new Date(dateRange.end);
+        endDate.setDate(endDate.getDate() + 1);
+        query = query.lt("project_completed_at", endDate.toISOString());
+      }
+
+      // Add category filters if provided
+      if (categories.length > 0) {
+        query = query.contains("categories", categories);
+      }
+
+      // Always order by completion date
+      query = query.order("project_completed_at", { ascending: false });
+
+      const { data: result, error } = await query;
 
       if (error) throw error;
 
-      // Just sort the tasks within each project
+      // Filter tasks client-side if there's a search term
       const processedResult = result.map((project) => ({
         ...project,
         tasks: project.tasks
@@ -398,8 +425,6 @@ export const fetchCompletedProjects =
             task_id: task.task_id,
             task_number: task.task_number,
             task_name: task.task_name,
-            task_active: task.task_active,
-            task_created_at: task.task_created_at,
           })),
       }));
 

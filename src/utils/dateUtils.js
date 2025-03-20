@@ -113,3 +113,16 @@ export const formatDateForInput = (date) => {
 		utcDate.getUTCMonth() + 1
 	).padStart(2, "0")}-${String(utcDate.getUTCDate()).padStart(2, "0")}`;
 };
+
+export const formatDateForDisplay = (date) => {
+  if (!date) return "";
+  try {
+    const utcDate = new Date(date);
+    if (!isValid(utcDate)) return "";
+    return `${String(utcDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+      utcDate.getUTCDate()
+    ).padStart(2, "0")}-${utcDate.getUTCFullYear()}`;
+  } catch (error) {
+    return "";
+  }
+};
