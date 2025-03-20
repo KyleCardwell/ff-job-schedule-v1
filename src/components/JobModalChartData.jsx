@@ -940,7 +940,7 @@ const JobModal = ({
         throw new Error(result.error?.message || "Failed to complete project");
       }
 
-      await dispatch(createProjectFinancials(localRooms));
+      await dispatch(createProjectFinancials(jobData[0].project_id, localRooms));
 
       onClose();
     } catch (error) {
