@@ -31,16 +31,14 @@ const CompletedProjectView = () => {
   useEffect(() => {
     if (!projectId) return;
 
-    // Only fetch if we haven't tried before or if we have no data and no error
-    if (!projectFinancials && !projectFinancialsError) {
-      dispatch(fetchProjectFinancials(projectId));
-    }
+    // Always fetch on mount or when projectId changes
+    dispatch(fetchProjectFinancials(projectId));
 
     // If project not found, redirect back
     if (projectFinancialsError === "Project not found") {
       navigate("/completed");
     }
-  }, [projectId, projectFinancials, projectFinancialsError, dispatch, navigate]);
+  }, [projectId, projectFinancialsError, dispatch, navigate]);
 
   const handleEditClick = (taskId, taskName, taskNumber) => {
     dispatch(fetchTaskFinancials(taskId, projectId))
@@ -237,7 +235,9 @@ const CompletedProjectView = () => {
             ? calculateFinancialTotals(taskSections, chartConfig, task.adjustments)
             : taskTotals;
 
-          const taskProfit = (adjustedTotals.total || adjustedTotals.estimate) - adjustedTotals.actual;
+          const estimate = adjustedTotals.total || adjustedTotals.estimate || 0;
+          const actual = adjustedTotals.actual || 0;
+          const taskProfit = estimate - actual;
 
           return (
             <div
@@ -263,13 +263,13 @@ const CompletedProjectView = () => {
                 </button>
               </div>
               <div className="text-right">
-                ${(adjustedTotals.total || adjustedTotals.estimate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${estimate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-right">
-                ${(adjustedTotals.actual || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className={`text-right ${taskProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ${(taskProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${taskProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           );

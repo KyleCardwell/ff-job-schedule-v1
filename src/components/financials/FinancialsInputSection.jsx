@@ -254,33 +254,33 @@ const FinancialsInputSection = ({
                 </span>
                 <span
                   className={`${
-                    hoursTotals.estimate - hoursTotals.actual >= 0
+                    (hoursTotals.estimate || 0) - (hoursTotals.actual || 0) >= 0
                       ? "text-green-600"
                       : "text-red-600"
                   }`}
                 >
                   Δ:{" "}
                   <span className="font-medium">
-                    ${(hoursTotals.estimate - hoursTotals.actual).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${((hoursTotals.estimate || 0) - (hoursTotals.actual || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </span>
               </>
             ) : (
               <>
                 <span className="text-sm font-medium">
-                  Est: ${estimate.toLocaleString()}
+                  Est: ${(estimate || 0).toLocaleString()}
                 </span>
                 <span className="text-sm font-medium">
-                  Act: ${rowsTotal.toLocaleString()}
+                  Act: ${(rowsTotal || 0).toLocaleString()}
                 </span>
                 <span
                   className={`text-sm font-medium ${
-                    estimate - rowsTotal >= 0
+                    (estimate || 0) - (rowsTotal || 0) >= 0
                       ? "text-green-600"
                       : "text-red-600"
                   }`}
                 >
-                  Δ: ${(estimate - rowsTotal).toLocaleString()}
+                  Δ: ${((estimate || 0) - (rowsTotal || 0)).toLocaleString()}
                 </span>
               </>
             )}

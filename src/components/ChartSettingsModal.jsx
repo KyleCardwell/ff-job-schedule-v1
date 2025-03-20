@@ -40,18 +40,22 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     }
 
     // Validate employee types
-    const duplicateTypes = employeeTypes.filter(
-      (type, index) => 
-        employeeTypes.findIndex(t => t.name.toLowerCase() === type.name.toLowerCase()) !== index
-    );
-    
-    if (duplicateTypes.length > 0) {
-      newErrors.employeeTypes = "Duplicate employee types are not allowed";
-    }
+    if (!employeeTypes || employeeTypes.length < 1) {
+      newErrors.employeeTypes = "At least one employee type is required";
+    } else {
+      const duplicateTypes = employeeTypes.filter(
+        (type, index) => 
+          employeeTypes.findIndex(t => t.name.toLowerCase() === type.name.toLowerCase()) !== index
+      );
+      
+      if (duplicateTypes.length > 0) {
+        newErrors.employeeTypes = "Duplicate employee types are not allowed";
+      }
 
-    const emptyTypes = employeeTypes.some(type => !type.name.trim());
-    if (emptyTypes) {
-      newErrors.employeeTypes = "Empty employee types are not allowed";
+      const emptyTypes = employeeTypes.some(type => !type.name.trim());
+      if (emptyTypes) {
+        newErrors.employeeTypes = "Empty employee types are not allowed";
+      }
     }
 
     setErrors(newErrors);

@@ -18,6 +18,9 @@ const EstimatesModal = ({
   const chartConfig = useSelector((state) => state.chartConfig);
 
   const handleEstimateChange = (sectionId, value, typeId = null) => {
+    // Convert empty string to null instead of 0
+    const numValue = value === '' ? null : parseFloat(value);
+    
     setLocalSections((prevSections) => {
       const newSections = prevSections.map((section) => {
         if (section.id === sectionId) {
@@ -27,7 +30,7 @@ const EstimatesModal = ({
               if (typeData.type_id === typeId) {
                 return {
                   ...typeData,
-                  estimate: parseFloat(value) || 0,
+                  estimate: numValue,
                 };
               }
               return typeData;
@@ -41,7 +44,7 @@ const EstimatesModal = ({
             // Update single estimate value (for non-hours sections)
             return {
               ...section,
-              estimate: parseFloat(value) || 0,
+              estimate: numValue,
             };
           }
         }
@@ -53,10 +56,8 @@ const EstimatesModal = ({
   };
 
   const formatEstimate = (value) => {
-    // if (value === '') return '';
-    // const num = parseFloat(value);
-    // return isNaN(num) ? '' : num.toFixed(2);
-    return value
+    if (value === null || value === undefined || value === '') return '';
+    return value === 0 ? '' : value.toString();
   };
 
   if (!isOpen) return null;
@@ -87,7 +88,7 @@ const EstimatesModal = ({
                       </h3>
                       <input
                         type="number"
-                        value={formatEstimate(section.estimate || 0)}
+                        value={formatEstimate(section.estimate)}
                         onChange={(e) =>
                           handleEstimateChange(section.id, e.target.value)
                         }
@@ -118,7 +119,7 @@ const EstimatesModal = ({
                         </h3>
                         <input
                           type="number"
-                          value={formatEstimate(typeData?.estimate || 0)}
+                          value={formatEstimate(typeData?.estimate)}
                           onChange={(e) =>
                             handleEstimateChange(
                               "hours",
@@ -206,7 +207,7 @@ const EstimatesModal = ({
                   </div>
                 </div>
               </div>
-              <div className="border-t pt-4 px-6">
+              <div className="border py-3 px-6">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-700">
                     Subtotal:

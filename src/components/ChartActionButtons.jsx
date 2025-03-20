@@ -119,7 +119,7 @@ const ChartActionButtons = ({
         >
           {location.pathname === "/" && (
             <>
-              {employees.length > 0 && (
+              {employees.length > 0 && canEditSchedule && (
                 <button
                   className={`${buttonClass} bg-blue-500 w-full text-left`}
                   onClick={() => {
@@ -139,7 +139,7 @@ const ChartActionButtons = ({
               >
                 Today
               </button>
-              {employees.length > 0 && (
+              {employees.length > 0 && canEditSchedule && (
                 <button
                   className={`${buttonClass} bg-green-500 w-full text-left`}
                   onClick={() => {
@@ -150,24 +150,28 @@ const ChartActionButtons = ({
                   Add Job
                 </button>
               )}
-              <button
-                className={`${buttonClass} bg-blue-500 w-full text-left`}
-                onClick={() => {
-                  setIsBuilderModalOpen(true);
-                  setIsMenuOpen(false);
-                }}
-              >
-                Employees
-              </button>
-              <button
-                className={`${buttonClass} bg-purple-500 w-full text-left`}
-                onClick={() => {
-                  setIsHolidayModalOpen(true);
-                  setIsMenuOpen(false);
+              {canEditSchedule && (
+                <button
+                  className={`${buttonClass} bg-blue-500 w-full text-left`}
+                  onClick={() => {
+                    setIsBuilderModalOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Employees
+                </button>
+              )}
+              {canEditSchedule && (
+                <button
+                  className={`${buttonClass} bg-purple-500 w-full text-left`}
+                  onClick={() => {
+                    setIsHolidayModalOpen(true);
+                    setIsMenuOpen(false);
                 }}
               >
                 Holidays
               </button>
+              )}
             </>
           )}
           <Link
