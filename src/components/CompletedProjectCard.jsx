@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchProjectFinancials, fetchTaskFinancials } from "../redux/actions/financialsData";
 import { buttonClass } from "../assets/tailwindConstants";
 import "./CompletedProjectCard.css";
+import { usePermissions } from "../hooks/usePermissions";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
@@ -14,6 +15,7 @@ const CompletedProjectCard = ({
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { canEditFinancials, canViewProfitLoss } = usePermissions();
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoveredProjectId, setHoveredProjectId] = useState(null);
   const jobName = project.project_name;
@@ -60,7 +62,7 @@ const CompletedProjectCard = ({
               hoveredProjectId === project.project_id
                 ? "opacity-100"
                 : "opacity-0"
-            }`}
+            } ${!canViewProfitLoss ? "hidden" : ""}`}
           >
             View
           </button>
@@ -96,7 +98,7 @@ const CompletedProjectCard = ({
                 }
                 className={`absolute left-2 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 ${
                   hoveredTaskId === task.task_id ? "opacity-100" : "opacity-0"
-                }`}
+                } ${!canEditFinancials ? "hidden" : ""}`}
               >
                 Edit
               </button>

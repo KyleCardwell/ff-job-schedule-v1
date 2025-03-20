@@ -7,6 +7,7 @@ import {
 } from "../../redux/actions/financialsData";
 import { buttonClass } from "../../assets/tailwindConstants";
 import FinancialsInputModal from "../financials/FinancialsInputModal";
+import { calculateFinancialTotals } from "../../utils/helpers";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
@@ -28,14 +29,18 @@ const CompletedProjectView = () => {
   const chartConfig = useSelector((state) => state.chartConfig);
 
   useEffect(() => {
-    if (
-      projectId &&
-      (!projectFinancials || projectFinancials.length === 0) &&
-      !projectFinancialsError
-    ) {
+    if (!projectId) return;
+
+    // Only fetch if we haven't tried before or if we have no data and no error
+    if (!projectFinancials && !projectFinancialsError) {
       dispatch(fetchProjectFinancials(projectId));
     }
-  }, [projectId, projectFinancials, dispatch, projectFinancialsError]);
+
+    // If project not found, redirect back
+    if (projectFinancialsError === "Project not found") {
+      navigate("/completed");
+    }
+  }, [projectId, projectFinancials, projectFinancialsError, dispatch, navigate]);
 
   const handleEditClick = (taskId, taskName, taskNumber) => {
     dispatch(fetchTaskFinancials(taskId, projectId))
@@ -55,47 +60,41 @@ const CompletedProjectView = () => {
 
   // Calculate project totals
   const projectTotals = useMemo(() => {
-    if (!projectFinancials) return { estimate: 0, actual: 0, profit: 0 };
-    
-    const sections = ['cabinets', 'doors', 'drawers', 'hours', 'other'];
-    return projectFinancials.reduce((acc, task) => {
-      const taskTotals = sections.reduce((sectionAcc, section) => {
-        const sectionData = task[section] || {};
-        
-        if (section === 'hours') {
-          // For hours, sum actual costs from each type
-          const actualTotal = sectionData.data?.reduce((sum, typeData) => 
-            sum + (typeData.actual_cost || 0), 0) || 0;
+    if (!projectFinancials?.length) return { estimate: 0, actual: 0, profit: 0 };
 
-          // For estimate, multiply estimated hours by employee type rates
-          const estimateTotal = sectionData.data?.reduce((typeAcc, typeData) => {
-            const employeeType = chartConfig.employee_type?.find(
-              (type) => type.id === typeData.type_id
-            );
-            const rate = employeeType?.rate || 0;
-            return typeAcc + ((typeData.estimate || 0) * rate);
-          }, 0) || 0;
-
+    const totals = projectFinancials.reduce((acc, task) => {
+      const sections = ['cabinets', 'doors', 'drawers', 'hours', 'other'];
+      const taskSections = sections.map(sectionId => {
+        const sectionData = task[sectionId] || {};
+        if (sectionId === 'hours') {
           return {
-            estimate: sectionAcc.estimate + estimateTotal,
-            actual: sectionAcc.actual + actualTotal
+            id: sectionId,
+            data: sectionData.data || []
           };
         }
-
-        // For non-hours sections
         return {
-          estimate: sectionAcc.estimate + (sectionData.estimate || 0),
-          actual: sectionAcc.actual + (sectionData.actual_cost || 0)
+          id: sectionId,
+          estimate: sectionData.estimate || 0,
+          inputRows: sectionData.data || []
         };
-      }, { estimate: 0, actual: 0 });
+      });
+
+      const taskTotals = calculateFinancialTotals(taskSections, chartConfig);
+      const adjustedTotals = task.adjustments 
+        ? calculateFinancialTotals(taskSections, chartConfig, task.adjustments)
+        : taskTotals;
 
       return {
-        estimate: acc.estimate + taskTotals.estimate,
-        actual: acc.actual + taskTotals.actual,
-        profit: acc.profit + (taskTotals.estimate - taskTotals.actual)
+        estimate: acc.estimate + (adjustedTotals.total || adjustedTotals.estimate || 0),
+        actual: acc.actual + (adjustedTotals.actual || 0)
       };
-    }, { estimate: 0, actual: 0, profit: 0 });
-  }, [projectFinancials, chartConfig.employee_type]);
+    }, { estimate: 0, actual: 0 });
+
+    return {
+      ...totals,
+      profit: totals.estimate - totals.actual
+    };
+  }, [projectFinancials, chartConfig]);
 
   // Get the most recent update date from all task financials
   const dateUpdated = useMemo(() => {
@@ -186,16 +185,20 @@ const CompletedProjectView = () => {
         <div className="grid grid-cols-3 gap-8">
           <div className="text-center">
             <div className="text-gray-600">Estimated</div>
-            <div className="text-2xl font-bold">${projectTotals.estimate.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              ${(projectTotals.estimate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-gray-600">Actual</div>
-            <div className="text-2xl font-bold">${projectTotals.actual.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              ${(projectTotals.actual || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-gray-600">Profit/Loss</div>
-            <div className={`text-2xl font-bold ${projectTotals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${projectTotals.profit.toLocaleString()}
+            <div className={`text-2xl font-bold ${(projectTotals.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${(projectTotals.profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>
@@ -213,37 +216,28 @@ const CompletedProjectView = () => {
 
         {projectFinancials.map((task, index) => {
           const sections = ['cabinets', 'doors', 'drawers', 'hours', 'other'];
-          const taskTotals = sections.reduce((acc, section) => {
-            const sectionData = task[section] || {};
-            
-            if (section === 'hours') {
-              // For hours, sum actual costs from each type
-              const actualTotal = sectionData.data?.reduce((sum, typeData) => 
-                sum + (typeData.actual_cost || 0), 0) || 0;
-
-              // For estimate, multiply estimated hours by employee type rates
-              const estimateTotal = sectionData.data?.reduce((typeAcc, typeData) => {
-                const employeeType = chartConfig.employee_type?.find(
-                  (type) => type.id === typeData.type_id
-                );
-                const rate = employeeType?.rate || 0;
-                return typeAcc + ((typeData.estimate || 0) * rate);
-              }, 0) || 0;
-
+          // Transform task data into the format expected by calculateFinancialTotals
+          const taskSections = sections.map(sectionId => {
+            const sectionData = task[sectionId] || {};
+            if (sectionId === 'hours') {
               return {
-                estimate: acc.estimate + estimateTotal,
-                actual: acc.actual + actualTotal
+                id: sectionId,
+                data: sectionData.data || []
               };
             }
-
-            // For non-hours sections
             return {
-              estimate: acc.estimate + (sectionData.estimate || 0),
-              actual: acc.actual + (sectionData.actual_cost || 0)
+              id: sectionId,
+              estimate: sectionData.estimate || 0,
+              inputRows: sectionData.data || []
             };
-          }, { estimate: 0, actual: 0 });
+          });
 
-          const taskProfit = taskTotals.estimate - taskTotals.actual;
+          const taskTotals = calculateFinancialTotals(taskSections, chartConfig);
+          const adjustedTotals = task.adjustments 
+            ? calculateFinancialTotals(taskSections, chartConfig, task.adjustments)
+            : taskTotals;
+
+          const taskProfit = (adjustedTotals.total || adjustedTotals.estimate) - adjustedTotals.actual;
 
           return (
             <div
@@ -252,15 +246,15 @@ const CompletedProjectView = () => {
                 index % 2 === 0 ? "bg-gray-50" : ""
               } hover:bg-gray-100`}
             >
-              <div className="font-medium">{task.tasks.task_number}</div>
+              <div className="font-medium">{task.task_number}</div>
               <div className="relative group">
-                <span>{task.tasks.task_name}</span>
+                <span>{task.task_name}</span>
                 <button
                   onClick={() =>
                     handleEditClick(
                       task.task_id,
-                      task.tasks.task_name,
-                      task.tasks.task_number
+                      task.task_name,
+                      task.task_number
                     )
                   }
                   className="absolute left-0 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
@@ -268,10 +262,14 @@ const CompletedProjectView = () => {
                   Edit
                 </button>
               </div>
-              <div className="text-right">${taskTotals.estimate.toLocaleString()}</div>
-              <div className="text-right">${taskTotals.actual.toLocaleString()}</div>
+              <div className="text-right">
+                ${(adjustedTotals.total || adjustedTotals.estimate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-right">
+                ${(adjustedTotals.actual || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
               <div className={`text-right ${taskProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ${taskProfit.toLocaleString()}
+                ${(taskProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           );

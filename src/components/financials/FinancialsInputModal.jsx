@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 import { Field, Label, Switch } from "@headlessui/react";
 import { isEqual, omit } from "lodash";
@@ -10,6 +10,7 @@ import {
   modalContainerClass,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
+import { calculateFinancialTotals } from "../../utils/helpers";
 import FinancialsAccordion from "./FinancialsAccordion";
 import EstimatesModal from "./EstimatesModal";
 import { saveProjectFinancials } from "../../redux/actions/financialsData";
@@ -34,14 +35,28 @@ const FinancialsInputModal = ({
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-
   const [localSections, setLocalSections] = useState([]);
   const [modalTotals, setModalTotals] = useState({ estimate: 0, actual: 0 });
-
   const [isEstimatesOpen, setIsEstimatesOpen] = useState(false);
+  const [adjustments, setAdjustments] = useState({
+    profit: 20,
+    commission: 10,
+    discount: 0,
+    quantity: 1,
+  });
 
   useEffect(() => {
     if (!financialSections) return;
+
+    // Load adjustments from financialSections if they exist
+    if (financialSections.adjustments) {
+      setAdjustments({
+        profit: financialSections.adjustments.profit || 20,
+        commission: financialSections.adjustments.commission || 10,
+        discount: financialSections.adjustments.discount || 0,
+        quantity: financialSections.adjustments.quantity || 1,
+      });
+    }
 
     const sectionTypes = [
       { id: "hours", label: "Hours" },
@@ -114,45 +129,23 @@ const FinancialsInputModal = ({
     console.log("local sections", localSections);
   }, [financialSections, chartConfig.employee_type]);
 
+  const calculateTotals = useMemo(() => {
+    return calculateFinancialTotals(localSections, chartConfig, adjustments);
+  }, [localSections, chartConfig, adjustments]);
+
   useEffect(() => {
-    const totals = localSections.reduce(
-      (acc, section) => {
-        if (section.id === "hours") {
-          // For hours section, sum up the actual costs from each type
-          const actualTotal = section.data?.reduce((sum, typeData) => 
-            sum + (typeData.actual_cost || 0), 0) || 0;
+    setModalTotals({
+      estimate: calculateTotals.total,
+      actual: calculateTotals.actual,
+    });
+  }, [calculateTotals]);
 
-          // For estimate, multiply estimated hours by employee type rates
-          const estimateTotal = section.data?.reduce((typeAcc, typeData) => {
-            const employeeType = chartConfig.employee_type?.find(
-              (type) => type.id === typeData.type_id
-            );
-            const rate = employeeType?.rate || 0;
-            return typeAcc + ((typeData.estimate || 0) * rate);
-          }, 0) || 0;
-
-          return {
-            estimate: acc.estimate + estimateTotal,
-            actual: acc.actual + actualTotal,
-          };
-        }
-
-        // For non-hours sections
-        const sectionActual = section.inputRows?.reduce(
-          (sum, row) => sum + (parseFloat(row.cost) || 0),
-          0
-        ) || 0;
-
-        return {
-          estimate: acc.estimate + (section.estimate || 0),
-          actual: acc.actual + sectionActual,
-        };
-      },
-      { estimate: 0, actual: 0 }
-    );
-
-    setModalTotals(totals);
-  }, [localSections, chartConfig.employee_type]);
+  const handleAdjustmentChange = (field, value) => {
+    setAdjustments((prev) => ({
+      ...prev,
+      [field]: parseFloat(value) || 0,
+    }));
+  };
 
   const handleSectionUpdate = (sectionId, newData) => {
     setLocalSections((prevSections) =>
@@ -162,14 +155,18 @@ const FinancialsInputModal = ({
             // For hours section, keep the data array structure
             return {
               ...section,
-              data: newData
+              data: newData,
             };
           } else {
             // For non-hours sections, update with new data and calculate actual_cost
             return {
               ...section,
               ...newData,
-              actual_cost: newData.inputRows?.reduce((sum, row) => sum + (parseFloat(row.cost) || 0), 0) || 0
+              actual_cost:
+                newData.inputRows?.reduce(
+                  (sum, row) => sum + (parseFloat(row.cost) || 0),
+                  0
+                ) || 0,
             };
           }
         }
@@ -186,7 +183,7 @@ const FinancialsInputModal = ({
       setSaveError(null);
 
       const result = await dispatch(
-        saveProjectFinancials(financialSections.financials_id, localSections)
+        saveProjectFinancials(financialSections.financials_id, localSections, adjustments)
       );
 
       if (result.success) {
@@ -202,10 +199,14 @@ const FinancialsInputModal = ({
     }
   };
 
+  const formatCurrency = (value) => {
+    return (value || 0).toFixed(2);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <>
+    <div className="relative">
       {isOpen && (
         <div className={modalOverlayClass}>
           <div className={`${modalContainerClass} max-h-[90vh] flex flex-col`}>
@@ -243,15 +244,15 @@ const FinancialsInputModal = ({
               <div className="flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Estimate:</span>
+                    <span className="font-medium text-gray-600"></span>
                     <span className="font-bold">
-                      ${modalTotals.estimate.toLocaleString()}
+                      ${formatCurrency(modalTotals.estimate)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-600">Actual:</span>
                     <span className="font-bold">
-                      ${modalTotals.actual.toLocaleString()}
+                      ${formatCurrency(modalTotals.actual)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -264,9 +265,9 @@ const FinancialsInputModal = ({
                       }`}
                     >
                       $
-                      {(
+                      {formatCurrency(
                         modalTotals.estimate - modalTotals.actual
-                      ).toLocaleString()}
+                      )}
                     </span>
                   </div>
                 </div>
@@ -313,13 +314,19 @@ const FinancialsInputModal = ({
         </div>
       )}
 
-      <EstimatesModal
-        isOpen={isEstimatesOpen}
-        onClose={() => setIsEstimatesOpen(false)}
-        localSections={localSections}
-        setLocalSections={setLocalSections}
-      />
-    </>
+      {isEstimatesOpen && (
+        <EstimatesModal
+          isOpen={isEstimatesOpen}
+          onClose={() => setIsEstimatesOpen(false)}
+          localSections={localSections}
+          setLocalSections={setLocalSections}
+          adjustments={adjustments}
+          onAdjustmentChange={handleAdjustmentChange}
+          subtotal={calculateTotals.subtotal}
+          total={calculateTotals.total}
+        />
+      )}
+    </div>
   );
 };
 

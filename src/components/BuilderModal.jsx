@@ -68,6 +68,7 @@ const BuilderModal = ({
       }))
     );
     setTimeOffVisibility({});
+    setShowRates(false); // Reset showRates when modal opens
   }, [employees, visible]);
 
   const handleNameChange = (index, value) => {

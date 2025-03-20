@@ -25,7 +25,12 @@ export const createProjectFinancials = (projectId, tasks) => {
         .from("project_financials")
         .insert(projectFinancialsData);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST204') {
+          throw new Error('You do not have permission to create financial records');
+        }
+        throw error;
+      }
 
       return "successfully created project financials";
     } catch (error) {
@@ -48,21 +53,31 @@ export const fetchTaskFinancials = (taskId, projectId) => {
         .eq("task_id", taskId)
         .single();
 
-      // If no data exists, create a new row
-      if (!data && error?.code === "PGRST116") {
-        const { data: newData, error: insertError } = await supabase
-          .from("project_financials")
-          .insert({
-            task_id: taskId,
-            project_id: projectId,
-          })
-          .select()
-          .single();
+      if (error) {
+        if (error.code === 'PGRST204') {
+          throw new Error('You do not have permission to view financial records');
+        }
+        // If no data exists, create a new row
+        if (error.code === "PGRST116") {
+          const { data: newData, error: insertError } = await supabase
+            .from("project_financials")
+            .insert({
+              task_id: taskId,
+              project_id: projectId,
+            })
+            .select()
+            .single();
 
-        if (insertError) throw insertError;
-        data = newData;
-      } else if (error) {
-        throw error;
+          if (insertError) {
+            if (insertError.code === 'PGRST204') {
+              throw new Error('You do not have permission to create financial records');
+            }
+            throw insertError;
+          }
+          data = newData;
+        } else {
+          throw error;
+        }
       }
 
       dispatch({
@@ -90,11 +105,21 @@ export const fetchProjectFinancials = (projectId) => {
         .eq("project_id", projectId)
         .single();
 
-      if (projectError?.code === "PGRST116" || !projectData) {
-        dispatch(setError("Project not found"));
-        return;
+      if (projectError) {
+        if (projectError.code === 'PGRST204') {
+          throw new Error('You do not have permission to view this project');
+        }
+        if (projectError.code === "PGRST116" || !projectData) {
+          dispatch(setError("Project not found"));
+          dispatch({
+            type: Actions.financialsData.FETCH_PROJECT_FINANCIALS,
+            payload: [],
+          });
+          return;
+        }
+        throw projectError;
       }
-      if (projectError) throw projectError;
+
       const { data, error } = await supabase
         .from("project_financials")
         .select(
@@ -110,11 +135,20 @@ export const fetchProjectFinancials = (projectId) => {
         .eq("project_id", projectId)
         .order('tasks(task_created_at)', { ascending: true });
 
-      if (error?.code === "PGRST116" || data.length < 1) {
-        dispatch(setError("Project not found"));
-        return;
+      if (error) {
+        if (error.code === 'PGRST204') {
+          throw new Error('You do not have permission to view financial records');
+        }
+        if (error.code === "PGRST116" || data.length < 1) {
+          dispatch(setError("Project not found"));
+          dispatch({
+            type: Actions.financialsData.FETCH_PROJECT_FINANCIALS,
+            payload: [],
+          });
+          return;
+        }
+        throw error;
       }
-      if (error) throw error;
 
       // Extract task info and keep array structure
       const processedData = data.map((record) => ({
@@ -140,29 +174,50 @@ export const fetchProjectFinancials = (projectId) => {
   };
 };
 
-export const saveProjectFinancials = (financialsId, sections) => {
+export const saveProjectFinancials = (financialsId, sections, adjustments) => {
   return async (dispatch) => {
     try {
       // Create update object directly
       const updateData = sections.reduce((acc, section) => {
         if (section.id === "hours") {
           // For hours section, maintain the employee type data structure
-          acc[section.id] = {
-            estimate: section.estimate || 0,
-            actual_cost: section.actual_cost || 0,
-            data: section.data.map((typeData) => ({
+          const processedData = section.data.map((typeData) => {
+            // Calculate actual_cost for this type from inputRows
+            const typeActualCost = (typeData.inputRows || []).reduce(
+              (sum, row) => sum + (row.actual_cost || 0),
+              0
+            );
+
+            return {
               type_id: typeData.type_id,
               type_name: typeData.type_name,
               estimate: typeData.estimate || 0,
-              actual_cost: typeData.actual_cost || 0,
-              inputRows: typeData.inputRows || [], // Use inputRows consistently
-            })),
+              actual_cost: typeActualCost,
+              inputRows: typeData.inputRows || [],
+            };
+          });
+
+          // Calculate total actual_cost from all types
+          const totalActualCost = processedData.reduce(
+            (sum, typeData) => sum + typeData.actual_cost,
+            0
+          );
+
+          acc[section.id] = {
+            estimate: section.estimate || 0,
+            actual_cost: totalActualCost,
+            data: processedData,
           };
         } else {
           // For non-hours sections
+          const actualCost = (section.inputRows || []).reduce(
+            (sum, row) => sum + (row.actual_cost || 0),
+            0
+          );
+
           acc[section.id] = {
             estimate: section.estimate || 0,
-            actual_cost: section.actual_cost || 0,
+            actual_cost: actualCost,
             data: section.inputRows || [],
           };
         }
@@ -171,6 +226,7 @@ export const saveProjectFinancials = (financialsId, sections) => {
 
       // Add timestamp to update data
       updateData.financials_updated_at = new Date().toISOString();
+      updateData.adjustments = adjustments;
 
       // Update the project_financials table
       const { data, error } = await supabase
@@ -178,7 +234,12 @@ export const saveProjectFinancials = (financialsId, sections) => {
         .update(updateData)
         .eq("financials_id", financialsId);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST204') {
+          throw new Error('You do not have permission to modify financial records');
+        }
+        throw error;
+      }
 
       dispatch({
         type: Actions.financialsData.SAVE_TASK_FINANCIALS_SUCCESS,

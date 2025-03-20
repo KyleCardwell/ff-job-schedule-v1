@@ -5,6 +5,7 @@ import { clearAuth } from "../redux/authSlice";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../utils/supabase";
 import { buttonClass } from "../assets/tailwindConstants";
+import { usePermissions } from "../hooks/usePermissions";
 
 const ChartActionButtons = ({
   scrollToMonday,
@@ -16,6 +17,7 @@ const ChartActionButtons = ({
 }) => {
   const location = useLocation();
   const dispatch = useDispatch();
+  const { canEditSchedule } = usePermissions();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -44,7 +46,7 @@ const ChartActionButtons = ({
               className={`flex flex-start`}
               style={{ width: leftColumnWidth }}
             >
-              {employees.length > 0 && (
+              {employees.length > 0 && canEditSchedule && (
                 <button
                   className={`${buttonClass} bg-blue-500 ml-2`}
                   onClick={() => setIsSettingsModalOpen(true)}
@@ -59,7 +61,7 @@ const ChartActionButtons = ({
             >
               Today
             </button>
-            {employees.length > 0 && (
+            {employees.length > 0 && canEditSchedule && (
               <button
                 className={`${buttonClass} bg-green-500`}
                 onClick={() => setIsJobModalOpen(true)}
@@ -67,12 +69,15 @@ const ChartActionButtons = ({
                 Add Job
               </button>
             )}
-            <button
-              className={`${buttonClass} bg-blue-500`}
-              onClick={() => setIsBuilderModalOpen(true)}
-            >
-              Employees
-            </button>
+            {canEditSchedule && (
+              <button
+                className={`${buttonClass} bg-blue-500`}
+                onClick={() => setIsBuilderModalOpen(true)}
+              >
+                Employees
+              </button>
+            )}
+            {canEditSchedule && (
             <button
               className={`${buttonClass} bg-purple-500`}
               onClick={() => {
@@ -81,6 +86,7 @@ const ChartActionButtons = ({
             >
               Holidays
             </button>
+            )}
           </div>
         )}
         <Link to={`${location.pathname === "/" ? "/completed" : "/"}`}>

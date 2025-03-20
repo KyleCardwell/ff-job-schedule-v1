@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ChartContainer } from "./components/ChartContainerGrid.jsx";
 import CompletedJobsContainer from "./components/CompletedProjectsContainer.jsx";
@@ -12,6 +12,7 @@ import { fetchProjects, fetchProjectsOptions } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { setSession, clearAuth, setUserTeam, setLoading } from "./redux/authSlice";
+import { usePermissions } from "./hooks/usePermissions";
 
 const authContainerStyle = {
   maxWidth: '400px',
@@ -19,6 +20,16 @@ const authContainerStyle = {
   padding: '20px',
   boxShadow: '0 0 10px rgba(0,0,0,0.1)',
   borderRadius: '8px',
+};
+
+const ProtectedRoute = ({ children }) => {
+  const { canViewProfitLoss } = usePermissions();
+  
+  if (!canViewProfitLoss) {
+    return <Navigate to="/completed" replace />;
+  }
+
+  return children;
 };
 
 const App = () => {
@@ -133,7 +144,14 @@ const App = () => {
 					<Routes>
 						<Route path="/" element={<ChartContainer />} />
 						<Route path="/completed" element={<CompletedJobsContainer />} />
-						<Route path="/completed/:projectId" element={<CompletedProjectView />} />
+						<Route 
+							path="/completed/:projectId" 
+							element={
+								<ProtectedRoute>
+									<CompletedProjectView />
+								</ProtectedRoute>
+							} 
+						/>
 					</Routes>
 				</ErrorBoundary>
 			</div>

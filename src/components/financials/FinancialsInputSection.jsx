@@ -177,6 +177,7 @@ const FinancialsInputSection = ({
       onUpdate(updatedData);
     } else {
       // For non-hours sections      const updatedRows = localInputRows.filter((row) => row.id !== rowId);
+      const updatedRows = localInputRows.filter((row) => row.id !== rowId);
       handleUpdateRows(updatedRows);
       onUpdate({ inputRows: updatedRows });
     }
@@ -366,10 +367,11 @@ const FinancialsInputSection = ({
                     />
                     <input
                       type="number"
-                      value={row.cost === 0 ? "" : row.cost}
+                      value={row.cost === 0 ? "" : row.cost.toFixed(2)}
                       onChange={(e) =>
                         handleInputChange(row.id, "cost", e.target.value)
                       }
+                      step="0.01"
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Cost"
                     />

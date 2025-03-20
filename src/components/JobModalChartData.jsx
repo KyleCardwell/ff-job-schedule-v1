@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 import { addDays, parseISO } from "date-fns";
-import { formatDateForInput, normalizeDate } from "../utils/dateUtils";
+import { formatDateForInput, formatDateForDisplay, normalizeDate } from "../utils/dateUtils";
 import {
   getNextWorkday,
   sortAndAdjustDates,
@@ -1550,7 +1550,7 @@ const JobModal = ({
                         />
                       ) : (
                         <div className="w-full pl-1 h-8 text-sm">
-                          {formatDateForInput(workPeriod.start_date)}
+                          {formatDateForDisplay(workPeriod.start_date)}
                         </div>
                       )}
                       {subTaskIndex === 0 ? (
