@@ -4,6 +4,7 @@ import EmployeeTypeAccordion from "./EmployeeTypeAccordion";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 import _ from "lodash";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const FinancialsInputSection = ({
   sectionName,
@@ -22,6 +23,8 @@ const FinancialsInputSection = ({
   const [expandedTypeId, setExpandedTypeId] = useState(null);
   const isHoursSection = sectionId === "hours";
   const chartConfig = useSelector((state) => state.chartConfig);
+
+  const { canViewProfitLoss } = usePermissions();
 
   // Initialize local state from props only once
   useEffect(() => {
@@ -243,45 +246,77 @@ const FinancialsInputSection = ({
                 <span className="">
                   Est:{" "}
                   <span className="font-medium">
-                    ${hoursTotals.estimate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    $
+                    {hoursTotals.estimate.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </span>
-                <span className="">
-                  Act:{" "}
-                  <span className="font-medium">
-                    ${hoursTotals.actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {canViewProfitLoss && (
+                  <span className="">
+                    Act:{" "}
+                    <span className="font-medium">
+                      $
+                      {hoursTotals.actual.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
                   </span>
-                </span>
-                <span
-                  className={`${
-                    (hoursTotals.estimate || 0) - (hoursTotals.actual || 0) >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  Δ:{" "}
-                  <span className="font-medium">
-                    ${((hoursTotals.estimate || 0) - (hoursTotals.actual || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                )}
+                {canViewProfitLoss && (
+                  <span
+                    className={`${
+                      (hoursTotals.estimate || 0) - (hoursTotals.actual || 0) >=
+                      0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    Δ:{" "}
+                    <span className="font-medium">
+                      $
+                      {(
+                        (hoursTotals.estimate || 0) - (hoursTotals.actual || 0)
+                      ).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
                   </span>
-                </span>
+                )}
               </>
             ) : (
               <>
                 <span className="text-sm font-medium">
-                  Est: ${(estimate || 0).toLocaleString()}
+                  Est: ${(estimate || 0).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
-                <span className="text-sm font-medium">
-                  Act: ${(rowsTotal || 0).toLocaleString()}
-                </span>
-                <span
-                  className={`text-sm font-medium ${
-                    (estimate || 0) - (rowsTotal || 0) >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  Δ: ${((estimate || 0) - (rowsTotal || 0)).toLocaleString()}
-                </span>
+                {canViewProfitLoss && (
+                  <span className="text-sm font-medium">
+                    Act: ${(rowsTotal || 0).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                )}
+                {canViewProfitLoss && (
+                  <span
+                    className={`text-sm font-medium ${
+                      (estimate || 0) - (rowsTotal || 0) >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    Δ: ${((estimate || 0) - (rowsTotal || 0)).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                )}
               </>
             )}
           </div>

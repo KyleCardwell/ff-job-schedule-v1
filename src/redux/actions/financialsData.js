@@ -13,12 +13,15 @@ export const setError = (error) => ({
 });
 
 export const createProjectFinancials = (projectId, tasks) => {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     dispatch(setLoading(true));
     try {
+      const { teamId } = getState().auth;
+      
       const projectFinancialsData = tasks.map((task) => ({
         project_id: projectId,
         task_id: task.task_id,
+        team_id: teamId
       }));
 
       const { data, error } = await supabase
@@ -43,9 +46,11 @@ export const createProjectFinancials = (projectId, tasks) => {
 };
 
 export const fetchTaskFinancials = (taskId, projectId) => {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     dispatch(setLoading(true));
     try {
+      const { teamId } = getState().auth;
+
       // First try to fetch existing data
       let { data, error } = await supabase
         .from("project_financials")
@@ -64,6 +69,7 @@ export const fetchTaskFinancials = (taskId, projectId) => {
             .insert({
               task_id: taskId,
               project_id: projectId,
+              team_id: teamId
             })
             .select()
             .single();

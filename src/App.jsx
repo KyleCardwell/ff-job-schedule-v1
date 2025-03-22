@@ -13,6 +13,7 @@ import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { setSession, clearAuth, setUserTeam, setLoading } from "./redux/authSlice";
 import { usePermissions } from "./hooks/usePermissions";
+import TeamJoin from "./components/TeamJoin.jsx";
 
 const authContainerStyle = {
   maxWidth: '400px',
@@ -34,7 +35,7 @@ const ProtectedRoute = ({ children }) => {
 
 const App = () => {
 	const dispatch = useDispatch();
-	const { session, loading } = useSelector((state) => state.auth);
+	const { session, loading, teamId } = useSelector((state) => state.auth);
 	const initialFetchDone = React.useRef(false);
 	const lastAuthFetch = React.useRef(null);
 
@@ -60,6 +61,12 @@ const App = () => {
 				.select(`*`)
 				.eq('user_id', session.user.id)
 				.single();
+
+			// If user not found in team_members, still set session but no team
+			if (teamMemberError && teamMemberError.code === 'PGRST116') {
+				dispatch(setSession(session));
+				return;
+			}
 
 			if (teamMemberError) throw teamMemberError;
 
@@ -113,13 +120,13 @@ const App = () => {
 	}, [fetchUserData]);
 
 	useEffect(() => {
-		if (session && !initialFetchDone.current) {
+		if (session && teamId && !initialFetchDone.current) {
 			dispatch(fetchChartConfig());
 			dispatch(fetchEmployees());
 			dispatch(fetchProjects(fetchProjectsOptions));
 			initialFetchDone.current = true;
 		}
-	}, [session, dispatch]);
+	}, [session, teamId, dispatch]);
 
 	if (loading) {
 		return <div>Loading...</div>;
@@ -134,6 +141,15 @@ const App = () => {
 					providers={[]}
 				/>
 			</div>
+		);
+	}
+
+	// Show TeamJoin if user is logged in but has no team
+	if (!teamId) {
+		return (
+			<Router>
+				<TeamJoin />
+			</Router>
 		);
 	}
 

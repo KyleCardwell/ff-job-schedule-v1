@@ -14,6 +14,7 @@ import { calculateFinancialTotals } from "../../utils/helpers";
 import FinancialsAccordion from "./FinancialsAccordion";
 import EstimatesModal from "./EstimatesModal";
 import { saveProjectFinancials } from "../../redux/actions/financialsData";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const FinancialsInputModal = ({
   isOpen,
@@ -31,6 +32,8 @@ const FinancialsInputModal = ({
     (state) => state?.financialsData?.taskFinancials ?? {}
   );
   const chartConfig = useSelector((state) => state.chartConfig);
+
+  const { canViewProfitLoss } = usePermissions();
 
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -183,7 +186,11 @@ const FinancialsInputModal = ({
       setSaveError(null);
 
       const result = await dispatch(
-        saveProjectFinancials(financialSections.financials_id, localSections, adjustments)
+        saveProjectFinancials(
+          financialSections.financials_id,
+          localSections,
+          adjustments
+        )
       );
 
       if (result.success) {
@@ -244,32 +251,36 @@ const FinancialsInputModal = ({
               <div className="flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600"></span>
+                    <span className="font-medium text-gray-600">Estimate:</span>
                     <span className="font-bold">
                       ${formatCurrency(modalTotals.estimate)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Actual:</span>
-                    <span className="font-bold">
-                      ${formatCurrency(modalTotals.actual)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Profit:</span>
-                    <span
-                      className={`font-bold ${
-                        modalTotals.estimate - modalTotals.actual >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      $
-                      {formatCurrency(
-                        modalTotals.estimate - modalTotals.actual
-                      )}
-                    </span>
-                  </div>
+                  {canViewProfitLoss && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-600">Actual:</span>
+                      <span className="font-bold">
+                        ${formatCurrency(modalTotals.actual)}
+                      </span>
+                    </div>
+                  )}
+                  {canViewProfitLoss && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-600">Profit:</span>
+                      <span
+                        className={`font-bold ${
+                          modalTotals.estimate - modalTotals.actual >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        $
+                        {formatCurrency(
+                          modalTotals.estimate - modalTotals.actual
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

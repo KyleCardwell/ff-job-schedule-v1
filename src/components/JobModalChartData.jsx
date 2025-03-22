@@ -1302,7 +1302,8 @@ const JobModal = ({
                 />
               </div>
 
-              <div className="md:w-1/4">
+              <div className="md:w-1/3">
+                <label htmlFor="jobName">Job Name</label>
                 <input
                   id="jobName"
                   type="text"

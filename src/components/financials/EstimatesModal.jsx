@@ -57,7 +57,10 @@ const EstimatesModal = ({
 
   const formatEstimate = (value) => {
     if (value === null || value === undefined || value === '') return '';
-    return value === 0 ? '' : value.toString();
+    return value === 0 ? '' : value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   if (!isOpen) return null;

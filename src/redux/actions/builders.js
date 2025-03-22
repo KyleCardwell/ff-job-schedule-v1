@@ -52,6 +52,7 @@ export const addEmployees = (employees) => async (dispatch, getState) => {
 				.from("chart_config")
 				.insert({
 					next_task_number: 101, // Default starting number
+					team_id: state.auth.teamId
 					// Add any other default fields here
 				})
 				.select()
@@ -76,6 +77,7 @@ export const addEmployees = (employees) => async (dispatch, getState) => {
 					time_off: employee.time_off,
 					employee_type: employee.employee_type,
 					employee_rate: employee.employee_rate,
+					team_id: state.auth.teamId
 				}))
 			)
 			.select()
