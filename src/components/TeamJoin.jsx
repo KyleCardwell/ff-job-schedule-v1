@@ -74,19 +74,6 @@ const TeamJoin = () => {
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Check if user is already in a team
-      const { data: existingMember, error: memberError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (memberError && memberError.code !== 'PGRST116') { 
-        console.error('Error fetching existing member:', memberError);
-        setError('Error checking membership. Please try again.');
-        return;
-      }
-
       // Find the team with matching invite code
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
@@ -99,47 +86,25 @@ const TeamJoin = () => {
         return;
       }
 
-      if (existingMember) {
-        if (existingMember.team_id) {
-          setError('You are already a member of a team.');
-          return;
-        }
-
-        // Update existing team_member record
-        const { error: updateError } = await supabase
-          .from('team_members')
-          .update({
+      // Add user to team_members
+      const { error: insertError } = await supabase
+        .from('team_members')
+        .insert([
+          {
+            user_id: user.id,
             team_id: teamData.team_id,
             role_id: teamData.default_role_id
-          })
-          .eq('user_id', user.id);
+          }
+        ]);
 
-        if (updateError) {
-          console.error('Error updating team member:', updateError);
-          setError('Error joining team. Please try again.');
-          return;
-        }
-      } else {
-        // Add new user to team_members
-        const { error: insertError } = await supabase
-          .from('team_members')
-          .insert([
-            {
-              user_id: user.id,
-              team_id: teamData.team_id,
-              role_id: teamData.default_role_id
-            }
-          ]);
-
-        if (insertError) {
-          console.error('Error joining team:', insertError);
-          setError('Error joining team. Please try again.');
-          return;
-        }
+      if (insertError) {
+        console.error('Error joining team:', insertError);
+        setError('Error joining team. Please try again.');
+        return;
       }
 
-      // Navigate to main app - App.jsx will handle fetching team data
-      navigate('/');
+      // Force reload since we're already at "/"
+      window.location.reload();
 
     } catch (error) {
       console.error('Unexpected error:', error);
