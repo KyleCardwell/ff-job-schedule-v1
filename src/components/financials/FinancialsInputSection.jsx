@@ -232,6 +232,11 @@ const FinancialsInputSection = ({
     );
   }, [isHoursSection, localData, chartConfig.employee_type]);
 
+  const formatEstimate = (value) => {
+    if (value === null || value === undefined || value === '') return '';
+    return value === 0 ? '' : value.toString();
+  };
+
   return (
     <div className="border border-gray-200 rounded-lg mb-4">
       <button
@@ -402,7 +407,7 @@ const FinancialsInputSection = ({
                     />
                     <input
                       type="number"
-                      value={row.cost === 0 ? "" : row.cost.toFixed(2)}
+                      value={formatEstimate(row.cost)}
                       onChange={(e) =>
                         handleInputChange(row.id, "cost", e.target.value)
                       }
