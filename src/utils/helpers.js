@@ -334,32 +334,38 @@ export const sortAndAdjustDates = (
   let arrayToProcess = [...jobsArray];
 
   // Sort the array by date
- if (!skipSort) {
-  arrayToProcess.sort((a, b) => {
-    const dateComparison = a.start_date.localeCompare(b.start_date);
-    if (dateComparison === 0) {
-      // If dates are equal, consider drag direction
-      if (a.isDragged) {
+  if (!skipSort) {
+    arrayToProcess.sort((a, b) => {
+      const dateComparison = a.start_date.localeCompare(b.start_date);
+      if (dateComparison === 0) {
+        // If dates are equal, prioritize hard start dates
+        if (a.hard_start_date && !b.hard_start_date) return -1;
+        if (!a.hard_start_date && b.hard_start_date) return 1;
+        
+        // If both have same hard_start_date status, consider drag direction
+        if (a.isDragged) {
         return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
-      }
-      if (b.isDragged) {
+        }
+        if (b.isDragged) {
         return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
+        }
       }
-    }
-    return dateComparison;
-  });
-}
+      return dateComparison;
+    });
+  }
 
   // Adjust the dates and calculate endDates
-  return arrayToProcess.reduce((acc, current, index) => {
+  return arrayToProcess.reduce((acc, current, index, array) => {
     const initialStartDate = normalizeDate(current.start_date);
+    const nextElement = array[index + 1];
 
+    // Calculate current element's dates first
     const start_date =
-      index === 0
+      index === 0 || current.hard_start_date
         ? initialStartDate
         : normalizeDate(
             getNextWorkday(
-              acc[index - 1].end_date,
+              acc[acc.length - 1].end_date,
               holidayChecker,
               holidays,
               current.employee_id,
@@ -384,13 +390,50 @@ export const sortAndAdjustDates = (
     // Create new task object without isDragged flag
     const { isDragged, ...taskWithoutDragFlag } = current;
 
-    acc.push({
+    const currentTask = {
       ...taskWithoutDragFlag,
-      start_date: start_date,
-      end_date: end_date,
+      start_date,
+      end_date,
       subtask_width: (jobHours / workdayHours) * dayWidth,
       xPosition: calculateXPosition(start_date, chartStartDate, dayWidth),
-    });
+    };
+
+    // Check if next element has hard_start_date and would overlap with current
+    if (nextElement?.hard_start_date && 
+        normalizeDate(nextElement.start_date) === start_date) {
+      // Add the hard_start_date element first with its original dates
+      acc.push(nextElement);
+
+      // Then add current element with adjusted start_date based on hard_start_date element
+      const adjustedStartDate = normalizeDate(
+        getNextWorkday(
+          nextElement.end_date,
+          holidayChecker,
+          holidays,
+          current.employee_id,
+          timeOffByBuilder
+        )
+      );
+
+      acc.push({
+        ...currentTask,
+        start_date: adjustedStartDate,
+        end_date: normalizeDate(
+          addDays(
+            adjustedStartDate,
+            Math.ceil(jobHours / workdayHours)
+          )
+        ),
+        xPosition: calculateXPosition(adjustedStartDate, chartStartDate, dayWidth),
+      });
+
+      // Skip the next element since we already processed it
+      array.splice(index + 1, 1);
+    } else {
+      // Add current element normally
+      acc.push(currentTask);
+    }
+
     return acc;
   }, []);
 };

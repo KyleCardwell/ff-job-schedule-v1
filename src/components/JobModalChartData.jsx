@@ -1226,6 +1226,7 @@ const JobModal = ({
         start_date: rowObject.start_date,
         duration: parseFloat(rowObject.duration),
         task_number: rowObject.task_number || currentTaskNumber.toString(), // Use the current task number
+        hard_start_date: false,
       });
 
       if (!rowObject.task_number) {
@@ -1290,7 +1291,7 @@ const JobModal = ({
                 Complete Job
               </button>
             </div>
-            <div className={`flex gap-8 items-center mb-5 ${!canEditSchedule ? "hidden" : ""}`}>
+            <div className={`flex gap-8 items-center mb-5 justify-center ${!canEditSchedule ? "hidden" : ""}`}>
               <div className="md:w-1/4">
                 <label htmlFor="depositDate">Deposit Date</label>
                 <input
@@ -1345,12 +1346,13 @@ const JobModal = ({
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
               <div className="sticky top-0 bg-white">
                 <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
-                <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
+                <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
                   <span>Job</span>
                   <span>Room Name</span>
                   <span>Hours</span>
                   <span>Employee</span>
                   <span>Start Date</span>
+                  <span>Hard Start?</span>
                   <span>Actions</span>
                 </div>
               </div>
@@ -1365,7 +1367,7 @@ const JobModal = ({
                   {room.workPeriods.map((workPeriod, subTaskIndex) => (
                     <div
                       key={workPeriod.subtask_id || subTaskIndex}
-                      className={`flex flex-col md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1.25fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
+                      className={`flex flex-col md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.25fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
                         subTaskIndex !== 0 &&
                         "border border-gray-500 md:border-none"
                       }`}
@@ -1554,6 +1556,23 @@ const JobModal = ({
                           {formatDateForDisplay(workPeriod.start_date)}
                         </div>
                       )}
+                      <div className="relative group">
+                        <input 
+                          type="checkbox"
+                          checked={workPeriod.hard_start_date || false}
+                          onChange={(e) => handleWorkPeriodChange(
+                            room.task_id,
+                            workPeriod.subtask_id,
+                            {
+                              hard_start_date: e.target.checked,
+                            }
+                          )}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="absolute hidden group-hover:block bg-gray-800 text-white text-sm rounded px-2 py-1 left-1/2 -translate-x-1/2 bottom-full mb-1 whitespace-nowrap">
+                          Hard start date - task must start on this date
+                        </div>
+                      </div>
                       {subTaskIndex === 0 ? (
                         <div
                           className={`flex flex-col gap-2 w-full md:flex-row justify-between ${
@@ -1621,7 +1640,7 @@ const JobModal = ({
                       key={room.task_id || inactiveTaskIndex}
                       className={`${
                         inactiveTaskIndex % 2 === 1 ? "bg-white" : "bg-gray-200"
-                      } grid grid-cols-[50px_1.25fr_1fr_0.75fr_1fr_1.25fr] gap-2 p-2 rounded mb-1`}
+                      } grid grid-cols-[50px_1.25fr_1fr_0.75fr_1fr_1fr_1.25fr] gap-2 p-2 rounded mb-1`}
                     >
                       <span>{room.task_number}</span>
                       <span>{room.task_name}</span>

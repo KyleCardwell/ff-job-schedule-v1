@@ -220,8 +220,8 @@ const TaskGroups = ({
     const drag = d3
       .drag()
       .on("start", function (event, d) {
-        // Skip drag if user doesn't have permission
-        if (!canEditSchedule) return;
+        // Skip drag if user doesn't have permission or if task has hard_start_date
+        if (!canEditSchedule || d.hard_start_date) return;
 
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
@@ -234,8 +234,8 @@ const TaskGroups = ({
         d.dragStartEventX = event.x;
       })
       .on("drag", function (event, d) {
-        // Skip drag if user doesn't have permission
-        if (!canEditSchedule) return;
+        // Skip drag if user doesn't have permission or if task has hard_start_date
+        if (!canEditSchedule || d.hard_start_date) return;
 
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
@@ -246,8 +246,8 @@ const TaskGroups = ({
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
-        // Skip drag if user doesn't have permission
-        if (!canEditSchedule) return;
+        // Skip drag if user doesn't have permission or if task has hard_start_date
+        if (!canEditSchedule || d.hard_start_date) return;
 
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
@@ -325,6 +325,9 @@ const TaskGroups = ({
             transition
               .select(".bar-text")
               .attr("x", (job) => job.xPosition + 5);
+            transition
+              .select(".hard-start-indicator")
+              .attr("x", (job) => job.xPosition - 6);
           })
           .end()
           .then(async () => {
@@ -477,6 +480,9 @@ const TaskGroups = ({
             transition
               .select(".bar-text")
               .attr("x", (job) => job.xPosition + 5);
+            transition
+              .select(".hard-start-indicator")
+              .attr("x", (job) => job.xPosition - 6);
           })
           .end()
           .then(async () => {
@@ -525,8 +531,7 @@ const TaskGroups = ({
     // Create a group for jobs
     const jobsGroup = taskGroupsSvg
       .append("g")
-      .attr("class", "jobs-group")
-      .style("cursor", canEditSchedule ? "ew-resize" : "default");
+      .attr("class", "jobs-group");
 
     timeOffGroup
       .selectAll(".time-off-line")
@@ -555,12 +560,38 @@ const TaskGroups = ({
       .attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
       .attr("font-size", "12px");
 
-    enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
+    enterGroups
+      .append("rect")
+      .attr("class", "job")
+      .attr("rx", 5)
+      .attr("ry", 5);
+
+    // Update cursor style for both new and existing rectangles
+    jobGroups
+      .select("rect")
+      .style("cursor", (d) => 
+        !canEditSchedule || d.hard_start_date ? "not-allowed" : "ew-resize"
+      );
+
     enterGroups
       .append("text")
       .attr("class", "bar-text")
       .attr("dy", ".35em")
       .style("pointer-events", "none");
+
+    // Add hard start date indicator
+    enterGroups
+      .append("rect")
+      .attr("class", "hard-start-indicator")
+      .attr("width", 6)
+      .attr("height", (d) => rowHeight - 2 * barMargin)
+      .attr("x", (d) => d.xPosition - 6) // Position it just before the job group
+      .attr(
+        "y",
+        (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
+      )
+      .attr("fill", "black")
+      .style("display", (d) => d.hard_start_date ? "block" : "none");
 
     // Add resize handle to each task group
     enterGroups
@@ -572,7 +603,7 @@ const TaskGroups = ({
         "y",
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
-      .style("cursor", canEditSchedule ? "col-resize" : "default")
+      .style("cursor", canEditSchedule ? "col-resize" : "not-allowed")
       .style("fill", "transparent");
 
     // Update all elements (both new and existing)
@@ -584,7 +615,16 @@ const TaskGroups = ({
     );
 
     allGroups
-      .select("rect")
+      .select(".hard-start-indicator")
+      .attr("x", (d) => d.xPosition - 6)
+      .attr(
+        "y",
+        (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
+      )
+      .style("display", (d) => d.hard_start_date ? "block" : "none");
+
+    allGroups
+      .select("rect.job")
       .attr("x", (d) => d.xPosition)
       .attr(
         "y",
@@ -597,7 +637,10 @@ const TaskGroups = ({
           (emp) => emp.employee_id === d.employee_id
         );
         return employee?.employee_color || "#808080"; // Fallback to gray if no color found
-      });
+      })
+      .style("cursor", (d) => 
+        !canEditSchedule || d.hard_start_date ? "not-allowed" : "ew-resize"
+      );
 
     allGroups
       .select("text")
@@ -613,6 +656,7 @@ const TaskGroups = ({
 
     // // Remove old elements
     jobGroups.exit().remove();
+
     // Apply drag behavior
     allGroups.select("rect").call(drag);
     // Event listeners
