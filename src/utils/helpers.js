@@ -324,8 +324,6 @@ export const sortAndAdjustDates = (
   workdayHours,
   holidayChecker,
   holidays,
-  draggedJobId,
-  dropDate,
   timeOffByBuilder,
   dayWidth = 30,
   chartStartDate,

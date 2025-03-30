@@ -55,8 +55,6 @@ export const updateTasksAfterBuilderChanges = (
 				workdayHours,
 				holidayChecker,
 				holidays,
-				builder.employee_id,
-				null,
 				timeOffByBuilder,
 				dayWidth,
 				chartStartDate

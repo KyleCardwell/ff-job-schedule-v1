@@ -644,7 +644,6 @@ const JobModal = ({
           workdayHours,
           holidayChecker,
           holidays,
-          oldBuilderId,
           timeOffByBuilder
         );
 
@@ -653,7 +652,6 @@ const JobModal = ({
           workdayHours,
           holidayChecker,
           holidays,
-          newBuilderId,
           timeOffByBuilder
         );
 
@@ -741,8 +739,6 @@ const JobModal = ({
         workdayHours,
         holidayChecker,
         holidays,
-        null,
-        null,
         timeOffByBuilder,
         dayWidth,
         chartStartDate
@@ -1108,8 +1104,6 @@ const JobModal = ({
           workdayHours,
           holidayChecker,
           holidays,
-          null,
-          null,
           timeOffByBuilder,
           dayWidth,
           chartStartDate

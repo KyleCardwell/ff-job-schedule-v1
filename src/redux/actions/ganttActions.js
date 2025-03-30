@@ -50,8 +50,6 @@ export const updateWorkPeriodsByBuilder = (
 			workdayHours,
 			holidayChecker,
 			holidays,
-			singlePeriod.employee_id,
-			newStartDate,
 			timeOffByBuilder
 		);
 

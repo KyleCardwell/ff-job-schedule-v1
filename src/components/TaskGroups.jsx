@@ -303,8 +303,6 @@ const TaskGroups = ({
           workdayHours,
           holidayChecker,
           holidays,
-          d.subtask_id,
-          newStartDate,
           timeOffByBuilder,
           dayWidth,
           chartStartDate
@@ -457,8 +455,6 @@ const TaskGroups = ({
           workdayHours,
           holidayChecker,
           holidays,
-          d.subtask_id,
-          d.start_date,
           timeOffByBuilder,
           dayWidth,
           chartStartDate
