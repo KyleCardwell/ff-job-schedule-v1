@@ -22,6 +22,7 @@ import { updateTasksByOneBuilder } from "../redux/actions/taskData";
 import { isEqual, omit } from "lodash";
 import { updateSubtasksPositions } from "../redux/actions/projects";
 import { usePermissions } from "../hooks/usePermissions";
+import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 
 const TaskGroups = ({
   chartRef,
@@ -298,7 +299,7 @@ const TaskGroups = ({
           .filter((job) => job.task_active);
 
         // Sort and adjust dates for the builder's jobs
-        const sortedBuilderTasks = sortAndAdjustDates(
+        const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
           updatedBuilderTasks,
           workdayHours,
           holidayChecker,
@@ -334,6 +335,7 @@ const TaskGroups = ({
               dispatch(
                 updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
               );
+              dispatch(updateEmployeeSchedulingConflicts(d.employee_id, conflicts));
 
               // Filter out unchanged tasks
               const tasksToUpdate = sortedBuilderTasks.filter((task) => {
@@ -450,7 +452,7 @@ const TaskGroups = ({
         //   .filter((job) => job.task_active);
 
         // Sort and adjust dates for the builder's jobs
-        const sortedBuilderTasks = sortAndAdjustDates(
+        const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
           updatedBuilderTasks,
           workdayHours,
           holidayChecker,
@@ -487,6 +489,7 @@ const TaskGroups = ({
               dispatch(
                 updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
               );
+              dispatch(updateEmployeeSchedulingConflicts(d.employee_id, conflicts));
 
               // Filter out unchanged tasks
               const tasksToUpdate = sortedBuilderTasks.filter((task) => {

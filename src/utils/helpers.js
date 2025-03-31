@@ -330,10 +330,28 @@ export const sortAndAdjustDates = (
   skipSort = false
 ) => {
   let arrayToProcess = [...jobsArray];
+  let conflicts = [];
+
+  // Create a timeline map to track hard_start_dates
+  const timeline = new Map();
 
   // Sort the array by date
   if (!skipSort) {
     arrayToProcess.sort((a, b) => {
+      // Track hard_start_dates in the timeline while sorting
+      if (a.hard_start_date) {
+        timeline.set(normalizeDate(a.start_date), {
+          task_name: a.subtask_name,
+          subtask_id: a.subtask_id
+        });
+      }
+      if (b.hard_start_date) {
+        timeline.set(normalizeDate(b.start_date), {
+          task_name: b.subtask_name,
+          subtask_id: b.subtask_id
+        });
+      }
+
       const dateComparison = a.start_date.localeCompare(b.start_date);
       if (dateComparison === 0) {
         // If dates are equal, prioritize hard start dates
@@ -342,10 +360,10 @@ export const sortAndAdjustDates = (
         
         // If both have same hard_start_date status, consider drag direction
         if (a.isDragged) {
-        return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
+          return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
         }
         if (b.isDragged) {
-        return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
+          return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
         }
       }
       return dateComparison;
@@ -353,7 +371,7 @@ export const sortAndAdjustDates = (
   }
 
   // Adjust the dates and calculate endDates
-  return arrayToProcess.reduce((acc, current, index, array) => {
+  const tasks = arrayToProcess.reduce((acc, current, index, array) => {
     const initialStartDate = normalizeDate(current.start_date);
     const nextElement = array[index + 1];
 
@@ -385,6 +403,25 @@ export const sortAndAdjustDates = (
       addDays(start_date, Math.ceil(jobHours / workdayHours))
     );
 
+    // Check for conflicts with hard start dates
+    const taskConflicts = Array.from(timeline.entries())
+      .filter(([date, info]) => 
+        !current.hard_start_date && // Don't check hard start tasks against themselves
+        info.subtask_id !== current.subtask_id && // Don't check against self
+        new Date(end_date) > new Date(date) && // Task ends after hard start date
+        new Date(start_date) < new Date(date) // Task starts before hard start date
+      )
+      .map(([date, info]) => ({
+        conflicting_task: info.task_name,
+        hard_start_date: date,
+        subtask_id: info.subtask_id
+      }));
+
+    // Add any conflicts found to our list
+    if (taskConflicts.length > 0) {
+      conflicts.push(...taskConflicts);
+    }
+
     // Create new task object without isDragged flag
     const { isDragged, ...taskWithoutDragFlag } = current;
 
@@ -393,7 +430,7 @@ export const sortAndAdjustDates = (
       start_date,
       end_date,
       subtask_width: (jobHours / workdayHours) * dayWidth,
-      xPosition: calculateXPosition(start_date, chartStartDate, dayWidth),
+      xPosition: calculateXPosition(start_date, chartStartDate, dayWidth)
     };
 
     // Check if next element has hard_start_date and would overlap with current
@@ -434,6 +471,8 @@ export const sortAndAdjustDates = (
 
     return acc;
   }, []);
+
+  return { tasks, conflicts };
 };
 
 // Function to reconstruct the job structure for Redux

@@ -29,7 +29,7 @@ export const fetchEmployees = () => async (dispatch) => {
 	try {
 		const { data, error } = await supabase
 			.from("employees")
-			.select("employee_id, employee_name, employee_color, time_off, employee_type, employee_rate")
+			.select("employee_id, employee_name, employee_color, time_off, employee_type, employee_rate, scheduling_conflicts")
 			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
@@ -156,4 +156,23 @@ export const deleteEmployees = (employeeIds) => async (dispatch) => {
 		console.error("Error deleting employees:", error);
 		return { success: false, error: error.message };
 	}
+};
+
+// Action to update scheduling conflicts for an employee
+export const updateEmployeeSchedulingConflicts = (employeeId, conflicts = []) => async (dispatch) => {
+  try {
+    const { error } = await supabase
+      .from("employees")
+      .update({ scheduling_conflicts: conflicts })
+      .eq("employee_id", employeeId);
+
+    if (error) throw error;
+
+    dispatch({
+      type: Actions.builders.UPDATE_EMPLOYEE_SCHEDULING_CONFLICTS,
+      payload: { employeeId, conflicts }
+    });
+  } catch (error) {
+    console.error("Error updating employee scheduling conflicts:", error);
+  }
 };

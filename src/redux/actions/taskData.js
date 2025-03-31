@@ -50,7 +50,7 @@ export const updateTasksAfterBuilderChanges = (
 			const builderTasks = acc.filter(
 				(task) => task.employee_id === builder.employee_id
 			);
-			const sortedTasks = sortAndAdjustDates(
+			const {tasks: sortedTasks } = sortAndAdjustDates(
 				builderTasks,
 				workdayHours,
 				holidayChecker,

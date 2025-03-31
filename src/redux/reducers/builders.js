@@ -111,6 +111,16 @@ export const builders = (state = initialState, action) => {
         ),
       };
 
+    case Actions.employees.UPDATE_EMPLOYEE_SCHEDULING_CONFLICTS:
+      return {
+        ...state,
+        employees: state.employees.map((employee) =>
+          employee.employee_id === action.payload.employeeId
+            ? { ...employee, scheduling_conflicts: action.payload.conflicts }
+            : employee
+        ),
+      };
+
     default:
       return state;
   }

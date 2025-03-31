@@ -20,6 +20,7 @@ import {
 import { Field, Label, Switch } from "@headlessui/react";
 import { createProjectFinancials } from "../redux/actions/financialsData";
 import { usePermissions } from "../hooks/usePermissions";
+import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 
 const JobModal = ({
   isOpen,
@@ -70,6 +71,7 @@ const JobModal = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [pendingConflicts, setPendingConflicts] = useState({});
 
   const [selectedEmployeeInput, setSelectedEmployeeInput] = useState({
     workPeriodId: null,
@@ -318,6 +320,8 @@ const JobModal = ({
       });
       return updatedJobsByBuilder;
     });
+
+    setErrors((prevErrors) => ({ ...prevErrors, general: undefined }));
   };
 
   const handleCancelNewRoom = (task_id) => {
@@ -639,7 +643,7 @@ const JobModal = ({
         };
 
         // Sort and adjust both builders' tasks
-        const oldBuilderTasks = sortAndAdjustDates(
+        const { tasks: oldBuilderTasks, conflicts: oldBuilderConflicts } = sortAndAdjustDates(
           prev[oldBuilderId].filter((wp) => wp.subtask_id !== workPeriodId),
           workdayHours,
           holidayChecker,
@@ -647,13 +651,20 @@ const JobModal = ({
           timeOffByBuilder
         );
 
-        const newBuilderTasks = sortAndAdjustDates(
+        const { tasks: newBuilderTasks, conflicts: newBuilderConflicts } = sortAndAdjustDates(
           [...(prev[newBuilderId] || []), updatedWorkPeriod],
           workdayHours,
           holidayChecker,
           holidays,
           timeOffByBuilder
         );
+
+        // Update conflicts for both builders
+        setPendingConflicts((prev) => ({
+          ...prev,
+          [oldBuilderId]: oldBuilderConflicts || [],
+          [newBuilderId]: newBuilderConflicts || []
+        }));
 
         return {
           ...prev,
@@ -734,7 +745,7 @@ const JobModal = ({
         (task) => task.employee_id === employee_id && task.task_active
       );
 
-      const sortedBuilderTasks = sortAndAdjustDates(
+      const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
         builderTasks,
         workdayHours,
         holidayChecker,
@@ -756,6 +767,11 @@ const JobModal = ({
           updatedTasks.push(sortedTask);
         }
       });
+
+      setPendingConflicts((prev) => ({
+        ...prev,
+        [employee_id]: conflicts || []
+      }));
     });
 
     return { updatedTasks, updatedBuilderArrays };
@@ -1099,7 +1115,7 @@ const JobModal = ({
           ...updatedBuilderTasks,
         ];
 
-        const sortedBuilderTasks = sortAndAdjustDates(
+        const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
           combinedBuilderTasks.filter((task) => task.task_active),
           workdayHours,
           holidayChecker,
@@ -1123,6 +1139,11 @@ const JobModal = ({
             updatedTasks.push(sortedTask);
           }
         });
+
+        setPendingConflicts((prev) => ({
+          ...prev,
+          [employee_id]: conflicts || []
+        }));
       });
 
       // Filter out unchanged tasks
@@ -1166,6 +1187,11 @@ const JobModal = ({
       if (result.error) {
         throw new Error(result.error?.message || "Failed to save project");
       }
+
+      // Update conflicts in Supabase and Redux
+      Object.entries(pendingConflicts).forEach(([builderId, conflicts]) => {
+        dispatch(updateEmployeeSchedulingConflicts(+builderId, conflicts));
+      });
 
       // If we get here, the save was successful
       onSave();

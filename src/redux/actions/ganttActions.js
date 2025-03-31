@@ -45,7 +45,7 @@ export const updateWorkPeriodsByBuilder = (
 			workPeriod.subtask_id === singlePeriod.subtask_id ? singlePeriod : workPeriod
 		);
 
-		const sortedBuilderWorkPeriods = sortAndAdjustDates(
+		const {tasks: sortedBuilderWorkPeriods } = sortAndAdjustDates(
 			updatedBuilderWorkPeriods,
 			workdayHours,
 			holidayChecker,
