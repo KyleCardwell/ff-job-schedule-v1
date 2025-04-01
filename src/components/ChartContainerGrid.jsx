@@ -49,55 +49,60 @@ export const ChartContainer = () => {
     setHolidayChecker(hd);
   }, []);
 
-  const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate, someTaskAssigned } =
-    useMemo(() => {
-      let currentJobId = null;
-      let jobsIndex = -1;
-      let earliestStartDate = new Date(8640000000000000); // Initialize with max date
-      let latestStartDate = new Date(-8640000000000000); // Initialize with min date
-      let someTaskAssigned = false;
+  const {
+    activeRoomsData,
+    lastJobsIndex,
+    earliestStartDate,
+    latestStartDate,
+    someTaskAssigned,
+  } = useMemo(() => {
+    let currentJobId = null;
+    let jobsIndex = -1;
+    let earliestStartDate = new Date(8640000000000000); // Initialize with max date
+    let latestStartDate = new Date(-8640000000000000); // Initialize with min date
+    let someTaskAssigned = false;
 
-      const activeRooms = chartData
-        .filter((room) => room.task_active)
-        .map((room) => {
-          if (room.project_id !== currentJobId) {
-            currentJobId = room.project_id;
-            jobsIndex++;
+    const activeRooms = chartData
+      .filter((room) => room.task_active)
+      .map((room) => {
+        if (room.project_id !== currentJobId) {
+          currentJobId = room.project_id;
+          jobsIndex++;
+        }
+
+        if (room.employee_id !== defaultEmployeeId) {
+          someTaskAssigned = true;
+          const roomStartDate = parseISO(normalizeDate(room.start_date));
+          const roomEndDate = parseISO(normalizeDate(room.end_date));
+
+          if (roomStartDate < earliestStartDate) {
+            earliestStartDate = roomStartDate;
           }
-
-          if (room.employee_id !== defaultEmployeeId) {
-            someTaskAssigned = true;
-            const roomStartDate = parseISO(normalizeDate(room.start_date));
-            const roomEndDate = parseISO(normalizeDate(room.end_date));
-
-            if (roomStartDate < earliestStartDate) {
-              earliestStartDate = roomStartDate;
-            }
-            if (roomEndDate > latestStartDate) {
-              latestStartDate = roomEndDate;
-            }
+          if (roomEndDate > latestStartDate) {
+            latestStartDate = roomEndDate;
           }
+        }
 
-          return {
-            ...room,
-            jobsIndex: jobsIndex,
-          };
-        });
+        return {
+          ...room,
+          jobsIndex: jobsIndex,
+        };
+      });
 
-      return {
-        activeRoomsData: activeRooms,
-        lastJobsIndex: jobsIndex,
-        someTaskAssigned,
-        earliestStartDate:
-          earliestStartDate === new Date(8640000000000000)
-            ? null
-            : earliestStartDate,
-        latestStartDate:
-          latestStartDate === new Date(-8640000000000000)
-            ? null
-            : latestStartDate,
-      };
-    }, [chartData, employees, workdayHours, holidays]);
+    return {
+      activeRoomsData: activeRooms,
+      lastJobsIndex: jobsIndex,
+      someTaskAssigned,
+      earliestStartDate:
+        earliestStartDate === new Date(8640000000000000)
+          ? null
+          : earliestStartDate,
+      latestStartDate:
+        latestStartDate === new Date(-8640000000000000)
+          ? null
+          : latestStartDate,
+    };
+  }, [chartData, employees, workdayHours, holidays]);
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column
@@ -127,9 +132,19 @@ export const ChartContainer = () => {
   );
   const spanBarHeight = 6;
 
+  const employeesScheduledHeight = useMemo(() => {
+    return employees.reduce((total, employee) => {
+      return (
+        total +
+        (employee.scheduling_conflicts.length > 0
+          ? rowHeight - spanBarHeight
+          : spanBarHeight)
+      );
+    }, 0);
+  }, [employees, rowHeight, spanBarHeight]);
+
   const monthHeaderHeight = 20;
   const dayHeaderHeight = 25;
-  const employeesScheduledHeight = employees.length * spanBarHeight;
   const headerHeight = monthHeaderHeight + dayHeaderHeight;
   const headerTextGap = 5;
   const alternateMonthColors = ["bg-slate-200", "bg-slate-300"];
@@ -784,6 +799,7 @@ export const ChartContainer = () => {
                     leftColumnWidth={leftColumnWidth}
                     employeesScheduledHeight={employeesScheduledHeight}
                     spanBarHeight={spanBarHeight}
+                    rowHeight={rowHeight}
                   />
                 </div>
               )}
@@ -838,6 +854,7 @@ export const ChartContainer = () => {
                     dayWidth={dayWidth}
                     leftColumnWidth={leftColumnWidth}
                     spanBarHeight={spanBarHeight}
+                    rowHeight={rowHeight}
                   />
                 </div>
               </div>

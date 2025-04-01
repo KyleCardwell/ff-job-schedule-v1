@@ -169,7 +169,7 @@ export const updateEmployeeSchedulingConflicts = (employeeId, conflicts = []) =>
     if (error) throw error;
 
     dispatch({
-      type: Actions.builders.UPDATE_EMPLOYEE_SCHEDULING_CONFLICTS,
+      type: Actions.employees.UPDATE_EMPLOYEE_SCHEDULING_CONFLICTS,
       payload: { employeeId, conflicts }
     });
   } catch (error) {

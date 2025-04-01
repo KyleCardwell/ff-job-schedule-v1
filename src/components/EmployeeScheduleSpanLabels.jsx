@@ -5,6 +5,7 @@ const EmployeeScheduleSpanLabels = ({
   leftColumnWidth,
   employeesScheduledHeight,
   spanBarHeight,
+  rowHeight,
 }) => {
   const allEmployees = useSelector((state) => state.builders.employees);
   const employees = useMemo(() => allEmployees.slice(1), [allEmployees]);
@@ -31,7 +32,7 @@ const EmployeeScheduleSpanLabels = ({
             className="mx-2"
             key={employee.employee_id}
             style={{
-              height: `${spanBarHeight}px`,
+              height: `${employee.scheduling_conflicts.length > 0 ? rowHeight - spanBarHeight : spanBarHeight}px`,
               backgroundColor: employee.employee_color,
               printColorAdjust: "exact",
               WebkitPrintColorAdjust: "exact",

@@ -341,14 +341,16 @@ export const sortAndAdjustDates = (
       // Track hard_start_dates in the timeline while sorting
       if (a.hard_start_date) {
         timeline.set(normalizeDate(a.start_date), {
-          task_name: a.subtask_name,
-          subtask_id: a.subtask_id
+          task_name: a.task_name,
+          subtask_id: a.subtask_id,
+          project_name: a.project_name
         });
       }
       if (b.hard_start_date) {
         timeline.set(normalizeDate(b.start_date), {
-          task_name: b.subtask_name,
-          subtask_id: b.subtask_id
+          task_name: b.task_name,
+          subtask_id: b.subtask_id,
+          project_name: b.project_name
         });
       }
 
@@ -413,6 +415,7 @@ export const sortAndAdjustDates = (
       )
       .map(([date, info]) => ({
         conflicting_task: info.task_name,
+        project_name: info.project_name,
         hard_start_date: date,
         subtask_id: info.subtask_id
       }));
