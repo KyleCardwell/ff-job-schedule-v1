@@ -416,6 +416,8 @@ export const sortAndAdjustDates = (
       .map(([date, info]) => ({
         conflicting_task: current.task_name,
         project_name: current.project_name,
+        overlaps_task: info.task_name,
+        overlaps_project: info.project_name,
         hard_start_date: date,
         subtask_id: info.subtask_id
       }));

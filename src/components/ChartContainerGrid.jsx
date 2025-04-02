@@ -726,9 +726,10 @@ export const ChartContainer = () => {
         acc[employee.employee_id] = {
           employeeId: employee.employee_id,
           color: employee.employee_color,
-          height: employee.scheduling_conflicts?.length > 0
-            ? rowHeight - spanBarHeight
-            : spanBarHeight,
+          height:
+            employee.scheduling_conflicts?.length > 0
+              ? rowHeight - spanBarHeight
+              : spanBarHeight,
         };
         return acc;
       }, {});
@@ -761,8 +762,12 @@ export const ChartContainer = () => {
 
     // Convert to array and sort by employee order
     const spansArray = Object.values(spans).sort((a, b) => {
-      const aIndex = employees.findIndex((emp) => emp.employee_id === a.employeeId);
-      const bIndex = employees.findIndex((emp) => emp.employee_id === b.employeeId);
+      const aIndex = employees.findIndex(
+        (emp) => emp.employee_id === a.employeeId
+      );
+      const bIndex = employees.findIndex(
+        (emp) => emp.employee_id === b.employeeId
+      );
       return aIndex - bIndex;
     });
 
@@ -817,23 +822,34 @@ export const ChartContainer = () => {
           <div className="relative">
             {/* Fixed conflict text */}
             {isExpanded &&
-              calculateEmployeePositions.map((span) => {
+              calculateEmployeePositions.map((span, index) => {
                 const employee = employees.find(
                   (emp) => emp.employee_id === span.employeeId
                 );
                 if (!employee?.scheduling_conflicts?.length) return null;
-                const conflict = employee.scheduling_conflicts[0];
 
                 return (
                   <div
                     key={span.employeeId}
-                    className="absolute text-white text-sm whitespace-nowrap z-[22]"
-                    style={{
-                      top: span.yPosition + headerHeight,
-                      left: `${leftColumnWidth + 8}px`,
-                    }}
+                    className="flex gap-5 absolute text-white text-sm whitespace-nowrap z-[22]"
+                    style={{ top: span.yPosition + headerHeight, left: leftColumnWidth + 6 }}
                   >
-                    Conflict: {conflict.conflicting_task} ({conflict.project_name})
+                    {employee.scheduling_conflicts.map(
+                      (conflict, conflictIndex) => (
+                        <div
+                          key={`${span.employeeId}-${conflictIndex}`}
+                          className="px-1"
+                          style={{
+                            backgroundColor:
+                              index % 2 === 0 ? "black" : "white",
+                            color: index % 2 === 0 ? "white" : "black",
+                            height: rowHeight - spanBarHeight,
+                          }}
+                        >
+                          {`${conflict.project_name} ${conflict.conflicting_task} overlaps ${conflict.overlaps_project} ${conflict.overlaps_task}`}
+                        </div>
+                      )
+                    )}
                   </div>
                 );
               })}
@@ -842,7 +858,9 @@ export const ChartContainer = () => {
           <div
             className="grid overflow-auto flex-grow max-h-full print:h-auto print:overflow-visible print:transform print:origin-top-left"
             style={{
-              gridTemplateColumns: `${leftColumnWidth}px ${dayWidth * numDays}px`,
+              gridTemplateColumns: `${leftColumnWidth}px ${
+                dayWidth * numDays
+              }px`,
               transform:
                 "translate(var(--print-translate-x, 0), var(--print-translate-y, 0))",
             }}
