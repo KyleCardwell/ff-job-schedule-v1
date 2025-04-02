@@ -12,7 +12,7 @@ import { GridLoader } from "react-spinners";
 import { normalizeDate } from "../utils/dateUtils";
 import * as d3 from "d3";
 import Holidays from "date-holidays";
-import { isHoliday } from "../utils/helpers";
+import { calculateXPosition, isHoliday } from "../utils/helpers";
 import BuilderLegend from "./BuilderLegend";
 import BuilderModal from "./BuilderModal";
 import JobModalChartData from "./JobModalChartData";
@@ -531,7 +531,7 @@ export const ChartContainer = () => {
       // Add double-click event for job number and job name
       jobNumberText.on("dblclick", (event) => {
         event.stopPropagation();
-        const job = tasks.filter((task) => task.project_id === d.project_id);
+        const job = tasks.filter((task) => task.project_id === d.project_id); // Find the job associated with the room
         setSelectedJob(job);
         setClickedTask(d);
         setIsJobModalOpen(true);
@@ -539,7 +539,7 @@ export const ChartContainer = () => {
 
       jobNameText.on("dblclick", (event) => {
         event.stopPropagation();
-        const job = tasks.filter((task) => task.project_id === d.project_id);
+        const job = tasks.filter((task) => task.project_id === d.project_id); // Find the job associated with the room
         setSelectedJob(job);
         setClickedTask(d);
         setIsJobModalOpen(true);
@@ -719,6 +719,70 @@ export const ChartContainer = () => {
     };
   }, []);
 
+  const calculateEmployeePositions = useMemo(() => {
+    const spans = employees
+      .filter((emp) => emp.employee_id !== defaultEmployeeId)
+      .reduce((acc, employee) => {
+        acc[employee.employee_id] = {
+          employeeId: employee.employee_id,
+          color: employee.employee_color,
+          height: employee.scheduling_conflicts?.length > 0
+            ? rowHeight - spanBarHeight
+            : spanBarHeight,
+        };
+        return acc;
+      }, {});
+
+    // Add task data if it exists
+    Object.entries(subTasksByEmployee).forEach(([employee_id, tasks]) => {
+      if (+employee_id === defaultEmployeeId || tasks.length === 0) return;
+
+      const firstTask = tasks[0];
+      const lastTask = tasks[tasks.length - 1];
+
+      const firstTaskXPosition = calculateXPosition(
+        normalizeDate(firstTask.start_date),
+        normalizeDate(chartStartDate),
+        dayWidth
+      );
+
+      const lastTaskXPosition = calculateXPosition(
+        normalizeDate(lastTask.start_date),
+        normalizeDate(chartStartDate),
+        dayWidth
+      );
+
+      spans[employee_id] = {
+        ...spans[employee_id],
+        xPosition: firstTaskXPosition,
+        width: lastTaskXPosition + lastTask.subtask_width - firstTaskXPosition,
+      };
+    });
+
+    // Convert to array and sort by employee order
+    const spansArray = Object.values(spans).sort((a, b) => {
+      const aIndex = employees.findIndex((emp) => emp.employee_id === a.employeeId);
+      const bIndex = employees.findIndex((emp) => emp.employee_id === b.employeeId);
+      return aIndex - bIndex;
+    });
+
+    // Calculate cumulative yPositions
+    let currentY = spanBarHeight / 2;
+    return spansArray.map((span) => ({
+      ...span,
+      yPosition: currentY,
+      nextY: (currentY += span.height),
+    }));
+  }, [
+    employees,
+    subTasksByEmployee,
+    chartStartDate,
+    dayWidth,
+    rowHeight,
+    spanBarHeight,
+    defaultEmployeeId,
+  ]);
+
   return (
     <div className="flex flex-col h-screen print:block print:h-auto print:overflow-visible">
       <div className="flex justify-start ml-2 md:justify-center md:ml-0">
@@ -750,12 +814,35 @@ export const ChartContainer = () => {
         </div>
       ) : (
         <div className="flex-grow overflow-auto print:h-auto print:overflow-visible">
+          <div className="relative">
+            {/* Fixed conflict text */}
+            {isExpanded &&
+              calculateEmployeePositions.map((span) => {
+                const employee = employees.find(
+                  (emp) => emp.employee_id === span.employeeId
+                );
+                if (!employee?.scheduling_conflicts?.length) return null;
+                const conflict = employee.scheduling_conflicts[0];
+
+                return (
+                  <div
+                    key={span.employeeId}
+                    className="absolute text-white text-sm whitespace-nowrap z-[22]"
+                    style={{
+                      top: span.yPosition + headerHeight,
+                      left: `${leftColumnWidth + 8}px`,
+                    }}
+                  >
+                    Conflict: {conflict.conflicting_task} ({conflict.project_name})
+                  </div>
+                );
+              })}
+          </div>
+
           <div
             className="grid overflow-auto flex-grow max-h-full print:h-auto print:overflow-visible print:transform print:origin-top-left"
             style={{
-              gridTemplateColumns: `${leftColumnWidth}px ${
-                dayWidth * numDays
-              }px`,
+              gridTemplateColumns: `${leftColumnWidth}px ${dayWidth * numDays}px`,
               transform:
                 "translate(var(--print-translate-x, 0), var(--print-translate-y, 0))",
             }}
@@ -855,6 +942,7 @@ export const ChartContainer = () => {
                     leftColumnWidth={leftColumnWidth}
                     spanBarHeight={spanBarHeight}
                     rowHeight={rowHeight}
+                    employeePositions={calculateEmployeePositions}
                   />
                 </div>
               </div>

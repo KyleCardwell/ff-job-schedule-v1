@@ -414,8 +414,8 @@ export const sortAndAdjustDates = (
         new Date(start_date) < new Date(date) // Task starts before hard start date
       )
       .map(([date, info]) => ({
-        conflicting_task: info.task_name,
-        project_name: info.project_name,
+        conflicting_task: current.task_name,
+        project_name: current.project_name,
         hard_start_date: date,
         subtask_id: info.subtask_id
       }));
