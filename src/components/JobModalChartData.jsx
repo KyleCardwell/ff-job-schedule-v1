@@ -804,69 +804,69 @@ const JobModal = ({
     setCompletedJobData(formattedCompletedJob);
   };
 
-  const adjustBuilderTasksForCompletedJob = (
-    builders,
-    tasksByBuilder,
-    completedTaskIds
-  ) => {
-    if (!builders.length || !Object.keys(tasksByBuilder).length)
-      return tasksByBuilder;
+  // const adjustBuilderTasksForCompletedJob = (
+  //   builders,
+  //   tasksByBuilder,
+  //   completedTaskIds
+  // ) => {
+  //   if (!builders.length || !Object.keys(tasksByBuilder).length)
+  //     return tasksByBuilder;
 
-    // Create a deep copy of tasksByBuilder
-    const newTasksByBuilder = { ...tasksByBuilder };
+  //   // Create a deep copy of tasksByBuilder
+  //   const newTasksByBuilder = { ...tasksByBuilder };
 
-    builders.forEach((builderId) => {
-      // Create a deep copy of tasks array
-      const tasks = tasksByBuilder[builderId].map((task) => ({ ...task }));
-      newTasksByBuilder[builderId] = tasks;
+  //   builders.forEach((builderId) => {
+  //     // Create a deep copy of tasks array
+  //     const tasks = tasksByBuilder[builderId].map((task) => ({ ...task }));
+  //     newTasksByBuilder[builderId] = tasks;
 
-      let accumulatedDuration = 0;
-      let previousNonCompletedIndex = -1;
+  //     let accumulatedDuration = 0;
+  //     let previousNonCompletedIndex = -1;
 
-      // Find the starting index (first non-completed task)
-      let startIndex = 0;
-      while (
-        startIndex < tasks.length &&
-        completedTaskIds.includes(tasks[startIndex].subtask_id)
-      ) {
-        startIndex++;
-      }
+  //     // Find the starting index (first non-completed task)
+  //     let startIndex = 0;
+  //     while (
+  //       startIndex < tasks.length &&
+  //       completedTaskIds.includes(tasks[startIndex].subtask_id)
+  //     ) {
+  //       startIndex++;
+  //     }
 
-      // Find the last non-completed task index
-      let lastNonCompletedTaskIndex = -1;
-      for (let i = tasks.length - 1; i >= 0; i--) {
-        if (!completedTaskIds.includes(tasks[i].subtask_id)) {
-          lastNonCompletedTaskIndex = i;
-          break;
-        }
-      }
+  //     // Find the last non-completed task index
+  //     let lastNonCompletedTaskIndex = -1;
+  //     for (let i = tasks.length - 1; i >= 0; i--) {
+  //       if (!completedTaskIds.includes(tasks[i].subtask_id)) {
+  //         lastNonCompletedTaskIndex = i;
+  //         break;
+  //       }
+  //     }
 
-      // If no non-completed tasks, exit early
-      if (lastNonCompletedTaskIndex === -1) return;
+  //     // If no non-completed tasks, exit early
+  //     if (lastNonCompletedTaskIndex === -1) return;
 
-      for (let i = startIndex; i <= lastNonCompletedTaskIndex; i++) {
-        const task = tasks[i];
-        const isCompleted = completedTaskIds.includes(task.subtask_id);
+  //     for (let i = startIndex; i <= lastNonCompletedTaskIndex; i++) {
+  //       const task = tasks[i];
+  //       const isCompleted = completedTaskIds.includes(task.subtask_id);
 
-        if (isCompleted) {
-          accumulatedDuration += task.duration;
-        } else {
-          if (previousNonCompletedIndex !== -1) {
-            // Create a new task object with updated duration
-            tasks[previousNonCompletedIndex] = {
-              ...tasks[previousNonCompletedIndex],
-              duration:
-                tasks[previousNonCompletedIndex].duration + accumulatedDuration,
-            };
-          }
-          previousNonCompletedIndex = i;
-          accumulatedDuration = 0;
-        }
-      }
-    });
+  //       if (isCompleted) {
+  //         accumulatedDuration += task.duration;
+  //       } else {
+  //         if (previousNonCompletedIndex !== -1) {
+  //           // Create a new task object with updated duration
+  //           tasks[previousNonCompletedIndex] = {
+  //             ...tasks[previousNonCompletedIndex],
+  //             duration:
+  //               tasks[previousNonCompletedIndex].duration + accumulatedDuration,
+  //           };
+  //         }
+  //         previousNonCompletedIndex = i;
+  //         accumulatedDuration = 0;
+  //       }
+  //     }
+  //   });
 
-    return newTasksByBuilder;
-  };
+  //   return newTasksByBuilder;
+  // };
 
   const confirmCompleteJob = async () => {
     setSaveError(null);
@@ -881,28 +881,51 @@ const JobModal = ({
         (room) => room.workPeriods
       );
 
-      const completedTaskIds = new Set(
-        completedProjectTasks.map((task) => task.subtask_id)
-      );
+
+      // this is no longer used
+      // const completedTaskIds = new Set(
+      //   completedProjectTasks.map((task) => task.subtask_id)
+      // );
 
       // Get unique builders involved in this job
       const buildersInvolvedInJob = new Set(
         completedProjectTasks.map((task) => task.employee_id)
       );
 
-      const adjustedLocalJobsByBuilder = adjustBuilderTasksForCompletedJob(
-        [...buildersInvolvedInJob],
-        localJobsByBuilder,
-        [...completedTaskIds]
-      );
+      // This function stretches the tasks to fill empty space if the following task gets completed
+      // It is no longer necessary
+      // const adjustedLocalJobsByBuilder = adjustBuilderTasksForCompletedJob(
+      //   [...buildersInvolvedInJob],
+      //   localJobsByBuilder,
+      //   [...completedTaskIds]
+      // );
 
       // Get all tasks (including those not in this job)
-      const allTasks = Object.values(adjustedLocalJobsByBuilder).flat();
+      const allTasks = Object.values(localJobsByBuilder).flat();
 
-      // Remove completed job tasks
-      const remainingTasks = allTasks.filter(
-        (task) => task.project_id !== completedJobData.project_id
-      );
+      // Remove completed job tasks and mark tasks after completed ones as hard start
+      const remainingTasks = [];
+      for (let i = 0; i < allTasks.length; i++) {
+        const currentTask = allTasks[i];
+        const prevTask = allTasks[i - 1];
+        
+        if (currentTask.project_id === completedJobData.project_id) {
+          continue; // Skip this task as it's from completed project
+        }
+        
+        // If previous task exists, is same employee, but from completed project,
+        // mark current task as hard start
+        if (prevTask && 
+            prevTask.employee_id === currentTask.employee_id && 
+            prevTask.project_id === completedJobData.project_id) {
+          remainingTasks.push({
+            ...currentTask,
+            hard_start_date: true
+          });
+        } else {
+          remainingTasks.push(currentTask);
+        }
+      }
 
       // Sort and adjust dates for affected builders
       const { updatedTasks } = sortAndAdjustBuilderTasks(
