@@ -48,7 +48,9 @@ const JobModal = ({
 
   const { CSVReader } = useCSVReader();
 
-  const { employees } = useSelector((state) => state.builders);
+  const employees = useSelector((state) =>
+    state.builders.employees.filter((employee) => employee.can_schedule)
+  );
   const defaultEmployeeId = employees[0]?.employee_id;
   const {
     chart_config_id: chartConfigId,
@@ -1560,7 +1562,7 @@ const JobModal = ({
                                 }
                               )
                             }
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                           />
                           <div className="absolute hidden group-hover:block bg-gray-800 text-white text-sm rounded px-2 py-1 left-1/2 -translate-x-1/2 bottom-full mb-1 whitespace-nowrap">
                             Hard start date - task must start on this date

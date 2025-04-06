@@ -29,7 +29,7 @@ export const fetchEmployees = () => async (dispatch) => {
 	try {
 		const { data, error } = await supabase
 			.from("employees")
-			.select("employee_id, employee_name, employee_color, time_off, employee_type, employee_rate, scheduling_conflicts")
+			.select("employee_id, employee_name, employee_color, time_off, employee_type, employee_rate, can_schedule, scheduling_conflicts")
 			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
@@ -77,7 +77,8 @@ export const addEmployees = (employees) => async (dispatch, getState) => {
 					time_off: employee.time_off,
 					employee_type: employee.employee_type,
 					employee_rate: employee.employee_rate,
-					team_id: state.auth.teamId
+					team_id: state.auth.teamId,
+					can_schedule: employee.can_schedule,
 				}))
 			)
 			.select()
@@ -112,12 +113,14 @@ export const updateEmployees = (employees) => async (dispatch) => {
 					time_off: employee.time_off,
 					employee_type: employee.employee_type,
 					employee_rate: employee.employee_rate,
+					can_schedule: employee.can_schedule,
 				})
 				.eq("employee_id", employee.employee_id)
 				.select();
 
 			if (error) throw error;
 
+			// Dispatch update to Redux store
 			dispatch({
 				type: Actions.employees.UPDATE_EMPLOYEE,
 				payload: data[0],
@@ -127,10 +130,10 @@ export const updateEmployees = (employees) => async (dispatch) => {
 		});
 
 		const results = await Promise.all(updatePromises);
-		return results;
+		return { success: true, data: results };
 	} catch (error) {
 		console.error("Error updating employees:", error);
-		throw error;
+		return { success: false, error: error.message };
 	}
 };
 

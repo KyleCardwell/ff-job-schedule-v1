@@ -134,6 +134,7 @@ export const ChartContainer = () => {
 
   const employeesScheduledHeight = useMemo(() => {
     return employees.reduce((total, employee) => {
+      if (!employee.can_schedule) return total;
       return (
         total +
         (employee.scheduling_conflicts.length > 0
