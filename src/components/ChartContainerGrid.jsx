@@ -722,7 +722,7 @@ export const ChartContainer = () => {
 
   const calculateEmployeePositions = useMemo(() => {
     const spans = employees
-      .filter((emp) => emp.employee_id !== defaultEmployeeId)
+      .filter((emp) => emp.employee_id !== defaultEmployeeId && emp.can_schedule)
       .reduce((acc, employee) => {
         acc[employee.employee_id] = {
           employeeId: employee.employee_id,
