@@ -5,7 +5,7 @@ import { binarySearch } from "../../utils/helpers";
 
 export const fetchProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at))",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at, hard_start_date))",
 };
 
 export const fetchCompletedProjectsOptions = {
@@ -280,6 +280,7 @@ export const saveProject = (projectData) => async (dispatch) => {
         duration: wp.duration,
         subtask_width: wp.subtask_width,
         subtask_created_at: wp.subtask_created_at,
+        hard_start_date: wp.hard_start_date,
       };
 
       if (wp.subTaskIsNew) {

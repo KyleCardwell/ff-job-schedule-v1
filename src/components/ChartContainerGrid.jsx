@@ -12,7 +12,7 @@ import { GridLoader } from "react-spinners";
 import { normalizeDate } from "../utils/dateUtils";
 import * as d3 from "d3";
 import Holidays from "date-holidays";
-import { isHoliday } from "../utils/helpers";
+import { calculateXPosition, isHoliday } from "../utils/helpers";
 import BuilderLegend from "./BuilderLegend";
 import BuilderModal from "./BuilderModal";
 import JobModalChartData from "./JobModalChartData";
@@ -49,55 +49,60 @@ export const ChartContainer = () => {
     setHolidayChecker(hd);
   }, []);
 
-  const { activeRoomsData, lastJobsIndex, earliestStartDate, latestStartDate, someTaskAssigned } =
-    useMemo(() => {
-      let currentJobId = null;
-      let jobsIndex = -1;
-      let earliestStartDate = new Date(8640000000000000); // Initialize with max date
-      let latestStartDate = new Date(-8640000000000000); // Initialize with min date
-      let someTaskAssigned = false;
+  const {
+    activeRoomsData,
+    lastJobsIndex,
+    earliestStartDate,
+    latestStartDate,
+    someTaskAssigned,
+  } = useMemo(() => {
+    let currentJobId = null;
+    let jobsIndex = -1;
+    let earliestStartDate = new Date(8640000000000000); // Initialize with max date
+    let latestStartDate = new Date(-8640000000000000); // Initialize with min date
+    let someTaskAssigned = false;
 
-      const activeRooms = chartData
-        .filter((room) => room.task_active)
-        .map((room) => {
-          if (room.project_id !== currentJobId) {
-            currentJobId = room.project_id;
-            jobsIndex++;
+    const activeRooms = chartData
+      .filter((room) => room.task_active)
+      .map((room) => {
+        if (room.project_id !== currentJobId) {
+          currentJobId = room.project_id;
+          jobsIndex++;
+        }
+
+        if (room.employee_id !== defaultEmployeeId) {
+          someTaskAssigned = true;
+          const roomStartDate = parseISO(normalizeDate(room.start_date));
+          const roomEndDate = parseISO(normalizeDate(room.end_date));
+
+          if (roomStartDate < earliestStartDate) {
+            earliestStartDate = roomStartDate;
           }
-
-          if (room.employee_id !== defaultEmployeeId) {
-            someTaskAssigned = true;
-            const roomStartDate = parseISO(normalizeDate(room.start_date));
-            const roomEndDate = parseISO(normalizeDate(room.end_date));
-
-            if (roomStartDate < earliestStartDate) {
-              earliestStartDate = roomStartDate;
-            }
-            if (roomEndDate > latestStartDate) {
-              latestStartDate = roomEndDate;
-            }
+          if (roomEndDate > latestStartDate) {
+            latestStartDate = roomEndDate;
           }
+        }
 
-          return {
-            ...room,
-            jobsIndex: jobsIndex,
-          };
-        });
+        return {
+          ...room,
+          jobsIndex: jobsIndex,
+        };
+      });
 
-      return {
-        activeRoomsData: activeRooms,
-        lastJobsIndex: jobsIndex,
-        someTaskAssigned,
-        earliestStartDate:
-          earliestStartDate === new Date(8640000000000000)
-            ? null
-            : earliestStartDate,
-        latestStartDate:
-          latestStartDate === new Date(-8640000000000000)
-            ? null
-            : latestStartDate,
-      };
-    }, [chartData, employees, workdayHours, holidays]);
+    return {
+      activeRoomsData: activeRooms,
+      lastJobsIndex: jobsIndex,
+      someTaskAssigned,
+      earliestStartDate:
+        earliestStartDate === new Date(8640000000000000)
+          ? null
+          : earliestStartDate,
+      latestStartDate:
+        latestStartDate === new Date(-8640000000000000)
+          ? null
+          : latestStartDate,
+    };
+  }, [chartData, employees, workdayHours, holidays]);
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column
@@ -127,9 +132,20 @@ export const ChartContainer = () => {
   );
   const spanBarHeight = 6;
 
+  const employeesScheduledHeight = useMemo(() => {
+    return employees.reduce((total, employee) => {
+      if (!employee.can_schedule) return total;
+      return (
+        total +
+        (employee.scheduling_conflicts.length > 0
+          ? rowHeight - spanBarHeight
+          : spanBarHeight)
+      );
+    }, 0);
+  }, [employees, rowHeight, spanBarHeight]);
+
   const monthHeaderHeight = 20;
   const dayHeaderHeight = 25;
-  const employeesScheduledHeight = employees.length * spanBarHeight;
   const headerHeight = monthHeaderHeight + dayHeaderHeight;
   const headerTextGap = 5;
   const alternateMonthColors = ["bg-slate-200", "bg-slate-300"];
@@ -516,7 +532,7 @@ export const ChartContainer = () => {
       // Add double-click event for job number and job name
       jobNumberText.on("dblclick", (event) => {
         event.stopPropagation();
-        const job = tasks.filter((task) => task.project_id === d.project_id);
+        const job = tasks.filter((task) => task.project_id === d.project_id); // Find the job associated with the room
         setSelectedJob(job);
         setClickedTask(d);
         setIsJobModalOpen(true);
@@ -524,7 +540,7 @@ export const ChartContainer = () => {
 
       jobNameText.on("dblclick", (event) => {
         event.stopPropagation();
-        const job = tasks.filter((task) => task.project_id === d.project_id);
+        const job = tasks.filter((task) => task.project_id === d.project_id); // Find the job associated with the room
         setSelectedJob(job);
         setClickedTask(d);
         setIsJobModalOpen(true);
@@ -704,6 +720,75 @@ export const ChartContainer = () => {
     };
   }, []);
 
+  const calculateEmployeePositions = useMemo(() => {
+    const spans = employees
+      .filter((emp) => emp.employee_id !== defaultEmployeeId && emp.can_schedule)
+      .reduce((acc, employee) => {
+        acc[employee.employee_id] = {
+          employeeId: employee.employee_id,
+          color: employee.employee_color,
+          height:
+            employee.scheduling_conflicts?.length > 0
+              ? rowHeight - spanBarHeight
+              : spanBarHeight,
+        };
+        return acc;
+      }, {});
+
+    // Add task data if it exists
+    Object.entries(subTasksByEmployee).forEach(([employee_id, tasks]) => {
+      if (+employee_id === defaultEmployeeId || tasks.length === 0) return;
+
+      const firstTask = tasks[0];
+      const lastTask = tasks[tasks.length - 1];
+
+      const firstTaskXPosition = calculateXPosition(
+        normalizeDate(firstTask.start_date),
+        normalizeDate(chartStartDate),
+        dayWidth
+      );
+
+      const lastTaskXPosition = calculateXPosition(
+        normalizeDate(lastTask.start_date),
+        normalizeDate(chartStartDate),
+        dayWidth
+      );
+
+      spans[employee_id] = {
+        ...spans[employee_id],
+        xPosition: firstTaskXPosition,
+        width: lastTaskXPosition + lastTask.subtask_width - firstTaskXPosition,
+      };
+    });
+
+    // Convert to array and sort by employee order
+    const spansArray = Object.values(spans).sort((a, b) => {
+      const aIndex = employees.findIndex(
+        (emp) => emp.employee_id === a.employeeId
+      );
+      const bIndex = employees.findIndex(
+        (emp) => emp.employee_id === b.employeeId
+      );
+      return aIndex - bIndex;
+    });
+
+    // Calculate cumulative yPositions
+    let currentY = spanBarHeight / 2;
+    return spansArray.map((span) => ({
+      ...span,
+      yPosition: currentY,
+      nextY: (currentY += span.height),
+    }));
+  }, [
+    employees,
+    subTasksByEmployee,
+    chartStartDate,
+    dayWidth,
+    rowHeight,
+    spanBarHeight,
+    defaultEmployeeId,
+  ]);
+
   return (
     <div className="flex flex-col h-screen print:block print:h-auto print:overflow-visible">
       <div className="flex justify-start ml-2 md:justify-center md:ml-0">
@@ -735,6 +820,42 @@ export const ChartContainer = () => {
         </div>
       ) : (
         <div className="flex-grow overflow-auto print:h-auto print:overflow-visible">
+          <div className="relative">
+            {/* Fixed conflict text */}
+            {isExpanded &&
+              calculateEmployeePositions.map((span, index) => {
+                const employee = employees.find(
+                  (emp) => emp.employee_id === span.employeeId
+                );
+                if (!employee?.scheduling_conflicts?.length) return null;
+
+                return (
+                  <div
+                    key={span.employeeId}
+                    className="flex gap-5 absolute text-white text-sm whitespace-nowrap z-[22]"
+                    style={{ top: span.yPosition + headerHeight, left: leftColumnWidth + 6 }}
+                  >
+                    {employee.scheduling_conflicts.map(
+                      (conflict, conflictIndex) => (
+                        <div
+                          key={`${span.employeeId}-${conflictIndex}`}
+                          className="px-1"
+                          style={{
+                            backgroundColor:
+                              index % 2 === 0 ? "black" : "white",
+                            color: index % 2 === 0 ? "white" : "black",
+                            height: rowHeight - spanBarHeight,
+                          }}
+                        >
+                          {`${conflict.project_name} ${conflict.conflicting_task} overlaps ${conflict.overlaps_project} ${conflict.overlaps_task}`}
+                        </div>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+
           <div
             className="grid overflow-auto flex-grow max-h-full print:h-auto print:overflow-visible print:transform print:origin-top-left"
             style={{
@@ -784,6 +905,7 @@ export const ChartContainer = () => {
                     leftColumnWidth={leftColumnWidth}
                     employeesScheduledHeight={employeesScheduledHeight}
                     spanBarHeight={spanBarHeight}
+                    rowHeight={rowHeight}
                   />
                 </div>
               )}
@@ -838,6 +960,8 @@ export const ChartContainer = () => {
                     dayWidth={dayWidth}
                     leftColumnWidth={leftColumnWidth}
                     spanBarHeight={spanBarHeight}
+                    rowHeight={rowHeight}
+                    employeePositions={calculateEmployeePositions}
                   />
                 </div>
               </div>
