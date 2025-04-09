@@ -25,6 +25,7 @@ import { Field, Label, Switch } from "@headlessui/react";
 import { createProjectFinancials } from "../redux/actions/financialsData";
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
+import { selectSchedulableEmployees } from "../redux/selectors";
 
 const JobModal = ({
   isOpen,
@@ -48,9 +49,7 @@ const JobModal = ({
 
   const { CSVReader } = useCSVReader();
 
-  const employees = useSelector((state) =>
-    state.builders.employees.filter((employee) => employee.can_schedule)
-  );
+  const employees = useSelector(selectSchedulableEmployees);
   const defaultEmployeeId = employees[0]?.employee_id;
   const {
     chart_config_id: chartConfigId,
@@ -908,7 +907,7 @@ const JobModal = ({
         throw new Error(result.error?.message || "Failed to complete project");
       }
 
-      // await dispatch(createProjectFinancials(jobData[0].project_id, localRooms));
+      await dispatch(createProjectFinancials(jobData[0].project_id, localRooms));
 
       onClose();
     } catch (error) {

@@ -1,10 +1,9 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { selectSchedulableEmployees } from "../redux/selectors";
 
 const BuilderLegend = () => {
-  const employees = useSelector((state) =>
-    state.builders.employees.filter((employee) => employee.can_schedule)
-  );
+  const employees = useSelector(selectSchedulableEmployees);
 
   return (
     <div

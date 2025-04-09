@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
+import { selectSchedulableEmployees } from "../redux/selectors";
 
 const EmployeeScheduleSpanLabels = ({
   leftColumnWidth,
@@ -7,9 +8,7 @@ const EmployeeScheduleSpanLabels = ({
   spanBarHeight,
   rowHeight,
 }) => {
-  const allEmployees = useSelector((state) =>
-    state.builders.employees.filter((employee) => employee.can_schedule)
-  );
+  const allEmployees = useSelector(selectSchedulableEmployees);
   const employees = useMemo(() => allEmployees.slice(1), [allEmployees]);
 
   return (
