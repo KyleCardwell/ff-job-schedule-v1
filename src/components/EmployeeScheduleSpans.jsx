@@ -2,13 +2,11 @@ import React, { useRef, useEffect } from "react";
 import * as d3 from "d3";
 
 const EmployeeScheduleSpans = ({
-  chartStartDate,
   numDays,
   dayWidth,
   leftColumnWidth,
-  spanBarHeight,
-  rowHeight,
   employeePositions,
+  employeesScheduledHeight,
 }) => {
   const employeesScheduledRef = useRef(null);
 
@@ -35,7 +33,7 @@ const EmployeeScheduleSpans = ({
     <svg
       ref={employeesScheduledRef}
       width={numDays * dayWidth}
-      height={employeePositions[employeePositions.length - 1]?.nextY || 0}
+      height={employeesScheduledHeight}
     />
   );
 };
