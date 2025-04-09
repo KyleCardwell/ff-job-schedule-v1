@@ -43,6 +43,15 @@ const TaskGroups = ({
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
 
+  // Configuration for hard start indicator dimensions
+  const hardStartConfig = {
+    width: 16,          // Total width of the bracket
+    offset: 9,         // Offset from task start
+    verticalWidth: 4,   // Width of vertical bar
+    horizontalWidth: 1, // Width of horizontal ends
+    cornerRadius: 5     // Radius for interior corners
+  };
+
   const employees = useSelector((state) => state.builders.employees);
   const holidays = useSelector((state) => state.holidays);
   const { tasks } = useSelector((state) => state.taskData);
@@ -163,7 +172,7 @@ const TaskGroups = ({
               employee_id: builder.employee_id,
               date: normalizeDate(day),
             };
-          });
+          })
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
@@ -326,7 +335,24 @@ const TaskGroups = ({
               .attr("x", (job) => job.xPosition + 5);
             transition
               .select(".hard-start-indicator")
-              .attr("x", (job) => job.xPosition - 6);
+              .attr("d", (job) => {
+                const x = job.xPosition + hardStartConfig.offset;
+                const y = rowHeight * (job.yOffsetFactor || 0);
+                const r = hardStartConfig.cornerRadius;
+                const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
+                
+                return `M ${x} ${y}  
+                        h -${hardStartConfig.width}
+                        v ${rowHeight}
+                        h ${hardStartConfig.width}
+                        v -${hardStartConfig.horizontalWidth}
+                        h -${innerWidth - r}
+                        a ${r} ${r} 0 0 1 -${r} -${r}
+                        v -${rowHeight - 2 * hardStartConfig.horizontalWidth - 2 * r}
+                        a ${r} ${r} 0 0 1 ${r} -${r}
+                        h ${innerWidth - r}
+                        Z`;
+              });
           })
           .end()
           .then(async () => {
@@ -480,7 +506,24 @@ const TaskGroups = ({
               .attr("x", (job) => job.xPosition + 5);
             transition
               .select(".hard-start-indicator")
-              .attr("x", (job) => job.xPosition - 6);
+              .attr("d", (job) => {
+                const x = job.xPosition + hardStartConfig.offset;
+                const y = rowHeight * (job.yOffsetFactor || 0);
+                const r = hardStartConfig.cornerRadius;
+                const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
+                
+                return `M ${x} ${y}  
+                        h -${hardStartConfig.width}
+                        v ${rowHeight}
+                        h ${hardStartConfig.width}
+                        v -${hardStartConfig.horizontalWidth}
+                        h -${innerWidth - r}
+                        a ${r} ${r} 0 0 1 -${r} -${r}
+                        v -${rowHeight - 2 * hardStartConfig.horizontalWidth - 2 * r}
+                        a ${r} ${r} 0 0 1 ${r} -${r}
+                        h ${innerWidth - r}
+                        Z`;
+              });
           })
           .end()
           .then(async () => {
@@ -580,15 +623,26 @@ const TaskGroups = ({
 
     // Add hard start date indicator
     enterGroups
-      .append("rect")
+      .append("path")
       .attr("class", "hard-start-indicator")
-      .attr("width", 6)
-      .attr("height", (d) => rowHeight - 2 * barMargin)
-      .attr("x", (d) => d.xPosition - 6) // Position it just before the job group
-      .attr(
-        "y",
-        (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
-      )
+      .attr("d", (d) => {
+        const x = d.xPosition + hardStartConfig.offset;
+        const y = rowHeight * (d.yOffsetFactor || 0);
+        const r = hardStartConfig.cornerRadius;
+        const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
+        
+        return `M ${x} ${y}  
+                h -${hardStartConfig.width}
+                v ${rowHeight}
+                h ${hardStartConfig.width}
+                v -${hardStartConfig.horizontalWidth}
+                h -${innerWidth - r}
+                a ${r} ${r} 0 0 1 -${r} -${r}
+                v -${rowHeight - 2 * hardStartConfig.horizontalWidth - 2 * r}
+                a ${r} ${r} 0 0 1 ${r} -${r}
+                h ${innerWidth - r}
+                Z`;
+      })
       .attr("fill", "black")
       .style("display", (d) => d.hard_start_date ? "block" : "none");
 
@@ -615,11 +669,24 @@ const TaskGroups = ({
 
     allGroups
       .select(".hard-start-indicator")
-      .attr("x", (d) => d.xPosition - 6)
-      .attr(
-        "y",
-        (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
-      )
+      .attr("d", (d) => {
+        const x = d.xPosition + hardStartConfig.offset;
+        const y = rowHeight * (d.yOffsetFactor || 0);
+        const r = hardStartConfig.cornerRadius;
+        const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
+        
+        return `M ${x} ${y}  
+                h -${hardStartConfig.width}
+                v ${rowHeight}
+                h ${hardStartConfig.width}
+                v -${hardStartConfig.horizontalWidth}
+                h -${innerWidth - r}
+                a ${r} ${r} 0 0 1 -${r} -${r}
+                v -${rowHeight - 2 * hardStartConfig.horizontalWidth - 2 * r}
+                a ${r} ${r} 0 0 1 ${r} -${r}
+                h ${innerWidth - r}
+                Z`;
+      })
       .style("display", (d) => d.hard_start_date ? "block" : "none");
 
     allGroups
