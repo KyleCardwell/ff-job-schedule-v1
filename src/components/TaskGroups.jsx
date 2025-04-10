@@ -6,6 +6,7 @@ import {
   isWithinInterval,
   parseISO,
   differenceInDays,
+  max,
 } from "date-fns";
 import { normalizeDate } from "../utils/dateUtils";
 import { useDispatch, useSelector } from "react-redux";
@@ -39,6 +40,7 @@ const TaskGroups = ({
   scrollToMonday,
   onDatabaseError,
   setEstimatedCompletionDate,
+  earliestStartDate,
 }) => {
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
@@ -71,7 +73,9 @@ const TaskGroups = ({
   const { loading: holidaysLoading } = useSelector((state) => state.holidays);
 
   const activeTasksData = useMemo(() => {
-    const currentDate = normalizeDate(new Date());
+    const today = normalizeDate(new Date());
+    const earliestStart = normalizeDate(earliestStartDate);
+    const currentDate = normalizeDate(max([parseISO(today), parseISO(earliestStart)]));
     const defaultEmployeeId = employees[0]?.employee_id;
 
     // Reset the total duration
@@ -83,17 +87,14 @@ const TaskGroups = ({
         if (task.task_active === false) return acc;
         
         // Calculate duration for all tasks
-        if (task.end_date >= currentDate && task.start_date <= currentDate) {
+        if (task.employee_id === defaultEmployeeId || task.start_date >= currentDate) {
+          totalDurationRef.current += task.duration || 0;
+        } else if (task.end_date >= currentDate && task.start_date <= currentDate) {
           const remainingDays = differenceInDays(
             new Date(task.end_date),
             new Date(currentDate)
           );
           totalDurationRef.current += remainingDays * workdayHours;
-        } else if (
-          task.employee_id === defaultEmployeeId ||
-          task.start_date >= currentDate
-        ) {
-          totalDurationRef.current += task.duration || 0;
         }
 
         // Only include non-defaultEmployeeId tasks in the return array
@@ -181,7 +182,10 @@ const TaskGroups = ({
   useEffect(() => {
     if (!tasks.length || !employees.length) return;
 
-    const currentDate = normalizeDate(new Date());
+    const today = normalizeDate(new Date());
+    const earliestStart = normalizeDate(earliestStartDate);
+    const currentDate = normalizeDate(max([parseISO(today), parseISO(earliestStart)]));
+
     const estimatedTotalDays =
       totalJobHours(
         currentDate,
@@ -193,9 +197,13 @@ const TaskGroups = ({
         {}
       ) / workdayHours;
 
+    // Count only employees who can be scheduled
+    const schedulableEmployees = employees.filter(emp => emp.can_schedule !== false).length;
+    const activeEmployees = Math.max(1, schedulableEmployees - 1); // Subtract 1 for default employee
+
     const estimCompletionDate = addDays(
       parseISO(currentDate),
-      estimatedTotalDays / Math.max(1, employees.length - 1)
+      estimatedTotalDays / activeEmployees
     );
 
     setEstimatedCompletionDate(normalizeDate(estimCompletionDate));
@@ -205,8 +213,7 @@ const TaskGroups = ({
     workdayHours,
     holidayChecker,
     holidays,
-    subTasksByEmployee,
-    totalDurationRef.current,
+    earliestStartDate,
     setEstimatedCompletionDate,
   ]);
 
