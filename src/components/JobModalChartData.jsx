@@ -907,7 +907,9 @@ const JobModal = ({
         throw new Error(result.error?.message || "Failed to complete project");
       }
 
-      await dispatch(createProjectFinancials(jobData[0].project_id, localRooms));
+      await dispatch(
+        createProjectFinancials(jobData[0].project_id, localRooms)
+      );
 
       onClose();
     } catch (error) {
@@ -1548,25 +1550,20 @@ const JobModal = ({
                         </div>
                       )}
                       {workPeriod.employee_id !== defaultEmployeeId ? (
-                        <div className="relative group">
-                          <input
-                            type="checkbox"
-                            checked={workPeriod.hard_start_date || false}
-                            onChange={(e) =>
-                              handleWorkPeriodChange(
-                                room.task_id,
-                                workPeriod.subtask_id,
-                                {
-                                  hard_start_date: e.target.checked,
-                                }
-                              )
-                            }
-                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <div className="absolute hidden group-hover:block bg-gray-800 text-white text-sm rounded px-2 py-1 left-1/2 -translate-x-1/2 bottom-full mb-1 whitespace-nowrap">
-                            Hard start date - task must start on this date
-                          </div>
-                        </div>
+                        <input
+                          type="checkbox"
+                          checked={workPeriod.hard_start_date || false}
+                          onChange={(e) =>
+                            handleWorkPeriodChange(
+                              room.task_id,
+                              workPeriod.subtask_id,
+                              {
+                                hard_start_date: e.target.checked,
+                              }
+                            )
+                          }
+                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mx-auto"
+                        />
                       ) : (
                         <div></div>
                       )}
