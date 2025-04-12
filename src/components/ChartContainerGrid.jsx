@@ -1028,6 +1028,7 @@ export const ChartContainer = () => {
                 scrollToMonday={scrollToMonday}
                 onDatabaseError={handleDatabaseError}
                 setEstimatedCompletionDate={setEstimatedCompletionDate}
+                earliestStartDate={earliestStartDate}
               />
             </div>
           </div>
