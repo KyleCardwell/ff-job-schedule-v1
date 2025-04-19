@@ -146,6 +146,7 @@ export const saveProject = (projectData) => async (dispatch) => {
       projectCompletedAt = null,
       needsAttention,
       depositDate,
+      completedTasks = [],
     } = projectData;
 
     const {
@@ -205,7 +206,7 @@ export const saveProject = (projectData) => async (dispatch) => {
     const tasksToInsert = [];
 
     Object.values(
-      updatedTasks.reduce((acc, task) => {
+      [...updatedTasks, ...completedTasks].reduce((acc, task) => {
         if (!acc[task.task_id]) {
           const taskData = {
             temp_task_id: task.temp_task_id,
