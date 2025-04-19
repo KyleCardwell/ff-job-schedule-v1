@@ -27,6 +27,21 @@ export const fetchProjects =
 
       if (error) throw error;
 
+      // Extract project-level data into a map for O(1) lookup
+      const projectsData = result.reduce((acc, project) => {
+        acc[project.project_id] = {
+          project_name: project.project_name,
+          project_id: project.project_id,
+          project_created_at: project.project_created_at,
+          needs_attention: project.needs_attention,
+          deposit_date: project.deposit_date,
+          install_date: project.install_date,
+          install_date_updated_at: project.install_date_updated_at,
+          project_notes: project.project_notes,
+        };
+        return acc;
+      }, {});
+
       const flattenedResult = result
         .flatMap((project) =>
           project.tasks.flatMap((task) => {
@@ -44,10 +59,9 @@ export const fetchProjects =
               task_created_at: task.task_created_at,
               task_active: task.task_active,
               task_completed_at: task.task_completed_at,
-              heightAdjust: index === 0 ? sortedSubtasks.length : 0, // Use sortedSubtasks.length
+              heightAdjust: index === 0 ? sortedSubtasks.length : 0,
               task_number: task.task_number,
               needs_attention: project.needs_attention,
-              deposit_date: project.deposit_date,
               est_duration: task.est_duration,
             }));
           })
@@ -66,35 +80,11 @@ export const fetchProjects =
           return a.subtask_created_at.localeCompare(b.subtask_created_at);
         });
 
-      // // Create subTasksByEmployee from the sorted flattenedResult
-      // const subTasksByEmployee = flattenedResult.reduce((acc, subTask) => {
-      // 	if (!acc[subTask.employee_id]) {
-      // 		acc[subTask.employee_id] = [];
-      // 	}
-      // 	acc[subTask.employee_id].push(subTask);
-      // 	return acc;
-      // }, {});
-
-      // Create subTasksByEmployee from the sorted flattenedResult
-      const subTasksByEmployee = flattenedResult.reduce((acc, subTask) => {
-        if (subTask.task_active === false) {
-          return acc;
-        }
-
-        if (!acc[subTask.employee_id]) {
-          acc[subTask.employee_id] = [];
-        }
-
-        // Find insertion point using binary search
-        const insertionIndex = binarySearch(acc[subTask.employee_id], {
-          start_date: subTask.start_date,
-          draggedLeft: false,
-        });
-
-        // Insert at the correct position
-        acc[subTask.employee_id].splice(insertionIndex, 0, subTask);
-        return acc;
-      }, {});
+      // Dispatch both the projects data and the flattened tasks
+      dispatch({
+        type: Actions.projects.FETCH_PROJECTS_SUCCESS,
+        payload: projectsData,
+      });
 
       dispatch({
         type: Actions.chartData.FETCH_CHART_DATA_SUCCESS,
@@ -105,13 +95,26 @@ export const fetchProjects =
         type: Actions.taskData.FETCH_TASK_DATA_SUCCESS,
         payload: {
           flattenedResult,
-          subTasksByEmployee,
-        },
-      });
+          subTasksByEmployee: flattenedResult.reduce((acc, subTask) => {
+            if (subTask.task_active === false) {
+              return acc;
+            }
 
-      dispatch({
-        type: Actions.projects.FETCH_PROJECTS_SUCCESS,
-        payload: flattenedResult,
+            if (!acc[subTask.employee_id]) {
+              acc[subTask.employee_id] = [];
+            }
+
+            // Find insertion point using binary search
+            const insertionIndex = binarySearch(acc[subTask.employee_id], {
+              start_date: subTask.start_date,
+              draggedLeft: false,
+            });
+
+            // Insert at the correct position
+            acc[subTask.employee_id].splice(insertionIndex, 0, subTask);
+            return acc;
+          }, {}),
+        },
       });
     } catch (error) {
       dispatch({

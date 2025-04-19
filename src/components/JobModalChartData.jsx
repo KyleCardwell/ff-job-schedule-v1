@@ -59,6 +59,11 @@ const JobModal = ({
   } = useSelector((state) => state.chartConfig);
   const unchangedTasks = useSelector((state) => state.taskData.tasks);
 
+  const projectData = useSelector((state) =>
+    jobData && jobData[0]
+      ? state.projects?.data[jobData[0]?.project_id]
+      : null
+  );
   const [jobName, setJobName] = useState("");
   const [depositDate, setDepositDate] = useState("");
   const [needsAttention, setNeedsAttention] = useState(false);
@@ -70,7 +75,6 @@ const JobModal = ({
   const [removedWorkPeriods, setRemovedWorkPeriods] = useState([]);
   const [showCompleteConfirmation, setShowCompleteConfirmation] =
     useState(false);
-  const [completedJobData, setCompletedJobData] = useState(null);
   const [completedSubTasksToDelete, setCompletedSubTasksToDelete] = useState(
     new Set()
   );
@@ -94,11 +98,11 @@ const JobModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      if (jobData && jobData.length > 0) {
+      if (projectData && jobData && jobData.length > 0) {
         // Assuming all work periods have the same project_name
-        setJobName(jobData[0].project_name || "");
-        setDepositDate(formatDateForInput(jobData[0].deposit_date) || "");
-        setNeedsAttention(jobData[0].needs_attention || false);
+        setJobName(projectData.project_name || "");
+        setDepositDate(formatDateForInput(projectData.deposit_date) || "");
+        setNeedsAttention(projectData.needs_attention || false);
 
         // Group work periods by task_id
         const roomMap = {};
@@ -807,7 +811,7 @@ const JobModal = ({
       setIsSaving(true);
 
       const projectCompletedAt = new Date().toISOString();
-      
+
       // Format the tasks that will be completed - only task table fields
       const completedTasks = localRooms.map((task) => ({
         task_id: task.task_id,
@@ -816,7 +820,7 @@ const JobModal = ({
         task_name: task.task_name,
         task_active: task.task_active,
         task_created_at: task.task_created_at,
-        task_completed_at: task.task_completed_at || projectCompletedAt
+        task_completed_at: task.task_completed_at || projectCompletedAt,
       }));
 
       // Get all tasks for the completed job
@@ -868,25 +872,25 @@ const JobModal = ({
 
       // Filter out unchanged tasks
       const tasksToUpdate = updatedTasks.filter((task) => {
-          const originalTask = unchangedTasks.find(
-            (t) => t.subtask_id === task.subtask_id
-          );
-          if (!originalTask) {
-            return true; // Keep new tasks
-          }
+        const originalTask = unchangedTasks.find(
+          (t) => t.subtask_id === task.subtask_id
+        );
+        if (!originalTask) {
+          return true; // Keep new tasks
+        }
 
-          // Debug the comparison
-          const cleanTask = omit(task, ["xPosition"]);
-          const cleanOriginal = omit(originalTask, ["xPosition"]);
+        // Debug the comparison
+        const cleanTask = omit(task, ["xPosition"]);
+        const cleanOriginal = omit(originalTask, ["xPosition"]);
 
-          const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+        const isTaskEqual = isEqual(cleanTask, cleanOriginal);
 
-          if (!isTaskEqual) {
-            return true;
-          }
-          return false;
-        })
-   
+        if (!isTaskEqual) {
+          return true;
+        }
+        return false;
+      });
+
       const result = await dispatch(
         saveProject({
           jobName: jobData[0].project_name,
