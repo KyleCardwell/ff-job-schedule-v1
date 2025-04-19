@@ -284,15 +284,18 @@ const JobModal = ({
   };
 
   const handleInactiveRoom = (task_id) => {
+    const completedAt = new Date().toISOString();
     setLocalRooms((prevRooms) =>
       prevRooms.map((room) =>
         room.task_id === task_id
           ? {
               ...room,
               task_active: false,
+              task_completed_at: completedAt,
               workPeriods: room.workPeriods.map((wp) => ({
                 ...wp,
                 task_active: false,
+                task_completed_at: completedAt,
               })),
             }
           : room
@@ -319,6 +322,7 @@ const JobModal = ({
             ? {
                 ...job,
                 task_active: false,
+                task_completed_at: completedAt,
               }
             : job
         );
@@ -399,6 +403,7 @@ const JobModal = ({
             start_date: normalizeDate(newStartDate),
             duration: workdayHours,
             task_active: true,
+            task_completed_at: null,
             subTaskIsNew: true,
             taskIsnew: room.taskIsNew,
             task_created_at: room.task_created_at,
@@ -694,6 +699,7 @@ const JobModal = ({
             ? {
                 ...room,
                 task_active: true,
+                task_completed_at: null,
                 workPeriods: room.workPeriods.map((wp) => {
                   setChangedTaskIds((prev) => new Set(prev).add(wp.subtask_id));
                   setChangedBuilderIds(
@@ -702,6 +708,7 @@ const JobModal = ({
                   return {
                     ...wp,
                     task_active: true,
+                    task_completed_at: null,
                   };
                 }),
               }
@@ -723,6 +730,7 @@ const JobModal = ({
             ? {
                 ...job,
                 task_active: true,
+                task_completed_at: null,
               }
             : job
         );
@@ -785,10 +793,11 @@ const JobModal = ({
   };
 
   const handleCompleteJob = () => {
+    const completedAt = new Date().toISOString();
     const formattedCompletedJob = {
-      project_id: localRooms[0].project_id, // Assuming all rooms in a job have the same project_id
+      project_id: localRooms[0].project_id,
       project_name: jobName,
-      project_completed_at: new Date().toISOString(), // Current date as completion date
+      project_completed_at: completedAt, // Current date as completion date
       rooms: localRooms.map((task) => {
         const subtaskIdsToDelete = task.workPeriods
           .slice(1)
@@ -803,6 +812,7 @@ const JobModal = ({
           task_active: task.task_active,
           task_created_at: task.task_created_at,
           project_created_at: task.project_created_at,
+          task_completed_at: task.task_completed_at || completedAt,
           workPeriods: [task.workPeriods[0]],
         };
       }),
