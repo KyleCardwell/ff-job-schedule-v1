@@ -5,7 +5,7 @@ import { binarySearch } from "../../utils/helpers";
 
 export const fetchProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at, hard_start_date))",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_completed_at, task_created_at, est_duration, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at, hard_start_date))",
 };
 
 export const fetchCompletedProjectsOptions = {
@@ -43,6 +43,7 @@ export const fetchProjects =
               task_name: task.task_name,
               task_created_at: task.task_created_at,
               task_active: task.task_active,
+              task_completed_at: task.task_completed_at,
               heightAdjust: index === 0 ? sortedSubtasks.length : 0, // Use sortedSubtasks.length
               task_number: task.task_number,
               needs_attention: project.needs_attention,
@@ -145,6 +146,7 @@ export const saveProject = (projectData) => async (dispatch) => {
       projectCompletedAt = null,
       needsAttention,
       depositDate,
+      completedTasks = [],
     } = projectData;
 
     const {
@@ -204,7 +206,7 @@ export const saveProject = (projectData) => async (dispatch) => {
     const tasksToInsert = [];
 
     Object.values(
-      updatedTasks.reduce((acc, task) => {
+      [...updatedTasks, ...completedTasks].reduce((acc, task) => {
         if (!acc[task.task_id]) {
           const taskData = {
             temp_task_id: task.temp_task_id,
@@ -215,6 +217,7 @@ export const saveProject = (projectData) => async (dispatch) => {
             task_name: task.task_name,
             task_active: task.task_active,
             task_created_at: task.task_created_at,
+            task_completed_at: task.task_completed_at,
           };
 
           if (task.taskIsNew) {

@@ -113,6 +113,7 @@ const JobModal = ({
               task_created_at: wp.task_created_at,
               workPeriods: [],
               task_active: wp.task_active,
+              task_completed_at: wp.task_completed_at,
             };
           }
 
@@ -258,6 +259,7 @@ const JobModal = ({
       subTaskIsNew: newWorkPeriod.subTaskIsNew,
       task_created_at: newWorkPeriod.task_created_at,
       workPeriods: [newWorkPeriod],
+      task_completed_at: null,
     };
 
     setLocalRooms((prevRooms) => [...prevRooms, newTask]);
@@ -284,15 +286,18 @@ const JobModal = ({
   };
 
   const handleInactiveRoom = (task_id) => {
+    const completedAt = new Date().toISOString();
     setLocalRooms((prevRooms) =>
       prevRooms.map((room) =>
         room.task_id === task_id
           ? {
               ...room,
               task_active: false,
+              task_completed_at: completedAt,
               workPeriods: room.workPeriods.map((wp) => ({
                 ...wp,
                 task_active: false,
+                task_completed_at: completedAt,
               })),
             }
           : room
@@ -319,6 +324,7 @@ const JobModal = ({
             ? {
                 ...job,
                 task_active: false,
+                task_completed_at: completedAt,
               }
             : job
         );
@@ -399,6 +405,7 @@ const JobModal = ({
             start_date: normalizeDate(newStartDate),
             duration: workdayHours,
             task_active: true,
+            task_completed_at: null,
             subTaskIsNew: true,
             taskIsnew: room.taskIsNew,
             task_created_at: room.task_created_at,
@@ -694,6 +701,7 @@ const JobModal = ({
             ? {
                 ...room,
                 task_active: true,
+                task_completed_at: null,
                 workPeriods: room.workPeriods.map((wp) => {
                   setChangedTaskIds((prev) => new Set(prev).add(wp.subtask_id));
                   setChangedBuilderIds(
@@ -702,6 +710,7 @@ const JobModal = ({
                   return {
                     ...wp,
                     task_active: true,
+                    task_completed_at: null,
                   };
                 }),
               }
@@ -723,6 +732,7 @@ const JobModal = ({
             ? {
                 ...job,
                 task_active: true,
+                task_completed_at: null,
               }
             : job
         );
@@ -785,30 +795,7 @@ const JobModal = ({
   };
 
   const handleCompleteJob = () => {
-    const formattedCompletedJob = {
-      project_id: localRooms[0].project_id, // Assuming all rooms in a job have the same project_id
-      project_name: jobName,
-      project_completed_at: new Date().toISOString(), // Current date as completion date
-      rooms: localRooms.map((task) => {
-        const subtaskIdsToDelete = task.workPeriods
-          .slice(1)
-          .map((wp) => wp.subtask_id);
-        setCompletedSubTasksToDelete(
-          (prev) => new Set([...prev, ...subtaskIdsToDelete])
-        );
-        return {
-          task_id: task.task_id,
-          task_number: task.task_number,
-          task_name: task.task_name,
-          task_active: task.task_active,
-          task_created_at: task.task_created_at,
-          project_created_at: task.project_created_at,
-          workPeriods: [task.workPeriods[0]],
-        };
-      }),
-    };
     setShowCompleteConfirmation(true);
-    setCompletedJobData(formattedCompletedJob);
   };
 
   const confirmCompleteJob = async () => {
@@ -818,6 +805,19 @@ const JobModal = ({
     try {
       setIsLoading(true);
       setIsSaving(true);
+
+      const projectCompletedAt = new Date().toISOString();
+      
+      // Format the tasks that will be completed - only task table fields
+      const completedTasks = localRooms.map((task) => ({
+        task_id: task.task_id,
+        project_id: task.project_id,
+        task_number: task.task_number,
+        task_name: task.task_name,
+        task_active: task.task_active,
+        task_created_at: task.task_created_at,
+        task_completed_at: task.task_completed_at || projectCompletedAt
+      }));
 
       // Get all tasks for the completed job
       const completedProjectTasks = localRooms.flatMap(
@@ -838,7 +838,7 @@ const JobModal = ({
         const currentTask = allTasks[i];
         const prevTask = allTasks[i - 1];
 
-        if (currentTask.project_id === completedJobData.project_id) {
+        if (currentTask.project_id === localRooms[0].project_id) {
           continue; // Skip this task as it's from completed project
         }
 
@@ -848,7 +848,7 @@ const JobModal = ({
           prevTask &&
           currentTask.employee_id !== defaultEmployeeId &&
           prevTask.employee_id === currentTask.employee_id &&
-          prevTask.project_id === completedJobData.project_id
+          prevTask.project_id === localRooms[0].project_id
         ) {
           remainingTasks.push({
             ...currentTask,
@@ -868,25 +868,25 @@ const JobModal = ({
 
       // Filter out unchanged tasks
       const tasksToUpdate = updatedTasks.filter((task) => {
-        const originalTask = unchangedTasks.find(
-          (t) => t.subtask_id === task.subtask_id
-        );
-        if (!originalTask) {
-          return true; // Keep new tasks
-        }
+          const originalTask = unchangedTasks.find(
+            (t) => t.subtask_id === task.subtask_id
+          );
+          if (!originalTask) {
+            return true; // Keep new tasks
+          }
 
-        // Debug the comparison
-        const cleanTask = omit(task, ["xPosition"]);
-        const cleanOriginal = omit(originalTask, ["xPosition"]);
+          // Debug the comparison
+          const cleanTask = omit(task, ["xPosition"]);
+          const cleanOriginal = omit(originalTask, ["xPosition"]);
 
-        const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+          const isTaskEqual = isEqual(cleanTask, cleanOriginal);
 
-        if (!isTaskEqual) {
-          return true;
-        }
-        return false;
-      });
-
+          if (!isTaskEqual) {
+            return true;
+          }
+          return false;
+        })
+   
       const result = await dispatch(
         saveProject({
           jobName: jobData[0].project_name,
@@ -897,8 +897,9 @@ const JobModal = ({
           //   removedWorkPeriods: [...completedSubTasksToDelete],
           nextJobNumber,
           chartConfigId,
-          projectCompletedAt: new Date().toISOString(),
+          projectCompletedAt,
           needsAttention: false,
+          completedTasks,
         })
       );
 
