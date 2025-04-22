@@ -60,12 +60,12 @@ const JobModal = ({
   const unchangedTasks = useSelector((state) => state.taskData.tasks);
 
   const projectData = useSelector((state) =>
-    jobData && jobData[0]
-      ? state.projects?.data[jobData[0]?.project_id]
-      : null
+    jobData && jobData[0] ? state.projects?.data[jobData[0]?.project_id] : null
   );
   const [jobName, setJobName] = useState("");
   const [depositDate, setDepositDate] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [projectNotes, setProjectNotes] = useState("");
   const [needsAttention, setNeedsAttention] = useState(false);
   const [localRooms, setLocalRooms] = useState([]);
   const [errors, setErrors] = useState({});
@@ -102,6 +102,8 @@ const JobModal = ({
         // Assuming all work periods have the same project_name
         setJobName(projectData.project_name || "");
         setDepositDate(formatDateForInput(projectData.deposit_date) || "");
+        setDeliveryDate(formatDateForInput(projectData.delivery_date) || "");
+        setProjectNotes(projectData.project_notes || "");
         setNeedsAttention(projectData.needs_attention || false);
 
         // Group work periods by task_id
@@ -131,6 +133,8 @@ const JobModal = ({
         // Reset state for a new job
         setJobName("");
         setDepositDate("");
+        setDeliveryDate("");
+        setProjectNotes("");
         setNeedsAttention(false);
         setLocalRooms([]);
       }
@@ -1133,6 +1137,8 @@ const JobModal = ({
         saveProject({
           jobName,
           depositDate: depositDate ? normalizeDate(depositDate) : null,
+          deliveryDate: deliveryDate ? normalizeDate(deliveryDate) : null,
+          projectNotes: projectNotes || null,
           needsAttention: needsAttention,
           projectId: jobData ? jobData[0].project_id : undefined,
           newProjectCreatedAt: jobData
@@ -1310,6 +1316,17 @@ const JobModal = ({
                 />
               </div>
 
+              <div className="md:w-1/4">
+                <label htmlFor="deliveryDate">Delivery Date</label>
+                <input
+                  id="deliveryDate"
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded"
+                />
+              </div>
+
               <div className="flex flex-col items-center justify-center md:w-1/4">
                 <Field className={`flex items-center mt-2 md:mr-4`}>
                   <Switch
@@ -1327,6 +1344,21 @@ const JobModal = ({
                   </Label>
                 </Field>
               </div>
+            </div>
+
+            <div
+              className={`flex mb-5 ${
+                !canEditSchedule ? "hidden" : ""
+              }`}
+            >
+              <label htmlFor="projectNotes">Project Notes</label>
+              <textarea
+                id="projectNotes"
+                value={projectNotes}
+                onChange={(e) => setProjectNotes(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded resize-none overflow-y-auto"
+                rows="2"
+              ></textarea>
             </div>
 
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">

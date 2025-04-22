@@ -35,8 +35,7 @@ export const fetchProjects =
           project_created_at: project.project_created_at,
           needs_attention: project.needs_attention,
           deposit_date: project.deposit_date,
-          install_date: project.install_date,
-          install_date_updated_at: project.install_date_updated_at,
+          delivery_date: project.delivery_date,
           project_notes: project.project_notes,
         };
         return acc;
@@ -149,6 +148,8 @@ export const saveProject = (projectData) => async (dispatch) => {
       projectCompletedAt = null,
       needsAttention,
       depositDate,
+      deliveryDate,
+      projectNotes,
       completedTasks = [],
     } = projectData;
 
@@ -176,6 +177,8 @@ export const saveProject = (projectData) => async (dispatch) => {
           project_completed_at: projectCompletedAt,
           needs_attention: needsAttention,
           deposit_date: depositDate,
+          delivery_date: deliveryDate,
+          project_notes: projectNotes,
           team_id: teamData.team_id,
         })
         .eq("project_id", projectId)
@@ -194,6 +197,8 @@ export const saveProject = (projectData) => async (dispatch) => {
           project_completed_at: projectCompletedAt,
           needs_attention: needsAttention,
           deposit_date: depositDate,
+          delivery_date: deliveryDate,
+          project_notes: projectNotes,
           team_id: teamData.team_id,
         })
         .select()
