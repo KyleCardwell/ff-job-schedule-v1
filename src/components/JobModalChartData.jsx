@@ -59,8 +59,13 @@ const JobModal = ({
   } = useSelector((state) => state.chartConfig);
   const unchangedTasks = useSelector((state) => state.taskData.tasks);
 
+  const projectData = useSelector((state) =>
+    jobData && jobData[0] ? state.projects?.data[jobData[0]?.project_id] : null
+  );
   const [jobName, setJobName] = useState("");
   const [depositDate, setDepositDate] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [projectNotes, setProjectNotes] = useState("");
   const [needsAttention, setNeedsAttention] = useState(false);
   const [localRooms, setLocalRooms] = useState([]);
   const [errors, setErrors] = useState({});
@@ -70,7 +75,6 @@ const JobModal = ({
   const [removedWorkPeriods, setRemovedWorkPeriods] = useState([]);
   const [showCompleteConfirmation, setShowCompleteConfirmation] =
     useState(false);
-  const [completedJobData, setCompletedJobData] = useState(null);
   const [completedSubTasksToDelete, setCompletedSubTasksToDelete] = useState(
     new Set()
   );
@@ -94,11 +98,13 @@ const JobModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      if (jobData && jobData.length > 0) {
+      if (projectData && jobData && jobData.length > 0) {
         // Assuming all work periods have the same project_name
-        setJobName(jobData[0].project_name || "");
-        setDepositDate(formatDateForInput(jobData[0].deposit_date) || "");
-        setNeedsAttention(jobData[0].needs_attention || false);
+        setJobName(projectData.project_name || "");
+        setDepositDate(formatDateForInput(projectData.deposit_date) || "");
+        setDeliveryDate(formatDateForInput(projectData.delivery_date) || "");
+        setProjectNotes(projectData.project_notes || "");
+        setNeedsAttention(projectData.needs_attention || false);
 
         // Group work periods by task_id
         const roomMap = {};
@@ -127,6 +133,8 @@ const JobModal = ({
         // Reset state for a new job
         setJobName("");
         setDepositDate("");
+        setDeliveryDate("");
+        setProjectNotes("");
         setNeedsAttention(false);
         setLocalRooms([]);
       }
@@ -807,7 +815,7 @@ const JobModal = ({
       setIsSaving(true);
 
       const projectCompletedAt = new Date().toISOString();
-      
+
       // Format the tasks that will be completed - only task table fields
       const completedTasks = localRooms.map((task) => ({
         task_id: task.task_id,
@@ -816,7 +824,7 @@ const JobModal = ({
         task_name: task.task_name,
         task_active: task.task_active,
         task_created_at: task.task_created_at,
-        task_completed_at: task.task_completed_at || projectCompletedAt
+        task_completed_at: task.task_completed_at || projectCompletedAt,
       }));
 
       // Get all tasks for the completed job
@@ -868,25 +876,25 @@ const JobModal = ({
 
       // Filter out unchanged tasks
       const tasksToUpdate = updatedTasks.filter((task) => {
-          const originalTask = unchangedTasks.find(
-            (t) => t.subtask_id === task.subtask_id
-          );
-          if (!originalTask) {
-            return true; // Keep new tasks
-          }
+        const originalTask = unchangedTasks.find(
+          (t) => t.subtask_id === task.subtask_id
+        );
+        if (!originalTask) {
+          return true; // Keep new tasks
+        }
 
-          // Debug the comparison
-          const cleanTask = omit(task, ["xPosition"]);
-          const cleanOriginal = omit(originalTask, ["xPosition"]);
+        // Debug the comparison
+        const cleanTask = omit(task, ["xPosition"]);
+        const cleanOriginal = omit(originalTask, ["xPosition"]);
 
-          const isTaskEqual = isEqual(cleanTask, cleanOriginal);
+        const isTaskEqual = isEqual(cleanTask, cleanOriginal);
 
-          if (!isTaskEqual) {
-            return true;
-          }
-          return false;
-        })
-   
+        if (!isTaskEqual) {
+          return true;
+        }
+        return false;
+      });
+
       const result = await dispatch(
         saveProject({
           jobName: jobData[0].project_name,
@@ -1129,6 +1137,8 @@ const JobModal = ({
         saveProject({
           jobName,
           depositDate: depositDate ? normalizeDate(depositDate) : null,
+          deliveryDate: deliveryDate ? normalizeDate(deliveryDate) : null,
+          projectNotes: projectNotes || null,
           needsAttention: needsAttention,
           projectId: jobData ? jobData[0].project_id : undefined,
           newProjectCreatedAt: jobData
@@ -1306,6 +1316,17 @@ const JobModal = ({
                 />
               </div>
 
+              <div className="md:w-1/4">
+                <label htmlFor="deliveryDate">Delivery Date</label>
+                <input
+                  id="deliveryDate"
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded"
+                />
+              </div>
+
               <div className="flex flex-col items-center justify-center md:w-1/4">
                 <Field className={`flex items-center mt-2 md:mr-4`}>
                   <Switch
@@ -1323,6 +1344,21 @@ const JobModal = ({
                   </Label>
                 </Field>
               </div>
+            </div>
+
+            <div
+              className={`flex mb-5 ${
+                !canEditSchedule ? "hidden" : ""
+              }`}
+            >
+              <label htmlFor="projectNotes">Project Notes</label>
+              <textarea
+                id="projectNotes"
+                value={projectNotes}
+                onChange={(e) => setProjectNotes(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded resize-none overflow-y-auto"
+                rows="2"
+              ></textarea>
             </div>
 
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
