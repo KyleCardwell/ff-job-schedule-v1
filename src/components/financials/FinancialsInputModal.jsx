@@ -85,6 +85,7 @@ const FinancialsInputModal = ({
               type_id: type.id,
               type_name: type.name,
               estimate: 0,
+              hardNumber: 0,
               actual_cost: 0,
               inputRows: [],
             };
@@ -93,14 +94,22 @@ const FinancialsInputModal = ({
               type_id: type.id,
               type_name: type.name,
               estimate: typeData.estimate || 0,
+              hardNumber: typeData.hardNumber || 0,
               actual_cost: typeData.actual_cost || 0,
               inputRows: typeData.inputRows || [],
             };
           }) || [];
 
-        // Calculate total estimate from employee type estimates
+        // Calculate total estimate from employee type estimates and hard numbers
         const totalEstimate = employeeTypeData.reduce(
-          (sum, type) => sum + (type.estimate || 0),
+          (sum, type) => {
+            const employeeType = chartConfig.employee_type.find(
+              (et) => et.id === type.type_id
+            );
+            const hourlyEstimate = (type.estimate || 0) * (employeeType?.rate || 0);
+            const hardNumber = type.hardNumber || 0;
+            return sum + hourlyEstimate + hardNumber;
+          },
           0
         );
 

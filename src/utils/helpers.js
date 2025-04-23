@@ -515,35 +515,32 @@ export const calculateFinancialTotals = (sections, chartConfig, adjustments = nu
             0
           ) || 0;
 
-        // For estimate, multiply estimated hours by employee type rates
+        // For estimate, multiply estimated hours by employee type rates and add hard numbers
         const estimateTotal =
           section.data?.reduce((typeAcc, typeData) => {
             const employeeType = chartConfig.employee_type?.find(
               (type) => type.id === typeData.type_id
             );
-            const rate = employeeType?.rate || 0;
-            return typeAcc + (typeData.estimate || 0) * rate;
+            const hourlyEstimate = (typeData.estimate || 0) * (employeeType?.rate || 0);
+            const hardNumber = typeData.hardNumber || 0;
+            return typeAcc + hourlyEstimate + hardNumber;
           }, 0) || 0;
 
         return {
-          estimate: acc.estimate + estimateTotal,
+          ...acc,
           actual: acc.actual + actualTotal,
+          estimate: acc.estimate + estimateTotal,
+        };
+      } else {
+        // For non-hours sections, just add the estimate and actual cost
+        return {
+          ...acc,
+          actual: acc.actual + (section.actual_cost || 0),
+          estimate: acc.estimate + (section.estimate || 0),
         };
       }
-
-      // For non-hours sections
-      const sectionActual =
-        section.inputRows?.reduce(
-          (sum, row) => sum + (parseFloat(row.cost) || 0),
-          0
-        ) || 0;
-
-      return {
-        estimate: acc.estimate + (section.estimate || 0),
-        actual: acc.actual + sectionActual,
-      };
     },
-    { estimate: 0, actual: 0 }
+    { actual: 0, estimate: 0 }
   );
 
   if (adjustments) {

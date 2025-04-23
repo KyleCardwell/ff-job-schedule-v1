@@ -17,7 +17,7 @@ const EstimatesModal = ({
 }) => {
   const chartConfig = useSelector((state) => state.chartConfig);
 
-  const handleEstimateChange = (sectionId, value, typeId = null) => {
+  const handleEstimateChange = (sectionId, value, typeId = null, isHardNumber = false) => {
     // Convert empty string to null instead of 0
     const numValue = value === '' ? null : parseFloat(value);
     
@@ -30,7 +30,7 @@ const EstimatesModal = ({
               if (typeData.type_id === typeId) {
                 return {
                   ...typeData,
-                  estimate: numValue,
+                  [isHardNumber ? 'hardNumber' : 'estimate']: numValue,
                 };
               }
               return typeData;
@@ -86,16 +86,21 @@ const EstimatesModal = ({
                       <h3 className="text-sm font-medium text-gray-700">
                         {section.sectionName}
                       </h3>
-                      <input
-                        type="number"
-                        value={formatEstimate(section.estimate)}
-                        onChange={(e) =>
-                          handleEstimateChange(section.id, e.target.value)
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
-                        placeholder="0"
-                        step="0.01"
-                      />
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                          <label className="text-xs text-gray-500">Rate</label>
+                          <input
+                            type="number"
+                            value={formatEstimate(section.estimate)}
+                            onChange={(e) =>
+                              handleEstimateChange(section.id, e.target.value)
+                            }
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+                            placeholder="0"
+                            step="0.01"
+                          />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -117,20 +122,43 @@ const EstimatesModal = ({
                         <h3 className="text-sm font-medium text-gray-700">
                           {type.name}
                         </h3>
-                        <input
-                          type="number"
-                          value={formatEstimate(typeData?.estimate)}
-                          onChange={(e) =>
-                            handleEstimateChange(
-                              "hours",
-                              e.target.value,
-                              type.id
-                            )
-                          }
-                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
-                          placeholder="0"
-                          step="0.01"
-                        />
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col items-end">
+                            <label className="text-xs text-gray-500">Hours</label>
+                            <input
+                              type="number"
+                              value={formatEstimate(typeData?.estimate)}
+                              onChange={(e) =>
+                                handleEstimateChange(
+                                  "hours",
+                                  e.target.value,
+                                  type.id
+                                )
+                              }
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+                              placeholder="0"
+                              step="0.01"
+                            />
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <label className="text-xs text-gray-500">Fixed Amount</label>
+                            <input
+                              type="number"
+                              value={formatEstimate(typeData?.hardNumber)}
+                              onChange={(e) =>
+                                handleEstimateChange(
+                                  "hours",
+                                  e.target.value,
+                                  type.id,
+                                  true
+                                )
+                              }
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+                              placeholder="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
