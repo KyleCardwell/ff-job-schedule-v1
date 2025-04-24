@@ -515,15 +515,15 @@ export const calculateFinancialTotals = (sections, chartConfig, adjustments = nu
             0
           ) || 0;
 
-        // For estimate, multiply estimated hours by employee type rates and add hard numbers
+        // For estimate, multiply estimated hours by employee type rates and add fixed amounts
         const estimateTotal =
           section.data?.reduce((typeAcc, typeData) => {
             const employeeType = chartConfig.employee_type?.find(
               (type) => type.id === typeData.type_id
             );
             const hourlyEstimate = (typeData.estimate || 0) * (employeeType?.rate || 0);
-            const hardNumber = typeData.hardNumber || 0;
-            return typeAcc + hourlyEstimate + hardNumber;
+            const fixedAmount = typeData.fixedAmount || 0;
+            return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;
 
         return {

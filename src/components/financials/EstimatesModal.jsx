@@ -17,7 +17,7 @@ const EstimatesModal = ({
 }) => {
   const chartConfig = useSelector((state) => state.chartConfig);
 
-  const handleEstimateChange = (sectionId, value, typeId = null, isHardNumber = false) => {
+  const handleEstimateChange = (sectionId, value, typeId = null, isFixedAmount = false) => {
     // Convert empty string to null instead of 0
     const numValue = value === '' ? null : parseFloat(value);
     
@@ -30,7 +30,7 @@ const EstimatesModal = ({
               if (typeData.type_id === typeId) {
                 return {
                   ...typeData,
-                  [isHardNumber ? 'hardNumber' : 'estimate']: numValue,
+                  [isFixedAmount ? 'fixedAmount' : 'estimate']: numValue,
                 };
               }
               return typeData;
@@ -144,7 +144,7 @@ const EstimatesModal = ({
                             <label className="text-xs text-gray-500">Fixed Amount</label>
                             <input
                               type="number"
-                              value={formatEstimate(typeData?.hardNumber)}
+                              value={formatEstimate(typeData?.fixedAmount)}
                               onChange={(e) =>
                                 handleEstimateChange(
                                   "hours",

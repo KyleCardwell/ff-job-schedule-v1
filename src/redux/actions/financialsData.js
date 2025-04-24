@@ -198,7 +198,7 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
               type_id: typeData.type_id,
               type_name: typeData.type_name,
               estimate: typeData.estimate || 0,
-              hardNumber: typeData.hardNumber || 0,
+              fixedAmount: typeData.fixedAmount || 0,
               actual_cost: typeActualCost,
               inputRows: typeData.inputRows || [],
             };
