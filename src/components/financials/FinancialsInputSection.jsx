@@ -91,14 +91,20 @@ const FinancialsInputSection = ({
               field === "hours" ? parseFloat(value) || 0 : value;
             const updatedRow = { ...row, [field]: parsedValue };
 
-            // If employee changed or hours changed, update actual_cost
+            // Update actual_cost based on whether it's a fixed amount or hourly
             if (field === "employee_id" || field === "hours") {
-              const selectedEmployee = employees.find(
+              if (updatedRow.employee_id === 'fixed_amount') {
+                // For fixed amount, the hours field represents the actual amount
+                updatedRow.actual_cost = updatedRow.hours;
+              } else {
+                // For regular employees, multiply hours by rate
+                const selectedEmployee = employees.find(
                 (e) => e.employee_id === +updatedRow.employee_id
-              );
-              updatedRow.actual_cost = selectedEmployee
-                ? selectedEmployee.employee_rate * updatedRow.hours
-                : 0;
+                );
+                updatedRow.actual_cost = selectedEmployee
+                  ? selectedEmployee.employee_rate * updatedRow.hours
+                  : 0;
+              }
             }
 
             return updatedRow;

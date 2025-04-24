@@ -14,12 +14,17 @@ const EmployeeTypeAccordion = ({
 }) => {
   const { canViewProfitLoss } = usePermissions();
 
-  const availableEmployees = employees.filter(
-    (e) => e.employee_type?.id === type.id
-  );
+  const availableEmployees = [
+    { employee_id: 'fixed_amount', employee_name: 'Fixed Amount', is_fixed_amount: true },
+    ...employees.filter((e, index) => e.employee_type?.id === type.id && index !== 0)
+  ];
 
   const actualHours = useMemo(() => 
-    (typeData?.inputRows || []).reduce((sum, row) => sum + (row.hours || 0), 0),
+    (typeData?.inputRows || []).reduce((sum, row) => {
+      // Don't count fixed amounts in the hours total
+      if (row.employee_id === 'fixed_amount') return sum;
+      return sum + (row.hours || 0);
+    }, 0),
     [typeData?.inputRows]
   );
   const estimatedHours = typeData?.estimate || 0;
@@ -58,18 +63,16 @@ const EmployeeTypeAccordion = ({
           {(typeData?.inputRows || []).map((row) => (
             <div key={row.id} className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
               <select
-                value={row.employee_id || ""}
+                value={row.employee_id}
                 onChange={(e) => onInputChange(row.id, "employee_id", e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select Employee</option>
-                {availableEmployees
-                  .sort((a, b) => a.employee_name.localeCompare(b.employee_name))
-                  .map((employee) => (
-                    <option key={employee.employee_id} value={employee.employee_id}>
-                      {employee.employee_name}
-                    </option>
-                  ))}
+                <option value="">Select...</option>
+                {availableEmployees.map((employee) => (
+                  <option key={employee.employee_id} value={employee.employee_id}>
+                    {employee.employee_name}
+                  </option>
+                ))}
               </select>
               <input
                 type="number"
@@ -77,7 +80,7 @@ const EmployeeTypeAccordion = ({
                 onChange={(e) => onInputChange(row.id, "hours", e.target.value)}
                 onBlur={onBlur}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Hours"
+                placeholder={row.employee_id === 'fixed_amount' ? "Amount" : "Hours"}
               />
               <button
                 onClick={() => onInputChange(row.id, "delete")}
