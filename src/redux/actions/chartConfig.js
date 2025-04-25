@@ -112,7 +112,8 @@ export const saveSettings = (settings) => async (dispatch, getState) => {
         next_task_number: settings.nextTaskNumber,
         min_task_number: settings.minTaskNumber,
         max_task_number: settings.maxTaskNumber,
-        employee_type: settings.employee_type
+        employee_type: settings.employee_type,
+        estimate_sections: settings.estimate_sections
       })
       .eq("chart_config_id", state.chartConfig.chart_config_id)
       .eq('team_id', teamData.team_id)  // Add team_id check

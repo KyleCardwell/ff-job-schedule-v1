@@ -7,13 +7,14 @@ import {
 } from "../assets/tailwindConstants";
 import { saveSettings } from "../redux/actions/chartConfig";
 import { GridLoader } from "react-spinners";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
   const dispatch = useDispatch();
   const chartConfig = useSelector((state) => state.chartConfig);
   const [settings, setSettings] = useState({});
   const [employeeTypes, setEmployeeTypes] = useState([]);
+  const [estimateSections, setEstimateSections] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,17 +45,40 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
       newErrors.employeeTypes = "At least one employee type is required";
     } else {
       const duplicateTypes = employeeTypes.filter(
-        (type, index) => 
-          employeeTypes.findIndex(t => t.name.toLowerCase() === type.name.toLowerCase()) !== index
+        (type, index) =>
+          employeeTypes.findIndex(
+            (t) => t.name.toLowerCase() === type.name.toLowerCase()
+          ) !== index
       );
-      
+
       if (duplicateTypes.length > 0) {
         newErrors.employeeTypes = "Duplicate employee types are not allowed";
       }
 
-      const emptyTypes = employeeTypes.some(type => !type.name.trim());
+      const emptyTypes = employeeTypes.some((type) => !type.name.trim());
       if (emptyTypes) {
         newErrors.employeeTypes = "Empty employee types are not allowed";
+      }
+    }
+
+    // Validate estimate sections
+    if (estimateSections.length > 0) {
+      const duplicateSections = estimateSections.filter(
+        (section, index) =>
+          estimateSections.findIndex(
+            (s) => s.name.toLowerCase() === section.name.toLowerCase()
+          ) !== index
+      );
+
+      if (duplicateSections.length > 0) {
+        newErrors.estimateSections = "Duplicate sections are not allowed";
+      }
+
+      const emptySections = estimateSections.some(
+        (section) => !section.name.trim()
+      );
+      if (emptySections) {
+        newErrors.estimateSections = "Empty sections are not allowed";
       }
     }
 
@@ -81,22 +105,39 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
   };
 
   const handleEmployeeTypeChange = (id, field, value) => {
-    setEmployeeTypes(prev => 
-      prev.map(type => 
-        type.id === id ? { ...type, [field]: value } : type
-      )
+    setEmployeeTypes((prev) =>
+      prev.map((type) => (type.id === id ? { ...type, [field]: value } : type))
     );
     if (errors.employeeTypes) {
-      setErrors(prev => ({ ...prev, employeeTypes: null }));
+      setErrors((prev) => ({ ...prev, employeeTypes: null }));
     }
   };
 
   const handleRemoveEmployeeType = (id) => {
-    setEmployeeTypes(prev => prev.filter(type => type.id !== id));
+    setEmployeeTypes((prev) => prev.filter((type) => type.id !== id));
   };
 
   const handleAddEmployeeType = () => {
-    setEmployeeTypes(prev => [...prev, { id: uuidv4(), name: '', rate: 0 }]);
+    setEmployeeTypes((prev) => [...prev, { id: uuidv4(), name: "", rate: 0 }]);
+  };
+
+  const handleEstimateSectionChange = (id, value) => {
+    setEstimateSections((prev) =>
+      prev.map((section) =>
+        section.id === id ? { ...section, name: value } : section
+      )
+    );
+    if (errors.estimateSections) {
+      setErrors((prev) => ({ ...prev, estimateSections: null }));
+    }
+  };
+
+  const handleRemoveEstimateSection = (id) => {
+    setEstimateSections((prev) => prev.filter((section) => section.id !== id));
+  };
+
+  const handleAddEstimateSection = () => {
+    setEstimateSections((prev) => [...prev, { id: uuidv4(), name: "" }]);
   };
 
   const handleCancel = () => {
@@ -107,11 +148,19 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
       maxTaskNumber: chartConfig.max_task_number,
     });
     setEmployeeTypes(
-      (chartConfig.employee_type || []).map(type => {
-        if (typeof type === 'string') {
+      (chartConfig.employee_type || []).map((type) => {
+        if (typeof type === "string") {
           return { id: uuidv4(), name: type, rate: 0 }; // Convert old string format
         }
         return { ...type, rate: type.rate || 0 }; // Keep existing object format with rate
+      })
+    );
+    setEstimateSections(
+      (chartConfig.estimate_sections || []).map((section) => {
+        if (typeof section === "string") {
+          return { id: uuidv4(), name: section }; // Convert old string format
+        }
+        return section; // Keep existing object format
       })
     );
     // Clear any errors
@@ -124,21 +173,29 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
 
     try {
       setIsSaving(true);
-      await dispatch(saveSettings({
-        ...settings,
-        employee_type: employeeTypes.map(type => ({
-          id: type.id,
-          name: type.name.trim(),
-          rate: type.rate
-        }))
-      }));
+      await dispatch(
+        saveSettings({
+          ...settings,
+          employee_type: employeeTypes.map((type) => ({
+            id: type.id,
+            name: type.name.trim(),
+            rate: type.rate,
+          })),
+          estimate_sections: estimateSections.map((section) => ({
+            id: section.id,
+            name: section.name.trim(),
+          })),
+        })
+      );
       onClose();
     } catch (error) {
       console.error("Error saving settings:", error);
-      onDatabaseError("Failed to save settings. Please try again.");
+      if (onDatabaseError) {
+        onDatabaseError(error);
+      }
       setErrors((prev) => ({
         ...prev,
-        save: "Failed to save settings. Please try again.",
+        save: "Failed to save settings",
       }));
     } finally {
       setIsSaving(false);
@@ -153,11 +210,19 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
     });
     // Initialize from existing types, preserving their ids if they exist
     setEmployeeTypes(
-      (chartConfig.employee_type || []).map(type => {
-        if (typeof type === 'string') {
+      (chartConfig.employee_type || []).map((type) => {
+        if (typeof type === "string") {
           return { id: uuidv4(), name: type, rate: 0 }; // Convert old string format
         }
         return { ...type, rate: type.rate || 0 }; // Keep existing object format with rate
+      })
+    );
+    setEstimateSections(
+      (chartConfig.estimate_sections || []).map((section) => {
+        if (typeof section === "string") {
+          return { id: uuidv4(), name: section }; // Convert old string format
+        }
+        return section; // Keep existing object format
       })
     );
   }, [chartConfig]);
@@ -239,47 +304,130 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
             </div>
           </div>
 
-          <div className="space-y-4 mb-4">
-            <h3 className="text-lg font-semibold">Employee Types</h3>
-            {errors.employeeTypes && (
-              <p className="text-sm text-red-500">{errors.employeeTypes}</p>
-            )}
-            <div className="flex flex-col items-center">
-              <div className="grid grid-cols-[20ch_15ch_5ch] gap-2 mb-2">
-                <label className="block text-sm font-bold text-gray-700">Category</label>
-                <label className="block text-sm font-bold text-gray-700">Hourly Rate</label>
-                <div></div>
-              </div>
-              {employeeTypes.map((type) => (
-                <div key={type.id} className="grid grid-cols-[20ch_15ch_5ch] gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={type.name}
-                    onChange={(e) => handleEmployeeTypeChange(type.id, "name", e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[20ch]"
-                  />
-                  <input
-                    type="number"
-                    value={type.rate || ""}
-                    onChange={(e) => handleEmployeeTypeChange(type.id, 'rate', parseFloat(e.target.value) || 0)}
-                    className="w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm max-w-[15ch]"
-                  />
-                  <button
-                    onClick={() => handleRemoveEmployeeType(type.id)}
-                    className="p-2 text-red-600 hover:text-red-800"
-                  >
-                    <svg className="h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                      <path d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
+          <div className="mb-4 flex flex-col sm:flex-row gap-12 justify-center">
+            <div className="">
+              <h3 className="text-lg font-semibold">Employee Types</h3>
+              {errors.employeeTypes && (
+                <p className="text-sm text-red-500">{errors.employeeTypes}</p>
+              )}
+              <div className="flex flex-col items-center">
+                <div className="grid grid-cols-[20ch_15ch_5ch] gap-2 mb-2">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Category
+                  </label>
+                  <label className="block text-sm font-bold text-gray-700">
+                    Hourly Rate
+                  </label>
+                  <div></div>
                 </div>
-              ))}
-              <button
-                onClick={handleAddEmployeeType}
-                className="mt-2 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              >
-                Add Employee Type
-              </button>
+                {employeeTypes.map((type) => (
+                  <div
+                    key={type.id}
+                    className="grid grid-cols-[20ch_15ch_5ch] gap-2 mb-2"
+                  >
+                    <input
+                      type="text"
+                      value={type.name}
+                      onChange={(e) =>
+                        handleEmployeeTypeChange(
+                          type.id,
+                          "name",
+                          e.target.value
+                        )
+                      }
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[20ch]"
+                    />
+                    <input
+                      type="number"
+                      value={type.rate || ""}
+                      onChange={(e) =>
+                        handleEmployeeTypeChange(
+                          type.id,
+                          "rate",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      className="w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm max-w-[15ch]"
+                    />
+                    <button
+                      onClick={() => handleRemoveEmployeeType(type.id)}
+                      className="p-2 text-red-600 hover:text-red-800"
+                    >
+                      <svg
+                        className="h-5"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddEmployeeType}
+                  className="mt-2 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  Add Employee Type
+                </button>
+              </div>
+            </div>
+
+            <div className="">
+              <h3 className="text-lg font-semibold">Estimate Sections</h3>
+              {errors.estimateSections && (
+                <p className="text-sm text-red-500">
+                  {errors.estimateSections}
+                </p>
+              )}
+              <div className="flex flex-col items-center">
+                <div className="grid grid-cols-[20ch_5ch] gap-2 mb-2">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Section Name
+                  </label>
+                  <div></div>
+                </div>
+                {estimateSections.map((section) => (
+                  <div
+                    key={section.id}
+                    className="grid grid-cols-[20ch_5ch] gap-2 mb-2"
+                  >
+                    <input
+                      type="text"
+                      value={section.name}
+                      onChange={(e) =>
+                        handleEstimateSectionChange(section.id, e.target.value)
+                      }
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[20ch]"
+                    />
+                    <button
+                      onClick={() => handleRemoveEstimateSection(section.id)}
+                      className="p-2 text-red-600 hover:text-red-800"
+                    >
+                      <svg
+                        className="h-5"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddEstimateSection}
+                  className="mt-2 inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  Add Section
+                </button>
+              </div>
             </div>
           </div>
         </div>

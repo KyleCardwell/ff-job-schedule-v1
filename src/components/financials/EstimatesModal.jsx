@@ -77,18 +77,15 @@ const EstimatesModal = ({
                 <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
                   Prices
                 </h4>
-                <div className="space-y-3 pl-4 pt-4">
+                <div className="flex flex-row flex-wrap gap-x-12 gap-y-4 pl-4 pt-4">
                   {priceSections.map((section) => (
                     <div
                       key={section.id}
-                      className="flex items-center justify-end gap-4 px-6"
+                      className="flex items-center gap-4"
                     >
-                      <h3 className="text-sm font-medium text-gray-700">
-                        {section.sectionName}
-                      </h3>
                       <div className="flex items-center gap-2">
-                        <div className="flex flex-col items-end">
-                          <label className="text-xs text-gray-500">Rate</label>
+                        <div className="flex flex-col items-start">
+                          <label className="text-sm text-gray-800">{section.sectionName}</label>
                           <input
                             type="number"
                             value={formatEstimate(section.estimate)}
@@ -122,7 +119,7 @@ const EstimatesModal = ({
                         <h3 className="text-sm font-medium text-gray-700">
                           {type.name}
                         </h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
                           <div className="flex flex-col items-end">
                             <label className="text-xs text-gray-500">Hours</label>
                             <input

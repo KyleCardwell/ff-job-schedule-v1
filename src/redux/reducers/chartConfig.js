@@ -27,7 +27,8 @@ export const chartConfigReducer = (state = initialState, action) => {
         next_task_number: action.payload.next_task_number,
         min_task_number: action.payload.min_task_number,
         max_task_number: action.payload.max_task_number,
-        employee_type: action.payload.employee_type || [], 
+        employee_type: action.payload.employee_type || [],
+        estimate_sections: action.payload.estimate_sections || [],
         error: null,
       };
 
