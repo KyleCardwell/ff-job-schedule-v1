@@ -9,8 +9,6 @@ import { buttonClass } from "../../assets/tailwindConstants";
 import FinancialsInputModal from "../financials/FinancialsInputModal";
 import { calculateFinancialTotals } from "../../utils/helpers";
 
-const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
-
 const CompletedProjectView = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -61,19 +59,20 @@ const CompletedProjectView = () => {
     if (!projectFinancials?.length) return { estimate: 0, actual: 0, profit: 0 };
 
     const totals = projectFinancials.reduce((acc, task) => {
-      const sections = ['cabinets', 'doors', 'drawers', 'hours', 'other'];
-      const taskSections = sections.map(sectionId => {
-        const sectionData = task[sectionId] || {};
-        if (sectionId === 'hours') {
+      if (!task.financial_data) return acc;
+
+      // Transform financial_data into sections array for calculateFinancialTotals
+      const taskSections = Object.entries(task.financial_data).map(([id, section]) => {
+        if (id === 'hours') {
           return {
-            id: sectionId,
-            data: sectionData.data || []
+            id,
+            data: section.data || []
           };
         }
         return {
-          id: sectionId,
-          estimate: sectionData.estimate || 0,
-          inputRows: sectionData.data || []
+          id,
+          estimate: section.estimate || 0,
+          inputRows: section.data || []
         };
       });
 
@@ -213,20 +212,20 @@ const CompletedProjectView = () => {
         </div>
 
         {projectFinancials.map((task, index) => {
-          const sections = ['cabinets', 'doors', 'drawers', 'hours', 'other'];
-          // Transform task data into the format expected by calculateFinancialTotals
-          const taskSections = sections.map(sectionId => {
-            const sectionData = task[sectionId] || {};
-            if (sectionId === 'hours') {
+          if (!task.financial_data) return null;
+
+          // Transform financial_data into sections array for calculateFinancialTotals
+          const taskSections = Object.entries(task.financial_data).map(([id, section]) => {
+            if (id === 'hours') {
               return {
-                id: sectionId,
-                data: sectionData.data || []
+                id,
+                data: section.data || []
               };
             }
             return {
-              id: sectionId,
-              estimate: sectionData.estimate || 0,
-              inputRows: sectionData.data || []
+              id,
+              estimate: section.estimate || 0,
+              inputRows: section.data || []
             };
           });
 

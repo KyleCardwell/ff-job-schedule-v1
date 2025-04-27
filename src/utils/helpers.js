@@ -532,10 +532,15 @@ export const calculateFinancialTotals = (sections, chartConfig, adjustments = nu
           estimate: acc.estimate + estimateTotal,
         };
       } else {
-        // For non-hours sections, just add the estimate and actual cost
+        // For non-hours sections, calculate actual from input rows
+        const actualTotal = (section.inputRows || []).reduce(
+          (sum, row) => sum + (row.cost || 0),
+          0
+        );
+
         return {
           ...acc,
-          actual: acc.actual + (section.actual_cost || 0),
+          actual: acc.actual + actualTotal,
           estimate: acc.estimate + (section.estimate || 0),
         };
       }

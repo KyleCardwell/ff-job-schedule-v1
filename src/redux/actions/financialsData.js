@@ -219,7 +219,7 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
         } else {
           // For non-hours sections
           const actualCost = (section.inputRows || []).reduce(
-            (sum, row) => sum + (row.actual_cost || 0),
+            (sum, row) => sum + (row.cost || 0),
             0
           );
 
