@@ -211,6 +211,7 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
           );
 
           acc[section.id] = {
+            name: section.sectionName.toLowerCase(),
             estimate: section.estimate || 0,
             actual_cost: totalActualCost,
             data: processedData,
@@ -223,6 +224,7 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
           );
 
           acc[section.id] = {
+            name: section.sectionName.toLowerCase(),
             estimate: section.estimate || 0,
             actual_cost: actualCost,
             data: section.inputRows || [],
@@ -232,14 +234,16 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
         return acc;
       }, {});
 
-      // Add timestamp to update data
-      updateData.financials_updated_at = new Date().toISOString();
-      updateData.adjustments = adjustments;
+      const financialData = {
+        financial_data: updateData,
+        adjustments: adjustments,
+        financials_updated_at: new Date().toISOString(),
+      }
 
       // Update the project_financials table
       const { data, error } = await supabase
         .from("project_financials")
-        .update(updateData)
+        .update(financialData)
         .eq("financials_id", financialsId);
 
       if (error) {

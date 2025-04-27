@@ -72,11 +72,12 @@ const FinancialsInputModal = ({
       { id: "other", name: "Other" },
     ];
 
+    const financialData = financialSections.financial_data || {};
+
     const initialSections = sectionTypes.map(({ id, name }) => {
       // For hours section, we'll store employee type data instead of generic input rows
       if (id === "hours") {
-        const hoursData = financialSections[id] || {};
-        console.log("Hours data from DB:", hoursData);
+        const hoursData = financialData["hours"] || {};
 
         // Create employee type structure
         const employeeTypeData =
@@ -108,8 +109,7 @@ const FinancialsInputModal = ({
           const employeeType = chartConfig.employee_type.find(
             (et) => et.id === type.type_id
           );
-          const hourlyEstimate =
-            (type.estimate || 0) * (employeeType?.rate || 0);
+          const hourlyEstimate = (type.estimate || 0) * (employeeType?.rate || 0);
           const fixedAmount = type.fixedAmount || 0;
           return sum + hourlyEstimate + fixedAmount;
         }, 0);
@@ -123,11 +123,14 @@ const FinancialsInputModal = ({
         };
       }
 
-      // For non-hours sections
-      const sectionData = financialSections[id] || {};
+      // For other sections, find the matching section in financial_data by name
+      const sectionKey = Object.keys(financialData).find(
+        key => financialData[key].name.toLowerCase() === name.toLowerCase()
+      );
+      const sectionData = sectionKey ? financialData[sectionKey] : {};
 
       return {
-        id,
+        id: sectionKey || id, // Use the key from financial_data if found, otherwise use the default id
         sectionName: name.charAt(0).toUpperCase() + name.slice(1),
         estimate: sectionData.estimate || 0,
         actual_cost: sectionData.actual_cost || 0,
@@ -139,7 +142,6 @@ const FinancialsInputModal = ({
     });
 
     setLocalSections(initialSections);
-    console.log("local sections", localSections);
   }, [financialSections, chartConfig.employee_type]);
 
   const calculateTotals = useMemo(() => {

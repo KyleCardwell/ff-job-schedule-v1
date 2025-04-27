@@ -5,6 +5,7 @@ const initialState = {
   next_task_number: null,
   min_task_number: null,
   max_task_number: null,
+  estimate_sections: [],
   employee_type: [], 
   loading: false,
   error: null,
