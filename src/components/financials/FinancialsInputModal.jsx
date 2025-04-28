@@ -62,18 +62,22 @@ const FinancialsInputModal = ({
     }
 
     const sectionTypes = [
-      { id: "hours", label: "Hours" },
-      { id: "cabinets", label: "Cabinets" },
-      { id: "doors", label: "Doors" },
-      { id: "drawers", label: "Drawers" },
-      { id: "other", label: "Other" },
+      { id: "hours", name: "hours" },
+      ...chartConfig.estimate_sections,
+    ] || [
+      { id: "hours", name: "Hours" },
+      { id: "cabinets", name: "Cabinets" },
+      { id: "doors", name: "Doors" },
+      { id: "drawers", name: "Drawers" },
+      { id: "other", name: "Other" },
     ];
 
-    const initialSections = sectionTypes.map(({ id, label }) => {
+    const financialData = financialSections.financial_data || {};
+
+    const initialSections = sectionTypes.map(({ id, name }) => {
       // For hours section, we'll store employee type data instead of generic input rows
       if (id === "hours") {
-        const hoursData = financialSections[id] || {};
-        console.log("Hours data from DB:", hoursData);
+        const hoursData = financialData["hours"] || {};
 
         // Create employee type structure
         const employeeTypeData =
@@ -85,6 +89,7 @@ const FinancialsInputModal = ({
               type_id: type.id,
               type_name: type.name,
               estimate: 0,
+              fixedAmount: 0,
               actual_cost: 0,
               inputRows: [],
             };
@@ -93,32 +98,40 @@ const FinancialsInputModal = ({
               type_id: type.id,
               type_name: type.name,
               estimate: typeData.estimate || 0,
+              fixedAmount: typeData.fixedAmount || 0,
               actual_cost: typeData.actual_cost || 0,
               inputRows: typeData.inputRows || [],
             };
           }) || [];
 
-        // Calculate total estimate from employee type estimates
-        const totalEstimate = employeeTypeData.reduce(
-          (sum, type) => sum + (type.estimate || 0),
-          0
-        );
+        // Calculate total estimate from employee type estimates and fixed amounts
+        const totalEstimate = employeeTypeData.reduce((sum, type) => {
+          const employeeType = chartConfig.employee_type.find(
+            (et) => et.id === type.type_id
+          );
+          const hourlyEstimate = (type.estimate || 0) * (employeeType?.rate || 0);
+          const fixedAmount = type.fixedAmount || 0;
+          return sum + hourlyEstimate + fixedAmount;
+        }, 0);
 
         return {
           id,
-          sectionName: label,
+          sectionName: name.charAt(0).toUpperCase() + name.slice(1),
           estimate: totalEstimate,
           actual_cost: hoursData.actual_cost || 0,
           data: employeeTypeData,
         };
       }
 
-      // For non-hours sections
-      const sectionData = financialSections[id] || {};
+      // For other sections, find the matching section in financial_data by name
+      const sectionKey = Object.keys(financialData).find(
+        key => financialData[key].name.toLowerCase() === name.toLowerCase()
+      );
+      const sectionData = sectionKey ? financialData[sectionKey] : {};
 
       return {
-        id,
-        sectionName: label,
+        id: sectionKey || id, // Use the key from financial_data if found, otherwise use the default id
+        sectionName: name.charAt(0).toUpperCase() + name.slice(1),
         estimate: sectionData.estimate || 0,
         actual_cost: sectionData.actual_cost || 0,
         inputRows: (sectionData.data || []).map((row) => ({
@@ -129,7 +142,6 @@ const FinancialsInputModal = ({
     });
 
     setLocalSections(initialSections);
-    console.log("local sections", localSections);
   }, [financialSections, chartConfig.employee_type]);
 
   const calculateTotals = useMemo(() => {
