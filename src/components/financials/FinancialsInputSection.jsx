@@ -77,6 +77,27 @@ const FinancialsInputSection = ({
     onUpdate(updatedData);
   };
 
+  // Convert time input to decimal hours, handling both HH:MM format and decimal inputs
+  const timeToDecimal = (time) => {
+    // Handle null/undefined
+    if (!time) return 0;
+    
+    // If it's already a number, return it rounded
+    if (typeof time === 'number') return Number(time.toFixed(2));
+    
+    // Convert to string for processing
+    const timeStr = time.toString().trim();
+    
+    // If it's in HH:MM format
+    if (timeStr.includes(':')) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return Number((hours + minutes / 60).toFixed(2));
+    }
+    
+    // Otherwise treat as decimal
+    return Number(parseFloat(timeStr).toFixed(2)) || 0;
+  };
+
   const handleHoursInputChange = (rowId, field, value, type_id) => {
     if (field === "delete") {
       handleDeleteRow(rowId, type_id);
@@ -85,32 +106,56 @@ const FinancialsInputSection = ({
 
     const updatedData = localData.map((typeData) => {
       if (typeData.type_id === type_id) {
-        const updatedRows = (typeData.inputRows || []).map((row) => {
+        let updatedRows = (typeData.inputRows || []).map((row) => {
           if (row.id === rowId) {
-            const parsedValue =
-              field === "hours" ? parseFloat(value) || 0 : value;
-            const updatedRow = { ...row, [field]: parsedValue };
-
-            // Update actual_cost based on whether it's a fixed amount or hourly
-            if (field === "employee_id" || field === "hours") {
-              if (updatedRow.employee_id === 'fixed_amount') {
-                // For fixed amount, the hours field represents the actual amount
-                updatedRow.actual_cost = updatedRow.hours;
-              } else {
-                // For regular employees, multiply hours by rate
-                const selectedEmployee = employees.find(
-                (e) => e.employee_id === +updatedRow.employee_id
-                );
-                updatedRow.actual_cost = selectedEmployee
-                  ? selectedEmployee.employee_rate * updatedRow.hours
-                  : 0;
+            // Handle empty or invalid input
+            if (field === "hours") {
+              if (!value.trim()) {
+                return {
+                  ...row,
+                  hours: { display: '', decimal: 0 }
+                };
               }
+              return {
+                ...row,
+                hours: {
+                  display: value,
+                  decimal: timeToDecimal(value)
+                }
+              };
             }
-
-            return updatedRow;
+            return {
+              ...row,
+              [field]: value
+            };
           }
           return row;
         });
+
+        // Update actual_cost based on whether it's a fixed amount or hourly
+        if (field === "employee_id" || field === "hours") {
+          updatedRows = updatedRows.map(row => {
+            if (row.employee_id === 'fixed_amount') {
+              // For fixed amount, use the decimal value
+              return {
+                ...row,
+                actual_cost: row.hours?.decimal || 0
+              };
+            } else if (row.employee_id) {
+              // For regular employees, multiply decimal hours by rate
+              const selectedEmployee = employees.find(
+                (e) => e.employee_id === +row.employee_id
+              );
+              return {
+                ...row,
+                actual_cost: selectedEmployee
+                  ? selectedEmployee.employee_rate * (row.hours?.decimal || 0)
+                  : 0
+              };
+            }
+            return row;
+          });
+        }
 
         // Calculate total actual_cost for this type
         const actual_cost = updatedRows.reduce(
@@ -202,7 +247,7 @@ const FinancialsInputSection = ({
         return (
           sum +
           ((typeData?.inputRows || []).reduce(
-            (sum, row) => sum + (row?.hours || 0),
+            (sum, row) => sum + (row?.hours?.decimal || 0),
             0
           ) || 0)
         );
