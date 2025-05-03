@@ -23,7 +23,9 @@ const EmployeeTypeAccordion = ({
     (typeData?.inputRows || []).reduce((sum, row) => {
       // Don't count fixed amounts in the hours total
       if (row.employee_id === 'fixed_amount') return sum;
-      return sum + (row.hours || 0);
+      // Use the decimal value from hours object, or fall back to direct value for backward compatibility
+      const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
+      return sum + hoursValue;
     }, 0),
     [typeData?.inputRows]
   );
@@ -39,10 +41,10 @@ const EmployeeTypeAccordion = ({
         <h4 className="text-sm font-medium text-gray-700">{type.name}</h4>
         <div className="flex items-center gap-4">
           <div className="text-sm space-x-4">
-            <span className="text-gray-600">Est: <span className="font-medium">{estimatedHours} hrs</span></span>
-            <span className="text-gray-600">Act: <span className="font-medium">{actualHours} hrs</span></span>
+            <span className="text-gray-600">Est: <span className="font-medium">{estimatedHours.toFixed(2)} hrs</span></span>
+            <span className="text-gray-600">Act: <span className="font-medium">{actualHours.toFixed(2)} hrs</span></span>
             <span className={`${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Δ: <span className="font-medium">{difference.toFixed(1)} hrs</span>
+              Δ: <span className="font-medium">{difference.toFixed(2)} hrs</span>
             </span>
             {canViewProfitLoss && (
               <span className="text-gray-600">Cost: <span className="font-medium">${(typeData?.actual_cost || 0).toFixed(2)}</span></span>
@@ -75,12 +77,20 @@ const EmployeeTypeAccordion = ({
                 ))}
               </select>
               <input
-                type="number"
-                value={row.hours === 0 ? "" : row.hours}
+                type="text"
+                value={row.hours?.display || (typeof row.hours === 'object' ? '' : row.hours) || ''}
                 onChange={(e) => onInputChange(row.id, "hours", e.target.value)}
                 onBlur={onBlur}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={row.employee_id === 'fixed_amount' ? "Amount" : "Hours"}
+                disabled={!row.employee_id}
+                className={`px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  !row.employee_id ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+                placeholder={!row.employee_id 
+                  ? "Select employee first" 
+                  : row.employee_id === 'fixed_amount' 
+                    ? "Amount" 
+                    : "Hours (HH:MM or decimal)"}
+                pattern="^(\d*\.?\d+)|(\d{1,2}:\d{0,2})$"
               />
               <button
                 onClick={() => onInputChange(row.id, "delete")}
