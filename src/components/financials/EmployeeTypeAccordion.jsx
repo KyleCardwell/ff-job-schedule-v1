@@ -90,7 +90,7 @@ const EmployeeTypeAccordion = ({
                   : row.employee_id === 'fixed_amount' 
                     ? "Amount" 
                     : "Hours (HH:MM or decimal)"}
-                pattern="^(\d*\.?\d+)|(\d{1,2}:\d{0,2})$"
+                pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
               />
               <button
                 onClick={() => onInputChange(row.id, "delete")}
