@@ -88,7 +88,13 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const numValue = parseInt(value, 10);
+    const numValue = [
+      "nextTaskNumber",
+      "minTaskNumber",
+      "maxTaskNumber",
+    ].includes(name)
+      ? parseInt(value, 10)
+      : value;
 
     setSettings((prev) => ({
       ...prev,
@@ -146,6 +152,7 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
       nextTaskNumber: chartConfig.next_task_number,
       minTaskNumber: chartConfig.min_task_number,
       maxTaskNumber: chartConfig.max_task_number,
+      company_name: chartConfig.company_name,
     });
     setEmployeeTypes(
       (chartConfig.employee_type || []).map((type) => {
@@ -207,6 +214,7 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
       nextTaskNumber: chartConfig.next_task_number,
       minTaskNumber: chartConfig.min_task_number,
       maxTaskNumber: chartConfig.max_task_number,
+      company_name: chartConfig.company_name,
     });
     // Initialize from existing types, preserving their ids if they exist
     setEmployeeTypes(
@@ -241,66 +249,85 @@ const ChartSettingsModal = ({ isOpen, onClose, onDatabaseError }) => {
         <h2 className="text-xl font-bold mb-4">Chart Settings</h2>
 
         <div className="space-y-4">
-          <div className="flex flex-row gap-4 w-full justify-center">
-            <div className="flex flex-col">
-              <label className="block text-sm font-bold text-gray-700 mb-1">
-                Next Task Number
-              </label>
-              <input
-                type="text"
-                placeholder="Enter next task number"
-                name="nextTaskNumber"
-                value={settings.nextTaskNumber || ""}
-                onChange={handleInputChange}
-                className={`mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
-                  errors.nextTaskNumber ? "border-red-500" : ""
-                }`}
-              />
-              {errors.nextTaskNumber && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.nextTaskNumber}
-                </p>
-              )}
+          <div className="mb-4 flex flex-col sm:flex-row gap-12 justify-center">
+            <div className="flex flex-row gap-4 justify-center">
+              <div className="flex flex-col">
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  name="company_name"
+                  value={settings.company_name || ""}
+                  onChange={handleInputChange}
+                  className="mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full justify-center items-center">
-            <div className="">
-              <label className="block text-sm font-bold text-gray-700 mb-1">
-                Min Task Number
-              </label>
-              <input
-                type="text"
-                name="minTaskNumber"
-                value={settings.minTaskNumber || ""}
-                onChange={handleInputChange}
-                className={`mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
-                  errors.minTaskNumber ? "border-red-500" : ""
-                }`}
-              />
-              {errors.minTaskNumber && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.minTaskNumber}
-                </p>
-              )}
-            </div>
-            <div className="">
-              <label className="block text-sm font-bold text-gray-700 mb-1">
-                Max Task Number
-              </label>
-              <input
-                type="text"
-                name="maxTaskNumber"
-                value={settings.maxTaskNumber || ""}
-                onChange={handleInputChange}
-                className={`mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
-                  errors.maxTaskNumber ? "border-red-500" : ""
-                }`}
-              />
-              {errors.maxTaskNumber && (
-                <p className="mt-1 text-sm text-red-500">
-                  {errors.maxTaskNumber}
-                </p>
-              )}
+
+            <div className="mb-4 flex flex-col">
+              <div className="flex flex-row gap-4 w-full justify-center">
+                <div className="flex flex-col mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Next Task Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter next task number"
+                    name="nextTaskNumber"
+                    value={settings.nextTaskNumber || ""}
+                    onChange={handleInputChange}
+                    className={`mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                      errors.nextTaskNumber ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.nextTaskNumber && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.nextTaskNumber}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 w-full justify-center items-center">
+                <div className="">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Min Task Number
+                  </label>
+                  <input
+                    type="text"
+                    name="minTaskNumber"
+                    value={settings.minTaskNumber || ""}
+                    onChange={handleInputChange}
+                    className={`mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                      errors.minTaskNumber ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.minTaskNumber && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.minTaskNumber}
+                    </p>
+                  )}
+                </div>
+                <div className="">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Max Task Number
+                  </label>
+                  <input
+                    type="text"
+                    name="maxTaskNumber"
+                    value={settings.maxTaskNumber || ""}
+                    onChange={handleInputChange}
+                    className={`mt-1 block pl-2 rounded-md border-gray-500 shadow-md focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                      errors.maxTaskNumber ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.maxTaskNumber && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.maxTaskNumber}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

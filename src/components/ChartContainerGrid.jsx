@@ -31,6 +31,7 @@ export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
+  const { company_name } = useSelector((state) => state.chartConfig);
 
   const employees = useSelector((state) => state.builders.employees);
   const defaultEmployeeId = employees[0]?.employee_id;
@@ -831,7 +832,7 @@ export const ChartContainer = () => {
   return (
     <div className="flex flex-col h-screen print:block print:h-auto print:overflow-visible">
       <div className="flex justify-start ml-2 md:justify-center md:ml-0">
-        <h1 className="text-2xl font-bold">Forever Furniture Job Schedule</h1>
+        <h1 className="text-2xl font-bold">{company_name ? `${company_name} Schedule` : "Schedule"}</h1>
       </div>
       <ChartActionButtons
         scrollToMonday={scrollToMonday}
@@ -844,15 +845,22 @@ export const ChartContainer = () => {
 
       {!activeRoomsData || activeRoomsData.length === 0 ? (
         <div className="empty-state-container">
-          <div className="empty-state-message">
+          <div className="empty-state-message mt-8">
             <h2>Welcome to your Project Dashboard!</h2>
             <p>You don't have any projects yet. </p>
+            <br />
             <p>
-              <strong>Start</strong> by adding employees using the <br />
+              <strong>Start</strong> by adding employee types using the <br />
+              <strong>Settings</strong> button.
+            </p>
+            <br />
+            <p>
+              <strong>Then</strong> add employees using the <br />
               <strong>Employees</strong> button.
             </p>
+            <br />
             <p>
-              <strong>Then</strong> add projects by clicking on the <br />
+              <strong>Finally</strong>, add projects by clicking on the <br />
               <strong>Add Job</strong> button.
             </p>
           </div>

@@ -20,6 +20,7 @@ const ChartActionButtons = ({
   const { canEditSchedule } = usePermissions();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const employeeTypes = useSelector((state) => state.chartConfig.employee_type);
 
   const employees = useSelector((state) => state.builders.employees);
 
@@ -46,7 +47,7 @@ const ChartActionButtons = ({
               className={`flex flex-start`}
               style={{ width: leftColumnWidth }}
             >
-              {employees.length > 0 && canEditSchedule && (
+              {canEditSchedule && (
                 <button
                   className={`${buttonClass} bg-blue-500 ml-2`}
                   onClick={() => setIsSettingsModalOpen(true)}
@@ -69,7 +70,7 @@ const ChartActionButtons = ({
                 Add Job
               </button>
             )}
-            {canEditSchedule && (
+            {employeeTypes.length > 0 && canEditSchedule && (
               <button
                 className={`${buttonClass} bg-blue-500`}
                 onClick={() => setIsBuilderModalOpen(true)}
