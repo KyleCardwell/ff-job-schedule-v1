@@ -24,6 +24,8 @@ import ChartSettingsModal from "./ChartSettingsModal";
 import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
 import { saveHolidays } from "../redux/actions/holidays";
+import { usePermissions } from "../hooks/usePermissions";
+import { headerButtonClass } from "../assets/tailwindConstants";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -31,7 +33,7 @@ export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
-  const { company_name } = useSelector((state) => state.chartConfig);
+  const { canEditSchedule } = usePermissions();
 
   const employees = useSelector((state) => state.builders.employees);
   const defaultEmployeeId = employees[0]?.employee_id;
@@ -725,7 +727,9 @@ export const ChartContainer = () => {
     // First pass: Calculate employee data with yPositions
     let currentY = spanBarHeight / 2;
     const employeeData = employees
-      .filter((emp) => emp.employee_id !== defaultEmployeeId && emp.can_schedule)
+      .filter(
+        (emp) => emp.employee_id !== defaultEmployeeId && emp.can_schedule
+      )
       .reduce((acc, employee) => {
         acc[employee.employee_id] = {
           employeeId: employee.employee_id,
@@ -751,13 +755,13 @@ export const ChartContainer = () => {
 
       let currentSegment = {
         startTask: tasks[0],
-        endTask: tasks[0]
+        endTask: tasks[0],
       };
 
       // Process each task to create segments
       for (let i = 1; i < tasks.length; i++) {
         const task = tasks[i];
-        
+
         if (task.hard_start_date) {
           // End current segment and start new one
           const startXPosition = calculateXPosition(
@@ -778,13 +782,16 @@ export const ChartContainer = () => {
             yPosition: employee.yPosition,
             height: employee.height,
             xPosition: startXPosition,
-            width: endXPosition + currentSegment.endTask.subtask_width - startXPosition
+            width:
+              endXPosition +
+              currentSegment.endTask.subtask_width -
+              startXPosition,
           });
 
           // Start new segment
           currentSegment = {
             startTask: task,
-            endTask: task
+            endTask: task,
           };
         } else {
           // Extend current segment
@@ -811,13 +818,14 @@ export const ChartContainer = () => {
         yPosition: employee.yPosition,
         height: employee.height,
         xPosition: startXPosition,
-        width: endXPosition + currentSegment.endTask.subtask_width - startXPosition
+        width:
+          endXPosition + currentSegment.endTask.subtask_width - startXPosition,
       });
     });
 
     return {
       employeeData: Object.values(employeeData),
-      segments
+      segments,
     };
   }, [
     employees,
@@ -830,19 +838,23 @@ export const ChartContainer = () => {
   ]);
 
   return (
-    <div className="flex flex-col h-screen print:block print:h-auto print:overflow-visible">
-      <div className="flex justify-start ml-2 md:justify-center md:ml-0">
-        <h1 className="text-2xl font-bold">{company_name ? `${company_name} Schedule` : "Schedule"}</h1>
+    <div className="flex flex-col h-[calc(100vh-50px)] print:block print:h-auto print:overflow-visible">
+      <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
+        <button
+          className={headerButtonClass}
+          onClick={() => scrollToMonday(new Date())}
+        >
+          Scroll to Today
+        </button>
+        {canEditSchedule && (
+        <button
+          className={headerButtonClass}
+          onClick={() => setIsJobModalOpen(true)}
+        >
+          Add Project
+        </button>
+        )}
       </div>
-      <ChartActionButtons
-        scrollToMonday={scrollToMonday}
-        setIsJobModalOpen={setIsJobModalOpen}
-        setIsBuilderModalOpen={setIsBuilderModalOpen}
-        setIsHolidayModalOpen={setIsHolidayModalOpen}
-        setIsSettingsModalOpen={setIsSettingsModalOpen}
-        leftColumnWidth={leftColumnWidth}
-      />
-
       {!activeRoomsData || activeRoomsData.length === 0 ? (
         <div className="empty-state-container">
           <div className="empty-state-message mt-8">
@@ -880,7 +892,10 @@ export const ChartContainer = () => {
                   <div
                     key={span.employeeId}
                     className="flex gap-5 absolute text-white text-sm whitespace-nowrap z-[22]"
-                    style={{ top: span.yPosition + headerHeight, left: leftColumnWidth + 6 }}
+                    style={{
+                      top: span.yPosition + headerHeight,
+                      left: leftColumnWidth + 6,
+                    }}
                   >
                     {employee.scheduling_conflicts.map(
                       (conflict, conflictIndex) => (
