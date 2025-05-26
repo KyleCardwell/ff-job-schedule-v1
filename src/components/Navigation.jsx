@@ -6,6 +6,7 @@ import { supabase } from '../utils/supabase';
 import { useDispatch } from 'react-redux';
 import { clearAuth } from '../redux/authSlice';
 import { useNavigate } from 'react-router-dom';
+import { defaultButtonColor } from '../assets/tailwindConstants';
 
 const Navigation = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
@@ -42,9 +43,9 @@ const Navigation = ({ isOpen, onClose }) => {
 
       {/* Sidebar Navigation */}
       <div
-        className={`fixed top-[50px] left-0 h-[calc(100vh-50px)] w-64 bg-white shadow-lg z-20 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-[50px] left-0 h-[calc(100vh-50px)] w-64 bg-slate-900 shadow-lg z-20 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } border-t border-slate-200`}
       >
         <nav className="py-4 space-y-2">
           {navItems.map(({ icon: Icon, label, path }) => (
@@ -55,8 +56,8 @@ const Navigation = ({ isOpen, onClose }) => {
               className={({ isActive }) =>
                 `flex items-center px-6 py-3 transition-colors ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'
+                    ? 'bg-slate-400 text-slate-900'
+                    : 'text-slate-300 hover:bg-slate-600 hover:text-slate-900'
                 }`
               }
             >
@@ -66,7 +67,7 @@ const Navigation = ({ isOpen, onClose }) => {
           ))}
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-6 py-3 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+            className={`flex items-center w-full px-6 py-3 ${defaultButtonColor} transition-colors`}
           >
             <FiLogOut className="w-5 h-5 mr-3" />
             Logout

@@ -25,7 +25,7 @@ import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
 import { saveHolidays } from "../redux/actions/holidays";
 import { usePermissions } from "../hooks/usePermissions";
-import { headerButtonClass } from "../assets/tailwindConstants";
+import { defaultButtonColor, headerButtonClass } from "../assets/tailwindConstants";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -841,14 +841,14 @@ export const ChartContainer = () => {
     <div className="flex flex-col h-[calc(100vh-50px)] print:block print:h-auto print:overflow-visible">
       <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
         <button
-          className={headerButtonClass}
+          className={`${headerButtonClass} ${defaultButtonColor}`}
           onClick={() => scrollToMonday(new Date())}
         >
           Scroll to Today
         </button>
         {canEditSchedule && (
         <button
-          className={headerButtonClass}
+          className={`${headerButtonClass} ${defaultButtonColor}`}
           onClick={() => setIsJobModalOpen(true)}
         >
           Add Project
