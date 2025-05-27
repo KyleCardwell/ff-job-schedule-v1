@@ -192,7 +192,7 @@ const App = () => {
             //   ) : null
             // }
           />
-          <main className="pt-[50px] flex-1">
+          <main className="pt-[50px] flex-1 h-screen">
             <Routes>
               <Route path={PATHS.HOME} element={<ChartContainer />} />
               <Route path={PATHS.MANAGE} element={<AdminDashboard />} />
