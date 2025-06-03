@@ -58,6 +58,11 @@ const ManageChartSettings = forwardRef((props, ref) => {
       if (emptyTypes) {
         newErrors.employeeTypes = "Empty employee types are not allowed";
       }
+
+      const emptyRates = employeeTypes.some((type) => !type.rate && type.rate !== 0);
+      if (emptyRates) {
+        newErrors.employeeTypes = "All employee types must have an hourly rate";
+      }
     }
 
     // Validate estimate sections
@@ -255,7 +260,14 @@ const ManageChartSettings = forwardRef((props, ref) => {
         />
       </SettingsSection>
 
-      <SettingsSection title="Task Numbers">
+      <SettingsSection 
+        title="Task Numbers" 
+        error={[
+          errors.nextTaskNumber,
+          errors.minTaskNumber,
+          errors.maxTaskNumber
+        ].filter(Boolean).join(". ")}
+      >
         <SettingsItem
           type="text"
           label="Next Task Number"

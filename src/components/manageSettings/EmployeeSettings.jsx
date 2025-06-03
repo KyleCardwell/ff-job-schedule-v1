@@ -527,7 +527,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
         <SettingsSection key="employees" title="" error={saveError}>
           {localEmployees.map((employee, index) => (
             <EmployeeSettingsCard
-              key={employee.employee_id}
+              key={employee.employee_id || `employee-${index}`}
               employee={employee}
               employeeTypes={employeeTypes}
               onNameChange={(value) =>
