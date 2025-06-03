@@ -289,6 +289,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
           onDelete={handleRemoveEmployeeType}
           onChange={handleEmployeeTypeChange}
           onAdd={handleAddEmployeeType}
+          addLabel="Add Employee Type"
         />
       </SettingsSection>
 
@@ -301,6 +302,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
           onDelete={handleRemoveEstimateSection}
           onChange={(id, field, value) => handleEstimateSectionChange(id, value)}
           onAdd={handleAddEstimateSection}
+          addLabel="Add Estimate Section"
         />
       </SettingsSection>
       {errors.save && (

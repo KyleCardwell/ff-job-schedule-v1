@@ -1,9 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const SettingsList = ({ items, columns, onDelete, onChange, onAdd }) => {
+const SettingsList = ({ items, columns, onDelete, onChange, onAdd, addLabel }) => {
   return (
-    <div>
+    <div className="flex justify-center relative">
       <div className="grid" style={{ gridTemplateColumns: columns.map(col => col.width).join(' ') + ' 40px' }}>
         {/* Headers */}
         {columns.map((col, index) => (
@@ -50,9 +50,9 @@ const SettingsList = ({ items, columns, onDelete, onChange, onAdd }) => {
       {/* Add Button */}
       <button
         onClick={onAdd}
-        className="mt-4 px-3 py- text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
+        className="mt-4 px-3 py- text-sm bg-slate-600 text-slate-200 hover:bg-slate-500 absolute -right-4 -top-16"
       >
-        Add Item
+        {addLabel}
       </button>
     </div>
   );

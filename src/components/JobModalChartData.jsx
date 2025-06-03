@@ -26,6 +26,7 @@ import { createProjectFinancials } from "../redux/actions/financialsData";
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 import { selectSchedulableEmployees } from "../redux/selectors";
+import { FiCalendar, FiCheck } from "react-icons/fi";
 
 const JobModal = ({
   isOpen,
@@ -1279,13 +1280,10 @@ const JobModal = ({
                 Complete Job
               </button>
             </div>
-            <div
-              className={`flex gap-8 items-center mb-5 justify-center ${
-                !canEditSchedule ? "hidden" : ""
-              }`}
-            >
+            <div className={`flex gap-8 items-center mb-5 justify-center`}>
               <div className="md:w-1/4">
                 <label htmlFor="depositDate">Deposit Date</label>
+                {canEditSchedule ? (
                 <input
                   id="depositDate"
                   type="date"
@@ -1293,11 +1291,17 @@ const JobModal = ({
                   onChange={(e) => setDepositDate(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded"
                 />
+                ) : (
+                  <div className="w-full pl-1 h-8 text-sm flex items-center justify-center">
+                    {depositDate || ""}
+                  </div>
+                )}
               </div>
 
               <div className="md:w-1/3">
                 <label htmlFor="jobName">Job Name</label>
-                <input
+                {canEditSchedule ? (
+                  <input
                   id="jobName"
                   type="text"
                   value={jobName}
@@ -1314,29 +1318,49 @@ const JobModal = ({
                   } rounded`}
                   ref={jobNameInputRef}
                 />
+                ) : (
+                  <div className="w-full pl-1 h-8 text-sm flex items-center justify-center">
+                    {jobName || ""}
+                  </div>
+                )}
               </div>
 
               <div className="md:w-1/4">
                 <label htmlFor="deliveryDate">Delivery Date</label>
-                <input
+                {canEditSchedule ? (
+                  <input
                   id="deliveryDate"
                   type="date"
                   value={deliveryDate}
                   onChange={(e) => setDeliveryDate(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded"
                 />
+                ) : (
+                  <div className="w-full pl-1 h-8 text-sm flex items-center justify-center">
+                    {deliveryDate || ""}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col items-center justify-center md:w-1/4">
                 <Field className={`flex items-center mt-2 md:mr-4`}>
                   <Switch
                     checked={needsAttention}
-                    onChange={setNeedsAttention}
-                    className="group relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-gray-200 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 data-[checked]:bg-indigo-600"
+                    onChange={canEditSchedule ? setNeedsAttention : undefined}
+                    disabled={!canEditSchedule}
+                    className={`group relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                      !canEditSchedule
+                        ? 'cursor-not-allowed opacity-50'
+                        : 'cursor-pointer'
+                    } ${
+                      needsAttention ? 'bg-indigo-600' : 'bg-gray-200'
+                    }`}
                   >
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out group-data-[checked]:translate-x-5"
+                      className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        needsAttention ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                     />
                   </Switch>
                   <Label as="span" className="ml-3 text-md">
@@ -1346,19 +1370,21 @@ const JobModal = ({
               </div>
             </div>
 
-            <div
-              className={`flex mb-5 ${
-                !canEditSchedule ? "hidden" : ""
-              }`}
-            >
+            <div className={`flex mb-5`}>
               <label htmlFor="projectNotes">Project Notes</label>
-              <textarea
-                id="projectNotes"
-                value={projectNotes}
-                onChange={(e) => setProjectNotes(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded resize-none overflow-y-auto"
-                rows="2"
-              ></textarea>
+              {canEditSchedule ? (
+                <textarea
+                  id="projectNotes"
+                  value={projectNotes}
+                  onChange={(e) => setProjectNotes(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded resize-none overflow-y-auto"
+                  rows="2"
+                ></textarea>
+              ) : (
+                <div className="w-full pl-1 h-8 text-sm flex items-center">
+                  {projectNotes || ""}
+                </div>
+              )}
             </div>
 
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
@@ -1416,7 +1442,7 @@ const JobModal = ({
                             ref={subTaskIndex === 0 ? newTaskNumberRef : null}
                           />
                         ) : (
-                          <div className="w-full pl-1 h-8 text-sm">
+                          <div className="w-full pl-1 h-8 text-sm flex items-center">
                             {room.task_number || ""}
                           </div>
                         )
@@ -1464,7 +1490,7 @@ const JobModal = ({
                             }
                           />
                         ) : (
-                          <div className="w-full pl-1 h-8 text-sm">
+                          <div className="w-full pl-1 h-8 text-sm flex items-center">
                             {room.task_name}
                           </div>
                         )
@@ -1499,7 +1525,7 @@ const JobModal = ({
                           } rounded`}
                         />
                       ) : (
-                        <div className="w-full pl-1 h-8 text-sm">
+                        <div className="w-full pl-1 h-8 text-sm flex items-center">
                           {workPeriod.duration || ""}
                         </div>
                       )}
@@ -1553,7 +1579,7 @@ const JobModal = ({
                           ))}
                         </select>
                       ) : (
-                        <div className="w-full pl-1 h-8 text-sm">
+                        <div className="w-full pl-1 h-8 text-sm flex items-center">
                           {employees.find(
                             (e) => e.employee_id === workPeriod.employee_id
                           )?.employee_name || ""}
@@ -1582,11 +1608,12 @@ const JobModal = ({
                           } rounded`}
                         />
                       ) : (
-                        <div className="w-full pl-1 h-8 text-sm">
+                        <div className="w-full pl-1 h-8 text-sm flex items-center">
                           {formatDateForDisplay(workPeriod.start_date)}
                         </div>
                       )}
-                      {workPeriod.employee_id !== defaultEmployeeId ? (
+                      {canEditSchedule &&
+                      workPeriod.employee_id !== defaultEmployeeId ? (
                         <input
                           type="checkbox"
                           checked={workPeriod.hard_start_date || false}
@@ -1602,7 +1629,11 @@ const JobModal = ({
                           className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mx-auto"
                         />
                       ) : (
-                        <div></div>
+                        <div className="flex justify-center items-center w-5 h-5 mx-auto">
+                          {workPeriod.hard_start_date && (
+                            <FiCheck className="w-5 h-5" />
+                          )}
+                        </div>
                       )}
                       {subTaskIndex === 0 ? (
                         <div
