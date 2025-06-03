@@ -149,7 +149,7 @@ const EmployeeSettingsCard = ({
               {timeOffVisible && (
                 <div className="space-y-2">
                   {employee.time_off.map((period, timeOffIndex) => (
-                    <div key={timeOffIndex} className="flex gap-2 items-center">
+                    <div key={`${employee.employee_id}-timeoff-${timeOffIndex}`} className="flex gap-2 items-center mb-2">
                       <input
                         type="date"
                         value={formatDateForInput(period.start)}

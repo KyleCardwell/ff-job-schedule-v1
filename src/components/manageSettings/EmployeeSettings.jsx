@@ -524,7 +524,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
 
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto" ref={scrollableRef}>
-        <SettingsSection title="" error={saveError}>
+        <SettingsSection key="employees" title="" error={saveError}>
           {localEmployees.map((employee, index) => (
             <EmployeeSettingsCard
               key={employee.employee_id}
@@ -563,12 +563,6 @@ const EmployeeSettings = forwardRef((props, ref) => {
               defaultEmployee={index === 0}
             />
           ))}
-          {/* <button
-            onClick={handleAddEmployee}
-            className="w-full mt-4 px-3 py-2 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500 rounded"
-          >
-            Add Employee
-          </button> */}
         </SettingsSection>
       </div>
     </div>

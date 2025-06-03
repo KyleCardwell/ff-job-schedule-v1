@@ -19,7 +19,7 @@ import {
 import Holidays from "date-holidays";
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("chart");
+  const [activeTab, setActiveTab] = useState("employees");
   const [isSaving, setIsSaving] = useState(false);
   const [holidayChecker, setHolidayChecker] = useState(null);
   const activeComponentRef = useRef();
@@ -35,8 +35,8 @@ const AdminDashboard = () => {
   }, []);
 
   const tabs = [
-    { id: "chart", label: "Chart", component: ManageChartSettings },
     { id: "employees", label: "Employees", component: EmployeeSettings },
+    { id: "chart", label: "Chart", component: ManageChartSettings },
     { id: "holidays", label: "Holidays", component: HolidaySettings },
   ];
 
@@ -85,7 +85,7 @@ const AdminDashboard = () => {
                 ${
                   activeTab === tab.id
                     ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
-                    : "text-slate-200 hover:bg-slate-800 hover:text-teal-400"
+                    : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
                 }
               `}
             >
