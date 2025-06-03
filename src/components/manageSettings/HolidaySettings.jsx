@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { saveHolidays } from "../../redux/actions/holidays";
 import Holidays from "date-holidays";
@@ -6,13 +11,14 @@ import { formatDateForInput, normalizeDate } from "../../utils/dateUtils";
 import { updateTasksAfterBuilderChanges } from "../../redux/actions/taskData";
 import SettingsSection from "./SettingsSection";
 
-const HolidaySettings = ({
-  workdayHours,
-  holidayChecker,
-  dayWidth,
-  chartStartDate,
-}) => {
+const HolidaySettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
+
+  const { holidayChecker } = props;
+
+  const { chartStartDate, dayWidth, workdayHours } = useSelector(
+    (state) => state.chartData
+  );
 
   const { standardHolidays, customHolidays, loading, error } = useSelector(
     (state) => state.holidays
@@ -110,8 +116,20 @@ const HolidaySettings = ({
     }
   };
 
+  // Expose save and cancel handlers to parent
+  useImperativeHandle(ref, () => ({
+    handleSave: () => handleSave(),
+    handleCancel: () => {
+      setLocalStandardHolidays([...standardHolidays]);
+      setLocalCustomHolidays(
+        [...customHolidays].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setSaveError(null);
+    },
+  }));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-6">
       <SettingsSection title="Standard Holidays" error={saveError}>
         <div className="flex gap-2 mb-4">
           <select
@@ -136,7 +154,11 @@ const HolidaySettings = ({
         </div>
         <div className="space-y-2">
           {localStandardHolidays.map((holiday) => (
-            <div key={holiday.name} className="grid" style={{ gridTemplateColumns: '1fr 40px' }}>
+            <div
+              key={holiday.name}
+              className="grid"
+              style={{ gridTemplateColumns: "1fr 40px" }}
+            >
               <div className="bg-slate-600 p-2 rounded text-sm text-slate-200">
                 {holiday.name}
               </div>
@@ -172,12 +194,18 @@ const HolidaySettings = ({
         </div>
         <div className="space-y-2">
           {localCustomHolidays.map((holiday, index) => (
-            <div key={index} className="grid" style={{ gridTemplateColumns: '1fr 40px' }}>
+            <div
+              key={index}
+              className="grid"
+              style={{ gridTemplateColumns: "1fr 40px" }}
+            >
               <div className="bg-slate-600 p-2 rounded">
                 <input
                   type="date"
                   value={formatDateForInput(holiday.name)}
-                  onChange={(e) => handleCustomDateChange(index, e.target.value)}
+                  onChange={(e) =>
+                    handleCustomDateChange(index, e.target.value)
+                  }
                   className="w-full bg-slate-700 text-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                 />
               </div>
@@ -203,6 +231,8 @@ const HolidaySettings = ({
       </SettingsSection>
     </div>
   );
-};
+});
+
+HolidaySettings.displayName = "HolidaySettings";
 
 export default HolidaySettings;

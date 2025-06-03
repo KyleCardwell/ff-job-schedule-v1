@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
 import { v4 as uuidv4 } from "uuid";
@@ -8,7 +8,7 @@ import SettingsSection from "./SettingsSection";
 import SettingsList from "./SettingsList";
 import SettingsItem from "./SettingsItem";
 
-const ManageChartSettings = () => {
+const ManageChartSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
   const chartConfig = useSelector((state) => state.chartConfig);
   const [settings, setSettings] = useState({});
@@ -171,7 +171,7 @@ const ManageChartSettings = () => {
     );
     // Clear any errors
     setErrors({});
-    onClose();
+    // props.onClose();
   };
 
   const handleSave = async () => {
@@ -193,11 +193,11 @@ const ManageChartSettings = () => {
           })),
         })
       );
-      onClose();
+      // props.onClose();
     } catch (error) {
       console.error("Error saving settings:", error);
-      if (onDatabaseError) {
-        onDatabaseError(error);
+      if (props.onDatabaseError) {
+        props.onDatabaseError(error);
       }
       setErrors((prev) => ({
         ...prev,
@@ -207,6 +207,12 @@ const ManageChartSettings = () => {
       setIsSaving(false);
     }
   };
+
+  // Expose save and cancel handlers to parent
+  useImperativeHandle(ref, () => ({
+    handleSave: () => handleSave(),
+    handleCancel: () => handleCancel(),
+  }));
 
   useEffect(() => {
     setSettings({
@@ -235,16 +241,7 @@ const ManageChartSettings = () => {
   }, [chartConfig]);
 
   return (
-    <div className="">
-      {/* <div className={modalContainerClass}> */}
-      {/* {isSaving && (
-          <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
-            <GridLoader color="maroon" size={15} />
-            <p>Saving Tasks...</p>
-          </div>
-        )} */}
-      {/* <h2 className="text-xl font-bold mb-4">Chart Settings</h2> */}
-      
+    <div className="mt-6">
       <SettingsSection 
         title="Company Name" 
         error={errors.company_name}
@@ -262,21 +259,21 @@ const ManageChartSettings = () => {
         <SettingsItem
           type="text"
           label="Next Task Number"
-          value={settings.nextTaskNumber || ""}
+          value={String(settings.nextTaskNumber || "")}
           name="nextTaskNumber"
           onChange={handleInputChange}
         />
         <SettingsItem
           type="text"
           label="Min Task Number"
-          value={settings.minTaskNumber || ""}
+          value={String(settings.minTaskNumber || "")}
           name="minTaskNumber"
           onChange={handleInputChange}
         />
         <SettingsItem
           type="text"
           label="Max Task Number"
-          value={settings.maxTaskNumber || ""}
+          value={String(settings.maxTaskNumber || "")}
           name="maxTaskNumber"
           onChange={handleInputChange}
         />
@@ -306,21 +303,14 @@ const ManageChartSettings = () => {
           onAdd={handleAddEstimateSection}
         />
       </SettingsSection>
-
-      <div className="mt-6 flex justify-between space-x-3">
-        <button onClick={handleCancel} className={`${buttonClass} bg-red-500`}>
-          Cancel
-        </button>
-        <button onClick={handleSave} className={`${buttonClass} bg-blue-500`}>
-          Save
-        </button>
-      </div>
       {errors.save && (
         <div className="text-red-500 text-sm mt-2">{errors.save}</div>
       )}
     </div>
     // </div>
   );
-};
+});
+
+ManageChartSettings.displayName = 'ManageChartSettings';
 
 export default ManageChartSettings;

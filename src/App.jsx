@@ -28,6 +28,8 @@ import AdminDashboard from "./components/adminDashboard/AdminDashboard.jsx";
 import Navigation from "./components/Navigation";
 import Header from "./components/Header"; // Import the new Header component
 import { PATHS } from "./utils/constants.js";
+import store from './redux/store'; // Import the store
+import ProtectedRoute from './components/ProtectedRoute';
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -35,16 +37,6 @@ const authContainerStyle = {
   padding: "20px",
   boxShadow: "0 0 10px rgba(0,0,0,0.1)",
   borderRadius: "8px",
-};
-
-const ProtectedRoute = ({ children }) => {
-  const { canViewProfitLoss } = usePermissions();
-
-  if (!canViewProfitLoss) {
-    return <Navigate to="/completed" replace />;
-  }
-
-  return children;
 };
 
 const App = () => {
@@ -140,12 +132,27 @@ const App = () => {
   }, [fetchUserData]);
 
   useEffect(() => {
-    if (session && teamId && !initialFetchDone.current) {
-      dispatch(fetchChartConfig());
-      dispatch(fetchEmployees());
-      dispatch(fetchProjects(fetchProjectsOptions));
-      initialFetchDone.current = true;
-    }
+    const fetchData = async () => {
+      if (session && teamId && !initialFetchDone.current) {
+        try {
+          dispatch(fetchChartConfig());
+          await dispatch(fetchEmployees());
+          
+          // Get first employee after employees are loaded
+          const state = store.getState();
+          const employees = state.builders.employees;
+          if (employees?.length > 0) {
+            await dispatch(fetchProjects(employees[0].employee_id));
+          }
+          
+          initialFetchDone.current = true;
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        }
+      }
+    };
+
+    fetchData();
   }, [session, teamId, dispatch]);
 
   useEffect(() => {
@@ -184,18 +191,18 @@ const App = () => {
           <Header 
             onMenuClick={() => setIsOpen(!isOpen)} 
             isMenuOpen={isOpen}
-            // rightContent={
-            //   location.pathname === PATHS.MANAGE ? (
-            //     <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            //       Save Changes
-            //     </button>
-            //   ) : null
-            // }
           />
           <main className="pt-[50px] flex-1 h-screen">
             <Routes>
               <Route path={PATHS.HOME} element={<ChartContainer />} />
-              <Route path={PATHS.MANAGE} element={<AdminDashboard />} />
+              <Route 
+                path={PATHS.MANAGE} 
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path={PATHS.COMPLETED} element={<CompletedJobsContainer />} />
               <Route
                 path={PATHS.COMPLETED_PROJECT}

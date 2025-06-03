@@ -25,7 +25,11 @@ import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
 import { saveHolidays } from "../redux/actions/holidays";
 import { usePermissions } from "../hooks/usePermissions";
-import { defaultButtonColor, headerButtonClass } from "../assets/tailwindConstants";
+import {
+  headerButtonClass,
+  headerButtonColor,
+} from "../assets/tailwindConstants";
+import { Actions } from "../redux/actions";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -91,6 +95,11 @@ export const ChartContainer = () => {
           jobsIndex: jobsIndex,
         };
       });
+
+    dispatch({
+      type: Actions.chartData.UPDATE_CHART_START_DATE,
+      payload: earliestStartDate,
+    });
 
     return {
       activeRoomsData: activeRooms,
@@ -841,18 +850,18 @@ export const ChartContainer = () => {
     <div className="flex flex-col h-[calc(100vh-50px)] print:block print:h-auto print:overflow-visible">
       <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
         <button
-          className={`${headerButtonClass} ${defaultButtonColor}`}
+          className={`${headerButtonClass} ${headerButtonColor}`}
           onClick={() => scrollToMonday(new Date())}
         >
           Scroll to Today
         </button>
         {canEditSchedule && (
-        <button
-          className={`${headerButtonClass} ${defaultButtonColor}`}
-          onClick={() => setIsJobModalOpen(true)}
-        >
-          Add Project
-        </button>
+          <button
+            className={`${headerButtonClass} ${headerButtonColor}`}
+            onClick={() => setIsJobModalOpen(true)}
+          >
+            Add Project
+          </button>
         )}
       </div>
       {!activeRoomsData || activeRoomsData.length === 0 ? (

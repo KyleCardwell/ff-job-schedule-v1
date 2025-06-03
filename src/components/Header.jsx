@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { PATHS } from "../utils/constants";
 import { useSelector } from "react-redux";
-import { defaultButtonColor } from "../assets/tailwindConstants";
+import { headerButtonColor } from "../assets/tailwindConstants";
 import { FiMenu, FiX } from "react-icons/fi";
 
 const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
@@ -28,7 +28,7 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
       {/* Left section with menu button */}
       <button
         onClick={onMenuClick}
-        className={`h-[50px] w-[50px] flex items-center justify-center ${defaultButtonColor} border-r border-slate-200 print:hidden`}
+        className={`h-[50px] w-[50px] flex items-center justify-center ${headerButtonColor} border-r border-slate-200 print:hidden`}
         aria-label="Menu"
       >
         {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}

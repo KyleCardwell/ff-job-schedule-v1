@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const SettingItem = ({ type, label, value, onChange, name }) => {
+const SettingsItem = ({ type, label, value, onChange, name }) => {
   switch (type) {
     case 'text':
       return (
@@ -34,7 +34,7 @@ const SettingItem = ({ type, label, value, onChange, name }) => {
   }
 };
 
-SettingItem.propTypes = {
+SettingsItem.propTypes = {
   type: PropTypes.oneOf(['text', 'checkbox']).isRequired,
   label: PropTypes.string.isRequired,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]).isRequired,
@@ -42,4 +42,4 @@ SettingItem.propTypes = {
   name: PropTypes.string.isRequired,
 };
 
-export default SettingItem;
+export default SettingsItem;
