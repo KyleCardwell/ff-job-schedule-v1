@@ -10,6 +10,8 @@ import Holidays from "date-holidays";
 import { formatDateForInput, normalizeDate } from "../../utils/dateUtils";
 import { updateTasksAfterBuilderChanges } from "../../redux/actions/taskData";
 import SettingsSection from "./SettingsSection";
+import SettingsList from "./SettingsList";
+import { v4 as uuidv4 } from "uuid";
 
 const HolidaySettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
@@ -32,6 +34,7 @@ const HolidaySettings = forwardRef((props, ref) => {
   const [selectedHoliday, setSelectedHoliday] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [customHolidayError, setCustomHolidayError] = useState(null);
 
   // Initialize local state
   useEffect(() => {
@@ -70,23 +73,53 @@ const HolidaySettings = forwardRef((props, ref) => {
   const handleAddCustomDate = () => {
     const newDate = normalizeDate(new Date());
     if (!localCustomHolidays.some((h) => h.name === newDate)) {
-      setLocalCustomHolidays([...localCustomHolidays, { name: newDate }]);
+      setLocalCustomHolidays([
+        ...localCustomHolidays,
+        { id: uuidv4(), name: newDate },
+      ]);
     }
   };
 
-  const handleCustomDateChange = (index, date) => {
-    const newDates = [...localCustomHolidays];
-    newDates[index] = { name: normalizeDate(new Date(date)) };
-    setLocalCustomHolidays(newDates);
+  const handleRemoveCustomDate = (id) => {
+    const newHolidays = localCustomHolidays.filter((h) => h.id !== id);
+    setLocalCustomHolidays(newHolidays);
+    validateCustomHolidays(newHolidays);
   };
 
-  const handleRemoveCustomDate = (name) => {
-    setLocalCustomHolidays(localCustomHolidays.filter((h) => h.name !== name));
+  const validateCustomHolidays = (holidays) => {
+    // Check for empty dates
+    if (holidays.some((h) => !h.name)) {
+      setCustomHolidayError("All dates must be set");
+      return false;
+    }
+
+    // Check for invalid dates
+    if (holidays.some((h) => isNaN(new Date(h.name).getTime()))) {
+      setCustomHolidayError("Invalid date format");
+      return false;
+    }
+
+    // Check for duplicates
+    const uniqueDates = new Set(holidays.map((h) => h.name));
+    if (uniqueDates.size !== holidays.length) {
+      setCustomHolidayError("Duplicate dates are not allowed");
+      return false;
+    }
+
+    setCustomHolidayError(null);
+    return true;
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError(null);
+
+    // Validate custom holidays before saving
+    if (!validateCustomHolidays(localCustomHolidays)) {
+      setIsSaving(false);
+      return;
+    }
+
     try {
       await dispatch(saveHolidays(localStandardHolidays, localCustomHolidays));
 
@@ -183,51 +216,33 @@ const HolidaySettings = forwardRef((props, ref) => {
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Custom Holidays">
-        <div className="mb-4">
-          <button
-            onClick={handleAddCustomDate}
-            className="w-full px-3 py-1 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
-          >
-            Add Custom Date
-          </button>
-        </div>
-        <div className="space-y-2">
-          {localCustomHolidays.map((holiday, index) => (
-            <div
-              key={index}
-              className="grid"
-              style={{ gridTemplateColumns: "1fr 40px" }}
-            >
-              <div className="bg-slate-600 p-2 rounded">
-                <input
-                  type="date"
-                  value={formatDateForInput(holiday.name)}
-                  onChange={(e) =>
-                    handleCustomDateChange(index, e.target.value)
-                  }
-                  className="w-full bg-slate-700 text-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
-                />
-              </div>
-              <button
-                onClick={() => handleRemoveCustomDate(holiday.name)}
-                className="p-2 text-slate-400 hover:text-red-400"
-              >
-                <svg
-                  className="h-5"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
+      <SettingsSection title="Custom Holidays" error={customHolidayError}>
+        <SettingsList
+          items={localCustomHolidays}
+          columns={[
+            {
+              field: "name",
+              label: "",
+              width: "320px",
+              type: "date",
+              getValue: (item) => formatDateForInput(item.name),
+              setValue: (item, value) => ({
+                ...item,
+                name: formatDateForInput(new Date(value)),
+              }),
+            },
+          ]}
+          onDelete={handleRemoveCustomDate}
+          onChange={(id, field, value) => {
+            const newHolidays = localCustomHolidays.map((h) =>
+              h.id === id ? { ...h, name: formatDateForInput(new Date(value)) } : h
+            );
+            setLocalCustomHolidays(newHolidays);
+            validateCustomHolidays(newHolidays);
+          }}
+          onAdd={handleAddCustomDate}
+          addLabel="Add Custom Date"
+        />
       </SettingsSection>
     </div>
   );

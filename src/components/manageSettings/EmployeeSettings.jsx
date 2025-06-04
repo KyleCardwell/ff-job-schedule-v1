@@ -235,10 +235,27 @@ const EmployeeSettings = forwardRef((props, ref) => {
 
   const validateInputs = () => {
     const newErrors = {};
-    localEmployees.forEach((employee, index) => {
+    localEmployees.forEach((employee) => {
+      // Skip validation for employees marked for deletion
+      if (employee.markedForDeletion) return;
+
+      // Validate name
       if (employee.employee_name.trim() === "") {
-        newErrors[`name-${index}`] = "Name is required";
+        newErrors[employee.employee_id] = {
+          ...newErrors[employee.employee_id],
+          name: "Name is required"
+        };
       }
+
+      // Validate employee type
+      if (!employee.employee_type?.id) {
+        newErrors[employee.employee_id] = {
+          ...newErrors[employee.employee_id],
+          employee_type: "Employee type is required"
+        };
+      }
+
+      // Validate time off periods
       employee.time_off?.forEach((period, timeOffIndex) => {
         const timeOffErrors = [];
         if (!period.start) {
@@ -248,11 +265,13 @@ const EmployeeSettings = forwardRef((props, ref) => {
           timeOffErrors.push("End date is required");
         }
         if (period.start && period.end && period.end < period.start) {
-          timeOffErrors.push("End date must be after start date");
+          timeOffErrors.push("End date must be on or after start date");
         }
         if (timeOffErrors.length > 0) {
-          newErrors[`timeoff-${index}-${timeOffIndex}`] =
-            timeOffErrors.join(". ");
+          newErrors[employee.employee_id] = {
+            ...newErrors[employee.employee_id],
+            [`timeoff-${timeOffIndex}`]: timeOffErrors.join(". ")
+          };
         }
       });
     });
@@ -557,7 +576,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
                 handleMarkForDeletion(employee.employee_id)
               }
               showRates={showRates}
-              errors={errors}
+              errors={errors[employee.employee_id] || {}}
               timeOffVisible={timeOffVisibility[employee.employee_id] || false}
               onToggleTimeOff={() => handleToggleTimeOff(employee.employee_id)}
               defaultEmployee={index === 0}

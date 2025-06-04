@@ -30,6 +30,25 @@ const EmployeeSettingsCard = ({
       <div className="flex-1">
         <div className="flex flex-col gap-4">
           {/* Header with delete button */}
+          <div>
+            {Object.entries(errors).map(([field, error]) => {
+              // For time off errors, include the index in the message
+              if (field.startsWith("timeoff-")) {
+                const index = parseInt(field.split("-")[1]) + 1;
+                return (
+                  <div key={field} className="text-red-500 text-sm">
+                    {error}
+                  </div>
+                );
+              }
+              // For other fields, capitalize the field name
+              return (
+                <div key={field} className="text-red-500 text-sm">
+                  {error}
+                </div>
+              );
+            })}
+          </div>
           <div className="flex justify-between items-center">
             <div className="flex gap-5 items-center flex-1">
               {/* Name Input */}
@@ -97,16 +116,18 @@ const EmployeeSettingsCard = ({
                 <select
                   value={employee.employee_type?.id || ""}
                   onChange={(e) => {
-                    const selectedType = (employeeTypes || []).find(
-                      (type) => type.id === e.target.value
+                    const selectedType = employeeTypes.find(
+                      (t) => t.id === e.target.value
                     );
                     onEmployeeTypeChange(selectedType || null);
                   }}
-                  className="w-full bg-slate-600 text-slate-200 px-2 py-1.5 rounded"
+                  className={`w-full bg-slate-600 text-slate-200 px-2 py-1.5 rounded ${
+                    errors.employee_type ? "border border-red-500" : ""
+                  }`}
                   disabled={employee.markedForDeletion}
                 >
                   <option value="">Select Type</option>
-                  {(employeeTypes || []).map((type) => (
+                  {employeeTypes.map((type) => (
                     <option key={type.id} value={type.id}>
                       {type.name}
                     </option>
@@ -149,7 +170,13 @@ const EmployeeSettingsCard = ({
               {timeOffVisible && (
                 <div className="space-y-2">
                   {employee.time_off.map((period, timeOffIndex) => (
-                    <div key={`${employee.employee_id}-timeoff-${timeOffIndex}`} className="flex gap-2 items-center mb-2">
+                    <div
+                      key={`${employee.employee_id}-timeoff-${timeOffIndex}`}
+                      className="flex gap-2 items-center mb-2"
+                    >
+                      <label className="block text-sm font-medium text-slate-200">
+                        Start Date
+                      </label>
                       <input
                         type="date"
                         value={formatDateForInput(period.start)}
@@ -163,6 +190,9 @@ const EmployeeSettingsCard = ({
                         }`}
                         disabled={employee.markedForDeletion}
                       />
+                      <label className="block text-sm font-medium text-slate-200">
+                        End Date
+                      </label>
                       <input
                         type="date"
                         value={formatDateForInput(period.end)}
