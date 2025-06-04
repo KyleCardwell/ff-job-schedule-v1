@@ -296,7 +296,7 @@ EmployeeSettingsCard.propTypes = {
         end: PropTypes.string.isRequired,
       })
     ).isRequired,
-    markedForDeletion: PropTypes.bool.isRequired,
+    markedForDeletion: PropTypes.bool,
   }).isRequired,
   employeeTypes: PropTypes.arrayOf(
     PropTypes.shape({

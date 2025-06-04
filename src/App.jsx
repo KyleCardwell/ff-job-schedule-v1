@@ -196,7 +196,7 @@ const App = () => {
             <Routes>
               <Route path={PATHS.HOME} element={<ChartContainer />} />
               <Route 
-                path={PATHS.MANAGE} 
+                path={`${PATHS.MANAGE}/*`} 
                 element={
                   <ProtectedRoute>
                     <AdminDashboard />
