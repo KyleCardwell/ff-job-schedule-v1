@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import CompletedProjectCard from "./CompletedProjectCard";
-import ChartActionButtons from "./ChartActionButtons";
+// import ChartActionButtons from "./ChartActionButtons";
 import { fetchCompletedProjects } from "../redux/actions/projects";
 import FinancialsInputModal from "./financials/FinancialsInputModal";
 import ProjectSearchFilter from "./ProjectSearchFilter";
@@ -33,11 +33,14 @@ const CompletedProjectsContainer = () => {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Completed Jobs</h1>
-      <ChartActionButtons />
-      <ProjectSearchFilter onFilterChange={handleFilterChange} />
-      <div className="space-y-6">
+    <div className="flex flex-col h-full pb-6 bg-slate-800">
+      {/* Fixed header */}
+      <div className="sticky top-0 z-10 bg-slate-800 px-6 pt-6">
+        <ProjectSearchFilter onFilterChange={handleFilterChange} />
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-6 space-y-6">
         {completedProjects?.map((project) => (
           <CompletedProjectCard
             key={project.project_id}
@@ -47,6 +50,7 @@ const CompletedProjectsContainer = () => {
           />
         ))}
       </div>
+
       <FinancialsInputModal
         isOpen={isFinancialsInputModalOpen}
         onClose={() => setIsFinancialsInputModalOpen(false)}

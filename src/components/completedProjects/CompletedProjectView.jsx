@@ -161,18 +161,18 @@ const CompletedProjectView = () => {
   ).toLocaleDateString();
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-slate-800 print:bg-white h-full">
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigate("/completed")}
-          className={`${buttonClass} bg-blue-500`}
+          className={`${buttonClass} bg-blue-500 print:hidden`}
         >
           Back to Projects
         </button>
-        <h1 className="text-2xl font-bold">{project.project_name}</h1>
+        <h1 className="text-2xl font-bold text-white print:text-black">{project.project_name}</h1>
         <div className="flex flex-col text-right">
-          <div className="text-gray-600">Shop Completion: {completedDate}</div>
-          <div className="text-gray-600">Last updated: {dateUpdated}</div>
+          <div className="text-slate-200 print:text-gray-600">Shop Completion: {completedDate}</div>
+          <div className="text-slate-200 print:text-gray-600">Last updated: {dateUpdated}</div>
         </div>
       </div>
 
