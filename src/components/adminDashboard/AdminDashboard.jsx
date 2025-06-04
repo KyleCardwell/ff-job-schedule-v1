@@ -19,7 +19,7 @@ import {
 import Holidays from "date-holidays";
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("chart");
+  const [activeTab, setActiveTab] = useState("employees");
   const [isSaving, setIsSaving] = useState(false);
   const [holidayChecker, setHolidayChecker] = useState(null);
   const activeComponentRef = useRef();
