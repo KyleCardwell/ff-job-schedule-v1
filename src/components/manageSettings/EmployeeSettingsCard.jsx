@@ -136,20 +136,20 @@ const EmployeeSettingsCard = ({
               </div>
 
               <div className="flex-1 flex gap-2 items-center">
-                {showRates && (
-                  <>
-                    <label className="block text-sm font-medium text-slate-200 text-nowrap">
-                      Hourly Rate
-                    </label>
-                    <input
-                      type="number"
-                      value={employee.employee_rate || ""}
-                      onChange={(e) => onEmployeeRateChange(e.target.value)}
-                      placeholder="Hourly Rate"
-                      className="w-full bg-slate-600 text-slate-200 px-2 py-1 rounded"
-                      disabled={employee.markedForDeletion}
-                    />
-                  </>
+                <label className="block text-sm font-medium text-slate-200 text-nowrap">
+                  Hourly Rate
+                </label>
+                {showRates ? (
+                  <input
+                    type="number"
+                    value={employee.employee_rate || ""}
+                    onChange={(e) => onEmployeeRateChange(e.target.value)}
+                    placeholder="Hourly Rate"
+                    className="w-full bg-slate-600 text-slate-200 px-2 py-1 rounded"
+                    disabled={employee.markedForDeletion}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-600 text-slate-200 px-2 py-1 rounded"></div>
                 )}
               </div>
             </div>
