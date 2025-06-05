@@ -20,6 +20,7 @@ const EmployeeSettingsCard = ({
   timeOffVisible,
   onToggleTimeOff,
   defaultEmployee,
+  inputRef,
 }) => {
   return (
     <div
@@ -65,6 +66,7 @@ const EmployeeSettingsCard = ({
                     errors.name ? "border border-red-500" : ""
                   }`}
                   disabled={employee.markedForDeletion}
+                  ref={inputRef}
                 />
               </div>
               {/* Color Input */}
@@ -318,6 +320,10 @@ EmployeeSettingsCard.propTypes = {
   errors: PropTypes.object,
   timeOffVisible: PropTypes.bool.isRequired,
   onToggleTimeOff: PropTypes.func.isRequired,
+  inputRef: PropTypes.oneOfType([
+    PropTypes.func,
+    PropTypes.shape({ current: PropTypes.instanceOf(Element) }),
+  ]),
 };
 
 export default EmployeeSettingsCard;

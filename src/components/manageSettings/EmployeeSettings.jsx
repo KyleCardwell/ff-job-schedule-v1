@@ -542,7 +542,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
       </div>
 
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto" ref={scrollableRef}>
+      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]" ref={scrollableRef}>
         <SettingsSection key="employees" title="" error={saveError}>
           {localEmployees.map((employee, index) => (
             <EmployeeSettingsCard
@@ -580,6 +580,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
               timeOffVisible={timeOffVisibility[employee.employee_id] || false}
               onToggleTimeOff={() => handleToggleTimeOff(employee.employee_id)}
               defaultEmployee={index === 0}
+              inputRef={(el) => (inputRefs.current[employee.employee_id] = el)}
             />
           ))}
         </SettingsSection>
