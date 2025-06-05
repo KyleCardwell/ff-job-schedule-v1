@@ -5,6 +5,9 @@ import { Actions } from "../actions";
 
 const initialState = {
 	chartData: [],
+	chartStartDate: null,
+	dayWidth: 30,
+	workdayHours: 8,
 };
 
 export const chartDataReducer = (state = initialState, action) => {
@@ -31,6 +34,13 @@ export const chartDataReducer = (state = initialState, action) => {
 				loading: false,
 				error: action.payload,
 			};
+		
+		case Actions.chartData.UPDATE_CHART_START_DATE: {
+			return {
+				...state,
+				chartStartDate: action.payload,
+			};
+		}
 
 		case Actions.chartData.UPDATE_ONE_BUILDER_CHART_DATA: {
 			const updatedTasksMap = new Map(

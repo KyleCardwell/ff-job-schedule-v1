@@ -84,7 +84,7 @@ export const updateTasksAfterBuilderChanges = (
 			// 	type: Actions.taskData.UPDATE_TASKS_AFTER_BUILDER_CHANGES,
 			// 	payload: updatedTasks,
 			// });
-				await dispatch(fetchProjects())
+				await dispatch(fetchProjects(defaultBuilderId))
 		} catch (error) {
 			console.error("Error updating subtasks positions:", error);
 			throw error;

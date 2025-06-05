@@ -2,6 +2,37 @@ import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
 import { updateNextTaskNumber } from "./chartConfig";
 import { binarySearch } from "../../utils/helpers";
+import { subDays } from "date-fns";
+
+export const fetchEarliestStartDate = (excludeEmployeeId) => async (dispatch) => {
+  try {
+    // SQL function:
+    // create or replace function get_earliest_active_start_date(exclude_employee_id uuid)
+    // returns timestamp with time zone
+    // language sql
+    // as $$
+    //   SELECT MIN(s.start_date)
+    //   FROM projects p
+    //   JOIN tasks t ON t.project_id = p.project_id
+    //   JOIN subtasks s ON s.task_id = t.task_id
+    //   WHERE t.task_active = true
+    //   AND p.project_completed_at IS NULL
+    //   AND s.employee_id != exclude_employee_id;
+    // $$;
+    const { data } = await supabase.rpc('get_earliest_active_start_date', {
+      exclude_employee_id: excludeEmployeeId
+    });
+    
+    if (data) {
+      dispatch({
+        type: Actions.chartData.UPDATE_CHART_START_DATE,
+        payload: subDays( data, 15)
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching earliest start date:', error);
+  }
+};
 
 export const fetchProjectsOptions = {
   select:
@@ -14,11 +45,14 @@ export const fetchCompletedProjectsOptions = {
 };
 
 export const fetchProjects =
-  (options = {}) =>
-  async (dispatch) => {
+  (firstEmployeeId, options = {}) =>
+  async (dispatch, getState) => {
     dispatch({ type: Actions.projects.FETCH_PROJECTS_START });
 
     try {
+      // Fetch earliest start date first, excluding first employee
+      await dispatch(fetchEarliestStartDate(firstEmployeeId));
+
       const { data: result, error } = await supabase
         .from("projects")
         .select(fetchProjectsOptions.select)
@@ -133,7 +167,7 @@ export const fetchProjects =
     }
   };
 
-export const saveProject = (projectData) => async (dispatch) => {
+export const saveProject = (projectData) => async (dispatch, getState) => {
   dispatch({ type: Actions.projects.SAVE_PROJECT_START });
 
   try {
@@ -343,8 +377,9 @@ export const saveProject = (projectData) => async (dispatch) => {
 
     dispatch(updateNextTaskNumber(nextJobNumber, chartConfigId));
 
-    // 5. Fetch fresh data
-    await dispatch(fetchProjects(fetchProjectsOptions));
+    // 5. Fetch fresh data with first employee
+    const state = getState();
+    await dispatch(fetchProjects(state.builders.employees[0].employee_id, fetchProjectsOptions.select));
 
     dispatch({
       type: Actions.projects.SAVE_PROJECT_SUCCESS,
