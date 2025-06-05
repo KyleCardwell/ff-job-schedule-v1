@@ -96,11 +96,6 @@ export const ChartContainer = () => {
         };
       });
 
-    dispatch({
-      type: Actions.chartData.UPDATE_CHART_START_DATE,
-      payload: earliestStartDate,
-    });
-
     return {
       activeRoomsData: activeRooms,
       lastJobsIndex: jobsIndex,
@@ -115,6 +110,15 @@ export const ChartContainer = () => {
           : latestStartDate,
     };
   }, [chartData, employees, workdayHours, holidays]);
+
+  useEffect(() => {
+    if (earliestStartDate) {
+      dispatch({
+        type: Actions.chartData.UPDATE_CHART_START_DATE,
+        payload: subDays(earliestStartDate, daysBeforeStart),
+      });
+    }
+  }, [earliestStartDate, dispatch]);
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column

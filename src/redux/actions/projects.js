@@ -2,6 +2,7 @@ import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
 import { updateNextTaskNumber } from "./chartConfig";
 import { binarySearch } from "../../utils/helpers";
+import { subDays } from "date-fns";
 
 export const fetchEarliestStartDate = (excludeEmployeeId) => async (dispatch) => {
   try {
@@ -25,7 +26,7 @@ export const fetchEarliestStartDate = (excludeEmployeeId) => async (dispatch) =>
     if (data) {
       dispatch({
         type: Actions.chartData.UPDATE_CHART_START_DATE,
-        payload: data
+        payload: subDays( data, 15)
       });
     }
   } catch (error) {
