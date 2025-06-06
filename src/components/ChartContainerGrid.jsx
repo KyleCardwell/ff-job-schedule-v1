@@ -44,6 +44,7 @@ export const ChartContainer = () => {
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
 
   const [holidayChecker, setHolidayChecker] = useState(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
 
   const daysBeforeStart = 15;
   const daysAfterEnd = 15;
@@ -96,8 +97,15 @@ export const ChartContainer = () => {
         };
       });
 
+    // Only apply filter and heightAdjust if there's a selected employee
+    const filteredRooms = selectedEmployeeId !== null
+      ? activeRooms
+          .filter(room => room.employee_id === selectedEmployeeId)
+          .map(room => ({ ...room, heightAdjust: 1 }))
+      : activeRooms;
+
     return {
-      activeRoomsData: activeRooms,
+      activeRoomsData: filteredRooms,
       lastJobsIndex: jobsIndex,
       someTaskAssigned,
       earliestStartDate:
@@ -109,7 +117,7 @@ export const ChartContainer = () => {
           ? null
           : latestStartDate,
     };
-  }, [chartData, employees, workdayHours, holidays]);
+  }, [chartData, employees, workdayHours, holidays, selectedEmployeeId]); // Add selectedEmployeeId to dependencies
 
   useEffect(() => {
     if (earliestStartDate) {
@@ -1065,6 +1073,7 @@ export const ChartContainer = () => {
                 onDatabaseError={handleDatabaseError}
                 setEstimatedCompletionDate={setEstimatedCompletionDate}
                 earliestStartDate={earliestStartDate}
+                selectedEmployeeId={selectedEmployeeId}
               />
             </div>
           </div>
@@ -1078,7 +1087,12 @@ export const ChartContainer = () => {
           {estimatedCompletionDate &&
             `Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
         </div>
-        {activeRoomsData?.length > 0 && <BuilderLegend />}
+        {activeRoomsData?.length > 0 && (
+          <BuilderLegend
+            onEmployeeFilter={setSelectedEmployeeId}
+            selectedEmployeeId={selectedEmployeeId}
+          />
+        )}
       </div>
 
       {isLoading && (
