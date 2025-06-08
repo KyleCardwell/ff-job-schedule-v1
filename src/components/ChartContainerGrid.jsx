@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ChartActionButtons from "./ChartActionButtons";
 import {
@@ -44,7 +44,7 @@ export const ChartContainer = () => {
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
 
   const [holidayChecker, setHolidayChecker] = useState(null);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
   const daysBeforeStart = 15;
   const daysAfterEnd = 15;
@@ -113,9 +113,9 @@ export const ChartContainer = () => {
       });
 
     // Only apply filter and heightAdjust if there's a selected employee
-    const filteredRooms = selectedEmployeeId !== null
+    const filteredRooms = selectedEmployeeIds.length > 0
       ? activeRooms
-          .filter(room => room.employee_id === selectedEmployeeId)
+          .filter(room => selectedEmployeeIds.includes(room.employee_id))
           .map(room => ({ ...room, heightAdjust: 1 }))
       : activeRooms;
 
@@ -124,7 +124,7 @@ export const ChartContainer = () => {
       lastJobsIndex: jobsIndex,
       someTaskAssigned,
     };
-  }, [chartData, employees, workdayHours, holidays, selectedEmployeeId, earliestStartDate, latestStartDate]); // Add selectedEmployeeId to dependencies
+  }, [chartData, employees, workdayHours, holidays, selectedEmployeeIds, earliestStartDate, latestStartDate]); // Add selectedEmployeeIds to dependencies
 
   useEffect(() => {
     if (earliestStartDate) {
@@ -865,6 +865,10 @@ export const ChartContainer = () => {
     spanBarHeight,
   ]);
 
+  const updateChartState = useCallback((updates) => {
+    setSelectedEmployeeIds(updates.selectedEmployeeIds);
+  }, []);
+
   return (
     <div className="flex flex-col h-[calc(100vh-50px)] print:block print:h-auto print:overflow-visible">
       <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
@@ -1080,7 +1084,7 @@ export const ChartContainer = () => {
                 onDatabaseError={handleDatabaseError}
                 setEstimatedCompletionDate={setEstimatedCompletionDate}
                 earliestStartDate={earliestStartDate}
-                selectedEmployeeId={selectedEmployeeId}
+                selectedEmployeeIds={selectedEmployeeIds}
               />
             </div>
           </div>
@@ -1096,8 +1100,8 @@ export const ChartContainer = () => {
         </div>
         {activeRoomsData?.length > 0 && (
           <BuilderLegend
-            onEmployeeFilter={setSelectedEmployeeId}
-            selectedEmployeeId={selectedEmployeeId}
+            selectedEmployeeIds={selectedEmployeeIds}
+            onEmployeeFilter={(employeeIds) => updateChartState({ selectedEmployeeIds: employeeIds })}
           />
         )}
       </div>

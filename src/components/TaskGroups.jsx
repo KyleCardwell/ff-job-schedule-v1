@@ -41,7 +41,7 @@ const TaskGroups = ({
   onDatabaseError,
   setEstimatedCompletionDate,
   earliestStartDate,
-  selectedEmployeeId, // Add selectedEmployeeId as a prop
+  selectedEmployeeIds, // Update selectedEmployeeIds as a prop
 }) => {
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
@@ -88,8 +88,8 @@ const TaskGroups = ({
         // Skip inactive tasks
         if (task.task_active === false) return acc;
         
-        // Skip tasks that don't match the selected employee filter
-        if (selectedEmployeeId && task.employee_id !== selectedEmployeeId) return acc;
+        // Skip tasks that don't match any selected employee filter
+        if (selectedEmployeeIds.length > 0 && !selectedEmployeeIds.includes(task.employee_id)) return acc;
         
         // Calculate duration for all tasks
         if (task.employee_id === defaultEmployeeId || task.start_date >= currentDate) {
@@ -124,8 +124,9 @@ const TaskGroups = ({
     dayWidth,
     workdayHours,
     holidays,
-    selectedEmployeeId, // Add selectedEmployeeId to dependencies
+    selectedEmployeeIds,
     earliestStartDate,
+    employees,
   ]);
 
   // Calculate timeOffByBuilder independently
@@ -770,7 +771,7 @@ const TaskGroups = ({
     handleAutoScroll,
     subTasksByEmployee,
     canEditSchedule,
-    selectedEmployeeId, // Add selectedEmployeeId to dependencies
+    selectedEmployeeIds, // Update selectedEmployeeIds to dependencies
   ]);
 
   // Move unassigned tasks to start at today
