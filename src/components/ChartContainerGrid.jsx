@@ -57,17 +57,41 @@ export const ChartContainer = () => {
     setHolidayChecker(hd);
   }, []);
 
+  const { earliestStartDate, latestStartDate } = useMemo(() => {
+    let earliest = new Date(8640000000000000);
+    let latest = new Date(-8640000000000000);
+    let hasAssignedTasks = false;
+
+    chartData
+      .filter(room => room.task_active)
+      .forEach(room => {
+        if (room.employee_id !== defaultEmployeeId) {
+          hasAssignedTasks = true;
+          const roomStartDate = parseISO(normalizeDate(room.start_date));
+          const roomEndDate = parseISO(normalizeDate(room.end_date));
+
+          if (roomStartDate < earliest) {
+            earliest = roomStartDate;
+          }
+          if (roomEndDate > latest) {
+            latest = roomEndDate;
+          }
+        }
+      });
+
+    return {
+      earliestStartDate: hasAssignedTasks ? earliest : null,
+      latestStartDate: hasAssignedTasks ? latest : null
+    };
+  }, [chartData, defaultEmployeeId]);  // Only recalculate when these dependencies change
+
   const {
     activeRoomsData,
     lastJobsIndex,
-    earliestStartDate,
-    latestStartDate,
     someTaskAssigned,
   } = useMemo(() => {
     let currentJobId = null;
     let jobsIndex = -1;
-    let earliestStartDate = new Date(8640000000000000); // Initialize with max date
-    let latestStartDate = new Date(-8640000000000000); // Initialize with min date
     let someTaskAssigned = false;
 
     const activeRooms = chartData
@@ -80,15 +104,6 @@ export const ChartContainer = () => {
 
         if (room.employee_id !== defaultEmployeeId) {
           someTaskAssigned = true;
-          const roomStartDate = parseISO(normalizeDate(room.start_date));
-          const roomEndDate = parseISO(normalizeDate(room.end_date));
-
-          if (roomStartDate < earliestStartDate) {
-            earliestStartDate = roomStartDate;
-          }
-          if (roomEndDate > latestStartDate) {
-            latestStartDate = roomEndDate;
-          }
         }
 
         return {
@@ -108,16 +123,8 @@ export const ChartContainer = () => {
       activeRoomsData: filteredRooms,
       lastJobsIndex: jobsIndex,
       someTaskAssigned,
-      earliestStartDate:
-        earliestStartDate === new Date(8640000000000000)
-          ? null
-          : earliestStartDate,
-      latestStartDate:
-        latestStartDate === new Date(-8640000000000000)
-          ? null
-          : latestStartDate,
     };
-  }, [chartData, employees, workdayHours, holidays, selectedEmployeeId]); // Add selectedEmployeeId to dependencies
+  }, [chartData, employees, workdayHours, holidays, selectedEmployeeId, earliestStartDate, latestStartDate]); // Add selectedEmployeeId to dependencies
 
   useEffect(() => {
     if (earliestStartDate) {
