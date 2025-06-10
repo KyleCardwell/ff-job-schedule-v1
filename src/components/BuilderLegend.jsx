@@ -1,9 +1,26 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 import { selectSchedulableEmployees } from "../redux/selectors";
 
-const BuilderLegend = () => {
+const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
   const employees = useSelector(selectSchedulableEmployees);
+
+  const handleEmployeeClick = (employeeId) => {
+    if (selectedEmployeeIds.includes(employeeId)) {
+      // Remove if already selected
+      onEmployeeFilter(selectedEmployeeIds.filter(id => id !== employeeId));
+    } else {
+      // Add to selection
+      const newSelection = [...selectedEmployeeIds, employeeId];
+      // If all employees are now selected, clear the selection
+      if (newSelection.length === employees.length) {
+        onEmployeeFilter([]);
+      } else {
+        onEmployeeFilter(newSelection);
+      }
+    }
+  };
 
   return (
     <div
@@ -17,7 +34,10 @@ const BuilderLegend = () => {
       {employees.map((employee) => (
         <div
           key={employee.employee_id}
-          className="flex items-center mt-[5px] mr-5"
+          className={`flex items-center mt-[5px] mr-5 cursor-pointer hover:opacity-80 ${
+            selectedEmployeeIds.includes(employee.employee_id) ? 'ring-2 ring-blue-500 rounded px-1' : ''
+          }`}
+          onClick={() => handleEmployeeClick(employee.employee_id)}
         >
           <div
             className="w-[15px] h-[15px] mr-[5px] border border-black"
@@ -33,6 +53,11 @@ const BuilderLegend = () => {
       ))}
     </div>
   );
+};
+
+BuilderLegend.propTypes = {
+  onEmployeeFilter: PropTypes.func.isRequired,
+  selectedEmployeeIds: PropTypes.arrayOf(PropTypes.number).isRequired,
 };
 
 export default BuilderLegend;
