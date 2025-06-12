@@ -52,7 +52,8 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_EMPLOYEES, 
       component: EmployeeSettings,
       props: { workdayHours, holidayChecker, dayWidth, holidays },
-      requiresAdmin: true
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
     },
     { 
       id: "chart", 
@@ -60,7 +61,8 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_CHART, 
       component: ManageChartSettings,
       props: {},
-      requiresAdmin: true
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
     },
     { 
       id: "holidays", 
@@ -68,7 +70,8 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_HOLIDAYS, 
       component: HolidaySettings,
       props: { workdayHours, holidayChecker, dayWidth, holidays },
-      requiresAdmin: true
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
     },
     { 
       id: "team", 
@@ -77,7 +80,8 @@ const AdminDashboard = () => {
       component: TeamSettings,
       props: {},
       requiresAdmin: false,
-      requiresPermission: "can_manage_teams"
+      requiresPermission: "can_manage_teams",
+      maxWidthClass: "max-w-[1000px]",
     },
   ];
 
@@ -157,7 +161,7 @@ const AdminDashboard = () => {
         {/* Tab Content */}
         <div className="flex-1 overflow-auto">
           <div className="flex justify-center">
-            <div className="w-full max-w-[720px]">
+            <div className={`w-full ${tabs.find(tab => tab.id === getCurrentTab())?.maxWidthClass || 'max-w-[720px]'}`}>
               <Routes>
                 <Route 
                   path="/" 
