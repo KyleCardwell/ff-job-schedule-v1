@@ -16,9 +16,17 @@ const ProtectedRoute = ({ children }) => {
     }
   }
 
-  // Check if user has manage permissions
-  const canAccessManage = roleId === 1 || permissions?.can_manage_teams;
-  if (!canAccessManage) {
+  // For manage routes, check specific permissions
+  if (location.pathname.startsWith(PATHS.MANAGE)) {
+    // Admin can access all routes
+    if (roleId === 1) return children;
+
+    // For base manage route or team management route
+    if (location.pathname === PATHS.MANAGE || location.pathname === PATHS.MANAGE_TEAM) {
+      return permissions?.can_manage_teams ? children : <Navigate to={PATHS.HOME} replace />;
+    }
+
+    // For other manage routes (employees, chart, holidays), only admin can access
     return <Navigate to={PATHS.HOME} replace />;
   }
 

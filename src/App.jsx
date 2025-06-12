@@ -28,8 +28,8 @@ import AdminDashboard from "./components/adminDashboard/AdminDashboard.jsx";
 import Navigation from "./components/Navigation";
 import Header from "./components/Header"; // Import the new Header component
 import { PATHS } from "./utils/constants.js";
-import store from './redux/store'; // Import the store
-import ProtectedRoute from './components/ProtectedRoute';
+import store from "./redux/store"; // Import the store
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -80,7 +80,9 @@ const App = () => {
 
         const { data: roleData, error: roleError } = await supabase
           .from("roles")
-          .select("permissions")
+          .select(
+            "can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss"
+          )
           .eq("role_id", teamMemberData.role_id)
           .single();
 
@@ -91,7 +93,8 @@ const App = () => {
             teamId: teamMemberData.team_id,
             teamName: teamMemberData.team_name,
             roleId: teamMemberData.role_id,
-            permissions: roleData.permissions,
+            permissions: roleData,
+            customPermissions: teamMemberData.custom_permissions,
           })
         );
 
@@ -137,17 +140,17 @@ const App = () => {
         try {
           dispatch(fetchChartConfig());
           await dispatch(fetchEmployees());
-          
+
           // Get first employee after employees are loaded
           const state = store.getState();
           const employees = state.builders.employees;
           if (employees?.length > 0) {
             await dispatch(fetchProjects(employees[0].employee_id));
           }
-          
+
           initialFetchDone.current = true;
         } catch (error) {
-          console.error('Error fetching data:', error);
+          console.error("Error fetching data:", error);
         }
       }
     };
@@ -188,22 +191,22 @@ const App = () => {
     <Router>
       <div className="App min-h-screen bg-gray-50">
         <ErrorBoundary>
-          <Header 
-            onMenuClick={() => setIsOpen(!isOpen)} 
-            isMenuOpen={isOpen}
-          />
+          <Header onMenuClick={() => setIsOpen(!isOpen)} isMenuOpen={isOpen} />
           <main className="pt-[50px] flex-1 h-screen">
             <Routes>
               <Route path={PATHS.HOME} element={<ChartContainer />} />
-              <Route 
-                path={`${PATHS.MANAGE}/*`} 
+              <Route
+                path={`${PATHS.MANAGE}/*`}
                 element={
                   <ProtectedRoute>
                     <AdminDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route path={PATHS.COMPLETED} element={<CompletedJobsContainer />} />
+              <Route
+                path={PATHS.COMPLETED}
+                element={<CompletedJobsContainer />}
+              />
               <Route
                 path={PATHS.COMPLETED_PROJECT}
                 element={

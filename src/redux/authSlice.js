@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   session: null,
@@ -7,11 +7,11 @@ const initialState = {
   teamId: null,
   teamName: null,
   roleId: null,
-  permissions: null
+  permissions: null,
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     setLoading: (state, action) => {
@@ -26,7 +26,10 @@ const authSlice = createSlice({
       state.teamId = action.payload.teamId;
       state.teamName = action.payload.teamName;
       state.roleId = action.payload.roleId;
-      state.permissions = action.payload.permissions;
+      state.permissions = {
+        ...action.payload.permissions,
+        ...action.payload.customPermissions,
+      };
       state.error = null;
     },
     setError: (state, action) => {
@@ -35,16 +38,11 @@ const authSlice = createSlice({
     },
     clearAuth: (state) => {
       return { ...initialState, loading: false };
-    }
-  }
+    },
+  },
 });
 
-export const {
-  setLoading,
-  setSession,
-  setUserTeam,
-  setError,
-  clearAuth
-} = authSlice.actions;
+export const { setLoading, setSession, setUserTeam, setError, clearAuth } =
+  authSlice.actions;
 
 export default authSlice.reducer;
