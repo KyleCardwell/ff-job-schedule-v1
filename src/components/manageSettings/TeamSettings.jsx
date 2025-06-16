@@ -75,6 +75,23 @@ const TeamSettings = forwardRef((props, ref) => {
     );
   };
 
+  const handleRoleChange = (memberId, newRoleId) => {
+    const newRole = userRoles?.find(r => r.role_id === newRoleId);
+    
+    setLocalTeamMembers(members =>
+      members.map(member =>
+        member.team_member_id === memberId
+          ? { 
+              ...member, 
+              role_id: newRoleId,
+              // Clear custom_permissions so role's permissions take effect
+              custom_permissions: {} 
+            }
+          : member
+      )
+    );
+  };
+
   if (loading) return <div className="p-4">Loading team members...</div>;
   if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
 
@@ -103,14 +120,15 @@ const TeamSettings = forwardRef((props, ref) => {
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {localTeamMembers.map((member) => (
+            <tbody className="divide-y divide-slate-200">
+              {localTeamMembers?.map(member => (
                 <TeamMemberRow
                   key={member.team_member_id}
                   member={member}
                   userRoles={userRoles}
                   permissionTypes={permissionTypes}
                   onPermissionChange={handlePermissionChange}
+                  onRoleChange={handleRoleChange}
                 />
               ))}
             </tbody>
