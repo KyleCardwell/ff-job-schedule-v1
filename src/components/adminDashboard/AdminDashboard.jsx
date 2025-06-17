@@ -12,6 +12,7 @@ import ProjectSearchFilter from "../ProjectSearchFilter";
 import ManageChartSettings from "../manageSettings/ManageChartSettings";
 import EmployeeSettings from "../manageSettings/EmployeeSettings";
 import HolidaySettings from "../manageSettings/HolidaySettings";
+import TeamSettings from "../manageSettings/TeamSettings";
 import {
   headerButtonClass,
   headerButtonColor,
@@ -36,35 +37,60 @@ const AdminDashboard = () => {
   const holidays = useSelector((state) => state.holidays);
   const dayWidth = useSelector((state) => state.chartConfig.dayWidth);
   const chartStartDate = useSelector((state) => state.chartData.chartStartDate);
+  const { roleId, permissions } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const hd = new Holidays("US");
     setHolidayChecker(hd);
   }, []);
 
-  const tabs = [
+  // Define all possible tabs
+  const allTabs = [
     { 
       id: "employees", 
       label: "Employees", 
       path: PATHS.MANAGE_EMPLOYEES, 
       component: EmployeeSettings,
-      props: { workdayHours, holidayChecker, dayWidth, holidays }
+      props: { workdayHours, holidayChecker, dayWidth, holidays },
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
     },
     { 
       id: "chart", 
       label: "Chart", 
       path: PATHS.MANAGE_CHART, 
       component: ManageChartSettings,
-      props: {}
+      props: {},
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
     },
     { 
       id: "holidays", 
       label: "Holidays", 
       path: PATHS.MANAGE_HOLIDAYS, 
       component: HolidaySettings,
-      props: { workdayHours, holidayChecker, dayWidth, holidays }
+      props: { workdayHours, holidayChecker, dayWidth, holidays },
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
+    },
+    { 
+      id: "team", 
+      label: "Team", 
+      path: PATHS.MANAGE_TEAM, 
+      component: TeamSettings,
+      props: {},
+      requiresAdmin: false,
+      requiresPermission: "can_manage_teams",
+      maxWidthClass: "max-w-[1000px]",
     },
   ];
+
+  // Filter tabs based on permissions
+  const tabs = allTabs.filter(tab => {
+    if (roleId === 1) return true; // Admin can see all tabs
+    if (tab.requiresAdmin) return false; // Non-admins can't see admin-only tabs
+    return permissions?.[tab.requiresPermission]; // Check specific permission
+  });
 
   const handleSave = async () => {
     if (!activeComponentRef.current?.handleSave) return;
@@ -135,9 +161,17 @@ const AdminDashboard = () => {
         {/* Tab Content */}
         <div className="flex-1 overflow-auto">
           <div className="flex justify-center">
-            <div className="w-full max-w-[720px]">
+            <div className={`w-full ${tabs.find(tab => tab.id === getCurrentTab())?.maxWidthClass || 'max-w-[720px]'}`}>
               <Routes>
-                <Route path="/" element={<Navigate to="/manage/employees" replace />} />
+                <Route 
+                  path="/" 
+                  element={
+                    <Navigate 
+                      to={tabs[0]?.path || "/"} 
+                      replace 
+                    />
+                  } 
+                />
                 {tabs.map(({ id, path, component, props }) => (
                   <Route
                     key={id}

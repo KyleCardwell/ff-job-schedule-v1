@@ -5,7 +5,6 @@ import {
   FiCalendar,
   FiUsers,
   FiCheckSquare,
-  FiSettings,
   FiLogOut,
 } from "react-icons/fi";
 import { PATHS } from "../utils/constants";
