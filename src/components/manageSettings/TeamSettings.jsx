@@ -122,39 +122,42 @@ const TeamSettings = forwardRef((props, ref) => {
       <h2 className="text-xl font-bold mb-4 text-slate-200">Manage Team Members</h2>
       
       <div className="bg-slate-700 p-4 rounded-lg shadow">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-800">
-              <tr>
-                <th className="px-6 py-3 text-center text-xs font-medium text-slate-200 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-slate-200 uppercase tracking-wider">
-                  Role
-                </th>
-                {permissionTypes.map(permission => (
-                  <th 
-                    key={permission}
-                    className="px-6 py-3 text-center text-xs font-medium text-slate-200 uppercase tracking-wider"
-                  >
-                    {permission.replace("can_", "").replace(/_/g, ' ')}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {localTeamMembers?.map(member => (
-                <TeamMemberRow
-                  key={member.team_member_id}
-                  member={member}
-                  userRoles={userRoles}
-                  permissionTypes={permissionTypes}
-                  onPermissionChange={handlePermissionChange}
-                  onRoleChange={handleRoleChange}
-                />
+        <div className="overflow-x-auto w-full">
+          <div className="grid auto-cols-fr" style={{ 
+            gridTemplateColumns: `150px 150px ${permissionTypes.map(() => '150px').join(' ')}`,
+            width: 'fit-content',
+            minWidth: '100%'
+          }}>
+            {/* Header */}
+            <div className="contents">
+              <div className="sticky left-0 z-20 bg-slate-800 px-6 py-3 text-center text-xs font-medium text-slate-200 uppercase tracking-wider">
+                Name
+              </div>
+              <div className="sticky left-[150px] z-20 bg-slate-800 px-6 py-3 text-center text-xs font-medium text-slate-200 uppercase tracking-wider">
+                Role
+              </div>
+              {permissionTypes.map(permission => (
+                <div 
+                  key={permission}
+                  className="bg-slate-800 px-6 py-3 text-center text-xs font-medium text-slate-200 uppercase tracking-wider"
+                >
+                  {permission.replace("can_", "").replace(/_/g, ' ')}
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Rows */}
+            {localTeamMembers?.map(member => (
+              <TeamMemberRow
+                key={member.team_member_id}
+                member={member}
+                userRoles={userRoles}
+                permissionTypes={permissionTypes}
+                onPermissionChange={handlePermissionChange}
+                onRoleChange={handleRoleChange}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

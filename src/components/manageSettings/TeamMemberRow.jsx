@@ -48,15 +48,15 @@ const TeamMemberRow = ({
   };
 
   return (
-    <tr className="bg-slate-600 hover:bg-slate-500 text-slate-200 hover:text-slate-900">
-      <td className="px-6 py-4 whitespace-nowrap text-center">
+    <div className="contents group">
+      <div className="sticky left-0 z-10 bg-slate-600 group-hover:bg-slate-500 px-6 py-4 whitespace-nowrap text-center text-slate-200 group-hover:text-slate-900 flex items-center justify-center">
         {member.user_name}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-center">
+      </div>
+      <div className="sticky left-[150px] z-10 bg-slate-600 group-hover:bg-slate-500 px-6 py-4 whitespace-nowrap text-center text-slate-200 group-hover:text-slate-900 flex items-center justify-center">
         <select
           value={member.role_id || ""}
           onChange={handleRoleChange}
-          className="bg-slate-700 text-slate-200 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-slate-700 text-slate-200 border border-slate-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="" disabled>
             Select Role
@@ -67,11 +67,11 @@ const TeamMemberRow = ({
             </option>
           ))}
         </select>
-      </td>
+      </div>
       {permissionStates.map(({ permission, effectivePermission, isOverridden }) => (
-        <td
+        <div
           key={`${member.team_member_id}-${permission}`}
-          className="px-6 py-4 whitespace-nowrap text-center"
+          className="bg-slate-600 group-hover:bg-slate-500 px-6 py-4 whitespace-nowrap text-center text-slate-200 group-hover:text-slate-900 flex items-center justify-center"
         >
           <div className="relative h-12 flex items-center justify-center">
             <input
@@ -84,9 +84,9 @@ const TeamMemberRow = ({
               <span className="text-xs absolute top-9">(Override)</span>
             )}
           </div>
-        </td>
+        </div>
       ))}
-    </tr>
+    </div>
   );
 };
 
