@@ -1,8 +1,9 @@
 import React, { forwardRef, useState, useImperativeHandle, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { supabase } from '../../utils/supabase';
-import { fetchTeamMembers, fetchUserRoles } from '../../redux/actions/teamMembers';
+import { fetchTeamMembers, fetchUserRoles, updateTeamMembers } from '../../redux/actions/teamMembers';
 import TeamMemberRow from './TeamMemberRow';
+import ErrorModal from '../common/ErrorModal';
 
 const TeamSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
@@ -10,37 +11,61 @@ const TeamSettings = forwardRef((props, ref) => {
   const { teamMembers, userRoles, loading, error } = useSelector((state) => state.teamMembers);
   const [localTeamMembers, setLocalTeamMembers] = useState([]);
   const [originalTeamMembers, setOriginalTeamMembers] = useState([]); // Store original state
+  const [adminError, setAdminError] = useState(null);
 
   // Get all possible permissions from the first role's permissions object
   const permissionTypes = userRoles?.[0]?.permissions 
     ? Object.keys(userRoles[0].permissions)
     : [];
 
+  // Helper to check if a role has admin privileges
+  const isAdminRole = (roleId) => {
+    const role = userRoles?.find(r => r.role_id === Number(roleId));
+    return role?.permissions?.can_manage_teams === true;
+  };
+
+  const handleAdminErrorClose = () => {
+    setAdminError(null);
+  };
+
   // Expose save and cancel methods to parent
   useImperativeHandle(ref, () => ({
     handleSave: async () => {
       try {
-        const promises = localTeamMembers.map(member => {
-          if (JSON.stringify(member.custom_permissions) !== JSON.stringify(
-            originalTeamMembers.find(m => m.team_member_id === member.team_member_id)?.custom_permissions
-          )) {
-            return supabase
-              .from('team_members')
-              .update({ custom_permissions: member.custom_permissions })
-              .eq('team_member_id', member.team_member_id);
-          }
-          return Promise.resolve();
-        });
+        // Check if save would remove all admins
+        const hasAdmin = localTeamMembers.some(member => isAdminRole(member.role_id));
+        if (!hasAdmin) {
+          setAdminError("Cannot save changes. At least one team member must have admin privileges.");
+          return;
+        }
 
-        await Promise.all(promises);
-        fetchTeamMembers(dispatch, teamId); // Refresh the data
-        setOriginalTeamMembers(localTeamMembers); // Update original state after successful save
+        // Find changed members
+        const changedMembers = localTeamMembers.map(member => {
+          const originalMember = originalTeamMembers.find(m => m.team_member_id === member.team_member_id);
+          const permissionsChanged = JSON.stringify(member.custom_permissions) !== JSON.stringify(originalMember?.custom_permissions);
+          const roleChanged = member.role_id !== originalMember?.role_id;
+
+          if (permissionsChanged || roleChanged) {
+            return {
+              team_member_id: member.team_member_id,
+              role_id: member.role_id,
+              custom_permissions: member.custom_permissions
+            };
+          }
+          return null;
+        }).filter(Boolean);
+
+        if (changedMembers.length > 0) {
+          await updateTeamMembers(dispatch, changedMembers);
+          await fetchTeamMembers(dispatch, teamId);
+          setOriginalTeamMembers(localTeamMembers);
+        }
       } catch (error) {
-        console.error('Error saving permissions:', error);
+        console.error('Error saving team member changes:', error);
+        setAdminError('Failed to save changes. Please try again.');
       }
     },
     handleCancel: () => {
-      // Reset to original state
       setLocalTeamMembers(originalTeamMembers);
     }
   }));
@@ -61,7 +86,7 @@ const TeamSettings = forwardRef((props, ref) => {
   useEffect(() => {
     if (teamMembers && userRoles) {
       setLocalTeamMembers(teamMembers);
-      setOriginalTeamMembers(teamMembers); // Store original state
+      setOriginalTeamMembers(teamMembers);
     }
   }, [teamMembers, userRoles]);
 
@@ -76,16 +101,13 @@ const TeamSettings = forwardRef((props, ref) => {
   };
 
   const handleRoleChange = (memberId, newRoleId) => {
-    const newRole = userRoles?.find(r => r.role_id === newRoleId);
-    
     setLocalTeamMembers(members =>
       members.map(member =>
         member.team_member_id === memberId
           ? { 
               ...member, 
               role_id: newRoleId,
-              // Clear custom_permissions so role's permissions take effect
-              custom_permissions: {} 
+              custom_permissions: {} // Clear custom permissions when role changes
             }
           : member
       )
@@ -135,6 +157,11 @@ const TeamSettings = forwardRef((props, ref) => {
           </table>
         </div>
       </div>
+
+      <ErrorModal 
+        message={adminError} 
+        onClose={handleAdminErrorClose}
+      />
     </div>
   );
 });
