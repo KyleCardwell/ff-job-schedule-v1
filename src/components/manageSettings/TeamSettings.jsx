@@ -18,10 +18,14 @@ const TeamSettings = forwardRef((props, ref) => {
     ? Object.keys(userRoles[0].permissions)
     : [];
 
-  // Helper to check if a role has admin privileges
-  const isAdminRole = (roleId) => {
+  // Helper to check if a role has admin privileges and no overrides
+  const isAdminRole = (roleId, customPermissions = {}) => {
     const role = userRoles?.find(r => r.role_id === Number(roleId));
-    return role?.permissions?.can_manage_teams === true;
+    // Check if role has admin permission
+    const hasAdminRole = role?.permissions?.can_manage_teams === true;
+    // For admin roles, ensure there are NO custom permission overrides at all
+    const hasNoOverrides = hasAdminRole ? Object.keys(customPermissions).length === 0 : true;
+    return hasAdminRole && hasNoOverrides;
   };
 
   const handleAdminErrorClose = () => {
@@ -33,9 +37,11 @@ const TeamSettings = forwardRef((props, ref) => {
     handleSave: async () => {
       try {
         // Check if save would remove all admins
-        const hasAdmin = localTeamMembers.some(member => isAdminRole(member.role_id));
+        const hasAdmin = localTeamMembers.some(member => 
+          isAdminRole(member.role_id, member.custom_permissions)
+        );
         if (!hasAdmin) {
-          setAdminError("Cannot save changes. At least one team member must have admin privileges.");
+          setAdminError("Cannot save changes. At least one team member must have admin privileges with no permission overrides.");
           return;
         }
 
@@ -121,7 +127,10 @@ const TeamSettings = forwardRef((props, ref) => {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4 text-slate-200">Manage Team Members</h2>
       
-      <div className="bg-slate-700 p-4 rounded-lg shadow">
+      <div className="bg-slate-700 p-4 rounded-lg shadow relative">
+        {/* Fade out effect - moved outside the scroll container */}
+        <div className="absolute right-4 top-4 bottom-4 w-16 bg-gradient-to-l from-slate-700 to-transparent pointer-events-none z-30"></div>
+        
         <div className="overflow-x-auto w-full">
           <div className="grid auto-cols-fr" style={{ 
             gridTemplateColumns: `150px 150px ${permissionTypes.map(() => '150px').join(' ')}`,
