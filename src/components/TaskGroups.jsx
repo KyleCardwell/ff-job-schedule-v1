@@ -750,7 +750,12 @@ const TaskGroups = ({
         "y",
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
-      .style("cursor", canEditSchedule ? "col-resize" : "not-allowed")
+      .style(
+        "cursor",
+        !canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate)
+          ? "not-allowed"
+          : "col-resize"
+      )
       .style("fill", "transparent");
 
     // Update all elements (both new and existing)
