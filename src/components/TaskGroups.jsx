@@ -41,18 +41,19 @@ const TaskGroups = ({
   onDatabaseError,
   setEstimatedCompletionDate,
   earliestStartDate,
-  selectedEmployeeIds, // Update selectedEmployeeIds as a prop
+  selectedEmployeeIds,
+  dateFilter,
 }) => {
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
 
   // Configuration for hard start indicator dimensions
   const hardStartConfig = {
-    width: 16,          // Total width of the bracket
-    offset: 9,         // Offset from task start
-    verticalWidth: 4,   // Width of vertical bar
+    width: 16, // Total width of the bracket
+    offset: 9, // Offset from task start
+    verticalWidth: 4, // Width of vertical bar
     horizontalWidth: 1, // Width of horizontal ends
-    cornerRadius: 5     // Radius for interior corners
+    cornerRadius: 5, // Radius for interior corners
   };
 
   const employees = useSelector((state) => state.builders.employees);
@@ -76,28 +77,64 @@ const TaskGroups = ({
   const activeTasksData = useMemo(() => {
     const today = normalizeDate(new Date());
     const earliestStart = normalizeDate(earliestStartDate);
-    const currentDate = normalizeDate(max([parseISO(today), parseISO(earliestStart)]));
+    const currentDate = normalizeDate(
+      max([parseISO(today), parseISO(earliestStart)])
+    );
     const defaultEmployeeId = employees[0]?.employee_id;
 
     // Reset the total duration
     totalDurationRef.current = 0;
 
     // Single pass through tasks array
-    return tasks
-      .reduce((acc, task, index) => {
+    return tasks.reduce(
+      (acc, task, index) => {
         // Skip inactive tasks
         if (task.task_active === false) return acc;
-        
+
         // Skip tasks that don't match any selected employee filter
-        if (selectedEmployeeIds.length > 0 && !selectedEmployeeIds.includes(task.employee_id)) return acc;
-        
+        if (
+          selectedEmployeeIds.length > 0 &&
+          !selectedEmployeeIds.includes(task.employee_id)
+        )
+          return acc;
+
+        // Apply date filter
+        const taskStartDate = normalizeDate(task.start_date);
+        const taskEndDate = normalizeDate(task.end_date);
+
+        let passesDateFilter = true;
+        if (dateFilter?.startDate && dateFilter?.endDate) {
+          // Task should be included if:
+          // 1. Task end_date is after filter start_date AND
+          // 2. Either:
+          //    a) Task start_date is between filter dates, OR
+          //    b) Filter start_date is between task start_date and end_date
+          passesDateFilter =
+            // First ensure task hasn't ended before filter starts
+            taskEndDate > dateFilter.startDate &&
+            // Case 1: Task start_date is between filter dates
+            ((taskStartDate >= dateFilter.startDate &&
+              taskStartDate <= dateFilter.endDate) ||
+              // Case 2: Filter start_date is between task dates
+              (dateFilter.startDate >= taskStartDate &&
+                dateFilter.startDate <= taskEndDate));
+        }
+
+        if (!passesDateFilter) return acc;
+
         // Calculate duration for all tasks
-        if (task.employee_id === defaultEmployeeId || task.start_date >= currentDate) {
+        if (
+          task.employee_id === defaultEmployeeId ||
+          task.start_date >= currentDate
+        ) {
           totalDurationRef.current += task.duration || 0;
-        } else if (task.end_date >= currentDate && task.start_date <= currentDate) {
+        } else if (
+          task.end_date >= currentDate &&
+          task.start_date <= currentDate
+        ) {
           const remainingDays = differenceInDays(
-            new Date(task.end_date),
-            new Date(currentDate)
+            normalizeDate(task.end_date),
+            normalizeDate(currentDate)
           );
           totalDurationRef.current += remainingDays * workdayHours;
         }
@@ -116,7 +153,9 @@ const TaskGroups = ({
         }
         acc.activeCount++;
         return acc;
-      }, { tasks: [], activeCount: 0 }).tasks;
+      },
+      { tasks: [], activeCount: 0 }
+    ).tasks;
   }, [
     tasks,
     subTasksByEmployee,
@@ -127,6 +166,7 @@ const TaskGroups = ({
     selectedEmployeeIds,
     earliestStartDate,
     employees,
+    dateFilter,
   ]);
 
   // Calculate timeOffByBuilder independently
@@ -178,7 +218,7 @@ const TaskGroups = ({
               employee_id: builder.employee_id,
               date: normalizeDate(day),
             };
-          })
+          });
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
@@ -189,7 +229,9 @@ const TaskGroups = ({
 
     const today = normalizeDate(new Date());
     const earliestStart = normalizeDate(earliestStartDate);
-    const currentDate = normalizeDate(max([parseISO(today), parseISO(earliestStart)]));
+    const currentDate = normalizeDate(
+      max([parseISO(today), parseISO(earliestStart)])
+    );
 
     const estimatedTotalDays =
       totalJobHours(
@@ -203,7 +245,9 @@ const TaskGroups = ({
       ) / workdayHours;
 
     // Count only employees who can be scheduled
-    const schedulableEmployees = employees.filter(emp => emp.can_schedule !== false).length;
+    const schedulableEmployees = employees.filter(
+      (emp) => emp.can_schedule !== false
+    ).length;
     const activeEmployees = Math.max(1, schedulableEmployees - 1); // Subtract 1 for default employee
 
     const estimCompletionDate = addDays(
@@ -242,8 +286,16 @@ const TaskGroups = ({
     const drag = d3
       .drag()
       .on("start", function (event, d) {
-        // Skip drag if user doesn't have permission or if task has hard_start_date
-        if (!canEditSchedule || d.hard_start_date) return;
+        // Skip drag if:
+        // - user doesn't have permission
+        // - task has hard_start_date
+        // - date filters are active
+        if (
+          !canEditSchedule ||
+          d.hard_start_date ||
+          (dateFilter?.startDate && dateFilter?.endDate)
+        )
+          return;
 
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
@@ -256,8 +308,16 @@ const TaskGroups = ({
         d.dragStartEventX = event.x;
       })
       .on("drag", function (event, d) {
-        // Skip drag if user doesn't have permission or if task has hard_start_date
-        if (!canEditSchedule || d.hard_start_date) return;
+        // Skip drag if:
+        // - user doesn't have permission
+        // - task has hard_start_date
+        // - date filters are active
+        if (
+          !canEditSchedule ||
+          d.hard_start_date ||
+          (dateFilter?.startDate && dateFilter?.endDate)
+        )
+          return;
 
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
@@ -268,8 +328,16 @@ const TaskGroups = ({
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
-        // Skip drag if user doesn't have permission or if task has hard_start_date
-        if (!canEditSchedule || d.hard_start_date) return;
+        // Skip drag if:
+        // - user doesn't have permission
+        // - task has hard_start_date
+        // - date filters are active
+        if (
+          !canEditSchedule ||
+          d.hard_start_date ||
+          (dateFilter?.startDate && dateFilter?.endDate)
+        )
+          return;
 
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
@@ -345,26 +413,29 @@ const TaskGroups = ({
             transition
               .select(".bar-text")
               .attr("x", (job) => job.xPosition + 5);
-            transition
-              .select(".hard-start-indicator")
-              .attr("d", (job) => {
-                const x = job.xPosition + hardStartConfig.offset;
-                const y = rowHeight * (job.yOffsetFactor || 0);
-                const r = hardStartConfig.cornerRadius;
-                const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
-                
-                return `M ${x} ${y}  
+            transition.select(".hard-start-indicator").attr("d", (job) => {
+              const x = job.xPosition + hardStartConfig.offset;
+              const y = rowHeight * (job.yOffsetFactor || 0);
+              const r = hardStartConfig.cornerRadius;
+              const innerWidth =
+                hardStartConfig.width - hardStartConfig.verticalWidth;
+
+              return `M ${x} ${y}  
                         h -${hardStartConfig.width}
                         v ${rowHeight}
                         h ${hardStartConfig.width}
                         v -${hardStartConfig.horizontalWidth}
                         h -${innerWidth - r}
                         a ${r} ${r} 0 0 1 -${r} -${r}
-                        v -${rowHeight - 2 * hardStartConfig.horizontalWidth - 2 * r}
+                        v -${
+                          rowHeight -
+                          2 * hardStartConfig.horizontalWidth -
+                          2 * r
+                        }
                         a ${r} ${r} 0 0 1 ${r} -${r}
                         h ${innerWidth - r}
                         Z`;
-              });
+            });
           })
           .end()
           .then(async () => {
@@ -373,7 +444,9 @@ const TaskGroups = ({
               dispatch(
                 updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
               );
-              dispatch(updateEmployeeSchedulingConflicts(d.employee_id, conflicts));
+              dispatch(
+                updateEmployeeSchedulingConflicts(d.employee_id, conflicts)
+              );
 
               // Filter out unchanged tasks
               const tasksToUpdate = sortedBuilderTasks.filter((task) => {
@@ -423,8 +496,11 @@ const TaskGroups = ({
     const resize = d3
       .drag()
       .on("start", function (event, d) {
-        // Skip resize if user doesn't have permission
-        if (!canEditSchedule) return;
+        // Skip resize if:
+        // - user doesn't have permission
+        // - date filters are active
+        if (!canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate))
+          return;
 
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
@@ -438,8 +514,11 @@ const TaskGroups = ({
         d.resizeStartX = event.x;
       })
       .on("drag", function (event, d) {
-        // Skip resize if user doesn't have permission
-        if (!canEditSchedule) return;
+        // Skip resize if:
+        // - user doesn't have permission
+        // - date filters are active
+        if (!canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate))
+          return;
 
         const rect = d3.select(this.parentNode).select("rect");
         const dx = event.x - d.resizeStartX;
@@ -451,8 +530,11 @@ const TaskGroups = ({
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
-        // Skip resize if user doesn't have permission
-        if (!canEditSchedule) return;
+        // Skip resize if:
+        // - user doesn't have permission
+        // - date filters are active
+        if (!canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate))
+          return;
 
         const rect = d3.select(this.parentNode).select("rect");
         const newWidth = parseFloat(rect.attr("width"));
@@ -516,26 +598,29 @@ const TaskGroups = ({
             transition
               .select(".bar-text")
               .attr("x", (job) => job.xPosition + 5);
-            transition
-              .select(".hard-start-indicator")
-              .attr("d", (job) => {
-                const x = job.xPosition + hardStartConfig.offset;
-                const y = rowHeight * (job.yOffsetFactor || 0);
-                const r = hardStartConfig.cornerRadius;
-                const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
-                
-                return `M ${x} ${y}  
+            transition.select(".hard-start-indicator").attr("d", (job) => {
+              const x = job.xPosition + hardStartConfig.offset;
+              const y = rowHeight * (job.yOffsetFactor || 0);
+              const r = hardStartConfig.cornerRadius;
+              const innerWidth =
+                hardStartConfig.width - hardStartConfig.verticalWidth;
+
+              return `M ${x} ${y}  
                         h -${hardStartConfig.width}
                         v ${rowHeight}
                         h ${hardStartConfig.width}
                         v -${hardStartConfig.horizontalWidth}
                         h -${innerWidth - r}
                         a ${r} ${r} 0 0 1 -${r} -${r}
-                        v -${rowHeight - 2 * hardStartConfig.horizontalWidth - 2 * r}
+                        v -${
+                          rowHeight -
+                          2 * hardStartConfig.horizontalWidth -
+                          2 * r
+                        }
                         a ${r} ${r} 0 0 1 ${r} -${r}
                         h ${innerWidth - r}
                         Z`;
-              });
+            });
           })
           .end()
           .then(async () => {
@@ -544,7 +629,9 @@ const TaskGroups = ({
               dispatch(
                 updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
               );
-              dispatch(updateEmployeeSchedulingConflicts(d.employee_id, conflicts));
+              dispatch(
+                updateEmployeeSchedulingConflicts(d.employee_id, conflicts)
+              );
 
               // Filter out unchanged tasks
               const tasksToUpdate = sortedBuilderTasks.filter((task) => {
@@ -583,9 +670,7 @@ const TaskGroups = ({
       .attr("class", "time-off-group");
 
     // Create a group for jobs
-    const jobsGroup = taskGroupsSvg
-      .append("g")
-      .attr("class", "jobs-group");
+    const jobsGroup = taskGroupsSvg.append("g").attr("class", "jobs-group");
 
     timeOffGroup
       .selectAll(".time-off-line")
@@ -614,16 +699,12 @@ const TaskGroups = ({
       .attr("transform", (d) => `translate(0, ${d.rowNumber * rowHeight})`)
       .attr("font-size", "12px");
 
-    enterGroups
-      .append("rect")
-      .attr("class", "job")
-      .attr("rx", 5)
-      .attr("ry", 5);
+    enterGroups.append("rect").attr("class", "job").attr("rx", 5).attr("ry", 5);
 
     // Update cursor style for both new and existing rectangles
     jobGroups
       .select("rect")
-      .style("cursor", (d) => 
+      .style("cursor", (d) =>
         !canEditSchedule || d.hard_start_date ? "not-allowed" : "ew-resize"
       );
 
@@ -641,8 +722,9 @@ const TaskGroups = ({
         const x = d.xPosition + hardStartConfig.offset;
         const y = rowHeight * (d.yOffsetFactor || 0);
         const r = hardStartConfig.cornerRadius;
-        const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
-        
+        const innerWidth =
+          hardStartConfig.width - hardStartConfig.verticalWidth;
+
         return `M ${x} ${y}  
                 h -${hardStartConfig.width}
                 v ${rowHeight}
@@ -656,7 +738,7 @@ const TaskGroups = ({
                 Z`;
       })
       .attr("fill", "black")
-      .style("display", (d) => d.hard_start_date ? "block" : "none");
+      .style("display", (d) => (d.hard_start_date ? "block" : "none"));
 
     // Add resize handle to each task group
     enterGroups
@@ -685,8 +767,9 @@ const TaskGroups = ({
         const x = d.xPosition + hardStartConfig.offset;
         const y = rowHeight * (d.yOffsetFactor || 0);
         const r = hardStartConfig.cornerRadius;
-        const innerWidth = hardStartConfig.width - hardStartConfig.verticalWidth;
-        
+        const innerWidth =
+          hardStartConfig.width - hardStartConfig.verticalWidth;
+
         return `M ${x} ${y}  
                 h -${hardStartConfig.width}
                 v ${rowHeight}
@@ -699,7 +782,7 @@ const TaskGroups = ({
                 h ${innerWidth - r}
                 Z`;
       })
-      .style("display", (d) => d.hard_start_date ? "block" : "none");
+      .style("display", (d) => (d.hard_start_date ? "block" : "none"));
 
     allGroups
       .select("rect.job")
@@ -716,8 +799,12 @@ const TaskGroups = ({
         );
         return employee?.employee_color || "#808080"; // Fallback to gray if no color found
       })
-      .style("cursor", (d) => 
-        !canEditSchedule || d.hard_start_date ? "not-allowed" : "ew-resize"
+      .style("cursor", (d) =>
+        !canEditSchedule ||
+        d.hard_start_date ||
+        (dateFilter?.startDate && dateFilter?.endDate)
+          ? "not-allowed"
+          : "ew-resize"
       );
 
     allGroups
@@ -771,7 +858,8 @@ const TaskGroups = ({
     handleAutoScroll,
     subTasksByEmployee,
     canEditSchedule,
-    selectedEmployeeIds, // Update selectedEmployeeIds to dependencies
+    selectedEmployeeIds,
+    dateFilter,
   ]);
 
   // Move unassigned tasks to start at today

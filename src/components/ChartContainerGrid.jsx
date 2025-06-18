@@ -30,6 +30,7 @@ import {
   headerButtonColor,
 } from "../assets/tailwindConstants";
 import { Actions } from "../redux/actions";
+import DateRangeFilter from "./DateRangeFilter";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -45,6 +46,7 @@ export const ChartContainer = () => {
 
   const [holidayChecker, setHolidayChecker] = useState(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
+  const [dateFilter, setDateFilter] = useState({ startDate: null, endDate: null });
 
   const daysBeforeStart = 15;
   const daysAfterEnd = 15;
@@ -112,19 +114,47 @@ export const ChartContainer = () => {
         };
       });
 
-    // Only apply filter and heightAdjust if there's a selected employee
-    const filteredRooms = selectedEmployeeIds.length > 0
-      ? activeRooms
-          .filter(room => selectedEmployeeIds.includes(room.employee_id))
-          .map(room => ({ ...room, heightAdjust: 1 }))
-      : activeRooms;
+    // Apply both employee and date filters
+    const filteredRooms = activeRooms
+      .filter(room => {
+        const passesEmployeeFilter = selectedEmployeeIds.length === 0 || 
+          selectedEmployeeIds.includes(room.employee_id);
+        
+        // Convert dates once for efficiency
+        const taskStartDate = normalizeDate(room.start_date);
+        const taskEndDate = normalizeDate(room.end_date);
+
+        // Handle date filtering with null cases
+        let passesDateFilter = true;
+        
+        if (dateFilter.startDate && dateFilter.endDate) {
+          // Task should be included if:
+          // 1. Task end_date is after filter start_date AND
+          // 2. Either:
+          //    a) Task start_date is between filter dates, OR
+          //    b) Filter start_date is between task start_date and end_date
+          passesDateFilter = (
+            // First ensure task hasn't ended before filter starts
+            taskEndDate > dateFilter.startDate && 
+            (
+              // Case 1: Task start_date is between filter dates
+              (taskStartDate >= dateFilter.startDate && taskStartDate <= dateFilter.endDate) ||
+              // Case 2: Filter start_date is between task dates
+              (dateFilter.startDate >= taskStartDate && dateFilter.startDate <= taskEndDate)
+            )
+          );
+        }
+
+        return passesEmployeeFilter && passesDateFilter;
+      })
+      .map(room => ({ ...room, heightAdjust: 1 }));
 
     return {
       activeRoomsData: filteredRooms,
       lastJobsIndex: jobsIndex,
       someTaskAssigned,
     };
-  }, [chartData, employees, workdayHours, holidays, selectedEmployeeIds, earliestStartDate, latestStartDate]); // Add selectedEmployeeIds to dependencies
+  }, [chartData, defaultEmployeeId, selectedEmployeeIds, dateFilter]);
 
   useEffect(() => {
     if (earliestStartDate) {
@@ -865,8 +895,13 @@ export const ChartContainer = () => {
     spanBarHeight,
   ]);
 
-  const updateChartState = useCallback((updates) => {
-    setSelectedEmployeeIds(updates.selectedEmployeeIds);
+  const updateChartState = useCallback(({ selectedEmployeeIds: newEmployeeIds, dateRange }) => {
+    if (newEmployeeIds !== undefined) {
+      setSelectedEmployeeIds(newEmployeeIds);
+    }
+    if (dateRange !== undefined) {
+      setDateFilter(dateRange);
+    }
   }, []);
 
   return (
@@ -1085,6 +1120,7 @@ export const ChartContainer = () => {
                 setEstimatedCompletionDate={setEstimatedCompletionDate}
                 earliestStartDate={earliestStartDate}
                 selectedEmployeeIds={selectedEmployeeIds}
+                dateFilter={dateFilter}
               />
             </div>
           </div>
@@ -1098,12 +1134,17 @@ export const ChartContainer = () => {
           {estimatedCompletionDate &&
             `Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
         </div>
-        {activeRoomsData?.length > 0 && (
-          <BuilderLegend
-            selectedEmployeeIds={selectedEmployeeIds}
-            onEmployeeFilter={(employeeIds) => updateChartState({ selectedEmployeeIds: employeeIds })}
+        <div className="flex justify-between flex-grow">
+          {activeRoomsData?.length > 0 && (
+            <BuilderLegend
+              selectedEmployeeIds={selectedEmployeeIds}
+              onEmployeeFilter={(employeeIds) => updateChartState({ selectedEmployeeIds: employeeIds })}
+            />
+          )}
+          <DateRangeFilter
+            onFilterChange={(dateRange) => updateChartState({ dateRange })}
           />
-        )}
+        </div>
       </div>
 
       {isLoading && (
