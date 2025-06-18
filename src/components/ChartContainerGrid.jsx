@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ChartActionButtons from "./ChartActionButtons";
 import {
@@ -46,7 +52,10 @@ export const ChartContainer = () => {
 
   const [holidayChecker, setHolidayChecker] = useState(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
-  const [dateFilter, setDateFilter] = useState({ startDate: null, endDate: null });
+  const [dateFilter, setDateFilter] = useState({
+    startDate: null,
+    endDate: null,
+  });
 
   const daysBeforeStart = 15;
   const daysAfterEnd = 15;
@@ -65,8 +74,8 @@ export const ChartContainer = () => {
     let hasAssignedTasks = false;
 
     chartData
-      .filter(room => room.task_active)
-      .forEach(room => {
+      .filter((room) => room.task_active)
+      .forEach((room) => {
         if (room.employee_id !== defaultEmployeeId) {
           hasAssignedTasks = true;
           const roomStartDate = parseISO(normalizeDate(room.start_date));
@@ -83,15 +92,11 @@ export const ChartContainer = () => {
 
     return {
       earliestStartDate: hasAssignedTasks ? earliest : null,
-      latestStartDate: hasAssignedTasks ? latest : null
+      latestStartDate: hasAssignedTasks ? latest : null,
     };
-  }, [chartData, defaultEmployeeId]);  // Only recalculate when these dependencies change
+  }, [chartData, defaultEmployeeId]); // Only recalculate when these dependencies change
 
-  const {
-    activeRoomsData,
-    lastJobsIndex,
-    someTaskAssigned,
-  } = useMemo(() => {
+  const { activeRoomsData, lastJobsIndex, someTaskAssigned } = useMemo(() => {
     let currentJobId = null;
     let jobsIndex = -1;
     let someTaskAssigned = false;
@@ -116,38 +121,38 @@ export const ChartContainer = () => {
 
     // Apply both employee and date filters
     const filteredRooms = activeRooms
-      .filter(room => {
-        const passesEmployeeFilter = selectedEmployeeIds.length === 0 || 
+      .filter((room) => {
+        const passesEmployeeFilter =
+          selectedEmployeeIds.length === 0 ||
           selectedEmployeeIds.includes(room.employee_id);
-        
+
         // Convert dates once for efficiency
         const taskStartDate = normalizeDate(room.start_date);
         const taskEndDate = normalizeDate(room.end_date);
 
         // Handle date filtering with null cases
         let passesDateFilter = true;
-        
+
         if (dateFilter.startDate && dateFilter.endDate) {
           // Task should be included if:
           // 1. Task end_date is after filter start_date AND
           // 2. Either:
           //    a) Task start_date is between filter dates, OR
           //    b) Filter start_date is between task start_date and end_date
-          passesDateFilter = (
+          passesDateFilter =
             // First ensure task hasn't ended before filter starts
-            taskEndDate > dateFilter.startDate && 
-            (
-              // Case 1: Task start_date is between filter dates
-              (taskStartDate >= dateFilter.startDate && taskStartDate <= dateFilter.endDate) ||
+            taskEndDate > dateFilter.startDate &&
+            // Case 1: Task start_date is between filter dates
+            ((taskStartDate >= dateFilter.startDate &&
+              taskStartDate <= dateFilter.endDate) ||
               // Case 2: Filter start_date is between task dates
-              (dateFilter.startDate >= taskStartDate && dateFilter.startDate <= taskEndDate)
-            )
-          );
+              (dateFilter.startDate >= taskStartDate &&
+                dateFilter.startDate <= taskEndDate));
         }
 
         return passesEmployeeFilter && passesDateFilter;
       })
-      .map(room => ({ ...room, heightAdjust: 1 }));
+      .map((room) => ({ ...room, heightAdjust: 1 }));
 
     return {
       activeRoomsData: filteredRooms,
@@ -895,14 +900,17 @@ export const ChartContainer = () => {
     spanBarHeight,
   ]);
 
-  const updateChartState = useCallback(({ selectedEmployeeIds: newEmployeeIds, dateRange }) => {
-    if (newEmployeeIds !== undefined) {
-      setSelectedEmployeeIds(newEmployeeIds);
-    }
-    if (dateRange !== undefined) {
-      setDateFilter(dateRange);
-    }
-  }, []);
+  const updateChartState = useCallback(
+    ({ selectedEmployeeIds: newEmployeeIds, dateRange }) => {
+      if (newEmployeeIds !== undefined) {
+        setSelectedEmployeeIds(newEmployeeIds);
+      }
+      if (dateRange !== undefined) {
+        setDateFilter(dateRange);
+      }
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-50px)] print:block print:h-auto print:overflow-visible">
@@ -1136,14 +1144,18 @@ export const ChartContainer = () => {
         </div>
         <div className="flex justify-between flex-grow">
           {activeRoomsData?.length > 0 && (
-            <BuilderLegend
-              selectedEmployeeIds={selectedEmployeeIds}
-              onEmployeeFilter={(employeeIds) => updateChartState({ selectedEmployeeIds: employeeIds })}
-            />
+            <>
+              <BuilderLegend
+                selectedEmployeeIds={selectedEmployeeIds}
+                onEmployeeFilter={(employeeIds) =>
+                  updateChartState({ selectedEmployeeIds: employeeIds })
+                }
+              />
+              <DateRangeFilter
+                onFilterChange={(dateRange) => updateChartState({ dateRange })}
+              />
+            </>
           )}
-          <DateRangeFilter
-            onFilterChange={(dateRange) => updateChartState({ dateRange })}
-          />
         </div>
       </div>
 
