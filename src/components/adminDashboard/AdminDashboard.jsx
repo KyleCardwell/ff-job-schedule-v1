@@ -36,7 +36,6 @@ const AdminDashboard = () => {
   const workdayHours = useSelector((state) => state.chartConfig.workdayHours);
   const holidays = useSelector((state) => state.holidays);
   const dayWidth = useSelector((state) => state.chartConfig.dayWidth);
-  const chartStartDate = useSelector((state) => state.chartData.chartStartDate);
   const { roleId, permissions } = useSelector((state) => state.auth);
 
   useEffect(() => {

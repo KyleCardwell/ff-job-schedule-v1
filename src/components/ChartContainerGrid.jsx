@@ -44,6 +44,7 @@ export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
+  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
   const { canEditSchedule } = usePermissions();
 
   const employees = useSelector((state) => state.builders.employees);
@@ -60,7 +61,6 @@ export const ChartContainer = () => {
   const daysBeforeStart = 15;
   const daysAfterEnd = 15;
   const dayWidth = 30;
-  const workdayHours = 8;
 
   useEffect(() => {
     const hd = new Holidays();
@@ -172,7 +172,7 @@ export const ChartContainer = () => {
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column
-  const leftColumnHeaderRef = useRef(null); // For the fixed left column
+  const leftColumnHeaderRef = useRef(null); // For the fixed left column header
   const headerRef = useRef(null); // For the fixed header
   const monthHeaderRef = useRef(null); // Add new ref for month header
   const scrollableRef = useRef(null);
