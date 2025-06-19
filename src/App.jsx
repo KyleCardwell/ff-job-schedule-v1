@@ -30,6 +30,7 @@ import Header from "./components/Header"; // Import the new Header component
 import { PATHS } from "./utils/constants.js";
 import store from "./redux/store"; // Import the store
 import ProtectedRoute from "./components/ProtectedRoute";
+import GridLoader from "react-spinners/GridLoader";
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -41,10 +42,15 @@ const authContainerStyle = {
 
 const App = () => {
   const dispatch = useDispatch();
-  const { session, loading, teamId } = useSelector((state) => state.auth);
+  const { session, loading: authLoading, teamId } = useSelector((state) => state.auth);
+  const { loading: chartLoading } = useSelector((state) => state.chartData);
+  const { loading: configLoading } = useSelector((state) => state.chartConfig);
+  const { loading: buildersLoading } = useSelector((state) => state.builders);
   const initialFetchDone = useRef(false);
   const lastAuthFetch = useRef(null);
-  const [isOpen, setIsOpen] = useState(false); // Add state for isOpen
+  const [isOpen, setIsOpen] = useState(false);
+
+  const isLoading = authLoading || (!initialFetchDone.current && (chartLoading || configLoading || buildersLoading));
 
   const fetchUserData = useCallback(
     async (session) => {
@@ -162,8 +168,15 @@ const App = () => {
     setIsOpen(false);
   }, [session]);
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <GridLoader color="#4F46E5" />
+          <p className="mt-4 text-gray-600">Loading Job Schedule...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!session) {
