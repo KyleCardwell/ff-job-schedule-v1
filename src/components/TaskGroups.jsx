@@ -47,6 +47,11 @@ const TaskGroups = ({
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
 
+  const cannotEdit = useMemo(
+    () => !canEditSchedule || dateFilter?.startDate || dateFilter?.endDate,
+    [canEditSchedule, dateFilter]
+  );
+
   // Configuration for hard start indicator dimensions
   const hardStartConfig = {
     width: 16, // Total width of the bracket
@@ -104,15 +109,13 @@ const TaskGroups = ({
 
         let passesDateFilter = true;
         if (dateFilter.startDate || dateFilter.endDate) {
-          const filterStart = dateFilter.startDate || '-infinity';
-          const filterEnd = dateFilter.endDate || 'infinity';
-          
+          const filterStart = dateFilter.startDate || "-infinity";
+          const filterEnd = dateFilter.endDate || "infinity";
+
           passesDateFilter =
             taskEndDate > filterStart &&
-            ((taskStartDate >= filterStart &&
-              taskStartDate <= filterEnd) ||
-              (filterStart >= taskStartDate &&
-                filterStart <= filterEnd));
+            ((taskStartDate >= filterStart && taskStartDate <= filterEnd) ||
+              (filterStart >= taskStartDate && filterStart <= filterEnd));
         }
 
         if (!passesDateFilter) return acc;
@@ -213,7 +216,7 @@ const TaskGroups = ({
               employee_id: builder.employee_id,
               date: normalizeDate(day),
             };
-          })
+          });
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
@@ -285,12 +288,7 @@ const TaskGroups = ({
         // - user doesn't have permission
         // - task has hard_start_date
         // - date filters are active
-        if (
-          !canEditSchedule ||
-          d.hard_start_date ||
-          (dateFilter?.startDate && dateFilter?.endDate)
-        )
-          return;
+        if (cannotEdit || d.hard_start_date) return;
 
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
@@ -307,12 +305,7 @@ const TaskGroups = ({
         // - user doesn't have permission
         // - task has hard_start_date
         // - date filters are active
-        if (
-          !canEditSchedule ||
-          d.hard_start_date ||
-          (dateFilter?.startDate && dateFilter?.endDate)
-        )
-          return;
+        if (cannotEdit || d.hard_start_date) return;
 
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
@@ -327,12 +320,7 @@ const TaskGroups = ({
         // - user doesn't have permission
         // - task has hard_start_date
         // - date filters are active
-        if (
-          !canEditSchedule ||
-          d.hard_start_date ||
-          (dateFilter?.startDate && dateFilter?.endDate)
-        )
-          return;
+        if (cannotEdit || d.hard_start_date) return;
 
         const dx = event.x - d.dragStartEventX;
         const newX = parseFloat(d.dragStartX) + dx;
@@ -494,8 +482,7 @@ const TaskGroups = ({
         // Skip resize if:
         // - user doesn't have permission
         // - date filters are active
-        if (!canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate))
-          return;
+        if (cannotEdit) return;
 
         const employeeTasks = subTasksByEmployee[d.employee_id] || [];
         previousTaskStateRef.current = {
@@ -512,8 +499,7 @@ const TaskGroups = ({
         // Skip resize if:
         // - user doesn't have permission
         // - date filters are active
-        if (!canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate))
-          return;
+        if (cannotEdit) return;
 
         const rect = d3.select(this.parentNode).select("rect");
         const dx = event.x - d.resizeStartX;
@@ -528,8 +514,7 @@ const TaskGroups = ({
         // Skip resize if:
         // - user doesn't have permission
         // - date filters are active
-        if (!canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate))
-          return;
+        if (cannotEdit) return;
 
         const rect = d3.select(this.parentNode).select("rect");
         const newWidth = parseFloat(rect.attr("width"));
@@ -700,7 +685,7 @@ const TaskGroups = ({
     jobGroups
       .select("rect")
       .style("cursor", (d) =>
-        !canEditSchedule || d.hard_start_date ? "not-allowed" : "ew-resize"
+        cannotEdit || d.hard_start_date ? "not-allowed" : "ew-resize"
       );
 
     enterGroups
@@ -745,12 +730,7 @@ const TaskGroups = ({
         "y",
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
-      .style(
-        "cursor",
-        !canEditSchedule || (dateFilter?.startDate && dateFilter?.endDate)
-          ? "not-allowed"
-          : "col-resize"
-      )
+      .style("cursor", cannotEdit ? "not-allowed" : "col-resize")
       .style("fill", "transparent");
 
     // Update all elements (both new and existing)
@@ -800,11 +780,7 @@ const TaskGroups = ({
         return employee?.employee_color || "#808080"; // Fallback to gray if no color found
       })
       .style("cursor", (d) =>
-        !canEditSchedule ||
-        d.hard_start_date ||
-        (dateFilter?.startDate && dateFilter?.endDate)
-          ? "not-allowed"
-          : "ew-resize"
+        cannotEdit || d.hard_start_date ? "not-allowed" : "ew-resize"
       );
 
     allGroups
