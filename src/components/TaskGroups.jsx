@@ -268,10 +268,12 @@ const TaskGroups = ({
     if (
       !chartRef.current ||
       !taskGroupsRef.current ||
-      !activeTasksData ||
-      activeTasksData.length === 0 ||
       !Array.isArray(employees) ||
-      employees.length === 0
+      employees.length === 0 ||
+      !activeTasksData ||
+      (activeTasksData.length === 0 &&
+        !(selectedEmployeeIds.length === 1 &&
+          selectedEmployeeIds[0] === employees[0]?.employee_id))
     ) {
       return;
     }
