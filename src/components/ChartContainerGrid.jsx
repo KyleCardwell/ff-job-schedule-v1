@@ -119,40 +119,54 @@ export const ChartContainer = () => {
         };
       });
 
-    // Apply both employee and date filters
-    const filteredRooms = activeRooms
-      .filter((room) => {
-        const passesEmployeeFilter =
-          selectedEmployeeIds.length === 0 ||
-          selectedEmployeeIds.includes(room.employee_id);
+    // Only apply filters if they are active
+    const hasActiveFilters =
+      selectedEmployeeIds.length > 0 ||
+      dateFilter.startDate ||
+      dateFilter.endDate;
 
-        // Convert dates once for efficiency
-        const taskStartDate = normalizeDate(room.start_date);
-        const taskEndDate = normalizeDate(room.end_date);
+    const taskHeights = {};
+    const filteredRooms = hasActiveFilters
+      ? activeRooms
+          .filter((room) => {
+            const passesEmployeeFilter =
+              selectedEmployeeIds.length === 0 ||
+              selectedEmployeeIds.includes(room.employee_id);
 
-        // Handle date filtering with null cases
-        let passesDateFilter = true;
+            // Convert dates once for efficiency
+            const taskStartDate = normalizeDate(room.start_date);
+            const taskEndDate = normalizeDate(room.end_date);
 
-        if (dateFilter.startDate && dateFilter.endDate) {
-          // Task should be included if:
-          // 1. Task end_date is after filter start_date AND
-          // 2. Either:
-          //    a) Task start_date is between filter dates, OR
-          //    b) Filter start_date is between task start_date and end_date
-          passesDateFilter =
-            // First ensure task hasn't ended before filter starts
-            taskEndDate > dateFilter.startDate &&
-            // Case 1: Task start_date is between filter dates
-            ((taskStartDate >= dateFilter.startDate &&
-              taskStartDate <= dateFilter.endDate) ||
-              // Case 2: Filter start_date is between task dates
-              (dateFilter.startDate >= taskStartDate &&
-                dateFilter.startDate <= taskEndDate));
-        }
+            // Handle date filtering with null cases
+            let passesDateFilter = true;
 
-        return passesEmployeeFilter && passesDateFilter;
-      })
-      .map((room) => ({ ...room, heightAdjust: 1 }));
+            if (dateFilter.startDate || dateFilter.endDate) {
+              const filterStart = dateFilter.startDate || '-infinity';
+              const filterEnd = dateFilter.endDate || 'infinity';
+              
+              passesDateFilter =
+                taskEndDate > filterStart &&
+                ((taskStartDate >= filterStart &&
+                  taskStartDate <= filterEnd) ||
+                  (filterStart >= taskStartDate &&
+                    filterStart <= filterEnd));
+            }
+
+            // If room passes filters, increment its task_id count
+            if (passesEmployeeFilter && passesDateFilter) {
+              taskHeights[room.task_id] = (taskHeights[room.task_id] || 0) + 1;
+              return true;
+            }
+            return false;
+          })
+          .map((room, index, array) => ({
+            ...room,
+            heightAdjust:
+              index > 0 && array[index - 1].task_id === room.task_id
+                ? 0
+                : taskHeights[room.task_id],
+          }))
+      : activeRooms;
 
     return {
       activeRoomsData: filteredRooms,

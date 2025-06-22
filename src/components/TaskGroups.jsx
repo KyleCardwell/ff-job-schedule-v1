@@ -103,21 +103,16 @@ const TaskGroups = ({
         const taskEndDate = normalizeDate(task.end_date);
 
         let passesDateFilter = true;
-        if (dateFilter?.startDate && dateFilter?.endDate) {
-          // Task should be included if:
-          // 1. Task end_date is after filter start_date AND
-          // 2. Either:
-          //    a) Task start_date is between filter dates, OR
-          //    b) Filter start_date is between task start_date and end_date
+        if (dateFilter.startDate || dateFilter.endDate) {
+          const filterStart = dateFilter.startDate || '-infinity';
+          const filterEnd = dateFilter.endDate || 'infinity';
+          
           passesDateFilter =
-            // First ensure task hasn't ended before filter starts
-            taskEndDate > dateFilter.startDate &&
-            // Case 1: Task start_date is between filter dates
-            ((taskStartDate >= dateFilter.startDate &&
-              taskStartDate <= dateFilter.endDate) ||
-              // Case 2: Filter start_date is between task dates
-              (dateFilter.startDate >= taskStartDate &&
-                dateFilter.startDate <= taskEndDate));
+            taskEndDate > filterStart &&
+            ((taskStartDate >= filterStart &&
+              taskStartDate <= filterEnd) ||
+              (filterStart >= taskStartDate &&
+                filterStart <= filterEnd));
         }
 
         if (!passesDateFilter) return acc;
@@ -218,7 +213,7 @@ const TaskGroups = ({
               employee_id: builder.employee_id,
               date: normalizeDate(day),
             };
-          });
+          })
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
