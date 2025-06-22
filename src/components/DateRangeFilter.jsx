@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { format } from 'date-fns';
 import { normalizeDate } from '../utils/dateUtils';
 
-const DateRangeFilter = ({ onFilterChange }) => {
+const DateRangeFilter = ({ onFilterChange, setSelectedEmployeeIds }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -17,6 +17,7 @@ const DateRangeFilter = ({ onFilterChange }) => {
   const handleReset = () => {
     setStartDate('');
     setEndDate('');
+    setSelectedEmployeeIds([]);
     onFilterChange({ startDate: null, endDate: null });
   };
 

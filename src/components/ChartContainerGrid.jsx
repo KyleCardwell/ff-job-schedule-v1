@@ -1167,6 +1167,7 @@ export const ChartContainer = () => {
               />
               <DateRangeFilter
                 onFilterChange={(dateRange) => updateChartState({ dateRange })}
+                setSelectedEmployeeIds={setSelectedEmployeeIds}
               />
             </>
           )}
