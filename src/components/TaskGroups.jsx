@@ -216,7 +216,7 @@ const TaskGroups = ({
               employee_id: builder.employee_id,
               date: normalizeDate(day),
             };
-          });
+          })
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
@@ -350,6 +350,32 @@ const TaskGroups = ({
           timeOffByBuilder
         );
 
+        if (newStartDate === d.start_date) {
+          // Move task back to original position
+          const originalX = calculateXPosition(
+            normalizeDate(d.start_date),
+            normalizeDate(chartStartDate),
+            dayWidth
+          );
+          // Animate the bar
+          d3.select(this)
+            .transition()
+            .duration(300)
+            .ease(d3.easeBackOut)
+            .attr("x", originalX)
+            .on("end", () => d3.select(this).classed("dragging", false));
+
+          // Animate the text
+          d3.select(this.parentNode)
+            .select(".bar-text")
+            .transition()
+            .duration(300)
+            .ease(d3.easeBackOut)
+            .attr("x", originalX + 5);
+            
+          return;
+        }
+
         // Update the dragged job
         const updatedDraggedJob = {
           ...d,
@@ -425,6 +451,25 @@ const TaskGroups = ({
           .end()
           .then(async () => {
             try {
+              // Check if dragged task changed
+              const currentTasks = subTasksByEmployee[d.employee_id];
+              
+              // Find dragged task in both arrays
+              const draggedTaskNew = sortedBuilderTasks.find(t => t.subtask_id === d.subtask_id);
+              const draggedTaskOld = currentTasks?.find(t => t.subtask_id === d.subtask_id);
+              
+              // Only compare fields that can change during drag/resize
+              const draggedTaskChanged = 
+                draggedTaskNew?.start_date !== draggedTaskOld?.start_date ||
+                draggedTaskNew?.subtask_width !== draggedTaskOld?.subtask_width ||
+                draggedTaskNew?.duration !== draggedTaskOld?.duration;
+
+              // If dragged task didn't change, no need to check others or update anything
+              if (!draggedTaskChanged) {
+                previousTaskStateRef.current = null;
+                return;
+              }
+
               dispatch(updateOneBuilderChartData(sortedBuilderTasks));
               dispatch(
                 updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
@@ -442,16 +487,8 @@ const TaskGroups = ({
                   return true; // Keep new tasks
                 }
 
-                // Debug the comparison
-                const cleanTask = omit(task, ["xPosition"]);
-                const cleanOriginal = omit(originalTask, ["xPosition"]);
-
-                const isTaskEqual = isEqual(cleanTask, cleanOriginal);
-
-                if (!isTaskEqual) {
-                  return true;
-                }
-                return false;
+                // Only compare fields that can change during drag/resize
+                return !isEqual(omit(task, ["xPosition"]), omit(originalTask, ["xPosition"]));
               });
 
               await updateSubtasksPositions(tasksToUpdate);
@@ -607,6 +644,25 @@ const TaskGroups = ({
           .end()
           .then(async () => {
             try {
+              // Check if dragged task changed
+              const currentTasks = subTasksByEmployee[d.employee_id];
+              
+              // Find dragged task in both arrays
+              const draggedTaskNew = sortedBuilderTasks.find(t => t.subtask_id === d.subtask_id);
+              const draggedTaskOld = currentTasks?.find(t => t.subtask_id === d.subtask_id);
+              
+              // Only compare fields that can change during drag/resize
+              const draggedTaskChanged = 
+                draggedTaskNew?.start_date !== draggedTaskOld?.start_date ||
+                draggedTaskNew?.subtask_width !== draggedTaskOld?.subtask_width ||
+                draggedTaskNew?.duration !== draggedTaskOld?.duration;
+
+              // If dragged task didn't change, no need to check others or update anything
+              if (!draggedTaskChanged) {
+                previousTaskStateRef.current = null;
+                return;
+              }
+
               dispatch(updateOneBuilderChartData(sortedBuilderTasks));
               dispatch(
                 updateTasksByOneBuilder(d.employee_id, sortedBuilderTasks)
@@ -621,11 +677,11 @@ const TaskGroups = ({
                   (t) => t.subtask_id === task.subtask_id
                 );
                 if (!originalTask) {
-                  return true;
+                  return true; // Keep new tasks
                 }
-                const cleanTask = omit(task, ["xPosition"]);
-                const cleanOriginal = omit(originalTask, ["xPosition"]);
-                return !isEqual(cleanTask, cleanOriginal);
+
+                // Only compare fields that can change during drag/resize
+                return !isEqual(omit(task, ["xPosition"]), omit(originalTask, ["xPosition"]));
               });
 
               await updateSubtasksPositions(tasksToUpdate);
