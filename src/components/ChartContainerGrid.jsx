@@ -97,26 +97,15 @@ export const ChartContainer = () => {
   }, [chartData, defaultEmployeeId]); // Only recalculate when these dependencies change
 
   const { activeRoomsData, lastJobsIndex, someTaskAssigned } = useMemo(() => {
-    let currentJobId = null;
-    let jobsIndex = -1;
     let someTaskAssigned = false;
 
     const activeRooms = chartData
       .filter((room) => room.task_active)
       .map((room) => {
-        if (room.project_id !== currentJobId) {
-          currentJobId = room.project_id;
-          jobsIndex++;
-        }
-
         if (room.employee_id !== defaultEmployeeId) {
           someTaskAssigned = true;
         }
-
-        return {
-          ...room,
-          jobsIndex: jobsIndex,
-        };
+        return room;
       });
 
     // Only apply filters if they are active
@@ -168,8 +157,22 @@ export const ChartContainer = () => {
           }))
       : activeRooms;
 
+    // Calculate jobsIndex after filtering
+    let currentJobId = null;
+    let jobsIndex = -1;
+    const roomsWithJobsIndex = filteredRooms.map(room => {
+      if (room.project_id !== currentJobId) {
+        currentJobId = room.project_id;
+        jobsIndex++;
+      }
+      return {
+        ...room,
+        jobsIndex
+      };
+    });
+
     return {
-      activeRoomsData: filteredRooms,
+      activeRoomsData: roomsWithJobsIndex,
       lastJobsIndex: jobsIndex,
       someTaskAssigned,
     };
