@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const SettingsItem = ({ type, label, value, onChange, name }) => {
+const SettingsItem = ({ type, label, value, onChange, name, min, max }) => {
   switch (type) {
     case 'text':
       return (
@@ -12,7 +12,22 @@ const SettingsItem = ({ type, label, value, onChange, name }) => {
             value={value}
             onChange={onChange}
             name={name}
-            className="bg-slate-600 text-slate-200 px-2 py-1 ml-4"
+            className="bg-slate-600 text-slate-200 px-2 py-1 ml-4 w-48"
+          />
+        </div>
+      );
+    case 'number':
+      return (
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-slate-200 text-sm">{label}</label>
+          <input
+            type="number"
+            value={value}
+            onChange={onChange}
+            name={name}
+            min={min}
+            max={max}
+            className="bg-slate-600 text-slate-200 px-2 py-1 ml-4 w-48"
           />
         </div>
       );
@@ -25,7 +40,7 @@ const SettingsItem = ({ type, label, value, onChange, name }) => {
             checked={value}
             onChange={onChange}
             name={name}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ml-4"
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ml-4 w-48"
           />
         </div>
       );
@@ -35,11 +50,13 @@ const SettingsItem = ({ type, label, value, onChange, name }) => {
 };
 
 SettingsItem.propTypes = {
-  type: PropTypes.oneOf(['text', 'checkbox']).isRequired,
+  type: PropTypes.oneOf(['text', 'checkbox', 'number']).isRequired,
   label: PropTypes.string.isRequired,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]).isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.bool, PropTypes.number]).isRequired,
   onChange: PropTypes.func.isRequired,
   name: PropTypes.string.isRequired,
+  min: PropTypes.string,
+  max: PropTypes.string,
 };
 
 export default SettingsItem;

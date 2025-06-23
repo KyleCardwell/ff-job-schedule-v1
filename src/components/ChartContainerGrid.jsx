@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ChartActionButtons from "./ChartActionButtons";
 import {
@@ -30,6 +36,7 @@ import {
   headerButtonColor,
 } from "../assets/tailwindConstants";
 import { Actions } from "../redux/actions";
+import DateRangeFilter from "./DateRangeFilter";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -37,6 +44,7 @@ export const ChartContainer = () => {
   const holidays = useSelector((state) => state.holidays);
   const { chartData } = useSelector((state) => state.chartData);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
+  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
   const { canEditSchedule } = usePermissions();
 
   const employees = useSelector((state) => state.builders.employees);
@@ -45,11 +53,14 @@ export const ChartContainer = () => {
 
   const [holidayChecker, setHolidayChecker] = useState(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
+  const [dateFilter, setDateFilter] = useState({
+    startDate: null,
+    endDate: null,
+  });
 
   const daysBeforeStart = 15;
   const daysAfterEnd = 15;
   const dayWidth = 30;
-  const workdayHours = 8;
 
   useEffect(() => {
     const hd = new Holidays();
@@ -63,8 +74,8 @@ export const ChartContainer = () => {
     let hasAssignedTasks = false;
 
     chartData
-      .filter(room => room.task_active)
-      .forEach(room => {
+      .filter((room) => room.task_active)
+      .forEach((room) => {
         if (room.employee_id !== defaultEmployeeId) {
           hasAssignedTasks = true;
           const roomStartDate = parseISO(normalizeDate(room.start_date));
@@ -81,50 +92,91 @@ export const ChartContainer = () => {
 
     return {
       earliestStartDate: hasAssignedTasks ? earliest : null,
-      latestStartDate: hasAssignedTasks ? latest : null
+      latestStartDate: hasAssignedTasks ? latest : null,
     };
-  }, [chartData, defaultEmployeeId]);  // Only recalculate when these dependencies change
+  }, [chartData, defaultEmployeeId]); // Only recalculate when these dependencies change
 
-  const {
-    activeRoomsData,
-    lastJobsIndex,
-    someTaskAssigned,
-  } = useMemo(() => {
-    let currentJobId = null;
-    let jobsIndex = -1;
+  const { activeRoomsData, lastJobsIndex, someTaskAssigned } = useMemo(() => {
     let someTaskAssigned = false;
 
     const activeRooms = chartData
       .filter((room) => room.task_active)
       .map((room) => {
-        if (room.project_id !== currentJobId) {
-          currentJobId = room.project_id;
-          jobsIndex++;
-        }
-
         if (room.employee_id !== defaultEmployeeId) {
           someTaskAssigned = true;
         }
-
-        return {
-          ...room,
-          jobsIndex: jobsIndex,
-        };
+        return room;
       });
 
-    // Only apply filter and heightAdjust if there's a selected employee
-    const filteredRooms = selectedEmployeeIds.length > 0
+    // Only apply filters if they are active
+    const hasActiveFilters =
+      selectedEmployeeIds.length > 0 ||
+      dateFilter.startDate ||
+      dateFilter.endDate;
+
+    const taskHeights = {};
+    const filteredRooms = hasActiveFilters
       ? activeRooms
-          .filter(room => selectedEmployeeIds.includes(room.employee_id))
-          .map(room => ({ ...room, heightAdjust: 1 }))
+          .filter((room) => {
+            const passesEmployeeFilter =
+              selectedEmployeeIds.length === 0 ||
+              selectedEmployeeIds.includes(room.employee_id);
+
+            // Convert dates once for efficiency
+            const taskStartDate = normalizeDate(room.start_date);
+            const taskEndDate = normalizeDate(room.end_date);
+
+            // Handle date filtering with null cases
+            let passesDateFilter = true;
+
+            if (dateFilter.startDate || dateFilter.endDate) {
+              const filterStart = dateFilter.startDate || '-infinity';
+              const filterEnd = dateFilter.endDate || 'infinity';
+              
+              passesDateFilter =
+                taskEndDate > filterStart &&
+                ((taskStartDate >= filterStart &&
+                  taskStartDate <= filterEnd) ||
+                  (filterStart >= taskStartDate &&
+                    filterStart <= filterEnd));
+            }
+
+            // If room passes filters, increment its task_id count
+            if (passesEmployeeFilter && passesDateFilter) {
+              taskHeights[room.task_id] = (taskHeights[room.task_id] || 0) + 1;
+              return true;
+            }
+            return false;
+          })
+          .map((room, index, array) => ({
+            ...room,
+            heightAdjust:
+              index > 0 && array[index - 1].task_id === room.task_id
+                ? 0
+                : taskHeights[room.task_id],
+          }))
       : activeRooms;
 
+    // Calculate jobsIndex after filtering
+    let currentJobId = null;
+    let jobsIndex = -1;
+    const roomsWithJobsIndex = filteredRooms.map(room => {
+      if (room.project_id !== currentJobId) {
+        currentJobId = room.project_id;
+        jobsIndex++;
+      }
+      return {
+        ...room,
+        jobsIndex
+      };
+    });
+
     return {
-      activeRoomsData: filteredRooms,
+      activeRoomsData: roomsWithJobsIndex,
       lastJobsIndex: jobsIndex,
       someTaskAssigned,
     };
-  }, [chartData, employees, workdayHours, holidays, selectedEmployeeIds, earliestStartDate, latestStartDate]); // Add selectedEmployeeIds to dependencies
+  }, [chartData, defaultEmployeeId, selectedEmployeeIds, dateFilter]);
 
   useEffect(() => {
     if (earliestStartDate) {
@@ -137,7 +189,7 @@ export const ChartContainer = () => {
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null); // For the fixed left column
-  const leftColumnHeaderRef = useRef(null); // For the fixed left column
+  const leftColumnHeaderRef = useRef(null); // For the fixed left column header
   const headerRef = useRef(null); // For the fixed header
   const monthHeaderRef = useRef(null); // Add new ref for month header
   const scrollableRef = useRef(null);
@@ -865,9 +917,17 @@ export const ChartContainer = () => {
     spanBarHeight,
   ]);
 
-  const updateChartState = useCallback((updates) => {
-    setSelectedEmployeeIds(updates.selectedEmployeeIds);
-  }, []);
+  const updateChartState = useCallback(
+    ({ selectedEmployeeIds: newEmployeeIds, dateRange }) => {
+      if (newEmployeeIds !== undefined) {
+        setSelectedEmployeeIds(newEmployeeIds);
+      }
+      if (dateRange !== undefined) {
+        setDateFilter(dateRange);
+      }
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-50px)] print:block print:h-auto print:overflow-visible">
@@ -1085,6 +1145,7 @@ export const ChartContainer = () => {
                 setEstimatedCompletionDate={setEstimatedCompletionDate}
                 earliestStartDate={earliestStartDate}
                 selectedEmployeeIds={selectedEmployeeIds}
+                dateFilter={dateFilter}
               />
             </div>
           </div>
@@ -1098,12 +1159,22 @@ export const ChartContainer = () => {
           {estimatedCompletionDate &&
             `Booked Out: ${format(estimatedCompletionDate, "MMM d, yyyy")}`}
         </div>
-        {activeRoomsData?.length > 0 && (
-          <BuilderLegend
-            selectedEmployeeIds={selectedEmployeeIds}
-            onEmployeeFilter={(employeeIds) => updateChartState({ selectedEmployeeIds: employeeIds })}
-          />
-        )}
+        <div className="flex justify-between flex-grow">
+          {activeRoomsData?.length > 0 && (
+            <>
+              <BuilderLegend
+                selectedEmployeeIds={selectedEmployeeIds}
+                onEmployeeFilter={(employeeIds) =>
+                  updateChartState({ selectedEmployeeIds: employeeIds })
+                }
+              />
+              <DateRangeFilter
+                onFilterChange={(dateRange) => updateChartState({ dateRange })}
+                setSelectedEmployeeIds={setSelectedEmployeeIds}
+              />
+            </>
+          )}
+        </div>
       </div>
 
       {isLoading && (

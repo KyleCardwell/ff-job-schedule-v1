@@ -19,7 +19,11 @@ const ManageChartSettings = forwardRef((props, ref) => {
 
   const validateSettings = () => {
     const newErrors = {};
-    const { nextTaskNumber, minTaskNumber, maxTaskNumber } = settings;
+    const { nextTaskNumber, minTaskNumber, maxTaskNumber, workdayHours } = settings;
+
+    if (!workdayHours || workdayHours < 1 || workdayHours > 24) {
+      newErrors.workdayHours = "Workday hours must be between 1 and 24";
+    }
 
     if (
       !nextTaskNumber ||
@@ -96,6 +100,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
       "nextTaskNumber",
       "minTaskNumber",
       "maxTaskNumber",
+      "workdayHours",
     ].includes(name)
       ? parseInt(value, 10)
       : value;
@@ -157,6 +162,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
       minTaskNumber: chartConfig.min_task_number,
       maxTaskNumber: chartConfig.max_task_number,
       company_name: chartConfig.company_name,
+      workdayHours: chartConfig.workday_hours || 8,
     });
     setEmployeeTypes(
       (chartConfig.employee_type || []).map((type) => {
@@ -225,6 +231,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
       minTaskNumber: chartConfig.min_task_number,
       maxTaskNumber: chartConfig.max_task_number,
       company_name: chartConfig.company_name,
+      workdayHours: chartConfig.workday_hours || 8,
     });
     // Initialize from existing types, preserving their ids if they exist
     setEmployeeTypes(
@@ -257,6 +264,21 @@ const ManageChartSettings = forwardRef((props, ref) => {
           value={settings.company_name || ""}
           name="company_name"
           onChange={handleInputChange}
+        />
+      </SettingsSection>
+
+      <SettingsSection 
+        title="Workday Hours" 
+        error={errors.workdayHours}
+      >
+        <SettingsItem
+          type="number"
+          label="Hours per workday"
+          value={String(settings.workdayHours || "")}
+          name="workdayHours"
+          onChange={handleInputChange}
+          min="1"
+          max="24"
         />
       </SettingsSection>
 
