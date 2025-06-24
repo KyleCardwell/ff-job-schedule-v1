@@ -32,6 +32,7 @@ import store from "./redux/store"; // Import the store
 import ProtectedRoute from "./components/ProtectedRoute";
 import GridLoader from "react-spinners/GridLoader";
 import EstimateDashboard from "./components/estimtes/EstimateDashboard.jsx";
+import NewEstimateForm from "./components/estimtes/NewEstimateForm.jsx";
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -228,6 +229,12 @@ const App = () => {
                 path={PATHS.ESTIMATES}
                 element={<ProtectedRoute>
                   <EstimateDashboard />
+                </ProtectedRoute>}
+              />
+              <Route
+                path={PATHS.NEW_ESTIMATE}
+                element={<ProtectedRoute>
+                  <NewEstimateForm />
                 </ProtectedRoute>}
               />
               <Route

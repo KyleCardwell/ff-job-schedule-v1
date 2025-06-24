@@ -10,4 +10,7 @@ export const PATHS = {
   SETTINGS: "/settings",
   LOGOUT: "/logout",
   ESTIMATES: "/estimates",
+  NEW_ESTIMATE: "/estimates/new",
+  IN_PROGRESS_ESTIMATES: "/estimates/in-progress",
+  FINALIZED_ESTIMATES: "/estimates/finalized",
 };
