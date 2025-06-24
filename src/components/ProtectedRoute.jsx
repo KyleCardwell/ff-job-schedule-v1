@@ -16,6 +16,14 @@ const ProtectedRoute = ({ children }) => {
     }
   }
 
+  // Check if user has create estimates permission
+  if (location.pathname.startsWith(PATHS.ESTIMATES)) {
+    const canCreateEstimates = roleId === 1 || permissions?.can_create_estimates;
+    if (!canCreateEstimates) {
+      return <Navigate to={PATHS.ESTIMATES} replace />;
+    }
+  }
+
   // For manage routes, check specific permissions
   if (location.pathname.startsWith(PATHS.MANAGE)) {
     // Admin can access all routes
