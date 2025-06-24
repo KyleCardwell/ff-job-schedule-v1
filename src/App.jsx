@@ -31,8 +31,8 @@ import { PATHS } from "./utils/constants.js";
 import store from "./redux/store"; // Import the store
 import ProtectedRoute from "./components/ProtectedRoute";
 import GridLoader from "react-spinners/GridLoader";
-import EstimateDashboard from "./components/estimtes/EstimateDashboard.jsx";
-import NewEstimateForm from "./components/estimtes/NewEstimateForm.jsx";
+import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
+import NewEstimateForm from "./components/estimates/NewEstimateForm.jsx";
 
 const authContainerStyle = {
   maxWidth: "400px",
