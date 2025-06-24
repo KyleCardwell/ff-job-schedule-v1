@@ -89,7 +89,7 @@ export const fetchUserRoles = async (dispatch) => {
     const { data, error } = await supabase
       .from("roles")
       .select(
-        "role_id, role_name, can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss"
+        "role_id, role_name, can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss, can_create_estimates"
       );
 
     if (error) throw error;
@@ -104,7 +104,8 @@ export const fetchUserRoles = async (dispatch) => {
           can_manage_teams: role.can_manage_teams,
           can_edit_schedule: role.can_edit_schedule,
           can_edit_financials: role.can_edit_financials,
-          can_view_profit_loss: role.can_view_profit_loss
+          can_view_profit_loss: role.can_view_profit_loss,
+          can_create_estimates: role.can_create_estimates,
         }
       }))
     });

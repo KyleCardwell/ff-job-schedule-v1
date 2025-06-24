@@ -9,4 +9,5 @@ export const PATHS = {
   COMPLETED_PROJECT: "/completed/:projectId",
   SETTINGS: "/settings",
   LOGOUT: "/logout",
+  ESTIMATES: "/estimates",
 };

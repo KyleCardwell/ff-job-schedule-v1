@@ -31,6 +31,7 @@ import { PATHS } from "./utils/constants.js";
 import store from "./redux/store"; // Import the store
 import ProtectedRoute from "./components/ProtectedRoute";
 import GridLoader from "react-spinners/GridLoader";
+import EstimateDashboard from "./components/estimtes/EstimateDashboard.jsx";
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -42,7 +43,11 @@ const authContainerStyle = {
 
 const App = () => {
   const dispatch = useDispatch();
-  const { session, loading: authLoading, teamId } = useSelector((state) => state.auth);
+  const {
+    session,
+    loading: authLoading,
+    teamId,
+  } = useSelector((state) => state.auth);
   const { loading: chartLoading } = useSelector((state) => state.chartData);
   const { loading: configLoading } = useSelector((state) => state.chartConfig);
   const { loading: buildersLoading } = useSelector((state) => state.builders);
@@ -50,7 +55,10 @@ const App = () => {
   const lastAuthFetch = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  const isLoading = authLoading || (!initialFetchDone.current && (chartLoading || configLoading || buildersLoading));
+  const isLoading =
+    authLoading ||
+    (!initialFetchDone.current &&
+      (chartLoading || configLoading || buildersLoading));
 
   const fetchUserData = useCallback(
     async (session) => {
@@ -87,7 +95,7 @@ const App = () => {
         const { data: roleData, error: roleError } = await supabase
           .from("roles")
           .select(
-            "can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss"
+            "can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss, can_create_estimates"
           )
           .eq("role_id", teamMemberData.role_id)
           .single();
@@ -215,6 +223,12 @@ const App = () => {
                     <AdminDashboard />
                   </ProtectedRoute>
                 }
+              />
+              <Route
+                path={PATHS.ESTIMATES}
+                element={<ProtectedRoute>
+                  <EstimateDashboard />
+                </ProtectedRoute>}
               />
               <Route
                 path={PATHS.COMPLETED}

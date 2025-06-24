@@ -6,6 +6,7 @@ import {
   FiUsers,
   FiCheckSquare,
   FiLogOut,
+  FiDollarSign,
 } from "react-icons/fi";
 import { PATHS } from "../utils/constants";
 import { supabase } from "../utils/supabase";
@@ -15,16 +16,20 @@ import { useNavigate } from "react-router-dom";
 import { headerButtonColor } from "../assets/tailwindConstants";
 
 const Navigation = ({ isOpen, onClose }) => {
-  const location = useLocation();
   const { roleId, permissions } = useSelector((state) => state.auth);
   const canAccessManage =
     roleId === 1 || (permissions && permissions.can_manage_teams);
+  const canCreateEstimates =
+    roleId === 1 || (permissions && permissions.can_create_estimates);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const navItems = [
     ...(canAccessManage
       ? [{ icon: FiUsers, label: "Manage", path: PATHS.MANAGE }]
+      : []),
+    ...(canCreateEstimates
+      ? [{ icon: FiDollarSign, label: "Estimates", path: PATHS.ESTIMATES }]
       : []),
     { icon: FiCalendar, label: "Schedule", path: PATHS.HOME },
     { icon: FiCheckSquare, label: "Completed", path: PATHS.COMPLETED },
