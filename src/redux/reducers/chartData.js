@@ -90,13 +90,13 @@ export const chartDataReducer = (state = initialState, action) => {
 
 			// Sort the tasks
 			updatedChartData.sort((a, b) => {
-				if (a.project_created_at === b.project_created_at) {
+				if (a.project_scheduled_at === b.project_scheduled_at) {
 					if (a.task_created_at === b.task_created_at) {
 						return a.subtask_created_at.localeCompare(b.subtask_created_at);
 					}
 					return a.task_created_at.localeCompare(b.task_created_at);
 				}
-				return a.project_created_at.localeCompare(b.project_created_at);
+				return a.project_scheduled_at.localeCompare(b.project_scheduled_at);
 			});
 
 			return {
