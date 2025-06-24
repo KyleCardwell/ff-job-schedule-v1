@@ -4,35 +4,37 @@ import { updateNextTaskNumber } from "./chartConfig";
 import { binarySearch } from "../../utils/helpers";
 import { subDays } from "date-fns";
 
-export const fetchEarliestStartDate = (excludeEmployeeId) => async (dispatch) => {
-  try {
-    // SQL function:
-    // create or replace function get_earliest_active_start_date(exclude_employee_id uuid)
-    // returns timestamp with time zone
-    // language sql
-    // as $$
-    //   SELECT MIN(s.start_date)
-    //   FROM projects p
-    //   JOIN tasks t ON t.project_id = p.project_id
-    //   JOIN subtasks s ON s.task_id = t.task_id
-    //   WHERE t.task_active = true
-    //   AND p.project_completed_at IS NULL
-    //   AND s.employee_id != exclude_employee_id;
-    // $$;
-    const { data } = await supabase.rpc('get_earliest_active_start_date', {
-      exclude_employee_id: excludeEmployeeId
-    });
-    
-    if (data) {
-      dispatch({
-        type: Actions.chartData.UPDATE_CHART_START_DATE,
-        payload: subDays( data, 15)
+export const fetchEarliestStartDate =
+  (excludeEmployeeId) => async (dispatch) => {
+    try {
+      // SQL function:
+      // create or replace function get_earliest_active_start_date(exclude_employee_id uuid)
+      // returns timestamp with time zone
+      // language sql
+      // as $$
+      //   SELECT MIN(s.start_date)
+      //   FROM projects p
+      //   JOIN tasks t ON t.project_id = p.project_id
+      //   JOIN subtasks s ON s.task_id = t.task_id
+      //   WHERE t.task_active = true
+      //   AND p.project_completed_at IS NULL
+      //   AND p.project_scheduled_at IS NOT NULL
+      //   AND s.employee_id != exclude_employee_id;
+      // $$;
+      const { data } = await supabase.rpc("get_earliest_active_start_date", {
+        exclude_employee_id: excludeEmployeeId,
       });
+
+      if (data) {
+        dispatch({
+          type: Actions.chartData.UPDATE_CHART_START_DATE,
+          payload: subDays(data, 15),
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching earliest start date:", error);
     }
-  } catch (error) {
-    console.error('Error fetching earliest start date:', error);
-  }
-};
+  };
 
 export const fetchProjectsOptions = {
   select:
@@ -57,7 +59,8 @@ export const fetchProjects =
         .from("projects")
         .select(fetchProjectsOptions.select)
         .is("project_completed_at", null)
-        .order("project_created_at", { ascending: true });
+        .not("project_scheduled_at", "is", null)
+        .order("project_scheduled_at", { ascending: true });
 
       if (error) throw error;
 
@@ -67,6 +70,7 @@ export const fetchProjects =
           project_name: project.project_name,
           project_id: project.project_id,
           project_created_at: project.project_created_at,
+          project_scheduled_at: project.project_scheduled_at,
           needs_attention: project.needs_attention,
           deposit_date: project.deposit_date,
           delivery_date: project.delivery_date,
@@ -88,6 +92,7 @@ export const fetchProjects =
               project_id: task.project_id,
               project_name: project.project_name,
               project_created_at: project.project_created_at,
+              project_scheduled_at: project.project_scheduled_at,
               task_name: task.task_name,
               task_created_at: task.task_created_at,
               task_active: task.task_active,
@@ -100,8 +105,8 @@ export const fetchProjects =
           })
         )
         .sort((a, b) => {
-          const projectCompare = a.project_created_at.localeCompare(
-            b.project_created_at
+          const projectCompare = a.project_scheduled_at.localeCompare(
+            b.project_scheduled_at
           );
           if (projectCompare !== 0) return projectCompare;
 
@@ -208,6 +213,7 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
         .update({
           project_name: jobName,
           project_created_at: newProjectCreatedAt,
+          project_scheduled_at: newProjectCreatedAt,
           project_completed_at: projectCompletedAt,
           needs_attention: needsAttention,
           deposit_date: depositDate,
@@ -228,6 +234,7 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
         .insert({
           project_name: jobName,
           project_created_at: newProjectCreatedAt,
+          project_scheduled_at: newProjectCreatedAt,
           project_completed_at: projectCompletedAt,
           needs_attention: needsAttention,
           deposit_date: depositDate,
@@ -379,7 +386,12 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
 
     // 5. Fetch fresh data with first employee
     const state = getState();
-    await dispatch(fetchProjects(state.builders.employees[0].employee_id, fetchProjectsOptions.select));
+    await dispatch(
+      fetchProjects(
+        state.builders.employees[0].employee_id,
+        fetchProjectsOptions.select
+      )
+    );
 
     dispatch({
       type: Actions.projects.SAVE_PROJECT_SUCCESS,

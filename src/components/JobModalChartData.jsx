@@ -253,6 +253,9 @@ const JobModal = ({
       project_created_at:
         localRooms[0]?.workPeriods[0]?.project_created_at ||
         newProjectCreatedAt,
+      project_scheduled_at:
+        localRooms[0]?.workPeriods[0]?.project_scheduled_at ||
+        newProjectCreatedAt,
       heightAdjust: 1,
     };
 
@@ -420,6 +423,9 @@ const JobModal = ({
             task_created_at: room.task_created_at,
             project_created_at:
               localRooms[0]?.workPeriods[0]?.project_created_at ||
+              newProjectCreatedAt,
+            project_scheduled_at:
+              localRooms[0]?.workPeriods[0]?.project_scheduled_at ||
               newProjectCreatedAt,
             subtask_created_at: new Date().toISOString(),
             subtask_width: dayWidth,
@@ -901,6 +907,7 @@ const JobModal = ({
           jobName: jobData[0].project_name,
           projectId: jobData[0].project_id,
           newProjectCreatedAt: jobData[0].project_created_at,
+          project_scheduled_at: jobData[0].project_scheduled_at,
           updatedTasks: tasksToUpdate,
           removedWorkPeriods: [], // Do not remove any subtasks for now
           //   removedWorkPeriods: [...completedSubTasksToDelete],
@@ -1144,6 +1151,9 @@ const JobModal = ({
           projectId: jobData ? jobData[0].project_id : undefined,
           newProjectCreatedAt: jobData
             ? jobData[0].project_created_at
+            : newProjectCreatedAt,
+          project_scheduled_at: jobData
+            ? jobData[0].project_scheduled_at
             : newProjectCreatedAt,
           updatedTasks: tasksToUpdate,
           removedWorkPeriods,

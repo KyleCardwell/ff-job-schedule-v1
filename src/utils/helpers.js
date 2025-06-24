@@ -39,6 +39,7 @@ export const getChartData = (jobData) => {
           rowNumber,
           jobNumber: room.jobNumber,
           project_created_at: job.project_created_at,
+          project_scheduled_at: job.project_scheduled_at,
           heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
           task_created_at: room.task_created_at,
           active: room.active,
@@ -78,6 +79,7 @@ export const getTaskData = (jobData) => {
           task_created_at: room.task_created_at,
           roomIndex,
           project_created_at: job.project_created_at,
+          project_scheduled_at: job.project_scheduled_at,
           workPeriodIndex,
           subtask_width: workPeriod.subtask_width,
           rowNumber,
@@ -343,14 +345,14 @@ export const sortAndAdjustDates = (
         timeline.set(normalizeDate(a.start_date), {
           task_name: a.task_name,
           subtask_id: a.subtask_id,
-          project_name: a.project_name
+          project_name: a.project_name,
         });
       }
       if (b.hard_start_date) {
         timeline.set(normalizeDate(b.start_date), {
           task_name: b.task_name,
           subtask_id: b.subtask_id,
-          project_name: b.project_name
+          project_name: b.project_name,
         });
       }
 
@@ -359,7 +361,7 @@ export const sortAndAdjustDates = (
         // If dates are equal, prioritize hard start dates
         if (a.hard_start_date && !b.hard_start_date) return -1;
         if (!a.hard_start_date && b.hard_start_date) return 1;
-        
+
         // If both have same hard_start_date status, consider drag direction
         if (a.isDragged) {
           return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
@@ -407,11 +409,12 @@ export const sortAndAdjustDates = (
 
     // Check for conflicts with hard start dates
     const taskConflicts = Array.from(timeline.entries())
-      .filter(([date, info]) => 
-        !current.hard_start_date && // Don't check hard start tasks against themselves
-        info.subtask_id !== current.subtask_id && // Don't check against self
-        new Date(end_date) > new Date(date) && // Task ends after hard start date
-        new Date(start_date) < new Date(date) // Task starts before hard start date
+      .filter(
+        ([date, info]) =>
+          !current.hard_start_date && // Don't check hard start tasks against themselves
+          info.subtask_id !== current.subtask_id && // Don't check against self
+          new Date(end_date) > new Date(date) && // Task ends after hard start date
+          new Date(start_date) < new Date(date) // Task starts before hard start date
       )
       .map(([date, info]) => ({
         conflicting_task: current.task_name,
@@ -419,7 +422,7 @@ export const sortAndAdjustDates = (
         overlaps_task: info.task_name,
         overlaps_project: info.project_name,
         hard_start_date: date,
-        subtask_id: info.subtask_id
+        subtask_id: info.subtask_id,
       }));
 
     // Add any conflicts found to our list
@@ -435,12 +438,14 @@ export const sortAndAdjustDates = (
       start_date,
       end_date,
       subtask_width: (jobHours / workdayHours) * dayWidth,
-      xPosition: calculateXPosition(start_date, chartStartDate, dayWidth)
+      xPosition: calculateXPosition(start_date, chartStartDate, dayWidth),
     };
 
     // Check if next element has hard_start_date and would overlap with current
-    if (nextElement?.hard_start_date && 
-        normalizeDate(nextElement.start_date) === start_date) {
+    if (
+      nextElement?.hard_start_date &&
+      normalizeDate(nextElement.start_date) === start_date
+    ) {
       // Add the hard_start_date element first with its original dates
       acc.push(nextElement);
 
@@ -459,12 +464,13 @@ export const sortAndAdjustDates = (
         ...currentTask,
         start_date: adjustedStartDate,
         end_date: normalizeDate(
-          addDays(
-            adjustedStartDate,
-            Math.ceil(jobHours / workdayHours)
-          )
+          addDays(adjustedStartDate, Math.ceil(jobHours / workdayHours))
         ),
-        xPosition: calculateXPosition(adjustedStartDate, chartStartDate, dayWidth),
+        xPosition: calculateXPosition(
+          adjustedStartDate,
+          chartStartDate,
+          dayWidth
+        ),
       });
 
       // Skip the next element since we already processed it
@@ -504,7 +510,11 @@ export const reconstructJobsForRedux = (flatJobs) => {
   return Object.values(jobMap);
 };
 
-export const calculateFinancialTotals = (sections, chartConfig, adjustments = null) => {
+export const calculateFinancialTotals = (
+  sections,
+  chartConfig,
+  adjustments = null
+) => {
   const totals = sections.reduce(
     (acc, section) => {
       if (section.id === "hours") {
@@ -521,7 +531,8 @@ export const calculateFinancialTotals = (sections, chartConfig, adjustments = nu
             const employeeType = chartConfig.employee_type?.find(
               (type) => type.id === typeData.type_id
             );
-            const hourlyEstimate = (typeData.estimate || 0) * (employeeType?.rate || 0);
+            const hourlyEstimate =
+              (typeData.estimate || 0) * (employeeType?.rate || 0);
             const fixedAmount = typeData.fixedAmount || 0;
             return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;
@@ -556,7 +567,10 @@ export const calculateFinancialTotals = (sections, chartConfig, adjustments = nu
     const discountAmount = subtotal * (adjustments.discount / 100);
     // Round up to nearest 5
     const adjustedEstimate =
-      (Math.ceil((subtotal + profitAmount + commissionAmount - discountAmount) / 5) * 5) *
+      Math.ceil(
+        (subtotal + profitAmount + commissionAmount - discountAmount) / 5
+      ) *
+      5 *
       adjustments.quantity;
 
     return {
