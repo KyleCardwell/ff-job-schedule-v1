@@ -1,5 +1,6 @@
 import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
+import { ESTIMATE_STATUS } from "../../utils/constants";
 
 // Fetch all estimates
 export const fetchEstimates = (filters = {}) => {
@@ -58,18 +59,25 @@ export const createEstimate = (estimateData) => {
     try {
       dispatch({ type: Actions.estimates.CREATE_ESTIMATE_START });
 
-      const { teamId } = getState().auth;
       const { session } = getState().auth;
 
+      // Validate project_id
+      if (!estimateData.project_id) {
+        throw new Error("Project ID is required to create an estimate");
+      }
+
+      const currentTime = new Date().toISOString();
       // Add team_id and created_by to the estimate data
       const newEstimate = {
         ...estimateData,
-        team_id: teamId,
+        status: estimateData.status || ESTIMATE_STATUS.DRAFT,
         created_by: session.user.id,
-        status: "new",
-        created_at: new Date().toISOString(),
+        created_at: currentTime,
+        updated_by: session.user.id,
+        updated_at: currentTime,
       };
 
+      // Insert the estimate with the project_id
       const { data, error } = await supabase
         .from("estimates")
         .insert(newEstimate)
@@ -78,12 +86,29 @@ export const createEstimate = (estimateData) => {
 
       if (error) throw error;
 
+      // Fetch the project details to include in the response
+      const { data: projectData, error: projectError } = await supabase
+        .from("projects")
+        .select("project_name")
+        .eq("project_id", data.project_id)
+        .single();
+
+      if (projectError) {
+        console.warn("Could not fetch project details:", projectError);
+      }
+
+      // Combine estimate with project details
+      const estimateWithProject = {
+        ...data,
+        project_name: projectData?.project_name || "Unknown Project",
+      };
+
       dispatch({
         type: Actions.estimates.CREATE_ESTIMATE_SUCCESS,
-        payload: data,
+        payload: estimateWithProject,
       });
 
-      return data;
+      return estimateWithProject;
     } catch (error) {
       console.error("Error creating estimate:", error);
       dispatch({
@@ -97,14 +122,22 @@ export const createEstimate = (estimateData) => {
 
 // Update an existing estimate
 export const updateEstimate = (id, estimateData) => {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
+      const { session } = getState().auth;
+
+      const updatedEstimate = {
+        ...estimateData,
+        updated_by: session.user.id,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data, error } = await supabase
         .from("estimates")
-        .update(estimateData)
-        .eq("id", id)
+        .update(updatedEstimate)
+        .eq("estimate_id", id)
         .select()
         .single();
 
@@ -133,7 +166,7 @@ export const deleteEstimate = (id) => {
     try {
       dispatch({ type: Actions.estimates.DELETE_ESTIMATE_START });
 
-      const { error } = await supabase.from("estimates").delete().eq("id", id);
+      const { error } = await supabase.from("estimates").delete().eq("estimate_id", id);
 
       if (error) throw error;
 
@@ -168,3 +201,78 @@ export const setEstimateFilters = (filters) => ({
   type: Actions.estimates.SET_ESTIMATE_FILTERS,
   payload: filters,
 });
+
+// Fetch projects for selection in the estimate form
+export const fetchProjectsForSelection = () => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_START });
+      
+      const { teamId } = getState().auth;
+      
+      // Fetch all projects for the team (both active and completed)
+      const { data, error } = await supabase
+        .from("projects")
+        .select("project_id, project_name, project_completed_at")
+        .eq("team_id", teamId)
+        .order("project_name", { ascending: true });
+      
+      if (error) throw error;
+      
+      dispatch({
+        type: Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_SUCCESS,
+        payload: data,
+      });
+      
+      return data;
+    } catch (error) {
+      console.error("Error fetching projects for selection:", error);
+      dispatch({
+        type: Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Create a new project for an estimate
+export const createProjectForEstimate = (projectData) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.CREATE_PROJECT_START });
+      
+      const { teamId } = getState().auth;
+      
+      // Add team_id to the project data
+      const newProject = {
+        project_name: projectData.project_name,
+        project_created_at: new Date().toISOString(),
+        team_id: teamId,
+      };
+      
+      // Insert the new project
+      const { data, error } = await supabase
+        .from("projects")
+        .insert(newProject)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      dispatch({
+        type: Actions.estimates.CREATE_PROJECT_SUCCESS,
+        payload: data,
+      });
+      
+      return data;
+    } catch (error) {
+      console.error("Error creating project for estimate:", error);
+      dispatch({
+        type: Actions.estimates.CREATE_PROJECT_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};

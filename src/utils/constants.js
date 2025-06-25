@@ -14,3 +14,8 @@ export const PATHS = {
   IN_PROGRESS_ESTIMATES: "/estimates/in-progress",
   FINALIZED_ESTIMATES: "/estimates/finalized",
 };
+
+export const ESTIMATE_STATUS = {
+  DRAFT: "draft",
+  FINALIZED: "finalized",
+}

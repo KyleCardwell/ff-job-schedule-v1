@@ -9,6 +9,9 @@ const initialState = {
     status: "all", // 'new', 'in-progress', 'finalized'
     searchTerm: "",
   },
+  projectsForSelection: [],
+  projectsLoading: false,
+  projectsError: null,
 };
 
 export const estimatesReducer = (state = initialState, action) => {
@@ -131,6 +134,48 @@ export const estimatesReducer = (state = initialState, action) => {
           ...state.filters,
           ...action.payload,
         },
+      };
+      
+    // Fetch projects for selection
+    case Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_START:
+      return {
+        ...state,
+        projectsLoading: true,
+        projectsError: null,
+      };
+    case Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_SUCCESS:
+      return {
+        ...state,
+        projectsForSelection: action.payload,
+        projectsLoading: false,
+        projectsError: null,
+      };
+    case Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_ERROR:
+      return {
+        ...state,
+        projectsLoading: false,
+        projectsError: action.payload,
+      };
+      
+    // Create project for estimate
+    case Actions.estimates.CREATE_PROJECT_START:
+      return {
+        ...state,
+        projectsLoading: true,
+        projectsError: null,
+      };
+    case Actions.estimates.CREATE_PROJECT_SUCCESS:
+      return {
+        ...state,
+        projectsForSelection: [...state.projectsForSelection, action.payload],
+        projectsLoading: false,
+        projectsError: null,
+      };
+    case Actions.estimates.CREATE_PROJECT_ERROR:
+      return {
+        ...state,
+        projectsLoading: false,
+        projectsError: action.payload,
       };
 
     default:
