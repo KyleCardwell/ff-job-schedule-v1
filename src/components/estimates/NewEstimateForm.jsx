@@ -5,10 +5,12 @@ import { FiArrowLeft, FiSave, FiPlusCircle, FiTrash2 } from "react-icons/fi";
 import { PATHS, ESTIMATE_STATUS } from "../../utils/constants";
 import { 
   createEstimate, 
+  updateEstimate,
+  fetchEstimateById,
+  updateEstimateData,
   fetchProjectsForSelection, 
   createProjectForEstimate,
   setCurrentEstimate,
-  updateEstimate
 } from "../../redux/actions/estimates";
 import EstimateTaskForm from "./EstimateTaskForm";
 
@@ -35,6 +37,7 @@ const NewEstimateForm = () => {
     projectId: "",
     projectName: "",
     clientName: "",
+    notes: "",
   });
   
   // Tasks state
@@ -44,6 +47,12 @@ const NewEstimateForm = () => {
   
   // Flag to track if we're editing an existing estimate
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Flag to track if estimate data has been loaded
+  const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // Flag to prevent automatic step changes after user navigation
+  const [userNavigatedToStep3, setUserNavigatedToStep3] = useState(false);
 
   // Fetch projects when component mounts
   useEffect(() => {
@@ -52,27 +61,33 @@ const NewEstimateForm = () => {
   
   // Load estimate data if editing
   useEffect(() => {
-    // If we have an estimateId, we're editing an existing estimate
-    if (estimateId) {
+    // If we have an estimateId and data hasn't been loaded yet, we're editing an existing estimate
+    if (estimateId && !dataLoaded) {
       setIsEditing(true);
       
-      // If we already have the currentEstimate in Redux, use it
-      if (currentEstimate && currentEstimate.estimate_id === parseInt(estimateId)) {
-        loadEstimateData(currentEstimate);
-      } 
-      // Otherwise, find it in the estimates list
-      else {
-        const estimateToEdit = estimates.find(
-          est => est.estimate_id === parseInt(estimateId)
-        );
-        
-        if (estimateToEdit) {
-          dispatch(setCurrentEstimate(estimateToEdit));
-          loadEstimateData(estimateToEdit);
-        }
+      // Try to find the estimate in the current Redux state first
+      const existingEstimate = estimates.find(
+        (est) => est.estimate_id === estimateId
+      );
+
+      if (existingEstimate) {
+        // If we found it, load it
+        loadEstimateData(existingEstimate);
+        setDataLoaded(true);
+      } else {
+        // If not found in Redux state, fetch it from the API
+        dispatch(fetchEstimateById(estimateId))
+          .then((data) => {
+            loadEstimateData(data);
+            setDataLoaded(true);
+          })
+          .catch((error) => {
+            console.error("Error fetching estimate:", error);
+            // toast.error("Failed to load estimate data");
+          });
       }
     }
-  }, [estimateId, currentEstimate, estimates, dispatch]);
+  }, [estimateId, dispatch, dataLoaded, estimates]);
   
   // Function to load estimate data into the form
   const loadEstimateData = (estimate) => {
@@ -82,10 +97,15 @@ const NewEstimateForm = () => {
       projectId: estimate.project_id,
       projectName: estimate.projects?.project_name || "",
       clientName: estimate.client_name || "",
+      notes: estimate.notes || "",
     });
     
-    // Load tasks if available
-    if (estimate.tasks && estimate.tasks.length > 0) {
+    // Load tasks from estimate_data if available
+    if (estimate.estimate_data && estimate.estimate_data.tasks) {
+      setTasks(estimate.estimate_data.tasks);
+    }
+    // For backward compatibility, check old format too
+    else if (estimate.tasks && estimate.tasks.length > 0) {
       setTasks(estimate.tasks.map(task => ({
         id: task.task_id || `temp-${Date.now()}-${Math.random()}`,
         name: task.task_name || "",
@@ -93,8 +113,10 @@ const NewEstimateForm = () => {
       })));
     }
     
-    // If estimate has tasks, start at task step
-    if (estimate.tasks && estimate.tasks.length > 0) {
+    // Only set the current step if we're not already on step 3 and user hasn't explicitly navigated
+    if (!userNavigatedToStep3 && currentStep !== 3 && 
+        ((estimate.estimate_data && estimate.estimate_data.tasks && estimate.estimate_data.tasks.length > 0) || 
+        (estimate.tasks && estimate.tasks.length > 0))) {
       setCurrentStep(2);
     }
   };
@@ -152,6 +174,7 @@ const NewEstimateForm = () => {
           project_id: projectId,
           client_name: formData.clientName || null,
           status: ESTIMATE_STATUS.DRAFT,
+          notes: formData.notes,
         };
         
         let resultEstimate;
@@ -203,10 +226,30 @@ const NewEstimateForm = () => {
   };
   
   // Handle saving all tasks
-  const handleSaveTasks = () => {
-    // Here you would dispatch an action to save tasks to the estimate
-    // For now, just move to the next step
-    setCurrentStep(3);
+  const handleSaveTasks = async () => {
+    try {
+      // Mark that user has explicitly navigated to step 3
+      setUserNavigatedToStep3(true);
+      
+      if (estimateId) {
+        // If we have an estimateId, save tasks to the database
+        await dispatch(updateEstimateData(estimateId, { tasks }));
+        // toast.success("Tasks saved successfully");
+      } else {
+        // If we don't have an estimateId yet, we need to create the estimate first
+        // This can happen if the user navigated directly to step 2 without saving step 1
+        console.log("No estimate ID found, skipping save to database");
+      }
+      
+      // Always proceed to the next step, even if we couldn't save
+      setCurrentStep(3);
+    } catch (error) {
+      console.error("Failed to save tasks:", error);
+      // toast.error("Failed to save tasks");
+      
+      // Even if there's an error saving, still proceed to the next step
+      setCurrentStep(3);
+    }
   };
   
   // Handle going back to previous step
@@ -330,6 +373,24 @@ const NewEstimateForm = () => {
             onChange={handleChange}
             className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter client name"
+            disabled={loading}
+          />
+        </div>
+
+        <div className="mb-6">
+          <label 
+            htmlFor="notes" 
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            Notes <span className="text-slate-400">(optional)</span>
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter notes"
             disabled={loading}
           />
         </div>

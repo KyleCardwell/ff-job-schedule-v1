@@ -12,6 +12,8 @@ const initialState = {
   projectsForSelection: [],
   projectsLoading: false,
   projectsError: null,
+  singleEstimateLoading: false,
+  singleEstimateError: null,
 };
 
 export const estimatesReducer = (state = initialState, action) => {
@@ -135,7 +137,7 @@ export const estimatesReducer = (state = initialState, action) => {
           ...action.payload,
         },
       };
-      
+
     // Fetch projects for selection
     case Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_START:
       return {
@@ -156,7 +158,7 @@ export const estimatesReducer = (state = initialState, action) => {
         projectsLoading: false,
         projectsError: action.payload,
       };
-      
+
     // Create project for estimate
     case Actions.estimates.CREATE_PROJECT_START:
       return {
@@ -176,6 +178,26 @@ export const estimatesReducer = (state = initialState, action) => {
         ...state,
         projectsLoading: false,
         projectsError: action.payload,
+      };
+
+    // Fetch estimate
+    case Actions.estimates.FETCH_ESTIMATE_START:
+      return {
+        ...state,
+        singleEstimateLoading: true,
+        singleEstimateError: null,
+      };
+    case Actions.estimates.FETCH_ESTIMATE_SUCCESS:
+      return {
+        ...state,
+        currentEstimate: action.payload,
+        singleEstimateLoading: false,
+      };
+    case Actions.estimates.FETCH_ESTIMATE_ERROR:
+      return {
+        ...state,
+        singleEstimateLoading: false,
+        singleEstimateError: action.payload,
       };
 
     default:

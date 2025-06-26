@@ -160,6 +160,87 @@ export const updateEstimate = (id, estimateData) => {
   };
 };
 
+// Update an estimate with estimate_data (tasks, sections, etc.)
+export const updateEstimateData = (estimateId, estimateData) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { session } = getState().auth;
+      const currentTime = new Date().toISOString();
+
+      // Prepare the update data
+      const updateData = {
+        estimate_data: estimateData,
+        updated_by: session.user.id,
+        updated_at: currentTime,
+      };
+
+      // Update the estimate with estimate_data
+      const { data, error } = await supabase
+        .from("estimates")
+        .update(updateData)
+        .eq("estimate_id", estimateId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: data,
+      });
+
+      return data;
+    } catch (error) {
+      console.error("Error updating estimate data:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Fetch a single estimate with all its data
+export const fetchEstimateById = (estimateId) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.FETCH_ESTIMATE_START });
+
+      const { data, error } = await supabase
+        .from("estimates")
+        .select(`
+          *,
+          projects:project_id (
+            project_id,
+            project_name,
+            team_id
+          )
+        `)
+        .eq("estimate_id", estimateId)
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATE_SUCCESS,
+        payload: data,
+      });
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching estimate:", error);
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
 // Delete an estimate
 export const deleteEstimate = (id) => {
   return async (dispatch) => {
