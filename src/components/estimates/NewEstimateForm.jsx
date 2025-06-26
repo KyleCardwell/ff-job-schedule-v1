@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FiArrowLeft, FiSave, FiPlusCircle, FiTrash2 } from "react-icons/fi";
 import { PATHS, ESTIMATE_STATUS } from "../../utils/constants";
@@ -7,20 +7,23 @@ import {
   createEstimate, 
   fetchProjectsForSelection, 
   createProjectForEstimate,
-  setCurrentEstimate
+  setCurrentEstimate,
+  updateEstimate
 } from "../../redux/actions/estimates";
 import EstimateTaskForm from "./EstimateTaskForm";
 
 const NewEstimateForm = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { estimateId } = useParams(); // Get estimateId from URL if editing
   const { 
     loading, 
     error, 
     projectsForSelection, 
     projectsLoading, 
     projectsError,
-    currentEstimate 
+    currentEstimate,
+    estimates
   } = useSelector((state) => state.estimates);
   
   // Multi-step form state
@@ -38,11 +41,63 @@ const NewEstimateForm = () => {
   const [tasks, setTasks] = useState([]);
   
   const [validationErrors, setValidationErrors] = useState({});
+  
+  // Flag to track if we're editing an existing estimate
+  const [isEditing, setIsEditing] = useState(false);
 
   // Fetch projects when component mounts
   useEffect(() => {
     dispatch(fetchProjectsForSelection());
   }, [dispatch]);
+  
+  // Load estimate data if editing
+  useEffect(() => {
+    // If we have an estimateId, we're editing an existing estimate
+    if (estimateId) {
+      setIsEditing(true);
+      
+      // If we already have the currentEstimate in Redux, use it
+      if (currentEstimate && currentEstimate.estimate_id === parseInt(estimateId)) {
+        loadEstimateData(currentEstimate);
+      } 
+      // Otherwise, find it in the estimates list
+      else {
+        const estimateToEdit = estimates.find(
+          est => est.estimate_id === parseInt(estimateId)
+        );
+        
+        if (estimateToEdit) {
+          dispatch(setCurrentEstimate(estimateToEdit));
+          loadEstimateData(estimateToEdit);
+        }
+      }
+    }
+  }, [estimateId, currentEstimate, estimates, dispatch]);
+  
+  // Function to load estimate data into the form
+  const loadEstimateData = (estimate) => {
+    // Set form data
+    setFormData({
+      projectType: "existing", // Always existing when editing
+      projectId: estimate.project_id,
+      projectName: estimate.projects?.project_name || "",
+      clientName: estimate.client_name || "",
+    });
+    
+    // Load tasks if available
+    if (estimate.tasks && estimate.tasks.length > 0) {
+      setTasks(estimate.tasks.map(task => ({
+        id: task.task_id || `temp-${Date.now()}-${Math.random()}`,
+        name: task.task_name || "",
+        sections: task.sections || []
+      })));
+    }
+    
+    // If estimate has tasks, start at task step
+    if (estimate.tasks && estimate.tasks.length > 0) {
+      setCurrentStep(2);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,23 +147,30 @@ const NewEstimateForm = () => {
           projectId = newProject.project_id;
         }
         
-        // Create the estimate
+        // Create or update the estimate
         const estimateData = {
           project_id: projectId,
           client_name: formData.clientName || null,
           status: ESTIMATE_STATUS.DRAFT,
         };
         
-        // Dispatch the create estimate action
-        const newEstimate = await dispatch(createEstimate(estimateData));
+        let resultEstimate;
+        
+        if (isEditing) {
+          // Update existing estimate
+          resultEstimate = await dispatch(updateEstimate(estimateId, estimateData));
+        } else {
+          // Create new estimate
+          resultEstimate = await dispatch(createEstimate(estimateData));
+        }
         
         // Set as current estimate
-        dispatch(setCurrentEstimate(newEstimate));
+        dispatch(setCurrentEstimate(resultEstimate));
         
-        // Move to the next step instead of navigating away
+        // Move to the next step
         setCurrentStep(2);
       } catch (err) {
-        console.error("Failed to create estimate:", err);
+        console.error("Failed to save estimate:", err);
         // Error is already handled by the action and will be in the Redux state
       }
     }
@@ -175,6 +237,7 @@ const NewEstimateForm = () => {
                 checked={formData.projectType === "existing"}
                 onChange={handleChange}
                 className="form-radio h-4 w-4 text-blue-500"
+                disabled={isEditing} // Disable if editing
               />
               <span className="ml-2">Existing Project</span>
             </label>
@@ -186,6 +249,7 @@ const NewEstimateForm = () => {
                 checked={formData.projectType === "new"}
                 onChange={handleChange}
                 className="form-radio h-4 w-4 text-blue-500"
+                disabled={isEditing} // Disable if editing
               />
               <span className="ml-2">New Project</span>
             </label>
@@ -208,7 +272,7 @@ const NewEstimateForm = () => {
               className={`w-full px-3 py-2 border ${
                 validationErrors.projectId ? "border-red-500" : "border-slate-300"
               } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              disabled={loading || projectsLoading}
+              disabled={loading || projectsLoading || isEditing} // Disable if editing
             >
               <option value="">-- Select a project --</option>
               {projectsForSelection.map((project) => (
@@ -243,7 +307,7 @@ const NewEstimateForm = () => {
                 validationErrors.projectName ? "border-red-500" : "border-slate-300"
               } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
               placeholder="Enter project name"
-              disabled={loading}
+              disabled={loading || isEditing} // Disable if editing
             />
             {validationErrors.projectName && (
               <p className="mt-1 text-sm text-red-500">{validationErrors.projectName}</p>
@@ -297,7 +361,7 @@ const NewEstimateForm = () => {
             ) : (
               <>
                 <FiSave className="mr-2" />
-                Continue to Tasks
+                {isEditing ? "Update Project Info" : "Continue to Tasks"}
               </>
             )}
           </button>
@@ -522,7 +586,8 @@ const NewEstimateForm = () => {
               <FiArrowLeft size={24} />
             </button>
             <h1 className="text-2xl font-bold text-slate-800">
-              {currentStep === 1 ? "New Estimate" : 
+              {isEditing ? "Edit Estimate" : 
+               currentStep === 1 ? "New Estimate" : 
                currentStep === 2 ? "Add Tasks" : 
                "Review Estimate"}
             </h1>
