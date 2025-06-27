@@ -1,5 +1,6 @@
 import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
+import { ESTIMATE_STATUS } from "../../utils/constants";
 
 // Create estimate project
 export const createEstimateProject = (projectData) => {
@@ -7,16 +8,14 @@ export const createEstimateProject = (projectData) => {
     try {
       dispatch({ type: Actions.estimates.CREATE_ESTIMATE_PROJECT_START });
       
-      const { session } = getState().auth;
+      const { teamId } = getState().auth;
       const { data, error } = await supabase
         .from('estimate_projects')
         .insert({
           ...projectData,
-          team_id: session.user.team_id,
-          created_by: session.user.id,
-          updated_by: session.user.id
+          team_id: teamId,
         })
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;
@@ -51,7 +50,7 @@ export const createEstimate = (estimateProjectId) => {
           est_project_id: estimateProjectId,
           status: ESTIMATE_STATUS.DRAFT,
           created_by: session.user.id,
-          updated_by: session.user.id
+          updated_by: session.user.id,
         })
         .select(`
           *,

@@ -19,8 +19,8 @@ const InProgressEstimates = () => {
 
   // Apply search filter
   const filteredEstimates = draftEstimates.filter((estimate) => {
-    const projectName = estimate.projects?.project_name || "";
-    const clientName = estimate.client_name || "";
+    const projectName = estimate.projects?.est_project_name || "";
+    const clientName = estimate.est_client_name || "";
     const searchLower = searchTerm.toLowerCase();
     
     return (

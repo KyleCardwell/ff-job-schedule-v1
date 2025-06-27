@@ -19,9 +19,9 @@ const NewEstimateForm = () => {
   
   const [currentStep, setCurrentStep] = useState(STEPS.PROJECT_INFO);
   const [projectData, setProjectData] = useState({
-    project_name: "",
-    client_name: "",
-    address: "",
+    est_project_name: "",
+    est_client_name: "",
+    street: "",
     city: "",
     state: "",
     zip: "",
@@ -46,9 +46,9 @@ const NewEstimateForm = () => {
       const estimate = await dispatch(fetchEstimateById(estimateId));
       if (estimate) {
         setProjectData({
-          project_name: estimate.estimate_project.project_name,
-          client_name: estimate.estimate_project.client_name,
-          address: estimate.estimate_project.address,
+          est_project_name: estimate.estimate_project.est_project_name,
+          est_client_name: estimate.estimate_project.est_client_name,
+          street: estimate.estimate_project.street,
           city: estimate.estimate_project.city,
           state: estimate.estimate_project.state,
           zip: estimate.estimate_project.zip,
@@ -63,12 +63,12 @@ const NewEstimateForm = () => {
   const validateProjectInfo = () => {
     const newErrors = {};
     
-    if (!projectData.project_name.trim()) {
-      newErrors.project_name = "Project name is required";
+    if (!projectData.est_project_name.trim()) {
+      newErrors.est_project_name = "Project name is required";
     }
     
-    if (!projectData.client_name.trim()) {
-      newErrors.client_name = "Client name is required";
+    if (!projectData.est_client_name.trim()) {
+      newErrors.est_client_name = "Client name is required";
     }
     
     setErrors(newErrors);
@@ -97,7 +97,7 @@ const NewEstimateForm = () => {
           if (!estimateId) {
             // Create new estimate project and estimate
             const estimateProject = await dispatch(createEstimateProject(projectData));
-            const estimate = await dispatch(createEstimate(estimateProject.estimate_project_id));
+            const estimate = await dispatch(createEstimate(estimateProject.est_project_id));
             setCurrentStep(STEPS.TASKS);
           } else {
             // Just move to next step for existing estimate
@@ -171,62 +171,62 @@ const NewEstimateForm = () => {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label
-                  htmlFor="project_name"
+                  htmlFor="est_project_name"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Project Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  id="project_name"
-                  name="project_name"
-                  value={projectData.project_name}
+                  id="est_project_name"
+                  name="est_project_name"
+                  value={projectData.est_project_name}
                   onChange={handleProjectDataChange}
                   disabled={!!estimateId}
                   className={`w-full p-2 border rounded-md ${
-                    errors.project_name ? "border-red-500" : "border-gray-300"
+                    errors.est_project_name ? "border-red-500" : "border-gray-300"
                   }`}
                 />
-                {errors.project_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.project_name}</p>
+                {errors.est_project_name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.est_project_name}</p>
                 )}
               </div>
               
               <div>
                 <label
-                  htmlFor="client_name"
+                  htmlFor="est_client_name"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Client Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  id="client_name"
-                  name="client_name"
-                  value={projectData.client_name}
+                  id="est_client_name"
+                  name="est_client_name"
+                  value={projectData.est_client_name}
                   onChange={handleProjectDataChange}
                   disabled={!!estimateId}
                   className={`w-full p-2 border rounded-md ${
-                    errors.client_name ? "border-red-500" : "border-gray-300"
+                    errors.est_client_name ? "border-red-500" : "border-gray-300"
                   }`}
                 />
-                {errors.client_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.client_name}</p>
+                {errors.est_client_name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.est_client_name}</p>
                 )}
               </div>
               
               <div>
                 <label
-                  htmlFor="address"
+                  htmlFor="street"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Address
+                  street
                 </label>
                 <input
                   type="text"
-                  id="address"
-                  name="address"
-                  value={projectData.address}
+                  id="street"
+                  name="street"
+                  value={projectData.street}
                   onChange={handleProjectDataChange}
                   disabled={!!estimateId}
                   className="w-full p-2 border border-gray-300 rounded-md"

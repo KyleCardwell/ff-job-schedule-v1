@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FiPlusCircle, FiEdit, FiCheckCircle } from "react-icons/fi";
 import { fetchEstimates } from "../../redux/actions/estimates";
-import { PATHS } from "../../utils/constants";
+import { ESTIMATE_STATUS, PATHS } from "../../utils/constants";
 
 const EstimateDashboard = () => {
     const navigate = useNavigate();
