@@ -1,668 +1,339 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { FiArrowLeft, FiSave, FiPlusCircle, FiTrash2 } from "react-icons/fi";
-import { PATHS, ESTIMATE_STATUS } from "../../utils/constants";
-import { 
-  createEstimate, 
-  updateEstimate,
-  fetchEstimateById,
-  updateEstimateData,
-  fetchProjectsForSelection, 
-  createProjectForEstimate,
-  setCurrentEstimate,
-} from "../../redux/actions/estimates";
+import { useNavigate, useParams } from "react-router-dom";
+import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import EstimateTaskForm from "./EstimateTaskForm";
+// import EstimateReview from "./EstimateReview";
+import { createEstimateProject, createEstimate } from "../../redux/actions/estimates";
+
+const STEPS = {
+  PROJECT_INFO: 1,
+  TASKS: 2,
+  REVIEW: 3,
+};
 
 const NewEstimateForm = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { estimateId } = useParams(); // Get estimateId from URL if editing
-  const { 
-    loading, 
-    error, 
-    projectsForSelection, 
-    projectsLoading, 
-    projectsError,
-    currentEstimate,
-    estimates
-  } = useSelector((state) => state.estimates);
+  const navigate = useNavigate();
+  const { estimateId } = useParams();
   
-  // Multi-step form state
-  const [currentStep, setCurrentStep] = useState(1);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    projectType: "existing", // 'existing' or 'new'
-    projectId: "",
-    projectName: "",
-    clientName: "",
-    notes: "",
+  const [currentStep, setCurrentStep] = useState(STEPS.PROJECT_INFO);
+  const [projectData, setProjectData] = useState({
+    project_name: "",
+    client_name: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
   });
   
-  // Tasks state
-  const [tasks, setTasks] = useState([]);
-  
-  const [validationErrors, setValidationErrors] = useState({});
-  
-  // Flag to track if we're editing an existing estimate
-  const [isEditing, setIsEditing] = useState(false);
-  
-  // Flag to track if estimate data has been loaded
+  const [errors, setErrors] = useState({});
   const [dataLoaded, setDataLoaded] = useState(false);
-  
-  // Flag to prevent automatic step changes after user navigation
   const [userNavigatedToStep3, setUserNavigatedToStep3] = useState(false);
-
-  // Fetch projects when component mounts
-  useEffect(() => {
-    dispatch(fetchProjectsForSelection());
-  }, [dispatch]);
   
-  // Load estimate data if editing
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const loading = useSelector((state) => state.estimates.loading);
+  const error = useSelector((state) => state.estimates.error);
+  
   useEffect(() => {
-    // If we have an estimateId and data hasn't been loaded yet, we're editing an existing estimate
     if (estimateId && !dataLoaded) {
-      setIsEditing(true);
-      
-      // Try to find the estimate in the current Redux state first
-      const existingEstimate = estimates.find(
-        (est) => est.estimate_id === estimateId
-      );
-
-      if (existingEstimate) {
-        // If we found it, load it
-        loadEstimateData(existingEstimate);
-        setDataLoaded(true);
-      } else {
-        // If not found in Redux state, fetch it from the API
-        dispatch(fetchEstimateById(estimateId))
-          .then((data) => {
-            loadEstimateData(data);
-            setDataLoaded(true);
-          })
-          .catch((error) => {
-            console.error("Error fetching estimate:", error);
-            // toast.error("Failed to load estimate data");
-          });
-      }
+      loadEstimateData();
     }
-  }, [estimateId, dispatch, dataLoaded, estimates]);
+  }, [estimateId, dataLoaded]);
   
-  // Function to load estimate data into the form
-  const loadEstimateData = (estimate) => {
-    // Set form data
-    setFormData({
-      projectType: "existing", // Always existing when editing
-      projectId: estimate.project_id,
-      projectName: estimate.projects?.project_name || "",
-      clientName: estimate.client_name || "",
-      notes: estimate.notes || "",
-    });
-    
-    // Load tasks from estimate_data if available
-    if (estimate.estimate_data && estimate.estimate_data.tasks) {
-      setTasks(estimate.estimate_data.tasks);
-    }
-    // For backward compatibility, check old format too
-    else if (estimate.tasks && estimate.tasks.length > 0) {
-      setTasks(estimate.tasks.map(task => ({
-        id: task.task_id || `temp-${Date.now()}-${Math.random()}`,
-        name: task.task_name || "",
-        sections: task.sections || []
-      })));
-    }
-    
-    // Only set the current step if we're not already on step 3 and user hasn't explicitly navigated
-    if (!userNavigatedToStep3 && currentStep !== 3 && 
-        ((estimate.estimate_data && estimate.estimate_data.tasks && estimate.estimate_data.tasks.length > 0) || 
-        (estimate.tasks && estimate.tasks.length > 0))) {
-      setCurrentStep(2);
+  const loadEstimateData = async () => {
+    try {
+      const estimate = await dispatch(fetchEstimateById(estimateId));
+      if (estimate) {
+        setProjectData({
+          project_name: estimate.estimate_project.project_name,
+          client_name: estimate.estimate_project.client_name,
+          address: estimate.estimate_project.address,
+          city: estimate.estimate_project.city,
+          state: estimate.estimate_project.state,
+          zip: estimate.estimate_project.zip,
+        });
+        setDataLoaded(true);
+      }
+    } catch (error) {
+      console.error("Error loading estimate:", error);
     }
   };
-
-  const handleChange = (e) => {
+  
+  const validateProjectInfo = () => {
+    const newErrors = {};
+    
+    if (!projectData.project_name.trim()) {
+      newErrors.project_name = "Project name is required";
+    }
+    
+    if (!projectData.client_name.trim()) {
+      newErrors.client_name = "Client name is required";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+  const handleProjectDataChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setProjectData({
+      ...projectData,
       [name]: value,
     });
     
-    // Clear error when user starts typing
-    if (validationErrors[name]) {
-      setValidationErrors({
-        ...validationErrors,
+    if (errors[name]) {
+      setErrors({
+        ...errors,
         [name]: "",
       });
     }
   };
-
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (formData.projectType === "existing" && !formData.projectId) {
-      newErrors.projectId = "Please select a project";
-    }
-    
-    if (formData.projectType === "new" && !formData.projectName.trim()) {
-      newErrors.projectName = "Project name is required";
-    }
-    
-    setValidationErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      try {
-        let projectId = formData.projectId;
-        
-        // If creating a new project, create it first
-        if (formData.projectType === "new") {
-          const newProject = await dispatch(
-            createProjectForEstimate({
-              project_name: formData.projectName,
-            })
-          );
-          projectId = newProject.project_id;
+  
+  const handleContinue = async () => {
+    if (currentStep === STEPS.PROJECT_INFO) {
+      if (validateProjectInfo()) {
+        try {
+          if (!estimateId) {
+            // Create new estimate project and estimate
+            const estimateProject = await dispatch(createEstimateProject(projectData));
+            const estimate = await dispatch(createEstimate(estimateProject.estimate_project_id));
+            setCurrentStep(STEPS.TASKS);
+          } else {
+            // Just move to next step for existing estimate
+            setCurrentStep(STEPS.TASKS);
+          }
+        } catch (error) {
+          console.error("Error creating estimate:", error);
         }
-        
-        // Create or update the estimate
-        const estimateData = {
-          project_id: projectId,
-          client_name: formData.clientName || null,
-          status: ESTIMATE_STATUS.DRAFT,
-          notes: formData.notes,
-        };
-        
-        let resultEstimate;
-        
-        if (isEditing) {
-          // Update existing estimate
-          resultEstimate = await dispatch(updateEstimate(estimateId, estimateData));
-        } else {
-          // Create new estimate
-          resultEstimate = await dispatch(createEstimate(estimateData));
-        }
-        
-        // Set as current estimate
-        dispatch(setCurrentEstimate(resultEstimate));
-        
-        // Move to the next step
-        setCurrentStep(2);
-      } catch (err) {
-        console.error("Failed to save estimate:", err);
-        // Error is already handled by the action and will be in the Redux state
       }
-    }
-  };
-  
-  // Handle adding a new task
-  const handleAddTask = () => {
-    setTasks([
-      ...tasks,
-      {
-        id: `temp-${Date.now()}`,
-        name: "",
-        sections: [],
-      },
-    ]);
-  };
-  
-  // Handle updating a task
-  const handleUpdateTask = (updatedTask) => {
-    setTasks(
-      tasks.map(task => 
-        task.id === updatedTask.id ? updatedTask : task
-      )
-    );
-  };
-  
-  // Handle removing a task
-  const handleRemoveTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-  };
-  
-  // Handle saving all tasks
-  const handleSaveTasks = async () => {
-    try {
-      // Mark that user has explicitly navigated to step 3
+    } else if (currentStep === STEPS.TASKS) {
+      setCurrentStep(STEPS.REVIEW);
       setUserNavigatedToStep3(true);
-      
-      if (estimateId) {
-        // If we have an estimateId, save tasks to the database
-        await dispatch(updateEstimateData(estimateId, { tasks }));
-        // toast.success("Tasks saved successfully");
-      } else {
-        // If we don't have an estimateId yet, we need to create the estimate first
-        // This can happen if the user navigated directly to step 2 without saving step 1
-        console.log("No estimate ID found, skipping save to database");
-      }
-      
-      // Always proceed to the next step, even if we couldn't save
-      setCurrentStep(3);
-    } catch (error) {
-      console.error("Failed to save tasks:", error);
-      // toast.error("Failed to save tasks");
-      
-      // Even if there's an error saving, still proceed to the next step
-      setCurrentStep(3);
     }
   };
   
-  // Handle going back to previous step
-  const handlePrevStep = () => {
-    setCurrentStep(currentStep - 1);
+  const handleBack = () => {
+    if (currentStep > STEPS.PROJECT_INFO) {
+      setCurrentStep(currentStep - 1);
+    }
   };
   
-  // Handle finishing the estimate process
-  const handleFinish = () => {
-    // Navigate to the estimates dashboard
-    navigate(PATHS.ESTIMATES);
-  };
-
-  // Render the project information step
-  const renderProjectInfoStep = () => {
-    return (
-      <form onSubmit={handleSubmit}>
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Project Type
-          </label>
-          <div className="flex space-x-4">
-            <label className="inline-flex items-center">
-              <input
-                type="radio"
-                name="projectType"
-                value="existing"
-                checked={formData.projectType === "existing"}
-                onChange={handleChange}
-                className="form-radio h-4 w-4 text-blue-500"
-                disabled={isEditing} // Disable if editing
-              />
-              <span className="ml-2">Existing Project</span>
-            </label>
-            <label className="inline-flex items-center">
-              <input
-                type="radio"
-                name="projectType"
-                value="new"
-                checked={formData.projectType === "new"}
-                onChange={handleChange}
-                className="form-radio h-4 w-4 text-blue-500"
-                disabled={isEditing} // Disable if editing
-              />
-              <span className="ml-2">New Project</span>
-            </label>
-          </div>
-        </div>
-
-        {formData.projectType === "existing" ? (
-          <div className="mb-6">
-            <label 
-              htmlFor="projectId" 
-              className="block text-sm font-medium text-slate-700 mb-1"
-            >
-              Select Project <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="projectId"
-              name="projectId"
-              value={formData.projectId}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border ${
-                validationErrors.projectId ? "border-red-500" : "border-slate-300"
-              } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              disabled={loading || projectsLoading || isEditing} // Disable if editing
-            >
-              <option value="">-- Select a project --</option>
-              {projectsForSelection.map((project) => (
-                <option key={project.project_id} value={project.project_id}>
-                  {project.project_name}
-                  {project.project_completed_at ? " (Completed)" : ""}
-                </option>
-              ))}
-            </select>
-            {validationErrors.projectId && (
-              <p className="mt-1 text-sm text-red-500">{validationErrors.projectId}</p>
-            )}
-            {projectsLoading && (
-              <p className="mt-1 text-sm text-slate-500">Loading projects...</p>
-            )}
-          </div>
-        ) : (
-          <div className="mb-6">
-            <label 
-              htmlFor="projectName" 
-              className="block text-sm font-medium text-slate-700 mb-1"
-            >
-              Project Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="projectName"
-              name="projectName"
-              value={formData.projectName}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border ${
-                validationErrors.projectName ? "border-red-500" : "border-slate-300"
-              } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              placeholder="Enter project name"
-              disabled={loading || isEditing} // Disable if editing
-            />
-            {validationErrors.projectName && (
-              <p className="mt-1 text-sm text-red-500">{validationErrors.projectName}</p>
-            )}
-          </div>
-        )}
-
-        <div className="mb-6">
-          <label 
-            htmlFor="clientName" 
-            className="block text-sm font-medium text-slate-700 mb-1"
-          >
-            Client Name <span className="text-slate-400">(optional)</span>
-          </label>
-          <input
-            type="text"
-            id="clientName"
-            name="clientName"
-            value={formData.clientName}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter client name"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="mb-6">
-          <label 
-            htmlFor="notes" 
-            className="block text-sm font-medium text-slate-700 mb-1"
-          >
-            Notes <span className="text-slate-400">(optional)</span>
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter notes"
-            disabled={loading}
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => navigate(PATHS.ESTIMATES)}
-            className="px-4 py-2 mr-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-            disabled={loading || projectsLoading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className={`px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center ${
-              loading || projectsLoading ? "opacity-70 cursor-not-allowed" : ""
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+  
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">
+        {estimateId ? "Edit Estimate" : "New Estimate"}
+      </h1>
+      
+      {/* Progress Steps */}
+      <div className="flex justify-between mb-8">
+        {Object.values(STEPS).map((step) => (
+          <div
+            key={step}
+            className={`flex-1 text-center ${
+              currentStep >= step ? "text-blue-600" : "text-gray-400"
             }`}
-            disabled={loading || projectsLoading}
           >
-            {loading || projectsLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving...
-              </>
-            ) : (
-              <>
-                <FiSave className="mr-2" />
-                {isEditing ? "Update Project Info" : "Continue to Tasks"}
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-    );
-  };
-  
-  // Render the tasks step
-  const renderTasksStep = () => {
-    return (
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Add Tasks</h2>
-        <p className="text-slate-600 mb-6">
-          Add tasks for this estimate. Each task can have multiple sections.
-        </p>
-        
-        {tasks.length === 0 ? (
-          <div className="bg-slate-50 border border-slate-200 rounded-md p-8 text-center mb-6">
-            <p className="text-slate-500 mb-4">No tasks added yet</p>
-            <button
-              type="button"
-              onClick={handleAddTask}
-              className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center mx-auto"
-            >
-              <FiPlusCircle className="mr-2" />
-              Add Your First Task
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4 mb-6">
-            {tasks.map((task) => (
-              <EstimateTaskForm
-                key={task.id}
-                task={task}
-                onUpdate={handleUpdateTask}
-                onDelete={handleRemoveTask}
-              />
-            ))}
-            
-            <button
-              type="button"
-              onClick={handleAddTask}
-              className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center"
-            >
-              <FiPlusCircle className="mr-2" />
-              Add Another Task
-            </button>
-          </div>
-        )}
-        
-        <div className="flex justify-between mt-8">
-          <button
-            type="button"
-            onClick={handlePrevStep}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-          >
-            Back
-          </button>
-          <div>
-            <button
-              type="button"
-              onClick={() => navigate(PATHS.ESTIMATES)}
-              className="px-4 py-2 mr-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-            >
-              Save & Exit
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveTasks}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
-              disabled={tasks.length === 0}
-            >
-              <FiSave className="mr-2" />
-              Continue
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-  
-  // Render the review step
-  const renderReviewStep = () => {
-    return (
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Review Estimate</h2>
-        <p className="text-slate-600 mb-6">
-          Review your estimate details before finalizing.
-        </p>
-        
-        <div className="bg-white border border-slate-200 rounded-md p-6 mb-6">
-          <h3 className="font-medium text-lg mb-4">Project Information</h3>
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
-              <p className="text-sm text-slate-500">Project Name</p>
-              <p className="font-medium">
-                {formData.projectType === "new" 
-                  ? formData.projectName 
-                  : projectsForSelection.find(p => p.project_id === formData.projectId)?.project_name || ""}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Client Name</p>
-              <p className="font-medium">{formData.clientName || "N/A"}</p>
-            </div>
-          </div>
-          
-          <h3 className="font-medium text-lg mb-4">Tasks</h3>
-          {tasks.length === 0 ? (
-            <p className="text-slate-500">No tasks added</p>
-          ) : (
-            <div className="space-y-4">
-              {tasks.map((task, index) => (
-                <div key={task.id} className="border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
-                  <p className="font-medium">Task {index + 1}: {task.name || "Untitled Task"}</p>
-                  {task.sections && task.sections.length > 0 ? (
-                    <div className="ml-4 mt-2">
-                      <p className="text-sm text-slate-700">{task.sections.length} section(s):</p>
-                      <ul className="list-disc list-inside mt-1">
-                        {task.sections.map((section, sectionIndex) => (
-                          <li key={sectionIndex} className="text-sm text-slate-600">
-                            {section.style} - {section.cabinetInterior}
-                            {section.material && <span className="text-xs text-slate-500 ml-1">({section.material})</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 ml-4 mt-1">No sections added</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        <div className="flex justify-between mt-8">
-          <button
-            type="button"
-            onClick={handlePrevStep}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-          >
-            Back to Tasks
-          </button>
-          <div>
-            <button
-              type="button"
-              onClick={() => navigate(PATHS.ESTIMATES)}
-              className="px-4 py-2 mr-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-            >
-              Save as Draft
-            </button>
-            <button
-              type="button"
-              onClick={handleFinish}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600 flex items-center"
-            >
-              <FiSave className="mr-2" />
-              Finalize Estimate
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-  
-  // Render the current step
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return renderProjectInfoStep();
-      case 2:
-        return renderTasksStep();
-      case 3:
-        return renderReviewStep();
-      default:
-        return renderProjectInfoStep();
-    }
-  };
-  
-  // Render step indicators
-  const renderStepIndicators = () => {
-    return (
-      <div className="flex items-center justify-center mb-8">
-        {[1, 2, 3].map((step) => (
-          <React.Fragment key={step}>
-            <div 
-              className={`rounded-full h-8 w-8 flex items-center justify-center ${
-                currentStep === step 
-                  ? "bg-blue-500 text-white" 
-                  : currentStep > step 
-                    ? "bg-green-500 text-white"
-                    : "bg-slate-200 text-slate-700"
+            <div
+              className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${
+                currentStep >= step
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-gray-100 text-gray-400"
               }`}
             >
               {step}
             </div>
-            {step < 3 && (
-              <div 
-                className={`h-1 w-12 ${
-                  currentStep > step ? "bg-green-500" : "bg-slate-200"
-                }`}
-              ></div>
-            )}
-          </React.Fragment>
+            <div className="mt-2 text-sm">
+              {step === STEPS.PROJECT_INFO
+                ? "Project Info"
+                : step === STEPS.TASKS
+                ? "Tasks"
+                : "Review"}
+            </div>
+          </div>
         ))}
       </div>
-    );
-  };
-
-  return (
-    <div className="bg-slate-800 min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
-          <div className="flex items-center mb-6">
-            <button
-              onClick={() => currentStep === 1 ? navigate(PATHS.ESTIMATES) : handlePrevStep()}
-              className="mr-4 text-slate-600 hover:text-slate-800"
-              aria-label="Go back"
-            >
-              <FiArrowLeft size={24} />
-            </button>
-            <h1 className="text-2xl font-bold text-slate-800">
-              {isEditing ? "Edit Estimate" : 
-               currentStep === 1 ? "New Estimate" : 
-               currentStep === 2 ? "Add Tasks" : 
-               "Review Estimate"}
-            </h1>
-          </div>
-
-          {(error || projectsError) && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error || projectsError}
+      
+      {/* Step Content */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        {currentStep === STEPS.PROJECT_INFO && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Project Information</h2>
+            
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label
+                  htmlFor="project_name"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Project Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="project_name"
+                  name="project_name"
+                  value={projectData.project_name}
+                  onChange={handleProjectDataChange}
+                  disabled={!!estimateId}
+                  className={`w-full p-2 border rounded-md ${
+                    errors.project_name ? "border-red-500" : "border-gray-300"
+                  }`}
+                />
+                {errors.project_name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.project_name}</p>
+                )}
+              </div>
+              
+              <div>
+                <label
+                  htmlFor="client_name"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Client Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="client_name"
+                  name="client_name"
+                  value={projectData.client_name}
+                  onChange={handleProjectDataChange}
+                  disabled={!!estimateId}
+                  className={`w-full p-2 border rounded-md ${
+                    errors.client_name ? "border-red-500" : "border-gray-300"
+                  }`}
+                />
+                {errors.client_name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.client_name}</p>
+                )}
+              </div>
+              
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Address
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={projectData.address}
+                  onChange={handleProjectDataChange}
+                  disabled={!!estimateId}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="city"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={projectData.city}
+                    onChange={handleProjectDataChange}
+                    disabled={!!estimateId}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                
+                <div>
+                  <label
+                    htmlFor="state"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    value={projectData.state}
+                    onChange={handleProjectDataChange}
+                    disabled={!!estimateId}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label
+                  htmlFor="zip"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  ZIP Code
+                </label>
+                <input
+                  type="text"
+                  id="zip"
+                  name="zip"
+                  value={projectData.zip}
+                  onChange={handleProjectDataChange}
+                  disabled={!!estimateId}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
             </div>
-          )}
-          
-          {renderStepIndicators()}
-          {renderCurrentStep()}
-        </div>
+          </div>
+        )}
+        
+        {currentStep === STEPS.TASKS && (
+          <EstimateTaskForm
+            estimateId={estimateId || currentEstimate?.estimate_id}
+            onSave={() => {}}
+          />
+        )}
+        
+        {/* {currentStep === STEPS.REVIEW && (
+          // <EstimateReview
+          //   estimate={currentEstimate}
+          //   onApprove={() => {}}
+          //   onEdit={() => setCurrentStep(STEPS.TASKS)}
+          // />
+        )} */}
+      </div>
+      
+      {/* Navigation Buttons */}
+      <div className="flex justify-between">
+        <button
+          type="button"
+          onClick={handleBack}
+          disabled={currentStep === STEPS.PROJECT_INFO}
+          className={`px-4 py-2 flex items-center ${
+            currentStep === STEPS.PROJECT_INFO
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-blue-600 hover:text-blue-700"
+          }`}
+        >
+          <FiArrowLeft className="mr-2" />
+          Back
+        </button>
+        
+        {currentStep < STEPS.REVIEW && (
+          <button
+            type="button"
+            onClick={handleContinue}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+          >
+            Continue
+            <FiArrowRight className="ml-2" />
+          </button>
+        )}
       </div>
     </div>
   );

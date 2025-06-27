@@ -28,7 +28,7 @@ const EstimateDashboard = () => {
             borderColor: "border-blue-200",
             iconColor: "text-blue-500",
             buttonColor: "bg-blue-500 hover:bg-blue-600",
-            count: estimates ? estimates.filter(est => est.status === 'new').length : 0
+            count: 0
         },
         {
             id: "inProgress",
@@ -41,7 +41,7 @@ const EstimateDashboard = () => {
             borderColor: "border-amber-200",
             iconColor: "text-amber-500",
             buttonColor: "bg-amber-500 hover:bg-amber-600",
-            count: estimates ? estimates.filter(est => est.status === 'in-progress').length : 0
+            count: estimates ? estimates.filter(est => est.status === ESTIMATE_STATUS.DRAFT).length : 0
         },
         {
             id: "finalized",
@@ -54,7 +54,7 @@ const EstimateDashboard = () => {
             borderColor: "border-green-200",
             iconColor: "text-green-500",
             buttonColor: "bg-green-500 hover:bg-green-600",
-            count: estimates ? estimates.filter(est => est.status === 'finalized').length : 0
+            count: estimates ? estimates.filter(est => est.status === ESTIMATE_STATUS.FINALIZED).length : 0
         }
     ];
 

@@ -1,202 +1,293 @@
 import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
-import { ESTIMATE_STATUS } from "../../utils/constants";
 
-// Fetch all estimates
+// Create estimate project
+export const createEstimateProject = (projectData) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.CREATE_ESTIMATE_PROJECT_START });
+      
+      const { session } = getState().auth;
+      const { data, error } = await supabase
+        .from('estimate_projects')
+        .insert({
+          ...projectData,
+          team_id: session.user.team_id,
+          created_by: session.user.id,
+          updated_by: session.user.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.CREATE_ESTIMATE_PROJECT_SUCCESS,
+        payload: data
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error creating estimate project:', error);
+      dispatch({
+        type: Actions.estimates.CREATE_ESTIMATE_PROJECT_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Create estimate
+export const createEstimate = (estimateProjectId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.CREATE_ESTIMATE_START });
+      
+      const { session } = getState().auth;
+      const { data, error } = await supabase
+        .from('estimates')
+        .insert({
+          est_project_id: estimateProjectId,
+          status: ESTIMATE_STATUS.DRAFT,
+          created_by: session.user.id,
+          updated_by: session.user.id
+        })
+        .select(`
+          *,
+          estimate_project:estimate_projects (*)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.CREATE_ESTIMATE_SUCCESS,
+        payload: data
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error creating estimate:', error);
+      dispatch({
+        type: Actions.estimates.CREATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Fetch estimates with related data
 export const fetchEstimates = (filters = {}) => {
   return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.FETCH_ESTIMATES_START });
-
+      
       const { teamId } = getState().auth;
-
-      // Use a join to get estimates for the team's projects
+      
       let query = supabase
-        .from("estimates")
-        .select(
-          `
+        .from('estimates')
+        .select(`
           *,
-          projects:project_id (
-          project_id,
-          project_name,
-          team_id
-        )
-        `
-        )
-        .eq("projects.team_id", teamId);
+          estimate_project:estimate_projects (
+            est_project_id,
+            team_id,
+            est_project_name
+          )
+        `)
+        .eq('estimate_projects.team_id', teamId);
 
-      // Apply filters if provided
-      if (filters.status && filters.status !== "all") {
-        query = query.eq("status", filters.status);
+      if (filters.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
       }
 
       if (filters.searchTerm) {
-        query = query.ilike("project_name", `%${filters.searchTerm}%`);
+        query = query.or(`estimate_projects.est_project_name.ilike.%${filters.searchTerm}%`);
       }
 
-      // Execute the query
-      const { data, error } = await query;
+      const { data: estimates, error } = await query;
 
       if (error) throw error;
 
-      dispatch({
-        type: Actions.estimates.FETCH_ESTIMATES_SUCCESS,
-        payload: data,
+      dispatch({ 
+        type: Actions.estimates.FETCH_ESTIMATES_SUCCESS, 
+        payload: estimates 
       });
+
+      return estimates;
     } catch (error) {
-      console.error("Error fetching estimates:", error);
+      console.error('Error fetching estimates:', error);
       dispatch({
         type: Actions.estimates.FETCH_ESTIMATES_ERROR,
-        payload: error.message,
-      });
-    }
-  };
-};
-
-// Create a new estimate
-export const createEstimate = (estimateData) => {
-  return async (dispatch, getState) => {
-    try {
-      dispatch({ type: Actions.estimates.CREATE_ESTIMATE_START });
-
-      const { session } = getState().auth;
-
-      // Validate project_id
-      if (!estimateData.project_id) {
-        throw new Error("Project ID is required to create an estimate");
-      }
-
-      const currentTime = new Date().toISOString();
-      // Add team_id and created_by to the estimate data
-      const newEstimate = {
-        ...estimateData,
-        status: estimateData.status || ESTIMATE_STATUS.DRAFT,
-        created_by: session.user.id,
-        created_at: currentTime,
-        updated_by: session.user.id,
-        updated_at: currentTime,
-      };
-
-      // Insert the estimate with the project_id
-      const { data, error } = await supabase
-        .from("estimates")
-        .insert(newEstimate)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Fetch the project details to include in the response
-      const { data: projectData, error: projectError } = await supabase
-        .from("projects")
-        .select("project_name")
-        .eq("project_id", data.project_id)
-        .single();
-
-      if (projectError) {
-        console.warn("Could not fetch project details:", projectError);
-      }
-
-      // Combine estimate with project details
-      const estimateWithProject = {
-        ...data,
-        project_name: projectData?.project_name || "Unknown Project",
-      };
-
-      dispatch({
-        type: Actions.estimates.CREATE_ESTIMATE_SUCCESS,
-        payload: estimateWithProject,
-      });
-
-      return estimateWithProject;
-    } catch (error) {
-      console.error("Error creating estimate:", error);
-      dispatch({
-        type: Actions.estimates.CREATE_ESTIMATE_ERROR,
-        payload: error.message,
+        payload: error.message
       });
       throw error;
     }
   };
 };
 
-// Update an existing estimate
-export const updateEstimate = (id, estimateData) => {
+// Create task
+export const createTask = (estimateId, taskData) => {
   return async (dispatch, getState) => {
     try {
-      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
-
-      const { session } = getState().auth;
-
-      const updatedEstimate = {
-        ...estimateData,
-        updated_by: session.user.id,
-        updated_at: new Date().toISOString(),
-      };
-
+      dispatch({ type: Actions.estimates.CREATE_TASK_START });
+      
       const { data, error } = await supabase
-        .from("estimates")
-        .update(updatedEstimate)
-        .eq("estimate_id", id)
+        .from('estimate_tasks')
+        .insert({
+          ...taskData,
+          estimate_id: estimateId
+        })
         .select()
         .single();
 
       if (error) throw error;
 
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
-        payload: data,
+        type: Actions.estimates.CREATE_TASK_SUCCESS,
+        payload: data
       });
 
       return data;
     } catch (error) {
-      console.error("Error updating estimate:", error);
+      console.error('Error creating task:', error);
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
-        payload: error.message,
+        type: Actions.estimates.CREATE_TASK_ERROR,
+        payload: error.message
       });
       throw error;
     }
   };
 };
 
-// Update an estimate with estimate_data (tasks, sections, etc.)
-export const updateEstimateData = (estimateId, estimateData) => {
+// Create section
+export const createSection = (taskId, sectionData) => {
   return async (dispatch, getState) => {
     try {
-      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
-
-      const { session } = getState().auth;
-      const currentTime = new Date().toISOString();
-
-      // Prepare the update data
-      const updateData = {
-        estimate_data: estimateData,
-        updated_by: session.user.id,
-        updated_at: currentTime,
-      };
-
-      // Update the estimate with estimate_data
+      dispatch({ type: Actions.estimates.CREATE_SECTION_START });
+      
       const { data, error } = await supabase
-        .from("estimates")
-        .update(updateData)
-        .eq("estimate_id", estimateId)
+        .from('estimate_sections')
+        .insert({
+          ...sectionData,
+          task_id: taskId
+        })
         .select()
         .single();
 
       if (error) throw error;
 
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
-        payload: data,
+        type: Actions.estimates.CREATE_SECTION_SUCCESS,
+        payload: data
       });
 
       return data;
     } catch (error) {
-      console.error("Error updating estimate data:", error);
+      console.error('Error creating section:', error);
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
-        payload: error.message,
+        type: Actions.estimates.CREATE_SECTION_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Create item
+export const createItem = (sectionId, itemData) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.CREATE_ITEM_START });
+      
+      const { data, error } = await supabase
+        .from('estimate_items')
+        .insert({
+          ...itemData,
+          section_id: sectionId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.CREATE_ITEM_SUCCESS,
+        payload: data
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error creating item:', error);
+      dispatch({
+        type: Actions.estimates.CREATE_ITEM_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Approve estimate
+export const approveEstimate = (estimateId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.APPROVE_ESTIMATE_START });
+      
+      const { session } = getState().auth;
+      
+      // Get the estimate and its project data
+      const { data: estimate, error: estimateError } = await supabase
+        .from('estimates')
+        .select(`
+          *,
+          estimate_project:estimate_projects (*)
+        `)
+        .eq('estimate_id', estimateId)
+        .single();
+
+      if (estimateError) throw estimateError;
+
+      // Create project from estimate_project data
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          team_id: estimate.estimate_project.team_id,
+          project_name: estimate.estimate_project.project_name,
+        })
+        .select()
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Update estimate status
+      const { data: updatedEstimate, error: updateError } = await supabase
+        .from('estimates')
+        .update({ 
+          status: 'approved',
+          updated_by: session.user.id 
+        })
+        .eq('estimate_id', estimateId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      dispatch({
+        type: Actions.estimates.APPROVE_ESTIMATE_SUCCESS,
+        payload: {
+          estimate: updatedEstimate,
+          project
+        }
+      });
+
+      return { estimate: updatedEstimate, project };
+    } catch (error) {
+      console.error('Error approving estimate:', error);
+      dispatch({
+        type: Actions.estimates.APPROVE_ESTIMATE_ERROR,
+        payload: error.message
       });
       throw error;
     }
@@ -213,10 +304,13 @@ export const fetchEstimateById = (estimateId) => {
         .from("estimates")
         .select(`
           *,
-          projects:project_id (
-            project_id,
-            project_name,
-            team_id
+          estimate_project:estimate_projects (*),
+          tasks:estimate_tasks (
+            *,
+            sections:estimate_sections (
+              *,
+              items:estimate_items (*)
+            )
           )
         `)
         .eq("estimate_id", estimateId)
