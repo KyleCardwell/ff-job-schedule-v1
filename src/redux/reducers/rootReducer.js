@@ -9,6 +9,7 @@ import { projectsReducer } from "./projects";
 import { chartConfigReducer } from "./chartConfig";
 import { financialsDataReducer } from "./financialsData";
 import { teamMembersReducer } from "./teamMembers";
+import { featureTogglesReducer } from "./featureToggles";
 
 const appReducer = combineReducers({
 	auth: authReducer,
@@ -21,6 +22,7 @@ const appReducer = combineReducers({
 	chartConfig: chartConfigReducer,
 	financialsData: financialsDataReducer,
 	teamMembers: teamMembersReducer,
+	featureToggles: featureTogglesReducer,
 });
 
 // Root reducer that handles resetting state
