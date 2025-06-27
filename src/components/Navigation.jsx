@@ -14,8 +14,10 @@ import { useDispatch } from "react-redux";
 import { clearAuth } from "../redux/authSlice";
 import { useNavigate } from "react-router-dom";
 import { headerButtonColor } from "../assets/tailwindConstants";
+import useFeatureToggles from "../hooks/useFeatureToggles";
 
 const Navigation = ({ isOpen, onClose }) => {
+  const { enable_estimates } = useFeatureToggles();
   const { roleId, permissions } = useSelector((state) => state.auth);
   const canAccessManage =
     roleId === 1 || (permissions && permissions.can_manage_teams);
@@ -28,7 +30,7 @@ const Navigation = ({ isOpen, onClose }) => {
     ...(canAccessManage
       ? [{ icon: FiUsers, label: "Manage", path: PATHS.MANAGE }]
       : []),
-    ...(canCreateEstimates
+    ...(canCreateEstimates && enable_estimates
       ? [{ icon: FiDollarSign, label: "Estimates", path: PATHS.ESTIMATES }]
       : []),
     { icon: FiCalendar, label: "Schedule", path: PATHS.HOME },
