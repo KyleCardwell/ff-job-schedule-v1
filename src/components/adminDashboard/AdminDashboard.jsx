@@ -1,14 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation, Routes, Route, Navigate } from "react-router-dom";
-import {
-  FiHome,
-  FiUsers,
-  FiCalendar,
-  FiSettings,
-  FiBarChart2,
-} from "react-icons/fi";
-import ProjectSearchFilter from "../ProjectSearchFilter";
 import ManageChartSettings from "../manageSettings/ManageChartSettings";
 import EmployeeSettings from "../manageSettings/EmployeeSettings";
 import HolidaySettings from "../manageSettings/HolidaySettings";
@@ -16,7 +8,6 @@ import TeamSettings from "../manageSettings/TeamSettings";
 import {
   headerButtonClass,
   headerButtonColor,
-  sectionButtonColor,
 } from "../../assets/tailwindConstants";
 import Holidays from "date-holidays";
 import { PATHS } from "../../utils/constants";
