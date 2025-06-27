@@ -16,13 +16,13 @@ import { supabase } from "./utils/supabase";
 import { fetchProjects, fetchProjectsOptions } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
+import { fetchFeatureToggles } from "./redux/actions/featureToggles"; // Import the fetchFeatureToggles action
 import {
   setSession,
   clearAuth,
   setUserTeam,
   setLoading,
 } from "./redux/authSlice";
-import { usePermissions } from "./hooks/usePermissions";
 import TeamJoin from "./components/TeamJoin.jsx";
 import AdminDashboard from "./components/adminDashboard/AdminDashboard.jsx";
 import Navigation from "./components/Navigation";
@@ -154,6 +154,7 @@ const App = () => {
     const fetchData = async () => {
       if (session && teamId && !initialFetchDone.current) {
         try {
+          dispatch(fetchFeatureToggles()); // Add feature toggles fetch
           dispatch(fetchChartConfig());
           await dispatch(fetchEmployees());
 
