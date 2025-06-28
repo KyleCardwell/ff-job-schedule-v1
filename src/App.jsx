@@ -270,6 +270,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
             </Routes>
           </main>
           <Navigation isOpen={isOpen} onClose={() => setIsOpen(false)} />

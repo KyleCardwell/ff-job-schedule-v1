@@ -8,14 +8,17 @@ export const fetchFeatureToggles = () => async (dispatch) => {
   try {
     const { data, error } = await supabase
       .from('feature_toggles')
-      .select('feature_name, feature_enabled');
+      .select('feature_name, feature_enabled, enabled_teams');
       
     if (error) throw error;
     
     // Transform array into key-value object
-    const features = data.reduce((acc, { feature_name, feature_enabled }) => ({
+    const features = data.reduce((acc, { feature_name, feature_enabled, enabled_teams }) => ({
       ...acc,
-      [feature_name]: feature_enabled
+      [feature_name]: {
+        feature_enabled,
+        enabled_teams
+      }
     }), {});
     
     dispatch({
