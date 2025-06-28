@@ -334,6 +334,7 @@ export const fetchEstimateById = (estimateId) => {
         state: data.state,
         city: data.city,
         zip: data.zip,
+        estimate_data: data.estimate_data,
         tasks: (data.tasks || []).map(task => ({
           ...task.task,
           sections: (task.sections || []).map(section => ({
