@@ -89,11 +89,11 @@ const EstimateTaskForm = () => {
     setEditingSectionIndex(null);
   };
 
-  const handleDeleteSection = (index) => {
-    const updatedSections = [...(tasks[0].sections || [])];
+  const handleDeleteSection = (taskId, index) => {
+    const updatedSections = [...(tasks.find(t => t.est_task_id === taskId).sections || [])];
     updatedSections.splice(index, 1);
 
-    handleUpdateTask(tasks[0].est_task_id, { sections: updatedSections });
+    handleUpdateTask(taskId, { sections: updatedSections });
   };
 
   const handleCancelSection = () => {
@@ -102,132 +102,117 @@ const EstimateTaskForm = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <ConfirmationModal
-        isOpen={!!deleteTaskId}
-        title="Delete Task"
-        message="Are you sure you want to delete this task? This action cannot be undone."
-        onConfirm={confirmDeleteTask}
-        onCancel={() => setDeleteTaskId(null)}
-        confirmText="Delete"
-        confirmButtonClass="bg-red-500 hover:bg-red-600"
-      />
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Tasks</h3>
-        <button
-          type="button"
-          onClick={() => setShowNewTaskForm(true)}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-        >
-          Add Task
-        </button>
+    <div className="flex flex-col h-full">
+      {/* Fixed Header */}
+      <div className="flex-none">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-slate-800">Tasks</h2>
+          <button
+            onClick={() => setShowNewTaskForm(true)}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+          >
+            <FiPlusCircle className="w-4 h-4" />
+            Add Task
+          </button>
+        </div>
+
+        {showNewTaskForm && (
+          <div className="mb-4 p-4 bg-white rounded-lg border border-slate-200">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTaskName}
+                onChange={(e) => setNewTaskName(e.target.value)}
+                placeholder="Enter task name"
+                className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={handleAddTask}
+                className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => setShowNewTaskForm(false)}
+                className="px-3 py-1.5 text-sm bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {showNewTaskForm && (
-        <div className="p-4 bg-gray-50 rounded-md">
-          <input
-            type="text"
-            value={newTaskName}
-            onChange={(e) => setNewTaskName(e.target.value)}
-            placeholder="Enter task name"
-            className="w-full p-2 border border-gray-300 rounded-md"
-          />
-          <div className="mt-2 flex space-x-2">
-            <button
-              type="button"
-              onClick={handleAddTask}
-              className="px-3 py-1 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700"
+      {/* Scrollable Tasks Section */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="space-y-4 pr-2">
+          {tasks.map((task) => (
+            <div
+              key={task.est_task_id}
+              className="bg-white rounded-lg border border-slate-200 overflow-hidden"
             >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowNewTaskForm(false);
-                setNewTaskName("");
-              }}
-              className="px-3 py-1 text-sm text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {tasks.map((task, index) => (
-          <div
-            key={task.est_task_id}
-            className="p-4 bg-white border border-gray-200 rounded-md"
-          >
-            <div className="flex items-center justify-between">
-              {isEditing && task.est_task_id === editingTaskId ? (
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={taskName}
-                    onChange={(e) => setTaskName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter task name"
-                    autoFocus
-                  />
-                  <div className="flex mt-2">
+              <div className="p-4">
+                {isEditing && editingTaskId === task.est_task_id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={taskName}
+                      onChange={(e) => setTaskName(e.target.value)}
+                      className="flex-1 px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                     <button
-                      type="button"
                       onClick={handleSaveTask}
-                      className="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600"
+                      className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
                     >
                       Save
                     </button>
                     <button
-                      type="button"
                       onClick={() => setIsEditing(false)}
-                      className="px-3 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded hover:bg-slate-200 ml-2"
+                      className="px-3 py-1.5 text-sm bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors"
                     >
                       Cancel
                     </button>
                   </div>
-                </div>
-              ) : (
-                <>
-                  <span className="font-medium text-slate-700">{task.est_task_name || "Untitled Task"}</span>
-                  <div className="ml-auto flex space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(true);
-                        setEditingTaskId(task.est_task_id);
-                        setTaskName(task.est_task_name);
-                      }}
-                      className="text-blue-500 hover:text-blue-700"
-                      aria-label="Edit task"
-                    >
-                      <FiEdit size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTask(task.est_task_id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </button>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-slate-800">
+                      {task.est_task_name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setIsEditing(true);
+                          setEditingTaskId(task.est_task_id);
+                          setTaskName(task.est_task_name);
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
+                      >
+                        <FiEdit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTask(task.est_task_id)}
+                        className="p-1.5 text-red-500 hover:text-red-700 rounded-md hover:bg-red-50 transition-colors"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </>
-              )}
-            </div>
+                )}
 
-            {/* Sections List */}
-            {task.sections && task.sections.length > 0 ? (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-slate-700 mb-2">Sections</h4>
-                <div className="space-y-2 ml-2">
-                  {task.sections.map((section, sectionIndex) => (
-                    <div key={sectionIndex} className="border-l-2 border-slate-200 pl-3 py-1">
+                {/* Sections */}
+                <div className="mt-4 space-y-3">
+                  {task.sections?.map((section, index) => (
+                    <div key={index} className="border-l-2 border-slate-200 pl-3 py-1">
                       <div className="flex items-center">
                         <span className="text-sm">{section.style} - {section.cabinetInterior}</span>
                         <div className="ml-auto flex space-x-1">
                           <button
                             type="button"
-                            onClick={() => handleEditSection(sectionIndex)}
+                            onClick={() => {
+                              setEditingTaskId(task.est_task_id);
+                              setEditingSectionIndex(index);
+                              setShowSectionForm(true);
+                            }}
                             className="text-blue-500 hover:text-blue-700"
                             aria-label="Edit section"
                           >
@@ -235,7 +220,7 @@ const EstimateTaskForm = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteSection(sectionIndex)}
+                            onClick={() => handleDeleteSection(task.est_task_id, index)}
                             className="text-red-500 hover:text-red-700"
                             aria-label="Remove section"
                           >
@@ -251,32 +236,71 @@ const EstimateTaskForm = () => {
                       </div>
                     </div>
                   ))}
+
+                  {showSectionForm && editingTaskId === task.est_task_id ? (
+                    <div className="mt-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <EstimateSectionForm
+                        section={
+                          editingSectionIndex !== null
+                            ? task.sections[editingSectionIndex]
+                            : {}
+                        }
+                        onSave={(sectionData) =>
+                          handleSaveSection(task.est_task_id, sectionData, editingSectionIndex)
+                        }
+                        onCancel={() => {
+                          setShowSectionForm(false);
+                          setEditingSectionIndex(null);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditingTaskId(task.est_task_id);
+                        setEditingSectionIndex(null);
+                        setShowSectionForm(true);
+                      }}
+                      className="w-full py-2 px-3 text-sm text-slate-600 bg-slate-50 rounded-md border border-dashed border-slate-300 hover:bg-slate-100 hover:border-slate-400 transition-colors"
+                    >
+                      + Add Section
+                    </button>
+                  )}
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-slate-500 mb-4">No sections added yet</p>
-            )}
-
-            {/* Section Form */}
-            {showSectionForm ? (
-              <EstimateSectionForm
-                section={editingSectionIndex !== null ? task.sections[editingSectionIndex] : {}}
-                onSave={handleSaveSection}
-                onCancel={handleCancelSection}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={handleAddSection}
-                className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 flex items-center"
-              >
-                <FiPlusCircle className="mr-1" size={12} />
-                Add Section
-              </button>
-            )}
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTaskId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium text-slate-900 mb-4">
+              Delete Task
+            </h3>
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete this task? This action cannot be
+              undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTaskId(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteTask}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
