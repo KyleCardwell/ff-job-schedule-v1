@@ -125,6 +125,39 @@ export const estimatesReducer = (state = initialState, action) => {
         error: null
       };
 
+    case Actions.estimates.UPDATE_ESTIMATE_SUCCESS:
+      return {
+        ...state,
+        currentEstimate: action.payload.estimateId === state.currentEstimate?.estimate_id
+          ? {
+              ...state.currentEstimate,
+              tasks: action.payload.tasks || state.currentEstimate.tasks,
+              estimate_project: action.payload.projectData
+                ? {
+                    ...state.currentEstimate.estimate_project,
+                    ...action.payload.projectData
+                  }
+                : state.currentEstimate.estimate_project
+            }
+          : state.currentEstimate,
+        estimates: state.estimates.map(estimate => 
+          estimate.estimate_id === action.payload.estimateId
+            ? {
+                ...estimate,
+                tasks: action.payload.tasks || estimate.tasks,
+                estimate_project: action.payload.projectData
+                  ? {
+                      ...estimate.estimate_project,
+                      ...action.payload.projectData
+                    }
+                  : estimate.estimate_project
+              }
+            : estimate
+        ),
+        loading: false,
+        error: null
+      };
+
     default:
       return state;
   }

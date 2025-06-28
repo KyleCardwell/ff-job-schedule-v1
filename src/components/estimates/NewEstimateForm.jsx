@@ -3,8 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import EstimateTaskForm from "./EstimateTaskForm";
-// import EstimateReview from "./EstimateReview";
-import { createEstimateProject, createEstimate, fetchEstimateById } from "../../redux/actions/estimates";
+import { isEqual } from "lodash";
+import {
+  createEstimateProject,
+  createEstimate,
+  fetchEstimateById,
+  updateEstimateProject
+} from "../../redux/actions/estimates";
 
 const STEPS = {
   PROJECT_INFO: 1,
@@ -100,11 +105,27 @@ const NewEstimateForm = () => {
             const estimate = await dispatch(createEstimate(estimateProject.est_project_id));
             setCurrentStep(STEPS.TASKS);
           } else {
-            // Just move to next step for existing estimate
+            // For existing estimate, check if project data has changed
+            const originalProjectData = {
+              est_project_name: currentEstimate.est_project_name,
+              est_client_name: currentEstimate.est_client_name,
+              street: currentEstimate.street,
+              city: currentEstimate.city,
+              state: currentEstimate.state,
+              zip: currentEstimate.zip,
+            };
+
+            // Only update if data has changed
+            if (!isEqual(originalProjectData, projectData)) {
+              await dispatch(updateEstimateProject(estimateId, {
+                ...projectData,
+                est_project_id: currentEstimate.est_project_id
+              }));
+            }
             setCurrentStep(STEPS.TASKS);
           }
         } catch (error) {
-          console.error("Error creating estimate:", error);
+          console.error("Error updating estimate:", error);
         }
       }
     } else if (currentStep === STEPS.TASKS) {

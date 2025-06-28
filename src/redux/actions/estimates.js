@@ -476,3 +476,152 @@ export const createProjectForEstimate = (projectData) => {
     }
   };
 };
+
+// Update project information for an existing estimate
+export const updateEstimateProject = (estimateId, projectData) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      // Update the project info
+      const { error: projectError } = await supabase
+        .from('estimate_projects')
+        .update({
+          est_project_name: projectData.est_project_name,
+          est_client_name: projectData.est_client_name,
+          street: projectData.street,
+          city: projectData.city,
+          state: projectData.state,
+          zip: projectData.zip,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('est_project_id', projectData.est_project_id);
+
+      if (projectError) throw projectError;
+
+      // Just update the project info in Redux
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: { estimateId, projectData }
+      });
+
+    } catch (error) {
+      console.error("Error updating estimate project:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Add a new task to an estimate project
+export const addTask = (projectId, taskName) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { data: newTask, error } = await supabase
+        .from('estimate_tasks')
+        .insert([
+          {
+            est_project_id: projectId,
+            est_task_name: taskName.trim()
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const { currentEstimate } = getState().estimates;
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          estimateId: projectId,
+          tasks: [...(currentEstimate?.tasks || []), newTask]
+        }
+      });
+
+      return newTask;
+    } catch (error) {
+      console.error('Error adding task:', error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Update an existing task
+export const updateTask = (projectId, taskId, updates) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { data: updatedTask, error } = await supabase
+        .from('estimate_tasks')
+        .update(updates)
+        .eq('est_task_id', taskId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const { currentEstimate } = getState().estimates;
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          estimateId: projectId,
+          tasks: currentEstimate.tasks.map(task => 
+            task.est_task_id === taskId ? updatedTask : task
+          )
+        }
+      });
+
+      return updatedTask;
+    } catch (error) {
+      console.error('Error updating task:', error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Delete a task
+export const deleteTask = (projectId, taskId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { error } = await supabase
+        .from('estimate_tasks')
+        .delete()
+        .eq('est_task_id', taskId);
+
+      if (error) throw error;
+
+      const { currentEstimate } = getState().estimates;
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          estimateId: projectId,
+          tasks: currentEstimate.tasks.filter(task => task.est_task_id !== taskId)
+        }
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};

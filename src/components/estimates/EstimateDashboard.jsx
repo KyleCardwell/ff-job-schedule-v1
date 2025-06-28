@@ -11,11 +11,9 @@ const EstimateDashboard = () => {
     const { estimates, loading, error } = useSelector(state => state.estimates);
     
     useEffect(() => {
-        // Fetch estimates when component mounts
         dispatch(fetchEstimates());
-    }, [dispatch]);
+    }, []);
 
-    // Section data
     const sections = [
         {
             id: "new",

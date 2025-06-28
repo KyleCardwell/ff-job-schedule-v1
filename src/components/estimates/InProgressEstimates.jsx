@@ -12,6 +12,13 @@ const InProgressEstimates = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
 
+  useEffect(() => {
+    // Only fetch if estimates array is empty
+    if (!estimates || estimates.length === 0) {
+      dispatch(fetchEstimates({ status: ESTIMATE_STATUS.DRAFT }));
+    }
+  }, []);
+
   // Filter for draft estimates only
   const draftEstimates = estimates.filter(
     (estimate) => estimate.status === ESTIMATE_STATUS.DRAFT
@@ -29,15 +36,8 @@ const InProgressEstimates = () => {
     );
   });
 
-  useEffect(() => {
-    // Fetch estimates with draft status filter
-    dispatch(fetchEstimates({ status: ESTIMATE_STATUS.DRAFT }));
-  }, [dispatch]);
-
   const handleEditEstimate = (estimate) => {
-    // Set as current estimate in Redux
     dispatch(setCurrentEstimate(estimate));
-    // Navigate to edit form with estimate ID
     navigate(`${PATHS.NEW_ESTIMATE}/${estimate.estimate_id}`);
   };
 

@@ -131,6 +131,10 @@ const App = () => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (mounted) {
+        // Fetch feature toggles as soon as we have a session
+        if (session) {
+          dispatch(fetchFeatureToggles());
+        }
         fetchUserData(session);
       }
     });
@@ -140,6 +144,10 @@ const App = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
+        // Fetch feature toggles on auth state change if we have a session
+        if (session) {
+          dispatch(fetchFeatureToggles());
+        }
         fetchUserData(session);
       }
     });
@@ -148,13 +156,12 @@ const App = () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, [fetchUserData, dispatch]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (session && teamId && !initialFetchDone.current) {
         try {
-          dispatch(fetchFeatureToggles()); // Add feature toggles fetch
           dispatch(fetchChartConfig());
           await dispatch(fetchEmployees());
 
