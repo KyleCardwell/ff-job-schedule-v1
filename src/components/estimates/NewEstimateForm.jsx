@@ -155,32 +155,31 @@ const NewEstimateForm = () => {
       </h1>
       
       {/* Progress Steps */}
-      <div className="flex justify-between mb-8">
-        {Object.values(STEPS).map((step) => (
-          <div
-            key={step}
-            className={`flex-1 text-center ${
-              currentStep >= step ? "text-blue-600" : "text-gray-400"
-            }`}
-          >
-            <div
-              className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${
-                currentStep >= step
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-gray-100 text-gray-400"
-              }`}
-            >
-              {step}
+      <div className="mb-8">
+        <div className="flex justify-between items-center">
+          {['Project Info', 'Tasks', 'Review'].map((stepName, index) => (
+            <div key={stepName} className="flex items-center">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep === index + 1
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                {index + 1}
+              </div>
+              <span
+                className={`ml-2 text-sm font-medium ${
+                  currentStep === index + 1
+                    ? 'text-blue-500'
+                    : 'text-gray-500'
+                }`}
+              >
+                {stepName}
+              </span>
             </div>
-            <div className="mt-2 text-sm">
-              {step === STEPS.PROJECT_INFO
-                ? "Project Info"
-                : step === STEPS.TASKS
-                ? "Tasks"
-                : "Review"}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       
       {/* Step Content */}
