@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import EstimateTaskForm from "./EstimateTaskForm";
 // import EstimateReview from "./EstimateReview";
-import { createEstimateProject, createEstimate } from "../../redux/actions/estimates";
+import { createEstimateProject, createEstimate, fetchEstimateById } from "../../redux/actions/estimates";
 
 const STEPS = {
   PROJECT_INFO: 1,
@@ -46,12 +46,12 @@ const NewEstimateForm = () => {
       const estimate = await dispatch(fetchEstimateById(estimateId));
       if (estimate) {
         setProjectData({
-          est_project_name: estimate.estimate_project.est_project_name,
-          est_client_name: estimate.estimate_project.est_client_name,
-          street: estimate.estimate_project.street,
-          city: estimate.estimate_project.city,
-          state: estimate.estimate_project.state,
-          zip: estimate.estimate_project.zip,
+          est_project_name: estimate.est_project_name,
+          est_client_name: estimate.est_client_name,
+          street: estimate.street,
+          city: estimate.city,
+          state: estimate.state,
+          zip: estimate.zip,
         });
         setDataLoaded(true);
       }
@@ -174,7 +174,7 @@ const NewEstimateForm = () => {
                   htmlFor="est_project_name"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Project Name <span className="text-red-500">*</span>
+                  Project Name
                 </label>
                 <input
                   type="text"
@@ -182,9 +182,8 @@ const NewEstimateForm = () => {
                   name="est_project_name"
                   value={projectData.est_project_name}
                   onChange={handleProjectDataChange}
-                  disabled={!!estimateId}
-                  className={`w-full p-2 border rounded-md ${
-                    errors.est_project_name ? "border-red-500" : "border-gray-300"
+                  className={`w-full p-2 border border-gray-300 rounded-md ${
+                    errors.est_project_name ? "border-red-500" : ""
                   }`}
                 />
                 {errors.est_project_name && (
@@ -197,7 +196,7 @@ const NewEstimateForm = () => {
                   htmlFor="est_client_name"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Client Name <span className="text-red-500">*</span>
+                  Client Name
                 </label>
                 <input
                   type="text"
@@ -205,9 +204,8 @@ const NewEstimateForm = () => {
                   name="est_client_name"
                   value={projectData.est_client_name}
                   onChange={handleProjectDataChange}
-                  disabled={!!estimateId}
-                  className={`w-full p-2 border rounded-md ${
-                    errors.est_client_name ? "border-red-500" : "border-gray-300"
+                  className={`w-full p-2 border border-gray-300 rounded-md ${
+                    errors.est_client_name ? "border-red-500" : ""
                   }`}
                 />
                 {errors.est_client_name && (
@@ -220,7 +218,7 @@ const NewEstimateForm = () => {
                   htmlFor="street"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  street
+                  Street
                 </label>
                 <input
                   type="text"
@@ -228,7 +226,6 @@ const NewEstimateForm = () => {
                   name="street"
                   value={projectData.street}
                   onChange={handleProjectDataChange}
-                  disabled={!!estimateId}
                   className="w-full p-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -247,7 +244,6 @@ const NewEstimateForm = () => {
                     name="city"
                     value={projectData.city}
                     onChange={handleProjectDataChange}
-                    disabled={!!estimateId}
                     className="w-full p-2 border border-gray-300 rounded-md"
                   />
                 </div>
@@ -265,7 +261,6 @@ const NewEstimateForm = () => {
                     name="state"
                     value={projectData.state}
                     onChange={handleProjectDataChange}
-                    disabled={!!estimateId}
                     className="w-full p-2 border border-gray-300 rounded-md"
                   />
                 </div>
@@ -284,7 +279,6 @@ const NewEstimateForm = () => {
                   name="zip"
                   value={projectData.zip}
                   onChange={handleProjectDataChange}
-                  disabled={!!estimateId}
                   className="w-full p-2 border border-gray-300 rounded-md"
                 />
               </div>

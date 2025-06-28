@@ -19,7 +19,7 @@ const InProgressEstimates = () => {
 
   // Apply search filter
   const filteredEstimates = draftEstimates.filter((estimate) => {
-    const projectName = estimate.projects?.est_project_name || "";
+    const projectName = estimate.est_project_name || "";
     const clientName = estimate.est_client_name || "";
     const searchLower = searchTerm.toLowerCase();
     
@@ -174,10 +174,10 @@ const InProgressEstimates = () => {
                       className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                        {estimate.projects?.project_name || "Unknown Project"}
+                        {estimate.est_project_name || "Unknown Project"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        {estimate.client_name || "N/A"}
+                        {estimate.est_client_name || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {formatDate(estimate.created_at)}

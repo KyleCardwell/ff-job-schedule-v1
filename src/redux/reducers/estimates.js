@@ -105,6 +105,26 @@ export const estimatesReducer = (state = initialState, action) => {
         error: action.payload,
       };
 
+    case Actions.estimates.FETCH_ESTIMATE_SUCCESS:
+      return {
+        ...state,
+        currentEstimate: {
+          ...action.payload,
+          tasks: action.payload.tasks || [],
+          estimate_project: action.payload.estimate_project || null,
+          tasks: (action.payload.tasks || []).map(task => ({
+            ...task,
+            sections: task.sections || [],
+            sections: (task.sections || []).map(section => ({
+              ...section,
+              items: section.items || []
+            }))
+          }))
+        },
+        loading: false,
+        error: null
+      };
+
     default:
       return state;
   }

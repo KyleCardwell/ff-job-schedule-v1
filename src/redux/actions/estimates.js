@@ -92,7 +92,8 @@ export const fetchEstimates = (filters = {}) => {
           estimate_project:estimate_projects (
             est_project_id,
             team_id,
-            est_project_name
+            est_project_name,
+            est_client_name
           )
         `)
         .eq('estimate_projects.team_id', teamId);
@@ -109,12 +110,22 @@ export const fetchEstimates = (filters = {}) => {
 
       if (error) throw error;
 
+      // Flatten the data structure
+      const flattenedEstimates = estimates.map(estimate => ({
+        ...estimate,
+        est_project_id: estimate.estimate_project.est_project_id,
+        est_project_name: estimate.estimate_project.est_project_name,
+        est_client_name: estimate.estimate_project.est_client_name,
+        team_id: estimate.estimate_project.team_id,
+        estimate_project: undefined // Remove the nested object
+      }));
+
       dispatch({ 
         type: Actions.estimates.FETCH_ESTIMATES_SUCCESS, 
-        payload: estimates 
+        payload: flattenedEstimates 
       });
 
-      return estimates;
+      return flattenedEstimates;
     } catch (error) {
       console.error('Error fetching estimates:', error);
       dispatch({
@@ -300,29 +311,44 @@ export const fetchEstimateById = (estimateId) => {
       dispatch({ type: Actions.estimates.FETCH_ESTIMATE_START });
 
       const { data, error } = await supabase
-        .from("estimates")
-        .select(`
-          *,
-          estimate_project:estimate_projects (*),
-          tasks:estimate_tasks (
-            *,
-            sections:estimate_sections (
-              *,
-              items:estimate_items (*)
-            )
-          )
-        `)
-        .eq("estimate_id", estimateId)
+        .from('estimate_full_details')
+        .select('*')
+        .eq('estimate_id', estimateId)
         .single();
 
       if (error) throw error;
 
+      // Transform the data to match our frontend structure
+      const estimate = {
+        estimate_id: data.estimate_id,
+        est_project_id: data.est_project_id,
+        status: data.status,
+        is_current: data.is_current,
+        created_at: data.estimate_created_at,
+        updated_at: data.estimate_updated_at,
+        est_project_id: data.est_project_id,
+        est_project_name: data.est_project_name,
+        est_client_name: data.est_client_name,
+        team_id: data.team_id,
+        street: data.street,
+        state: data.state,
+        city: data.city,
+        zip: data.zip,
+        tasks: (data.tasks || []).map(task => ({
+          ...task.task,
+          sections: (task.sections || []).map(section => ({
+            ...section.section,
+            items: section.items || []
+          }))
+        }))
+      };
+
       dispatch({
         type: Actions.estimates.FETCH_ESTIMATE_SUCCESS,
-        payload: data,
+        payload: estimate
       });
 
-      return data;
+      return estimate;
     } catch (error) {
       console.error("Error fetching estimate:", error);
       dispatch({
