@@ -235,11 +235,39 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/estimates">
-                <Route index element={<EstimateDashboard />} />
-                <Route path="in-progress" element={<InProgressEstimates />} />
-                <Route path="new" element={<EstimateLayout />} />
-                <Route path="new/:estimateId" element={<EstimateLayout />} />
+              <Route path={PATHS.ESTIMATES}>
+                <Route
+                  index
+                  element={
+                    <ProtectedRoute>
+                      <EstimateDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={PATHS.IN_PROGRESS_ESTIMATES}
+                  element={
+                    <ProtectedRoute>
+                      <InProgressEstimates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={PATHS.NEW_ESTIMATE}
+                  element={
+                    <ProtectedRoute>
+                      <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={PATHS.IN_PROGRESS_ESTIMATES + "/:estimateId"}
+                  element={
+                    <ProtectedRoute>
+                      <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
               </Route>
               <Route
                 path={PATHS.COMPLETED}

@@ -38,7 +38,7 @@ const InProgressEstimates = () => {
 
   const handleEditEstimate = (estimate) => {
     dispatch(setCurrentEstimate(estimate));
-    navigate(`${PATHS.NEW_ESTIMATE}/${estimate.estimate_id}`);
+    navigate(`${PATHS.IN_PROGRESS_ESTIMATES}/${estimate.estimate_id}`);
   };
 
   const handleDeleteEstimate = async (estimateId) => {

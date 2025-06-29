@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import EstimateProjectForm from "./EstimateProjectForm";
 import EstimateTaskForm from "./EstimateTaskForm";
-import { addTask, fetchEstimateById } from "../../redux/actions/estimates";
+import { addTask, fetchEstimateById, setCurrentEstimate } from "../../redux/actions/estimates";
 import { FiArrowLeft } from "react-icons/fi";
 import { PATHS } from "../../utils/constants";
 
@@ -15,6 +15,7 @@ const EstimateLayout = () => {
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
+  const estimates = useSelector((state) => state.estimates.estimates);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -24,17 +25,29 @@ const EstimateLayout = () => {
     const loadEstimate = async () => {
       try {
         if (estimateId) {
-          await dispatch(fetchEstimateById(estimateId));
+          const existingEstimate = estimates.find(est => est.est_project_id === estimateId);
+          if (existingEstimate) {
+            dispatch(setCurrentEstimate(existingEstimate));
+            setLoading(false);
+            return;
+          }
+
+          const result = await dispatch(fetchEstimateById(estimateId));
+          if (!result) {
+            navigate(PATHS.IN_PROGRESS_ESTIMATES);
+            return;
+          }
         }
         setLoading(false);
       } catch (error) {
         console.error("Error loading estimate:", error);
+        navigate(PATHS.IN_PROGRESS_ESTIMATES);
         setLoading(false);
       }
     };
 
     loadEstimate();
-  }, [dispatch, estimateId]);
+  }, [dispatch, estimateId, navigate, estimates]);
 
   const selectedTask = currentEstimate?.tasks?.find(
     (task) => task.est_task_id === selectedTaskId
