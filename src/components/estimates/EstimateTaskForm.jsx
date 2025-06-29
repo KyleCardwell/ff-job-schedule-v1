@@ -26,7 +26,6 @@ const EstimateTaskForm = ({
     if (selectedTask) {
       setTaskName(selectedTask.est_task_name);
     } else if (isNew) {
-      setTaskName("New Task");
       setIsEditing(true);
     }
   }, [selectedTask, isNew]);
@@ -94,6 +93,7 @@ const EstimateTaskForm = ({
               onChange={(e) => setTaskName(e.target.value)}
               className="w-full h-9 p-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               autoFocus
+              placeholder="Room Name"
             />
           </div>
         ) : (

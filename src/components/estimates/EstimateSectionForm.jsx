@@ -213,7 +213,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 htmlFor="material"
                 className="block text-sm font-medium text-slate-700"
               >
-                Material
+                Cabinet Face Material
               </label>
               <select
                 id="material"
@@ -241,7 +241,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 htmlFor="cabinetInterior"
                 className="block text-sm font-medium text-slate-700"
               >
-                Interior
+                Cabinet Box Material
               </label>
               <select
                 id="cabinetInterior"

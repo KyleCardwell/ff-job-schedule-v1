@@ -132,60 +132,33 @@ const InProgressEstimates = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
-                    >
-                      Project
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
-                    >
-                      Client
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
-                    >
-                      Created
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
-                    >
-                      Last Updated
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+              <div className="min-w-full">
+                <div className="grid grid-cols-5 gap-4 bg-slate-50 py-3 px-6 border-b border-slate-200">
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Project</div>
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Client</div>
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Created</div>
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Last Updated</div>
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider text-right">Actions</div>
+                </div>
+                <div className="bg-white divide-y divide-slate-200">
                   {filteredEstimates.map((estimate) => (
-                    <tr
+                    <div
                       key={estimate.estimate_id}
-                      className="hover:bg-slate-50 transition-colors"
+                      className="grid grid-cols-5 gap-4 py-4 px-6 hover:bg-slate-50 transition-colors items-center"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                      <div className="text-sm font-medium text-slate-900 truncate">
                         {estimate.est_project_name || "Unknown Project"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      </div>
+                      <div className="text-sm text-slate-500 truncate">
                         {estimate.est_client_name || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      </div>
+                      <div className="text-sm text-slate-500">
                         {formatDate(estimate.created_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      </div>
+                      <div className="text-sm text-slate-500">
                         {formatDate(estimate.updated_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      </div>
+                      <div className="text-sm font-medium text-right">
                         <button
                           onClick={() => handleEditEstimate(estimate)}
                           className="text-blue-600 hover:text-blue-900 mr-4"
@@ -200,11 +173,11 @@ const InProgressEstimates = () => {
                         >
                           <FiTrash2 />
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
