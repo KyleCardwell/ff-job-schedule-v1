@@ -4,7 +4,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import EstimateProjectForm from "./EstimateProjectForm";
 import EstimateTaskForm from "./EstimateTaskForm";
-import { addTask, fetchEstimateById, setCurrentEstimate } from "../../redux/actions/estimates";
+import EstimateSectionForm from "./EstimateSectionForm";
+import EstimateSectionInfo from "./EstimateSectionInfo";
+import { addTask, fetchEstimateById, setCurrentEstimate, updateTask } from "../../redux/actions/estimates";
 import { FiArrowLeft } from "react-icons/fi";
 import { PATHS } from "../../utils/constants";
 
@@ -18,6 +20,7 @@ const EstimateLayout = () => {
   const estimates = useSelector((state) => state.estimates.estimates);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [showSectionForm, setShowSectionForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
 
@@ -142,11 +145,31 @@ const EstimateLayout = () => {
         </nav>
       </div>
 
+      {/* Sections Column */}
+      <EstimateSectionInfo
+        selectedTask={selectedTask}
+        onAddSection={() => setShowSectionForm(true)}
+        onEditSections={() => setShowSectionForm(true)}
+      />
+
       {/* Main Content */}
       <div className="flex-1 p-6">
         {showProjectInfo || !currentEstimate ? (
           <div className="max-w-3xl mx-auto">
-            <EstimateProjectForm />
+            <EstimateProjectForm estimate={currentEstimate} />
+          </div>
+        ) : showSectionForm ? (
+          <div className="max-w-3xl mx-auto">
+            <EstimateSectionForm
+              onSave={(sectionData) => {
+                dispatch(updateTask(currentEstimate.estimate_id, selectedTask.est_task_id, {
+                  sections: [sectionData] // Always replace with single section
+                }));
+                setShowSectionForm(false);
+              }}
+              onCancel={() => setShowSectionForm(false)}
+              initialData={selectedTask?.sections?.[0]} // Pass existing section data if it exists
+            />
           </div>
         ) : selectedTask ? (
           <div className="max-w-3xl mx-auto">
