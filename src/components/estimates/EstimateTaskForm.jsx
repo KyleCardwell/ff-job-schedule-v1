@@ -34,12 +34,12 @@ const EstimateTaskForm = ({
     try {
       if (isNew) {
         const newTask = await dispatch(
-          addTask(currentEstimate.est_project_id, taskName)
+          addTask(currentEstimate.estimate_id, taskName)
         );
         onTaskSaved?.(newTask.est_task_id);
       } else {
         await dispatch(
-          updateTask(currentEstimate.est_project_id, selectedTask.est_task_id, {
+          updateTask(currentEstimate.estimate_id, selectedTask.est_task_id, {
             est_task_name: taskName
           })
         );

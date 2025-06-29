@@ -530,7 +530,7 @@ export const updateEstimateProject = (estimateId, projectData) => {
 };
 
 // Update an existing task
-export const updateTask = (projectId, taskId, updates) => {
+export const updateTask = (estimateId, taskId, updates) => {
   return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
@@ -554,7 +554,7 @@ export const updateTask = (projectId, taskId, updates) => {
         payload: {
           type: 'task',
           data: {
-            projectId,
+            estimateId,
             tasks: updatedTasks
           }
         }
@@ -573,7 +573,7 @@ export const updateTask = (projectId, taskId, updates) => {
 };
 
 // Add a new task to an estimate project
-export const addTask = (projectId, taskName) => {
+export const addTask = (estimateId, taskName) => {
   return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
@@ -587,7 +587,7 @@ export const addTask = (projectId, taskName) => {
         .from('estimate_tasks')
         .insert([
           {
-            est_project_id: projectId,
+            estimate_id: estimateId,
             est_task_name: taskName.trim(),
             task_order: newTaskOrder
           }
@@ -602,7 +602,7 @@ export const addTask = (projectId, taskName) => {
         payload: {
           type: 'task',
           data: {
-            projectId,
+            estimateId,
             tasks: [...currentTasks, newTask].sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
           }
         }
@@ -621,7 +621,7 @@ export const addTask = (projectId, taskName) => {
 };
 
 // Delete a task
-export const deleteTask = (projectId, taskId) => {
+export const deleteTask = (estimateId, taskId) => {
   return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
@@ -637,7 +637,7 @@ export const deleteTask = (projectId, taskId) => {
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
         payload: {
-          estimateId: projectId,
+          estimateId,
           tasks: currentEstimate.tasks.filter(task => task.est_task_id !== taskId)
         }
       });
