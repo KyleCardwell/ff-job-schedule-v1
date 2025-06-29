@@ -86,7 +86,7 @@ const EstimateTaskForm = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         {isEditing ? (
-          <div className="flex-1 mr-4">
+          <div className="flex items-center space-x-2 flex-1 mr-2">
             <input
               type="text"
               value={taskName}
@@ -95,6 +95,19 @@ const EstimateTaskForm = ({
               autoFocus
               placeholder="Room Name"
             />
+            <button
+              onClick={() => {
+                if (isNew) {
+                  onCancel?.();
+                } else {
+                  setTaskName(selectedTask?.est_task_name || "");
+                  setIsEditing(false);
+                }
+              }}
+              className="px-3 py-1 text-sm font-medium text-slate-700 bg-white rounded hover:bg-slate-50"
+            >
+              Cancel
+            </button>
           </div>
         ) : (
           <h2 className="text-xl font-semibold text-slate-200">{taskName}</h2>
@@ -102,22 +115,12 @@ const EstimateTaskForm = ({
         
         <div className="flex space-x-2">
           {isEditing ? (
-            <>
-              <button
-                onClick={handleSave}
-                className="px-3 py-1 text-sm font-medium text-white bg-teal-500 rounded hover:bg-teal-600"
-              >
-                Save
-              </button>
-              {isNew && (
-                <button
-                  onClick={onCancel}
-                  className="px-3 py-1 text-sm font-medium text-slate-400 hover:text-slate-300"
-                >
-                  Cancel
-                </button>
-              )}
-            </>
+            <button
+              onClick={handleSave}
+              className="px-3 py-1 text-sm font-medium text-white bg-teal-500 rounded hover:bg-teal-600"
+            >
+              Save
+            </button>
           ) : (
             <button
               onClick={() => setIsEditing(true)}
