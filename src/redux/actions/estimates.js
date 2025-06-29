@@ -145,7 +145,7 @@ export const createTask = (estimateId, taskData) => {
       
       const { currentEstimate } = getState().estimates;
       const currentTasks = currentEstimate?.tasks || [];
-      const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), -1);
+      const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), 1);
       
       const { data, error } = await supabase
         .from('estimate_tasks')
