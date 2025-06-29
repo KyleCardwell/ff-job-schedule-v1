@@ -34,6 +34,7 @@ import GridLoader from "react-spinners/GridLoader";
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import NewEstimateForm from "./components/estimates/NewEstimateForm.jsx";
 import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";
+import EstimateLayout from './components/estimates/EstimateLayout';
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -234,30 +235,12 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path={PATHS.ESTIMATES}
-                element={<ProtectedRoute>
-                  <EstimateDashboard />
-                </ProtectedRoute>}
-              />
-              <Route
-                path={PATHS.NEW_ESTIMATE}
-                element={<ProtectedRoute>
-                  <NewEstimateForm />
-                </ProtectedRoute>}
-              />
-              <Route
-                path={`${PATHS.NEW_ESTIMATE}/:estimateId`}
-                element={<ProtectedRoute>
-                  <NewEstimateForm />
-                </ProtectedRoute>}
-              />
-              <Route
-                path={PATHS.IN_PROGRESS_ESTIMATES}
-                element={<ProtectedRoute>
-                  <InProgressEstimates />
-                </ProtectedRoute>}
-              />
+              <Route path="/estimates">
+                <Route index element={<EstimateDashboard />} />
+                <Route path="in-progress" element={<InProgressEstimates />} />
+                <Route path="new" element={<EstimateLayout />} />
+                <Route path="new/:estimateId" element={<EstimateLayout />} />
+              </Route>
               <Route
                 path={PATHS.COMPLETED}
                 element={<CompletedJobsContainer />}

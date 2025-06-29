@@ -143,11 +143,16 @@ export const createTask = (estimateId, taskData) => {
     try {
       dispatch({ type: Actions.estimates.CREATE_TASK_START });
       
+      const { currentEstimate } = getState().estimates;
+      const currentTasks = currentEstimate?.tasks || [];
+      const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), -1);
+      
       const { data, error } = await supabase
         .from('estimate_tasks')
         .insert({
           ...taskData,
-          estimate_id: estimateId
+          estimate_id: estimateId,
+          task_order: taskData.task_order ?? maxOrder + 1
         })
         .select()
         .single();
@@ -335,13 +340,15 @@ export const fetchEstimateById = (estimateId) => {
         city: data.city,
         zip: data.zip,
         estimate_data: data.estimate_data,
-        tasks: (data.tasks || []).map(task => ({
-          ...task.task,
-          sections: (task.sections || []).map(section => ({
-            ...section.section,
-            items: section.items || []
+        tasks: (data.tasks || [])
+          .map(task => ({
+            ...task.task,
+            sections: (task.sections || []).map(section => ({
+              ...section.section,
+              items: section.items || []
+            }))
           }))
-        }))
+          .sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
       };
 
       dispatch({
@@ -480,12 +487,12 @@ export const createProjectForEstimate = (projectData) => {
 
 // Update project information for an existing estimate
 export const updateEstimateProject = (estimateId, projectData) => {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
       // Update the project info
-      const { error: projectError } = await supabase
+      const { data: updatedProject, error: projectError } = await supabase
         .from('estimate_projects')
         .update({
           est_project_name: projectData.est_project_name,
@@ -496,58 +503,23 @@ export const updateEstimateProject = (estimateId, projectData) => {
           zip: projectData.zip,
           updated_at: new Date().toISOString(),
         })
-        .eq('est_project_id', projectData.est_project_id);
+        .eq('est_project_id', projectData.est_project_id)
+        .select()
+        .single();
 
       if (projectError) throw projectError;
 
-      // Just update the project info in Redux
+      // Update Redux state with just the project changes
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
-        payload: { estimateId, projectData }
+        payload: {
+          type: 'project',
+          data: updatedProject
+        }
       });
 
     } catch (error) {
       console.error("Error updating estimate project:", error);
-      dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
-        payload: error.message
-      });
-      throw error;
-    }
-  };
-};
-
-// Add a new task to an estimate project
-export const addTask = (projectId, taskName) => {
-  return async (dispatch, getState) => {
-    try {
-      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
-
-      const { data: newTask, error } = await supabase
-        .from('estimate_tasks')
-        .insert([
-          {
-            est_project_id: projectId,
-            est_task_name: taskName.trim()
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const { currentEstimate } = getState().estimates;
-      dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
-        payload: {
-          estimateId: projectId,
-          tasks: [...(currentEstimate?.tasks || []), newTask]
-        }
-      });
-
-      return newTask;
-    } catch (error) {
-      console.error('Error adding task:', error);
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message
@@ -573,19 +545,72 @@ export const updateTask = (projectId, taskId, updates) => {
       if (error) throw error;
 
       const { currentEstimate } = getState().estimates;
+      const updatedTasks = currentEstimate.tasks.map(task => 
+        task.est_task_id === taskId ? updatedTask : task
+      );
+
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
         payload: {
-          estimateId: projectId,
-          tasks: currentEstimate.tasks.map(task => 
-            task.est_task_id === taskId ? updatedTask : task
-          )
+          type: 'task',
+          data: {
+            projectId,
+            tasks: updatedTasks
+          }
         }
       });
 
       return updatedTask;
     } catch (error) {
       console.error('Error updating task:', error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Add a new task to an estimate project
+export const addTask = (projectId, taskName) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { currentEstimate } = getState().estimates;
+      const currentTasks = currentEstimate?.tasks || [];
+      const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), -1);
+      const newTaskOrder = maxOrder + 1;
+
+      const { data: newTask, error } = await supabase
+        .from('estimate_tasks')
+        .insert([
+          {
+            est_project_id: projectId,
+            est_task_name: taskName.trim(),
+            task_order: newTaskOrder
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: 'task',
+          data: {
+            projectId,
+            tasks: [...currentTasks, newTask].sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
+          }
+        }
+      });
+
+      return newTask;
+    } catch (error) {
+      console.error('Error adding task:', error);
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message

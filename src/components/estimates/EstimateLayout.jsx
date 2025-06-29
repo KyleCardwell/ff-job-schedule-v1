@@ -1,0 +1,168 @@
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useParams, useNavigate } from "react-router-dom";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import EstimateProjectForm from "./EstimateProjectForm";
+import EstimateTaskForm from "./EstimateTaskForm";
+import { addTask, fetchEstimateById } from "../../redux/actions/estimates";
+import { FiArrowLeft } from "react-icons/fi";
+import { PATHS } from "../../utils/constants";
+
+const EstimateLayout = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { estimateId } = useParams();
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate
+  );
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isNewTask, setIsNewTask] = useState(false);
+
+  useEffect(() => {
+    const loadEstimate = async () => {
+      try {
+        if (estimateId) {
+          await dispatch(fetchEstimateById(estimateId));
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading estimate:", error);
+        setLoading(false);
+      }
+    };
+
+    loadEstimate();
+  }, [dispatch, estimateId]);
+
+  const selectedTask = currentEstimate?.tasks?.find(
+    (task) => task.est_task_id === selectedTaskId
+  );
+
+  const handleAddTask = () => {
+    setSelectedTaskId(null);
+    setShowProjectInfo(false);
+    setIsNewTask(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-slate-800 text-slate-200">
+        Loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full bg-slate-800">
+      {/* Sidebar */}
+      <div className="w-64 flex-none bg-slate-900 border-t border-slate-200 flex flex-col">
+        <div className="flex items-center justify-center py-4 text-slate-200 text-lg font-semibold relative">
+          <button
+            onClick={() => navigate(PATHS.IN_PROGRESS_ESTIMATES)}
+            className="mr-4 hover:text-slate-300 left-[10px] absolute"
+            aria-label="Go back"
+          >
+            <FiArrowLeft size={24} />
+          </button>
+          {currentEstimate?.est_project_name || "New Estimate"}
+        </div>
+        <nav className="flex flex-col flex-1 overflow-hidden">
+          {/* Project Info Button */}
+          <button
+            onClick={() => {
+              setShowProjectInfo(true);
+              setSelectedTaskId(null);
+            }}
+            className={`
+              py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
+              ${
+                showProjectInfo
+                  ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
+                  : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
+              }
+            `}
+          >
+            Project Information
+          </button>
+
+          {currentEstimate && (
+            <>
+              {/* Tasks List Header */}
+              <div className="py-3 px-4 text-sm font-medium text-slate-200">
+                Rooms
+              </div>
+
+              {/* Tasks List */}
+              <div className="overflow-y-auto flex-1">
+                {currentEstimate?.tasks?.map((task) => (
+                  <button
+                    key={task.est_task_id}
+                    onClick={() => {
+                      setSelectedTaskId(task.est_task_id);
+                      setShowProjectInfo(false);
+                    }}
+                    className={`
+                      w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
+                      ${
+                        selectedTaskId === task.est_task_id
+                          ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
+                          : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
+                      }
+                    `}
+                  >
+                    {task.est_task_name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Add Task Button */}
+              <button
+                onClick={handleAddTask}
+                className="mt-auto w-full py-3 px-4 text-sm font-medium text-teal-400 hover:text-teal-300 border-t border-slate-700 bg-slate-900 hover:bg-slate-800"
+              >
+                Add Room
+              </button>
+            </>
+          )}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-6">
+        {showProjectInfo || !currentEstimate ? (
+          <div className="max-w-3xl mx-auto">
+            <EstimateProjectForm />
+          </div>
+        ) : selectedTask ? (
+          <div className="max-w-3xl mx-auto">
+            <EstimateTaskForm
+              selectedTaskId={selectedTaskId}
+              onTaskDeleted={() => setSelectedTaskId(null)}
+            />
+          </div>
+        ) : isNewTask ? (
+          <div className="max-w-3xl mx-auto">
+            <EstimateTaskForm
+              isNew={true}
+              onTaskSaved={(taskId) => {
+                setSelectedTaskId(taskId);
+                setIsNewTask(false);
+              }}
+              onCancel={() => {
+                setIsNewTask(false);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-slate-200">
+            Select a room or create a new one
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EstimateLayout;

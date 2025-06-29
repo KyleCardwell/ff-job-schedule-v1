@@ -126,34 +126,42 @@ export const estimatesReducer = (state = initialState, action) => {
       };
 
     case Actions.estimates.UPDATE_ESTIMATE_SUCCESS:
+      const { type, data } = action.payload;
+      if (type === 'project') {
+        return {
+          ...state,
+          currentEstimate: {
+            ...state.currentEstimate,
+            ...data
+          },
+          loading: false,
+          error: null
+        };
+      } else if (type === 'task') {
+        const { projectId, tasks } = data;
+        return {
+          ...state,
+          currentEstimate: {
+            ...state.currentEstimate,
+            tasks
+          },
+          loading: false,
+          error: null
+        };
+      }
+      return state;
+
+    case Actions.estimates.UPDATE_ESTIMATE_ERROR:
       return {
         ...state,
-        currentEstimate: action.payload.estimateId === state.currentEstimate?.estimate_id
-          ? {
-              ...state.currentEstimate,
-              tasks: action.payload.tasks || state.currentEstimate.tasks,
-              estimate_project: action.payload.projectData
-                ? {
-                    ...state.currentEstimate.estimate_project,
-                    ...action.payload.projectData
-                  }
-                : state.currentEstimate.estimate_project
-            }
-          : state.currentEstimate,
-        estimates: state.estimates.map(estimate => 
-          estimate.estimate_id === action.payload.estimateId
-            ? {
-                ...estimate,
-                tasks: action.payload.tasks || estimate.tasks,
-                estimate_project: action.payload.projectData
-                  ? {
-                      ...estimate.estimate_project,
-                      ...action.payload.projectData
-                    }
-                  : estimate.estimate_project
-              }
-            : estimate
-        ),
+        loading: false,
+        error: action.payload
+      };
+
+    case Actions.estimates.CLEAR_CURRENT_ESTIMATE:
+      return {
+        ...state,
+        currentEstimate: null,
         loading: false,
         error: null
       };

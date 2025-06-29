@@ -11,6 +11,9 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
 
   // Map routes to page titles
   const getPageTitle = () => {
+    if (location.pathname.includes("/estimates")) {
+      return "Estimates";
+    }
     switch (location.pathname) {
       case PATHS.HOME:
         return `${company_name} Schedule`;
@@ -18,8 +21,6 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
         return "Manage Settings";
       case PATHS.COMPLETED:
         return "Completed Projects";
-      case PATHS.ESTIMATES:
-        return "Estimates";
       default:
         return "";
     }

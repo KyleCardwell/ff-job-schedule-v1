@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FiPlusCircle, FiEdit, FiCheckCircle } from "react-icons/fi";
-import { fetchEstimates } from "../../redux/actions/estimates";
+import { fetchEstimates, clearCurrentEstimate } from "../../redux/actions/estimates";
 import { ESTIMATE_STATUS, PATHS } from "../../utils/constants";
 
 const EstimateDashboard = () => {
@@ -14,6 +14,11 @@ const EstimateDashboard = () => {
         dispatch(fetchEstimates());
     }, []);
 
+    const handleStartNewEstimate = () => {
+        dispatch(clearCurrentEstimate());
+        navigate(PATHS.NEW_ESTIMATE);
+    };
+
     const sections = [
         {
             id: "new",
@@ -21,12 +26,11 @@ const EstimateDashboard = () => {
             description: "Create new estimates for upcoming projects. Start the estimation process by entering basic project details and requirements.",
             icon: FiPlusCircle,
             buttonText: "Create New Estimate",
-            path: PATHS.NEW_ESTIMATE,
+            action: handleStartNewEstimate,
             bgColor: "bg-blue-50",
             borderColor: "border-blue-200",
             iconColor: "text-blue-500",
             buttonColor: "bg-blue-500 hover:bg-blue-600",
-            count: 0
         },
         {
             id: "inProgress",
@@ -79,14 +83,14 @@ const EstimateDashboard = () => {
                         
                         <p className="text-slate-600 mb-4 flex-grow">{section.description}</p>
                         
-                        {!loading && (
+                        {!loading && section.id !== 'new' && (
                             <div className="mb-4 text-slate-700">
                                 <span className="font-semibold">{section.count}</span> estimate{section.count !== 1 ? 's' : ''}
                             </div>
                         )}
                         
                         <button
-                            onClick={() => navigate(section.path)}
+                            onClick={() => section.action ? section.action() : navigate(section.path)}
                             className={`${section.buttonColor} text-white py-3 px-4 rounded-md font-medium flex items-center justify-center transition-colors`}
                             disabled={loading && section.id !== 'new'} // Always allow creating new estimates
                         >

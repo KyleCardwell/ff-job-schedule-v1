@@ -109,7 +109,7 @@ const AdminDashboard = () => {
   return (
     <div className="flex h-full bg-slate-800">
       {/* Sidebar Navigation */}
-      <div className="w-48 flex-none bg-slate-900 border-t border-slate-200">
+      <div className="w-64 flex-none bg-slate-900 border-t border-slate-200">
         <nav className="flex flex-col py-4">
           {tabs.map((tab) => (
             <button
