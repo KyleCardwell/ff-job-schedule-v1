@@ -8,6 +8,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   const estimateData = currentEstimate?.estimate_data;
+  const sectionData = section?.section_data || {};
 
   const MATERIAL_OPTIONS = estimateData?.materials?.options || [];
   const CABINET_INTERIOR_OPTIONS = estimateData?.boxMaterials?.options || [];
@@ -19,23 +20,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
   const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes?.options || [];
   const DRAWER_SLIDE_OPTIONS =
-    estimateData?.doorHingeTypes?.drawerSlideTypes?.options || [];
+    estimateData?.drawerSlideTypes?.options || [];
 
   const [formData, setFormData] = useState({
-    style: section.style || "",
-    cabinetInterior: section.cabinetInterior || "",
-    material: section.material || "",
-    finish: section.finish || [],
-    doorStyle: section.doorStyle || "",
-    drawerFrontStyle: section.drawerFrontStyle || "",
-    doorInsideMolding: section.doorInsideMolding || false,
-    doorOutsideMolding: section.doorOutsideMolding || false,
-    drawerInsideMolding: section.drawerInsideMolding || false,
-    drawerOutsideMolding: section.drawerOutsideMolding || false,
-    doorHinge: section.doorHinge || "",
-    drawerSlide: section.drawerSlide || "",
-    drawerBoxes: section.drawerBoxType || "",
-    notes: section.notes || "",
+    style: sectionData.style || "",
+    cabinetInterior: sectionData.cabinetInterior || "",
+    material: sectionData.material || "",
+    finish: sectionData.finish || [],
+    doorStyle: sectionData.doorStyle || "",
+    drawerFrontStyle: sectionData.drawerFrontStyle || "",
+    doorInsideMolding: sectionData.doorInsideMolding || false,
+    doorOutsideMolding: sectionData.doorOutsideMolding || false,
+    drawerInsideMolding: sectionData.drawerInsideMolding || false,
+    drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
+    doorHinge: sectionData.doorHinge || "",
+    drawerSlide: sectionData.drawerSlide || "",
+    drawerBoxes: sectionData.drawerBoxes || "",
+    notes: sectionData.notes || "",
     items: section.items || [],
   });
 
@@ -312,7 +313,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
         <div className="grid grid-cols-2 gap-4">
           {/* Door Style with Moldings */}
           <div className="border rounded-lg border-slate-200 p-2">
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2 mb-2">
               <label
                 htmlFor="doorStyle"
                 className="block text-sm font-medium text-slate-700"
@@ -407,7 +408,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
 
           {/* Drawer Front Style with Moldings */}
           <div className="border rounded-lg border-slate-200 p-2">
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2 mb-2">
               <label
                 htmlFor="drawerFrontStyle"
                 className="block text-sm font-medium text-slate-700"

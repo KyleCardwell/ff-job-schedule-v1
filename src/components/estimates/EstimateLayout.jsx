@@ -19,10 +19,12 @@ const EstimateLayout = () => {
   );
   const estimates = useSelector((state) => state.estimates.estimates);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
+  const [initialData, setInitialData] = useState({});
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -158,13 +160,18 @@ const EstimateLayout = () => {
       <EstimateSectionInfo
         estimate_data={currentEstimate?.estimate_data}
         selectedTask={selectedTask}
-        onAddSection={() => {
+        onAddSection={(templateSection) => {
           if (selectedTaskId) {
+            setSelectedSectionId(null);
+            // If we have a template section, pass its section_data as the initial data
+            const initialData = templateSection ? { section_data: { ...templateSection.section_data } } : {};
+            setInitialData(initialData);
             setShowSectionForm(true);
           }
         }}
-        onEditSections={() => {
+        onEditSection={(section) => {
           if (selectedTaskId) {
+            setSelectedSectionId(section.est_section_id);
             setShowSectionForm(true);
           }
         }}
@@ -180,8 +187,11 @@ const EstimateLayout = () => {
           <div className="max-w-3xl mx-auto">
             <EstimateSectionForm
               taskId={selectedTaskId}
-              section={selectedTask?.sections?.[0]}
-              onCancel={() => setShowSectionForm(false)}
+              section={selectedTask?.sections?.find(s => s.est_section_id === selectedSectionId) || initialData || {}}
+              onCancel={() => {
+                setShowSectionForm(false);
+                setSelectedSectionId(null);
+              }}
             />
           </div>
         ) : selectedTask ? (

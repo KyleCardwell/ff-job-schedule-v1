@@ -4,7 +4,7 @@ const EstimateSectionInfo = ({
   selectedTask,
   estimate_data,
   onAddSection,
-  onEditSections,
+  onEditSection,
 }) => {
   const section =
     selectedTask?.sections?.length === 1 ? selectedTask.sections[0] : null;
@@ -27,10 +27,13 @@ const EstimateSectionInfo = ({
   };
 
   const getDoorStyleName = (id) => {
-    return (
-      estimate_data?.doorStyles?.options?.find((s) => s.id === id)?.name ||
-      NOT_SELECTED
-    );
+    const baseName = estimate_data?.doorStyles?.options?.find((s) => s.id === id)?.name || NOT_SELECTED;
+    const result = [baseName];
+    
+    if (sectionData.doorInsideMolding) result.push("Inside Molding");
+    if (sectionData.doorOutsideMolding) result.push("Outside Molding");
+    
+    return result;
   };
 
   const getDoorHingeName = (id) => {
@@ -41,10 +44,13 @@ const EstimateSectionInfo = ({
   };
 
   const getDrawerFrontStyleName = (id) => {
-    return (
-      estimate_data?.drawerFrontStyles?.options?.find((s) => s.id === id)
-        ?.name || NOT_SELECTED
-    );
+    const baseName = estimate_data?.drawerFrontStyles?.options?.find((s) => s.id === id)?.name || NOT_SELECTED;
+    const result = [baseName];
+    
+    if (sectionData.drawerInsideMolding) result.push("Inside Molding");
+    if (sectionData.drawerOutsideMolding) result.push("Outside Molding");
+    
+    return result;
   };
 
   const getDrawerBoxName = (id) => {
@@ -66,7 +72,7 @@ const EstimateSectionInfo = ({
       <div className="flex items-center justify-between py-4 px-6 border-b border-slate-700">
         <h2 className="text-lg font-semibold text-slate-200">
           {selectedTask
-            ? `Section Details - ${selectedTask.est_task_name}`
+            ? "Section Details"
             : "Select a Room"}
         </h2>
       </div>
@@ -96,7 +102,11 @@ const EstimateSectionInfo = ({
                 </div>
                 <div className="text-slate-400">Door Style:</div>
                 <div className="pl-5 mb-3">
-                  {getDoorStyleName(sectionData.doorStyle)}
+                  {getDoorStyleName(sectionData.doorStyle).map((line, i) => (
+                    <div key={i} className="">
+                      {line}
+                    </div>
+                  ))}
                 </div>
                 <div className="text-slate-400">Door Hinge:</div>
                 <div className="pl-5 mb-3">
@@ -104,7 +114,11 @@ const EstimateSectionInfo = ({
                 </div>
                 <div className="text-slate-400">Drawer Style:</div>
                 <div className="pl-5 mb-3">
-                  {getDrawerFrontStyleName(sectionData.drawerFrontStyle)}
+                  {getDrawerFrontStyleName(sectionData.drawerFrontStyle).map((line, i) => (
+                    <div key={i} className="">
+                      {line}
+                    </div>
+                  ))}
                 </div>
                 <div className="text-slate-400">Drawer Box:</div>
                 <div className="pl-5 mb-3">
@@ -127,7 +141,7 @@ const EstimateSectionInfo = ({
           <div className="flex flex-col">
             {section && (
               <button
-                onClick={onEditSections}
+                onClick={() => onEditSection(section)}
                 className="mt-auto w-full py-3 px-4 text-sm font-medium text-slate-200 hover:text-slate-100 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
               >
                 Edit Section
@@ -135,7 +149,11 @@ const EstimateSectionInfo = ({
             )}
 
             <button
-              onClick={onAddSection}
+              onClick={() => {
+                // If there are sections, pass the last section's data as a template
+                const lastSection = selectedTask?.sections?.[selectedTask.sections.length - 1];
+                onAddSection(lastSection);
+              }}
               className="mt-auto w-full py-3 px-4 text-sm font-medium text-teal-400 hover:text-teal-300 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
             >
               Add Section
