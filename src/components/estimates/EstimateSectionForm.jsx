@@ -4,7 +4,12 @@ import { FiSave, FiX, FiPlusCircle } from "react-icons/fi";
 import EstimateSectionItem from "./EstimateSectionItem";
 import { addSection, updateSection } from "../../redux/actions/estimates";
 
-const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
+const EstimateSectionForm = ({
+  section = {},
+  onCancel,
+  onSave,
+  taskId
+}) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   const estimateData = currentEstimate?.estimate_data;
@@ -137,7 +142,11 @@ const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
           formData
         ));
       }
-      onCancel(); // Close the form after saving
+      if (onSave) {
+        onSave(); // Call onSave callback if provided
+      } else {
+        onCancel(); // Fallback to onCancel if no onSave provided
+      }
     }
   };
 

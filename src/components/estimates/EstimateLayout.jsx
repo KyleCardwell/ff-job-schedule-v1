@@ -123,24 +123,57 @@ const EstimateLayout = () => {
               {/* Tasks List */}
               <div className="overflow-y-auto flex-1">
                 {currentEstimate?.tasks?.map((task) => (
-                  <button
-                    key={task.est_task_id}
-                    onClick={() => {
-                      setSelectedTaskId(task.est_task_id);
-                      setShowProjectInfo(false);
-                      setShowSectionForm(false);
-                    }}
-                    className={`
-                      w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
-                      ${
-                        selectedTaskId === task.est_task_id
-                          ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
-                          : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
-                      }
-                    `}
-                  >
-                    {task.est_task_name}
-                  </button>
+                  <div key={task.est_task_id}>
+                    {task.sections?.length > 1 ? (
+                      <div className="w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2 text-slate-200">
+                        {task.est_task_name}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setSelectedTaskId(task.est_task_id);
+                          setSelectedSectionId(null);
+                          setShowProjectInfo(false);
+                          setShowSectionForm(false);
+                        }}
+                        className={`
+                          w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
+                          ${
+                            selectedTaskId === task.est_task_id
+                              ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
+                              : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
+                          }
+                        `}
+                      >
+                        {task.est_task_name}
+                      </button>
+                    )}
+                    {/* Sections List */}
+                    {task.sections?.length > 1 && (
+                      <div className="pl-6">
+                        {task.sections.map((section, index) => (
+                          <button
+                            key={section.est_section_id}
+                            onClick={() => {
+                              setSelectedTaskId(task.est_task_id);
+                              setSelectedSectionId(section.est_section_id);
+                              setShowSectionForm(false);
+                            }}
+                            className={`
+                              w-full py-2 px-4 text-sm text-left flex items-center space-x-2
+                              ${
+                                selectedSectionId === section.est_section_id
+                                  ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
+                                  : "text-slate-400 hover:text-teal-400"
+                              }
+                            `}
+                          >
+                            Section {index + 1}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 
@@ -160,6 +193,7 @@ const EstimateLayout = () => {
       <EstimateSectionInfo
         estimate_data={currentEstimate?.estimate_data}
         selectedTask={selectedTask}
+        selectedSectionId={selectedSectionId}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
@@ -191,6 +225,9 @@ const EstimateLayout = () => {
               onCancel={() => {
                 setShowSectionForm(false);
                 setSelectedSectionId(null);
+              }}
+              onSave={() => {
+                setShowSectionForm(false);
               }}
             />
           </div>

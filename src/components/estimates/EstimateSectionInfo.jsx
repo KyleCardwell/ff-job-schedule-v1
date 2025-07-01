@@ -5,9 +5,13 @@ const EstimateSectionInfo = ({
   estimate_data,
   onAddSection,
   onEditSection,
+  selectedSectionId,
 }) => {
-  const section =
-    selectedTask?.sections?.length === 1 ? selectedTask.sections[0] : null;
+  const section = selectedSectionId
+    ? selectedTask?.sections?.find((s) => s.est_section_id === selectedSectionId)
+    : selectedTask?.sections?.length === 1
+    ? selectedTask.sections[0]
+    : null;
 
   const sectionData = section?.section_data || {};
   const NOT_SELECTED = "Not Selected";
