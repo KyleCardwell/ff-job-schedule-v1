@@ -9,14 +9,16 @@ const EstimateTaskForm = ({
   onTaskDeleted,
   isNew = false,
   onTaskSaved,
-  onCancel
+  onCancel,
 }) => {
   const dispatch = useDispatch();
-  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate
+  );
   const selectedTask = currentEstimate?.tasks?.find(
     (task) => task.est_task_id === selectedTaskId
   );
-  
+
   const [taskName, setTaskName] = useState("");
   const [isEditing, setIsEditing] = useState(isNew);
   const [showSectionForm, setShowSectionForm] = useState(false);
@@ -40,7 +42,7 @@ const EstimateTaskForm = ({
       } else {
         await dispatch(
           updateTask(currentEstimate.estimate_id, selectedTask.est_task_id, {
-            est_task_name: taskName
+            est_task_name: taskName,
           })
         );
       }
@@ -52,7 +54,9 @@ const EstimateTaskForm = ({
 
   const handleDelete = async () => {
     try {
-      await dispatch(deleteTask(currentEstimate.est_project_id, selectedTask.est_task_id));
+      await dispatch(
+        deleteTask(currentEstimate.est_project_id, selectedTask.est_task_id)
+      );
       onTaskDeleted?.();
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -70,7 +74,11 @@ const EstimateTaskForm = ({
     }
 
     try {
-      await dispatch(updateTask(currentEstimate.est_project_id, selectedTask.est_task_id, { sections: updatedSections }));
+      await dispatch(
+        updateTask(currentEstimate.est_project_id, selectedTask.est_task_id, {
+          sections: updatedSections,
+        })
+      );
       setShowSectionForm(false);
       setEditingSectionIndex(null);
     } catch (error) {
@@ -112,7 +120,7 @@ const EstimateTaskForm = ({
         ) : (
           <h2 className="text-xl font-semibold text-slate-200">{taskName}</h2>
         )}
-        
+
         <div className="flex space-x-2">
           {isEditing ? (
             <button
@@ -139,34 +147,6 @@ const EstimateTaskForm = ({
           )}
         </div>
       </div>
-
-      {/* Add Section Button */}
-      {!showSectionForm && selectedTask?.est_task_id && (
-        <button
-          onClick={() => {
-            setShowSectionForm(true);
-            setEditingSectionIndex(null);
-          }}
-          className="flex items-center justify-center gap-2 w-full py-3 text-sm text-slate-600 bg-slate-50 rounded-lg border border-dashed border-slate-300 hover:bg-slate-100 hover:border-slate-400 transition-colors"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Add Section
-        </button>
-      )}
-
-      {/* Section Form */}
-      {showSectionForm && (
-        <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
-          <EstimateSectionForm
-            section={editingSectionIndex !== null ? selectedTask.sections[editingSectionIndex] : {}}
-            onSave={handleSaveSection}
-            onCancel={() => {
-              setShowSectionForm(false);
-              setEditingSectionIndex(null);
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };

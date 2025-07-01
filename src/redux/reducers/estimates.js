@@ -110,13 +110,12 @@ export const estimatesReducer = (state = initialState, action) => {
         ...state,
         currentEstimate: {
           ...action.payload,
-          tasks: action.payload.tasks || [],
           estimate_project: action.payload.estimate_project || null,
           tasks: (action.payload.tasks || []).map(task => ({
             ...task,
-            sections: task.sections || [],
             sections: (task.sections || []).map(section => ({
               ...section,
+              section_data: section.section_data || {},
               items: section.items || []
             }))
           }))
@@ -144,6 +143,19 @@ export const estimatesReducer = (state = initialState, action) => {
           currentEstimate: {
             ...state.currentEstimate,
             tasks
+          },
+          loading: false,
+          error: null
+        };
+      } else if (type === 'section') {
+        const { taskId, task } = data;
+        return {
+          ...state,
+          currentEstimate: {
+            ...state.currentEstimate,
+            tasks: state.currentEstimate.tasks.map(t => 
+              t.est_task_id === taskId ? task : t
+            )
           },
           loading: false,
           error: null

@@ -6,7 +6,7 @@ import EstimateProjectForm from "./EstimateProjectForm";
 import EstimateTaskForm from "./EstimateTaskForm";
 import EstimateSectionForm from "./EstimateSectionForm";
 import EstimateSectionInfo from "./EstimateSectionInfo";
-import { addTask, fetchEstimateById, setCurrentEstimate, updateTask } from "../../redux/actions/estimates";
+import { addTask, addSection, fetchEstimateById, setCurrentEstimate, updateTask, updateSection } from "../../redux/actions/estimates";
 import { FiArrowLeft } from "react-icons/fi";
 import { PATHS } from "../../utils/constants";
 
@@ -51,6 +51,14 @@ const EstimateLayout = () => {
 
     loadEstimate();
   }, [dispatch, estimateId, navigate, estimates]);
+
+  useEffect(() => {
+    // Close section form when task changes
+    setShowSectionForm(false);
+  }, [selectedTaskId]);
+
+  useEffect(() => {
+  }, [currentEstimate]);
 
   const selectedTask = currentEstimate?.tasks?.find(
     (task) => task.est_task_id === selectedTaskId
@@ -118,6 +126,7 @@ const EstimateLayout = () => {
                     onClick={() => {
                       setSelectedTaskId(task.est_task_id);
                       setShowProjectInfo(false);
+                      setShowSectionForm(false);
                     }}
                     className={`
                       w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
@@ -147,9 +156,18 @@ const EstimateLayout = () => {
 
       {/* Sections Column */}
       <EstimateSectionInfo
+        estimate_data={currentEstimate?.estimate_data}
         selectedTask={selectedTask}
-        onAddSection={() => setShowSectionForm(true)}
-        onEditSections={() => setShowSectionForm(true)}
+        onAddSection={() => {
+          if (selectedTaskId) {
+            setShowSectionForm(true);
+          }
+        }}
+        onEditSections={() => {
+          if (selectedTaskId) {
+            setShowSectionForm(true);
+          }
+        }}
       />
 
       {/* Main Content */}
@@ -161,14 +179,9 @@ const EstimateLayout = () => {
         ) : showSectionForm ? (
           <div className="max-w-3xl mx-auto">
             <EstimateSectionForm
-              onSave={(sectionData) => {
-                dispatch(updateTask(currentEstimate.estimate_id, selectedTask.est_task_id, {
-                  sections: [sectionData] // Always replace with single section
-                }));
-                setShowSectionForm(false);
-              }}
+              taskId={selectedTaskId}
+              section={selectedTask?.sections?.[0]}
               onCancel={() => setShowSectionForm(false)}
-              initialData={selectedTask?.sections?.[0]} // Pass existing section data if it exists
             />
           </div>
         ) : selectedTask ? (

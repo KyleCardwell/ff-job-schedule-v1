@@ -1,15 +1,14 @@
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { FiSave, FiX, FiPlusCircle } from "react-icons/fi";
 import EstimateSectionItem from "./EstimateSectionItem";
+import { addSection, updateSection } from "../../redux/actions/estimates";
 
-const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
-  // Get estimate data from Redux
-  const estimateData = useSelector(
-    (state) => state.estimates.currentEstimate?.estimate_data
-  );
+const EstimateSectionForm = ({ section = {}, onCancel, taskId }) => {
+  const dispatch = useDispatch();
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const estimateData = currentEstimate?.estimate_data;
 
-  // Use estimate data if available, otherwise use empty arrays/objects
   const MATERIAL_OPTIONS = estimateData?.materials?.options || [];
   const CABINET_INTERIOR_OPTIONS = estimateData?.boxMaterials?.options || [];
   const STYLE_OPTIONS = estimateData?.styles || [];
@@ -35,7 +34,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
     drawerOutsideMolding: section.drawerOutsideMolding || false,
     doorHinge: section.doorHinge || "",
     drawerSlide: section.drawerSlide || "",
-    drawerBoxes: section.drawerBoxes || "",
+    drawerBoxes: section.drawerBoxType || "",
     notes: section.notes || "",
     items: section.items || [],
   });
@@ -105,6 +104,10 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
       newErrors.drawerSlide = "Drawer slide type is required";
     }
 
+    if (!formData.drawerBoxes) {
+      newErrors.drawerBoxes = "Drawer box type is required";
+    }
+
     if (formData.finish.length === 0) {
       newErrors.finish = "At least one finish option is required";
     }
@@ -117,7 +120,23 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
     e.preventDefault();
 
     if (validateForm()) {
-      onSave(formData);
+      if (section?.est_section_id) {
+        // Update existing section
+        dispatch(updateSection(
+          currentEstimate.estimate_id,
+          taskId,
+          section.est_section_id,
+          formData
+        ));
+      } else {
+        // Add new section
+        dispatch(addSection(
+          currentEstimate.estimate_id,
+          taskId,
+          formData
+        ));
+      }
+      onCancel(); // Close the form after saving
     }
   };
 
@@ -227,7 +246,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 <option value="">Select material</option>
                 {MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name} - ${option.price}/sqft
+                    {`${option.name} - $${option.price}/sqft`}
                   </option>
                 ))}
               </select>
@@ -255,7 +274,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 <option value="">Select interior</option>
                 {CABINET_INTERIOR_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name} - ${option.price}/sqft
+                    {`${option.name} - $${option.price}/sqft`}
                   </option>
                 ))}
               </select>
@@ -312,7 +331,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 <option value="">Select door style</option>
                 {DOOR_STYLE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name}
+                    {`${option.name} - $${option.price}/door`}
                   </option>
                 ))}
               </select>
@@ -376,7 +395,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 <option value="">Select hinge type</option>
                 {DOOR_HINGE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name} - ${option.price}/hinge
+                    {`${option.name} - $${option.price}/pair`}
                   </option>
                 ))}
               </select>
@@ -405,7 +424,7 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 <option value="">Select drawer front style</option>
                 {DRAWER_FRONT_STYLE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name}
+                    {`${option.name} - $${option.price}/drawer`}
                   </option>
                 ))}
               </select>
@@ -452,27 +471,56 @@ const EstimateSectionForm = ({ section = {}, onSave, onCancel }) => {
                 htmlFor="drawerSlide"
                 className="block text-sm font-medium text-slate-700"
               >
-                Drawer Slides
+                Drawer Slide Type
               </label>
               <select
                 id="drawerSlide"
                 name="drawerSlide"
                 value={formData.drawerSlide}
                 onChange={handleChange}
-                className={`mt-1 block w-full h-9 rounded-md text-sm ${
-                  errors.drawerSlide ? "border-red-500" : "border-slate-300"
-                } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                className={`mt-1 block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                  errors.drawerSlide ? "border-red-500" : ""
+                }`}
               >
-                <option value="">Select slide type</option>
+                <option value="">Select drawer slide type...</option>
                 {DRAWER_SLIDE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.name} - ${option.price}/pair
+                    {`${option.name} - $${option.price}/pair`}
                   </option>
                 ))}
               </select>
               {errors.drawerSlide && (
                 <p className="mt-1 text-xs text-red-500">
                   {errors.drawerSlide}
+                </p>
+              )}
+            </div>
+            <div className="mt-2">
+              <label
+                htmlFor="drawerBoxes"
+                className="block text-sm font-medium text-slate-700"
+              >
+                Drawer Box Type
+              </label>
+              <select
+                id="drawerBoxes"
+                name="drawerBoxes"
+                value={formData.drawerBoxes}
+                onChange={handleChange}
+                className={`mt-1 block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                  errors.drawerBoxes ? "border-red-500" : ""
+                }`}
+              >
+                <option value="">Select drawer box type...</option>
+                {DRAWER_BOX_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+              {errors.drawerBoxes && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.drawerBoxes}
                 </p>
               )}
             </div>
