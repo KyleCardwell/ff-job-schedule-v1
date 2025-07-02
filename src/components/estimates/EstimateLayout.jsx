@@ -6,7 +6,14 @@ import EstimateProjectForm from "./EstimateProjectForm";
 import EstimateTaskForm from "./EstimateTaskForm";
 import EstimateSectionForm from "./EstimateSectionForm";
 import EstimateSectionInfo from "./EstimateSectionInfo";
-import { addTask, addSection, fetchEstimateById, setCurrentEstimate, updateTask, updateSection } from "../../redux/actions/estimates";
+import {
+  addTask,
+  addSection,
+  fetchEstimateById,
+  setCurrentEstimate,
+  updateTask,
+  updateSection,
+} from "../../redux/actions/estimates";
 import { FiArrowLeft } from "react-icons/fi";
 import { PATHS } from "../../utils/constants";
 
@@ -30,7 +37,9 @@ const EstimateLayout = () => {
     const loadEstimate = async () => {
       try {
         if (estimateId) {
-          const existingEstimate = estimates.find(est => est.est_project_id === estimateId);
+          const existingEstimate = estimates.find(
+            (est) => est.est_project_id === estimateId
+          );
           if (existingEstimate) {
             dispatch(setCurrentEstimate(existingEstimate));
             setLoading(false);
@@ -59,8 +68,7 @@ const EstimateLayout = () => {
     setShowSectionForm(false);
   }, [selectedTaskId]);
 
-  useEffect(() => {
-  }, [currentEstimate]);
+  useEffect(() => {}, [currentEstimate]);
 
   const selectedTask = currentEstimate?.tasks?.find(
     (task) => task.est_task_id === selectedTaskId
@@ -124,30 +132,33 @@ const EstimateLayout = () => {
               <div className="overflow-y-auto flex-1">
                 {currentEstimate?.tasks?.map((task) => (
                   <div key={task.est_task_id}>
-                    {task.sections?.length > 1 ? (
+                    {/* {task.sections?.length > 1 ? (
                       <div className="w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2 text-slate-200">
                         {task.est_task_name}
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setSelectedTaskId(task.est_task_id);
-                          setSelectedSectionId(null);
-                          setShowProjectInfo(false);
-                          setShowSectionForm(false);
-                        }}
-                        className={`
+                    ) : ( */}
+                    <button
+                      onClick={() => {
+                        setSelectedTaskId(task.est_task_id);
+                        setSelectedSectionId(
+                          task.sections?.[0]?.est_section_id
+                        );
+                        setShowProjectInfo(false);
+                        setShowSectionForm(false);
+                      }}
+                      className={`
                           w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
                           ${
-                            selectedTaskId === task.est_task_id
+                            selectedTaskId === task.est_task_id &&
+                            task.sections?.length === 1
                               ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
                               : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
                           }
                         `}
-                      >
-                        {task.est_task_name}
-                      </button>
-                    )}
+                    >
+                      {task.est_task_name}
+                    </button>
+                    {/* // )} */}
                     {/* Sections List */}
                     {task.sections?.length > 1 && (
                       <div className="pl-6">
@@ -158,6 +169,7 @@ const EstimateLayout = () => {
                               setSelectedTaskId(task.est_task_id);
                               setSelectedSectionId(section.est_section_id);
                               setShowSectionForm(false);
+                              setShowProjectInfo(false);
                             }}
                             className={`
                               w-full py-2 px-4 text-sm text-left flex items-center space-x-2
@@ -198,7 +210,9 @@ const EstimateLayout = () => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
             // If we have a template section, pass its section_data as the initial data
-            const initialData = templateSection ? { section_data: { ...templateSection.section_data } } : {};
+            const initialData = templateSection
+              ? { section_data: { ...templateSection.section_data } }
+              : {};
             setInitialData(initialData);
             setShowSectionForm(true);
           }
@@ -221,7 +235,13 @@ const EstimateLayout = () => {
           <div className="max-w-3xl mx-auto">
             <EstimateSectionForm
               taskId={selectedTaskId}
-              section={selectedTask?.sections?.find(s => s.est_section_id === selectedSectionId) || initialData || {}}
+              section={
+                selectedTask?.sections?.find(
+                  (s) => s.est_section_id === selectedSectionId
+                ) ||
+                initialData ||
+                {}
+              }
               onCancel={() => {
                 setShowSectionForm(false);
                 setSelectedSectionId(null);

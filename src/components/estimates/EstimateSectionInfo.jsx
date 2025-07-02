@@ -148,7 +148,7 @@ const EstimateSectionInfo = ({
                 onClick={() => onEditSection(section)}
                 className="mt-auto w-full py-3 px-4 text-sm font-medium text-slate-200 hover:text-slate-100 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
               >
-                Edit Section
+                Edit Section Details
               </button>
             )}
 

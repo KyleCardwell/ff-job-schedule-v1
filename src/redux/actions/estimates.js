@@ -96,7 +96,8 @@ export const fetchEstimates = (filters = {}) => {
             est_client_name
           )
         `)
-        .eq('estimate_projects.team_id', teamId);
+        .eq('estimate_projects.team_id', teamId)
+        .order('updated_at', { ascending: false, nullsFirst: false });
 
       if (filters.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);
