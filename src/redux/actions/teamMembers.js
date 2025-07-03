@@ -120,3 +120,41 @@ export const fetchUserRoles = async (dispatch) => {
     throw error;
   }
 };
+
+export const fetchTeamMemberData = async (dispatch, userId) => {
+  try {
+    const { data: teamMemberData, error: teamMemberError } = await supabase
+      .from("team_members")
+      .select(`*`)
+      .eq("user_id", userId)
+      .single();
+
+    if (teamMemberError && teamMemberError.code !== "PGRST116") {
+      throw teamMemberError;
+    }
+
+    return { teamMemberData, error: teamMemberError };
+  } catch (error) {
+    console.error("Error fetching team member data:", error);
+    throw error;
+  }
+};
+
+export const fetchTeamMemberRole = async (dispatch, roleId) => {
+  try {
+    const { data: roleData, error: roleError } = await supabase
+      .from("roles")
+      .select(
+        "can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss, can_create_estimates"
+      )
+      .eq("role_id", roleId)
+      .single();
+
+    if (roleError) throw roleError;
+
+    return roleData;
+  } catch (error) {
+    console.error("Error fetching team member role:", error);
+    throw error;
+  }
+};

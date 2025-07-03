@@ -13,7 +13,7 @@ import CompletedProjectView from "./components/completedProjects/CompletedProjec
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "./utils/supabase";
-import { fetchProjects, fetchProjectsOptions } from "./redux/actions/projects";
+import { fetchProjects } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { fetchFeatureToggles } from "./redux/actions/featureToggles"; // Import the fetchFeatureToggles action
@@ -32,9 +32,9 @@ import store from "./redux/store"; // Import the store
 import ProtectedRoute from "./components/ProtectedRoute";
 import GridLoader from "react-spinners/GridLoader";
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
-import NewEstimateForm from "./components/estimates/NewEstimateForm.jsx";
 import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";
-import EstimateLayout from './components/estimates/EstimateLayout';
+import EstimateLayout from "./components/estimates/EstimateLayout";
+import { fetchTeamMemberData, fetchTeamMemberRole } from "./redux/actions/teamMembers.js";
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -81,11 +81,8 @@ const App = () => {
       try {
         dispatch(setLoading(true));
 
-        const { data: teamMemberData, error: teamMemberError } = await supabase
-          .from("team_members")
-          .select(`*`)
-          .eq("user_id", session.user.id)
-          .single();
+        const { teamMemberData, error: teamMemberError } =
+          await fetchTeamMemberData(dispatch, session.user.id);
 
         // If user not found in team_members, still set session but no team
         if (teamMemberError && teamMemberError.code === "PGRST116") {
@@ -93,17 +90,10 @@ const App = () => {
           return;
         }
 
-        if (teamMemberError) throw teamMemberError;
-
-        const { data: roleData, error: roleError } = await supabase
-          .from("roles")
-          .select(
-            "can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss, can_create_estimates"
-          )
-          .eq("role_id", teamMemberData.role_id)
-          .single();
-
-        if (roleError) throw roleError;
+        const roleData = await fetchTeamMemberRole(
+          dispatch,
+          teamMemberData.role_id
+        );
 
         dispatch(
           setUserTeam({
