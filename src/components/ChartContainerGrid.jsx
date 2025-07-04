@@ -6,7 +6,6 @@ import React, {
   useCallback,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import ChartActionButtons from "./ChartActionButtons";
 import {
   addDays,
   differenceInCalendarDays,
@@ -94,7 +93,7 @@ export const ChartContainer = () => {
       earliestStartDate: hasAssignedTasks ? earliest : null,
       latestStartDate: hasAssignedTasks ? latest : null,
     };
-  }, [chartData, defaultEmployeeId]); // Only recalculate when these dependencies change
+  }, [chartData, defaultEmployeeId]);
 
   const { activeRoomsData, lastJobsIndex, someTaskAssigned } = useMemo(() => {
     let someTaskAssigned = false;
@@ -108,7 +107,6 @@ export const ChartContainer = () => {
         return room;
       });
 
-    // Only apply filters if they are active
     const hasActiveFilters =
       selectedEmployeeIds.length > 0 ||
       dateFilter.startDate ||
@@ -122,11 +120,9 @@ export const ChartContainer = () => {
               selectedEmployeeIds.length === 0 ||
               selectedEmployeeIds.includes(room.employee_id);
 
-            // Convert dates once for efficiency
             const taskStartDate = normalizeDate(room.start_date);
             const taskEndDate = normalizeDate(room.end_date);
 
-            // Handle date filtering with null cases
             let passesDateFilter = true;
 
             if (dateFilter.startDate || dateFilter.endDate) {
@@ -157,7 +153,6 @@ export const ChartContainer = () => {
           }))
       : activeRooms;
 
-    // Calculate jobsIndex after filtering
     let currentJobId = null;
     let jobsIndex = -1;
     const roomsWithJobsIndex = filteredRooms.map(room => {
@@ -188,10 +183,10 @@ export const ChartContainer = () => {
   }, [earliestStartDate, dispatch]);
 
   const chartRef = useRef(null);
-  const leftColumnRef = useRef(null); // For the fixed left column
-  const leftColumnHeaderRef = useRef(null); // For the fixed left column header
-  const headerRef = useRef(null); // For the fixed header
-  const monthHeaderRef = useRef(null); // Add new ref for month header
+  const leftColumnRef = useRef(null);
+  const leftColumnHeaderRef = useRef(null);
+  const headerRef = useRef(null);
+  const monthHeaderRef = useRef(null);
   const scrollableRef = useRef(null);
   const timeOffSvgRef = useRef(null);
   const employeesScheduledRef = useRef(null);
@@ -838,12 +833,10 @@ export const ChartContainer = () => {
         endTask: tasks[0],
       };
 
-      // Process each task to create segments
       for (let i = 1; i < tasks.length; i++) {
         const task = tasks[i];
 
         if (task.hard_start_date) {
-          // End current segment and start new one
           const startXPosition = calculateXPosition(
             normalizeDate(currentSegment.startTask.start_date),
             normalizeDate(chartStartDate),
@@ -868,18 +861,14 @@ export const ChartContainer = () => {
               startXPosition,
           });
 
-          // Start new segment
           currentSegment = {
             startTask: task,
             endTask: task,
           };
         } else {
-          // Extend current segment
           currentSegment.endTask = task;
         }
       }
-
-      // Add the final segment
       const startXPosition = calculateXPosition(
         normalizeDate(currentSegment.startTask.start_date),
         normalizeDate(chartStartDate),
