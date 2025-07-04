@@ -412,7 +412,7 @@ export const ChartContainer = () => {
       // Job Number header
       leftHeaderGroup
         .append("text")
-        .attr("x", 10) // Adjust x for alignment
+        .attr("x", 10)
         .attr("y", rowHeight / 2 + 6)
         .text("#")
         .attr("fill", "#000")
@@ -422,7 +422,7 @@ export const ChartContainer = () => {
       // Job Name header
       leftHeaderGroup
         .append("text")
-        .attr("x", 50) // Adjust x for alignment
+        .attr("x", 50)
         .attr("y", rowHeight / 2 + 6)
         .text("Job")
         .attr("fill", "#000")
@@ -432,7 +432,7 @@ export const ChartContainer = () => {
       // Room Name header
       leftHeaderGroup
         .append("text")
-        .attr("x", 130) // Adjust x for alignment
+        .attr("x", 130)
         .attr("y", rowHeight / 2 + 6)
         .text("Room")
         .attr("fill", "#000")
@@ -445,62 +445,116 @@ export const ChartContainer = () => {
       .attr("height", headerDatesVisibleHeight);
 
     // Add column headers with both date and day of the week
-    headerSvg
+    const headers = headerSvg
       .selectAll(".header")
-      .data(dates)
-      .enter()
-      .append("g")
-      .attr("class", "header")
-      .style("cursor", "pointer")
-      .each(function (d, i) {
-        // Group for each header
-        const group = d3.select(this);
+      .data(dates, (d) => d.getTime()); // Use date timestamp as key for stable updates
 
-        const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
-        const isHolidayDate = isHoliday(
-          normalizeDate(d),
-          holidayChecker,
-          holidays
-        );
+    // Join pattern handles enter, update, and exit in one operation
+    headers.join(
+      // Enter new elements
+      (enter) => {
+        const headerGroup = enter
+          .append("g")
+          .attr("class", "header")
+          .style("cursor", "pointer")
+          .on("dblclick", (event, d) => {
+            scrollToMonday(d);
+          });
 
-        // Append a rectangle for weekends
-        if (isWeekend || isHolidayDate) {
+        // Add background rectangles for weekends and holidays
+        headerGroup.each(function (d, i) {
+          const group = d3.select(this);
+          const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+          const isHolidayDate = isHoliday(
+            normalizeDate(d),
+            holidayChecker,
+            holidays
+          );
+
+          if (isWeekend || isHolidayDate) {
+            group
+              .append("rect")
+              .attr("class", "header-background")
+              .attr("x", i * dayWidth)
+              .attr("y", 0)
+              .attr("width", dayWidth)
+              .attr("height", headerDatesVisibleHeight)
+              .attr("fill", isHolidayDate ? "lightblue" : weekendColor);
+          }
+
+          // Date number
           group
-            .append("rect")
-            .attr("x", i * dayWidth)
-            .attr("y", 0)
-            .attr("width", dayWidth)
-            .attr("height", headerDatesVisibleHeight) // Adjust to cover the header
-            .attr("fill", isHolidayDate ? "lightblue" : weekendColor); // Light blue for holidays, grey for weekends
-        }
+            .append("text")
+            .attr("class", "date-text")
+            .attr("x", i * dayWidth + headerTextGap)
+            .attr("y", 13)
+            .text(d3.timeFormat("%d")(d))
+            .attr("fill", "#000")
+            .attr("font-size", "14px")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "left");
 
-        // Date number
-        group
-          .append("text")
-          .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 13)
-          .text(d3.timeFormat("%d")(d))
-          .attr("fill", "#000")
-          .attr("font-size", "14px")
-          .attr("font-weight", "bold")
-          .attr("text-anchor", "left");
-
-        // Day of the week
-        group
-          .append("text")
-          .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 23) // Adjust vertical position for day of the week
-          .text(d3.timeFormat("%a")(d))
-          .attr("fill", "#000")
-          .attr("font-size", "9px")
-          .attr("font-weight", "bold")
-          .attr("text-anchor", "left");
-
-        // Add double-click event to the group
-        group.on("dblclick", () => {
-          scrollToMonday(d);
+          // Day of the week
+          group
+            .append("text")
+            .attr("class", "day-text")
+            .attr("x", i * dayWidth + headerTextGap)
+            .attr("y", 23)
+            .text(d3.timeFormat("%a")(d))
+            .attr("fill", "#000")
+            .attr("font-size", "9px")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "left");
         });
-      });
+
+        return headerGroup;
+      },
+      // Update existing elements
+      (update) => {
+        update
+          .on("dblclick", (event, d) => {
+            scrollToMonday(d);
+          })
+          .each(function (d, i) {
+            const group = d3.select(this);
+
+            // Update background rectangle
+            const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+            const isHolidayDate = isHoliday(
+              normalizeDate(d),
+              holidayChecker,
+              holidays
+            );
+
+            group
+              .selectAll(".header-background")
+              .data([d])
+              .join("rect")
+              .attr("class", "header-background")
+              .attr("x", i * dayWidth)
+              .attr("y", 0)
+              .attr("width", dayWidth)
+              .attr("height", headerDatesVisibleHeight)
+              .attr("fill", isHolidayDate ? "lightblue" : weekendColor);
+
+            // Update date text
+            group
+              .select(".date-text")
+              .attr("x", i * dayWidth + headerTextGap)
+              .text(d3.timeFormat("%d")(d));
+
+            // Update day text
+            group
+              .select(".day-text")
+              .attr("x", i * dayWidth + headerTextGap)
+              .text(d3.timeFormat("%a")(d));
+          });
+
+        return update;
+      },
+      // Remove old elements
+      (exit) => exit.remove()
+    );
 
     headerSvg
       .selectAll(".vertical-line")
