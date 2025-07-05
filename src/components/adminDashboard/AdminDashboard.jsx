@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, useLocation, Routes, Route, Navigate } from "react-router-dom";
+import {
+  useNavigate,
+  useLocation,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import ManageChartSettings from "../manageSettings/ManageChartSettings";
 import EmployeeSettings from "../manageSettings/EmployeeSettings";
 import HolidaySettings from "../manageSettings/HolidaySettings";
@@ -24,49 +30,50 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const workdayHours = useSelector((state) => state.chartConfig.workdayHours);
+  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
   const holidays = useSelector((state) => state.holidays);
   const dayWidth = useSelector((state) => state.chartConfig.dayWidth);
   const { roleId, permissions } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const hd = new Holidays("US");
+    const hd = new Holidays();
+    hd.init("US"); // Initialize with US holidays.
     setHolidayChecker(hd);
   }, []);
 
   // Define all possible tabs
   const allTabs = [
-    { 
-      id: "employees", 
-      label: "Employees", 
-      path: PATHS.MANAGE_EMPLOYEES, 
+    {
+      id: "employees",
+      label: "Employees",
+      path: PATHS.MANAGE_EMPLOYEES,
       component: EmployeeSettings,
       props: { workdayHours, holidayChecker, dayWidth, holidays },
       requiresAdmin: true,
       maxWidthClass: "max-w-[720px]",
     },
-    { 
-      id: "chart", 
-      label: "Chart", 
-      path: PATHS.MANAGE_CHART, 
+    {
+      id: "chart",
+      label: "Chart",
+      path: PATHS.MANAGE_CHART,
       component: ManageChartSettings,
       props: {},
       requiresAdmin: true,
       maxWidthClass: "max-w-[720px]",
     },
-    { 
-      id: "holidays", 
-      label: "Holidays", 
-      path: PATHS.MANAGE_HOLIDAYS, 
+    {
+      id: "holidays",
+      label: "Holidays",
+      path: PATHS.MANAGE_HOLIDAYS,
       component: HolidaySettings,
       props: { workdayHours, holidayChecker, dayWidth, holidays },
       requiresAdmin: true,
       maxWidthClass: "max-w-[720px]",
     },
-    { 
-      id: "team", 
-      label: "Team", 
-      path: PATHS.MANAGE_TEAM, 
+    {
+      id: "team",
+      label: "Team",
+      path: PATHS.MANAGE_TEAM,
       component: TeamSettings,
       props: {},
       requiresAdmin: false,
@@ -76,7 +83,7 @@ const AdminDashboard = () => {
   ];
 
   // Filter tabs based on permissions
-  const tabs = allTabs.filter(tab => {
+  const tabs = allTabs.filter((tab) => {
     if (roleId === 1) return true; // Admin can see all tabs
     if (tab.requiresAdmin) return false; // Non-admins can't see admin-only tabs
     return permissions?.[tab.requiresPermission]; // Check specific permission
@@ -103,7 +110,7 @@ const AdminDashboard = () => {
 
   const getCurrentTab = () => {
     const path = location.pathname;
-    return tabs.find(tab => path.includes(tab.id))?.id || "employees";
+    return tabs.find((tab) => path.includes(tab.id))?.id || "employees";
   };
 
   return (
@@ -144,23 +151,23 @@ const AdminDashboard = () => {
             className={`${headerButtonClass} ${headerButtonColor}`}
             onClick={handleSave}
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
 
         {/* Tab Content */}
         <div className="flex-1 overflow-auto">
           <div className="flex justify-center">
-            <div className={`w-full ${tabs.find(tab => tab.id === getCurrentTab())?.maxWidthClass || 'max-w-[720px]'}`}>
+            <div
+              className={`w-full ${
+                tabs.find((tab) => tab.id === getCurrentTab())?.maxWidthClass ||
+                "max-w-[720px]"
+              }`}
+            >
               <Routes>
-                <Route 
-                  path="/" 
-                  element={
-                    <Navigate 
-                      to={tabs[0]?.path || "/"} 
-                      replace 
-                    />
-                  } 
+                <Route
+                  path="/"
+                  element={<Navigate to={tabs[0]?.path || "/"} replace />}
                 />
                 {tabs.map(({ id, path, component, props }) => (
                   <Route
