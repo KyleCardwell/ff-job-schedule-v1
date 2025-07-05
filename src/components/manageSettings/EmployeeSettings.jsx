@@ -27,9 +27,11 @@ import ErrorModal from '../common/ErrorModal';
 const EmployeeSettings = forwardRef((props, ref) => {
   const { visible, holidayChecker } = props;
 
-  const { chartStartDate, workdayHours, dayWidth } = useSelector(
+  const { chartStartDate, dayWidth } = useSelector(
     (state) => state.chartData
   );
+
+  const { workday_hours } = useSelector((state) => state.chartConfig);
 
   const dispatch = useDispatch();
   const employees = useSelector((state) => state.builders.employees);
@@ -388,9 +390,9 @@ const EmployeeSettings = forwardRef((props, ref) => {
       // Update tasks after all builder changes
       await dispatch(
         updateTasksAfterBuilderChanges(
-          employeesToKeep,
+          employeesToUpdate,
           employeesToDelete,
-          workdayHours,
+          workday_hours,
           holidayChecker,
           holidays,
           dayWidth,

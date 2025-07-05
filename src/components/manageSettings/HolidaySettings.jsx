@@ -18,9 +18,9 @@ const HolidaySettings = forwardRef((props, ref) => {
 
   const { holidayChecker } = props;
 
-  const { chartStartDate, dayWidth, workdayHours } = useSelector(
-    (state) => state.chartData
-  );
+  const { chartStartDate, dayWidth } = useSelector((state) => state.chartData);
+
+  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
 
   const { standardHolidays, customHolidays, loading, error } = useSelector(
     (state) => state.holidays
@@ -235,7 +235,9 @@ const HolidaySettings = forwardRef((props, ref) => {
           onDelete={handleRemoveCustomDate}
           onChange={(id, field, value) => {
             const newHolidays = localCustomHolidays.map((h) =>
-              h.id === id ? { ...h, name: formatDateForInput(new Date(value)) } : h
+              h.id === id
+                ? { ...h, name: formatDateForInput(new Date(value)) }
+                : h
             );
             setLocalCustomHolidays(newHolidays);
             validateCustomHolidays(newHolidays);
