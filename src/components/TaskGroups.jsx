@@ -21,7 +21,7 @@ import {
 import { updateOneBuilderChartData } from "../redux/actions/chartData";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
 import { isEqual, omit } from "lodash";
-import { updateSubtasksPositions } from "../redux/actions/projects";
+import { fetchEarliestAndLatestDates, updateSubtasksPositions } from "../redux/actions/projects";
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 
@@ -34,7 +34,6 @@ const TaskGroups = ({
   dayWidth,
   rowHeight,
   chartStartDate,
-  holidayChecker,
   workdayHours,
   setIsLoading,
   scrollToMonday,
@@ -62,8 +61,8 @@ const TaskGroups = ({
   };
 
   const employees = useSelector((state) => state.builders.employees);
-  const holidays = useSelector((state) => state.holidays);
   const { tasks } = useSelector((state) => state.taskData);
+  const holidayMap = useSelector((state) => state.holidays.holidayMap);
   const { subTasksByEmployee } = useSelector(
     (state) => state.taskData,
     isEqual
@@ -71,7 +70,6 @@ const TaskGroups = ({
 
   const taskGroupsRef = useRef(null);
   const previousTaskStateRef = useRef(null);
-  const hasRunEffect = useRef(false);
   const totalDurationRef = useRef(0);
 
   // Get loading states from Redux
@@ -79,13 +77,14 @@ const TaskGroups = ({
   const { loading: taskDataLoading } = useSelector((state) => state.taskData);
   const { loading: holidaysLoading } = useSelector((state) => state.holidays);
 
+  const defaultEmployeeId = employees[0]?.employee_id;
+
   const activeTasksData = useMemo(() => {
     const today = normalizeDate(new Date());
     const earliestStart = normalizeDate(earliestStartDate);
     const currentDate = normalizeDate(
       max([parseISO(today), parseISO(earliestStart)])
     );
-    const defaultEmployeeId = employees[0]?.employee_id;
 
     // Reset the total duration
     totalDurationRef.current = 0;
@@ -160,7 +159,7 @@ const TaskGroups = ({
     chartStartDate,
     dayWidth,
     workdayHours,
-    holidays,
+    holidayMap,
     selectedEmployeeIds,
     earliestStartDate,
     employees,
@@ -236,8 +235,7 @@ const TaskGroups = ({
         currentDate,
         totalDurationRef.current,
         workdayHours,
-        holidayChecker,
-        holidays,
+        holidayMap,
         0,
         {}
       ) / workdayHours;
@@ -258,8 +256,7 @@ const TaskGroups = ({
     tasks,
     employees,
     workdayHours,
-    holidayChecker,
-    holidays,
+    holidayMap,
     earliestStartDate,
     setEstimatedCompletionDate,
   ]);
@@ -344,8 +341,7 @@ const TaskGroups = ({
         // Snap to next workday if it's a weekend or holiday or if the builder has time off on that day
         newStartDate = getNextWorkday(
           newStartDate,
-          holidayChecker,
-          holidays,
+          holidayMap,
           d.employee_id,
           timeOffByBuilder
         );
@@ -402,8 +398,7 @@ const TaskGroups = ({
         const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
           updatedBuilderTasks,
           workdayHours,
-          holidayChecker,
-          holidays,
+          holidayMap,
           timeOffByBuilder,
           dayWidth,
           chartStartDate
@@ -492,6 +487,7 @@ const TaskGroups = ({
               });
 
               await updateSubtasksPositions(tasksToUpdate);
+              await dispatch(fetchEarliestAndLatestDates(defaultEmployeeId));
 
               previousTaskStateRef.current = null;
             } catch (error) {
@@ -563,8 +559,7 @@ const TaskGroups = ({
           d.start_date,
           newWidth,
           dayWidth,
-          holidayChecker,
-          holidays,
+          holidayMap,
           d.employee_id,
           timeOffByBuilder,
           workdayHours
@@ -594,8 +589,7 @@ const TaskGroups = ({
         const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
           updatedBuilderTasks,
           workdayHours,
-          holidayChecker,
-          holidays,
+          holidayMap,
           timeOffByBuilder,
           dayWidth,
           chartStartDate
@@ -685,6 +679,7 @@ const TaskGroups = ({
               });
 
               await updateSubtasksPositions(tasksToUpdate);
+              await dispatch(fetchEarliestAndLatestDates(defaultEmployeeId));
               previousTaskStateRef.current = null;
             } catch (error) {
               if (previousTaskStateRef.current) {
@@ -881,9 +876,8 @@ const TaskGroups = ({
     dayWidth,
     rowHeight,
     chartStartDate,
-    holidayChecker,
     workdayHours,
-    holidays,
+    holidayMap,
     timeOffByBuilder,
     chartRef,
     activeTasksData,

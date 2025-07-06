@@ -146,42 +146,9 @@ export const getPreviousMonday = (dateInput) => {
   return normalizeDate(subWeeks(startOfCurrentWeek, 1));
 };
 
-// export const isHoliday = (date, holidayChecker, holidays) => {
-//   if (!holidayChecker) return false;
-//   const normalizedDate = normalizeDate(date);
-//   const holiday = holidayChecker.isHoliday(normalizedDate);
-//   return holiday && holidays.some((h) => h.name === holiday[0].name);
-// };
-export const isHoliday = (
-  date,
-  holidayChecker,
-  { standardHolidays, customHolidays }
-) => {
-  if (!date) return false;
-
-  const normalizedDate = normalizeDate(date);
-
-  // Check custom holidays first
-  if (customHolidays?.length > 0) {
-    const isCustomHoliday = customHolidays.some((holiday) =>
-      isSameDay(parseISO(holiday.name), parseISO(normalizedDate))
-    );
-    if (isCustomHoliday) return true;
-  }
-
-  // Then check standard holidays
-  if (holidayChecker && standardHolidays?.length > 0) {
-    const holiday = holidayChecker.isHoliday(normalizedDate);
-    return holiday && standardHolidays.some((h) => h.name === holiday[0].name);
-  }
-
-  return false;
-};
-
 export const getNextWorkday = (
   date,
-  holidayChecker,
-  holidays,
+  holidayMap,
   builderId,
   timeOffByBuilder = {}
 ) => {
@@ -190,7 +157,7 @@ export const getNextWorkday = (
   while (
     isSaturday(nextDay) ||
     isSunday(nextDay) ||
-    isHoliday(nextDay, holidayChecker, holidays) ||
+    holidayMap[normalizeDate(nextDay)] ||
     (builderId &&
       timeOffByBuilder[builderId]?.some((timeOffDate) =>
         isSameDay(normalizeDate(new Date(timeOffDate)), nextDay)
@@ -205,48 +172,46 @@ export const totalJobHours = (
   start_date,
   jobHours,
   workdayHours,
-  holidayChecker,
-  holidays,
+  holidayMap,
   builderId,
   timeOffByBuilder = {}
 ) => {
   let currentDate = normalizeDate(start_date);
 
-  // Calculate total days based on jobHours (e.g., 16 hours = 2 days)
-  let totalDays = Math.ceil(jobHours / workdayHours);
+  let totalHoursCounted = 0;
 
-  // Loop through each day in the range based on totalDays
-  for (let i = 0; i < totalDays; i++) {
-    // Check if the current day is a weekend
+  while (totalHoursCounted < jobHours) {
+    const dateStr = normalizeDate(currentDate);
+
+    const isWeekend = isSaturday(currentDate) || isSunday(currentDate);
+    const isHoliday = holidayMap[dateStr];
     const isTimeOff =
-      builderId && timeOffByBuilder[builderId]
-        ? timeOffByBuilder[builderId].some((timeOffDate) =>
-            isSameDay(normalizeDate(new Date(timeOffDate)), currentDate)
-          )
-        : false;
+      builderId &&
+      timeOffByBuilder[builderId]?.some((date) =>
+        isSameDay(normalizeDate(new Date(date)), currentDate)
+      );
 
-    if (
-      isSaturday(currentDate) ||
-      isSunday(currentDate) ||
-      isHoliday(currentDate, holidayChecker, holidays) ||
-      isTimeOff
-    ) {
-      jobHours += 8;
-      totalDays += 1;
-    }
-    // Move to the next day
+    const isNonWorkingDay = isWeekend || isHoliday || isTimeOff;
+
+    // Even on non-working days, job can't progress
+    // So we don't add workdayHours to total time
+    totalHoursCounted += isNonWorkingDay ? 0 : workdayHours;
+
     currentDate = addDays(currentDate, 1);
   }
 
-  return Math.ceil(jobHours / workdayHours) * workdayHours; // Total job hours
+  const totalDaysUsed = differenceInCalendarDays(
+    currentDate,
+    normalizeDate(start_date)
+  );
+  return totalDaysUsed * workdayHours;
 };
 
 export const calculateAdjustedWidth = (
   startDate,
   requestedWidth,
   dayWidth,
-  holidayChecker,
-  holidays,
+  holidayMap,
   builderId,
   timeOffByBuilder = {},
   workdayHours
@@ -268,7 +233,7 @@ export const calculateAdjustedWidth = (
     if (
       isSaturday(currentDate) ||
       isSunday(currentDate) ||
-      isHoliday(currentDate, holidayChecker, holidays) ||
+      holidayMap[normalizeDate(currentDate)] ||
       isTimeOff
     ) {
       nonWorkDays++;
@@ -324,8 +289,7 @@ export const calculateXPosition = (
 export const sortAndAdjustDates = (
   jobsArray,
   workdayHours,
-  holidayChecker,
-  holidays,
+  holidayMap,
   timeOffByBuilder,
   dayWidth = 30,
   chartStartDate,
@@ -386,8 +350,7 @@ export const sortAndAdjustDates = (
         : normalizeDate(
             getNextWorkday(
               acc[acc.length - 1].end_date,
-              holidayChecker,
-              holidays,
+              holidayMap,
               current.employee_id,
               timeOffByBuilder
             )
@@ -397,8 +360,7 @@ export const sortAndAdjustDates = (
       start_date,
       current.duration,
       workdayHours,
-      holidayChecker,
-      holidays,
+      holidayMap,
       current.employee_id,
       timeOffByBuilder
     );
@@ -453,8 +415,7 @@ export const sortAndAdjustDates = (
       const adjustedStartDate = normalizeDate(
         getNextWorkday(
           nextElement.end_date,
-          holidayChecker,
-          holidays,
+          holidayMap,
           current.employee_id,
           timeOffByBuilder
         )

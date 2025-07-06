@@ -16,13 +16,11 @@ import { v4 as uuidv4 } from "uuid";
 const HolidaySettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
 
-  const { holidayChecker } = props;
-
   const { chartStartDate, dayWidth } = useSelector((state) => state.chartData);
 
   const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
 
-  const { standardHolidays, customHolidays, loading, error } = useSelector(
+  const { standardHolidays, customHolidays } = useSelector(
     (state) => state.holidays
   );
   const employees = useSelector((state) => state.builders.employees);
@@ -121,7 +119,7 @@ const HolidaySettings = forwardRef((props, ref) => {
     }
 
     try {
-      await dispatch(saveHolidays(localStandardHolidays, localCustomHolidays));
+      const { holidayMap: newHolidayMap } = await dispatch(saveHolidays(localStandardHolidays, localCustomHolidays));
 
       // Update tasks with new holiday configuration
       if (employees.length > 0) {
@@ -130,11 +128,7 @@ const HolidaySettings = forwardRef((props, ref) => {
             employees,
             [], // no builders to delete
             workdayHours,
-            holidayChecker,
-            {
-              standardHolidays: localStandardHolidays,
-              customHolidays: localCustomHolidays,
-            },
+            newHolidayMap, 
             dayWidth,
             chartStartDate,
             employees[0].employee_id

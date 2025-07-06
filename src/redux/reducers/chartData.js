@@ -6,8 +6,11 @@ import { Actions } from "../actions";
 const initialState = {
 	chartData: [],
 	chartStartDate: null,
+	chartEndDate: null,
+	earliestStartDate: null,
+	latestStartDate: null,
+	numDays: null,
 	dayWidth: 30,
-	workdayHours: 8,
 };
 
 export const chartDataReducer = (state = initialState, action) => {
@@ -35,11 +38,15 @@ export const chartDataReducer = (state = initialState, action) => {
 				error: action.payload,
 			};
 		
-		case Actions.chartData.UPDATE_CHART_START_DATE: {
+		case Actions.chartData.UPDATE_CHART_START_END_DATES: {
 			return {
 				...state,
-				chartStartDate: action.payload,
-			};
+				earliestStartDate: action.payload.earliestStartDate,
+				latestStartDate: action.payload.latestStartDate,
+				chartStartDate: action.payload.chartStartDate,
+				chartEndDate: action.payload.chartEndDate,
+				numDays: action.payload.numDays,
+				};
 		}
 
 		case Actions.chartData.UPDATE_ONE_BUILDER_CHART_DATA: {
