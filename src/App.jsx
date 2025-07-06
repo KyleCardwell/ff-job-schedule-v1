@@ -6,9 +6,9 @@ import {
   Routes,
   Navigate,
 } from "react-router-dom";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ChartContainer } from "./components/ChartContainerGrid.jsx";
-import CompletedJobsContainer from "./components/CompletedProjectsContainer.jsx";
+import CompletedJobsContainer from "./components/completedProjects/CompletedProjectsContainer.jsx";
 import CompletedProjectView from "./components/completedProjects/CompletedProjectView";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -16,20 +16,20 @@ import { supabase } from "./utils/supabase";
 import { fetchProjects } from "./redux/actions/projects";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
-import { fetchFeatureToggles } from "./redux/actions/featureToggles"; // Import the fetchFeatureToggles action
+import { fetchFeatureToggles } from "./redux/actions/featureToggles";
 import {
   setSession,
   clearAuth,
   setUserTeam,
   setLoading,
 } from "./redux/authSlice";
-import TeamJoin from "./components/TeamJoin.jsx";
+import TeamJoin from "./components/common/TeamJoin.jsx";
 import AdminDashboard from "./components/adminDashboard/AdminDashboard.jsx";
-import Navigation from "./components/Navigation.jsx";
-import Header from "./components/Header"; // Import the new Header component
+import Navigation from "./components/common/Navigation.jsx";
+import Header from "./components/common/Header";
 import { PATHS } from "./utils/constants.js";
-import store from "./redux/store"; // Import the store
-import ProtectedRoute from "./components/ProtectedRoute";
+import store from "./redux/store";
+import ProtectedRoute from "./components/common/ProtectedRoute";
 import GridLoader from "react-spinners/GridLoader";
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";

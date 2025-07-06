@@ -1,8 +1,8 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { PATHS } from "../utils/constants";
-import useFeatureToggles from "../hooks/useFeatureToggles";
+import { PATHS } from "../../utils/constants";
+import useFeatureToggles from "../../hooks/useFeatureToggles";
 
 const ProtectedRoute = ({ children }) => {
   const { roleId, permissions } = useSelector((state) => state.auth);

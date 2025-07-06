@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { buttonClass } from "../assets/tailwindConstants";
+import { buttonClass } from "../../assets/tailwindConstants";
 
 const ProjectSearchFilter = ({ onFilterChange }) => {
   const [searchTerm, setSearchTerm] = useState("");

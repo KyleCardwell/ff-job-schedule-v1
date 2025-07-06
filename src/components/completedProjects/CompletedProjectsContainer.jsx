@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import CompletedProjectCard from "./CompletedProjectCard";
-// import ChartActionButtons from "./ChartActionButtons";
-import { fetchCompletedProjects } from "../redux/actions/projects";
-import FinancialsInputModal from "./financials/FinancialsInputModal";
-import ProjectSearchFilter from "./ProjectSearchFilter";
+import { fetchCompletedProjects } from "../../redux/actions/projects";
+import FinancialsInputModal from "../financials/FinancialsInputModal";
 import "./CompletedProjectsContainer.css";
+import ProjectSearchFilter from "./ProjectSearchFilter";
 
 const CompletedProjectsContainer = () => {
   const dispatch = useDispatch();

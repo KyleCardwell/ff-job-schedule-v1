@@ -20,7 +20,7 @@ import BuilderLegend from "./BuilderLegend";
 import JobModalChartData from "./JobModalChartData";
 import TaskGroups from "./TaskGroups";
 import { eachDayOfInterval, parseISO } from "date-fns";
-import ErrorToast from "./ErrorToast";
+import ErrorToast from "./common/ErrorToast";
 import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
 import { usePermissions } from "../hooks/usePermissions";

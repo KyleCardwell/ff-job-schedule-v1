@@ -1,8 +1,8 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
-import { PATHS } from "../utils/constants";
+import { PATHS } from "../../utils/constants";
 import { useSelector } from "react-redux";
-import { headerButtonColor } from "../assets/tailwindConstants";
+import { headerButtonColor } from "../../assets/tailwindConstants";
 import { FiMenu, FiX } from "react-icons/fi";
 
 const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {

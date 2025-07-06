@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchProjectFinancials, fetchTaskFinancials } from "../redux/actions/financialsData";
-import { buttonClass } from "../assets/tailwindConstants";
+import { fetchProjectFinancials, fetchTaskFinancials } from "../../redux/actions/financialsData";
+import { buttonClass } from "../../assets/tailwindConstants";
 import "./CompletedProjectCard.css";
-import { usePermissions } from "../hooks/usePermissions";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
