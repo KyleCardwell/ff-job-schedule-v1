@@ -1,12 +1,12 @@
 import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { GridLoader } from "react-spinners";
 import { v4 as uuidv4 } from "uuid";
-import { buttonClass } from "../../assets/tailwindConstants";
+
 import { saveSettings } from "../../redux/actions/chartConfig";
-import SettingsSection from "./SettingsSection";
-import SettingsList from "./SettingsList";
-import SettingsItem from "./SettingsItem";
+
+import SettingsItem from "./SettingsItem.jsx";
+import SettingsList from "./SettingsList.jsx";
+import SettingsSection from "./SettingsSection.jsx";
 
 const ManageChartSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();

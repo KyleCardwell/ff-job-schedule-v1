@@ -1,10 +1,11 @@
+import _ from "lodash";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { buttonClass } from "../../assets/tailwindConstants";
-import EmployeeTypeAccordion from "./EmployeeTypeAccordion";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
-import _ from "lodash";
+
 import { usePermissions } from "../../hooks/usePermissions";
+
+import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
 
 const FinancialsInputSection = ({
   sectionName,

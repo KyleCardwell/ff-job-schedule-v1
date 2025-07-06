@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import CompletedProjectCard from "./CompletedProjectCard";
+
 import { fetchCompletedProjects } from "../../redux/actions/projects";
-import FinancialsInputModal from "../financials/FinancialsInputModal";
+import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
+
+import CompletedProjectCard from "./CompletedProjectCard.jsx";
 import "./CompletedProjectsContainer.css";
-import ProjectSearchFilter from "./ProjectSearchFilter";
+import ProjectSearchFilter from "./ProjectSearchFilter.jsx";
 
 const CompletedProjectsContainer = () => {
   const dispatch = useDispatch();

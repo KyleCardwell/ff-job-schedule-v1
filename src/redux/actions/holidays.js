@@ -1,8 +1,9 @@
+import Holidays from "date-holidays";
+
+import { normalizeDate } from "../../utils/dateUtils";
 import { supabase } from "../../utils/supabase";
 import { Actions } from "../actions";
-import Holidays from "date-holidays";
-import { format } from "date-fns";
-import { normalizeDate } from "../../utils/dateUtils";
+
 
 const hd = new Holidays("US");
 

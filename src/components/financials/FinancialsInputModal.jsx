@@ -1,26 +1,26 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { v4 as uuidv4 } from "uuid";
 import { Field, Label, Switch } from "@headlessui/react";
 import { isEqual, omit } from "lodash";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useCSVReader } from "react-papaparse";
+import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
+import { v4 as uuidv4 } from "uuid";
+
 import {
   buttonClass,
   modalContainerClass,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
-import { calculateFinancialTotals } from "../../utils/helpers";
-import FinancialsAccordion from "./FinancialsAccordion";
-import EstimatesModal from "./EstimatesModal";
-import { saveProjectFinancials } from "../../redux/actions/financialsData";
 import { usePermissions } from "../../hooks/usePermissions";
+import { saveProjectFinancials } from "../../redux/actions/financialsData";
+import { calculateFinancialTotals } from "../../utils/helpers";
+
+import EstimatesModal from "./EstimatesModal.jsx";
+import FinancialsAccordion from "./FinancialsAccordion.jsx";
 
 const FinancialsInputModal = ({
   isOpen,
   onClose,
-  onSave,
-  setIsLoading,
   selectedTask,
 }) => {
   const dispatch = useDispatch();

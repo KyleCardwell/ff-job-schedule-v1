@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+
 import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
-import EstimateSectionForm from "./EstimateSectionForm";
-import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 const EstimateTaskForm = ({
   selectedTaskId,

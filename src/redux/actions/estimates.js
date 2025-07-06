@@ -1,6 +1,6 @@
-import { Actions } from "../actions";
-import { supabase } from "../../utils/supabase";
 import { ESTIMATE_STATUS } from "../../utils/constants";
+import { supabase } from "../../utils/supabase";
+import { Actions } from "../actions";
 
 // Create estimate project
 export const createEstimateProject = (projectData) => {
@@ -225,7 +225,6 @@ export const fetchEstimateById = (estimateId) => {
         is_current: data.is_current,
         created_at: data.estimate_created_at,
         updated_at: data.estimate_updated_at,
-        est_project_id: data.est_project_id,
         est_project_name: data.est_project_name,
         est_client_name: data.est_client_name,
         team_id: data.team_id,

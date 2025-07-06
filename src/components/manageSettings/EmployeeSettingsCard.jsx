@@ -1,5 +1,6 @@
-import React from "react";
 import PropTypes from "prop-types";
+import React from "react";
+
 import { formatDateForInput } from "../../utils/dateUtils";
 
 const EmployeeSettingsCard = ({
@@ -13,7 +14,6 @@ const EmployeeSettingsCard = ({
   onAddTimeOff,
   onTimeOffChange,
   onRemoveTimeOff,
-  onDelete,
   onMarkForDeletion,
   showRates,
   errors = {},

@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from "react";
+import { FiArrowLeft } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
-import { PlusIcon } from "@heroicons/react/24/outline";
-import EstimateProjectForm from "./EstimateProjectForm";
-import EstimateTaskForm from "./EstimateTaskForm";
-import EstimateSectionForm from "./EstimateSectionForm";
-import EstimateSectionInfo from "./EstimateSectionInfo";
+
 import {
-  addTask,
-  addSection,
   fetchEstimateById,
   setCurrentEstimate,
-  updateTask,
-  updateSection,
 } from "../../redux/actions/estimates";
-import { FiArrowLeft } from "react-icons/fi";
 import { PATHS } from "../../utils/constants";
+
+import EstimateProjectForm from "./EstimateProjectForm.jsx";
+import EstimateSectionForm from "./EstimateSectionForm.jsx";
+import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
+import EstimateTaskForm from "./EstimateTaskForm.jsx";
 
 const EstimateLayout = () => {
   const dispatch = useDispatch();

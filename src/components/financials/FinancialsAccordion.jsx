@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import FinancialsInputSection from "./FinancialsInputSection";
+
+import FinancialsInputSection from "./FinancialsInputSection.jsx";
 
 const FinancialsAccordion = ({ sections, employees, onSectionUpdate }) => {
   const [openSectionId, setOpenSectionId] = useState(null);

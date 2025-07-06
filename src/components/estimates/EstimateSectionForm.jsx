@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { FiSave, FiX, FiPlusCircle } from "react-icons/fi";
-import EstimateSectionItem from "./EstimateSectionItem";
+import { useDispatch, useSelector } from "react-redux";
+
 import { addSection, updateSection } from "../../redux/actions/estimates";
+
+import EstimateSectionItem from "./EstimateSectionItem.jsx";
+
 
 const EstimateSectionForm = ({
   section = {},

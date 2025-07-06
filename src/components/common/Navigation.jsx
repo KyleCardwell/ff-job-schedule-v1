@@ -1,6 +1,4 @@
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
 import {
   FiCalendar,
   FiUsers,
@@ -8,13 +6,16 @@ import {
   FiLogOut,
   FiDollarSign,
 } from "react-icons/fi";
-import { PATHS } from "../../utils/constants";
-import { supabase } from "../../utils/supabase";
-import { useDispatch } from "react-redux";
-import { clearAuth } from "../../redux/authSlice";
-import { useNavigate } from "react-router-dom";
+import { useSelector , useDispatch } from "react-redux";
+import { NavLink, useNavigate } from "react-router-dom";
+
+
+
 import { headerButtonColor } from "../../assets/tailwindConstants";
 import useFeatureToggles from "../../hooks/useFeatureToggles";
+import { clearAuth } from "../../redux/authSlice";
+import { PATHS } from "../../utils/constants";
+import { supabase } from "../../utils/supabase";
 
 const Navigation = ({ isOpen, onClose }) => {
   const { enable_estimates } = useFeatureToggles();

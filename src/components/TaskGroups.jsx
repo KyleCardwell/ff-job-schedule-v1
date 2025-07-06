@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import * as d3 from "d3";
 import {
   addDays,
   differenceInCalendarDays,
@@ -8,9 +8,16 @@ import {
   differenceInDays,
   max,
 } from "date-fns";
-import { normalizeDate } from "../utils/dateUtils";
+import { isEqual, omit } from "lodash";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import * as d3 from "d3";
+
+import { usePermissions } from "../hooks/usePermissions";
+import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
+import { updateOneBuilderChartData } from "../redux/actions/chartData";
+import { fetchEarliestAndLatestDates, updateSubtasksPositions } from "../redux/actions/projects";
+import { updateTasksByOneBuilder } from "../redux/actions/taskData";
+import { normalizeDate } from "../utils/dateUtils";
 import {
   calculateAdjustedWidth,
   calculateXPosition,
@@ -18,12 +25,6 @@ import {
   sortAndAdjustDates,
   totalJobHours,
 } from "../utils/helpers";
-import { updateOneBuilderChartData } from "../redux/actions/chartData";
-import { updateTasksByOneBuilder } from "../redux/actions/taskData";
-import { isEqual, omit } from "lodash";
-import { fetchEarliestAndLatestDates, updateSubtasksPositions } from "../redux/actions/projects";
-import { usePermissions } from "../hooks/usePermissions";
-import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 
 const TaskGroups = ({
   chartRef,

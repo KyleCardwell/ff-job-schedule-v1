@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
 import { FiPlusCircle, FiEdit, FiCheckCircle } from "react-icons/fi";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+
 import { fetchEstimates, clearCurrentEstimate } from "../../redux/actions/estimates";
 import { ESTIMATE_STATUS, PATHS } from "../../utils/constants";
-import EstimateDashboardCard from "./EstimateDashboardCard";
+
+import EstimateDashboardCard from "./EstimateDashboardCard.jsx";
 
 const EstimateDashboard = () => {
     const navigate = useNavigate();

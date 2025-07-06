@@ -1,15 +1,18 @@
+import { isEqual } from "lodash";
 import React, { useState, useEffect } from "react";
+import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
-import EstimateTaskForm from "./EstimateTaskForm";
-import { isEqual } from "lodash";
+
 import {
   createEstimateProject,
   createEstimate,
   fetchEstimateById,
   updateEstimateProject
 } from "../../redux/actions/estimates";
+
+import EstimateTaskForm from "./EstimateTaskForm.jsx";
+
 
 const STEPS = {
   PROJECT_INFO: 1,

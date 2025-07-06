@@ -68,12 +68,6 @@ export const estimatesReducer = (state = initialState, action) => {
         currentEstimate: action.payload,
       };
 
-    case Actions.estimates.CLEAR_CURRENT_ESTIMATE:
-      return {
-        ...state,
-        currentEstimate: null,
-      };
-
     case Actions.estimates.SET_ESTIMATE_FILTERS:
       return {
         ...state,
@@ -125,6 +119,7 @@ export const estimatesReducer = (state = initialState, action) => {
       };
 
     case Actions.estimates.UPDATE_ESTIMATE_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
       const { type, data } = action.payload;
       if (type === 'project') {
         return {
@@ -137,7 +132,7 @@ export const estimatesReducer = (state = initialState, action) => {
           error: null
         };
       } else if (type === 'task') {
-        const { projectId, tasks } = data;
+        const { tasks } = data;
         return {
           ...state,
           currentEstimate: {

@@ -1,3 +1,4 @@
+import { Switch } from "@headlessui/react";
 import React, {
   useState,
   useEffect,
@@ -7,22 +8,18 @@ import React, {
   useCallback,
 } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Switch } from "@headlessui/react";
+import { v4 as uuidv4 } from "uuid";
+
 import {
-  updateBuilder,
-  deleteBuilder,
-  addBuilder,
   addEmployees,
   updateEmployees,
-  deleteEmployees,
 } from "../../redux/actions/builders";
-import { formatDateForInput, normalizeDate } from "../../utils/dateUtils";
 import { updateTasksAfterBuilderChanges } from "../../redux/actions/taskData";
-import { GridLoader } from "react-spinners";
-import { v4 as uuidv4 } from "uuid";
-import SettingsSection from "./SettingsSection";
-import EmployeeSettingsCard from "./EmployeeSettingsCard";
-import ErrorModal from "../common/ErrorModal";
+import { normalizeDate } from "../../utils/dateUtils";
+import ErrorModal from "../common/ErrorModal.jsx";
+
+import EmployeeSettingsCard from "./EmployeeSettingsCard.jsx";
+import SettingsSection from "./SettingsSection.jsx";
 
 const EmployeeSettings = forwardRef((props, ref) => {
   const { visible } = props;
@@ -597,5 +594,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
     </div>
   );
 });
+
+EmployeeSettings.displayName = 'EmployeeSettings';
 
 export default EmployeeSettings;

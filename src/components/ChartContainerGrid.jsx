@@ -1,3 +1,12 @@
+import * as d3 from "d3";
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  startOfWeek,
+  eachDayOfInterval,
+  parseISO,
+} from "date-fns";
 import React, {
   useEffect,
   useRef,
@@ -6,43 +15,38 @@ import React, {
   useCallback,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  addDays,
-  differenceInCalendarDays,
-  format,
-  startOfWeek,
-} from "date-fns";
 import { GridLoader } from "react-spinners";
-import { normalizeDate } from "../utils/dateUtils";
-import * as d3 from "d3";
-import { calculateXPosition } from "../utils/helpers";
-import BuilderLegend from "./BuilderLegend";
-import JobModalChartData from "./JobModalChartData";
-import TaskGroups from "./TaskGroups";
-import { eachDayOfInterval, parseISO } from "date-fns";
-import ErrorToast from "./common/ErrorToast";
-import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
-import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
-import { usePermissions } from "../hooks/usePermissions";
+
 import {
   headerButtonClass,
   headerButtonColor,
 } from "../assets/tailwindConstants";
-import DateRangeFilter from "./DateRangeFilter";
+import { usePermissions } from "../hooks/usePermissions";
 import { fetchProjects } from "../redux/actions/projects";
+import { normalizeDate } from "../utils/dateUtils";
+import { calculateXPosition } from "../utils/helpers";
+
+import BuilderLegend from "./BuilderLegend.jsx";
+import ErrorToast from "./common/ErrorToast.jsx";
+import DateRangeFilter from "./DateRangeFilter.jsx";
+import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels.jsx";
+import EmployeeScheduleSpans from "./EmployeeScheduleSpans.jsx";
+import JobModalChartData from "./JobModalChartData.jsx";
+import TaskGroups from "./TaskGroups.jsx";
+
+
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
 
-  const {
-    chartData,
-    chartStartDate,
-    earliestStartDate,
-    numDays,
-  } = useSelector((state) => state.chartData);
+  const { chartData, chartStartDate, earliestStartDate, numDays } = useSelector(
+    (state) => state.chartData
+  );
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
-  const {workday_hours: workdayHours } = useSelector((state) => state.chartConfig);
+  const { workday_hours: workdayHours } = useSelector(
+    (state) => state.chartConfig
+  );
   const { holidayMap } = useSelector((state) => state.holidays);
 
   const employees = useSelector((state) => state.builders.employees);

@@ -1,7 +1,23 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { v4 as uuidv4 } from "uuid";
+import { Field, Label, Switch } from "@headlessui/react";
 import { addDays, parseISO } from "date-fns";
+import { isEqual, omit } from "lodash";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { FiCheck } from "react-icons/fi";
+import { useCSVReader } from "react-papaparse";
+import { useSelector, useDispatch } from "react-redux";
+import { GridLoader } from "react-spinners";
+import { v4 as uuidv4 } from "uuid";
+
+import {
+  buttonClass,
+  modalContainerClass,
+  modalOverlayClass,
+} from "../assets/tailwindConstants";
+import { usePermissions } from "../hooks/usePermissions";
+import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
+import { createProjectFinancials } from "../redux/actions/financialsData";
+import { saveProject } from "../redux/actions/projects";
+import { selectSchedulableEmployees } from "../redux/selectors";
 import {
   formatDateForInput,
   formatDateForDisplay,
@@ -12,21 +28,6 @@ import {
   sortAndAdjustDates,
   totalJobHours,
 } from "../utils/helpers";
-import { saveProject } from "../redux/actions/projects";
-import { isEqual, omit } from "lodash";
-import { useCSVReader } from "react-papaparse";
-import { GridLoader } from "react-spinners";
-import {
-  buttonClass,
-  modalContainerClass,
-  modalOverlayClass,
-} from "../assets/tailwindConstants";
-import { Field, Label, Switch } from "@headlessui/react";
-import { createProjectFinancials } from "../redux/actions/financialsData";
-import { usePermissions } from "../hooks/usePermissions";
-import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
-import { selectSchedulableEmployees } from "../redux/selectors";
-import { FiCheck } from "react-icons/fi";
 
 const JobModal = ({
   isOpen,
@@ -394,7 +395,7 @@ const JobModal = ({
     }
   };
 
-  const handleAddWorkPeriod = (task_id, prevBuilderId = defaultBuilderId) => {
+  const handleAddWorkPeriod = (task_id, prevBuilderId = defaultEmployeeId) => {
     setLocalRooms((prevRooms) =>
       prevRooms.map((room) => {
         if (room.task_id === task_id) {

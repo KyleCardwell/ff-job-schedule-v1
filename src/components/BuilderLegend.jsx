@@ -1,6 +1,7 @@
-import React from "react";
 import PropTypes from "prop-types";
+import React from "react";
 import { useSelector } from "react-redux";
+
 import { selectSchedulableEmployees } from "../redux/selectors";
 
 const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
