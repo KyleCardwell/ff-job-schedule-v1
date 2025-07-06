@@ -25,7 +25,7 @@ import {
 } from "./redux/authSlice";
 import TeamJoin from "./components/TeamJoin.jsx";
 import AdminDashboard from "./components/adminDashboard/AdminDashboard.jsx";
-import Navigation from "./components/Navigation";
+import Navigation from "./components/Navigation.jsx";
 import Header from "./components/Header"; // Import the new Header component
 import { PATHS } from "./utils/constants.js";
 import store from "./redux/store"; // Import the store
@@ -35,6 +35,8 @@ import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout";
 import { fetchTeamMemberData, fetchTeamMemberRole } from "./redux/actions/teamMembers.js";
+import { defineHolidays } from "./redux/actions/holidays.js";
+import { Actions } from "./redux/actions.js";
 
 const authContainerStyle = {
   maxWidth: "400px",
@@ -153,7 +155,8 @@ const App = () => {
     const fetchData = async () => {
       if (session && teamId && !initialFetchDone.current) {
         try {
-          dispatch(fetchChartConfig());
+          dispatch(fetchFeatureToggles()); // Add feature toggles fetch
+          await dispatch(fetchChartConfig());
           await dispatch(fetchEmployees());
 
           // Get first employee after employees are loaded
@@ -161,6 +164,25 @@ const App = () => {
           const employees = state.builders.employees;
           if (employees?.length > 0) {
             await dispatch(fetchProjects(employees[0].employee_id));
+            
+            // After all data is loaded, we can create the holiday map
+            const currentState = store.getState();
+            const { chartStartDate, chartEndDate } = currentState.chartData;
+            const { standardHolidays, customHolidays } = currentState.holidays;
+            
+            if (chartStartDate && chartEndDate && standardHolidays && customHolidays) {
+              const holidayMap = defineHolidays(
+                chartStartDate,
+                chartEndDate,
+                standardHolidays,
+                customHolidays
+              );
+              // You can either dispatch this to store or use it directly
+              dispatch({
+                type: Actions.holidays.SET_HOLIDAY_MAP,
+                payload: holidayMap
+              });
+            }
           }
 
           initialFetchDone.current = true;

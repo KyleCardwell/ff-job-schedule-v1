@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
   useNavigate,
@@ -15,7 +15,6 @@ import {
   headerButtonClass,
   headerButtonColor,
 } from "../../assets/tailwindConstants";
-import Holidays from "date-holidays";
 import { PATHS } from "../../utils/constants";
 
 // Wrapper component to handle ref forwarding
@@ -25,21 +24,14 @@ const SettingsWrapper = ({ component: Component, componentRef, ...props }) => {
 
 const AdminDashboard = () => {
   const [isSaving, setIsSaving] = useState(false);
-  const [holidayChecker, setHolidayChecker] = useState(null);
   const activeComponentRef = useRef();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
-  const holidays = useSelector((state) => state.holidays);
-  const dayWidth = useSelector((state) => state.chartConfig.dayWidth);
+  const { dayWidth, workday_hours: workdayHours } = useSelector(
+    (state) => state.chartConfig.workday_hours
+  );
   const { roleId, permissions } = useSelector((state) => state.auth);
-
-  useEffect(() => {
-    const hd = new Holidays();
-    hd.init("US"); // Initialize with US holidays.
-    setHolidayChecker(hd);
-  }, []);
 
   // Define all possible tabs
   const allTabs = [
@@ -48,7 +40,7 @@ const AdminDashboard = () => {
       label: "Employees",
       path: PATHS.MANAGE_EMPLOYEES,
       component: EmployeeSettings,
-      props: { workdayHours, holidayChecker, dayWidth, holidays },
+      props: { workdayHours, dayWidth },
       requiresAdmin: true,
       maxWidthClass: "max-w-[720px]",
     },
@@ -66,7 +58,7 @@ const AdminDashboard = () => {
       label: "Holidays",
       path: PATHS.MANAGE_HOLIDAYS,
       component: HolidaySettings,
-      props: { workdayHours, holidayChecker, dayWidth, holidays },
+      props: { workdayHours, dayWidth },
       requiresAdmin: true,
       maxWidthClass: "max-w-[720px]",
     },

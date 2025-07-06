@@ -11,89 +11,57 @@ import {
   differenceInCalendarDays,
   format,
   startOfWeek,
-  subDays,
 } from "date-fns";
 import { GridLoader } from "react-spinners";
 import { normalizeDate } from "../utils/dateUtils";
 import * as d3 from "d3";
-import Holidays from "date-holidays";
-import { calculateXPosition, isHoliday } from "../utils/helpers";
+import { calculateXPosition } from "../utils/helpers";
 import BuilderLegend from "./BuilderLegend";
-import BuilderModal from "./BuilderModal";
 import JobModalChartData from "./JobModalChartData";
-import HolidayModal from "./HolidayModal";
 import TaskGroups from "./TaskGroups";
 import { eachDayOfInterval, parseISO } from "date-fns";
 import ErrorToast from "./ErrorToast";
-import ChartSettingsModal from "./ChartSettingsModal";
 import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
 import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
-import { saveHolidays } from "../redux/actions/holidays";
 import { usePermissions } from "../hooks/usePermissions";
 import {
   headerButtonClass,
   headerButtonColor,
 } from "../assets/tailwindConstants";
-import { Actions } from "../redux/actions";
 import DateRangeFilter from "./DateRangeFilter";
+import { fetchProjects } from "../redux/actions/projects";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
-
-  const holidays = useSelector((state) => state.holidays);
-  const { chartData } = useSelector((state) => state.chartData);
-  const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
-  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
   const { canEditSchedule } = usePermissions();
+
+  const {
+    chartData,
+    chartStartDate,
+    earliestStartDate,
+    numDays,
+  } = useSelector((state) => state.chartData);
+  const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
+  const {workday_hours: workdayHours } = useSelector((state) => state.chartConfig);
+  const { holidayMap } = useSelector((state) => state.holidays);
 
   const employees = useSelector((state) => state.builders.employees);
   const defaultEmployeeId = employees[0]?.employee_id;
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState("");
 
-  const [holidayChecker, setHolidayChecker] = useState(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
   const [dateFilter, setDateFilter] = useState({
     startDate: null,
     endDate: null,
   });
 
-  const daysBeforeStart = 15;
-  const daysAfterEnd = 15;
   const dayWidth = 30;
 
   useEffect(() => {
-    const hd = new Holidays();
-    hd.init("US"); // Initialize with US holidays. Change as needed.
-    setHolidayChecker(hd);
-  }, []);
-
-  const { earliestStartDate, latestStartDate } = useMemo(() => {
-    let earliest = new Date(8640000000000000);
-    let latest = new Date(-8640000000000000);
-    let hasAssignedTasks = false;
-
-    chartData
-      .filter((room) => room.task_active)
-      .forEach((room) => {
-        if (room.employee_id !== defaultEmployeeId) {
-          hasAssignedTasks = true;
-          const roomStartDate = parseISO(normalizeDate(room.start_date));
-          const roomEndDate = parseISO(normalizeDate(room.end_date));
-
-          if (roomStartDate < earliest) {
-            earliest = roomStartDate;
-          }
-          if (roomEndDate > latest) {
-            latest = roomEndDate;
-          }
-        }
-      });
-
-    return {
-      earliestStartDate: hasAssignedTasks ? earliest : null,
-      latestStartDate: hasAssignedTasks ? latest : null,
-    };
-  }, [chartData, defaultEmployeeId]);
+    if (employees?.length > 0) {
+      dispatch(fetchProjects(employees[0].employee_id));
+    }
+  }, [employees, dispatch]);
 
   const { activeRoomsData, lastJobsIndex, someTaskAssigned } = useMemo(() => {
     let someTaskAssigned = false;
@@ -126,15 +94,13 @@ export const ChartContainer = () => {
             let passesDateFilter = true;
 
             if (dateFilter.startDate || dateFilter.endDate) {
-              const filterStart = dateFilter.startDate || '-infinity';
-              const filterEnd = dateFilter.endDate || 'infinity';
-              
+              const filterStart = dateFilter.startDate || "-infinity";
+              const filterEnd = dateFilter.endDate || "infinity";
+
               passesDateFilter =
                 taskEndDate > filterStart &&
-                ((taskStartDate >= filterStart &&
-                  taskStartDate <= filterEnd) ||
-                  (filterStart >= taskStartDate &&
-                    filterStart <= filterEnd));
+                ((taskStartDate >= filterStart && taskStartDate <= filterEnd) ||
+                  (filterStart >= taskStartDate && filterStart <= filterEnd));
             }
 
             // If room passes filters, increment its task_id count
@@ -155,14 +121,14 @@ export const ChartContainer = () => {
 
     let currentJobId = null;
     let jobsIndex = -1;
-    const roomsWithJobsIndex = filteredRooms.map(room => {
+    const roomsWithJobsIndex = filteredRooms.map((room) => {
       if (room.project_id !== currentJobId) {
         currentJobId = room.project_id;
         jobsIndex++;
       }
       return {
         ...room,
-        jobsIndex
+        jobsIndex,
       };
     });
 
@@ -172,15 +138,6 @@ export const ChartContainer = () => {
       someTaskAssigned,
     };
   }, [chartData, defaultEmployeeId, selectedEmployeeIds, dateFilter]);
-
-  useEffect(() => {
-    if (earliestStartDate) {
-      dispatch({
-        type: Actions.chartData.UPDATE_CHART_START_DATE,
-        payload: subDays(earliestStartDate, daysBeforeStart),
-      });
-    }
-  }, [earliestStartDate, dispatch]);
 
   const chartRef = useRef(null);
   const leftColumnRef = useRef(null);
@@ -193,9 +150,6 @@ export const ChartContainer = () => {
 
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
-  const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [clickedTask, setClickedTask] = useState(null);
   const [databaseError, setDatabaseError] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -242,18 +196,6 @@ export const ChartContainer = () => {
       return acc;
     }, {});
   }, [employees]);
-
-  const chartStartDate = useMemo(() => {
-    return subDays(earliestStartDate, daysBeforeStart);
-  }, [earliestStartDate, daysBeforeStart]);
-
-  const numDays = useMemo(() => {
-    return (
-      differenceInCalendarDays(latestStartDate, earliestStartDate) +
-      daysBeforeStart +
-      daysAfterEnd
-    );
-  }, [earliestStartDate, latestStartDate, daysBeforeStart, daysAfterEnd]);
 
   // Create an array of dates for the column headers
   const dates = useMemo(() => {
@@ -460,6 +402,8 @@ export const ChartContainer = () => {
           .on("dblclick", (event, d) => {
             scrollToMonday(d);
           });
+        const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+        const isHolidayDate = holidayMap[normalizeDate(d)];
 
         // Add background rectangles for weekends and holidays
         headerGroup.each(function (d, i) {
@@ -741,7 +685,7 @@ export const ChartContainer = () => {
       .attr("width", dayWidth)
       .attr("height", activeRoomsData.length * rowHeight)
       .attr("fill", (d) =>
-        isHoliday(d, holidayChecker, holidays) ? "lightblue" : "none"
+        holidayMap[normalizeDate(d)] ? "lightblue" : "none"
       )
       .attr("opacity", 0.5);
 
@@ -761,30 +705,14 @@ export const ChartContainer = () => {
     chartStartDate,
     dayWidth,
     employees,
-    holidayChecker,
+    holidayMap,
     isExpanded,
-    holidays,
     numDays,
     activeRoomsData,
     chartHeight,
     tasks,
+    earliestStartDate,
   ]);
-
-  useEffect(() => {
-    if (holidays?.customHolidays?.length) {
-      const filteredCustomHolidays = holidays.customHolidays.filter(
-        (holiday) =>
-          holiday.name.localeCompare(normalizeDate(chartStartDate)) >= 0
-      );
-
-      // If we filtered out any holidays, update them
-      if (filteredCustomHolidays.length !== holidays.customHolidays.length) {
-        dispatch(
-          saveHolidays(holidays.standardHolidays, filteredCustomHolidays)
-        );
-      }
-    }
-  }, [chartStartDate, holidays?.customHolidays, holidays?.standardHolidays]);
 
   useEffect(() => {
     let scrollLeft = 0;
@@ -1178,10 +1106,8 @@ export const ChartContainer = () => {
                 handleAutoScroll={handleAutoScroll}
                 setIsLoading={setIsLoading}
                 chartStartDate={chartStartDate}
-                daysBeforeStart={daysBeforeStart}
                 rowHeight={rowHeight}
                 workdayHours={workdayHours}
-                holidayChecker={holidayChecker}
                 dayWidth={dayWidth}
                 scrollToMonday={scrollToMonday}
                 onDatabaseError={handleDatabaseError}
@@ -1245,39 +1171,12 @@ export const ChartContainer = () => {
         jobData={selectedJob}
         subTasksByEmployee={subTasksByEmployee}
         timeOffByBuilder={timeOffByBuilder}
-        holidayChecker={holidayChecker}
-        holidays={holidays}
         workdayHours={workdayHours}
         chartStartDate={chartStartDate}
         dayWidth={dayWidth}
         lastJobsIndex={lastJobsIndex}
         clickedTask={clickedTask}
         setIsLoading={setIsLoading}
-        onDatabaseError={handleDatabaseError}
-      />
-
-      <BuilderModal
-        visible={isBuilderModalOpen}
-        onCancel={() => setIsBuilderModalOpen(false)}
-        holidays={holidays}
-        holidayChecker={holidayChecker}
-        workdayHours={workdayHours}
-        chartStartDate={chartStartDate}
-        dayWidth={dayWidth}
-      />
-
-      <HolidayModal
-        isOpen={isHolidayModalOpen}
-        onClose={() => setIsHolidayModalOpen(false)}
-        workdayHours={workdayHours}
-        holidayChecker={holidayChecker}
-        dayWidth={dayWidth}
-        chartStartDate={chartStartDate}
-      />
-
-      <ChartSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
         onDatabaseError={handleDatabaseError}
       />
     </div>

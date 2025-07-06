@@ -22,20 +22,18 @@ import { GridLoader } from "react-spinners";
 import { v4 as uuidv4 } from "uuid";
 import SettingsSection from "./SettingsSection";
 import EmployeeSettingsCard from "./EmployeeSettingsCard";
-import ErrorModal from '../common/ErrorModal';
+import ErrorModal from "../common/ErrorModal";
 
 const EmployeeSettings = forwardRef((props, ref) => {
-  const { visible, holidayChecker } = props;
+  const { visible } = props;
 
-  const { chartStartDate, dayWidth } = useSelector(
-    (state) => state.chartData
-  );
+  const { chartStartDate, dayWidth } = useSelector((state) => state.chartData);
 
   const { workday_hours } = useSelector((state) => state.chartConfig);
 
   const dispatch = useDispatch();
   const employees = useSelector((state) => state.builders.employees);
-  const holidays = useSelector((state) => state.holidays);
+  const { holidayMap } = useSelector((state) => state.holidays);
   const subTasksByEmployee = useSelector(
     (state) => state.taskData.subTasksByEmployee
   );
@@ -246,7 +244,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
       if (employee.employee_name.trim() === "") {
         newErrors[employee.employee_id] = {
           ...newErrors[employee.employee_id],
-          name: "Name is required"
+          name: "Name is required",
         };
       }
 
@@ -254,7 +252,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
       if (!employee.employee_type?.id) {
         newErrors[employee.employee_id] = {
           ...newErrors[employee.employee_id],
-          employee_type: "Employee type is required"
+          employee_type: "Employee type is required",
         };
       }
 
@@ -273,7 +271,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
         if (timeOffErrors.length > 0) {
           newErrors[employee.employee_id] = {
             ...newErrors[employee.employee_id],
-            [`timeoff-${timeOffIndex}`]: timeOffErrors.join(". ")
+            [`timeoff-${timeOffIndex}`]: timeOffErrors.join(". "),
           };
         }
       });
@@ -393,8 +391,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
           employeesToUpdate,
           employeesToDelete,
           workday_hours,
-          holidayChecker,
-          holidays,
+          holidayMap,
           dayWidth,
           chartStartDate,
           localEmployees[0].employee_id
@@ -545,7 +542,10 @@ const EmployeeSettings = forwardRef((props, ref) => {
       </div>
 
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]" ref={scrollableRef}>
+      <div
+        className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]"
+        ref={scrollableRef}
+      >
         <SettingsSection key="employees" title="" error={saveError}>
           {localEmployees.map((employee, index) => (
             <EmployeeSettingsCard
@@ -589,8 +589,8 @@ const EmployeeSettings = forwardRef((props, ref) => {
         </SettingsSection>
       </div>
       {schedulingError && (
-        <ErrorModal 
-          message={schedulingError} 
+        <ErrorModal
+          message={schedulingError}
           onClose={handleSchedulingErrorClose}
         />
       )}
