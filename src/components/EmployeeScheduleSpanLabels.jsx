@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import PropTypes from "prop-types";
+import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 import { selectSchedulableEmployees } from "../redux/selectors";
@@ -49,6 +50,13 @@ const EmployeeScheduleSpanLabels = ({
       </div>
     </div>
   );
+};
+
+EmployeeScheduleSpanLabels.propTypes = {
+  leftColumnWidth: PropTypes.number,
+  employeesScheduledHeight: PropTypes.number,
+  spanBarHeight: PropTypes.number,
+  rowHeight: PropTypes.number,
 };
 
 export default EmployeeScheduleSpanLabels;

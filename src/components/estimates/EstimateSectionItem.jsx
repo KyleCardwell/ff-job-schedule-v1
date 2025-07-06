@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import PropTypes from 'prop-types';
+import { useState } from "react";
 import { FiSave, FiX, FiTrash2 } from "react-icons/fi";
 
 const EstimateSectionItem = ({ item = {}, onSave, onCancel, onDelete }) => {
@@ -215,6 +216,13 @@ const EstimateSectionItem = ({ item = {}, onSave, onCancel, onDelete }) => {
       </div>
     </div>
   );
+};
+
+EstimateSectionItem.propTypes = {
+    item: PropTypes.object,
+    onSave: PropTypes.func,
+    onCancel: PropTypes.func,
+    onDelete: PropTypes.func,
 };
 
 export default EstimateSectionItem;

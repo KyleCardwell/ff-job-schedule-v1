@@ -1,4 +1,4 @@
-import React from 'react';
+import PropTypes from 'prop-types';
 
 const ConfirmationModal = ({ 
   isOpen, 
@@ -37,6 +37,18 @@ const ConfirmationModal = ({
       </div>
     </div>
   );
+};
+
+ConfirmationModal.propTypes = {
+  isOpen: PropTypes.bool,
+  title: PropTypes.string,
+  message: PropTypes.string,
+  onConfirm: PropTypes.func,
+  onCancel: PropTypes.func,
+  confirmText: PropTypes.string,
+  cancelText: PropTypes.string,
+  confirmButtonClass: PropTypes.string,
+  cancelButtonClass: PropTypes.string,
 };
 
 export default ConfirmationModal;

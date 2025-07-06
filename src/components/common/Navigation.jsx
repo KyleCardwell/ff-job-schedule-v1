@@ -1,4 +1,4 @@
-import React from "react";
+import PropTypes from "prop-types";
 import {
   FiCalendar,
   FiUsers,
@@ -96,6 +96,11 @@ const Navigation = ({ isOpen, onClose }) => {
       </div>
     </>
   );
+};
+
+Navigation.propTypes = {
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default Navigation;

@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import React from "react";
 
 const SettingsItem = ({ type, label, value, onChange, name, min, max }) => {
   switch (type) {
@@ -50,11 +49,11 @@ const SettingsItem = ({ type, label, value, onChange, name, min, max }) => {
 };
 
 SettingsItem.propTypes = {
-  type: PropTypes.oneOf(['text', 'checkbox', 'number']).isRequired,
-  label: PropTypes.string.isRequired,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.bool, PropTypes.number]).isRequired,
-  onChange: PropTypes.func.isRequired,
-  name: PropTypes.string.isRequired,
+  type: PropTypes.oneOf(['text', 'checkbox', 'number']),
+  label: PropTypes.string,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.bool, PropTypes.number]),
+  onChange: PropTypes.func,
+  name: PropTypes.string,
   min: PropTypes.string,
   max: PropTypes.string,
 };

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import PropTypes from "prop-types";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -118,6 +119,12 @@ const CompletedProjectCard = ({
       </div>
     </div>
   );
+};
+
+CompletedProjectCard.propTypes = {
+  project: PropTypes.object,
+  setIsFinancialsInputModalOpen: PropTypes.func,
+  setSelectedTask: PropTypes.func,
 };
 
 export default CompletedProjectCard;

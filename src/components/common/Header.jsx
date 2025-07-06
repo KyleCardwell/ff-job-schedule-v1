@@ -1,4 +1,4 @@
-import React from "react";
+import PropTypes from "prop-types";
 import { FiMenu, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
@@ -47,6 +47,12 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
       <div className="ml-auto flex items-center pr-4">{rightContent}</div>
     </header>
   );
+};
+
+Header.propTypes = {
+  isMenuOpen: PropTypes.bool,
+  onMenuClick: PropTypes.func,
+  rightContent: PropTypes.node,
 };
 
 export default Header;

@@ -1,4 +1,4 @@
-import React from "react";
+import PropTypes from "prop-types";
 
 const TeamMemberRow = ({
   member,
@@ -90,4 +90,13 @@ const TeamMemberRow = ({
   );
 };
 
+TeamMemberRow.propTypes = {
+  member: PropTypes.object,
+  userRoles: PropTypes.array,
+  permissionTypes: PropTypes.array,
+  onPermissionChange: PropTypes.func,
+  onRoleChange: PropTypes.func,
+};
+
 export default TeamMemberRow;
+  

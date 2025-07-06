@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import PropTypes from 'prop-types';
+import { useState } from "react";
 import { FiSave, FiX, FiPlusCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -590,8 +591,7 @@ const EstimateSectionForm = ({
                     <div>
                       <h5 className="text-sm font-medium">{item.name}</h5>
                       <p className="text-xs text-slate-500">
-                        {item.width}" × {item.height}" × {item.depth}" • Qty:{" "}
-                        {item.quantity}
+                        {`${item.width}" × ${item.height}" × ${item.depth}" • Qty: ${item.quantity}`}
                       </p>
                     </div>
                     <div className="flex space-x-2">
@@ -659,6 +659,13 @@ const EstimateSectionForm = ({
       </form>
     </div>
   );
+};
+
+EstimateSectionForm.propTypes = {
+    section: PropTypes.object,
+    taskId: PropTypes.string,
+    onCancel: PropTypes.func,
+    onSave: PropTypes.func,
 };
 
 export default EstimateSectionForm;

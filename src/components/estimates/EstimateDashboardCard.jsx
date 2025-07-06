@@ -1,4 +1,4 @@
-import React from "react";
+import PropTypes from "prop-types";
 
 const EstimateDashboardCard = ({ section, loading, onNavigate }) => {
   return (
@@ -32,6 +32,12 @@ const EstimateDashboardCard = ({ section, loading, onNavigate }) => {
       </button>
     </div>
   );
+};
+
+EstimateDashboardCard.propTypes = {
+  section: PropTypes.object,
+  loading: PropTypes.bool,
+  onNavigate: PropTypes.func,
 };
 
 export default EstimateDashboardCard;

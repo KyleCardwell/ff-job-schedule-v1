@@ -9,6 +9,7 @@ import {
   max,
 } from "date-fns";
 import { isEqual, omit } from "lodash";
+import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -986,6 +987,24 @@ const TaskGroups = ({
       ref={taskGroupsRef}
     />
   );
+};
+
+TaskGroups.propTypes = {
+  chartRef: PropTypes.object,
+  barMargin: PropTypes.number,
+  chartHeight: PropTypes.number,
+  numDays: PropTypes.number,
+  handleAutoScroll: PropTypes.func,
+  dayWidth: PropTypes.number,
+  rowHeight: PropTypes.number,
+  chartStartDate: PropTypes.string,
+  workdayHours: PropTypes.number,
+  setIsLoading: PropTypes.func,
+  scrollToMonday: PropTypes.func,
+  setEstimatedCompletionDate: PropTypes.func,
+  earliestStartDate: PropTypes.string,
+  selectedEmployeeIds: PropTypes.array,
+  dateFilter: PropTypes.object,
 };
 
 export default TaskGroups;

@@ -1,5 +1,7 @@
+
 import _ from "lodash";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -10,7 +12,6 @@ import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
 const FinancialsInputSection = ({
   sectionName,
   estimate,
-  actual_cost,
   inputRows = [],
   data = [], // Add data prop for hours section
   onUpdate,
@@ -500,6 +501,17 @@ const FinancialsInputSection = ({
       </div>
     </div>
   );
+};
+
+FinancialsInputSection.propTypes = {
+  sectionName: PropTypes.string,
+  estimate: PropTypes.number,
+  inputRows: PropTypes.array,
+  data: PropTypes.array,
+  onUpdate: PropTypes.func,
+  onToggle: PropTypes.func,
+  sectionId: PropTypes.string,
+  employees: PropTypes.array,
 };
 
 export default FinancialsInputSection;

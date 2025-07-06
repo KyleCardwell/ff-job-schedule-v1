@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
@@ -148,6 +149,14 @@ const EstimateTaskForm = ({
       </div>
     </div>
   );
+};
+
+EstimateTaskForm.propTypes = {
+    selectedTaskId: PropTypes.string,
+    onTaskDeleted: PropTypes.func,
+    isNew: PropTypes.bool,
+    onTaskSaved: PropTypes.func,
+    onCancel: PropTypes.func,
 };
 
 export default EstimateTaskForm;

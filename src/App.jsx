@@ -58,16 +58,17 @@ const App = () => {
 		teamId,
 	} = useSelector((state) => state.auth);
 	const { loading: chartLoading } = useSelector((state) => state.chartData);
-	const { loading: configLoading } = useSelector((state) => state.chartConfig);
+	const { loading: configLoading, company_name } = useSelector((state) => state.chartConfig);
 	const { loading: buildersLoading } = useSelector((state) => state.builders);
 	const initialFetchDone = useRef(false);
 	const lastAuthFetch = useRef(null);
 	const [isOpen, setIsOpen] = useState(false);
 
-	const isLoading =
-		authLoading ||
-		(!initialFetchDone.current &&
-			(chartLoading || configLoading || buildersLoading));
+	useEffect(() => {
+		if (company_name) {
+			document.title = `${company_name} Schedule`;
+		}
+	}, [company_name]);
 
 	const fetchUserData = useCallback(
 		async (session) => {
@@ -207,6 +208,11 @@ const App = () => {
 	useEffect(() => {
 		setIsOpen(false);
 	}, [session]);
+
+	const isLoading =
+		authLoading ||
+		(!initialFetchDone.current &&
+			(chartLoading || configLoading || buildersLoading));
 
 	if (isLoading) {
 		return (

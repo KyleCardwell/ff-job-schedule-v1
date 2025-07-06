@@ -1,4 +1,4 @@
-import React from "react";
+import PropTypes from 'prop-types';
 
 const EstimateSectionInfo = ({
   selectedTask,
@@ -167,6 +167,14 @@ const EstimateSectionInfo = ({
       )}
     </div>
   );
+};
+
+EstimateSectionInfo.propTypes = {
+    selectedTask: PropTypes.object,
+    estimate_data: PropTypes.object,
+    onAddSection: PropTypes.func,
+    onEditSection: PropTypes.func,
+    selectedSectionId: PropTypes.string,
 };
 
 export default EstimateSectionInfo;

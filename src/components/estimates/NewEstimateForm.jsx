@@ -1,8 +1,8 @@
 import { isEqual } from "lodash";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import {
   createEstimateProject,
@@ -22,7 +22,6 @@ const STEPS = {
 
 const NewEstimateForm = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { estimateId } = useParams();
   
   const [currentStep, setCurrentStep] = useState(STEPS.PROJECT_INFO);
@@ -106,7 +105,9 @@ const NewEstimateForm = () => {
             // Create new estimate project and estimate
             const estimateProject = await dispatch(createEstimateProject(projectData));
             const estimate = await dispatch(createEstimate(estimateProject.est_project_id));
-            setCurrentStep(STEPS.TASKS);
+            if (estimate) {
+              setCurrentStep(STEPS.TASKS);
+            }
           } else {
             // For existing estimate, check if project data has changed
             const originalProjectData = {

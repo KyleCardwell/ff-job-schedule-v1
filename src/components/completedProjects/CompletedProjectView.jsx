@@ -1,13 +1,15 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import PropTypes from "prop-types";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useParams, useNavigate } from "react-router-dom";
+
+import { buttonClass } from "../../assets/tailwindConstants";
 import {
   fetchProjectFinancials,
   fetchTaskFinancials,
 } from "../../redux/actions/financialsData";
-import { buttonClass } from "../../assets/tailwindConstants";
-import FinancialsInputModal from "../financials/FinancialsInputModal";
 import { calculateFinancialTotals } from "../../utils/helpers";
+import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
 
 const CompletedProjectView = () => {
   const { projectId } = useParams();
@@ -284,6 +286,13 @@ const CompletedProjectView = () => {
       )}
     </div>
   );
+};
+
+CompletedProjectView.propTypes = {
+  projectId: PropTypes.string,
+  selectedTask: PropTypes.object,
+  isFinancialsModalOpen: PropTypes.bool,
+  setIsFinancialsModalOpen: PropTypes.func,
 };
 
 export default CompletedProjectView;

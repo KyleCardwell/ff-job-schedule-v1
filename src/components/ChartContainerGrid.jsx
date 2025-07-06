@@ -7,7 +7,7 @@ import {
   eachDayOfInterval,
   parseISO,
 } from "date-fns";
-import React, {
+import {
   useEffect,
   useRef,
   useState,
@@ -33,8 +33,6 @@ import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels.jsx";
 import EmployeeScheduleSpans from "./EmployeeScheduleSpans.jsx";
 import JobModalChartData from "./JobModalChartData.jsx";
 import TaskGroups from "./TaskGroups.jsx";
-
-
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
@@ -915,7 +913,7 @@ export const ChartContainer = () => {
         <div className="empty-state-container">
           <div className="empty-state-message mt-8">
             <h2>Welcome to your Project Dashboard!</h2>
-            <p>You don't have any projects yet. </p>
+            <p>You don&apos;t have any projects yet. </p>
             <br />
             <p>
               <strong>Start</strong> by adding employee types using the <br />

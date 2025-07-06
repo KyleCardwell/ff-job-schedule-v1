@@ -1,5 +1,6 @@
 import * as d3 from "d3";
-import React, { useRef, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useRef, useEffect } from "react";
 
 const EmployeeScheduleSpans = ({
   numDays,
@@ -36,6 +37,14 @@ const EmployeeScheduleSpans = ({
       height={employeesScheduledHeight}
     />
   );
+};
+
+EmployeeScheduleSpans.propTypes = {
+  numDays: PropTypes.number,
+  dayWidth: PropTypes.number,
+  leftColumnWidth: PropTypes.number,
+  employeePositions: PropTypes.array,
+  employeesScheduledHeight: PropTypes.number,
 };
 
 export default EmployeeScheduleSpans;

@@ -1,5 +1,6 @@
 import { Switch } from "@headlessui/react";
-import React, {
+import PropTypes from "prop-types";
+import {
   useState,
   useEffect,
   useRef,
@@ -596,5 +597,9 @@ const EmployeeSettings = forwardRef((props, ref) => {
 });
 
 EmployeeSettings.displayName = 'EmployeeSettings';
+
+EmployeeSettings.propTypes = {
+  visible: PropTypes.bool,
+}
 
 export default EmployeeSettings;

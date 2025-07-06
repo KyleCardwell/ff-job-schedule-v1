@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import PropTypes from 'prop-types';
+import { useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
   useNavigate,
@@ -182,6 +183,14 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
+};
+
+SettingsWrapper.propTypes = {
+  component: PropTypes.elementType,
+  componentRef: PropTypes.oneOfType([
+    PropTypes.func,
+    PropTypes.shape({ current: PropTypes.any })
+  ])
 };
 
 export default AdminDashboard;

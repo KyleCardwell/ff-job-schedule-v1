@@ -1,6 +1,5 @@
-import { Field, Label, Switch } from "@headlessui/react";
-import { isEqual, omit } from "lodash";
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect, useMemo } from "react";
 import { useCSVReader } from "react-papaparse";
 import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
@@ -351,6 +350,12 @@ const FinancialsInputModal = ({
       )}
     </div>
   );
+};
+
+FinancialsInputModal.propTypes = {
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
+  selectedTask: PropTypes.object,
 };
 
 export default FinancialsInputModal;

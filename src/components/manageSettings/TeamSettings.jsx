@@ -1,8 +1,7 @@
-import React, { forwardRef, useState, useImperativeHandle, useEffect } from 'react';
+import { forwardRef, useState, useImperativeHandle, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import { fetchTeamMembers, fetchUserRoles, updateTeamMembers } from '../../redux/actions/teamMembers';
-import { supabase } from '../../utils/supabase';
 import ErrorModal from '../common/ErrorModal.jsx';
 
 import TeamMemberRow from './TeamMemberRow.jsx';

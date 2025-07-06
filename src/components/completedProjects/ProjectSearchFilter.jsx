@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import PropTypes from "prop-types";
+import { useState } from "react";
 
 import { buttonClass } from "../../assets/tailwindConstants";
 
@@ -81,6 +82,10 @@ const ProjectSearchFilter = ({ onFilterChange }) => {
       </div>
     </form>
   );
+};
+
+ProjectSearchFilter.propTypes = {
+  onFilterChange: PropTypes.func,
 };
 
 export default ProjectSearchFilter;

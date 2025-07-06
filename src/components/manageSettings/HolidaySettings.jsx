@@ -1,5 +1,5 @@
 import Holidays from "date-holidays";
-import React, {
+import {
   useState,
   useEffect,
   forwardRef,

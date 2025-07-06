@@ -1,7 +1,8 @@
 import { Field, Label, Switch } from "@headlessui/react";
 import { addDays, parseISO } from "date-fns";
 import { isEqual, omit } from "lodash";
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { FiCheck } from "react-icons/fi";
 import { useCSVReader } from "react-papaparse";
 import { useSelector, useDispatch } from "react-redux";
@@ -1794,6 +1795,21 @@ const JobModal = ({
       )}
     </div>
   );
+};
+
+JobModal.propTypes = {
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
+  onSave: PropTypes.func,
+  jobData: PropTypes.array,
+  subTasksByEmployee: PropTypes.object,
+  timeOffByBuilder: PropTypes.object,
+  workdayHours: PropTypes.number,
+  chartStartDate: PropTypes.string,
+  dayWidth: PropTypes.number,
+  clickedTask: PropTypes.object,
+  setIsLoading: PropTypes.func,
+  onDatabaseError: PropTypes.func,
 };
 
 export default JobModal;
