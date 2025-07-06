@@ -26,7 +26,7 @@ import { createProjectFinancials } from "../redux/actions/financialsData";
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 import { selectSchedulableEmployees } from "../redux/selectors";
-import { FiCalendar, FiCheck } from "react-icons/fi";
+import { FiCheck } from "react-icons/fi";
 
 const JobModal = ({
   isOpen,
@@ -35,8 +35,6 @@ const JobModal = ({
   jobData,
   subTasksByEmployee,
   timeOffByBuilder,
-  holidayChecker,
-  holidays,
   workdayHours,
   chartStartDate,
   dayWidth,
@@ -63,6 +61,7 @@ const JobModal = ({
   const projectData = useSelector((state) =>
     jobData && jobData[0] ? state.projects?.data[jobData[0]?.project_id] : null
   );
+  const { holidayMap } = useSelector(state => state.holidays)
   const [jobName, setJobName] = useState("");
   const [depositDate, setDepositDate] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -199,8 +198,7 @@ const JobModal = ({
           lastJob.start_date,
           lastJob.duration,
           workdayHours,
-          holidayChecker,
-          holidays,
+          holidayMap,
           employee_id,
           timeOffByBuilder
         ) / workdayHours;
@@ -212,8 +210,7 @@ const JobModal = ({
 
     return getNextWorkday(
       lastJobEndDate,
-      holidayChecker,
-      holidays,
+      holidayMap,
       employee_id,
       timeOffByBuilder
     );
@@ -674,8 +671,7 @@ const JobModal = ({
           sortAndAdjustDates(
             prev[oldBuilderId].filter((wp) => wp.subtask_id !== workPeriodId),
             workdayHours,
-            holidayChecker,
-            holidays,
+            holidayMap,
             timeOffByBuilder
           );
 
@@ -683,8 +679,7 @@ const JobModal = ({
           sortAndAdjustDates(
             [...(prev[newBuilderId] || []), updatedWorkPeriod],
             workdayHours,
-            holidayChecker,
-            holidays,
+            holidayMap,
             timeOffByBuilder
           );
 
@@ -780,8 +775,7 @@ const JobModal = ({
       const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
         builderTasks,
         workdayHours,
-        holidayChecker,
-        holidays,
+        holidayMap,
         timeOffByBuilder,
         dayWidth,
         chartStartDate
@@ -1092,8 +1086,7 @@ const JobModal = ({
         const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
           combinedBuilderTasks.filter((task) => task.task_active),
           workdayHours,
-          holidayChecker,
-          holidays,
+          holidayMap,
           timeOffByBuilder,
           dayWidth,
           chartStartDate

@@ -2,7 +2,8 @@ import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
 import { updateNextTaskNumber } from "./chartConfig";
 import { binarySearch } from "../../utils/helpers";
-import { subDays } from "date-fns";
+import { addDays, differenceInCalendarDays, subDays } from "date-fns";
+import { normalizeDate } from "../../utils/dateUtils";
 
 export const fetchEarliestStartDate =
   (excludeEmployeeId) => async (dispatch) => {
@@ -36,6 +37,50 @@ export const fetchEarliestStartDate =
     }
   };
 
+export const fetchEarliestAndLatestDates =
+  (excludeEmployeeId) => async (dispatch) => {
+    try {
+      // CREATE OR REPLACE FUNCTION get_min_start_and_max_end_dates(exclude_employee_id INTEGER)
+      // RETURNS TABLE (earliest_start TIMESTAMPTZ, latest_end TIMESTAMPTZ)
+      // LANGUAGE SQL
+      // AS $$
+      //   SELECT
+      //     MIN(s.start_date) AS earliest_start,
+      //     MAX(s.end_date) AS latest_end
+      //   FROM projects p
+      //   JOIN tasks t ON t.project_id = p.project_id
+      //   JOIN subtasks s ON s.task_id = t.task_id
+      //   WHERE t.task_active = true
+      //     AND p.project_completed_at IS NULL
+      //     AND p.project_scheduled_at IS NOT NULL
+      //     AND s.employee_id != exclude_employee_id;
+      // $$;
+      const { data } = await supabase.rpc("get_min_start_and_max_end_dates", {
+        exclude_employee_id: excludeEmployeeId,
+      });
+
+      if (data) {
+        const daysBeforeStart = 15;
+        const daysAfterEnd = 15;
+        const chartStartDate = normalizeDate(subDays(data[0], daysBeforeStart));
+        const chartEndDate = normalizeDate(addDays(data[1], daysAfterEnd));
+        const numDays = differenceInCalendarDays(chartEndDate, chartStartDate);
+        dispatch({
+          type: Actions.chartData.UPDATE_CHART_START_END_DATES,
+          payload: {
+            chartStartDate,
+            chartEndDate,
+            earliestStartDate: normalizeDate(data[0]),
+            latestStartDate: normalizeDate(data[1]),
+            numDays,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching earliest and latest dates:", error);
+    }
+  };
+
 export const fetchProjectsOptions = {
   select:
     "*, tasks (task_id, project_id, task_number, task_name, task_active, task_completed_at, task_created_at, est_duration, subtasks (subtask_id, task_id, employee_id, duration,subtask_width, start_date, end_date, subtask_created_at, hard_start_date))",
@@ -52,8 +97,8 @@ export const fetchProjects =
     dispatch({ type: Actions.projects.FETCH_PROJECTS_START });
 
     try {
-      // Fetch earliest start date first, excluding first employee
-      await dispatch(fetchEarliestStartDate(firstEmployeeId));
+      // Fetch earliest and latest dates, excluding first employee
+      await dispatch(fetchEarliestAndLatestDates(firstEmployeeId));
 
       const { data: result, error } = await supabase
         .from("projects")
@@ -64,7 +109,6 @@ export const fetchProjects =
 
       if (error) throw error;
 
-      // Extract project-level data into a map for O(1) lookup
       const projectsData = result.reduce((acc, project) => {
         acc[project.project_id] = {
           project_name: project.project_name,
@@ -118,7 +162,6 @@ export const fetchProjects =
           return a.subtask_created_at.localeCompare(b.subtask_created_at);
         });
 
-      // Dispatch both the projects data and the flattened tasks
       dispatch({
         type: Actions.projects.FETCH_PROJECTS_SUCCESS,
         payload: projectsData,

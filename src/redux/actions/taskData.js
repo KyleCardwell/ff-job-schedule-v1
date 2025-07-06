@@ -17,8 +17,7 @@ export const updateTasksAfterBuilderChanges = (
 	updatedBuilders,
 	deletedBuilderIds,
 	workdayHours,
-	holidayChecker,
-	holidays,
+	holidayMap,
 	dayWidth,
 	chartStartDate,
 	defaultBuilderId
@@ -53,12 +52,12 @@ export const updateTasksAfterBuilderChanges = (
 			const {tasks: sortedTasks } = sortAndAdjustDates(
 				builderTasks,
 				workdayHours,
-				holidayChecker,
-				holidays,
+				holidayMap,
 				timeOffByBuilder,
 				dayWidth,
 				chartStartDate
 			);
+			
 			return [
 				...acc.filter((task) => task.employee_id !== builder.employee_id),
 				...sortedTasks,
