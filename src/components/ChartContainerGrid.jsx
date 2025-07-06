@@ -402,18 +402,12 @@ export const ChartContainer = () => {
           .on("dblclick", (event, d) => {
             scrollToMonday(d);
           });
-        const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
-        const isHolidayDate = holidayMap[normalizeDate(d)];
 
         // Add background rectangles for weekends and holidays
         headerGroup.each(function (d, i) {
           const group = d3.select(this);
           const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
-          const isHolidayDate = isHoliday(
-            normalizeDate(d),
-            holidayChecker,
-            holidays
-          );
+          const isHolidayDate = holidayMap[normalizeDate(d)];
 
           if (isWeekend || isHolidayDate) {
             group
@@ -463,12 +457,7 @@ export const ChartContainer = () => {
             const group = d3.select(this);
 
             // Update background rectangle
-            const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
-            const isHolidayDate = isHoliday(
-              normalizeDate(d),
-              holidayChecker,
-              holidays
-            );
+            const isHolidayDate = holidayMap[normalizeDate(d)];
 
             group
               .selectAll(".header-background")
