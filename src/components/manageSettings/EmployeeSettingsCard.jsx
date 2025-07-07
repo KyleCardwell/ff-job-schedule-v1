@@ -1,5 +1,5 @@
-import React from "react";
 import PropTypes from "prop-types";
+
 import { formatDateForInput } from "../../utils/dateUtils";
 
 const EmployeeSettingsCard = ({
@@ -13,7 +13,6 @@ const EmployeeSettingsCard = ({
   onAddTimeOff,
   onTimeOffChange,
   onRemoveTimeOff,
-  onDelete,
   onMarkForDeletion,
   showRates,
   errors = {},
@@ -284,42 +283,43 @@ const EmployeeSettingsCard = ({
 
 EmployeeSettingsCard.propTypes = {
   employee: PropTypes.shape({
-    employee_name: PropTypes.string.isRequired,
-    employee_color: PropTypes.string.isRequired,
+    employee_name: PropTypes.string,
+    employee_color: PropTypes.string,
     employee_type: PropTypes.shape({
       id: PropTypes.string,
       name: PropTypes.string,
     }),
     employee_rate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    can_schedule: PropTypes.bool.isRequired,
+    can_schedule: PropTypes.bool,
     time_off: PropTypes.arrayOf(
       PropTypes.shape({
-        start: PropTypes.string.isRequired,
-        end: PropTypes.string.isRequired,
+        start: PropTypes.string,
+        end: PropTypes.string,
       })
-    ).isRequired,
+    ),
     markedForDeletion: PropTypes.bool,
-  }).isRequired,
+  }),
   employeeTypes: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
+      id: PropTypes.string,
+      name: PropTypes.string,
     })
   ),
-  onNameChange: PropTypes.func.isRequired,
-  onColorChange: PropTypes.func.isRequired,
-  onCanScheduleChange: PropTypes.func.isRequired,
-  onEmployeeTypeChange: PropTypes.func.isRequired,
-  onEmployeeRateChange: PropTypes.func.isRequired,
-  onAddTimeOff: PropTypes.func.isRequired,
-  onTimeOffChange: PropTypes.func.isRequired,
-  onRemoveTimeOff: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-  onMarkForDeletion: PropTypes.func.isRequired,
-  showRates: PropTypes.bool.isRequired,
+  onNameChange: PropTypes.func,
+  onColorChange: PropTypes.func,
+  onCanScheduleChange: PropTypes.func,
+  onEmployeeTypeChange: PropTypes.func,
+  onEmployeeRateChange: PropTypes.func,
+  onAddTimeOff: PropTypes.func,
+  onTimeOffChange: PropTypes.func,
+  onRemoveTimeOff: PropTypes.func,
+  onDelete: PropTypes.func,
+  onMarkForDeletion: PropTypes.func,
+  showRates: PropTypes.bool,
   errors: PropTypes.object,
-  timeOffVisible: PropTypes.bool.isRequired,
-  onToggleTimeOff: PropTypes.func.isRequired,
+  timeOffVisible: PropTypes.bool,
+  onToggleTimeOff: PropTypes.func,
+  defaultEmployee: PropTypes.bool,
   inputRef: PropTypes.oneOfType([
     PropTypes.func,
     PropTypes.shape({ current: PropTypes.instanceOf(Element) }),

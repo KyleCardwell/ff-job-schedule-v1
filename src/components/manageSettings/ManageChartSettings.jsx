@@ -1,15 +1,18 @@
-import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import PropTypes from "prop-types";
+import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { GridLoader } from "react-spinners";
 import { v4 as uuidv4 } from "uuid";
-import { buttonClass } from "../../assets/tailwindConstants";
+
 import { saveSettings } from "../../redux/actions/chartConfig";
-import SettingsSection from "./SettingsSection";
-import SettingsList from "./SettingsList";
-import SettingsItem from "./SettingsItem";
+
+import SettingsItem from "./SettingsItem.jsx";
+import SettingsList from "./SettingsList.jsx";
+import SettingsSection from "./SettingsSection.jsx";
 
 const ManageChartSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
+  const { onDatabaseError } = props;
+
   const chartConfig = useSelector((state) => state.chartConfig);
   const [settings, setSettings] = useState({});
   const [employeeTypes, setEmployeeTypes] = useState([]);
@@ -182,7 +185,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
     );
     // Clear any errors
     setErrors({});
-    // props.onClose();
   };
 
   const handleSave = async () => {
@@ -204,11 +206,10 @@ const ManageChartSettings = forwardRef((props, ref) => {
           })),
         })
       );
-      // props.onClose();
     } catch (error) {
       console.error("Error saving settings:", error);
-      if (props.onDatabaseError) {
-        props.onDatabaseError(error);
+      if (onDatabaseError) {
+        onDatabaseError(error);
       }
       setErrors((prev) => ({
         ...prev,
@@ -348,5 +349,10 @@ const ManageChartSettings = forwardRef((props, ref) => {
 });
 
 ManageChartSettings.displayName = 'ManageChartSettings';
+
+ManageChartSettings.propTypes = {
+  visible: PropTypes.bool,
+  onDatabaseError: PropTypes.func,
+}
 
 export default ManageChartSettings;

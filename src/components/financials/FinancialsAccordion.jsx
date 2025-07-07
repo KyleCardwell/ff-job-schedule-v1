@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import FinancialsInputSection from "./FinancialsInputSection";
+import PropTypes from "prop-types";
+import { useState } from "react";
+
+import FinancialsInputSection from "./FinancialsInputSection.jsx";
 
 const FinancialsAccordion = ({ sections, employees, onSectionUpdate }) => {
   const [openSectionId, setOpenSectionId] = useState(null);
@@ -23,6 +25,12 @@ const FinancialsAccordion = ({ sections, employees, onSectionUpdate }) => {
       ))}
     </div>
   );
+};
+
+FinancialsAccordion.propTypes = {
+  sections: PropTypes.array,
+  employees: PropTypes.array,
+  onSectionUpdate: PropTypes.func,
 };
 
 export default FinancialsAccordion;

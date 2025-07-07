@@ -1,4 +1,4 @@
-import React from 'react';
+import PropTypes from 'prop-types';
 
 const ErrorModal = ({ message, onClose }) => {
   if (!message) return null;
@@ -18,6 +18,11 @@ const ErrorModal = ({ message, onClose }) => {
       </div>
     </div>
   );
+};
+
+ErrorModal.propTypes = {
+  message: PropTypes.string,
+  onClose: PropTypes.func,
 };
 
 export default ErrorModal;

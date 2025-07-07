@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { format } from 'date-fns';
+import { useState } from 'react';
+
 import { normalizeDate } from '../utils/dateUtils';
 
 const DateRangeFilter = ({ onFilterChange, setSelectedEmployeeIds }) => {
@@ -59,7 +59,7 @@ const DateRangeFilter = ({ onFilterChange, setSelectedEmployeeIds }) => {
 };
 
 DateRangeFilter.propTypes = {
-  onFilterChange: PropTypes.func.isRequired,
+  onFilterChange: PropTypes.func,
 };
 
 export default DateRangeFilter;

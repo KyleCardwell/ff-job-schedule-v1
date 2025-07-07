@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import PropTypes from "prop-types";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import CompletedProjectCard from "./CompletedProjectCard";
-// import ChartActionButtons from "./ChartActionButtons";
-import { fetchCompletedProjects } from "../redux/actions/projects";
-import FinancialsInputModal from "./financials/FinancialsInputModal";
-import ProjectSearchFilter from "./ProjectSearchFilter";
+
+import { fetchCompletedProjects } from "../../redux/actions/projects";
+import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
+
+import CompletedProjectCard from "./CompletedProjectCard.jsx";
 import "./CompletedProjectsContainer.css";
+import ProjectSearchFilter from "./ProjectSearchFilter.jsx";
 
 const CompletedProjectsContainer = () => {
   const dispatch = useDispatch();
@@ -58,6 +60,12 @@ const CompletedProjectsContainer = () => {
       />
     </div>
   );
+};
+
+CompletedProjectsContainer.propTypes = {
+  completedProjects: PropTypes.array,
+  loading: PropTypes.bool,
+  error: PropTypes.string,
 };
 
 export default CompletedProjectsContainer;

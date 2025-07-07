@@ -9,6 +9,7 @@ import { projectsReducer } from "./projects";
 import { chartConfigReducer } from "./chartConfig";
 import { financialsDataReducer } from "./financialsData";
 import { teamMembersReducer } from "./teamMembers";
+import { estimatesReducer } from "./estimates";
 import { featureTogglesReducer } from "./featureToggles";
 
 const appReducer = combineReducers({
@@ -22,6 +23,7 @@ const appReducer = combineReducers({
 	chartConfig: chartConfigReducer,
 	financialsData: financialsDataReducer,
 	teamMembers: teamMembersReducer,
+	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
 });
 

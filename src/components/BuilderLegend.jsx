@@ -1,6 +1,6 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
+
 import { selectSchedulableEmployees } from "../redux/selectors";
 
 const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
@@ -56,8 +56,8 @@ const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
 };
 
 BuilderLegend.propTypes = {
-  onEmployeeFilter: PropTypes.func.isRequired,
-  selectedEmployeeIds: PropTypes.arrayOf(PropTypes.number).isRequired,
+  onEmployeeFilter: PropTypes.func,
+  selectedEmployeeIds: PropTypes.arrayOf(PropTypes.number),
 };
 
 export default BuilderLegend;

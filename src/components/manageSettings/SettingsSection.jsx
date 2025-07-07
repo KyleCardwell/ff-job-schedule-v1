@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 const SettingsSection = ({ title, children, error }) => {
@@ -14,8 +13,8 @@ const SettingsSection = ({ title, children, error }) => {
 };
 
 SettingsSection.propTypes = {
-  title: PropTypes.string.isRequired,
-  children: PropTypes.node.isRequired,
+  title: PropTypes.string,
+  children: PropTypes.node,
   error: PropTypes.string,
   addLabel: PropTypes.string,
 };

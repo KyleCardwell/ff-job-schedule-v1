@@ -1,5 +1,6 @@
-import React from "react";
+import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
+
 import {
   modalContainerClass,
   modalOverlayClass,
@@ -265,6 +266,17 @@ const EstimatesModal = ({
       </div>
     </div>
   );
+};
+
+EstimatesModal.propTypes = {
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
+  localSections: PropTypes.array,
+  setLocalSections: PropTypes.func,
+  adjustments: PropTypes.object,
+  onAdjustmentChange: PropTypes.func,
+  subtotal: PropTypes.number,
+  total: PropTypes.number,
 };
 
 export default EstimatesModal;

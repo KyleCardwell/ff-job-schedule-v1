@@ -1,5 +1,6 @@
-// EmployeeTypeAccordion.jsx
-import React, { useMemo } from "react";
+import PropTypes from "prop-types";
+import { useMemo } from "react";
+
 import { usePermissions } from "../../hooks/usePermissions";
 
 const EmployeeTypeAccordion = ({
@@ -112,6 +113,17 @@ const EmployeeTypeAccordion = ({
       </div>
     </div>
   );
+};
+
+EmployeeTypeAccordion.propTypes = {
+  type: PropTypes.object,
+  employees: PropTypes.array,
+  typeData: PropTypes.object,
+  onAddRow: PropTypes.func,
+  onInputChange: PropTypes.func,
+  onBlur: PropTypes.func,
+  isExpanded: PropTypes.bool,
+  onToggle: PropTypes.func,
 };
 
 export default EmployeeTypeAccordion;

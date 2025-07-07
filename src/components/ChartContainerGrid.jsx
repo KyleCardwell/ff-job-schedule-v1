@@ -1,4 +1,13 @@
-import React, {
+import * as d3 from "d3";
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  startOfWeek,
+  eachDayOfInterval,
+  parseISO,
+} from "date-fns";
+import {
   useEffect,
   useRef,
   useState,
@@ -6,43 +15,36 @@ import React, {
   useCallback,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  addDays,
-  differenceInCalendarDays,
-  format,
-  startOfWeek,
-} from "date-fns";
 import { GridLoader } from "react-spinners";
-import { normalizeDate } from "../utils/dateUtils";
-import * as d3 from "d3";
-import { calculateXPosition } from "../utils/helpers";
-import BuilderLegend from "./BuilderLegend";
-import JobModalChartData from "./JobModalChartData";
-import TaskGroups from "./TaskGroups";
-import { eachDayOfInterval, parseISO } from "date-fns";
-import ErrorToast from "./ErrorToast";
-import EmployeeScheduleSpans from "./EmployeeScheduleSpans";
-import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels";
-import { usePermissions } from "../hooks/usePermissions";
+
 import {
   headerButtonClass,
   headerButtonColor,
 } from "../assets/tailwindConstants";
-import DateRangeFilter from "./DateRangeFilter";
+import { usePermissions } from "../hooks/usePermissions";
 import { fetchProjects } from "../redux/actions/projects";
+import { normalizeDate } from "../utils/dateUtils";
+import { calculateXPosition } from "../utils/helpers";
+
+import BuilderLegend from "./BuilderLegend.jsx";
+import ErrorToast from "./common/ErrorToast.jsx";
+import DateRangeFilter from "./DateRangeFilter.jsx";
+import EmployeeScheduleSpanLabels from "./EmployeeScheduleSpanLabels.jsx";
+import EmployeeScheduleSpans from "./EmployeeScheduleSpans.jsx";
+import JobModalChartData from "./JobModalChartData.jsx";
+import TaskGroups from "./TaskGroups.jsx";
 
 export const ChartContainer = () => {
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
 
-  const {
-    chartData,
-    chartStartDate,
-    earliestStartDate,
-    numDays,
-  } = useSelector((state) => state.chartData);
+  const { chartData, chartStartDate, earliestStartDate, numDays } = useSelector(
+    (state) => state.chartData
+  );
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
-  const {workday_hours: workdayHours } = useSelector((state) => state.chartConfig);
+  const { workday_hours: workdayHours } = useSelector(
+    (state) => state.chartConfig
+  );
   const { holidayMap } = useSelector((state) => state.holidays);
 
   const employees = useSelector((state) => state.builders.employees);
@@ -75,7 +77,6 @@ export const ChartContainer = () => {
         return room;
       });
 
-    // Only apply filters if they are active
     const hasActiveFilters =
       selectedEmployeeIds.length > 0 ||
       dateFilter.startDate ||
@@ -89,11 +90,9 @@ export const ChartContainer = () => {
               selectedEmployeeIds.length === 0 ||
               selectedEmployeeIds.includes(room.employee_id);
 
-            // Convert dates once for efficiency
             const taskStartDate = normalizeDate(room.start_date);
             const taskEndDate = normalizeDate(room.end_date);
 
-            // Handle date filtering with null cases
             let passesDateFilter = true;
 
             if (dateFilter.startDate || dateFilter.endDate) {
@@ -122,7 +121,6 @@ export const ChartContainer = () => {
           }))
       : activeRooms;
 
-    // Calculate jobsIndex after filtering
     let currentJobId = null;
     let jobsIndex = -1;
     const roomsWithJobsIndex = filteredRooms.map((room) => {
@@ -144,10 +142,10 @@ export const ChartContainer = () => {
   }, [chartData, defaultEmployeeId, selectedEmployeeIds, dateFilter]);
 
   const chartRef = useRef(null);
-  const leftColumnRef = useRef(null); // For the fixed left column
-  const leftColumnHeaderRef = useRef(null); // For the fixed left column header
-  const headerRef = useRef(null); // For the fixed header
-  const monthHeaderRef = useRef(null); // Add new ref for month header
+  const leftColumnRef = useRef(null);
+  const leftColumnHeaderRef = useRef(null);
+  const headerRef = useRef(null);
+  const monthHeaderRef = useRef(null);
   const scrollableRef = useRef(null);
   const timeOffSvgRef = useRef(null);
   const employeesScheduledRef = useRef(null);
@@ -358,7 +356,7 @@ export const ChartContainer = () => {
       // Job Number header
       leftHeaderGroup
         .append("text")
-        .attr("x", 10) // Adjust x for alignment
+        .attr("x", 10)
         .attr("y", rowHeight / 2 + 6)
         .text("#")
         .attr("fill", "#000")
@@ -368,7 +366,7 @@ export const ChartContainer = () => {
       // Job Name header
       leftHeaderGroup
         .append("text")
-        .attr("x", 50) // Adjust x for alignment
+        .attr("x", 50)
         .attr("y", rowHeight / 2 + 6)
         .text("Job")
         .attr("fill", "#000")
@@ -378,7 +376,7 @@ export const ChartContainer = () => {
       // Room Name header
       leftHeaderGroup
         .append("text")
-        .attr("x", 130) // Adjust x for alignment
+        .attr("x", 130)
         .attr("y", rowHeight / 2 + 6)
         .text("Room")
         .attr("fill", "#000")
@@ -391,58 +389,107 @@ export const ChartContainer = () => {
       .attr("height", headerDatesVisibleHeight);
 
     // Add column headers with both date and day of the week
-    headerSvg
+    const headers = headerSvg
       .selectAll(".header")
-      .data(dates)
-      .enter()
-      .append("g")
-      .attr("class", "header")
-      .style("cursor", "pointer")
-      .each(function (d, i) {
-        // Group for each header
-        const group = d3.select(this);
+      .data(dates, (d) => d.getTime()); // Use date timestamp as key for stable updates
 
-        const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
-        const isHolidayDate = holidayMap[normalizeDate(d)];
+    // Join pattern handles enter, update, and exit in one operation
+    headers.join(
+      // Enter new elements
+      (enter) => {
+        const headerGroup = enter
+          .append("g")
+          .attr("class", "header")
+          .style("cursor", "pointer")
+          .on("dblclick", (event, d) => {
+            scrollToMonday(d);
+          });
 
-        // Append a rectangle for weekends
-        if (isWeekend || isHolidayDate) {
+        // Add background rectangles for weekends and holidays
+        headerGroup.each(function (d, i) {
+          const group = d3.select(this);
+          const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+          const isHolidayDate = holidayMap[normalizeDate(d)];
+
+          if (isWeekend || isHolidayDate) {
+            group
+              .append("rect")
+              .attr("class", "header-background")
+              .attr("x", i * dayWidth)
+              .attr("y", 0)
+              .attr("width", dayWidth)
+              .attr("height", headerDatesVisibleHeight)
+              .attr("fill", isHolidayDate ? "lightblue" : weekendColor);
+          }
+
+          // Date number
           group
-            .append("rect")
-            .attr("x", i * dayWidth)
-            .attr("y", 0)
-            .attr("width", dayWidth)
-            .attr("height", headerDatesVisibleHeight) // Adjust to cover the header
-            .attr("fill", isHolidayDate ? "lightblue" : weekendColor); // Light blue for holidays, grey for weekends
-        }
+            .append("text")
+            .attr("class", "date-text")
+            .attr("x", i * dayWidth + headerTextGap)
+            .attr("y", 13)
+            .text(d3.timeFormat("%d")(d))
+            .attr("fill", "#000")
+            .attr("font-size", "14px")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "left");
 
-        // Date number
-        group
-          .append("text")
-          .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 13)
-          .text(d3.timeFormat("%d")(d))
-          .attr("fill", "#000")
-          .attr("font-size", "14px")
-          .attr("font-weight", "bold")
-          .attr("text-anchor", "left");
-
-        // Day of the week
-        group
-          .append("text")
-          .attr("x", i * dayWidth + headerTextGap)
-          .attr("y", 23) // Adjust vertical position for day of the week
-          .text(d3.timeFormat("%a")(d))
-          .attr("fill", "#000")
-          .attr("font-size", "9px")
-          .attr("font-weight", "bold")
-          .attr("text-anchor", "left");
-
-        // Add double-click event to the group
-        group.on("dblclick", () => {
-          scrollToMonday(d);
+          // Day of the week
+          group
+            .append("text")
+            .attr("class", "day-text")
+            .attr("x", i * dayWidth + headerTextGap)
+            .attr("y", 23)
+            .text(d3.timeFormat("%a")(d))
+            .attr("fill", "#000")
+            .attr("font-size", "9px")
+            .attr("font-weight", "bold")
+            .attr("text-anchor", "left");
         });
-      });
+
+        return headerGroup;
+      },
+      // Update existing elements
+      (update) => {
+        update
+          .on("dblclick", (event, d) => {
+            scrollToMonday(d);
+          })
+          .each(function (d, i) {
+            const group = d3.select(this);
+
+            // Update background rectangle
+            const isHolidayDate = holidayMap[normalizeDate(d)];
+
+            group
+              .selectAll(".header-background")
+              .data([d])
+              .join("rect")
+              .attr("class", "header-background")
+              .attr("x", i * dayWidth)
+              .attr("y", 0)
+              .attr("width", dayWidth)
+              .attr("height", headerDatesVisibleHeight)
+              .attr("fill", isHolidayDate ? "lightblue" : weekendColor);
+
+            // Update date text
+            group
+              .select(".date-text")
+              .attr("x", i * dayWidth + headerTextGap)
+              .text(d3.timeFormat("%d")(d));
+
+            // Update day text
+            group
+              .select(".day-text")
+              .attr("x", i * dayWidth + headerTextGap)
+              .text(d3.timeFormat("%a")(d));
+          });
+
+        return update;
+      },
+      // Remove old elements
+      (exit) => exit.remove()
+    );
 
     headerSvg
       .selectAll(".vertical-line")
@@ -759,12 +806,10 @@ export const ChartContainer = () => {
         endTask: tasks[0],
       };
 
-      // Process each task to create segments
       for (let i = 1; i < tasks.length; i++) {
         const task = tasks[i];
 
         if (task.hard_start_date) {
-          // End current segment and start new one
           const startXPosition = calculateXPosition(
             normalizeDate(currentSegment.startTask.start_date),
             normalizeDate(chartStartDate),
@@ -789,18 +834,14 @@ export const ChartContainer = () => {
               startXPosition,
           });
 
-          // Start new segment
           currentSegment = {
             startTask: task,
             endTask: task,
           };
         } else {
-          // Extend current segment
           currentSegment.endTask = task;
         }
       }
-
-      // Add the final segment
       const startXPosition = calculateXPosition(
         normalizeDate(currentSegment.startTask.start_date),
         normalizeDate(chartStartDate),
@@ -872,7 +913,7 @@ export const ChartContainer = () => {
         <div className="empty-state-container">
           <div className="empty-state-message mt-8">
             <h2>Welcome to your Project Dashboard!</h2>
-            <p>You don't have any projects yet. </p>
+            <p>You don&apos;t have any projects yet. </p>
             <br />
             <p>
               <strong>Start</strong> by adding employee types using the <br />

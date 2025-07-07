@@ -1,5 +1,5 @@
-import React from "react";
 import PropTypes from "prop-types";
+import React from "react";
 
 const SettingsList = ({ items, columns, onDelete, onChange, onAdd, addLabel }) => {
   return (
@@ -68,19 +68,19 @@ const SettingsList = ({ items, columns, onDelete, onChange, onAdd, addLabel }) =
 
 SettingsList.propTypes = {
   items: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-  })).isRequired,
+    id: PropTypes.string,
+  })),
   columns: PropTypes.arrayOf(PropTypes.shape({
-    field: PropTypes.string.isRequired,
-    label: PropTypes.string.isRequired,
-    width: PropTypes.string.isRequired,
+    field: PropTypes.string,
+    label: PropTypes.string,
+    width: PropTypes.string,
     placeholder: PropTypes.string,
     type: PropTypes.string,
     getValue: PropTypes.func,
     setValue: PropTypes.func,
-  })).isRequired,
-  onDelete: PropTypes.func.isRequired,
-  onChange: PropTypes.func.isRequired,
+  })),
+  onDelete: PropTypes.func,
+  onChange: PropTypes.func,
   onAdd: PropTypes.func,
   addLabel: PropTypes.string,
 };

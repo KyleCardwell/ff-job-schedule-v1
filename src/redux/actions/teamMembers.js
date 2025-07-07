@@ -89,7 +89,7 @@ export const fetchUserRoles = async (dispatch) => {
     const { data, error } = await supabase
       .from("roles")
       .select(
-        "role_id, role_name, can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss"
+        "role_id, role_name, can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss, can_create_estimates"
       );
 
     if (error) throw error;
@@ -104,7 +104,8 @@ export const fetchUserRoles = async (dispatch) => {
           can_manage_teams: role.can_manage_teams,
           can_edit_schedule: role.can_edit_schedule,
           can_edit_financials: role.can_edit_financials,
-          can_view_profit_loss: role.can_view_profit_loss
+          can_view_profit_loss: role.can_view_profit_loss,
+          can_create_estimates: role.can_create_estimates,
         }
       }))
     });
@@ -116,6 +117,44 @@ export const fetchUserRoles = async (dispatch) => {
       type: Actions.userRoles.FETCH_USER_ROLES_ERROR,
       payload: error,
     });
+    throw error;
+  }
+};
+
+export const fetchTeamMemberData = async (dispatch, userId) => {
+  try {
+    const { data: teamMemberData, error: teamMemberError } = await supabase
+      .from("team_members")
+      .select(`*`)
+      .eq("user_id", userId)
+      .single();
+
+    if (teamMemberError && teamMemberError.code !== "PGRST116") {
+      throw teamMemberError;
+    }
+
+    return { teamMemberData, error: teamMemberError };
+  } catch (error) {
+    console.error("Error fetching team member data:", error);
+    throw error;
+  }
+};
+
+export const fetchTeamMemberRole = async (dispatch, roleId) => {
+  try {
+    const { data: roleData, error: roleError } = await supabase
+      .from("roles")
+      .select(
+        "can_edit_projects, can_manage_teams, can_edit_schedule, can_edit_financials, can_view_profit_loss, can_create_estimates"
+      )
+      .eq("role_id", roleId)
+      .single();
+
+    if (roleError) throw roleError;
+
+    return roleData;
+  } catch (error) {
+    console.error("Error fetching team member role:", error);
     throw error;
   }
 };

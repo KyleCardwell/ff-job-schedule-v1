@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import * as d3 from "d3";
 import {
   addDays,
   differenceInCalendarDays,
@@ -8,9 +8,17 @@ import {
   differenceInDays,
   max,
 } from "date-fns";
-import { normalizeDate } from "../utils/dateUtils";
+import { isEqual, omit } from "lodash";
+import PropTypes from "prop-types";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import * as d3 from "d3";
+
+import { usePermissions } from "../hooks/usePermissions";
+import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
+import { updateOneBuilderChartData } from "../redux/actions/chartData";
+import { fetchEarliestAndLatestDates, updateSubtasksPositions } from "../redux/actions/projects";
+import { updateTasksByOneBuilder } from "../redux/actions/taskData";
+import { normalizeDate } from "../utils/dateUtils";
 import {
   calculateAdjustedWidth,
   calculateXPosition,
@@ -18,12 +26,6 @@ import {
   sortAndAdjustDates,
   totalJobHours,
 } from "../utils/helpers";
-import { updateOneBuilderChartData } from "../redux/actions/chartData";
-import { updateTasksByOneBuilder } from "../redux/actions/taskData";
-import { isEqual, omit } from "lodash";
-import { fetchEarliestAndLatestDates, updateSubtasksPositions } from "../redux/actions/projects";
-import { usePermissions } from "../hooks/usePermissions";
-import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 
 const TaskGroups = ({
   chartRef,
@@ -985,6 +987,24 @@ const TaskGroups = ({
       ref={taskGroupsRef}
     />
   );
+};
+
+TaskGroups.propTypes = {
+  chartRef: PropTypes.object,
+  barMargin: PropTypes.number,
+  chartHeight: PropTypes.number,
+  numDays: PropTypes.number,
+  handleAutoScroll: PropTypes.func,
+  dayWidth: PropTypes.number,
+  rowHeight: PropTypes.number,
+  chartStartDate: PropTypes.string,
+  workdayHours: PropTypes.number,
+  setIsLoading: PropTypes.func,
+  scrollToMonday: PropTypes.func,
+  setEstimatedCompletionDate: PropTypes.func,
+  earliestStartDate: PropTypes.string,
+  selectedEmployeeIds: PropTypes.array,
+  dateFilter: PropTypes.object,
 };
 
 export default TaskGroups;

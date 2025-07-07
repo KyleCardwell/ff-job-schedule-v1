@@ -1,30 +1,38 @@
-import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
+import PropTypes from "prop-types";
 import {
   FiCalendar,
   FiUsers,
   FiCheckSquare,
   FiLogOut,
+  FiDollarSign,
 } from "react-icons/fi";
-import { PATHS } from "../utils/constants";
-import { supabase } from "../utils/supabase";
-import { useDispatch } from "react-redux";
-import { clearAuth } from "../redux/authSlice";
-import { useNavigate } from "react-router-dom";
-import { headerButtonColor } from "../assets/tailwindConstants";
+import { useSelector , useDispatch } from "react-redux";
+import { NavLink, useNavigate } from "react-router-dom";
+
+
+
+import { headerButtonColor } from "../../assets/tailwindConstants";
+import useFeatureToggles from "../../hooks/useFeatureToggles";
+import { clearAuth } from "../../redux/authSlice";
+import { PATHS } from "../../utils/constants";
+import { supabase } from "../../utils/supabase";
 
 const Navigation = ({ isOpen, onClose }) => {
-  const location = useLocation();
+  const { enable_estimates } = useFeatureToggles();
   const { roleId, permissions } = useSelector((state) => state.auth);
   const canAccessManage =
     roleId === 1 || (permissions && permissions.can_manage_teams);
+  const canCreateEstimates =
+    roleId === 1 || (permissions && permissions.can_create_estimates);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const navItems = [
     ...(canAccessManage
       ? [{ icon: FiUsers, label: "Manage", path: PATHS.MANAGE }]
+      : []),
+    ...(canCreateEstimates && enable_estimates
+      ? [{ icon: FiDollarSign, label: "Estimates", path: PATHS.ESTIMATES }]
       : []),
     { icon: FiCalendar, label: "Schedule", path: PATHS.HOME },
     { icon: FiCheckSquare, label: "Completed", path: PATHS.COMPLETED },
@@ -88,6 +96,11 @@ const Navigation = ({ isOpen, onClose }) => {
       </div>
     </>
   );
+};
+
+Navigation.propTypes = {
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default Navigation;

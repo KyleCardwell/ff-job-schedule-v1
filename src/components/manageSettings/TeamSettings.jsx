@@ -1,9 +1,11 @@
-import React, { forwardRef, useState, useImperativeHandle, useEffect } from 'react';
+import { forwardRef, useState, useImperativeHandle, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { supabase } from '../../utils/supabase';
+
 import { fetchTeamMembers, fetchUserRoles, updateTeamMembers } from '../../redux/actions/teamMembers';
-import TeamMemberRow from './TeamMemberRow';
-import ErrorModal from '../common/ErrorModal';
+import ErrorModal from '../common/ErrorModal.jsx';
+
+import TeamMemberRow from './TeamMemberRow.jsx';
+
 
 const TeamSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
@@ -177,5 +179,7 @@ const TeamSettings = forwardRef((props, ref) => {
     </div>
   );
 });
+
+TeamSettings.displayName = 'TeamSettings';
 
 export default TeamSettings;

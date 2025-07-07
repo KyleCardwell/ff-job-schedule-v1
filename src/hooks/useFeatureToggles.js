@@ -1,6 +1,6 @@
 import { useSelector } from 'react-redux';
 
-export const useFeatureToggles = () => {
+const useFeatureToggles = () => {
   const { features } = useSelector((state) => state.featureToggles);
   const { teamId } = useSelector((state) => state.auth);
 

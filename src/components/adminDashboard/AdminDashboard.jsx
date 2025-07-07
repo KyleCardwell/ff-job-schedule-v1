@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+import PropTypes from 'prop-types';
+import { useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import {
   useNavigate,
@@ -7,15 +8,16 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import ManageChartSettings from "../manageSettings/ManageChartSettings";
-import EmployeeSettings from "../manageSettings/EmployeeSettings";
-import HolidaySettings from "../manageSettings/HolidaySettings";
-import TeamSettings from "../manageSettings/TeamSettings";
+
 import {
   headerButtonClass,
   headerButtonColor,
 } from "../../assets/tailwindConstants";
 import { PATHS } from "../../utils/constants";
+import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
+import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
+import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
+import TeamSettings from "../manageSettings/TeamSettings.jsx";
 
 // Wrapper component to handle ref forwarding
 const SettingsWrapper = ({ component: Component, componentRef, ...props }) => {
@@ -108,7 +110,7 @@ const AdminDashboard = () => {
   return (
     <div className="flex h-full bg-slate-800">
       {/* Sidebar Navigation */}
-      <div className="w-48 flex-none bg-slate-900 border-t border-slate-200">
+      <div className="w-64 flex-none bg-slate-900 border-t border-slate-200">
         <nav className="flex flex-col py-4">
           {tabs.map((tab) => (
             <button
@@ -181,6 +183,14 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
+};
+
+SettingsWrapper.propTypes = {
+  component: PropTypes.elementType,
+  componentRef: PropTypes.oneOfType([
+    PropTypes.func,
+    PropTypes.shape({ current: PropTypes.any })
+  ])
 };
 
 export default AdminDashboard;

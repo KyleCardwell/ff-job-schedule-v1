@@ -1,17 +1,19 @@
-import React, {
+import Holidays from "date-holidays";
+import {
   useState,
   useEffect,
   forwardRef,
   useImperativeHandle,
 } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { saveHolidays } from "../../redux/actions/holidays";
-import Holidays from "date-holidays";
-import { formatDateForInput, normalizeDate } from "../../utils/dateUtils";
-import { updateTasksAfterBuilderChanges } from "../../redux/actions/taskData";
-import SettingsSection from "./SettingsSection";
-import SettingsList from "./SettingsList";
 import { v4 as uuidv4 } from "uuid";
+
+import { saveHolidays } from "../../redux/actions/holidays";
+import { updateTasksAfterBuilderChanges } from "../../redux/actions/taskData";
+import { formatDateForInput, normalizeDate } from "../../utils/dateUtils";
+
+import SettingsList from "./SettingsList.jsx";
+import SettingsSection from "./SettingsSection.jsx";
 
 const HolidaySettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();

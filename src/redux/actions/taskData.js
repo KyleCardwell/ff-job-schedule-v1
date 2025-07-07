@@ -1,10 +1,12 @@
-import { sortAndAdjustDates } from "../../utils/helpers";
-import { Actions } from "../actions";
 import { eachDayOfInterval } from "date-fns";
+
 import { normalizeDate } from "../../utils/dateUtils";
-import { fetchProjects, updateSubtasksPositions } from "./projects";
+import { sortAndAdjustDates } from "../../utils/helpers";
 import { supabase } from "../../utils/supabase";
+import { Actions } from "../actions";
+
 import { fetchEmployees } from "./builders";
+import { fetchProjects, updateSubtasksPositions } from "./projects";
 
 export const updateTasksByOneBuilder = (employee_id, taskList) => {
 	return {

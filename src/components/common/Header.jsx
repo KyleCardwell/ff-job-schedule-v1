@@ -1,9 +1,10 @@
-import React from "react";
-import { useLocation } from "react-router-dom";
-import { PATHS } from "../utils/constants";
-import { useSelector } from "react-redux";
-import { headerButtonColor } from "../assets/tailwindConstants";
+import PropTypes from "prop-types";
 import { FiMenu, FiX } from "react-icons/fi";
+import { useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
+
+import { headerButtonColor } from "../../assets/tailwindConstants";
+import { PATHS } from "../../utils/constants";
 
 const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
   const location = useLocation();
@@ -11,6 +12,9 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
 
   // Map routes to page titles
   const getPageTitle = () => {
+    if (location.pathname.includes("/estimates")) {
+      return "Estimates";
+    }
     switch (location.pathname) {
       case PATHS.HOME:
         return `${company_name} Schedule`;
@@ -43,6 +47,12 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
       <div className="ml-auto flex items-center pr-4">{rightContent}</div>
     </header>
   );
+};
+
+Header.propTypes = {
+  isMenuOpen: PropTypes.bool,
+  onMenuClick: PropTypes.func,
+  rightContent: PropTypes.node,
 };
 
 export default Header;

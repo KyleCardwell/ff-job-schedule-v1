@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { useEffect } from 'react';
 import './ErrorToast.css';
 
 const ErrorToast = ({ message, onClose }) => {
@@ -16,6 +17,11 @@ const ErrorToast = ({ message, onClose }) => {
             <button onClick={onClose}>×</button>
         </div>
     );
+};
+
+ErrorToast.propTypes = {
+    message: PropTypes.string,
+    onClose: PropTypes.func,
 };
 
 export default ErrorToast;

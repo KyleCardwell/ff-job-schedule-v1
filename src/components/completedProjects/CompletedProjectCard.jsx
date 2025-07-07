@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import PropTypes from "prop-types";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchProjectFinancials, fetchTaskFinancials } from "../redux/actions/financialsData";
-import { buttonClass } from "../assets/tailwindConstants";
+
+import { buttonClass } from "../../assets/tailwindConstants";
 import "./CompletedProjectCard.css";
-import { usePermissions } from "../hooks/usePermissions";
+import { usePermissions } from "../../hooks/usePermissions";
+import { fetchProjectFinancials, fetchTaskFinancials } from "../../redux/actions/financialsData";
 
 const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 
@@ -25,7 +27,9 @@ const CompletedProjectCard = ({
 
   const handleEditClick = async (taskId, taskName, taskNumber) => {
     try {
-      const data = await dispatch(fetchTaskFinancials(taskId, project.project_id));
+      const data = await dispatch(
+        fetchTaskFinancials(taskId, project.project_id)
+      );
       setSelectedTask({
         task_id: taskId,
         task_name: taskName,
@@ -115,6 +119,12 @@ const CompletedProjectCard = ({
       </div>
     </div>
   );
+};
+
+CompletedProjectCard.propTypes = {
+  project: PropTypes.object,
+  setIsFinancialsInputModalOpen: PropTypes.func,
+  setSelectedTask: PropTypes.func,
 };
 
 export default CompletedProjectCard;
