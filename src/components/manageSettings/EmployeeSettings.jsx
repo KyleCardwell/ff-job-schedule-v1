@@ -11,12 +11,10 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  addEmployees,
-  updateEmployees,
-} from "../../redux/actions/builders";
+import { addEmployees, updateEmployees } from "../../redux/actions/builders";
 import { updateTasksAfterBuilderChanges } from "../../redux/actions/taskData";
 import { normalizeDate } from "../../utils/dateUtils";
+import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import ErrorModal from "../common/ErrorModal.jsx";
 
 import EmployeeSettingsCard from "./EmployeeSettingsCard.jsx";
@@ -44,11 +42,11 @@ const EmployeeSettings = forwardRef((props, ref) => {
   const [timeOffVisibility, setTimeOffVisibility] = useState({});
   const [showRates, setShowRates] = useState(false);
   const [schedulingError, setSchedulingError] = useState(null);
-  const scrollableRef = useRef(null);
-  const inputRefs = useRef({});
-
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const scrollableRef = useRef(null);
+  const inputRefs = useRef({});
 
   useEffect(() => {
     // If builders is empty or undefined, create first Employee
@@ -283,7 +281,6 @@ const EmployeeSettings = forwardRef((props, ref) => {
     const employeesToKeep = localEmployees.filter(
       (emp) => !emp.markedForDeletion
     );
-
     employeesToKeep.forEach((localEmployee) => {
       const existingEmployee = employees.find(
         (emp) => emp.employee_id === localEmployee.employee_id
@@ -315,8 +312,8 @@ const EmployeeSettings = forwardRef((props, ref) => {
 
   const handleSchedulingErrorClose = () => {
     setSchedulingError(null);
-    setIsSaving(true); // Set isSaving to true before continuing
-    // Continue with the save process
+    setIsSaving(true);
+    // After user acknowledges the scheduling conflicts, proceed with save
     handleSaveImplementation();
   };
 
@@ -383,18 +380,20 @@ const EmployeeSettings = forwardRef((props, ref) => {
         }
       }
 
-      // Update tasks after all builder changes
-      await dispatch(
-        updateTasksAfterBuilderChanges(
-          employeesToUpdate,
-          employeesToDelete,
-          workday_hours,
-          holidayMap,
-          dayWidth,
-          chartStartDate,
-          localEmployees[0].employee_id
-        )
-      );
+      // Only update tasks if there are changes that affect them
+      if (employeesToUpdate.length > 0 || employeesToDelete.length > 0) {
+        await dispatch(
+          updateTasksAfterBuilderChanges(
+            employeesToUpdate,
+            employeesToDelete,
+            workday_hours,
+            holidayMap,
+            dayWidth,
+            chartStartDate,
+            localEmployees[0].employee_id
+          )
+        );
+      }
 
       setTimeOffVisibility({});
       // onCancel();
@@ -403,6 +402,35 @@ const EmployeeSettings = forwardRef((props, ref) => {
       setSaveError("Failed to save Employees. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSave = async (skipDeletionCheck = false) => {
+    const hasEmployeesToDelete = localEmployees.some(
+      (emp) => emp.markedForDeletion
+    );
+
+    if (hasEmployeesToDelete && !skipDeletionCheck) {
+      setShowDeleteConfirmation(true);
+      setSchedulingError(null);
+      return;
+    }
+
+    if (validateInputs()) {
+      setIsSaving(true);
+      setSaveError(null);
+      setSchedulingError(null);
+
+      // First check for scheduling conflicts
+      if (!validateSchedulingChanges()) {
+        setIsSaving(false);
+        setShowDeleteConfirmation(false);
+        // The actual save will happen after user acknowledges the conflict
+        return;
+      }
+
+      // If no conflicts, proceed with save
+      await handleSaveImplementation();
     }
   };
 
@@ -457,24 +485,6 @@ const EmployeeSettings = forwardRef((props, ref) => {
       );
       return start1 === start2 && end1 === end2;
     });
-  };
-
-  const handleSave = async () => {
-    if (validateInputs()) {
-      setIsSaving(true);
-      setSaveError(null);
-      setSchedulingError(null);
-
-      // First check for scheduling conflicts
-      if (!validateSchedulingChanges()) {
-        setIsSaving(false);
-        // The actual save will happen after user acknowledges the conflict
-        return;
-      }
-
-      // If no conflicts, proceed with save
-      await handleSaveImplementation();
-    }
   };
 
   // Reset the form to its initial state
@@ -592,14 +602,50 @@ const EmployeeSettings = forwardRef((props, ref) => {
           onClose={handleSchedulingErrorClose}
         />
       )}
+      <ConfirmationModal
+        isOpen={showDeleteConfirmation && !schedulingError}
+        title="Confirm Employee Deletion"
+        message={(() => {
+          const employeesToDelete = localEmployees.filter(
+            (emp) => emp.markedForDeletion
+          );
+          const employeesWithTasks = employeesToDelete.filter(
+            (emp) => subTasksByEmployee[emp.employee_id]?.length > 0
+          );
+
+          const baseMessage = "You are about to permanently remove one or more employees. This action cannot be undone.";
+          let messages = [baseMessage];
+
+          if (employeesWithTasks.length > 0) {
+            messages.push(
+              `The following employees have active tasks that will be reassigned: ${employeesWithTasks
+                .map((emp) => emp.employee_name)
+                .join(", ")}.`
+            );
+          }
+
+          return messages;
+        })()}
+        onConfirm={() => {
+          setShowDeleteConfirmation(false);
+          handleSave(true);
+        }}
+        onCancel={() => {
+          setShowDeleteConfirmation(false);
+          cancelChanges();
+        }}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
     </div>
   );
 });
 
-EmployeeSettings.displayName = 'EmployeeSettings';
+EmployeeSettings.displayName = "EmployeeSettings";
 
 EmployeeSettings.propTypes = {
   visible: PropTypes.bool,
-}
+};
 
 export default EmployeeSettings;
