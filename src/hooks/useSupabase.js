@@ -1,6 +1,7 @@
+import { createClient } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { createClient } from '@supabase/supabase-js';
+
 import { supabase } from '../utils/supabase';
 
 

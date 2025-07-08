@@ -16,7 +16,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 import { updateOneBuilderChartData } from "../redux/actions/chartData";
-import { fetchEarliestAndLatestDates, updateSubtasksPositions } from "../redux/actions/projects";
+import {
+  fetchEarliestAndLatestDates,
+  updateSubtasksPositions,
+} from "../redux/actions/projects";
 import { updateTasksByOneBuilder } from "../redux/actions/taskData";
 import { normalizeDate } from "../utils/dateUtils";
 import {
@@ -42,6 +45,7 @@ const TaskGroups = ({
   onDatabaseError,
   setEstimatedCompletionDate,
   earliestStartDate,
+  latestStartDate,
   selectedEmployeeIds,
   dateFilter,
 }) => {
@@ -217,7 +221,7 @@ const TaskGroups = ({
               employee_id: builder.employee_id,
               date: normalizeDate(day),
             };
-          })
+          });
       })
     );
   }, [employees, chartStartDate, numDays, dayWidth]);
@@ -271,8 +275,10 @@ const TaskGroups = ({
       employees.length === 0 ||
       !activeTasksData ||
       (activeTasksData.length === 0 &&
-        !(selectedEmployeeIds.length === 1 &&
-          selectedEmployeeIds[0] === employees[0]?.employee_id))
+        !(
+          selectedEmployeeIds.length === 1 &&
+          selectedEmployeeIds[0] === employees[0]?.employee_id
+        ))
     ) {
       return;
     }
@@ -370,7 +376,7 @@ const TaskGroups = ({
             .duration(300)
             .ease(d3.easeBackOut)
             .attr("x", originalX + 5);
-            
+
           return;
         }
 
@@ -450,15 +456,20 @@ const TaskGroups = ({
             try {
               // Check if dragged task changed
               const currentTasks = subTasksByEmployee[d.employee_id];
-              
+
               // Find dragged task in both arrays
-              const draggedTaskNew = sortedBuilderTasks.find(t => t.subtask_id === d.subtask_id);
-              const draggedTaskOld = currentTasks?.find(t => t.subtask_id === d.subtask_id);
-              
+              const draggedTaskNew = sortedBuilderTasks.find(
+                (t) => t.subtask_id === d.subtask_id
+              );
+              const draggedTaskOld = currentTasks?.find(
+                (t) => t.subtask_id === d.subtask_id
+              );
+
               // Only compare fields that can change during drag/resize
-              const draggedTaskChanged = 
+              const draggedTaskChanged =
                 draggedTaskNew?.start_date !== draggedTaskOld?.start_date ||
-                draggedTaskNew?.subtask_width !== draggedTaskOld?.subtask_width ||
+                draggedTaskNew?.subtask_width !==
+                  draggedTaskOld?.subtask_width ||
                 draggedTaskNew?.duration !== draggedTaskOld?.duration;
 
               // If dragged task didn't change, no need to check others or update anything
@@ -485,11 +496,21 @@ const TaskGroups = ({
                 }
 
                 // Only compare fields that can change during drag/resize
-                return !isEqual(omit(task, ["xPosition"]), omit(originalTask, ["xPosition"]));
+                return !isEqual(
+                  omit(task, ["xPosition"]),
+                  omit(originalTask, ["xPosition"])
+                );
               });
 
               await updateSubtasksPositions(tasksToUpdate);
-              await dispatch(fetchEarliestAndLatestDates(defaultEmployeeId));
+
+              if (
+                tasksToUpdate[0].start_date < earliestStartDate ||
+                tasksToUpdate[tasksToUpdate.length - 1].end_date >
+                  latestStartDate
+              ) {
+                await dispatch(fetchEarliestAndLatestDates(defaultEmployeeId));
+              }
 
               previousTaskStateRef.current = null;
             } catch (error) {
@@ -642,15 +663,20 @@ const TaskGroups = ({
             try {
               // Check if dragged task changed
               const currentTasks = subTasksByEmployee[d.employee_id];
-              
+
               // Find dragged task in both arrays
-              const draggedTaskNew = sortedBuilderTasks.find(t => t.subtask_id === d.subtask_id);
-              const draggedTaskOld = currentTasks?.find(t => t.subtask_id === d.subtask_id);
-              
+              const draggedTaskNew = sortedBuilderTasks.find(
+                (t) => t.subtask_id === d.subtask_id
+              );
+              const draggedTaskOld = currentTasks?.find(
+                (t) => t.subtask_id === d.subtask_id
+              );
+
               // Only compare fields that can change during drag/resize
-              const draggedTaskChanged = 
+              const draggedTaskChanged =
                 draggedTaskNew?.start_date !== draggedTaskOld?.start_date ||
-                draggedTaskNew?.subtask_width !== draggedTaskOld?.subtask_width ||
+                draggedTaskNew?.subtask_width !==
+                  draggedTaskOld?.subtask_width ||
                 draggedTaskNew?.duration !== draggedTaskOld?.duration;
 
               // If dragged task didn't change, no need to check others or update anything
@@ -677,11 +703,20 @@ const TaskGroups = ({
                 }
 
                 // Only compare fields that can change during drag/resize
-                return !isEqual(omit(task, ["xPosition"]), omit(originalTask, ["xPosition"]));
+                return !isEqual(
+                  omit(task, ["xPosition"]),
+                  omit(originalTask, ["xPosition"])
+                );
               });
 
               await updateSubtasksPositions(tasksToUpdate);
-              await dispatch(fetchEarliestAndLatestDates(defaultEmployeeId));
+              if (
+                tasksToUpdate[0].start_date < earliestStartDate ||
+                tasksToUpdate[tasksToUpdate.length - 1].end_date >
+                  latestStartDate
+              ) {
+                dispatch(fetchEarliestAndLatestDates(defaultEmployeeId));
+              }
               previousTaskStateRef.current = null;
             } catch (error) {
               if (previousTaskStateRef.current) {
@@ -1003,6 +1038,7 @@ TaskGroups.propTypes = {
   scrollToMonday: PropTypes.func,
   setEstimatedCompletionDate: PropTypes.func,
   earliestStartDate: PropTypes.string,
+  latestStartDate: PropTypes.string,
   selectedEmployeeIds: PropTypes.array,
   dateFilter: PropTypes.object,
 };
