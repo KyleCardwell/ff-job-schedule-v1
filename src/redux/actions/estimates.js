@@ -85,48 +85,30 @@ export const fetchEstimates = (filters = {}) => {
       
       const { teamId } = getState().auth;
       
-      let query = supabase
-        .from('estimates')
-        .select(`
-          *,
-          estimate_project:estimate_projects (
-            est_project_id,
-            team_id,
-            est_project_name,
-            est_client_name
-          )
-        `)
-        .eq('estimate_projects.team_id', teamId)
-        .order('updated_at', { ascending: false, nullsFirst: false });
-
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters.searchTerm) {
-        query = query.or(`estimate_projects.est_project_name.ilike.%${filters.searchTerm}%`);
-      }
-
-      const { data: estimates, error } = await query;
+      let { data: estimates, error } = await supabase
+        .rpc('get_estimates_with_user_names', {
+          team_id_param: teamId
+        });
 
       if (error) throw error;
 
-      // Flatten the data structure
-      const flattenedEstimates = estimates.map(estimate => ({
-        ...estimate,
-        est_project_id: estimate.estimate_project.est_project_id,
-        est_project_name: estimate.estimate_project.est_project_name,
-        est_client_name: estimate.estimate_project.est_client_name,
-        team_id: estimate.estimate_project.team_id,
-        estimate_project: undefined // Remove the nested object
-      }));
+      // Apply filters client-side since they're not frequently changing
+      if (filters.status && filters.status !== 'all') {
+        estimates = estimates.filter(est => est.status === filters.status);
+      }
+
+      if (filters.searchTerm) {
+        estimates = estimates.filter(est => 
+          est.est_project_name.toLowerCase().includes(filters.searchTerm.toLowerCase())
+        );
+      }
 
       dispatch({ 
         type: Actions.estimates.FETCH_ESTIMATES_SUCCESS, 
-        payload: flattenedEstimates 
+        payload: estimates 
       });
 
-      return flattenedEstimates;
+      return estimates;
     } catch (error) {
       console.error('Error fetching estimates:', error);
       dispatch({
