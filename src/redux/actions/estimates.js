@@ -461,6 +461,7 @@ export const addTask = (estimateId, taskName) => {
       const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), -1);
       const newTaskOrder = maxOrder + 1;
 
+      // Create the new task - the database trigger will create the initial section
       const { data: newTask, error } = await supabase
         .from('estimate_tasks')
         .insert([
@@ -470,7 +471,10 @@ export const addTask = (estimateId, taskName) => {
             task_order: newTaskOrder
           }
         ])
-        .select()
+        .select(`
+          *,
+          sections:estimate_sections (*)
+        `)
         .single();
 
       if (error) throw error;

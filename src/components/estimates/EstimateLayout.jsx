@@ -77,6 +77,15 @@ const EstimateLayout = () => {
     setIsNewTask(true);
   };
 
+  const handleTaskSaved = (taskId) => {
+    setSelectedTaskId(taskId);
+    setIsNewTask(false);
+  };
+
+  const handleTaskCanceled = () => {
+    setIsNewTask(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-slate-800 text-slate-200">
@@ -171,6 +180,19 @@ const EstimateLayout = () => {
                     )}
                   </div>
                 ))}
+
+                {/* New Task Input */}
+                {isNewTask && (
+                  <EstimateTask
+                    task={{
+                      est_task_id: -1,
+                      est_task_name: "",
+                    }}
+                    isNew={true}
+                    onSave={handleTaskSaved}
+                    onCancel={handleTaskCanceled}
+                  />
+                )}
               </div>
 
               {/* Add Task Button */}

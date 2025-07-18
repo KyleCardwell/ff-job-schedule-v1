@@ -1,9 +1,9 @@
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { updateTask, deleteTask } from "../../redux/actions/estimates";
+import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
 const EstimateTask = ({
@@ -13,23 +13,39 @@ const EstimateTask = ({
   onDelete,
   sections = [],
   className = "",
+  isNew = false,
+  onSave,
+  onCancel,
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
+  useEffect(() => {
+    if (isNew) {
+      setIsEditing(true);
+    }
+  }, [isNew]);
+
   const handleSave = async () => {
     try {
-      await dispatch(
-        updateTask(currentEstimate.estimate_id, task.est_task_id, {
-          est_task_name: taskName,
-        })
-      );
-      setIsEditing(false);
+      if (isNew) {
+        const newTask = await dispatch(
+          addTask(currentEstimate.estimate_id, taskName)
+        );
+        onSave?.(newTask.est_task_id);
+      } else {
+        await dispatch(
+          updateTask(currentEstimate.estimate_id, task.est_task_id, {
+            est_task_name: taskName,
+          })
+        );
+        setIsEditing(false);
+      }
     } catch (error) {
       console.error("Error saving task:", error);
     }
@@ -46,8 +62,12 @@ const EstimateTask = ({
   };
 
   const handleCancel = () => {
-    setTaskName(task.est_task_name);
-    setIsEditing(false);
+    if (isNew) {
+      onCancel?.();
+    } else {
+      setTaskName(task.est_task_name);
+      setIsEditing(false);
+    }
   };
 
   return (
@@ -138,10 +158,13 @@ EstimateTask.propTypes = {
     est_task_name: PropTypes.string.isRequired,
   }).isRequired,
   isSelected: PropTypes.bool,
-  onSelect: PropTypes.func.isRequired,
+  onSelect: PropTypes.func,
   onDelete: PropTypes.func,
   sections: PropTypes.array,
   className: PropTypes.string,
+  isNew: PropTypes.bool,
+  onSave: PropTypes.func,
+  onCancel: PropTypes.func,
 };
 
 export default EstimateTask;
