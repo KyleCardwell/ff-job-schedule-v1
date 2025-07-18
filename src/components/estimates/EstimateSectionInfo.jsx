@@ -16,6 +16,13 @@ const EstimateSectionInfo = ({
   const sectionData = section?.section_data || {};
   const NOT_SELECTED = "Not Selected";
 
+  const getTitle = () => {
+    if (!selectedTask) return "Select a Room";
+    if (selectedTask.sections?.length <= 1) return `${selectedTask.est_task_name} Details`;
+    const sectionNumber = selectedTask.sections.findIndex(s => s.est_section_id === selectedSectionId) + 1;
+    return `${selectedTask.est_task_name} - Section ${sectionNumber} Details`;
+  };
+
   const getMaterialName = (id) => {
     return (
       estimate_data?.materials?.options?.find((m) => m.id === id)?.name ||
@@ -75,9 +82,7 @@ const EstimateSectionInfo = ({
     <div className="w-80 flex-none bg-slate-800 border-r border-slate-700 flex flex-col">
       <div className="flex items-center justify-between py-4 px-6 border-b border-slate-700">
         <h2 className="text-lg font-semibold text-slate-200">
-          {selectedTask
-            ? "Section Details"
-            : "Select a Room"}
+          {getTitle()}
         </h2>
       </div>
 
@@ -174,7 +179,7 @@ EstimateSectionInfo.propTypes = {
     estimate_data: PropTypes.object,
     onAddSection: PropTypes.func,
     onEditSection: PropTypes.func,
-    selectedSectionId: PropTypes.string,
+    selectedSectionId: PropTypes.number,
 };
 
 export default EstimateSectionInfo;

@@ -424,7 +424,7 @@ export const updateTask = (estimateId, taskId, updates) => {
 
       const { currentEstimate } = getState().estimates;
       const updatedTasks = currentEstimate.tasks.map(task => 
-        task.est_task_id === taskId ? updatedTask : task
+        task.est_task_id === taskId ? { ...task, ...updatedTask } : task
       );
 
       dispatch({

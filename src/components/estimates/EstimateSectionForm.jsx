@@ -126,30 +126,36 @@ const EstimateSectionForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      if (section?.est_section_id) {
-        // Update existing section
-        dispatch(updateSection(
-          currentEstimate.estimate_id,
-          taskId,
-          section.est_section_id,
-          formData
-        ));
-      } else {
-        // Add new section
-        dispatch(addSection(
-          currentEstimate.estimate_id,
-          taskId,
-          formData
-        ));
-      }
-      if (onSave) {
-        onSave(); // Call onSave callback if provided
-      } else {
-        onCancel(); // Fallback to onCancel if no onSave provided
+      try {
+        if (section?.est_section_id) {
+          // Update existing section
+          await dispatch(updateSection(
+            currentEstimate.estimate_id,
+            taskId,
+            section.est_section_id,
+            formData
+          ));
+        } else {
+          // Add new section
+          const newSection = await dispatch(addSection(
+            currentEstimate.estimate_id,
+            taskId,
+            formData
+          ));
+          if (onSave) {
+            onSave(newSection.est_section_id); // Pass the new section ID to the callback
+          }
+          return;
+        }
+        if (onSave) {
+          onSave(section.est_section_id); // For updates, no need to pass ID
+        }
+      } catch (error) {
+        console.error('Error saving section:', error);
       }
     }
   };
@@ -663,7 +669,7 @@ const EstimateSectionForm = ({
 
 EstimateSectionForm.propTypes = {
     section: PropTypes.object,
-    taskId: PropTypes.string,
+    taskId: PropTypes.number,
     onCancel: PropTypes.func,
     onSave: PropTypes.func,
 };

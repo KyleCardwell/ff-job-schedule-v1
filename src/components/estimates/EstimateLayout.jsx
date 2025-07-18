@@ -12,7 +12,7 @@ import { PATHS } from "../../utils/constants";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
-import EstimateTaskForm from "./EstimateTaskForm.jsx";
+import EstimateTask from "./EstimateTask.jsx";
 
 const EstimateLayout = () => {
   const dispatch = useDispatch();
@@ -126,16 +126,13 @@ const EstimateLayout = () => {
               </div>
 
               {/* Tasks List */}
-              <div className="overflow-y-auto flex-1">
+              <div className="flex-1 overflow-y-auto">
                 {currentEstimate?.tasks?.map((task) => (
                   <div key={task.est_task_id}>
-                    {/* {task.sections?.length > 1 ? (
-                      <div className="w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2 text-slate-200">
-                        {task.est_task_name}
-                      </div>
-                    ) : ( */}
-                    <button
-                      onClick={() => {
+                    <EstimateTask
+                      task={task}
+                      isSelected={selectedTaskId === task.est_task_id}
+                      onSelect={() => {
                         setSelectedTaskId(task.est_task_id);
                         setSelectedSectionId(
                           task.sections?.[0]?.est_section_id
@@ -143,19 +140,9 @@ const EstimateLayout = () => {
                         setShowProjectInfo(false);
                         setShowSectionForm(false);
                       }}
-                      className={`
-                          w-full py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
-                          ${
-                            selectedTaskId === task.est_task_id &&
-                            task.sections?.length === 1
-                              ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
-                              : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
-                          }
-                        `}
-                    >
-                      {task.est_task_name}
-                    </button>
-                    {/* // )} */}
+                      onDelete={() => setSelectedTaskId(null)}
+                      sections={task.sections || []}
+                    />
                     {/* Sections List */}
                     {task.sections?.length > 1 && (
                       <div className="pl-6">
@@ -203,6 +190,15 @@ const EstimateLayout = () => {
         estimate_data={currentEstimate?.estimate_data}
         selectedTask={selectedTask}
         selectedSectionId={selectedSectionId}
+        isNew={isNewTask}
+        onTaskSaved={(taskId) => {
+          setSelectedTaskId(taskId);
+          setIsNewTask(false);
+        }}
+        onTaskDeleted={() => setSelectedTaskId(null)}
+        onCancel={() => {
+          setIsNewTask(false);
+        }}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
@@ -241,36 +237,17 @@ const EstimateLayout = () => {
               }
               onCancel={() => {
                 setShowSectionForm(false);
-                setSelectedSectionId(null);
+                // setSelectedSectionId(null);
               }}
-              onSave={() => {
+              onSave={(sectionId) => {
                 setShowSectionForm(false);
-              }}
-            />
-          </div>
-        ) : selectedTask ? (
-          <div className="max-w-3xl mx-auto">
-            <EstimateTaskForm
-              selectedTaskId={selectedTaskId}
-              onTaskDeleted={() => setSelectedTaskId(null)}
-            />
-          </div>
-        ) : isNewTask ? (
-          <div className="max-w-3xl mx-auto">
-            <EstimateTaskForm
-              isNew={true}
-              onTaskSaved={(taskId) => {
-                setSelectedTaskId(taskId);
-                setIsNewTask(false);
-              }}
-              onCancel={() => {
-                setIsNewTask(false);
+                setSelectedSectionId(sectionId);
               }}
             />
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-slate-200">
-            Select a room or create a new one
+            {isNewTask ? "Enter room name" : "Select a room or create a new one"}
           </div>
         )}
       </div>
