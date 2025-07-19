@@ -151,33 +151,12 @@ const EstimateLayout = () => {
                       }}
                       onDelete={() => setSelectedTaskId(null)}
                       sections={task.sections || []}
+                      selectedSectionId={selectedSectionId}
+                      setSelectedSectionId={setSelectedSectionId}
+                      setSelectedTaskId={setSelectedTaskId}
+                      setShowSectionForm={setShowSectionForm}
+                      setShowProjectInfo={setShowProjectInfo}
                     />
-                    {/* Sections List */}
-                    {task.sections?.length > 1 && (
-                      <div className="pl-6">
-                        {task.sections.map((section, index) => (
-                          <button
-                            key={section.est_section_id}
-                            onClick={() => {
-                              setSelectedTaskId(task.est_task_id);
-                              setSelectedSectionId(section.est_section_id);
-                              setShowSectionForm(false);
-                              setShowProjectInfo(false);
-                            }}
-                            className={`
-                              w-full py-2 px-4 text-sm text-left flex items-center space-x-2
-                              ${
-                                selectedSectionId === section.est_section_id
-                                  ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
-                                  : "text-slate-400 hover:text-teal-400"
-                              }
-                            `}
-                          >
-                            Section {index + 1}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
 

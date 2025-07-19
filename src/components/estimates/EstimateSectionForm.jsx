@@ -27,9 +27,9 @@ const EstimateSectionForm = ({
   const DRAWER_FRONT_STYLE_OPTIONS =
     estimateData?.drawerFrontStyles?.options || [];
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
-  const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes?.options || [];
+  const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
   const DRAWER_SLIDE_OPTIONS =
-    estimateData?.drawerSlideTypes?.options || [];
+    estimateData?.drawerSlideTypes || [];
 
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
@@ -46,7 +46,7 @@ const EstimateSectionForm = ({
     drawerSlide: sectionData.drawerSlide || "",
     drawerBoxes: sectionData.drawerBoxes || "",
     notes: sectionData.notes || "",
-    items: section.items || [],
+    items: sectionData.items || [],
   });
 
   const [errors, setErrors] = useState({});
@@ -237,8 +237,8 @@ const EstimateSectionForm = ({
               >
                 <option value="">Select style</option>
                 {STYLE_OPTIONS.map((style) => (
-                  <option key={style} value={style}>
-                    {style}
+                  <option key={style.id} value={style.id}>
+                    {style.name}
                   </option>
                 ))}
               </select>
@@ -311,14 +311,14 @@ const EstimateSectionForm = ({
             </label>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {FINISH_OPTIONS.map((option) => (
-                <label key={option} className="flex items-center space-x-2">
+                <label key={option.id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    checked={formData.finish.includes(option)}
-                    onChange={() => handleFinishChange(option)}
+                    checked={formData.finish.includes(option.id)}
+                    onChange={() => handleFinishChange(option.id)}
                     className="rounded border-slate-300"
                   />
-                  <span className="text-slate-600">{option}</span>
+                  <span className="text-slate-600">{option.name}</span>
                 </label>
               ))}
             </div>
@@ -566,7 +566,7 @@ const EstimateSectionForm = ({
           />
         </div>
 
-        {/* Cabinet Items Section */}
+        {/* Cabinet Items Section
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <h4 className="text-sm font-medium text-slate-700">
@@ -642,7 +642,7 @@ const EstimateSectionForm = ({
               }
             />
           )}
-        </div>
+        </div> */}
 
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">

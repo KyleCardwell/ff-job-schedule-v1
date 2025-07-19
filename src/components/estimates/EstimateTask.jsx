@@ -6,6 +6,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
+import EstimateSection from "./EstimateSection.jsx";
+
 const EstimateTask = ({
   task,
   isSelected,
@@ -16,6 +18,11 @@ const EstimateTask = ({
   isNew = false,
   onSave,
   onCancel,
+  selectedSectionId,
+  setSelectedSectionId,
+  setSelectedTaskId,
+  setShowSectionForm,
+  setShowProjectInfo,
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
@@ -102,7 +109,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 px-4 text-sm font-medium text-left flex items-center justify-between
+              w-full py-3 px-4 text-sm font-medium text-left flex items-center justify-between group/task
               ${
                 isSelected && sections.length === 1
                   ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
@@ -111,7 +118,7 @@ const EstimateTask = ({
             `}
           >
             <span>{task.est_task_name}</span>
-            <div className="hidden group-hover:flex space-x-2">
+            <div className="invisible group-hover/task:visible space-x-2 flex">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -132,6 +139,32 @@ const EstimateTask = ({
               </button>
             </div>
           </button>
+        )}
+
+        {/* Sections List */}
+        {task.sections?.length > 1 && (
+          <div className="pl-6">
+            {task.sections.map((section, index) => (
+              <EstimateSection
+                key={section.est_section_id}
+                section={section}
+                sectionNumber={index + 1}
+                task={task}
+                isSelected={selectedSectionId === section.est_section_id}
+                onSelect={() => {
+                  setSelectedTaskId(task.est_task_id);
+                  setSelectedSectionId(section.est_section_id);
+                  setShowSectionForm(false);
+                  setShowProjectInfo(false);
+                }}
+                onDelete={() => {
+                  setSelectedSectionId(null);
+                  setShowSectionForm(false);
+                  setShowProjectInfo(false);
+                }}
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -156,6 +189,7 @@ EstimateTask.propTypes = {
   task: PropTypes.shape({
     est_task_id: PropTypes.number.isRequired,
     est_task_name: PropTypes.string.isRequired,
+    sections: PropTypes.array,
   }).isRequired,
   isSelected: PropTypes.bool,
   onSelect: PropTypes.func,
@@ -165,6 +199,11 @@ EstimateTask.propTypes = {
   isNew: PropTypes.bool,
   onSave: PropTypes.func,
   onCancel: PropTypes.func,
+  selectedSectionId: PropTypes.number,
+  setSelectedSectionId: PropTypes.func,
+  setSelectedTaskId: PropTypes.func,
+  setShowSectionForm: PropTypes.func,
+  setShowProjectInfo: PropTypes.func,
 };
 
 export default EstimateTask;
