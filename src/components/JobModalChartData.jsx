@@ -674,7 +674,9 @@ const JobModal = ({
             prev[oldBuilderId].filter((wp) => wp.subtask_id !== workPeriodId),
             workdayHours,
             holidayMap,
-            timeOffByBuilder
+            timeOffByBuilder,
+            dayWidth,
+            chartStartDate
           );
 
         const { tasks: newBuilderTasks, conflicts: newBuilderConflicts } =
@@ -682,7 +684,9 @@ const JobModal = ({
             [...(prev[newBuilderId] || []), updatedWorkPeriod],
             workdayHours,
             holidayMap,
-            timeOffByBuilder
+            timeOffByBuilder,
+            dayWidth,
+            chartStartDate
           );
 
         // Update conflicts for both builders
@@ -1054,8 +1058,6 @@ const JobModal = ({
         }))
       );
 
-      const changedTaskIdsSet = new Set(changedTaskIds);
-      // const buildersWithChanges = new Set();
       const updatedBuilderArrays = {};
 
       changedBuilderIds.forEach((builderId) => {
