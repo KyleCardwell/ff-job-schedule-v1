@@ -1060,6 +1060,8 @@ const JobModal = ({
 
       const updatedBuilderArrays = {};
 
+      const conflictsToSave = pendingConflicts
+
       changedBuilderIds.forEach((builderId) => {
         updatedBuilderArrays[builderId] = localJobsByBuilder[builderId];
       });
@@ -1111,6 +1113,7 @@ const JobModal = ({
           }
         });
 
+        conflictsToSave[employee_id] = conflicts || [];
         setPendingConflicts((prev) => ({
           ...prev,
           [employee_id]: conflicts || [],
@@ -1164,10 +1167,12 @@ const JobModal = ({
         throw new Error(result.error?.message || "Failed to save project");
       }
 
-      // Update conflicts in Supabase and Redux
-      Object.entries(pendingConflicts).forEach(([builderId, conflicts]) => {
-        dispatch(updateEmployeeSchedulingConflicts(+builderId, conflicts));
-      });
+      // Update conflicts in Supabase and Redux only if there are conflicts to save
+      if (Object.keys(conflictsToSave).length > 0) {
+        Object.entries(conflictsToSave).forEach(([builderId, conflicts]) => {
+          dispatch(updateEmployeeSchedulingConflicts(+builderId, conflicts));
+        });
+      }
 
       // If we get here, the save was successful
       onSave();
