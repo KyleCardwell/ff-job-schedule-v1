@@ -8,6 +8,7 @@ import {
   isSunday,
   differenceInCalendarDays,
 } from "date-fns";
+
 import { normalizeDate } from "./dateUtils";
 
 export const getChartData = (jobData) => {
@@ -84,7 +85,6 @@ export const getTaskData = (jobData) => {
           subtask_width: workPeriod.subtask_width,
           rowNumber,
           active: room.active,
-          task_created_at: room.task_created_at,
           heightAdjust: workPeriodIndex === 0 ? workPeriods : 0,
         };
       });
@@ -246,20 +246,6 @@ export const calculateAdjustedWidth = (
   return workDays * workdayHours;
 };
 
-// export const calculateXPosition = (
-// 	jobStartDate,
-// 	chartStartDate,
-// 	dayWidth = 30
-// ) => {
-// 	const normalizedJobStartDate = normalizeDate(jobStartDate);
-// 	const normalizedChartStartDate = normalizeDate(chartStartDate);
-// 	const diffInDays = differenceInCalendarDays(
-// 		normalizedJobStartDate,
-// 		normalizedChartStartDate
-// 	);
-// 	return diffInDays * dayWidth;
-// };
-
 export const calculateXPosition = (
   jobStartDate,
   chartStartDate,
@@ -292,8 +278,7 @@ export const sortAndAdjustDates = (
   holidayMap,
   timeOffByBuilder,
   dayWidth = 30,
-  chartStartDate,
-  skipSort = false
+  chartStartDate
 ) => {
   let arrayToProcess = [...jobsArray];
   let conflicts = [];
@@ -301,61 +286,91 @@ export const sortAndAdjustDates = (
   // Create a timeline map to track hard_start_dates
   const timeline = new Map();
 
-  // Sort the array by date
-  if (!skipSort) {
-    arrayToProcess.sort((a, b) => {
-      // Track hard_start_dates in the timeline while sorting
-      if (a.hard_start_date) {
-        timeline.set(normalizeDate(a.start_date), {
-          task_name: a.task_name,
-          subtask_id: a.subtask_id,
-          project_name: a.project_name,
-        });
-      }
-      if (b.hard_start_date) {
-        timeline.set(normalizeDate(b.start_date), {
-          task_name: b.task_name,
-          subtask_id: b.subtask_id,
-          project_name: b.project_name,
-        });
-      }
+  // Process hard start dates first
+  arrayToProcess.forEach((task) => {
+    if (task.hard_start_date) {
+      timeline.set(normalizeDate(task.start_date), {
+        task_name: task.task_name,
+        subtask_id: task.subtask_id,
+        project_name: task.project_name,
+      });
+    }
+  });
 
-      const dateComparison = a.start_date.localeCompare(b.start_date);
-      if (dateComparison === 0) {
-        // If dates are equal, prioritize hard start dates
-        if (a.hard_start_date && !b.hard_start_date) return -1;
-        if (!a.hard_start_date && b.hard_start_date) return 1;
+  // Sort by date, prioritizing hard start dates and drag direction
+  arrayToProcess.sort((a, b) => {
+    const dateComparison = a.start_date.localeCompare(b.start_date);
+    if (dateComparison === 0) {
+      // If dates are equal, prioritize hard start dates
+      if (a.hard_start_date && !b.hard_start_date) return -1;
+      if (!a.hard_start_date && b.hard_start_date) return 1;
 
-        // If both have same hard_start_date status, consider drag direction
+      // If both have same hard_start_date status, consider drag direction
         if (a.isDragged) {
           return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
         }
         if (b.isDragged) {
           return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
         }
+    }
+    return dateComparison;
+  });
+
+  // Process tasks and adjust dates
+  const tasks = [];
+  let lastEndDate = null;
+
+  for (let i = 0; i < arrayToProcess.length; i++) {
+    const current = arrayToProcess[i];
+    const { isDragged, ...taskWithoutDragFlag } = current;
+
+    // Calculate start date
+    let start_date = normalizeDate(current.start_date);
+    
+    // Handle non-hard-start tasks that need to follow previous task
+    if (!current.hard_start_date) {
+      // If task is dragged left, use its original start date unless it would overlap with previous task
+      // or a hard start task before it
+      if (current.isDragged && current.draggedLeft) {
+        const prevTask = arrayToProcess[i - 1];
+        if (prevTask) {
+          // If previous task is a hard start task or if current task would overlap with previous task
+          if (prevTask.hard_start_date || new Date(start_date) < new Date(prevTask.end_date)) {
+            start_date = normalizeDate(
+              getNextWorkday(prevTask.end_date, holidayMap, current.employee_id, timeOffByBuilder)
+            );
+          }
+        }
+      } 
+      // If not dragged or dragged right, always start after previous task
+      else if (lastEndDate) {
+        start_date = normalizeDate(
+          getNextWorkday(lastEndDate, holidayMap, current.employee_id, timeOffByBuilder)
+        );
       }
-      return dateComparison;
-    });
-  }
+    }
 
-  // Adjust the dates and calculate endDates
-  const tasks = arrayToProcess.reduce((acc, current, index, array) => {
-    const initialStartDate = normalizeDate(current.start_date);
-    const nextElement = array[index + 1];
+    // Prevent overlapping with hard start task at same date
+    const nextTask = arrayToProcess[i + 1];
+    if (
+      nextTask?.hard_start_date &&
+      normalizeDate(nextTask.start_date) === start_date
+    ) {
+      // Move current task to after nextTask's end_date
+      start_date = normalizeDate(
+        getNextWorkday(
+          nextTask.end_date,
+          holidayMap,
+          current.employee_id,
+          timeOffByBuilder
+        )
+      );
 
-    // Calculate current element's dates first
-    const start_date =
-      index === 0 || current.hard_start_date
-        ? initialStartDate
-        : normalizeDate(
-            getNextWorkday(
-              acc[acc.length - 1].end_date,
-              holidayMap,
-              current.employee_id,
-              timeOffByBuilder
-            )
-          );
+      // Also need to update lastEndDate to be nextTask's end_date
+      lastEndDate = nextTask.end_date;
+    }
 
+    // Calculate job hours and end date
     const jobHours = totalJobHours(
       start_date,
       current.duration,
@@ -371,13 +386,13 @@ export const sortAndAdjustDates = (
 
     // Check for conflicts with hard start dates
     const taskConflicts = Array.from(timeline.entries())
-      .filter(
-        ([date, info]) =>
-          !current.hard_start_date && // Don't check hard start tasks against themselves
-          info.subtask_id !== current.subtask_id && // Don't check against self
-          new Date(end_date) > new Date(date) && // Task ends after hard start date
-          new Date(start_date) < new Date(date) // Task starts before hard start date
-      )
+      .filter(([date, info]) => {
+        if (current.hard_start_date || info.subtask_id === current.subtask_id) {
+          return false;
+        }
+        const conflictDate = new Date(date);
+        return new Date(end_date) > conflictDate && new Date(start_date) < conflictDate;
+      })
       .map(([date, info]) => ({
         conflicting_task: current.task_name,
         project_name: current.project_name,
@@ -387,15 +402,10 @@ export const sortAndAdjustDates = (
         subtask_id: info.subtask_id,
       }));
 
-    // Add any conflicts found to our list
-    if (taskConflicts.length > 0) {
-      conflicts.push(...taskConflicts);
-    }
+    conflicts.push(...taskConflicts);
 
-    // Create new task object without isDragged flag
-    const { isDragged, ...taskWithoutDragFlag } = current;
-
-    const currentTask = {
+    // Create task with calculated dates
+    const task = {
       ...taskWithoutDragFlag,
       start_date,
       end_date,
@@ -403,46 +413,9 @@ export const sortAndAdjustDates = (
       xPosition: calculateXPosition(start_date, chartStartDate, dayWidth),
     };
 
-    // Check if next element has hard_start_date and would overlap with current
-    if (
-      nextElement?.hard_start_date &&
-      normalizeDate(nextElement.start_date) === start_date
-    ) {
-      // Add the hard_start_date element first with its original dates
-      acc.push(nextElement);
-
-      // Then add current element with adjusted start_date based on hard_start_date element
-      const adjustedStartDate = normalizeDate(
-        getNextWorkday(
-          nextElement.end_date,
-          holidayMap,
-          current.employee_id,
-          timeOffByBuilder
-        )
-      );
-
-      acc.push({
-        ...currentTask,
-        start_date: adjustedStartDate,
-        end_date: normalizeDate(
-          addDays(adjustedStartDate, Math.ceil(jobHours / workdayHours))
-        ),
-        xPosition: calculateXPosition(
-          adjustedStartDate,
-          chartStartDate,
-          dayWidth
-        ),
-      });
-
-      // Skip the next element since we already processed it
-      array.splice(index + 1, 1);
-    } else {
-      // Add current element normally
-      acc.push(currentTask);
-    }
-
-    return acc;
-  }, []);
+    tasks.push(task);
+    lastEndDate = end_date;
+  }
 
   return { tasks, conflicts };
 };
