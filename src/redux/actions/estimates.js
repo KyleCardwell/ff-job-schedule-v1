@@ -226,7 +226,8 @@ export const fetchEstimateById = (estimateId) => {
               }))
               .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
           }))
-          .sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
+          .sort((a, b) => (a.task_order || 0) - (b.task_order || 0)),
+        estimateDefault: data.estimates_default
       };
 
       dispatch({
@@ -425,7 +426,7 @@ export const addTask = (estimateId, taskName) => {
           {
             estimate_id: estimateId,
             est_task_name: taskName.trim(),
-            task_order: newTaskOrder
+            task_order: newTaskOrder,
           }
         ])
         .select()

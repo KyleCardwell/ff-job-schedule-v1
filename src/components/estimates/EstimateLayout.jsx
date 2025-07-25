@@ -9,9 +9,11 @@ import {
 } from "../../redux/actions/estimates";
 import { PATHS } from "../../utils/constants";
 
+import EstimateItemManager from "./EstimateItemManager.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
+import EstimateSectionManager from "./EstimateSectionManager.jsx"; // Import EstimateSectionManager
 import EstimateTask from "./EstimateTask.jsx";
 
 const EstimateLayout = () => {
@@ -246,6 +248,11 @@ const EstimateLayout = () => {
               }}
             />
           </div>
+        ) : selectedTaskId && selectedSectionId ? (
+          <EstimateSectionManager
+            taskId={selectedTaskId}
+            sectionId={selectedSectionId}
+          />
         ) : (
           <div className="flex items-center justify-center h-full text-slate-200">
             {isNewTask ? "Enter room name" : "Select a room or create a new one"}
