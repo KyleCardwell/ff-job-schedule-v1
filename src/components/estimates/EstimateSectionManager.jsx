@@ -5,18 +5,12 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { updateSection } from "../../redux/actions/estimates";
+import { SECTION_TYPES } from "../../utils/constants.js";
 
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
 import EstimateItemManager from "./EstimateItemManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
 import EstimateOtherManager from "./EstimateOtherManager.jsx";
-
-const SECTION_TYPES = {
-  CABINETS: "cabinets",
-  LENGTHS: "lengths",
-  ACCESSORIES: "accessories",
-  OTHER: "other",
-};
 
 const EstimateSectionManager = ({ taskId, sectionId }) => {
   const dispatch = useDispatch();
@@ -29,71 +23,83 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
     ?.sections?.find((s) => s.est_section_id === sectionId);
 
   const [openSectionType, setOpenSectionType] = useState(null);
+
+  // Initialize section data from current section
   const [sectionData, setSectionData] = useState({
-    items: [],
-    lengths: [],
-    accessories: [],
-    other: [],
+    items: currentSection?.items || [],
+    lengths: currentSection?.lengths || [],
+    accessories: currentSection?.accessories || [],
+    other: currentSection?.other || [],
   });
 
-  // Initialize section data from Redux
+  // Update local state when currentSection changes
   useEffect(() => {
-    if (currentSection?.section_data) {
+    if (currentSection) {
       setSectionData({
-        items: currentSection.section_data.items || [],
-        lengths: currentSection.section_data.lengths || [],
-        accessories: currentSection.section_data.accessories || [],
-        other: currentSection.section_data.other || [],
+        items: [
+          {
+            name: "BU",
+            width: 24,
+            height: 30.5,
+            depth: 24,
+            quantity: 1,
+          },
+          {
+            name: "B3D",
+            width: 27,
+            height: 30.5,
+            depth: 24,
+            quantity: 1,
+          },
+        ],
+        lengths: currentSection.lengths || [],
+        accessories: currentSection.accessories || [],
+        other: currentSection.other || [],
       });
     }
-  }, [currentSection?.section_data]);
+  }, [currentSection]);
+
+//   const [expandedSections, setExpandedSections] = useState(new Set(["items"]));
 
   const handleToggleSection = (sectionType) => {
     setOpenSectionType(openSectionType === sectionType ? null : sectionType);
   };
 
   // Debounced save to database
-//   const debouncedSave = useDebouncedCallback(async (updatedSectionData) => {
-//     try {
-//       await dispatch(
-//         updateSection(currentEstimate.estimate_id, taskId, sectionId, {
-//           section_data: updatedSectionData,
-//         })
-//       );
-//     } catch (error) {
-//       console.error("Error saving section data:", error);
-//       // On error, revert to the last known good state from Redux
-//       if (currentSection?.section_data) {
-//         setSectionData({
-//           items: currentSection.section_data.items || [],
-//           lengths: currentSection.section_data.lengths || [],
-//           accessories: currentSection.section_data.accessories || [],
-//           other: currentSection.section_data.other || [],
-//         });
-//       }
-//     }
-//   }, 1000); // 1 second debounce delay
+  const debouncedSave = useDebouncedCallback(async (type, updatedItems) => {
+    try {
+      if (currentEstimate && taskId && sectionId) {
+        // await dispatch(
+        //   updateSection(currentEstimate.estimate_id, taskId, sectionId, {
+        //     [type]: updatedItems,
+        //   })
+        // );
+      }
+    } catch (error) {
+      console.error("Error saving section data:", error);
+      // On error, revert to the last known good state from Redux
+      setSectionData((prev) => ({
+        ...prev,
+        [type]: currentSection?.[type] || [],
+      }));
+    }
+  }, 10000); // 10 second debounce delay
 
   const handleUpdateItems = (type, updatedItems) => {
     // Update local state immediately (optimistic update)
-    const updatedSectionData = {
-      ...currentSection.section_data,
-      [type]: updatedItems,
-    };
-
-    setSectionData(prev => ({
+    setSectionData((prev) => ({
       ...prev,
       [type]: updatedItems,
     }));
 
     // Debounced save to database
-    // debouncedSave(updatedSectionData);
+    debouncedSave(type, updatedItems);
   };
 
   const sections = [
     {
-      type: SECTION_TYPES.CABINETS,
-      title: "Cabinets",
+      type: SECTION_TYPES.CABINETS.type,
+      title: SECTION_TYPES.CABINETS.title,
       component: (
         <EstimateItemManager
           items={sectionData.items}
@@ -102,8 +108,8 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       ),
     },
     {
-      type: SECTION_TYPES.LENGTHS,
-      title: "Lengths",
+      type: SECTION_TYPES.LENGTHS.type,
+      title: SECTION_TYPES.LENGTHS.title,
       component: (
         <EstimateLengthManager
           items={sectionData.lengths}
@@ -112,8 +118,8 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       ),
     },
     {
-      type: SECTION_TYPES.ACCESSORIES,
-      title: "Accessories",
+      type: SECTION_TYPES.ACCESSORIES.type,
+      title: SECTION_TYPES.ACCESSORIES.title,
       component: (
         <EstimateAccessoriesManager
           items={sectionData.accessories}
@@ -122,8 +128,8 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       ),
     },
     {
-      type: SECTION_TYPES.OTHER,
-      title: "Other",
+      type: SECTION_TYPES.OTHER.type,
+      title: SECTION_TYPES.OTHER.title,
       component: (
         <EstimateOtherManager
           items={sectionData.other}
@@ -136,13 +142,16 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
   return (
     <div className="max-w-3xl mx-auto space-y-2">
       {sections.map(({ type, title, component }) => (
-        <div key={type} className="border border-slate-200 rounded-lg overflow-hidden">
+        <div
+          key={type}
+          className="border border-slate-200 rounded-lg overflow-hidden"
+        >
           <button
             onClick={() => handleToggleSection(type)}
             className={`
               w-full px-4 py-3 text-left flex items-center justify-between
               ${openSectionType === type ? "bg-slate-100" : "bg-white"}
-              hover:bg-slate-50 transition-colors
+              hover:bg-slate-200 transition-colors
             `}
           >
             <span className="text-sm font-medium text-slate-700">{title}</span>

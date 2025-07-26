@@ -200,8 +200,7 @@ OtherItemForm.propTypes = {
 const EstimateOtherManager = ({ items, onUpdateItems }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
-    { key: "name", label: "Name", width: "1fr" },
-    { key: "description", label: "Description", width: "1fr" },
+    { key: "name", label: "Item", width: "1fr" },
     { key: "notes", label: "Notes", width: "1fr" },
     { key: "actions", label: "Actions", width: "0.5fr" },
   ];

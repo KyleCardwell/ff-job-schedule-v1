@@ -169,18 +169,7 @@ AccessoryItemForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
 };
 
-const EstimateAccessoriesManager = ({ taskId, sectionId }) => {
-//   const dispatch = useDispatch();
-  const currentEstimate = useSelector(
-    (state) => state.estimates.currentEstimate
-  );
-
-  const currentSection = currentEstimate?.tasks
-    ?.find((t) => t.est_task_id === taskId)
-    ?.sections?.find((s) => s.est_section_id === sectionId);
-
-  const items = currentSection?.section_data?.accessories || [];
-
+const EstimateAccessoriesManager = ({ items, onUpdateItems }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
     { key: "name", label: "Accessory", width: "1fr" },
@@ -198,17 +187,7 @@ const EstimateAccessoriesManager = ({ taskId, sectionId }) => {
         // Update existing item
         updatedItems[itemIndex] = item;
       }
-
-      const updatedSectionData = {
-        ...currentSection.section_data,
-        accessories: updatedItems,
-      };
-
-    //   await dispatch(
-    //     updateSection(currentEstimate.estimate_id, taskId, sectionId, {
-    //       section_data: updatedSectionData,
-    //     })
-    //   );
+      onUpdateItems(updatedItems);
     } catch (error) {
       console.error("Error saving item:", error);
     }
@@ -217,16 +196,7 @@ const EstimateAccessoriesManager = ({ taskId, sectionId }) => {
   const handleDeleteItem = async (itemIndex) => {
     try {
       const updatedItems = items.filter((_, index) => index !== itemIndex);
-      const updatedSectionData = {
-        ...currentSection.section_data,
-        accessories: updatedItems,
-      };
-
-    //   await dispatch(
-    //     updateSection(currentEstimate.estimate_id, taskId, sectionId, {
-    //       section_data: updatedSectionData,
-    //     })
-    //   );
+      onUpdateItems(updatedItems);
     } catch (error) {
       console.error("Error deleting item:", error);
     }
@@ -246,8 +216,8 @@ const EstimateAccessoriesManager = ({ taskId, sectionId }) => {
 };
 
 EstimateAccessoriesManager.propTypes = {
-  taskId: PropTypes.number.isRequired,
-  sectionId: PropTypes.number.isRequired,
+  items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onUpdateItems: PropTypes.func.isRequired,
 };
 
 export default EstimateAccessoriesManager;

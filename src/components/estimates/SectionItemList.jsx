@@ -55,19 +55,20 @@ const SectionItemList = ({
       </div>
 
       {/* Items List */}
-      <div className="space-y-4">
+      <div className="">
         {items.map((item, index) =>
           editingIndex === index ? (
-            <ItemForm
-              key={index}
-              item={item}
-              onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
-              onCancel={() => setEditingIndex(-1)}
-            />
+            <div key={index} className="p-4">
+              <ItemForm
+                item={item}
+                onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
+                onCancel={() => setEditingIndex(-1)}
+              />
+            </div>
           ) : (
             <div
               key={index}
-              className="grid gap-4 items-center py-3 px-3 bg-white"
+              className="grid items-center py-1 px-3 bg-slate-700 text-white border-b border-slate-600 hover:bg-slate-600 hover:text-slate-200 transition-colors"
               style={{
                 gridTemplateColumns: columns.map((c) => c.width).join(" "),
               }}
@@ -89,7 +90,7 @@ const SectionItemList = ({
                     </button>
                   </div>
                 ) : (
-                  <div key={col.key} className="text-sm text-slate-600">
+                  <div key={col.key} className="text-sm">
                     {item[col.key]}
                   </div>
                 )
@@ -101,10 +102,12 @@ const SectionItemList = ({
 
       {/* New Item Form */}
       {showNewItem && (
-        <ItemForm
-          onSave={(item) => handleSaveItem(item)}
-          onCancel={() => setShowNewItem(false)}
-        />
+        <div className="p-4">
+          <ItemForm
+            onSave={(item) => handleSaveItem(item)}
+            onCancel={() => setShowNewItem(false)}
+          />
+        </div>
       )}
 
       {/* Empty State */}
@@ -114,10 +117,10 @@ const SectionItemList = ({
 
       {/* Add Item Button */}
       {!showNewItem && (
-        <div className="mt-6">
+        <div className="my-2">
           <button
             onClick={() => setShowNewItem(true)}
-            className="w-full py-3 px-4 text-sm font-medium text-blue-500 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center justify-center"
+            className="mx-auto py-3 px-4 text-sm font-medium text-blue-500 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center justify-center"
           >
             <FiPlus className="mr-2" />
             {addButtonText}

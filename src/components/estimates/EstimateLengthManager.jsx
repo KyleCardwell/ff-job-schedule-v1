@@ -1,10 +1,8 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
-import { useDispatch, useSelector } from "react-redux";
 
 import SectionItemList from "./SectionItemList.jsx";
-import { updateSection } from "../../redux/actions/estimates.js";
 
 const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -180,20 +178,11 @@ LengthItemForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
 };
 
-const EstimateLengthManager = ({ items, onUpdateItems, taskId, sectionId }) => {
-  const dispatch = useDispatch();
-  const currentEstimate = useSelector(
-    (state) => state.estimates.currentEstimate
-  );
-
-  const currentSection = currentEstimate?.tasks
-    ?.find((t) => t.est_task_id === taskId)
-    ?.sections?.find((s) => s.est_section_id === sectionId);
-
+const EstimateLengthManager = ({ items, onUpdateItems }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
     { key: "name", label: "Length", width: "1fr" },
-    { key: "length", label: "Length (in)", width: "1fr" },
+    { key: "notes", label: "Notes", width: "1fr" },
     { key: "actions", label: "Actions", width: "0.5fr" },
   ];
 
@@ -207,16 +196,6 @@ const EstimateLengthManager = ({ items, onUpdateItems, taskId, sectionId }) => {
         // Update existing item
         updatedItems[itemIndex] = item;
       }
-      const updatedSectionData = {
-        ...currentSection.section_data,
-        lengths: updatedItems,
-      };
-
-      await dispatch(
-        updateSection(currentEstimate.estimate_id, taskId, sectionId, {
-          section_data: updatedSectionData,
-        })
-      );
       onUpdateItems(updatedItems);
     } catch (error) {
       console.error("Error saving item:", error);
@@ -226,16 +205,6 @@ const EstimateLengthManager = ({ items, onUpdateItems, taskId, sectionId }) => {
   const handleDeleteItem = async (itemIndex) => {
     try {
       const updatedItems = items.filter((_, index) => index !== itemIndex);
-      const updatedSectionData = {
-        ...currentSection.section_data,
-        lengths: updatedItems,
-      };
-
-      await dispatch(
-        updateSection(currentEstimate.estimate_id, taskId, sectionId, {
-          section_data: updatedSectionData,
-        })
-      );
       onUpdateItems(updatedItems);
     } catch (error) {
       console.error("Error deleting item:", error);
@@ -258,8 +227,6 @@ const EstimateLengthManager = ({ items, onUpdateItems, taskId, sectionId }) => {
 EstimateLengthManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
-  taskId: PropTypes.number.isRequired,
-  sectionId: PropTypes.number.isRequired,
 };
 
 export default EstimateLengthManager;

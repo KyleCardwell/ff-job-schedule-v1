@@ -222,7 +222,10 @@ export const fetchEstimateById = (estimateId) => {
               .map(section => ({
                 ...section,
                 section_data: section.section_data || {},
-                items: section.items || []
+                items: section.items || [],
+                lengths: section.lengths || [],
+                accessories: section.accessories || [],
+                other: section.other || [],
               }))
               .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
           }))
