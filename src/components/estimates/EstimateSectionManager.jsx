@@ -59,8 +59,6 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
     }
   }, [currentSection]);
 
-//   const [expandedSections, setExpandedSections] = useState(new Set(["items"]));
-
   const handleToggleSection = (sectionType) => {
     setOpenSectionType(openSectionType === sectionType ? null : sectionType);
   };
@@ -103,7 +101,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       component: (
         <EstimateItemManager
           items={sectionData.items}
-          onUpdateItems={(items) => handleUpdateItems("items", items)}
+          onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
         />
       ),
     },
@@ -113,7 +111,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       component: (
         <EstimateLengthManager
           items={sectionData.lengths}
-          onUpdateItems={(items) => handleUpdateItems("lengths", items)}
+          onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.LENGTHS.type, items)}
         />
       ),
     },
@@ -123,7 +121,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       component: (
         <EstimateAccessoriesManager
           items={sectionData.accessories}
-          onUpdateItems={(items) => handleUpdateItems("accessories", items)}
+          onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.ACCESSORIES.type, items)}
         />
       ),
     },
@@ -133,7 +131,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       component: (
         <EstimateOtherManager
           items={sectionData.other}
-          onUpdateItems={(items) => handleUpdateItems("other", items)}
+          onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.OTHER.type, items)}
         />
       ),
     },

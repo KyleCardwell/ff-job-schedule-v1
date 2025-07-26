@@ -77,7 +77,9 @@ const SectionItemList = ({
                 col.key === "actions" ? (
                   <div key={col.key} className="flex items-center space-x-2">
                     <button
-                      onClick={() => setEditingIndex(index)}
+                      onClick={() => {
+                        setShowNewItem(false);
+                        setEditingIndex(index)}}
                       className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
                     >
                       <FiEdit2 size={16} />
@@ -119,7 +121,10 @@ const SectionItemList = ({
       {!showNewItem && (
         <div className="my-2">
           <button
-            onClick={() => setShowNewItem(true)}
+            onClick={() => {
+              setShowNewItem(true);
+              setEditingIndex(-1);
+            }}
             className="mx-auto py-3 px-4 text-sm font-medium text-blue-500 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center justify-center"
           >
             <FiPlus className="mr-2" />
