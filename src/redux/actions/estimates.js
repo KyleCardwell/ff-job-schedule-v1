@@ -222,7 +222,7 @@ export const fetchEstimateById = (estimateId) => {
               .map(section => ({
                 ...section,
                 section_data: section.section_data || {},
-                items: section.items || [],
+                cabinets: section.cabinets || [],
                 lengths: section.lengths || [],
                 accessories: section.accessories || [],
                 other: section.other || [],
@@ -598,7 +598,7 @@ export const addSection = (estimateId, taskId, sectionData) => {
       const sectionWithFormattedData = {
         ...newSection,
         section_data: newSection.section_data || {},
-        items: []
+        cabinets: []
       };
 
       // Update just the current task with the new section

@@ -135,7 +135,7 @@ const EstimateSectionForm = ({
             {
               section_data: {
                 ...formData,
-                items: undefined
+                cabinets: undefined
               }
             }
           ));
@@ -147,7 +147,7 @@ const EstimateSectionForm = ({
             {
               section_data: {
                 ...formData,
-                items: undefined
+                cabinets: undefined
               }
             }
           ));

@@ -9,7 +9,6 @@ import {
 } from "../../redux/actions/estimates";
 import { PATHS } from "../../utils/constants";
 
-import EstimateItemManager from "./EstimateItemManager.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";

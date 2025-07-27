@@ -8,7 +8,7 @@ import { updateSection } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
 
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
-import EstimateItemManager from "./EstimateItemManager.jsx";
+import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
 import EstimateOtherManager from "./EstimateOtherManager.jsx";
 
@@ -26,7 +26,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
 
   // Initialize section data from current section
   const [sectionData, setSectionData] = useState({
-    items: currentSection?.items || [],
+    cabinets: currentSection?.cabinets || [],
     lengths: currentSection?.lengths || [],
     accessories: currentSection?.accessories || [],
     other: currentSection?.other || [],
@@ -36,7 +36,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
   useEffect(() => {
     if (currentSection) {
       setSectionData({
-        items: [
+        cabinets: [
           {
             name: "BU",
             width: 24,
@@ -99,8 +99,8 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       type: SECTION_TYPES.CABINETS.type,
       title: SECTION_TYPES.CABINETS.title,
       component: (
-        <EstimateItemManager
-          items={sectionData.items}
+        <EstimateCabinetManager
+          items={sectionData.cabinets}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
         />
       ),

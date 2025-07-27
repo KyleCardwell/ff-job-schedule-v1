@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 
 import SectionItemList from "./SectionItemList.jsx";
@@ -241,7 +241,7 @@ CabinetItemForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
 };
 
-const EstimateItemManager = ({ items, onUpdateItems }) => {
+const EstimateCabinetManager = ({ items, onUpdateItems }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
     { key: "name", label: "Cabinet", width: "1fr" },
@@ -289,9 +289,9 @@ const EstimateItemManager = ({ items, onUpdateItems }) => {
   );
 };
 
-EstimateItemManager.propTypes = {
+EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
 };
 
-export default EstimateItemManager;
+export default EstimateCabinetManager;

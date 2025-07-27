@@ -110,7 +110,7 @@ export const estimatesReducer = (state = initialState, action) => {
             sections: (task.sections || []).map(section => ({
               ...section,
               section_data: section.section_data || {},
-              items: section.items || []
+              cabinets: section.cabinets || []
             }))
           }))
         },
