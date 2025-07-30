@@ -7,13 +7,7 @@ import {
   eachDayOfInterval,
   parseISO,
 } from "date-fns";
-import {
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  useCallback,
-} from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
 
@@ -38,9 +32,13 @@ export const ChartContainer = () => {
   const dispatch = useDispatch();
   const { canEditSchedule } = usePermissions();
 
-  const { chartData, chartStartDate, earliestStartDate, numDays } = useSelector(
-    (state) => state.chartData
-  );
+  const {
+    chartData,
+    chartStartDate,
+    earliestStartDate,
+    latestStartDate,
+    numDays,
+  } = useSelector((state) => state.chartData);
   const { tasks, subTasksByEmployee } = useSelector((state) => state.taskData);
   const { workday_hours: workdayHours } = useSelector(
     (state) => state.chartConfig
@@ -1104,6 +1102,7 @@ export const ChartContainer = () => {
                 onDatabaseError={handleDatabaseError}
                 setEstimatedCompletionDate={setEstimatedCompletionDate}
                 earliestStartDate={earliestStartDate}
+                latestStartDate={latestStartDate}
                 selectedEmployeeIds={selectedEmployeeIds}
                 dateFilter={dateFilter}
               />

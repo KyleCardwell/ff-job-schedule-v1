@@ -110,7 +110,7 @@ export const estimatesReducer = (state = initialState, action) => {
             sections: (task.sections || []).map(section => ({
               ...section,
               section_data: section.section_data || {},
-              items: section.items || []
+              cabinets: section.cabinets || []
             }))
           }))
         },
@@ -157,6 +157,130 @@ export const estimatesReducer = (state = initialState, action) => {
         };
       }
       return state;
+
+    case Actions.estimates.UPDATE_SECTION_ITEMS_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { type: itemType, data: sectionData } = action.payload;
+      // eslint-disable-next-line no-case-declarations
+      const { sectionId, operations } = sectionData;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => ({
+            ...task,
+            sections: task.sections.map(section => {
+              if (section.est_section_id === sectionId) {
+                // Get current items for this section type
+                const currentItems = section[itemType] || [];
+                
+                // Remove deleted items
+                const itemsAfterDelete = currentItems.filter(item => 
+                  !operations.deleted.includes(item.id)
+                );
+                
+                // Update existing items
+                const itemsAfterUpdate = itemsAfterDelete.map(item => {
+                  const updatedItem = operations.updated.find(u => u.id === item.id);
+                  return updatedItem || item;
+                });
+                
+                // Add inserted items
+                const finalItems = [...itemsAfterUpdate, ...operations.inserted];
+                
+                return {
+                  ...section,
+                  [itemType]: finalItems
+                };
+              }
+              return section;
+            })
+          }))
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.UPDATE_SECTION_METADATA_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: metaTaskId, sectionId: metaSectionId, updates } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === metaTaskId) {
+              return {
+                ...task,
+                sections: task.sections.map(section => {
+                  if (section.est_section_id === metaSectionId) {
+                    return {
+                      ...section,
+                      section_data: {
+                        ...section.section_data,
+                        ...updates
+                      }
+                    };
+                  }
+                  return section;
+                })
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.ADD_SECTION_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: addTaskId, section: newSection } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === addTaskId) {
+              return {
+                ...task,
+                sections: [...task.sections, newSection]
+                  .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.DELETE_SECTION_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: deleteTaskId, sectionId: deleteSectionId } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === deleteTaskId) {
+              return {
+                ...task,
+                sections: task.sections.filter(section => 
+                  section.est_section_id !== deleteSectionId
+                )
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
 
     case Actions.estimates.UPDATE_ESTIMATE_ERROR:
       return {

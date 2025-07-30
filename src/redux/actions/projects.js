@@ -1,9 +1,12 @@
-import { Actions } from "../actions";
-import { supabase } from "../../utils/supabase";
-import { updateNextTaskNumber } from "./chartConfig";
-import { binarySearch } from "../../utils/helpers";
 import { addDays, differenceInCalendarDays, subDays } from "date-fns";
+
 import { normalizeDate } from "../../utils/dateUtils";
+import { binarySearch } from "../../utils/helpers";
+import { supabase } from "../../utils/supabase";
+import { Actions } from "../actions";
+
+import { updateNextTaskNumber } from "./chartConfig";
+
 
 export const fetchEarliestStartDate =
   (excludeEmployeeId) => async (dispatch) => {

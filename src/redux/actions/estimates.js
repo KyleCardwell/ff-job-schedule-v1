@@ -85,48 +85,30 @@ export const fetchEstimates = (filters = {}) => {
       
       const { teamId } = getState().auth;
       
-      let query = supabase
-        .from('estimates')
-        .select(`
-          *,
-          estimate_project:estimate_projects (
-            est_project_id,
-            team_id,
-            est_project_name,
-            est_client_name
-          )
-        `)
-        .eq('estimate_projects.team_id', teamId)
-        .order('updated_at', { ascending: false, nullsFirst: false });
-
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters.searchTerm) {
-        query = query.or(`estimate_projects.est_project_name.ilike.%${filters.searchTerm}%`);
-      }
-
-      const { data: estimates, error } = await query;
+      let { data: estimates, error } = await supabase
+        .rpc('get_estimates_with_user_names', {
+          team_id_param: teamId
+        });
 
       if (error) throw error;
 
-      // Flatten the data structure
-      const flattenedEstimates = estimates.map(estimate => ({
-        ...estimate,
-        est_project_id: estimate.estimate_project.est_project_id,
-        est_project_name: estimate.estimate_project.est_project_name,
-        est_client_name: estimate.estimate_project.est_client_name,
-        team_id: estimate.estimate_project.team_id,
-        estimate_project: undefined // Remove the nested object
-      }));
+      // Apply filters client-side since they're not frequently changing
+      if (filters.status && filters.status !== 'all') {
+        estimates = estimates.filter(est => est.status === filters.status);
+      }
+
+      if (filters.searchTerm) {
+        estimates = estimates.filter(est => 
+          est.est_project_name.toLowerCase().includes(filters.searchTerm.toLowerCase())
+        );
+      }
 
       dispatch({ 
         type: Actions.estimates.FETCH_ESTIMATES_SUCCESS, 
-        payload: flattenedEstimates 
+        payload: estimates 
       });
 
-      return flattenedEstimates;
+      return estimates;
     } catch (error) {
       console.error('Error fetching estimates:', error);
       dispatch({
@@ -240,11 +222,15 @@ export const fetchEstimateById = (estimateId) => {
               .map(section => ({
                 ...section,
                 section_data: section.section_data || {},
-                items: section.items || []
+                cabinets: section.cabinets || [],
+                lengths: section.lengths || [],
+                accessories: section.accessories || [],
+                other: section.other || [],
               }))
               .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
           }))
-          .sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
+          .sort((a, b) => (a.task_order || 0) - (b.task_order || 0)),
+        estimateDefault: data.estimates_default
       };
 
       dispatch({
@@ -425,24 +411,104 @@ export const updateEstimateProject = (estimateId, projectData) => {
   };
 };
 
-// Update an existing task
+// Add a new task to an estimate
+export const addTask = (estimateId, taskName) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { currentEstimate } = getState().estimates;
+      const currentTasks = currentEstimate?.tasks || [];
+      const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), -1);
+      const newTaskOrder = maxOrder + 1;
+
+      // Create the new task - the database trigger will create the initial section
+      const { data: newTask, error: insertError } = await supabase
+        .from('estimate_tasks')
+        .insert([
+          {
+            estimate_id: estimateId,
+            est_task_name: taskName.trim(),
+            task_order: newTaskOrder,
+          }
+        ])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Fetch the task with sections using task_full_details view
+      const { data: taskWithSections, error: fetchError } = await supabase
+        .from('task_full_details')
+        .select('*')
+        .eq('est_task_id', newTask.est_task_id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Transform the task to match our frontend structure
+      const taskWithFormattedSections = {
+        ...taskWithSections,
+        sections: taskWithSections.sections || []
+      };
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: 'task',
+          data: {
+            estimateId,
+            tasks: [...currentTasks, taskWithFormattedSections]
+              .sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
+          }
+        }
+      });
+
+      return taskWithFormattedSections;
+    } catch (error) {
+      console.error('Error adding task:', error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Update a task
 export const updateTask = (estimateId, taskId, updates) => {
   return async (dispatch, getState) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
-      const { data: updatedTask, error } = await supabase
+      // Update the task
+      const { error: updateError } = await supabase
         .from('estimate_tasks')
         .update(updates)
+        .eq('est_task_id', taskId);
+
+      if (updateError) throw updateError;
+
+      // Fetch the updated task with sections using task_full_details view
+      const { data: taskWithSections, error: fetchError } = await supabase
+        .from('task_full_details')
+        .select('*')
         .eq('est_task_id', taskId)
-        .select()
         .single();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
 
+      // Transform the task to match our frontend structure
+      const taskWithFormattedSections = {
+        ...taskWithSections,
+        sections: taskWithSections.sections || []
+      };
+
+      // Update the tasks array with the updated task
       const { currentEstimate } = getState().estimates;
-      const updatedTasks = currentEstimate.tasks.map(task => 
-        task.est_task_id === taskId ? updatedTask : task
+      const updatedTasks = currentEstimate.tasks.map(task =>
+        task.est_task_id === taskId ? taskWithFormattedSections : task
       );
 
       dispatch({
@@ -456,57 +522,9 @@ export const updateTask = (estimateId, taskId, updates) => {
         }
       });
 
-      return updatedTask;
+      return taskWithFormattedSections;
     } catch (error) {
       console.error('Error updating task:', error);
-      dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
-        payload: error.message
-      });
-      throw error;
-    }
-  };
-};
-
-// Add a new task to an estimate project
-export const addTask = (estimateId, taskName) => {
-  return async (dispatch, getState) => {
-    try {
-      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
-
-      const { currentEstimate } = getState().estimates;
-      const currentTasks = currentEstimate?.tasks || [];
-      const maxOrder = currentTasks.reduce((max, task) => Math.max(max, task.task_order || 0), -1);
-      const newTaskOrder = maxOrder + 1;
-
-      const { data: newTask, error } = await supabase
-        .from('estimate_tasks')
-        .insert([
-          {
-            estimate_id: estimateId,
-            est_task_name: taskName.trim(),
-            task_order: newTaskOrder
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
-        payload: {
-          type: 'task',
-          data: {
-            estimateId,
-            tasks: [...currentTasks, newTask].sort((a, b) => (a.task_order || 0) - (b.task_order || 0))
-          }
-        }
-      });
-
-      return newTask;
-    } catch (error) {
-      console.error('Error adding task:', error);
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message
@@ -533,8 +551,11 @@ export const deleteTask = (estimateId, taskId) => {
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
         payload: {
-          estimateId,
-          tasks: currentEstimate.tasks.filter(task => task.est_task_id !== taskId)
+          type: 'task',
+          data: {
+            estimateId,
+            tasks: currentEstimate.tasks.filter(task => task.est_task_id !== taskId)
+          }
         }
       });
     } catch (error) {
@@ -560,10 +581,11 @@ export const addSection = (estimateId, taskId, sectionData) => {
       const maxOrder = currentSections.reduce((max, section) => Math.max(max, section.section_order || 0), 0);
       const newSectionOrder = maxOrder + 1;
 
+      // Create the new section
       const { data: newSection, error } = await supabase
         .from('estimate_sections')
         .insert([{
-         section_data: sectionData,
+          section_data: sectionData,
           est_task_id: taskId,
           section_order: newSectionOrder
         }])
@@ -572,23 +594,25 @@ export const addSection = (estimateId, taskId, sectionData) => {
 
       if (error) throw error;
 
+      // Transform the section to match our frontend structure
+      const sectionWithFormattedData = {
+        ...newSection,
+        section_data: newSection.section_data || {},
+        cabinets: []
+      };
+
       // Update just the current task with the new section
       const updatedTask = {
         ...currentTask,
-        sections: [...currentSections, newSection].sort((a, b) => 
-          (a.section_order || 0) - (b.section_order || 0)
-        )
+        sections: [...currentSections, sectionWithFormattedData]
+          .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
       };
 
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        type: Actions.estimates.ADD_SECTION_SUCCESS,
         payload: {
-          type: 'section',
-          data: {
-            estimateId,
-            taskId,
-            task: updatedTask
-          }
+          taskId,
+          section: sectionWithFormattedData
         }
       });
 
@@ -637,6 +661,57 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       };
 
       dispatch({
+        type: Actions.estimates.UPDATE_SECTION_METADATA_SUCCESS,
+        payload: {
+          taskId,
+          sectionId,
+          updates: updatedSection.section_data
+        }
+      });
+
+      return updatedSection;
+    } catch (error) {
+      console.error('Error updating section:', error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Delete a section
+export const deleteSection = (estimateId, taskId, sectionId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      // Don't allow deleting if it's the only section
+      const { currentEstimate } = getState().estimates;
+      const currentTask = currentEstimate?.tasks?.find(task => task.est_task_id === taskId);
+      const currentSections = currentTask?.sections || [];
+      
+      if (currentSections.length <= 1) {
+        throw new Error("Cannot delete the only section in a task");
+      }
+
+      const { error } = await supabase
+        .from('estimate_sections')
+        .delete()
+        .eq('est_section_id', sectionId);
+
+      if (error) throw error;
+
+      // Update just the current task with the section removed
+      const updatedTask = {
+        ...currentTask,
+        sections: currentSections
+          .filter(section => section.est_section_id !== sectionId)
+          .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
+      };
+
+      dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
         payload: {
           type: 'section',
@@ -647,12 +722,138 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
           }
         }
       });
-
-      return updatedSection;
     } catch (error) {
-      console.error('Error updating section:', error);
+      console.error('Error deleting section:', error);
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};
+
+// Generic function to update section items in any of the 4 tables (cabinets, accessories, lengths, other)
+export const updateSectionItems = (tableName, sectionId, items, idsToDelete = []) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_SECTION_ITEMS_START });
+
+      // Validate table name for security
+      const allowedTables = ['estimate_cabinets', 'estimate_accessories', 'estimate_lengths', 'estimate_other'];
+      if (!allowedTables.includes(tableName)) {
+        throw new Error(`Invalid table name: ${tableName}`);
+      }
+
+      // 1. Delete specific items if any IDs are provided
+      if (idsToDelete && idsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from(tableName)
+          .delete()
+          .in('id', idsToDelete);
+
+        if (deleteError) throw deleteError;
+        console.log(`Deleted ${idsToDelete.length} items from ${tableName}`);
+      }
+
+      // 2. Process items for updates and inserts
+      let processedItems = items; // Start with original items
+      let updatedItems = [];
+      let insertedItems = [];
+      
+      if (items && items.length > 0) {
+        const itemsToUpdate = items.filter(item => item.id && !idsToDelete.includes(item.id));
+        const itemsToInsert = items.filter(item => !item.id);
+
+        // 3. Update existing items
+        if (itemsToUpdate.length > 0) {
+          const updatePromises = itemsToUpdate.map(item => {
+            const { id, ...updateData } = item;
+            return supabase
+              .from(tableName)
+              .update({...updateData, updated_at: new Date()})
+              .eq('id', id);
+          });
+
+          const updateResults = await Promise.all(updatePromises);
+          const updateErrors = updateResults.filter(result => result.error);
+          
+          if (updateErrors.length > 0) {
+            throw new Error(`Failed to update ${updateErrors.length} items`);
+          }
+          
+          updatedItems = itemsToUpdate; // Store the items that were updated
+          console.log(`Updated ${itemsToUpdate.length} items in ${tableName}`);
+        }
+
+        // 4. Insert new items and update IDs
+        if (itemsToInsert.length > 0) {
+          const itemData = itemsToInsert.map(item => {
+            const { id, ...insertData } = item;
+            return {
+              est_section_id: sectionId,
+              ...insertData 
+            };
+          });
+
+          const { data: insertedItemsFromDB, error: insertError } = await supabase
+            .from(tableName)
+            .insert(itemData)
+            .select('*');
+
+          if (insertError) throw insertError;
+          console.log(`Inserted ${itemsToInsert.length} new items into ${tableName}`);
+
+          // Create a mapping of temp_id to new database id
+          const tempIdToIdMap = new Map();
+          insertedItemsFromDB.forEach((insertedItem, index) => {
+            const originalItem = itemsToInsert[index];
+            if (originalItem.temp_id) {
+              tempIdToIdMap.set(originalItem.temp_id, insertedItem.id);
+            }
+          });
+
+          // Create final items array with updated IDs
+          processedItems = items.map(item => {
+            if (item.temp_id && tempIdToIdMap.has(item.temp_id)) {
+              return {
+                ...item,
+                id: tempIdToIdMap.get(item.temp_id),
+                temp_id: undefined
+              };
+            }
+            return item;
+          });
+
+          // Store the inserted items with their new IDs
+          insertedItems = insertedItemsFromDB;
+        }
+      }
+
+      // Extract the item type from table name (e.g., 'estimate_cabinets' -> 'cabinets')
+      const itemType = tableName.replace('estimate_', '');
+
+      dispatch({
+        type: Actions.estimates.UPDATE_SECTION_ITEMS_SUCCESS,
+        payload: {
+          type: itemType,
+          data: { 
+            sectionId, 
+            tableName, 
+            operations: {
+              updated: updatedItems,
+              inserted: insertedItems,
+              deleted: idsToDelete
+            }
+          }
+        }
+      });
+
+      return processedItems;
+    } catch (error) {
+      console.error(`Error updating ${tableName}:`, error);
+      dispatch({
+        type: Actions.estimates.UPDATE_SECTION_ITEMS_ERROR,
         payload: error.message
       });
       throw error;

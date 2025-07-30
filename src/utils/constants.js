@@ -19,3 +19,16 @@ export const ESTIMATE_STATUS = {
   DRAFT: "draft",
   FINALIZED: "finalized",
 }
+
+export const SECTION_TYPES = {
+  CABINETS: {type: "cabinets", title: "Cabinets"},
+  LENGTHS: {type: "lengths", title: "Lengths"},
+  ACCESSORIES: {type: "accessories", title: "Accessories"},
+  OTHER: {type: "other", title: "Other"},
+};
+
+export const ITEM_FORM_WIDTHS = {
+  QUANTITY: "36px",
+  DEFAULT: "1fr",
+  ACTIONS: "72px",
+};

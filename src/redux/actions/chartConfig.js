@@ -1,5 +1,5 @@
-import { Actions } from "../actions";
 import { supabase } from "../../utils/supabase";
+import { Actions } from "../actions";
 
 export const fetchChartConfig = () => async (dispatch) => {
   dispatch({ type: Actions.chartConfig.FETCH_CONFIG_START });

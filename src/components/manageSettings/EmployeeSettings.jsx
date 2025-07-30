@@ -405,34 +405,37 @@ const EmployeeSettings = forwardRef((props, ref) => {
     }
   };
 
-  const handleSave = async (skipDeletionCheck = false) => {
-    const hasEmployeesToDelete = localEmployees.some(
-      (emp) => emp.markedForDeletion
-    );
+  const handleSave = useCallback(
+    (skipDeletionCheck = false) => {
+      const hasEmployeesToDelete = localEmployees.some(
+        (emp) => emp.markedForDeletion
+      );
 
-    if (hasEmployeesToDelete && !skipDeletionCheck) {
-      setShowDeleteConfirmation(true);
-      setSchedulingError(null);
-      return;
-    }
-
-    if (validateInputs()) {
-      setIsSaving(true);
-      setSaveError(null);
-      setSchedulingError(null);
-
-      // First check for scheduling conflicts
-      if (!validateSchedulingChanges()) {
-        setIsSaving(false);
-        setShowDeleteConfirmation(false);
-        // The actual save will happen after user acknowledges the conflict
+      if (hasEmployeesToDelete && !skipDeletionCheck) {
+        setShowDeleteConfirmation(true);
+        setSchedulingError(null);
         return;
       }
 
-      // If no conflicts, proceed with save
-      await handleSaveImplementation();
-    }
-  };
+      if (validateInputs()) {
+        setIsSaving(true);
+        setSaveError(null);
+        setSchedulingError(null);
+
+        // First check for scheduling conflicts
+        if (!validateSchedulingChanges()) {
+          setIsSaving(false);
+          setShowDeleteConfirmation(false);
+          // The actual save will happen after user acknowledges the conflict
+          return;
+        }
+
+        // If no conflicts, proceed with save
+        handleSaveImplementation();
+      }
+    },
+    [localEmployees, validateInputs, validateSchedulingChanges]
+  );
 
   const handleToggleTimeOff = (employeeId) => {
     setTimeOffVisibility((prev) => ({
@@ -613,7 +616,8 @@ const EmployeeSettings = forwardRef((props, ref) => {
             (emp) => subTasksByEmployee[emp.employee_id]?.length > 0
           );
 
-          const baseMessage = "You are about to permanently remove one or more employees. This action cannot be undone.";
+          const baseMessage =
+            "You are about to permanently remove one or more employees. This action cannot be undone.";
           let messages = [baseMessage];
 
           if (employeesWithTasks.length > 0) {

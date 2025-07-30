@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 import {
   updateEstimateProject,
@@ -9,6 +10,7 @@ import {
 
 const EstimateProjectForm = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
@@ -73,7 +75,9 @@ const EstimateProjectForm = () => {
         const estimateProject = await dispatch(
           createEstimateProject(projectData)
         );
-        await dispatch(createEstimate(estimateProject.est_project_id));
+        const newEstimate = await dispatch(createEstimate(estimateProject.est_project_id));
+        // Navigate to the in-progress estimate
+        navigate(`/estimates/in-progress/${newEstimate.estimate_id}`);
       }
     } catch (error) {
       console.error("Error saving project information:", error);

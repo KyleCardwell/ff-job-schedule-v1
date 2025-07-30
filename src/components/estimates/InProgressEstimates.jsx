@@ -15,9 +15,9 @@ const InProgressEstimates = () => {
 
   useEffect(() => {
     // Only fetch if estimates array is empty
-    if (!estimates || estimates.length === 0) {
+    // if (!estimates || estimates.length === 0) {
       dispatch(fetchEstimates({ status: ESTIMATE_STATUS.DRAFT }));
-    }
+    // }
   }, []);
 
   // Filter for draft estimates only
@@ -134,18 +134,19 @@ const InProgressEstimates = () => {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-full">
-                <div className="grid grid-cols-5 gap-4 bg-slate-50 py-3 px-6 border-b border-slate-200">
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_0.5fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Project</div>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Client</div>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Created</div>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Last Updated</div>
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider text-right">Actions</div>
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Updated By</div>
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</div>
                 </div>
                 <div className="bg-white divide-y divide-slate-200">
                   {filteredEstimates.map((estimate) => (
                     <div
                       key={estimate.estimate_id}
-                      className="grid grid-cols-5 gap-4 py-4 px-6 hover:bg-slate-50 transition-colors items-center"
+                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_0.5fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
                     >
                       <div className="text-sm font-medium text-slate-900 truncate">
                         {estimate.est_project_name || "Unknown Project"}
@@ -159,7 +160,10 @@ const InProgressEstimates = () => {
                       <div className="text-sm text-slate-500">
                         {formatDate(estimate.updated_at)}
                       </div>
-                      <div className="text-sm font-medium text-right">
+                      <div className="text-sm text-slate-500">
+                        {estimate.updated_by_name}
+                      </div>
+                      <div className="text-sm font-medium">
                         <button
                           onClick={() => handleEditEstimate(estimate)}
                           className="text-blue-600 hover:text-blue-900 mr-4"

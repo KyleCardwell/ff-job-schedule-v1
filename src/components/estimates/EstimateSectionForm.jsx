@@ -1,11 +1,9 @@
 import PropTypes from 'prop-types';
 import { useState } from "react";
-import { FiSave, FiX, FiPlusCircle } from "react-icons/fi";
+import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { addSection, updateSection } from "../../redux/actions/estimates";
-
-import EstimateSectionItem from "./EstimateSectionItem.jsx";
 
 
 const EstimateSectionForm = ({
@@ -17,7 +15,7 @@ const EstimateSectionForm = ({
   const dispatch = useDispatch();
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   const estimateData = currentEstimate?.estimate_data;
-  const sectionData = section?.section_data || {};
+  const sectionData = section?.section_data || currentEstimate?.estimateDefault || {};
 
   const MATERIAL_OPTIONS = estimateData?.materials?.options || [];
   const CABINET_INTERIOR_OPTIONS = estimateData?.boxMaterials?.options || [];
@@ -27,9 +25,9 @@ const EstimateSectionForm = ({
   const DRAWER_FRONT_STYLE_OPTIONS =
     estimateData?.drawerFrontStyles?.options || [];
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
-  const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes?.options || [];
+  const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
   const DRAWER_SLIDE_OPTIONS =
-    estimateData?.drawerSlideTypes?.options || [];
+    estimateData?.drawerSlideTypes || [];
 
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
@@ -46,12 +44,9 @@ const EstimateSectionForm = ({
     drawerSlide: sectionData.drawerSlide || "",
     drawerBoxes: sectionData.drawerBoxes || "",
     notes: sectionData.notes || "",
-    items: section.items || [],
   });
 
   const [errors, setErrors] = useState({});
-  const [showItemForm, setShowItemForm] = useState(false);
-  const [editingItemIndex, setEditingItemIndex] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -126,85 +121,33 @@ const EstimateSectionForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      if (section?.est_section_id) {
-        // Update existing section
-        dispatch(updateSection(
-          currentEstimate.estimate_id,
-          taskId,
-          section.est_section_id,
-          formData
-        ));
-      } else {
-        // Add new section
-        dispatch(addSection(
-          currentEstimate.estimate_id,
-          taskId,
-          formData
-        ));
-      }
-      if (onSave) {
-        onSave(); // Call onSave callback if provided
-      } else {
-        onCancel(); // Fallback to onCancel if no onSave provided
+      try {
+        if (section?.est_section_id) {
+          // Update existing section
+          await dispatch(updateSection(
+            currentEstimate.estimate_id,
+            taskId,
+            section.est_section_id,
+            formData
+          ));
+        } else {
+          // Create new section
+          const newSection = await dispatch(addSection(
+            currentEstimate.estimate_id,
+            taskId,
+            formData
+          ));
+          onSave?.(newSection.est_section_id);
+        }
+        onCancel?.();
+      } catch (error) {
+        console.error("Error saving section:", error);
       }
     }
-  };
-
-  // Handle adding a new item
-  const handleAddItem = () => {
-    setShowItemForm(true);
-    setEditingItemIndex(null);
-  };
-
-  // Handle editing an existing item
-  const handleEditItem = (index) => {
-    setShowItemForm(true);
-    setEditingItemIndex(index);
-  };
-
-  // Handle saving an item
-  const handleSaveItem = (item) => {
-    const updatedItems = [...formData.items];
-
-    if (editingItemIndex !== null) {
-      // Update existing item
-      updatedItems[editingItemIndex] = item;
-    } else {
-      // Add new item with unique ID
-      updatedItems.push({
-        ...item,
-        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      });
-    }
-
-    setFormData({
-      ...formData,
-      items: updatedItems,
-    });
-
-    setShowItemForm(false);
-    setEditingItemIndex(null);
-  };
-
-  // Handle deleting an item
-  const handleDeleteItem = (index) => {
-    const updatedItems = [...formData.items];
-    updatedItems.splice(index, 1);
-
-    setFormData({
-      ...formData,
-      items: updatedItems,
-    });
-  };
-
-  // Handle canceling item form
-  const handleCancelItemForm = () => {
-    setShowItemForm(false);
-    setEditingItemIndex(null);
   };
 
   return (
@@ -231,8 +174,8 @@ const EstimateSectionForm = ({
               >
                 <option value="">Select style</option>
                 {STYLE_OPTIONS.map((style) => (
-                  <option key={style} value={style}>
-                    {style}
+                  <option key={style.id} value={style.id}>
+                    {style.name}
                   </option>
                 ))}
               </select>
@@ -305,14 +248,14 @@ const EstimateSectionForm = ({
             </label>
             <div className="grid grid-cols-2 gap-2 text-sm">
               {FINISH_OPTIONS.map((option) => (
-                <label key={option} className="flex items-center space-x-2">
+                <label key={option.id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    checked={formData.finish.includes(option)}
-                    onChange={() => handleFinishChange(option)}
+                    checked={formData.finish.includes(option.id)}
+                    onChange={() => handleFinishChange(option.id)}
                     className="rounded border-slate-300"
                   />
-                  <span className="text-slate-600">{option}</span>
+                  <span className="text-slate-600">{option.name}</span>
                 </label>
               ))}
             </div>
@@ -560,84 +503,6 @@ const EstimateSectionForm = ({
           />
         </div>
 
-        {/* Cabinet Items Section */}
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-medium text-slate-700">
-              Cabinet Items
-            </h4>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center"
-            >
-              <FiPlusCircle className="mr-1" />
-              Add Item
-            </button>
-          </div>
-
-          {formData.items.length === 0 ? (
-            <p className="text-sm text-slate-500 italic">
-              No cabinet items added yet
-            </p>
-          ) : (
-            <div className="space-y-2 mb-3">
-              {formData.items.map((item, index) => (
-                <div
-                  key={item.id || index}
-                  className="bg-slate-50 border border-slate-200 rounded-md p-3"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h5 className="text-sm font-medium">{item.name}</h5>
-                      <p className="text-xs text-slate-500">
-                        {`${item.width}" × ${item.height}" × ${item.depth}" • Qty: ${item.quantity}`}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEditItem(index)}
-                        className="px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-md hover:bg-slate-200"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(index)}
-                        className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {showItemForm && (
-            <EstimateSectionItem
-              item={
-                editingItemIndex !== null
-                  ? formData.items[editingItemIndex]
-                  : {}
-              }
-              onSave={handleSaveItem}
-              onCancel={handleCancelItemForm}
-              onDelete={
-                editingItemIndex !== null
-                  ? () => {
-                      handleDeleteItem(editingItemIndex);
-                      setShowItemForm(false);
-                      setEditingItemIndex(null);
-                    }
-                  : undefined
-              }
-            />
-          )}
-        </div>
-
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
           <button
@@ -663,7 +528,7 @@ const EstimateSectionForm = ({
 
 EstimateSectionForm.propTypes = {
     section: PropTypes.object,
-    taskId: PropTypes.string,
+    taskId: PropTypes.number,
     onCancel: PropTypes.func,
     onSave: PropTypes.func,
 };
