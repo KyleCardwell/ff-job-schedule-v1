@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
+import { v4 as uuid } from "uuid";
 
 import SectionItemList from "./SectionItemList.jsx";
 
@@ -10,6 +11,8 @@ const OtherItemForm = ({ item = {}, onSave, onCancel }) => {
     quantity: item.quantity || 1,
     description: item.description || "",
     notes: item.notes || "",
+    temp_id: item.temp_id || uuid(),
+    id: item.id || undefined,
   });
 
   const [errors, setErrors] = useState({});

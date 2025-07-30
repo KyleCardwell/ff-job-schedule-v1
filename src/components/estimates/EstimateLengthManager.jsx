@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
+import { v4 as uuid } from "uuid";
 
 import SectionItemList from "./SectionItemList.jsx";
 
@@ -9,6 +10,8 @@ const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
     name: item.name || "",
     length: item.length || "",
     quantity: item.quantity || 1,
+    temp_id: item.temp_id || uuid(),
+    id: item.id || undefined,
   });
 
   const [errors, setErrors] = useState({});
@@ -70,9 +73,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
 
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
-      <h4 className="text-sm font-medium text-slate-700 mb-3">
-        Length Item
-      </h4>
+      <h4 className="text-sm font-medium text-slate-700 mb-3">Length Item</h4>
 
       <div>
         {/* Name */}

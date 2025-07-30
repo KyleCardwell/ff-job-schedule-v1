@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
+import { v4 as uuid } from "uuid";
 
 import SectionItemList from "./SectionItemList.jsx";
 
@@ -11,6 +12,8 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     height: item.height || "",
     depth: item.depth || "",
     quantity: item.quantity || 1,
+    temp_id: item.temp_id || uuid(),
+    id: item.id || undefined,
   });
 
   const [errors, setErrors] = useState({});

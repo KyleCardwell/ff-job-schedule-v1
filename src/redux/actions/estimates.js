@@ -739,3 +739,131 @@ export const deleteSection = (estimateId, taskId, sectionId) => {
     }
   };
 };
+
+// Generic function to update section items in any of the 4 tables (cabinets, accessories, lengths, other)
+export const updateSectionItems = (tableName, sectionId, items, idsToDelete = []) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_SECTION_ITEMS_START });
+
+      // Validate table name for security
+      const allowedTables = ['estimate_cabinets', 'estimate_accessories', 'estimate_lengths', 'estimate_other'];
+      if (!allowedTables.includes(tableName)) {
+        throw new Error(`Invalid table name: ${tableName}`);
+      }
+
+      // 1. Delete specific items if any IDs are provided
+      if (idsToDelete && idsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from(tableName)
+          .delete()
+          .in('id', idsToDelete);
+
+        if (deleteError) throw deleteError;
+        console.log(`Deleted ${idsToDelete.length} items from ${tableName}`);
+      }
+
+      // 2. Process items for updates and inserts
+      let processedItems = items; // Start with original items
+      let updatedItems = [];
+      let insertedItems = [];
+      
+      if (items && items.length > 0) {
+        const itemsToUpdate = items.filter(item => item.id && !idsToDelete.includes(item.id));
+        const itemsToInsert = items.filter(item => !item.id);
+
+        // 3. Update existing items
+        if (itemsToUpdate.length > 0) {
+          const updatePromises = itemsToUpdate.map(item => {
+            const { id, ...updateData } = item;
+            return supabase
+              .from(tableName)
+              .update(updateData)
+              .eq('id', id);
+          });
+
+          const updateResults = await Promise.all(updatePromises);
+          const updateErrors = updateResults.filter(result => result.error);
+          
+          if (updateErrors.length > 0) {
+            throw new Error(`Failed to update ${updateErrors.length} items`);
+          }
+          
+          updatedItems = itemsToUpdate; // Store the items that were updated
+          console.log(`Updated ${itemsToUpdate.length} items in ${tableName}`);
+        }
+
+        // 4. Insert new items and update IDs
+        if (itemsToInsert.length > 0) {
+          const itemData = itemsToInsert.map(item => {
+            const { id, ...insertData } = item;
+            return {
+              est_section_id: sectionId,
+              ...insertData 
+            };
+          });
+
+          const { data: insertedItemsFromDB, error: insertError } = await supabase
+            .from(tableName)
+            .insert(itemData)
+            .select('*');
+
+          if (insertError) throw insertError;
+          console.log(`Inserted ${itemsToInsert.length} new items into ${tableName}`);
+
+          // Create a mapping of temp_id to new database id
+          const tempIdToIdMap = new Map();
+          insertedItemsFromDB.forEach((insertedItem, index) => {
+            const originalItem = itemsToInsert[index];
+            if (originalItem.temp_id) {
+              tempIdToIdMap.set(originalItem.temp_id, insertedItem.id);
+            }
+          });
+
+          // Create final items array with updated IDs
+          processedItems = items.map(item => {
+            if (item.temp_id && tempIdToIdMap.has(item.temp_id)) {
+              return {
+                ...item,
+                id: tempIdToIdMap.get(item.temp_id),
+                temp_id: undefined
+              };
+            }
+            return item;
+          });
+
+          // Store the inserted items with their new IDs
+          insertedItems = insertedItemsFromDB;
+        }
+      }
+
+      // Extract the item type from table name (e.g., 'estimate_cabinets' -> 'cabinets')
+      const itemType = tableName.replace('estimate_', '');
+
+      dispatch({
+        type: Actions.estimates.UPDATE_SECTION_ITEMS_SUCCESS,
+        payload: {
+          type: itemType,
+          data: { 
+            sectionId, 
+            tableName, 
+            operations: {
+              updated: updatedItems,
+              inserted: insertedItems,
+              deleted: idsToDelete
+            }
+          }
+        }
+      });
+
+      return processedItems;
+    } catch (error) {
+      console.error(`Error updating ${tableName}:`, error);
+      dispatch({
+        type: Actions.estimates.UPDATE_SECTION_ITEMS_ERROR,
+        payload: error.message
+      });
+      throw error;
+    }
+  };
+};

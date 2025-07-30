@@ -1,10 +1,11 @@
+import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { useDebouncedCallback } from "../../hooks/useDebounce";
-import { updateSection } from "../../redux/actions/estimates";
+import { updateSectionItems } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
 
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
@@ -32,26 +33,25 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
     other: currentSection?.other || [],
   });
 
+  // Create a mapping of section types to their table names
+  const sectionTableMapping = {
+    cabinets: 'estimate_cabinets',
+    accessories: 'estimate_accessories', 
+    lengths: 'estimate_lengths',
+    other: 'estimate_other',
+  };
+
+  // Helper function to check if there are unsaved changes by comparing with Redux state
+  const hasUnsavedChanges = (type, updatedItems) => {
+    const reduxItems = currentSection?.[type] || [];
+    return !isEqual(reduxItems, updatedItems);
+  };
+
   // Update local state when currentSection changes
   useEffect(() => {
     if (currentSection) {
       setSectionData({
-        cabinets: [
-          {
-            name: "BU",
-            width: 24,
-            height: 30.5,
-            depth: 24,
-            quantity: 1,
-          },
-          {
-            name: "B3D",
-            width: 27,
-            height: 30.5,
-            depth: 24,
-            quantity: 1,
-          },
-        ],
+        cabinets: currentSection.cabinets || [],
         lengths: currentSection.lengths || [],
         accessories: currentSection.accessories || [],
         other: currentSection.other || [],
@@ -62,16 +62,27 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
   const handleToggleSection = (sectionType) => {
     setOpenSectionType(openSectionType === sectionType ? null : sectionType);
   };
-
+    
+    
   // Debounced save to database
   const debouncedSave = useDebouncedCallback(async (type, updatedItems) => {
     try {
-      if (currentEstimate && taskId && sectionId) {
-        // await dispatch(
-        //   updateSection(currentEstimate.estimate_id, taskId, sectionId, {
-        //     [type]: updatedItems,
-        //   })
-        // );
+      // Only save if there are actual changes compared to Redux state
+      if (!hasUnsavedChanges(type, updatedItems)) {
+        console.log(`No changes detected for ${type}. Skipping save.`);
+        return;
+      }
+
+      if (sectionId) {
+        console.log(`Saving changes for ${type}`);
+        
+        const tableName = sectionTableMapping[type];
+        // For now, we'll pass an empty array for idsToDelete - you can enhance this later
+        const idsToDelete = [];
+        
+        await dispatch(updateSectionItems(tableName, sectionId, updatedItems, idsToDelete));
+        
+        console.log(`Successfully saved ${type} changes`);
       }
     } catch (error) {
       console.error("Error saving section data:", error);
