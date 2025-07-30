@@ -92,7 +92,34 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
         [type]: currentSection?.[type] || [],
       }));
     }
-  }, 10000); // 10 second debounce delay
+  }, 1000); // 1 second debounce delay
+
+  // Immediate save function (no debounce)
+  const saveImmediately = async (type, updatedItems) => {
+    try {
+      if (!hasUnsavedChanges(type, updatedItems)) {
+        console.log(`No changes detected for ${type}. Skipping save.`);
+        return;
+      }
+
+      if (sectionId) {
+        console.log(`Immediately saving changes for ${type}`);
+        
+        const tableName = sectionTableMapping[type];
+        const idsToDelete = [];
+        
+        await dispatch(updateSectionItems(tableName, sectionId, updatedItems, idsToDelete));
+        
+        console.log(`Successfully saved ${type} changes immediately`);
+      }
+    } catch (error) {
+      console.error("Error saving section data:", error);
+      setSectionData((prev) => ({
+        ...prev,
+        [type]: currentSection?.[type] || [],
+      }));
+    }
+  };
 
   const handleUpdateItems = (type, updatedItems) => {
     // Update local state immediately (optimistic update)
@@ -102,7 +129,8 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
     }));
 
     // Debounced save to database
-    debouncedSave(type, updatedItems);
+    // debouncedSave(type, updatedItems);
+    saveImmediately(type, updatedItems);
   };
 
   const sections = [

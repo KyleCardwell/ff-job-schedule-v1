@@ -242,6 +242,7 @@ const EstimateOtherManager = ({ items, onUpdateItems }) => {
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       ItemForm={OtherItemForm}
+      hideAddButton
     />
   );
 };

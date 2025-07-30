@@ -10,6 +10,7 @@ const SectionItemList = ({
   onSave,
   onDelete,
   ItemForm,
+  hideAddButton = false,
 }) => {
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
@@ -118,7 +119,7 @@ const SectionItemList = ({
       )}
 
       {/* Add Item Button */}
-      {!showNewItem && (
+      {!showNewItem && !hideAddButton && (
         <div className="my-2">
           <button
             onClick={() => {
@@ -150,6 +151,7 @@ SectionItemList.propTypes = {
   onSave: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   ItemForm: PropTypes.elementType.isRequired,
+  hideAddButton: PropTypes.bool,
 };
 
 export default SectionItemList;

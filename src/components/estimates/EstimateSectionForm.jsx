@@ -132,24 +132,14 @@ const EstimateSectionForm = ({
             currentEstimate.estimate_id,
             taskId,
             section.est_section_id,
-            {
-              section_data: {
-                ...formData,
-                cabinets: undefined
-              }
-            }
+            formData
           ));
         } else {
           // Create new section
           const newSection = await dispatch(addSection(
             currentEstimate.estimate_id,
             taskId,
-            {
-              section_data: {
-                ...formData,
-                cabinets: undefined
-              }
-            }
+            formData
           ));
           onSave?.(newSection.est_section_id);
         }

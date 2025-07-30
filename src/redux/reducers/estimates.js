@@ -202,6 +202,86 @@ export const estimatesReducer = (state = initialState, action) => {
         error: null
       };
 
+    case Actions.estimates.UPDATE_SECTION_METADATA_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: metaTaskId, sectionId: metaSectionId, updates } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === metaTaskId) {
+              return {
+                ...task,
+                sections: task.sections.map(section => {
+                  if (section.est_section_id === metaSectionId) {
+                    return {
+                      ...section,
+                      section_data: {
+                        ...section.section_data,
+                        ...updates
+                      }
+                    };
+                  }
+                  return section;
+                })
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.ADD_SECTION_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: addTaskId, section: newSection } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === addTaskId) {
+              return {
+                ...task,
+                sections: [...task.sections, newSection]
+                  .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.DELETE_SECTION_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: deleteTaskId, sectionId: deleteSectionId } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === deleteTaskId) {
+              return {
+                ...task,
+                sections: task.sections.filter(section => 
+                  section.est_section_id !== deleteSectionId
+                )
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
+
     case Actions.estimates.UPDATE_ESTIMATE_ERROR:
       return {
         ...state,

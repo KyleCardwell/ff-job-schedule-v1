@@ -609,14 +609,10 @@ export const addSection = (estimateId, taskId, sectionData) => {
       };
 
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        type: Actions.estimates.ADD_SECTION_SUCCESS,
         payload: {
-          type: 'section',
-          data: {
-            estimateId,
-            taskId,
-            task: updatedTask
-          }
+          taskId,
+          section: sectionWithFormattedData
         }
       });
 
@@ -665,14 +661,11 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       };
 
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        type: Actions.estimates.UPDATE_SECTION_METADATA_SUCCESS,
         payload: {
-          type: 'section',
-          data: {
-            estimateId,
-            taskId,
-            task: updatedTask
-          }
+          taskId,
+          sectionId,
+          updates: updatedSection.section_data
         }
       });
 
