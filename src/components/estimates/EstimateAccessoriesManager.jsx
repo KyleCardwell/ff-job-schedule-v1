@@ -75,56 +75,56 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
         Accessory Item
       </h4>
 
-      <div>
-        {/* Name */}
-        <div className="mb-3">
-          <label
-            htmlFor="name"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border ${
-              errors.name ? "border-red-500" : "border-slate-300"
-            } rounded-md text-sm`}
-            placeholder="Hinges, Pulls, etc."
-          />
-          {errors.name && (
-            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-          )}
-        </div>
+      <div className="flex flex-col">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Quantity */}
+          <div className="mb-3">
+            <label
+              htmlFor="quantity"
+              className="block text-xs font-medium text-slate-700 mb-1"
+            >
+              Quantity <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="quantity"
+              name="quantity"
+              value={formData.quantity}
+              onChange={handleChange}
+              min="1"
+              className={`w-full px-3 py-2 border ${
+                errors.quantity ? "border-red-500" : "border-slate-300"
+              } rounded-md text-sm`}
+            />
+            {errors.quantity && (
+              <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+            )}
+          </div>
+          {/* Name */}
+          <div className="mb-3">
+            <label
+              htmlFor="name"
+              className="block text-xs font-medium text-slate-700 mb-1"
+            >
+              Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border ${
+                errors.name ? "border-red-500" : "border-slate-300"
+              } rounded-md text-sm`}
+              placeholder="Hinges, Pulls, etc."
+            />
+            {errors.name && (
+              <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+            )}
+          </div>
 
-        {/* Quantity */}
-        <div className="mb-3">
-          <label
-            htmlFor="quantity"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Quantity <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            id="quantity"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleChange}
-            min="1"
-            className={`w-full px-3 py-2 border ${
-              errors.quantity ? "border-red-500" : "border-slate-300"
-            } rounded-md text-sm`}
-          />
-          {errors.quantity && (
-            <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-          )}
-        </div>
-
-        {/* Notes */}
+          {/* Notes
         <div className="mb-4">
           <label
             htmlFor="notes"
@@ -141,8 +141,8 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
             className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
             placeholder="Optional notes about this accessory..."
           />
+        </div> */}
         </div>
-
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
           <button
