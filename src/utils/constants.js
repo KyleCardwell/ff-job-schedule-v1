@@ -26,3 +26,9 @@ export const SECTION_TYPES = {
   ACCESSORIES: {type: "accessories", title: "Accessories"},
   OTHER: {type: "other", title: "Other"},
 };
+
+export const ITEM_FORM_WIDTHS = {
+  QUANTITY: "36px",
+  DEFAULT: "1fr",
+  ACTIONS: "72px",
+};

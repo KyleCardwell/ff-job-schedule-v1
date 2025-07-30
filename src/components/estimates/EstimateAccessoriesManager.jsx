@@ -3,6 +3,8 @@ import { useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { v4 as uuid } from "uuid";
 
+import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+
 import SectionItemList from "./SectionItemList.jsx";
 
 const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
@@ -173,10 +175,10 @@ AccessoryItemForm.propTypes = {
 
 const EstimateAccessoriesManager = ({ items, onUpdateItems }) => {
   const columns = [
-    { key: "quantity", label: "Qty", width: ".5fr" },
-    { key: "name", label: "Accessory", width: "1fr" },
-    { key: "notes", label: "Notes", width: "1fr" },
-    { key: "actions", label: "Actions", width: "0.5fr" },
+    { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
+    { key: "name", label: "Accessory", width: ITEM_FORM_WIDTHS.DEFAULT },
+    // { key: "notes", label: "Notes", width: "1fr" },
+    { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 
   const handleSaveItem = async (item, itemIndex = -1) => {

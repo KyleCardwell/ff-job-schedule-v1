@@ -68,14 +68,14 @@ const SectionItemList = ({
           ) : (
             <div
               key={index}
-              className="grid items-center py-1 px-3 bg-slate-700 text-white border-b border-slate-600 hover:bg-slate-600 hover:text-slate-200 transition-colors"
+              className="grid gap-4 items-center py-1 px-3 bg-slate-700 text-white border-b border-slate-600 hover:bg-slate-600 hover:text-slate-200 transition-colors"
               style={{
                 gridTemplateColumns: columns.map((c) => c.width).join(" "),
               }}
             >
               {columns.map((col) =>
                 col.key === "actions" ? (
-                  <div key={col.key} className="flex items-center space-x-2">
+                  <div key={col.key} className="flex justify-center space-x-2">
                     <button
                       onClick={() => {
                         setShowNewItem(false);

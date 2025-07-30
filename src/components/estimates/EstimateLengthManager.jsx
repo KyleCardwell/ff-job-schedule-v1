@@ -3,6 +3,8 @@ import { useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { v4 as uuid } from "uuid";
 
+import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+
 import SectionItemList from "./SectionItemList.jsx";
 
 const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
@@ -181,10 +183,10 @@ LengthItemForm.propTypes = {
 
 const EstimateLengthManager = ({ items, onUpdateItems }) => {
   const columns = [
-    { key: "quantity", label: "Qty", width: ".5fr" },
-    { key: "name", label: "Name", width: "1fr" },
-    { key: "length", label: "Length", width: "1fr" },
-    { key: "actions", label: "Actions", width: "0.5fr" },
+    { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
+    { key: "name", label: "Name", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "length", label: "Length", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 
   const handleSaveItem = async (item, itemIndex = -1) => {

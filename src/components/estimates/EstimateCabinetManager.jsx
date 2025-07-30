@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { v4 as uuid } from "uuid";
 
+import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+
 import SectionItemList from "./SectionItemList.jsx";
 
 const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
@@ -246,12 +248,12 @@ CabinetItemForm.propTypes = {
 
 const EstimateCabinetManager = ({ items, onUpdateItems }) => {
   const columns = [
-    { key: "quantity", label: "Qty", width: ".5fr" },
-    { key: "name", label: "Cabinet", width: "1fr" },
-    { key: "width", label: "Width", width: "1fr" },
-    { key: "height", label: "Height", width: "1fr" },
-    { key: "depth", label: "Depth", width: "1fr" },
-    { key: "actions", label: "Actions", width: "0.5fr" },
+    { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
+    { key: "name", label: "Cabinet", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "depth", label: "Depth", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 
   const handleSaveItem = async (item, itemIndex = -1) => {
