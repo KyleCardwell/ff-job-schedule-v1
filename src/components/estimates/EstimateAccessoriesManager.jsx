@@ -9,7 +9,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     quantity: item.quantity || 1,
-    notes: item.notes || "",
+    // notes: item.notes || "",
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });

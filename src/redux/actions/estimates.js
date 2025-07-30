@@ -778,7 +778,7 @@ export const updateSectionItems = (tableName, sectionId, items, idsToDelete = []
             const { id, ...updateData } = item;
             return supabase
               .from(tableName)
-              .update(updateData)
+              .update({...updateData, updated_at: new Date()})
               .eq('id', id);
           });
 

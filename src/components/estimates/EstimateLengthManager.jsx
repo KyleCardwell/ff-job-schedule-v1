@@ -76,6 +76,30 @@ const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
       <h4 className="text-sm font-medium text-slate-700 mb-3">Length Item</h4>
 
       <div>
+        {/* Quantity */}
+        <div className="mb-4">
+          <label
+            htmlFor="quantity"
+            className="block text-xs font-medium text-slate-700 mb-1"
+          >
+            Quantity <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            id="quantity"
+            name="quantity"
+            value={formData.quantity}
+            onChange={handleChange}
+            min="1"
+            className={`w-full px-3 py-2 border ${
+              errors.quantity ? "border-red-500" : "border-slate-300"
+            } rounded-md text-sm`}
+          />
+          {errors.quantity && (
+            <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+          )}
+        </div>
+
         {/* Name */}
         <div className="mb-3">
           <label
@@ -125,30 +149,6 @@ const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
           )}
         </div>
 
-        {/* Quantity */}
-        <div className="mb-4">
-          <label
-            htmlFor="quantity"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Quantity <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            id="quantity"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleChange}
-            min="1"
-            className={`w-full px-3 py-2 border ${
-              errors.quantity ? "border-red-500" : "border-slate-300"
-            } rounded-md text-sm`}
-          />
-          {errors.quantity && (
-            <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-          )}
-        </div>
-
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
           <button
@@ -182,8 +182,8 @@ LengthItemForm.propTypes = {
 const EstimateLengthManager = ({ items, onUpdateItems }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
-    { key: "name", label: "Length", width: "1fr" },
-    { key: "notes", label: "Notes", width: "1fr" },
+    { key: "name", label: "Name", width: "1fr" },
+    { key: "length", label: "Length", width: "1fr" },
     { key: "actions", label: "Actions", width: "0.5fr" },
   ];
 
