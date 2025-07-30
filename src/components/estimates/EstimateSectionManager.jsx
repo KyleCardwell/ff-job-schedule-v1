@@ -59,6 +59,11 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
     }
   }, [currentSection]);
 
+  // Close all accordions when taskId changes
+  useEffect(() => {
+    setOpenSectionType(null);
+  }, [taskId, sectionId]);
+
   const handleToggleSection = (sectionType) => {
     setOpenSectionType(openSectionType === sectionType ? null : sectionType);
   };

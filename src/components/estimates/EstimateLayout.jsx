@@ -115,6 +115,7 @@ const EstimateLayout = () => {
             onClick={() => {
               setShowProjectInfo(true);
               setSelectedTaskId(null);
+              setSelectedSectionId(null);
             }}
             className={`
               py-3 px-4 text-sm font-medium text-left flex items-center space-x-2
