@@ -12,12 +12,12 @@ const FACE_TYPES = [
   { value: "container", label: "Container", color: "#E5E7EB" },
 ];
 
-const CabinetFaceDivider = ({ 
-  cabinetWidth, 
-  cabinetHeight, 
-  faceConfig = null, 
-  onSave, 
-  onCancel 
+const CabinetFaceDivider = ({
+  cabinetWidth,
+  cabinetHeight,
+  faceConfig = null,
+  onSave,
+  onCancel,
 }) => {
   const svgRef = useRef();
   const [config, setConfig] = useState(faceConfig);
@@ -28,7 +28,10 @@ const CabinetFaceDivider = ({
   // Scale factor to fit cabinet in a reasonable display size
   const maxDisplayWidth = 300;
   const maxDisplayHeight = 400;
-  const scaleX = Math.min(maxDisplayWidth / cabinetWidth, maxDisplayHeight / cabinetHeight);
+  const scaleX = Math.min(
+    maxDisplayWidth / cabinetWidth,
+    maxDisplayHeight / cabinetHeight
+  );
   const scaleY = scaleX; // Keep aspect ratio
   const displayWidth = cabinetWidth * scaleX;
   const displayHeight = cabinetHeight * scaleY;
@@ -43,13 +46,13 @@ const CabinetFaceDivider = ({
         height: cabinetHeight,
         x: 0,
         y: 0,
-        children: null
+        children: null,
       });
     } else if (config && !config.id) {
       // Ensure existing config has an id
       setConfig({
         ...config,
-        id: "root"
+        id: "root",
       });
     }
   }, [cabinetWidth, cabinetHeight, config]);
@@ -60,7 +63,7 @@ const CabinetFaceDivider = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && showTypeSelector) {
+      if (event.key === "Escape" && showTypeSelector) {
         setShowTypeSelector(false);
         setSelectedNode(null);
       }
@@ -69,9 +72,9 @@ const CabinetFaceDivider = ({
     const handleClickOutside = (event) => {
       if (showTypeSelector) {
         // Check if click is outside the popup
-        const popup = event.target.closest('.type-selector-popup');
-        const svg = event.target.closest('svg');
-        
+        const popup = event.target.closest(".type-selector-popup");
+        const svg = event.target.closest("svg");
+
         // Close if clicking outside popup but not on SVG (SVG has its own handler)
         if (!popup && !svg) {
           setShowTypeSelector(false);
@@ -81,62 +84,77 @@ const CabinetFaceDivider = ({
     };
 
     if (showTypeSelector) {
-      document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showTypeSelector]);
 
   // Generate unique ID for new nodes
   const generateId = (parentId, index) => {
     if (!parentId || parentId === "root") {
-      return `${index}`;
+      return index.toString();
     }
     return `${parentId}-${index}`;
   };
 
-  // Calculate positions and dimensions for all nodes
-  const calculateLayout = (node, x = 0, y = 0, width = cabinetWidth, height = cabinetHeight) => {
+  // Calculate layout for all nodes recursively
+  const calculateLayout = (
+    node,
+    x = 0,
+    y = 0,
+    width = cabinetWidth,
+    height = cabinetHeight
+  ) => {
     node.x = x;
     node.y = y;
-    node.width = width;
-    node.height = height;
 
-    if (node.children && node.children.length > 0) {
-      node.type = "container"; // Automatically set containers
-      
-      // For now, implement simple horizontal or vertical splits
-      // You can enhance this with more complex layouts later
-      if (node.splitDirection === "horizontal" || !node.splitDirection) {
-        // Split horizontally (side by side)
-        const childWidth = width / node.children.length;
-        node.children.forEach((child, index) => {
-          calculateLayout(child, x + (index * childWidth), y, childWidth, height);
+    if (!node.children || node.children.length === 0) {
+      // For leaf nodes, use their stored dimensions or default to calculated ones
+      node.width = node.width || width;
+      node.height = node.height || height;
+    } else {
+      // For container nodes, use calculated dimensions
+      node.width = width;
+      node.height = height;
+
+      if (node.splitDirection === "horizontal") {
+        // Side by side - use actual widths of children
+        let currentX = x;
+        node.children.forEach((child) => {
+          // Use the child's stored width or calculate proportionally
+          const childWidth = child.width || width / node.children.length;
+          calculateLayout(child, currentX, y, childWidth, height);
+          currentX += childWidth;
         });
       } else {
-        // Split vertically (stacked)
-        const childHeight = height / node.children.length;
-        node.children.forEach((child, index) => {
-          calculateLayout(child, x, y + (index * childHeight), width, childHeight);
+        // Stacked - use actual heights of children
+        let currentY = y;
+        node.children.forEach((child) => {
+          // Use the child's stored height or calculate proportionally
+          const childHeight = child.height || height / node.children.length;
+          calculateLayout(child, x, currentY, width, childHeight);
+          currentY += childHeight;
         });
       }
     }
   };
 
-  // Recursively render all nodes
+  // Render a single node
   const renderNode = (svg, node) => {
-    const rectWidth = node.width * scaleX;
-    const rectHeight = node.height * scaleY;
+    const faceType = FACE_TYPES.find((t) => t.value === node.type);
     const x = node.x * scaleX;
     const y = node.y * scaleY;
-    const faceType = FACE_TYPES.find(t => t.value === node.type);
+    const rectWidth = node.width * scaleX;
+    const rectHeight = node.height * scaleY;
 
     // Draw rectangle
-    svg.append("rect")
+    svg
+      .append("rect")
       .attr("x", x)
       .attr("y", y)
       .attr("width", rectWidth)
@@ -152,101 +170,38 @@ const CabinetFaceDivider = ({
         handleNodeClick(event, node);
       });
 
-    // Add text label for non-containers or large containers
+    // Add text label for non-containers
     if (node.type !== "container") {
-      svg.append("text")
+      svg
+        .append("text")
         .attr("x", x + rectWidth / 2)
         .attr("y", y + rectHeight / 2)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
-        .attr("fill", node.type === "container" ? "#9CA3AF" : (faceType?.color || "#6B7280"))
-        .attr("font-size", node.type === "container" ? "10px" : "12px")
-        .attr("font-weight", node.type === "container" ? "400" : "500")
-        .attr("font-style", node.type === "container" ? "italic" : "normal")
-        .text(faceType?.label || node.type)
-        .style("pointer-events", "none");
+        .attr("fill", "#FFFFFF")
+        .attr("font-size", "12px")
+        .attr("font-weight", "bold")
+        .attr("pointer-events", "none")
+        .text(faceType?.label || "Unknown");
     }
 
     // Add dimensions text for leaf nodes
     if (!node.children && rectWidth > 60 && rectHeight > 30) {
-      const isSelected = selectedNode && selectedNode.id === node.id;
-
-      if (isSelected) {
-        // Show input fields when selected
-        const foreignObject = svg.append("foreignObject")
-          .attr("x", x + 5)
-          .attr("y", y + rectHeight / 2 + 10)
-          .attr("width", rectWidth - 10)
-          .attr("height", 40);
-
-        const div = foreignObject.append("xhtml:div")
-          .style("display", "flex")
-          .style("gap", "4px")
-          .style("align-items", "center")
-          .style("justify-content", "center");
-
-        // Width input
-        div.append("xhtml:input")
-          .attr("type", "number")
-          .attr("value", node.width.toFixed(2))
-          .style("width", "50px")
-          .style("height", "20px")
-          .style("font-size", "10px")
-          .style("text-align", "center")
-          .style("border", "1px solid #ccc")
-          .style("border-radius", "2px")
-          .on("click", function(event) {
-            event.stopPropagation();
-          })
-          .on("change", function() {
-            handleDimensionChange(node.id, 'width', +this.value);
-          })
-          .on("blur", function() {
-            setSelectedNode(null);
-          });
-
-        div.append("xhtml:span")
-          .style("font-size", "10px")
-          .style("color", "#64748B")
-          .text("×");
-
-        // Height input
-        div.append("xhtml:input")
-          .attr("type", "number")
-          .attr("value", node.height.toFixed(2))
-          .style("width", "50px")
-          .style("height", "20px")
-          .style("font-size", "10px")
-          .style("text-align", "center")
-          .style("border", "1px solid #ccc")
-          .style("border-radius", "2px")
-          .on("click", function(event) {
-            event.stopPropagation();
-          })
-          .on("change", function() {
-            handleDimensionChange(node.id, 'height', +this.value);
-          })
-          .on("blur", function() {
-            setSelectedNode(null);
-          });
-
-      } else {
-        // Show regular text when not selected
-        svg.append("text")
-          .attr("x", x + rectWidth / 2)
-          .attr("y", y + rectHeight / 2 + 15)
-          .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "middle")
-          .attr("fill", "#64748B")
-          .attr("font-size", "10px")
-          .text(`${node.width.toFixed(1)}" × ${node.height.toFixed(1)}"`)
-          .style("pointer-events", "none");
-      }
+      svg
+        .append("text")
+        .attr("x", x + rectWidth / 2)
+        .attr("y", y + rectHeight / 2 + 15)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("fill", "#64748B")
+        .attr("font-size", "10px")
+        .text(`${node.width.toFixed(1)}" × ${node.height.toFixed(1)}"`)
+        .style("pointer-events", "none");
     }
 
     // Recursively render children
     if (node.children) {
-      node.children.forEach(child => renderNode(svg, child));
+      node.children.forEach((child) => renderNode(svg, child));
     }
   };
 
@@ -260,7 +215,8 @@ const CabinetFaceDivider = ({
     svg.selectAll("*").remove();
 
     // Add background
-    svg.append("rect")
+    svg
+      .append("rect")
       .attr("width", displayWidth)
       .attr("height", displayHeight)
       .attr("fill", "#F8FAFC")
@@ -301,14 +257,129 @@ const CabinetFaceDivider = ({
     return null;
   };
 
-  const handleDimensionChange = (nodeId, dimension, newValue) => {
-    if (newValue <= 0) return;
-    
+  const handleDimensionChange = (dimension, newValue) => {
+    if (!selectedNode || newValue <= 0) return;
+
+    // Ensure we have a valid numeric value
+    const numericValue = parseFloat(newValue);
+    if (isNaN(numericValue)) return;
+
     const newConfig = { ...config };
-    const node = findNode(newConfig, nodeId);
-    if (node) {
-      node[dimension] = newValue;
-      setConfig(newConfig);
+    const node = findNode(newConfig, selectedNode.id);
+    if (!node) return;
+
+    // Find the parent to understand the layout context
+    const parent = findParent(newConfig, selectedNode.id);
+
+    if (!parent || !parent.children || parent.children.length <= 1) {
+      // If no parent or only one child, just update the dimension directly
+      // But constrain to cabinet dimensions
+      const maxDimension = dimension === 'width' ? cabinetWidth : cabinetHeight;
+      const constrainedValue = Math.max(1, Math.min(numericValue, maxDimension));
+      node[dimension] = constrainedValue;
+    } else {
+      // Handle proportional scaling for siblings
+      const siblings = parent.children;
+      const nodeIndex = siblings.findIndex((child) => child.id === selectedNode.id);
+
+      if (nodeIndex === -1) return;
+
+      // Determine which dimension to scale based on split direction
+      const scaleDimension = parent.splitDirection === "horizontal" ? "width" : "height";
+      
+      // Get container dimension for constraints
+      const containerDimension = parent[scaleDimension] || (scaleDimension === 'width' ? cabinetWidth : cabinetHeight);
+
+      if (dimension === scaleDimension) {
+        // Ensure all siblings have initial dimensions
+        siblings.forEach(sibling => {
+          if (!sibling[scaleDimension]) {
+            sibling[scaleDimension] = containerDimension / siblings.length;
+          }
+        });
+
+        // Calculate constraints
+        const minValue = 1;
+        const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
+        const maxValue = Math.max(minValue, containerDimension - otherSiblingsMinTotal);
+        
+        // Constrain the new value
+        const constrainedValue = Math.max(minValue, Math.min(numericValue, maxValue));
+        
+        // Calculate how much space is left for other siblings
+        const remainingSpace = containerDimension - constrainedValue;
+        
+        // Update the changed node
+        node[dimension] = constrainedValue;
+
+        // Get other siblings and their current total
+        const otherSiblings = siblings.filter((_, index) => index !== nodeIndex);
+        const currentOtherTotal = otherSiblings.reduce((sum, sibling) => 
+          sum + (sibling[scaleDimension] || 0), 0);
+
+        // Distribute remaining space proportionally among other siblings
+        if (otherSiblings.length > 0 && currentOtherTotal > 0) {
+          otherSiblings.forEach((sibling) => {
+            const currentSize = sibling[scaleDimension] || (containerDimension / siblings.length);
+            const proportion = currentSize / currentOtherTotal;
+            const newSize = remainingSpace * proportion;
+            sibling[scaleDimension] = Math.max(minValue, newSize);
+          });
+        } else if (otherSiblings.length > 0) {
+          // If no current sizes, distribute equally
+          const equalShare = remainingSpace / otherSiblings.length;
+          otherSiblings.forEach((sibling) => {
+            sibling[scaleDimension] = Math.max(minValue, equalShare);
+          });
+        }
+      } else {
+        // For the non-scaling dimension, update all siblings to maintain consistency
+        // But constrain to container bounds
+        const containerDim = dimension === 'width' ? cabinetWidth : cabinetHeight;
+        const constrainedValue = Math.max(1, Math.min(numericValue, containerDim));
+        
+        siblings.forEach((sibling) => {
+          sibling[dimension] = constrainedValue;
+        });
+      }
+    }
+
+    // Update the selected node reference to reflect changes
+    const updatedNode = findNode(newConfig, selectedNode.id);
+    if (updatedNode) {
+      setSelectedNode({ ...selectedNode, [dimension]: updatedNode[dimension] });
+    }
+
+    // Update the config which will trigger a re-render
+    setConfig(newConfig);
+  };
+
+  // Calculate min/max constraints for dimension inputs
+  const getDimensionConstraints = (dimension) => {
+    if (!selectedNode) return { min: 1, max: cabinetWidth };
+    
+    const parent = findParent(config, selectedNode.id);
+    
+    if (!parent || !parent.children || parent.children.length <= 1) {
+      // No siblings, constrain to cabinet dimensions
+      const maxDimension = dimension === 'width' ? cabinetWidth : cabinetHeight;
+      return { min: 1, max: maxDimension };
+    }
+    
+    // Has siblings - calculate based on container and sibling constraints
+    const scaleDimension = parent.splitDirection === "horizontal" ? "width" : "height";
+    const containerDimension = parent[scaleDimension] || (scaleDimension === 'width' ? cabinetWidth : cabinetHeight);
+    
+    if (dimension === scaleDimension) {
+      // This dimension affects siblings
+      const siblings = parent.children;
+      const otherSiblingsMinTotal = (siblings.length - 1) * 1; // 1 inch minimum per sibling
+      const maxValue = Math.max(1, containerDimension - otherSiblingsMinTotal);
+      return { min: 1, max: maxValue };
+    } else {
+      // This dimension doesn't affect siblings, constrain to container
+      const containerDim = dimension === 'width' ? cabinetWidth : cabinetHeight;
+      return { min: 1, max: containerDim };
     }
   };
 
@@ -316,7 +387,7 @@ const CabinetFaceDivider = ({
     const svgRect = svgRef.current.getBoundingClientRect();
     setSelectorPosition({
       x: event.clientX - svgRect.left,
-      y: event.clientY - svgRect.top
+      y: event.clientY - svgRect.top,
     });
     setSelectedNode(node);
     setShowTypeSelector(true);
@@ -334,7 +405,7 @@ const CabinetFaceDivider = ({
         node.children = null;
       }
     }
-    
+
     setConfig(newConfig);
     setShowTypeSelector(false);
     setSelectedNode(null);
@@ -350,13 +421,13 @@ const CabinetFaceDivider = ({
         {
           id: generateId(node.id, 0),
           type: node.type === "container" ? "door" : node.type,
-          children: null
+          children: null,
         },
         {
           id: generateId(node.id, 1),
           type: node.type === "container" ? "door" : node.type,
-          children: null
-        }
+          children: null,
+        },
       ];
       node.splitDirection = "horizontal";
       node.type = "container";
@@ -377,13 +448,13 @@ const CabinetFaceDivider = ({
         {
           id: generateId(node.id, 0),
           type: node.type === "container" ? "door" : node.type,
-          children: null
+          children: null,
         },
         {
           id: generateId(node.id, 1),
           type: node.type === "container" ? "door" : node.type,
-          children: null
-        }
+          children: null,
+        },
       ];
       node.splitDirection = "vertical";
       node.type = "container";
@@ -399,10 +470,12 @@ const CabinetFaceDivider = ({
 
     const newConfig = { ...config };
     const parent = findParent(newConfig, selectedNode.id);
-    
+
     if (parent && parent.children) {
-      parent.children = parent.children.filter(child => child.id !== selectedNode.id);
-      
+      parent.children = parent.children.filter(
+        (child) => child.id !== selectedNode.id
+      );
+
       // If parent has only one child left, merge it up
       if (parent.children.length === 1) {
         const remainingChild = parent.children[0];
@@ -410,7 +483,7 @@ const CabinetFaceDivider = ({
         parent.children = remainingChild.children;
         parent.splitDirection = remainingChild.splitDirection;
       }
-      
+
       // If parent has no children, make it a face type
       if (parent.children.length === 0) {
         parent.children = null;
@@ -431,7 +504,7 @@ const CabinetFaceDivider = ({
       height: cabinetHeight,
       x: 0,
       y: 0,
-      children: null
+      children: null,
     });
     setShowTypeSelector(false);
     setSelectedNode(null);
@@ -487,32 +560,74 @@ const CabinetFaceDivider = ({
             className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10"
             style={{
               left: Math.min(selectorPosition.x, displayWidth - 200),
-              top: Math.min(selectorPosition.y, displayHeight - 200)
+              top: Math.min(selectorPosition.y, displayHeight - 200),
             }}
           >
+            {/* Dimensions for leaf nodes */}
+            {!selectedNode.children && (
+              <div className="mb-3">
+                <div className="text-xs font-medium text-slate-700 mb-2">
+                  Dimensions:
+                </div>
+                <div className="flex space-x-2 items-center">
+                  <div className="flex items-center space-x-1">
+                    <label className="text-xs text-slate-600">W:</label>
+                    <input
+                      type="number"
+                      value={selectedNode.width.toFixed(2)}
+                      onChange={(e) =>
+                        handleDimensionChange("width", e.target.value)
+                      }
+                      className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                      step="0.25"
+                      min={getDimensionConstraints("width").min}
+                      max={getDimensionConstraints("width").max}
+                    />
+                  </div>
+                  <span className="text-xs text-slate-400">×</span>
+                  <div className="flex items-center space-x-1">
+                    <label className="text-xs text-slate-600">H:</label>
+                    <input
+                      type="number"
+                      value={selectedNode.height.toFixed(2)}
+                      onChange={(e) =>
+                        handleDimensionChange("height", e.target.value)
+                      }
+                      className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                      step="0.25"
+                      min={getDimensionConstraints("height").min}
+                      max={getDimensionConstraints("height").max}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="text-xs font-medium text-slate-700 mb-2">
               Change Type:
             </div>
             <div className="grid grid-cols-1 gap-1 mb-3">
-              {FACE_TYPES.filter(type => type.value !== 'container').map(type => (
-                <button
-                  key={type.value}
-                  onClick={() => handleTypeChange(type.value)}
-                  className={`px-2 py-1 text-xs rounded flex items-center ${
-                    selectedNode.type === type.value
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'hover:bg-slate-100'
-                  }`}
-                >
-                  <div
-                    className="w-3 h-3 rounded mr-2"
-                    style={{ backgroundColor: type.color }}
-                  />
-                  {type.label}
-                </button>
-              ))}
+              {FACE_TYPES.filter((type) => type.value !== "container").map(
+                (type) => (
+                  <button
+                    key={type.value}
+                    onClick={() => handleTypeChange(type.value)}
+                    className={`px-2 py-1 text-xs rounded flex items-center ${
+                      selectedNode.type === type.value
+                        ? "bg-blue-100 text-blue-700"
+                        : "hover:bg-slate-100"
+                    }`}
+                  >
+                    <div
+                      className="w-3 h-3 rounded mr-2"
+                      style={{ backgroundColor: type.color }}
+                    />
+                    {type.label}
+                  </button>
+                )
+              )}
             </div>
-            
+
             <div className="border-t border-slate-200 pt-2">
               <div className="text-xs font-medium text-slate-700 mb-2">
                 Actions:
@@ -549,7 +664,7 @@ const CabinetFaceDivider = ({
       <div className="mt-3 text-xs text-slate-500">
         Cabinet: {cabinetWidth}&quot; W × {cabinetHeight}&quot; H
         <br />
-        Click rectangles to change type or split them. Click dimensions to edit them directly.
+        Click rectangles to change type, edit dimensions, or split them.
       </div>
     </div>
   );
@@ -558,7 +673,7 @@ const CabinetFaceDivider = ({
 CabinetFaceDivider.propTypes = {
   cabinetWidth: PropTypes.number.isRequired,
   cabinetHeight: PropTypes.number.isRequired,
-  faceConfig: PropTypes.object,
+  faceConfig: PropTypes.array,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
 };
