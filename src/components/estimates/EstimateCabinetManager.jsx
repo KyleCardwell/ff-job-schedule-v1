@@ -89,12 +89,18 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
   const handleFaceConfigSave = (faceConfig) => {
     setFormData({
       ...formData,
-      face_config: faceConfig
+      face_config: faceConfig,
     });
     setShowFaceDivider(false);
   };
 
-  const canShowFaceDivider = formData.width && formData.height && !errors.width && !errors.height;
+  const canShowFaceDivider =
+    formData.width &&
+    formData.height &&
+    formData.depth &&
+    !errors.width &&
+    !errors.height &&
+    !errors.depth;
 
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
@@ -233,27 +239,41 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             </div>
 
             {/* Face Configuration */}
-            {canShowFaceDivider && (
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-medium text-slate-700">
-                    Face Configuration
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowFaceDivider(!showFaceDivider)}
-                    className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    {showFaceDivider ? 'Hide Designer' : 'Design Face'}
-                  </button>
-                </div>
-                {formData.face_config.length > 0 && (
-                  <div className="text-xs text-slate-500 mb-2">
-                    Face configured with {formData.face_config.reduce((total, row) => total + row.length, 0)} sections
-                  </div>
-                )}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-medium text-slate-700">
+                  Face Configuration
+                </label>
+                <button
+                  type="button"
+                  onClick={() => canShowFaceDivider && setShowFaceDivider(!showFaceDivider)}
+                  disabled={!canShowFaceDivider}
+                  className={`px-2 py-1 text-xs rounded ${
+                    canShowFaceDivider
+                      ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                      : "text-slate-400 cursor-not-allowed bg-slate-50"
+                  }`}
+                  title={!canShowFaceDivider ? "Please enter valid width, height, and depth first" : ""}
+                >
+                  {showFaceDivider ? "Hide Designer" : "Design Face"}
+                </button>
               </div>
-            )}
+              {!canShowFaceDivider && (
+                <div className="text-xs text-slate-500 mb-2">
+                  Enter width, height, and depth to design the cabinet face
+                </div>
+              )}
+              {formData.face_config && formData.face_config.length > 0 && (
+                <div className="text-xs text-slate-500 mb-2">
+                  Face configured with{" "}
+                  {Array.isArray(formData.face_config) 
+                    ? formData.face_config.reduce((total, row) => total + row.length, 0)
+                    : "custom layout"
+                  }{" "}
+                  sections
+                </div>
+              )}
+            </div>
 
             {/* Form Actions */}
             <div className="flex justify-end space-x-2">
