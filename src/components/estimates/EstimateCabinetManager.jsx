@@ -5,6 +5,7 @@ import { v4 as uuid } from "uuid";
 
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
+import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
 
 const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
@@ -14,11 +15,13 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     height: item.height || "",
     depth: item.depth || "",
     quantity: item.quantity || 1,
+    face_config: item.face_config || [],
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });
 
   const [errors, setErrors] = useState({});
+  const [showFaceDivider, setShowFaceDivider] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,158 +86,209 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     }
   };
 
+  const handleFaceConfigSave = (faceConfig) => {
+    setFormData({
+      ...formData,
+      face_config: faceConfig
+    });
+    setShowFaceDivider(false);
+  };
+
+  const canShowFaceDivider = formData.width && formData.height && !errors.width && !errors.height;
+
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
-      <h4 className="text-sm font-medium text-slate-700 mb-3">
-        Cabinet Item
-      </h4>
+      <div className="flex">
+        {/* Left side - Form */}
+        <div className="flex-1 pr-4">
+          <h4 className="text-sm font-medium text-slate-700 mb-3">
+            Cabinet Item
+          </h4>
 
-      <div>
-        {/* Name */}
-        <div className="mb-3">
-          <label
-            htmlFor="name"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border ${
-              errors.name ? "border-red-500" : "border-slate-300"
-            } rounded-md text-sm`}
-            placeholder="Base Cabinet, Wall Cabinet, etc."
-          />
-          {errors.name && (
-            <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-          )}
-        </div>
-
-        {/* Dimensions */}
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          {/* Width */}
           <div>
-            <label
-              htmlFor="width"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Width (in) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="width"
-              name="width"
-              value={formData.width}
-              onChange={handleChange}
-              min="0"
-              step="0.125"
-              className={`w-full px-3 py-2 border ${
-                errors.width ? "border-red-500" : "border-slate-300"
-              } rounded-md text-sm`}
-            />
-            {errors.width && (
-              <p className="text-red-500 text-xs mt-1">{errors.width}</p>
-            )}
-          </div>
+            {/* Name */}
+            <div className="mb-3">
+              <label
+                htmlFor="name"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.name ? "border-red-500" : "border-slate-300"
+                } rounded-md text-sm`}
+                placeholder="Base Cabinet, Wall Cabinet, etc."
+              />
+              {errors.name && (
+                <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+              )}
+            </div>
 
-          {/* Height */}
-          <div>
-            <label
-              htmlFor="height"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Height (in) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="height"
-              name="height"
-              value={formData.height}
-              onChange={handleChange}
-              min="0"
-              step="0.125"
-              className={`w-full px-3 py-2 border ${
-                errors.height ? "border-red-500" : "border-slate-300"
-              } rounded-md text-sm`}
-            />
-            {errors.height && (
-              <p className="text-red-500 text-xs mt-1">{errors.height}</p>
-            )}
-          </div>
+            {/* Dimensions */}
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              {/* Width */}
+              <div>
+                <label
+                  htmlFor="width"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Width (in) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="width"
+                  name="width"
+                  value={formData.width}
+                  onChange={handleChange}
+                  min="0"
+                  step="0.125"
+                  className={`w-full px-3 py-2 border ${
+                    errors.width ? "border-red-500" : "border-slate-300"
+                  } rounded-md text-sm`}
+                />
+                {errors.width && (
+                  <p className="text-red-500 text-xs mt-1">{errors.width}</p>
+                )}
+              </div>
 
-          {/* Depth */}
-          <div>
-            <label
-              htmlFor="depth"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Depth (in) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="depth"
-              name="depth"
-              value={formData.depth}
-              onChange={handleChange}
-              min="0"
-              step="0.125"
-              className={`w-full px-3 py-2 border ${
-                errors.depth ? "border-red-500" : "border-slate-300"
-              } rounded-md text-sm`}
-            />
-            {errors.depth && (
-              <p className="text-red-500 text-xs mt-1">{errors.depth}</p>
+              {/* Height */}
+              <div>
+                <label
+                  htmlFor="height"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Height (in) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="height"
+                  name="height"
+                  value={formData.height}
+                  onChange={handleChange}
+                  min="0"
+                  step="0.125"
+                  className={`w-full px-3 py-2 border ${
+                    errors.height ? "border-red-500" : "border-slate-300"
+                  } rounded-md text-sm`}
+                />
+                {errors.height && (
+                  <p className="text-red-500 text-xs mt-1">{errors.height}</p>
+                )}
+              </div>
+
+              {/* Depth */}
+              <div>
+                <label
+                  htmlFor="depth"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Depth (in) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="depth"
+                  name="depth"
+                  value={formData.depth}
+                  onChange={handleChange}
+                  min="0"
+                  step="0.125"
+                  className={`w-full px-3 py-2 border ${
+                    errors.depth ? "border-red-500" : "border-slate-300"
+                  } rounded-md text-sm`}
+                />
+                {errors.depth && (
+                  <p className="text-red-500 text-xs mt-1">{errors.depth}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Quantity */}
+            <div className="mb-4">
+              <label
+                htmlFor="quantity"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="quantity"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleChange}
+                min="1"
+                className={`w-full px-3 py-2 border ${
+                  errors.quantity ? "border-red-500" : "border-slate-300"
+                } rounded-md text-sm`}
+              />
+              {errors.quantity && (
+                <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+              )}
+            </div>
+
+            {/* Face Configuration */}
+            {canShowFaceDivider && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-xs font-medium text-slate-700">
+                    Face Configuration
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowFaceDivider(!showFaceDivider)}
+                    className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    {showFaceDivider ? 'Hide Designer' : 'Design Face'}
+                  </button>
+                </div>
+                {formData.face_config.length > 0 && (
+                  <div className="text-xs text-slate-500 mb-2">
+                    Face configured with {formData.face_config.reduce((total, row) => total + row.length, 0)} sections
+                  </div>
+                )}
+              </div>
             )}
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 flex items-center"
+              >
+                <FiX className="mr-1" />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
+              >
+                <FiSave className="mr-1" />
+                Save
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Quantity */}
-        <div className="mb-4">
-          <label
-            htmlFor="quantity"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Quantity <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            id="quantity"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleChange}
-            min="1"
-            className={`w-full px-3 py-2 border ${
-              errors.quantity ? "border-red-500" : "border-slate-300"
-            } rounded-md text-sm`}
-          />
-          {errors.quantity && (
-            <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-          )}
-        </div>
-
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 flex items-center"
-          >
-            <FiX className="mr-1" />
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
-          >
-            <FiSave className="mr-1" />
-            Save
-          </button>
-        </div>
+        {/* Right side - Face Divider */}
+        {showFaceDivider && canShowFaceDivider && (
+          <div className="w-80 border-l border-slate-200 pl-4">
+            <CabinetFaceDivider
+              cabinetWidth={formData.width}
+              cabinetHeight={formData.height}
+              faceConfig={formData.face_config}
+              onSave={handleFaceConfigSave}
+              onCancel={() => setShowFaceDivider(false)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
