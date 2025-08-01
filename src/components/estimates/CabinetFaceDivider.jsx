@@ -5,10 +5,11 @@ import { FiX, FiSave, FiRotateCcw } from "react-icons/fi";
 
 const FACE_TYPES = [
   { value: "door", label: "Door", color: "#3B82F6" },
-  { value: "drawer", label: "Drawer", color: "#10B981" },
   { value: "pair_door", label: "Pair Door", color: "#8B5CF6" },
-  { value: "open", label: "Open", color: "#F59E0B" },
+  { value: "drawer", label: "Drawer", color: "#10B981" },
+  { value: "false_front", label: "False Front", color: "#f54d0b" },  
   { value: "panel", label: "Panel", color: "#6B7280" },
+  { value: "open", label: "Open", color: "#F59E0B" },
   { value: "container", label: "Container", color: "#E5E7EB" },
 ];
 
@@ -93,6 +94,13 @@ const CabinetFaceDivider = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showTypeSelector]);
+
+  // Ensure children dimensions are controlled by their parents
+  useEffect(() => {
+    if (config) {
+      updateChildrenFromParent(config);
+    }
+  }, [config]);
 
   // Generate unique ID for new nodes
   const generateId = (parentId, index) => {
@@ -257,6 +265,43 @@ const CabinetFaceDivider = ({
     return null;
   };
 
+  // Update children dimensions based on parent constraints
+  const updateChildrenFromParent = (node) => {
+    if (!node.children || node.children.length === 0) return;
+
+    const splitDimension =
+      node.splitDirection === "horizontal" ? "width" : "height";
+    const fixedDimension =
+      node.splitDirection === "horizontal" ? "height" : "width";
+
+    // All children inherit the fixed dimension from parent
+    node.children.forEach((child) => {
+      child[fixedDimension] = node[fixedDimension];
+    });
+
+    // Ensure split dimension children sum to parent's dimension
+    const totalSplitDimension = node.children.reduce((sum, child) => {
+      return sum + (child[splitDimension] || 0);
+    }, 0);
+
+    if (totalSplitDimension !== node[splitDimension]) {
+      // If totals don't match, distribute proportionally
+      const scale = node[splitDimension] / totalSplitDimension;
+      node.children.forEach((child) => {
+        if (!child[splitDimension]) {
+          child[splitDimension] = node[splitDimension] / node.children.length;
+        } else {
+          child[splitDimension] = child[splitDimension] * scale;
+        }
+      });
+    }
+
+    // Recursively update grandchildren
+    node.children.forEach((child) => {
+      updateChildrenFromParent(child);
+    });
+  };
+
   const handleDimensionChange = (dimension, newValue) => {
     if (!selectedNode || newValue <= 0) return;
 
@@ -274,53 +319,72 @@ const CabinetFaceDivider = ({
     if (!parent || !parent.children || parent.children.length <= 1) {
       // If no parent or only one child, just update the dimension directly
       // But constrain to cabinet dimensions
-      const maxDimension = dimension === 'width' ? cabinetWidth : cabinetHeight;
-      const constrainedValue = Math.max(1, Math.min(numericValue, maxDimension));
+      const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
+      const constrainedValue = Math.max(
+        1,
+        Math.min(numericValue, maxDimension)
+      );
       node[dimension] = constrainedValue;
     } else {
       // Handle proportional scaling for siblings
       const siblings = parent.children;
-      const nodeIndex = siblings.findIndex((child) => child.id === selectedNode.id);
+      const nodeIndex = siblings.findIndex(
+        (child) => child.id === selectedNode.id
+      );
 
       if (nodeIndex === -1) return;
 
       // Determine which dimension to scale based on split direction
-      const scaleDimension = parent.splitDirection === "horizontal" ? "width" : "height";
-      
+      const scaleDimension =
+        parent.splitDirection === "horizontal" ? "width" : "height";
+
       // Get container dimension for constraints
-      const containerDimension = parent[scaleDimension] || (scaleDimension === 'width' ? cabinetWidth : cabinetHeight);
+      const containerDimension =
+        parent[scaleDimension] ||
+        (scaleDimension === "width" ? cabinetWidth : cabinetHeight);
 
       if (dimension === scaleDimension) {
         // Ensure all siblings have initial dimensions
-        siblings.forEach(sibling => {
+        siblings.forEach((sibling) => {
           if (!sibling[scaleDimension]) {
             sibling[scaleDimension] = containerDimension / siblings.length;
           }
         });
 
         // Calculate constraints
-        const minValue = 1;
+        const minValue = 2;
         const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
-        const maxValue = Math.max(minValue, containerDimension - otherSiblingsMinTotal);
-        
+        const maxValue = Math.max(
+          minValue,
+          containerDimension - otherSiblingsMinTotal
+        );
+
         // Constrain the new value
-        const constrainedValue = Math.max(minValue, Math.min(numericValue, maxValue));
-        
+        const constrainedValue = Math.max(
+          minValue,
+          Math.min(numericValue, maxValue)
+        );
+
         // Calculate how much space is left for other siblings
         const remainingSpace = containerDimension - constrainedValue;
-        
+
         // Update the changed node
         node[dimension] = constrainedValue;
 
         // Get other siblings and their current total
-        const otherSiblings = siblings.filter((_, index) => index !== nodeIndex);
-        const currentOtherTotal = otherSiblings.reduce((sum, sibling) => 
-          sum + (sibling[scaleDimension] || 0), 0);
+        const otherSiblings = siblings.filter(
+          (_, index) => index !== nodeIndex
+        );
+        const currentOtherTotal = otherSiblings.reduce(
+          (sum, sibling) => sum + (sibling[scaleDimension] || 0),
+          0
+        );
 
         // Distribute remaining space proportionally among other siblings
         if (otherSiblings.length > 0 && currentOtherTotal > 0) {
           otherSiblings.forEach((sibling) => {
-            const currentSize = sibling[scaleDimension] || (containerDimension / siblings.length);
+            const currentSize =
+              sibling[scaleDimension] || containerDimension / siblings.length;
             const proportion = currentSize / currentOtherTotal;
             const newSize = remainingSpace * proportion;
             sibling[scaleDimension] = Math.max(minValue, newSize);
@@ -333,14 +397,36 @@ const CabinetFaceDivider = ({
           });
         }
       } else {
-        // For the non-scaling dimension, update all siblings to maintain consistency
-        // But constrain to container bounds
-        const containerDim = dimension === 'width' ? cabinetWidth : cabinetHeight;
-        const constrainedValue = Math.max(1, Math.min(numericValue, containerDim));
+        // Child is trying to adjust the dimension it inherited from parent
+        // Propagate this change up the tree iteratively
+        let currentParent = parent;
+        let currentValue = Math.max(1, Math.min(numericValue, dimension === "width" ? cabinetWidth : cabinetHeight));
         
-        siblings.forEach((sibling) => {
-          sibling[dimension] = constrainedValue;
-        });
+        while (currentParent) {
+          // Update the parent's dimension
+          currentParent[dimension] = currentValue;
+          
+          // Update all children of this parent to inherit the new dimension
+          if (currentParent.children) {
+            currentParent.children.forEach(child => {
+              child[dimension] = currentValue;
+            });
+          }
+          
+          // Check if we need to continue propagating up
+          const grandparent = findParent(newConfig, currentParent.id);
+          if (grandparent) {
+            const grandparentFixedDimension = grandparent.splitDirection === "horizontal" ? "height" : "width";
+            if (dimension === grandparentFixedDimension) {
+              // Continue up the tree
+              currentParent = grandparent;
+              continue;
+            }
+          }
+          
+          // Stop propagating
+          break;
+        }
       }
     }
 
@@ -352,24 +438,28 @@ const CabinetFaceDivider = ({
 
     // Update the config which will trigger a re-render
     setConfig(newConfig);
+    updateChildrenFromParent(newConfig);
   };
 
   // Calculate min/max constraints for dimension inputs
   const getDimensionConstraints = (dimension) => {
     if (!selectedNode) return { min: 1, max: cabinetWidth };
-    
+
     const parent = findParent(config, selectedNode.id);
-    
+
     if (!parent || !parent.children || parent.children.length <= 1) {
       // No siblings, constrain to cabinet dimensions
-      const maxDimension = dimension === 'width' ? cabinetWidth : cabinetHeight;
+      const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
       return { min: 1, max: maxDimension };
     }
-    
+
     // Has siblings - calculate based on container and sibling constraints
-    const scaleDimension = parent.splitDirection === "horizontal" ? "width" : "height";
-    const containerDimension = parent[scaleDimension] || (scaleDimension === 'width' ? cabinetWidth : cabinetHeight);
-    
+    const scaleDimension =
+      parent.splitDirection === "horizontal" ? "width" : "height";
+    const containerDimension =
+      parent[scaleDimension] ||
+      (scaleDimension === "width" ? cabinetWidth : cabinetHeight);
+
     if (dimension === scaleDimension) {
       // This dimension affects siblings
       const siblings = parent.children;
@@ -378,7 +468,7 @@ const CabinetFaceDivider = ({
       return { min: 1, max: maxValue };
     } else {
       // This dimension doesn't affect siblings, constrain to container
-      const containerDim = dimension === 'width' ? cabinetWidth : cabinetHeight;
+      const containerDim = dimension === "width" ? cabinetWidth : cabinetHeight;
       return { min: 1, max: containerDim };
     }
   };
