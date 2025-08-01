@@ -25,6 +25,7 @@ const CabinetFaceDivider = ({
   const [selectedNode, setSelectedNode] = useState(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(null);
 
   // Scale factor to fit cabinet in a reasonable display size
   const maxDisplayWidth = 300;
@@ -173,10 +174,16 @@ const CabinetFaceDivider = ({
       .attr("stroke-width", node.type === "container" ? 1 : 2)
       .attr("stroke-dasharray", node.type === "container" ? "3,3" : "none")
       .attr("cursor", "pointer")
+      .style("pointer-events", "all")
       .on("click", (event) => {
         event.stopPropagation();
         handleNodeClick(event, node);
       });
+
+    // Recursively render children first (so they appear behind the parent's handles)
+    if (node.children) {
+      node.children.forEach((child) => renderNode(svg, child));
+    }
 
     // Add text label for non-containers
     if (node.type !== "container") {
@@ -207,9 +214,60 @@ const CabinetFaceDivider = ({
         .style("pointer-events", "none");
     }
 
-    // Recursively render children
-    if (node.children) {
-      node.children.forEach((child) => renderNode(svg, child));
+    // Add drag handles for nodes with siblings
+    const parent = findParent(config, node.id);
+    if (parent && parent.children && parent.children.length > 1) {
+      const siblings = parent.children;
+      const nodeIndex = siblings.findIndex((sibling) => sibling.id === node.id);
+      const isLastSibling = nodeIndex === siblings.length - 1;
+
+      // Create a group for handles with high z-index
+      const handleGroup = svg.append("g")
+        .style("pointer-events", "all");
+
+      // Only add right handle if not the last sibling in a horizontal split
+      if (parent.splitDirection === "horizontal" && !isLastSibling) {
+        // Right edge handle for width adjustment between siblings
+        handleGroup
+          .append("rect")
+          .attr("x", x + rectWidth - 4)
+          .attr("y", y + rectHeight / 2 - 10)
+          .attr("width", 8)
+          .attr("height", 20)
+          .attr("fill", "#3B82F6")
+          .attr("stroke", "#FFFFFF")
+          .attr("stroke-width", 1)
+          .attr("rx", 2)
+          .attr("cursor", "ew-resize")
+          .attr("opacity", 0.8)
+          .style("pointer-events", "all")
+          .on("mousedown", (event) => {
+            event.stopPropagation();
+            handleDragStart(event, node, "width");
+          });
+      }
+
+      // Only add bottom handle if not the last sibling in a vertical split
+      if (parent.splitDirection === "vertical" && !isLastSibling) {
+        // Bottom edge handle for height adjustment between siblings
+        handleGroup
+          .append("rect")
+          .attr("x", x + rectWidth / 2 - 10)
+          .attr("y", y + rectHeight - 4)
+          .attr("width", 20)
+          .attr("height", 8)
+          .attr("fill", "#3B82F6")
+          .attr("stroke", "#FFFFFF")
+          .attr("stroke-width", 1)
+          .attr("rx", 2)
+          .attr("cursor", "ns-resize")
+          .attr("opacity", 0.8)
+          .style("pointer-events", "all")
+          .on("mousedown", (event) => {
+            event.stopPropagation();
+            handleDragStart(event, node, "height");
+          });
+      }
     }
   };
 
@@ -305,34 +363,22 @@ const CabinetFaceDivider = ({
   const handleDimensionChange = (dimension, newValue) => {
     if (!selectedNode || newValue <= 0) return;
 
-    // Ensure we have a valid numeric value
-    const numericValue = parseFloat(newValue);
-    if (isNaN(numericValue)) return;
-
     const newConfig = { ...config };
     const node = findNode(newConfig, selectedNode.id);
     if (!node) return;
 
-    // Find the parent to understand the layout context
     const parent = findParent(newConfig, selectedNode.id);
 
-    if (!parent || !parent.children || parent.children.length <= 1) {
-      // If this is the root node (no parent), it should always match cabinet dimensions
-      if (!parent) {
-        node.width = cabinetWidth;
-        node.height = cabinetHeight;
-        // Don't allow user to change root dimensions - they're controlled by cabinet size
-        return;
-      }
+    // Root node cannot be resized - it's always the cabinet dimensions
+    if (!parent) {
+      return;
+    }
 
-      // If no parent or only one child, just update the dimension directly
+    if (!parent.children || parent.children.length <= 1) {
+      // No siblings, just update the dimension directly
       // But constrain to cabinet dimensions
       const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
-      const constrainedValue = Math.max(
-        1,
-        Math.min(numericValue, maxDimension)
-      );
-      node[dimension] = constrainedValue;
+      node[dimension] = Math.max(1, Math.min(newValue, maxDimension));
     } else {
       // Determine which dimension the parent controls (split dimension) vs inherited dimension
       const parentSplitDimension =
@@ -342,11 +388,9 @@ const CabinetFaceDivider = ({
 
       if (dimension === parentSplitDimension) {
         // Child is adjusting the dimension it can control among siblings
-        // Handle proportional scaling for siblings (existing logic)
+        // Handle proportional scaling for siblings
         const siblings = parent.children;
-        const nodeIndex = siblings.findIndex(
-          (child) => child.id === selectedNode.id
-        );
+        const nodeIndex = siblings.findIndex((child) => child.id === node.id);
 
         if (nodeIndex === -1) return;
 
@@ -362,7 +406,7 @@ const CabinetFaceDivider = ({
         });
 
         // Calculate constraints
-        const minValue = 2;
+        const minValue = 1;
         const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
         const maxValue = Math.max(
           minValue,
@@ -372,7 +416,7 @@ const CabinetFaceDivider = ({
         // Constrain the new value
         const constrainedValue = Math.max(
           minValue,
-          Math.min(numericValue, maxValue)
+          Math.min(newValue, maxValue)
         );
 
         // Calculate how much space is left for other siblings
@@ -382,9 +426,7 @@ const CabinetFaceDivider = ({
         node[dimension] = constrainedValue;
 
         // Distribute remaining space proportionally among other siblings
-        const otherSiblings = siblings.filter(
-          (_, index) => index !== nodeIndex
-        );
+        const otherSiblings = siblings.filter((_, index) => index !== nodeIndex);
         const currentOtherTotal = otherSiblings.reduce(
           (sum, sibling) => sum + (sibling[parentSplitDimension] || 0),
           0
@@ -411,6 +453,7 @@ const CabinetFaceDivider = ({
         // Child is trying to adjust the dimension it inherited from parent
         // Check if parent is root - if so, don't allow changing cabinet-locked dimensions
         const grandparent = findParent(newConfig, parent.id);
+
         if (!grandparent) {
           // Parent is root, child cannot change cabinet-locked dimensions
           const rootFixedDimension =
@@ -426,7 +469,7 @@ const CabinetFaceDivider = ({
         let currentValue = Math.max(
           1,
           Math.min(
-            numericValue,
+            newValue,
             dimension === "width" ? cabinetWidth : cabinetHeight
           )
         );
@@ -466,10 +509,62 @@ const CabinetFaceDivider = ({
       setSelectedNode({ ...selectedNode, [dimension]: updatedNode[dimension] });
     }
 
-    // Update the config which will trigger a re-render
     setConfig(newConfig);
     updateChildrenFromParent(newConfig);
   };
+
+  const handleDragStart = (event, node, dimension) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedNode(node); // Set the selected node so handleDimensionChange works properly
+    setDragging({ 
+      node, 
+      dimension, 
+      startX: event.clientX, 
+      startY: event.clientY 
+    });
+  };
+
+  const handleDrag = (event) => {
+    if (!dragging) return;
+    
+    const { node, dimension, startX, startY } = dragging;
+    
+    // Calculate delta based on dimension
+    let delta;
+    if (dimension === "width") {
+      delta = (event.clientX - startX) / scaleX;
+    } else {
+      delta = (event.clientY - startY) / scaleY;
+    }
+    
+    // Use the existing handleDimensionChange function with the new calculated value
+    const newValue = node[dimension] + delta;
+    handleDimensionChange(dimension, newValue);
+    
+    // Update drag start position for next move
+    setDragging({
+      ...dragging,
+      startX: event.clientX,
+      startY: event.clientY
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDragging(null);
+  };
+
+  useEffect(() => {
+    if (dragging) {
+      document.addEventListener("mousemove", handleDrag);
+      document.addEventListener("mouseup", handleDragEnd);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleDrag);
+      document.removeEventListener("mouseup", handleDragEnd);
+    };
+  }, [dragging]);
 
   // Calculate min/max constraints for dimension inputs
   const getDimensionConstraints = (dimension) => {
@@ -500,7 +595,10 @@ const CabinetFaceDivider = ({
       // This dimension affects siblings
       const siblings = parent.children;
       const otherSiblingsMinTotal = (siblings.length - 1) * 1; // 1 inch minimum per sibling
-      const maxValue = Math.max(1, containerDimension - otherSiblingsMinTotal);
+      const maxValue = Math.max(
+        1,
+        containerDimension - otherSiblingsMinTotal
+      );
       return { min: 1, max: maxValue };
     } else {
       // Child is trying to adjust inherited dimension
