@@ -602,10 +602,52 @@ const CabinetFaceDivider = ({
   const handleDelete = () => {
     if (!selectedNode || selectedNode.id === "root") return;
 
-    const newConfig = { ...config };
+    // First clear UI state to avoid stale references
+    setShowTypeSelector(false);
+    setSelectedNode(null);
+
+    // Create a deep copy of the config to avoid reference issues
+    const newConfig = JSON.parse(JSON.stringify(config));
     const parent = findParent(newConfig, selectedNode.id);
 
     if (parent && parent.children) {
+      // If there are exactly 2 children (which is the max in this structure)
+      if (parent.children.length === 2) {
+        // Find the index of the node being deleted
+        const deleteIndex = parent.children.findIndex(
+          (child) => child.id === selectedNode.id
+        );
+        // Get the remaining sibling that will stay after deletion
+        const remainingSibling = parent.children.filter(
+          (child) => child.id !== selectedNode.id
+        )[0];
+
+        // For horizontal splits, handle x position and width
+        if (parent.splitDirection === "horizontal") {
+          // If deleting the first (left) child, the right child should move left
+          if (deleteIndex === 0) {
+            remainingSibling.x = parent.x;
+          }
+          // In either case, the remaining child should expand to full parent width
+          remainingSibling.width = parent.width;
+        }
+        // For vertical splits, handle y position and height
+        else if (parent.splitDirection === "vertical") {
+          // If deleting the first (top) child, the bottom child should move up
+          if (deleteIndex === 0) {
+            remainingSibling.y = parent.y;
+          }
+          // In either case, the remaining child should expand to full parent height
+          remainingSibling.height = parent.height;
+        }
+
+        // If the remaining sibling has children, update their dimensions too
+        if (remainingSibling.children && remainingSibling.children.length > 0) {
+          updateChildrenFromParent(remainingSibling);
+        }
+      }
+
+      // Remove the selected node
       parent.children = parent.children.filter(
         (child) => child.id !== selectedNode.id
       );
@@ -613,21 +655,41 @@ const CabinetFaceDivider = ({
       // If parent has only one child left, merge it up
       if (parent.children.length === 1) {
         const remainingChild = parent.children[0];
+        
+        // Before merging, ensure the remaining child takes up the full parent dimension
+        if (parent.splitDirection === "horizontal") {
+          remainingChild.width = parent.width;
+          remainingChild.x = parent.x;
+        } else if (parent.splitDirection === "vertical") {
+          remainingChild.height = parent.height;
+          remainingChild.y = parent.y;
+        }
+        
+        // If the remaining child has children, update their dimensions too
+        if (remainingChild.children && remainingChild.children.length > 0) {
+          updateChildrenFromParent(remainingChild);
+        }
+        
         parent.type = remainingChild.type;
         parent.children = remainingChild.children;
         parent.splitDirection = remainingChild.splitDirection;
       }
 
       // If parent has no children, make it a face type
-      if (parent.children.length === 0) {
+      if (parent.children && parent.children.length === 0) {
         parent.children = null;
         parent.type = "door";
       }
     }
 
-    setConfig(newConfig);
-    setShowTypeSelector(false);
-    setSelectedNode(null);
+    // After all modifications, recalculate layout for the entire tree
+    calculateLayout(newConfig);
+    
+    // Force a re-render by creating a new config object and using setTimeout
+    // This ensures the state update happens in a separate render cycle
+    setTimeout(() => {
+      setConfig(JSON.parse(JSON.stringify(newConfig)));
+    }, 0);
   };
 
   const handleReset = () => {
