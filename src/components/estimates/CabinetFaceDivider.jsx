@@ -685,11 +685,11 @@ const CabinetFaceDivider = ({
     // After all modifications, recalculate layout for the entire tree
     calculateLayout(newConfig);
     
-    // Force a re-render by creating a new config object and using setTimeout
-    // This ensures the state update happens in a separate render cycle
-    setTimeout(() => {
-      setConfig(JSON.parse(JSON.stringify(newConfig)));
-    }, 0);
+    // Use React's state update with a fresh object to ensure React detects the change
+    const updatedConfig = JSON.parse(JSON.stringify(newConfig));
+    setConfig(updatedConfig);
+    setShowTypeSelector(false);
+    setSelectedNode(null);
   };
 
   const handleReset = () => {
