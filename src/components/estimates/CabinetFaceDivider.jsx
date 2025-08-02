@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import PropTypes from "prop-types";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { FiX, FiSave, FiRotateCcw } from "react-icons/fi";
 
 const FACE_TYPES = [
@@ -360,6 +360,117 @@ const CabinetFaceDivider = ({
     });
   };
 
+  // Helper function to round to nearest 1/16"
+  const roundTo16th = (value) => {
+    return Math.round(value * 16) / 16;
+  };
+
+  // Calculate and update face type summary
+  const calculateFaceSummary = (node) => {
+    const summary = {};
+    
+    const processNode = (node) => {
+      // Only count leaf nodes (actual faces, not containers)
+      if (!node.children) {
+        let faceType = node.type;
+        
+        // Handle pair doors specially - count them as two separate doors
+        if (faceType === "pair_door") {
+          faceType = "door"; // Count as regular doors
+          
+          if (!summary[faceType]) {
+            summary[faceType] = {
+              count: 0,
+              totalArea: 0,
+              faces: []
+            };
+          }
+          
+          // Calculate dimensions for each door in the pair (split horizontally)
+          const doorWidth = roundTo16th(node.width / 2);
+          const doorHeight = roundTo16th(node.height);
+          const doorArea = roundTo16th(doorWidth * doorHeight);
+          
+          // Add left door
+          summary[faceType].count += 1;
+          summary[faceType].totalArea += doorArea;
+          summary[faceType].faces.push({
+            id: `${node.id}-L`,
+            width: doorWidth,
+            height: doorHeight,
+            area: doorArea
+          });
+          
+          // Add right door
+          summary[faceType].count += 1;
+          summary[faceType].totalArea += doorArea;
+          summary[faceType].faces.push({
+            id: `${node.id}-R`,
+            width: doorWidth,
+            height: doorHeight,
+            area: doorArea
+          });
+        } else {
+          // Handle all other face types normally
+          if (!summary[faceType]) {
+            summary[faceType] = {
+              count: 0,
+              totalArea: 0,
+              faces: []
+            };
+          }
+          
+          // Round dimensions to nearest 1/16"
+          const width = roundTo16th(node.width);
+          const height = roundTo16th(node.height);
+          const area = roundTo16th(width * height);
+          
+          // Add to summary
+          summary[faceType].count += 1;
+          summary[faceType].totalArea += area;
+          summary[faceType].faces.push({
+            id: node.id,
+            width: width,
+            height: height,
+            area: area
+          });
+        }
+      } else {
+        // Process children recursively
+        node.children.forEach(child => processNode(child));
+      }
+    };
+    
+    processNode(node);
+    return summary;
+  };
+
+  // Update the config with face summary
+  const updateFaceSummary = useCallback(() => {
+    const faceSummary = calculateFaceSummary(config);
+    setConfig(prevConfig => {
+      // Only update if the summary has actually changed
+      if (JSON.stringify(prevConfig.faceSummary) === JSON.stringify(faceSummary)) {
+        return prevConfig;
+      }
+      return {
+        ...prevConfig,
+        faceSummary
+      };
+    });
+  }, [config]);
+
+  // Update face summary after any config changes
+  useEffect(() => {
+    updateFaceSummary();
+  }, [updateFaceSummary]);
+
+  // Update face summary after layout changes
+  useEffect(() => {
+    updateChildrenFromParent(config);
+    updateFaceSummary();
+  }, [config.width, config.height, updateFaceSummary]);
+
   const handleDimensionChange = (dimension, newValue) => {
     if (!selectedNode || newValue <= 0) return;
 
@@ -390,7 +501,7 @@ const CabinetFaceDivider = ({
         // Child is adjusting the dimension it can control among siblings
         // Handle proportional scaling for siblings
         const siblings = parent.children;
-        const nodeIndex = siblings.findIndex((child) => child.id === node.id);
+        const nodeIndex = siblings.findIndex((sibling) => sibling.id === node.id);
 
         if (nodeIndex === -1) return;
 
@@ -406,7 +517,7 @@ const CabinetFaceDivider = ({
         });
 
         // Calculate constraints
-        const minValue = 1;
+        const minValue = 2;
         const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
         const maxValue = Math.max(
           minValue,
@@ -805,7 +916,14 @@ const CabinetFaceDivider = ({
   };
 
   const handleSave = () => {
-    onSave(config);
+    // Update face summary before saving
+    const faceSummary = calculateFaceSummary(config);
+    const finalConfig = {
+      ...config,
+      faceSummary
+    };
+    
+    onSave(finalConfig);
   };
 
   return (
