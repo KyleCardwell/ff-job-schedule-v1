@@ -80,8 +80,103 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     }
 
     if (validateForm()) {
-      onSave(formData);
+      // Calculate face summary before saving
+      const finalFormData = { ...formData };
+      
+      if (formData.face_config) {
+        finalFormData.face_config = {
+          ...formData.face_config,
+          faceSummary: calculateFaceSummary(formData.face_config)
+        };
+      }
+      
+      onSave(finalFormData);
     }
+  };
+
+  // Helper function to round to nearest 1/16"
+  const roundTo16th = (value) => {
+    return Math.round(value * 16) / 16;
+  };
+
+  // Calculate face type summary
+  const calculateFaceSummary = (node) => {
+    const summary = {};
+    
+    const processNode = (node) => {
+      // Only count leaf nodes (actual faces, not containers)
+      if (!node.children) {
+        let faceType = node.type;
+        
+        // Handle pair doors specially - count them as two separate doors
+        if (faceType === "pair_door") {
+          faceType = "door"; // Count as regular doors
+          
+          if (!summary[faceType]) {
+            summary[faceType] = {
+              count: 0,
+              totalArea: 0,
+              faces: []
+            };
+          }
+          
+          // Calculate dimensions for each door in the pair (split horizontally)
+          const doorWidth = roundTo16th(node.width / 2);
+          const doorHeight = roundTo16th(node.height);
+          const doorArea = roundTo16th(doorWidth * doorHeight);
+          
+          // Add left door
+          summary[faceType].count += 1;
+          summary[faceType].totalArea += doorArea;
+          summary[faceType].faces.push({
+            id: `${node.id}-L`,
+            width: doorWidth,
+            height: doorHeight,
+            area: doorArea
+          });
+          
+          // Add right door
+          summary[faceType].count += 1;
+          summary[faceType].totalArea += doorArea;
+          summary[faceType].faces.push({
+            id: `${node.id}-R`,
+            width: doorWidth,
+            height: doorHeight,
+            area: doorArea
+          });
+        } else {
+          // Handle all other face types normally
+          if (!summary[faceType]) {
+            summary[faceType] = {
+              count: 0,
+              totalArea: 0,
+              faces: []
+            };
+          }
+          
+          // Round dimensions to nearest 1/16"
+          const width = roundTo16th(node.width);
+          const height = roundTo16th(node.height);
+          const area = roundTo16th(width * height);
+          
+          // Add to summary
+          summary[faceType].count += 1;
+          summary[faceType].totalArea += area;
+          summary[faceType].faces.push({
+            id: node.id,
+            width: width,
+            height: height,
+            area: area
+          });
+        }
+      } else {
+        // Process children recursively
+        node.children.forEach(child => processNode(child));
+      }
+    };
+    
+    processNode(node);
+    return summary;
   };
 
   const handleFaceConfigSave = useCallback((faceConfig) => {

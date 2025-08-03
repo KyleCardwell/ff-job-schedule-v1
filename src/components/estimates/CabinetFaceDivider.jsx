@@ -99,11 +99,9 @@ const CabinetFaceDivider = ({
     };
   }, [showTypeSelector]);
 
-  // Ensure children dimensions are controlled by their parents
+  // Update children positions and sizes when parent changes
   useEffect(() => {
-    if (config) {
-      updateChildrenFromParent(config);
-    }
+    updateChildrenFromParent(config);
   }, [config]);
 
   // Generate unique ID for new nodes
@@ -369,110 +367,13 @@ const CabinetFaceDivider = ({
   };
 
   // Calculate and update face type summary
-  const calculateFaceSummary = (node) => {
-    const summary = {};
-    
-    const processNode = (node) => {
-      // Only count leaf nodes (actual faces, not containers)
-      if (!node.children) {
-        let faceType = node.type;
-        
-        // Handle pair doors specially - count them as two separate doors
-        if (faceType === "pair_door") {
-          faceType = "door"; // Count as regular doors
-          
-          if (!summary[faceType]) {
-            summary[faceType] = {
-              count: 0,
-              totalArea: 0,
-              faces: []
-            };
-          }
-          
-          // Calculate dimensions for each door in the pair (split horizontally)
-          const doorWidth = roundTo16th(node.width / 2);
-          const doorHeight = roundTo16th(node.height);
-          const doorArea = roundTo16th(doorWidth * doorHeight);
-          
-          // Add left door
-          summary[faceType].count += 1;
-          summary[faceType].totalArea += doorArea;
-          summary[faceType].faces.push({
-            id: `${node.id}-L`,
-            width: doorWidth,
-            height: doorHeight,
-            area: doorArea
-          });
-          
-          // Add right door
-          summary[faceType].count += 1;
-          summary[faceType].totalArea += doorArea;
-          summary[faceType].faces.push({
-            id: `${node.id}-R`,
-            width: doorWidth,
-            height: doorHeight,
-            area: doorArea
-          });
-        } else {
-          // Handle all other face types normally
-          if (!summary[faceType]) {
-            summary[faceType] = {
-              count: 0,
-              totalArea: 0,
-              faces: []
-            };
-          }
-          
-          // Round dimensions to nearest 1/16"
-          const width = roundTo16th(node.width);
-          const height = roundTo16th(node.height);
-          const area = roundTo16th(width * height);
-          
-          // Add to summary
-          summary[faceType].count += 1;
-          summary[faceType].totalArea += area;
-          summary[faceType].faces.push({
-            id: node.id,
-            width: width,
-            height: height,
-            area: area
-          });
-        }
-      } else {
-        // Process children recursively
-        node.children.forEach(child => processNode(child));
-      }
-    };
-    
-    processNode(node);
-    return summary;
-  };
-
-  // Update the config with face summary
-  const updateFaceSummary = useCallback(() => {
-    const faceSummary = calculateFaceSummary(config);
-    setConfig(prevConfig => {
-      // Only update if the summary has actually changed
-      if (JSON.stringify(prevConfig.faceSummary) === JSON.stringify(faceSummary)) {
-        return prevConfig;
-      }
-      return {
-        ...prevConfig,
-        faceSummary
-      };
-    });
-  }, [config]);
+  // Removed face summary calculation logic
 
   // Update face summary after any config changes
-  useEffect(() => {
-    updateFaceSummary();
-  }, [updateFaceSummary]);
+  // Removed face summary update logic
 
   // Update face summary after layout changes
-  useEffect(() => {
-    updateChildrenFromParent(config);
-    updateFaceSummary();
-  }, [config.width, config.height, updateFaceSummary]);
+  // Removed face summary update logic
 
   // Calculate face summary whenever config changes
   useEffect(() => {
@@ -482,12 +383,7 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
       
       if (configString !== previousConfigString) {
-        const faceSummary = calculateFaceSummary(config);
-        const configWithSummary = {
-          ...config,
-          faceSummary
-        };
-        onSave(configWithSummary);
+        onSave(config);
         previousConfigRef.current = configString;
       }
     }
