@@ -2,6 +2,7 @@ import * as d3 from "d3";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiX, FiSave, FiRotateCcw } from "react-icons/fi";
+import { cloneDeep } from "lodash";
 
 const FACE_TYPES = [
   { value: "door", label: "Door", color: "#3B82F6" },
@@ -37,7 +38,7 @@ const CabinetFaceDivider = ({
   const scaleY = scaleX; // Keep aspect ratio
   const displayWidth = cabinetWidth * scaleX;
   const displayHeight = cabinetHeight * scaleY;
-  const minValue = 2
+  const minValue = 2;
 
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
@@ -475,7 +476,7 @@ const CabinetFaceDivider = ({
   const handleDimensionChange = (dimension, newValue) => {
     if (!selectedNode || newValue <= 0) return;
 
-    const newConfig = { ...config };
+    const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (!node) return;
 
@@ -503,8 +504,7 @@ const CabinetFaceDivider = ({
         // Handle proportional scaling for siblings
         const siblings = parent.children;
         const nodeIndex = siblings.findIndex((sibling) => sibling.id === node.id);
-
-        if (nodeIndex === -1) return;
+        const isLastSibling = nodeIndex === siblings.length - 1;
 
         // Get container dimension for constraints
         const containerDimension = parent[parentSplitDimension];
@@ -518,7 +518,6 @@ const CabinetFaceDivider = ({
         });
 
         // Calculate constraints
-        // const minValue = 2;
         const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
         const maxValue = Math.max(
           minValue,
@@ -579,7 +578,7 @@ const CabinetFaceDivider = ({
         // Propagate this change up the tree iteratively
         let currentParent = parent;
         let currentValue = Math.max(
-          1,
+          minValue,
           Math.min(
             newValue,
             dimension === "width" ? cabinetWidth : cabinetHeight
@@ -650,8 +649,12 @@ const CabinetFaceDivider = ({
       delta = (event.clientY - startY) / scaleY;
     }
     
+    // Get the current node value from config (not the stale dragging reference)
+    const currentNode = findNode(config, node.id);
+    if (!currentNode) return;
+    
     // Use the existing handleDimensionChange function with the new calculated value
-    const newValue = node[dimension] + delta;
+    const newValue = currentNode[dimension] + delta;
     handleDimensionChange(dimension, newValue);
     
     // Update drag start position for next move
@@ -706,12 +709,12 @@ const CabinetFaceDivider = ({
     if (dimension === scaleDimension) {
       // This dimension affects siblings
       const siblings = parent.children;
-      const otherSiblingsMinTotal = (siblings.length - 1) * 1; // 1 inch minimum per sibling
+      const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
       const maxValue = Math.max(
-        1,
+        minValue,
         containerDimension - otherSiblingsMinTotal
       );
-      return { min: 1, max: maxValue };
+      return { min: minValue, max: maxValue };
     } else {
       // Child is trying to adjust inherited dimension
       // Check if parent is root - if so, this dimension is locked to cabinet size
@@ -740,7 +743,7 @@ const CabinetFaceDivider = ({
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
 
-    const newConfig = { ...config };
+    const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node && newType !== "container") {
       node.type = newType;
@@ -758,7 +761,7 @@ const CabinetFaceDivider = ({
   const handleSplitHorizontal = () => {
     if (!selectedNode) return;
 
-    const newConfig = { ...config };
+    const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
       node.children = [
@@ -785,7 +788,7 @@ const CabinetFaceDivider = ({
   const handleSplitVertical = () => {
     if (!selectedNode) return;
 
-    const newConfig = { ...config };
+    const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
       node.children = [
@@ -817,7 +820,7 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
 
     // Create a deep copy of the config to avoid reference issues
-    const newConfig = JSON.parse(JSON.stringify(config));
+    const newConfig = cloneDeep(config);
     const parent = findParent(newConfig, selectedNode.id);
 
     if (parent && parent.children) {
@@ -896,7 +899,7 @@ const CabinetFaceDivider = ({
     calculateLayout(newConfig);
     
     // Use React's state update with a fresh object to ensure React detects the change
-    const updatedConfig = JSON.parse(JSON.stringify(newConfig));
+    const updatedConfig = cloneDeep(newConfig);
     setConfig(updatedConfig);
     setShowTypeSelector(false);
     setSelectedNode(null);
@@ -1086,7 +1089,7 @@ const CabinetFaceDivider = ({
 CabinetFaceDivider.propTypes = {
   cabinetWidth: PropTypes.number.isRequired,
   cabinetHeight: PropTypes.number.isRequired,
-  faceConfig: PropTypes.array,
+  faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
 };
