@@ -37,6 +37,7 @@ const CabinetFaceDivider = ({
   const scaleY = scaleX; // Keep aspect ratio
   const displayWidth = cabinetWidth * scaleX;
   const displayHeight = cabinetHeight * scaleY;
+  const minValue = 2
 
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
@@ -489,7 +490,7 @@ const CabinetFaceDivider = ({
       // No siblings, just update the dimension directly
       // But constrain to cabinet dimensions
       const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
-      node[dimension] = Math.max(1, Math.min(newValue, maxDimension));
+      node[dimension] = Math.max(minValue, Math.min(newValue, maxDimension));
     } else {
       // Determine which dimension the parent controls (split dimension) vs inherited dimension
       const parentSplitDimension =
@@ -517,7 +518,7 @@ const CabinetFaceDivider = ({
         });
 
         // Calculate constraints
-        const minValue = 2;
+        // const minValue = 2;
         const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
         const maxValue = Math.max(
           minValue,
