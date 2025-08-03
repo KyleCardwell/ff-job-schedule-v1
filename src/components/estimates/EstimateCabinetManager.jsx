@@ -1,6 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
-import { FiSave, FiX } from "react-icons/fi";
+import { useState, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
@@ -21,7 +20,6 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
   });
 
   const [errors, setErrors] = useState({});
-  const [showFaceDivider, setShowFaceDivider] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -86,15 +84,19 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     }
   };
 
-  const handleFaceConfigSave = (faceConfig) => {
-    setFormData({
-      ...formData,
-      face_config: faceConfig,
-    });
-    setShowFaceDivider(false);
-  };
+  const handleFaceConfigSave = useCallback((faceConfig) => {
+    console.log("faceConfig Save");
+    
+    // Only update if the face_config has actually changed
+    if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
+      setFormData(prevData => ({
+        ...prevData,
+        face_config: faceConfig,
+      }));
+    }
+  }, [formData.face_config]);
 
-  const canShowFaceDivider =
+  const canEditFaces =
     formData.width &&
     formData.height &&
     formData.depth &&
@@ -104,47 +106,79 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
 
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
-      <div className="flex">
-        {/* Left side - Form */}
-        <div className="flex-1 pr-4">
-          <h4 className="text-sm font-medium text-slate-700 mb-3">
-            Cabinet Item
+      <div className="flex gap-6">
+        {/* Left side - Form (Narrower) */}
+        <div className="w-80">
+          <h4 className="text-sm font-medium text-slate-700 mb-4">
+            Cabinet Details
           </h4>
 
-          <div>
-            {/* Name */}
-            <div className="mb-3">
-              <label
-                htmlFor="name"
-                className="block text-xs font-medium text-slate-700 mb-1"
-              >
-                Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border ${
-                  errors.name ? "border-red-500" : "border-slate-300"
-                } rounded-md text-sm`}
-                placeholder="Base Cabinet, Wall Cabinet, etc."
-              />
-              {errors.name && (
-                <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-              )}
+          <div className="space-y-4">
+            {/* Basic Info Section */}
+            <div className="pb-4 border-b border-slate-200">
+              
+              {/* Quantity */}
+              <div className="mb-3">
+                <label
+                  htmlFor="quantity"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Quantity <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="quantity"
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  min="1"
+                  className={`w-full px-3 py-2 border ${
+                    errors.quantity ? "border-red-500" : "border-slate-300"
+                  } rounded-md text-sm`}
+                />
+                {errors.quantity && (
+                  <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+                )}
+              </div>
+              
+              {/* Name */}
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border ${
+                    errors.name ? "border-red-500" : "border-slate-300"
+                  } rounded-md text-sm`}
+                  placeholder="Base Cabinet, Wall Cabinet, etc."
+                />
+                {errors.name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                )}
+              </div>
             </div>
 
-            {/* Dimensions */}
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            {/* Dimensions Section */}
+            <div className="pb-4">
+              <h5 className="text-xs font-medium text-slate-600 mb-3 uppercase tracking-wide">
+                Dimensions (inches)
+              </h5>
+              
               {/* Width */}
-              <div>
+              <div className="mb-3">
                 <label
                   htmlFor="width"
                   className="block text-xs font-medium text-slate-700 mb-1"
                 >
-                  Width (in) <span className="text-red-500">*</span>
+                  Width <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -164,12 +198,12 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
               </div>
 
               {/* Height */}
-              <div>
+              <div className="mb-3">
                 <label
                   htmlFor="height"
                   className="block text-xs font-medium text-slate-700 mb-1"
                 >
-                  Height (in) <span className="text-red-500">*</span>
+                  Height <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -194,7 +228,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
                   htmlFor="depth"
                   className="block text-xs font-medium text-slate-700 mb-1"
                 >
-                  Depth (in) <span className="text-red-500">*</span>
+                  Depth <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -214,101 +248,36 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
               </div>
             </div>
 
-            {/* Quantity */}
-            <div className="mb-4">
-              <label
-                htmlFor="quantity"
-                className="block text-xs font-medium text-slate-700 mb-1"
-              >
-                Quantity <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                min="1"
-                className={`w-full px-3 py-2 border ${
-                  errors.quantity ? "border-red-500" : "border-slate-300"
-                } rounded-md text-sm`}
-              />
-              {errors.quantity && (
-                <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-              )}
-            </div>
-
-            {/* Face Configuration */}
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-medium text-slate-700">
-                  Face Configuration
-                </label>
-                <button
-                  type="button"
-                  onClick={() => canShowFaceDivider && setShowFaceDivider(!showFaceDivider)}
-                  disabled={!canShowFaceDivider}
-                  className={`px-2 py-1 text-xs rounded ${
-                    canShowFaceDivider
-                      ? "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                      : "text-slate-400 cursor-not-allowed bg-slate-50"
-                  }`}
-                  title={!canShowFaceDivider ? "Please enter valid width, height, and depth first" : ""}
-                >
-                  {showFaceDivider ? "Hide Designer" : "Design Face"}
-                </button>
-              </div>
-              {!canShowFaceDivider && (
-                <div className="text-xs text-slate-500 mb-2">
-                  Enter width, height, and depth to design the cabinet face
-                </div>
-              )}
-              {formData.face_config && formData.face_config.length > 0 && (
-                <div className="text-xs text-slate-500 mb-2">
-                  Face configured with{" "}
-                  {Array.isArray(formData.face_config) 
-                    ? formData.face_config.reduce((total, row) => total + row.length, 0)
-                    : "custom layout"
-                  }{" "}
-                  sections
-                </div>
-              )}
-            </div>
-
             {/* Form Actions */}
-            <div className="flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 flex items-center"
-              >
-                <FiX className="mr-1" />
-                Cancel
-              </button>
+            <div className="flex flex-col space-y-2 pt-2 border-t border-slate-200">
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
+                className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600"
               >
-                <FiSave className="mr-1" />
-                Save
+                Save Cabinet
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+              >
+                Cancel
               </button>
             </div>
           </div>
         </div>
 
-        {/* Right side - Face Divider */}
-        {showFaceDivider && canShowFaceDivider && (
-          <div className="w-80 border-l border-slate-200 pl-4">
-            <CabinetFaceDivider
-              cabinetWidth={formData.width}
-              cabinetHeight={formData.height}
-              faceConfig={formData.face_config}
-              onSave={handleFaceConfigSave}
-              onCancel={() => setShowFaceDivider(false)}
-            />
-          </div>
-        )}
+        {/* Right side - Face Divider (More space) */}
+        <div className="flex-1 border-l border-slate-200 pl-6">
+          <CabinetFaceDivider
+            cabinetWidth={formData.width || 24} // Default width if empty
+            cabinetHeight={formData.height || 30} // Default height if empty
+            faceConfig={formData.face_config}
+            onSave={handleFaceConfigSave}
+            disabled={!canEditFaces}
+          />
+        </div>
       </div>
     </div>
   );

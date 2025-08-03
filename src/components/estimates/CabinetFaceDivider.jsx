@@ -1,8 +1,8 @@
 import * as d3 from "d3";
+import { cloneDeep } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FiX, FiSave, FiRotateCcw } from "react-icons/fi";
-import { cloneDeep } from "lodash";
+import { FiRotateCcw } from "react-icons/fi";
 
 const FACE_TYPES = [
   { value: "door", label: "Door", color: "#3B82F6" },
@@ -19,7 +19,7 @@ const CabinetFaceDivider = ({
   cabinetHeight,
   faceConfig = null,
   onSave,
-  onCancel,
+  disabled = false,
 }) => {
   const svgRef = useRef();
   const [config, setConfig] = useState(faceConfig);
@@ -27,6 +27,7 @@ const CabinetFaceDivider = ({
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(null);
+  const previousConfigRef = useRef();
 
   // Scale factor to fit cabinet in a reasonable display size
   const maxDisplayWidth = 300;
@@ -473,6 +474,25 @@ const CabinetFaceDivider = ({
     updateFaceSummary();
   }, [config.width, config.height, updateFaceSummary]);
 
+  // Calculate face summary whenever config changes
+  useEffect(() => {
+    if (config && onSave) {
+      // Only update if config has actually changed (not just a re-render)
+      const configString = JSON.stringify(config);
+      const previousConfigString = previousConfigRef.current;
+      
+      if (configString !== previousConfigString) {
+        const faceSummary = calculateFaceSummary(config);
+        const configWithSummary = {
+          ...config,
+          faceSummary
+        };
+        onSave(configWithSummary);
+        previousConfigRef.current = configString;
+      }
+    }
+  }, [config, onSave]);
+
   const handleDimensionChange = (dimension, newValue) => {
     if (!selectedNode || newValue <= 0) return;
 
@@ -625,6 +645,8 @@ const CabinetFaceDivider = ({
   };
 
   const handleDragStart = (event, node, dimension) => {
+    if (disabled) return;
+    
     event.preventDefault();
     event.stopPropagation();
     setSelectedNode(node); // Set the selected node so handleDimensionChange works properly
@@ -731,6 +753,8 @@ const CabinetFaceDivider = ({
   };
 
   const handleNodeClick = (event, node) => {
+    if (disabled) return;
+    
     const svgRect = svgRef.current.getBoundingClientRect();
     setSelectorPosition({
       x: event.clientX - svgRect.left,
@@ -906,7 +930,9 @@ const CabinetFaceDivider = ({
   };
 
   const handleReset = () => {
-    setConfig({
+    if (disabled) return;
+    
+    const resetConfig = {
       id: "root",
       type: "door",
       width: cabinetWidth,
@@ -914,64 +940,52 @@ const CabinetFaceDivider = ({
       x: 0,
       y: 0,
       children: null,
-    });
-    setShowTypeSelector(false);
-    setSelectedNode(null);
-  };
-
-  const handleSave = () => {
-    // Update face summary before saving
-    const faceSummary = calculateFaceSummary(config);
-    const finalConfig = {
-      ...config,
-      faceSummary
     };
     
-    onSave(finalConfig);
+    setConfig(resetConfig);
+    setSelectedNode(null);
+    setShowTypeSelector(false);
   };
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg p-4">
-      <div className="flex flex-col justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4">
         <h4 className="text-sm font-medium text-slate-700">
           Cabinet Face Designer
         </h4>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleReset}
-            className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center"
-            title="Reset to single door"
-          >
-            <FiRotateCcw className="mr-1" />
-            Reset
-          </button>
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 flex items-center"
-          >
-            <FiX className="mr-1" />
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
-          >
-            <FiSave className="mr-1" />
-            Save
-          </button>
-        </div>
+        <button
+          onClick={handleReset}
+          className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Reset to single door"
+          disabled={disabled}
+        >
+          <FiRotateCcw className="mr-1" />
+          Reset
+        </button>
       </div>
 
-      <div className="relative">
+      <div className="relative flex justify-center">
         <svg
           ref={svgRef}
           width={displayWidth}
           height={displayHeight}
-          className="border border-slate-300 rounded"
+          className={`border border-slate-300 rounded ${disabled ? 'opacity-50' : ''}`}
         />
 
+        {/* Disabled overlay */}
+        {disabled && (
+          <div className="absolute inset-0 bg-slate-100 bg-opacity-75 flex items-center justify-center rounded">
+            <div className="text-center">
+              <p className="text-sm text-slate-600 font-medium">Face Designer Disabled</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Please enter valid width, height, and depth dimensions
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Type Selector Popup */}
-        {showTypeSelector && selectedNode && (
+        {showTypeSelector && selectedNode && !disabled && (
           <div
             className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10"
             style={{
@@ -1091,7 +1105,7 @@ CabinetFaceDivider.propTypes = {
   cabinetHeight: PropTypes.number.isRequired,
   faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
 export default CabinetFaceDivider;
