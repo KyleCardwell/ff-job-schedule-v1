@@ -203,7 +203,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     <div className="bg-white border border-slate-200 rounded-md p-4">
       <div className="flex gap-6">
         {/* Left side - Form (Narrower) */}
-        <div className="w-80">
+        <div className="w-64">
           <h4 className="text-sm font-medium text-slate-700 mb-4">
             Cabinet Details
           </h4>

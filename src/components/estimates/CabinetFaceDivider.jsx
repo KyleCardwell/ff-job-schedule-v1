@@ -30,16 +30,25 @@ const CabinetFaceDivider = ({
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
 
-  // Scale factor to fit cabinet in a reasonable display size
-  const maxDisplayWidth = 300;
-  const maxDisplayHeight = 400;
-  const scaleX = Math.min(
-    maxDisplayWidth / cabinetWidth,
-    maxDisplayHeight / cabinetHeight
-  );
-  const scaleY = scaleX; // Keep aspect ratio
-  const displayWidth = cabinetWidth * scaleX;
-  const displayHeight = cabinetHeight * scaleY;
+  // Fixed display dimensions
+  const fixedDisplayWidth = 300; // Fixed width for the SVG container
+  const fixedDisplayHeight = 436; // Fixed height for the SVG container
+
+  // Scale factor to fit cabinet within the fixed display size
+  const scaleX = fixedDisplayWidth / cabinetWidth;
+  const scaleY = fixedDisplayHeight / cabinetHeight;
+
+  // Use the smaller scale to maintain aspect ratio
+  const scale = Math.min(scaleX, scaleY) // * 0.98;
+
+  // Calculate cabinet dimensions in the display
+  const displayWidth = cabinetWidth * scale;
+  const displayHeight = cabinetHeight * scale;
+
+  // Calculate offsets to center the cabinet in the fixed container
+  const offsetX = (fixedDisplayWidth - displayWidth) / 2;
+  const offsetY = (fixedDisplayHeight - displayHeight) / 2;
+
   const minValue = 2;
 
   useEffect(() => {
@@ -178,20 +187,25 @@ const CabinetFaceDivider = ({
   };
 
   // Render a single node
-  const renderNode = (svg, node) => {
-    const faceType = FACE_TYPES.find((t) => t.value === node.type);
-    const x = node.x * scaleX;
-    const y = node.y * scaleY;
-    const rectWidth = node.width * scaleX;
-    const rectHeight = node.height * scaleY;
+  const renderNode = (node, parent = null) => {
+    // Skip if node has no width or height
+    if (!node || node.width <= 0 || node.height <= 0) return;
 
+    // Calculate display position and size
+    const x = node.x * scale;
+    const y = node.y * scale;
+    const width = node.width * scale;
+    const height = node.height * scale;
+
+    const faceType = FACE_TYPES.find((t) => t.value === node.type);
     // Draw rectangle
-    svg
+    const cabinetGroup = d3.select(svgRef.current).select("g");
+    cabinetGroup
       .append("rect")
       .attr("x", x)
       .attr("y", y)
-      .attr("width", rectWidth)
-      .attr("height", rectHeight)
+      .attr("width", width)
+      .attr("height", height)
       .attr("fill", faceType?.color || "#6B7280")
       .attr("fill-opacity", node.type === "container" ? 0.1 : 0.3)
       .attr("stroke", faceType?.color || "#6B7280")
@@ -206,15 +220,15 @@ const CabinetFaceDivider = ({
 
     // Recursively render children first (so they appear behind the parent's handles)
     if (node.children) {
-      node.children.forEach((child) => renderNode(svg, child));
+      node.children.forEach((child) => renderNode(child, node));
     }
 
     // Add text label for non-containers
     if (node.type !== "container") {
-      svg
+      cabinetGroup
         .append("text")
-        .attr("x", x + rectWidth / 2)
-        .attr("y", y + rectHeight / 2)
+        .attr("x", x + width / 2)
+        .attr("y", y + height / 2)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
         .attr("fill", "#FFFFFF")
@@ -225,11 +239,11 @@ const CabinetFaceDivider = ({
     }
 
     // Add dimensions text for leaf nodes
-    if (!node.children && rectWidth > 60 && rectHeight > 30) {
-      svg
+    if (!node.children && width > 60 && height > 30) {
+      cabinetGroup
         .append("text")
-        .attr("x", x + rectWidth / 2)
-        .attr("y", y + rectHeight / 2 + 15)
+        .attr("x", x + width / 2)
+        .attr("y", y + height / 2 + 15)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
         .attr("fill", "#64748B")
@@ -239,22 +253,22 @@ const CabinetFaceDivider = ({
     }
 
     // Add drag handles for nodes with siblings
-    const parent = findParent(config, node.id);
-    if (parent && parent.children && parent.children.length > 1) {
-      const siblings = parent.children;
+    const nodeParent = findParent(config, node.id);
+    if (nodeParent && nodeParent.children && nodeParent.children.length > 1) {
+      const siblings = nodeParent.children;
       const nodeIndex = siblings.findIndex((sibling) => sibling.id === node.id);
       const isLastSibling = nodeIndex === siblings.length - 1;
 
       // Create a group for handles with high z-index
-      const handleGroup = svg.append("g").style("pointer-events", "all");
+      const handleGroup = cabinetGroup.append("g").style("pointer-events", "all");
 
       // Only add right handle if not the last sibling in a horizontal split
-      if (parent.splitDirection === "horizontal" && !isLastSibling) {
+      if (nodeParent.splitDirection === "horizontal" && !isLastSibling) {
         // Right edge handle for width adjustment between siblings
         handleGroup
           .append("rect")
-          .attr("x", x + rectWidth - 4)
-          .attr("y", y + rectHeight / 2 - 10)
+          .attr("x", x + width - 4)
+          .attr("y", y + height / 2 - 10)
           .attr("width", 8)
           .attr("height", 20)
           .attr("fill", "#3B82F6")
@@ -270,12 +284,12 @@ const CabinetFaceDivider = ({
       }
 
       // Only add bottom handle if not the last sibling in a vertical split
-      if (parent.splitDirection === "vertical" && !isLastSibling) {
+      if (nodeParent.splitDirection === "vertical" && !isLastSibling) {
         // Bottom edge handle for height adjustment between siblings
         handleGroup
           .append("rect")
-          .attr("x", x + rectWidth / 2 - 10)
-          .attr("y", y + rectHeight - 4)
+          .attr("x", x + width / 2 - 10)
+          .attr("y", y + height - 4)
           .attr("width", 20)
           .attr("height", 8)
           .attr("fill", "#3B82F6")
@@ -299,10 +313,14 @@ const CabinetFaceDivider = ({
     calculateLayout(config);
 
     const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
+    svg.selectAll("*").remove(); // Clear the SVG
+
+    // Add a transform group to center the cabinet
+    const cabinetGroup = svg.append("g")
+      .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
     // Add background
-    svg
+    cabinetGroup
       .append("rect")
       .attr("width", displayWidth)
       .attr("height", displayHeight)
@@ -311,7 +329,7 @@ const CabinetFaceDivider = ({
       .attr("stroke-width", 2);
 
     // Render the tree
-    renderNode(svg, config);
+    renderNode(config);
 
     // Add click handler to SVG background for closing selector
     svg.on("click", () => {
@@ -586,9 +604,9 @@ const CabinetFaceDivider = ({
     // Calculate delta based on dimension
     let delta;
     if (dimension === "width") {
-      delta = (event.clientX - startX) / scaleX;
+      delta = (event.clientX - startX) / scale;
     } else {
-      delta = (event.clientY - startY) / scaleY;
+      delta = (event.clientY - startY) / scale;
     }
 
     // Get the current node value from config (not the stale dragging reference)
@@ -881,8 +899,8 @@ const CabinetFaceDivider = ({
       <h4 className="text-sm font-medium text-slate-700">
         Cabinet Face Designer
       </h4>
-      <div className="bg-white border border-slate-200 rounded-lg p-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-white border border-slate-200 rounded-lg p-2">
+        <div className="flex justify-between items-center mb-2">
           <button
             onClick={handleCancelChanges}
             className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -906,9 +924,9 @@ const CabinetFaceDivider = ({
         <div className="relative flex justify-center">
           <svg
             ref={svgRef}
-            width={displayWidth}
-            height={displayHeight}
-            className={`border border-slate-300 ${
+            width={fixedDisplayWidth}
+            height={fixedDisplayHeight}
+            className={`${
               disabled ? "opacity-50" : ""
             }`}
           />
@@ -932,8 +950,8 @@ const CabinetFaceDivider = ({
             <div
               className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-100"
               style={{
-                left: Math.min(selectorPosition.x, displayWidth - 200),
-                top: Math.min(selectorPosition.y, displayHeight - 200),
+                left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
+                top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
               }}
             >
               {/* Dimensions for leaf nodes */}
@@ -1034,7 +1052,7 @@ const CabinetFaceDivider = ({
           )}
         </div>
 
-        <div className="mt-3 text-xs text-slate-500">
+        <div className="mt-2 text-xs text-slate-500">
           Cabinet: {cabinetWidth}&quot; W × {cabinetHeight}&quot; H
           <br />
           Click faces to change type, edit dimensions, or split them.
