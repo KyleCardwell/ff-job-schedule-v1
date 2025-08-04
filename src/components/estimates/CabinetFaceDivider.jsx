@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import { cloneDeep } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FiRotateCcw } from "react-icons/fi";
+import { FiRotateCcw, FiX } from "react-icons/fi";
 
 const FACE_TYPES = [
   { value: "door", label: "Door", color: "#3B82F6" },
@@ -28,6 +28,7 @@ const CabinetFaceDivider = ({
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(null);
   const previousConfigRef = useRef();
+  const originalConfigRef = useRef();
 
   // Scale factor to fit cabinet in a reasonable display size
   const maxDisplayWidth = 300;
@@ -103,6 +104,28 @@ const CabinetFaceDivider = ({
   useEffect(() => {
     updateChildrenFromParent(config);
   }, [config]);
+
+  // Store the original config only once when component first mounts
+  useEffect(() => {
+    // Only set the original config if it hasn't been set yet
+    if (!originalConfigRef.current) {
+      if (faceConfig) {
+        originalConfigRef.current = cloneDeep(faceConfig);
+      } else {
+        // Store the default single door config as original
+        const defaultConfig = {
+          id: "root",
+          type: "door",
+          width: cabinetWidth,
+          height: cabinetHeight,
+          x: 0,
+          y: 0,
+          children: null,
+        };
+        originalConfigRef.current = cloneDeep(defaultConfig);
+      }
+    }
+  }, []); // Empty dependency array - only run once on mount
 
   // Generate unique ID for new nodes
   const generateId = (parentId, index) => {
@@ -223,8 +246,7 @@ const CabinetFaceDivider = ({
       const isLastSibling = nodeIndex === siblings.length - 1;
 
       // Create a group for handles with high z-index
-      const handleGroup = svg.append("g")
-        .style("pointer-events", "all");
+      const handleGroup = svg.append("g").style("pointer-events", "all");
 
       // Only add right handle if not the last sibling in a horizontal split
       if (parent.splitDirection === "horizontal" && !isLastSibling) {
@@ -381,7 +403,7 @@ const CabinetFaceDivider = ({
       // Only update if config has actually changed (not just a re-render)
       const configString = JSON.stringify(config);
       const previousConfigString = previousConfigRef.current;
-      
+
       if (configString !== previousConfigString) {
         onSave(config);
         previousConfigRef.current = configString;
@@ -419,7 +441,9 @@ const CabinetFaceDivider = ({
         // Child is adjusting the dimension it can control among siblings
         // Handle proportional scaling for siblings
         const siblings = parent.children;
-        const nodeIndex = siblings.findIndex((sibling) => sibling.id === node.id);
+        const nodeIndex = siblings.findIndex(
+          (sibling) => sibling.id === node.id
+        );
         const isLastSibling = nodeIndex === siblings.length - 1;
 
         // Get container dimension for constraints
@@ -453,7 +477,9 @@ const CabinetFaceDivider = ({
         node[dimension] = constrainedValue;
 
         // Distribute remaining space proportionally among other siblings
-        const otherSiblings = siblings.filter((_, index) => index !== nodeIndex);
+        const otherSiblings = siblings.filter(
+          (_, index) => index !== nodeIndex
+        );
         const currentOtherTotal = otherSiblings.reduce(
           (sum, sibling) => sum + (sibling[parentSplitDimension] || 0),
           0
@@ -542,23 +568,23 @@ const CabinetFaceDivider = ({
 
   const handleDragStart = (event, node, dimension) => {
     if (disabled) return;
-    
+
     event.preventDefault();
     event.stopPropagation();
     setSelectedNode(node); // Set the selected node so handleDimensionChange works properly
-    setDragging({ 
-      node, 
-      dimension, 
-      startX: event.clientX, 
-      startY: event.clientY 
+    setDragging({
+      node,
+      dimension,
+      startX: event.clientX,
+      startY: event.clientY,
     });
   };
 
   const handleDrag = (event) => {
     if (!dragging) return;
-    
+
     const { node, dimension, startX, startY } = dragging;
-    
+
     // Calculate delta based on dimension
     let delta;
     if (dimension === "width") {
@@ -566,20 +592,20 @@ const CabinetFaceDivider = ({
     } else {
       delta = (event.clientY - startY) / scaleY;
     }
-    
+
     // Get the current node value from config (not the stale dragging reference)
     const currentNode = findNode(config, node.id);
     if (!currentNode) return;
-    
+
     // Use the existing handleDimensionChange function with the new calculated value
     const newValue = currentNode[dimension] + delta;
     handleDimensionChange(dimension, newValue);
-    
+
     // Update drag start position for next move
     setDragging({
       ...dragging,
       startX: event.clientX,
-      startY: event.clientY
+      startY: event.clientY,
     });
   };
 
@@ -650,7 +676,7 @@ const CabinetFaceDivider = ({
 
   const handleNodeClick = (event, node) => {
     if (disabled) return;
-    
+
     const svgRect = svgRef.current.getBoundingClientRect();
     setSelectorPosition({
       x: event.clientX - svgRect.left,
@@ -788,7 +814,7 @@ const CabinetFaceDivider = ({
       // If parent has only one child left, merge it up
       if (parent.children.length === 1) {
         const remainingChild = parent.children[0];
-        
+
         // Before merging, ensure the remaining child takes up the full parent dimension
         if (parent.splitDirection === "horizontal") {
           remainingChild.width = parent.width;
@@ -797,12 +823,12 @@ const CabinetFaceDivider = ({
           remainingChild.height = parent.height;
           remainingChild.y = parent.y;
         }
-        
+
         // If the remaining child has children, update their dimensions too
         if (remainingChild.children && remainingChild.children.length > 0) {
           updateChildrenFromParent(remainingChild);
         }
-        
+
         parent.type = remainingChild.type;
         parent.children = remainingChild.children;
         parent.splitDirection = remainingChild.splitDirection;
@@ -817,7 +843,7 @@ const CabinetFaceDivider = ({
 
     // After all modifications, recalculate layout for the entire tree
     calculateLayout(newConfig);
-    
+
     // Use React's state update with a fresh object to ensure React detects the change
     const updatedConfig = cloneDeep(newConfig);
     setConfig(updatedConfig);
@@ -827,7 +853,7 @@ const CabinetFaceDivider = ({
 
   const handleReset = () => {
     if (disabled) return;
-    
+
     const resetConfig = {
       id: "root",
       type: "door",
@@ -837,8 +863,17 @@ const CabinetFaceDivider = ({
       y: 0,
       children: null,
     };
-    
+
     setConfig(resetConfig);
+    setSelectedNode(null);
+    setShowTypeSelector(false);
+  };
+
+  const handleCancelChanges = () => {
+    if (disabled || !originalConfigRef.current) return;
+
+    // Revert to the original config state
+    setConfig(cloneDeep(originalConfigRef.current));
     setSelectedNode(null);
     setShowTypeSelector(false);
   };
@@ -846,18 +881,29 @@ const CabinetFaceDivider = ({
   return (
     <div className="bg-white border border-slate-200 rounded-lg p-4">
       <div className="flex justify-between items-center mb-4">
-        <h4 className="text-sm font-medium text-slate-700">
-          Cabinet Face Designer
-        </h4>
-        <button
-          onClick={handleReset}
-          className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Reset to single door"
-          disabled={disabled}
-        >
-          <FiRotateCcw className="mr-1" />
-          Reset
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleCancelChanges}
+            className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Cancel changes and revert to original"
+            disabled={disabled}
+          >
+            <FiX className="mr-1" />
+            Cancel Changes
+          </button>
+          <h4 className="text-sm font-medium text-slate-700">
+            Cabinet Face Designer
+          </h4>
+          <button
+            onClick={handleReset}
+            className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Reset to default single door"
+            disabled={disabled}
+          >
+            <FiRotateCcw className="mr-1" />
+            Default
+          </button>
+        </div>
       </div>
 
       <div className="relative flex justify-center">
@@ -865,14 +911,18 @@ const CabinetFaceDivider = ({
           ref={svgRef}
           width={displayWidth}
           height={displayHeight}
-          className={`border border-slate-300 rounded ${disabled ? 'opacity-50' : ''}`}
+          className={`border border-slate-300 rounded ${
+            disabled ? "opacity-50" : ""
+          }`}
         />
 
         {/* Disabled overlay */}
         {disabled && (
           <div className="absolute inset-0 bg-slate-100 bg-opacity-75 flex items-center justify-center rounded">
             <div className="text-center">
-              <p className="text-sm text-slate-600 font-medium">Face Designer Disabled</p>
+              <p className="text-sm text-slate-600 font-medium">
+                Face Designer Disabled
+              </p>
               <p className="text-xs text-slate-500 mt-1">
                 Please enter valid width, height, and depth dimensions
               </p>
