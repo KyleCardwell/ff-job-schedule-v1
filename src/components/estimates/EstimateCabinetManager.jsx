@@ -371,6 +371,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             faceConfig={formData.face_config}
             onSave={handleFaceConfigSave}
             disabled={!canEditFaces}
+            onDimensionChange={handleChange}
           />
         </div>
       </div>

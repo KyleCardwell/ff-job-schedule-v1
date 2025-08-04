@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
+import { truncateTrailingZeros } from "../../utils/helpers";
+
 const FACE_TYPES = [
   { value: "door", label: "Door", color: "#3B82F6" },
   { value: "pair_door", label: "Pair Door", color: "#8B5CF6" },
@@ -20,6 +22,7 @@ const CabinetFaceDivider = ({
   faceConfig = null,
   onSave,
   disabled = false,
+  onDimensionChange = null,
 }) => {
   const svgRef = useRef();
   const [config, setConfig] = useState(faceConfig);
@@ -39,7 +42,7 @@ const CabinetFaceDivider = ({
   const scaleY = fixedDisplayHeight / cabinetHeight;
 
   // Use the smaller scale to maintain aspect ratio
-  const scale = Math.min(scaleX, scaleY) // * 0.98;
+  const scale = Math.min(scaleX, scaleY); // * 0.98;
 
   // Calculate cabinet dimensions in the display
   const displayWidth = cabinetWidth * scale;
@@ -69,6 +72,20 @@ const CabinetFaceDivider = ({
         ...config,
         id: "root",
       });
+    } else if (config && config.id === "root") {
+      // Update root dimensions when cabinet dimensions change
+      // This is what ensures the faces update when the cabinet size changes
+      if (config.width !== cabinetWidth || config.height !== cabinetHeight) {
+        const updatedConfig = cloneDeep(config);
+        updatedConfig.width = cabinetWidth;
+        updatedConfig.height = cabinetHeight;
+        
+        // Recalculate layout for the entire config
+        calculateLayout(updatedConfig);
+        
+        // Update state with the new configuration
+        setConfig(updatedConfig);
+      }
     }
   }, [cabinetWidth, cabinetHeight, config]);
 
@@ -135,7 +152,7 @@ const CabinetFaceDivider = ({
       }
     }
   }, []); // Empty dependency array - only run once on mount
-
+  
   // Generate unique ID for new nodes
   const generateId = (parentId, index) => {
     if (!parentId || parentId === "root") {
@@ -248,7 +265,11 @@ const CabinetFaceDivider = ({
         .attr("dominant-baseline", "middle")
         .attr("fill", "#64748B")
         .attr("font-size", "10px")
-        .text(`${node.width.toFixed(1)}" × ${node.height.toFixed(1)}"`)
+        .text(
+          `${truncateTrailingZeros(node.width)}" × ${truncateTrailingZeros(
+            node.height
+          )}"`
+        )
         .style("pointer-events", "none");
     }
 
@@ -260,7 +281,9 @@ const CabinetFaceDivider = ({
       const isLastSibling = nodeIndex === siblings.length - 1;
 
       // Create a group for handles with high z-index
-      const handleGroup = cabinetGroup.append("g").style("pointer-events", "all");
+      const handleGroup = cabinetGroup
+        .append("g")
+        .style("pointer-events", "all");
 
       // Only add right handle if not the last sibling in a horizontal split
       if (nodeParent.splitDirection === "horizontal" && !isLastSibling) {
@@ -316,7 +339,8 @@ const CabinetFaceDivider = ({
     svg.selectAll("*").remove(); // Clear the SVG
 
     // Add a transform group to center the cabinet
-    const cabinetGroup = svg.append("g")
+    const cabinetGroup = svg
+      .append("g")
       .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
     // Add background
@@ -427,8 +451,16 @@ const CabinetFaceDivider = ({
     }
   }, [config, onSave]);
 
-  const handleDimensionChange = (dimension, newValue) => {
-    if (!selectedNode || newValue <= 0) return;
+  const handleDimensionChange = (dimension, newValueStr) => {
+    // Convert string to number and handle empty input
+    const newValue = newValueStr === '' ? 0 : parseFloat(newValueStr);
+    
+    // Allow the input field to show what user is typing, only validate on actual changes
+    if (!selectedNode) return;
+    
+    // Skip further processing if value is invalid, but don't return early on empty/0
+    // to allow users to clear the field and type new values
+    if (isNaN(newValue)) return;
 
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
@@ -445,7 +477,14 @@ const CabinetFaceDivider = ({
       // No siblings, just update the dimension directly
       // But constrain to cabinet dimensions
       const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
-      node[dimension] = Math.max(minValue, Math.min(newValue, maxDimension));
+      
+      // Only enforce minimum value when user has completed input (non-zero value)
+      if (newValue > 0) {
+        node[dimension] = Math.max(minValue, Math.min(newValue, maxDimension));
+      } else {
+        // Allow zero temporarily during input, will be constrained on blur
+        node[dimension] = newValue;
+      }
     } else {
       // Determine which dimension the parent controls (split dimension) vs inherited dimension
       const parentSplitDimension =
@@ -463,7 +502,9 @@ const CabinetFaceDivider = ({
         const isLastSibling = nodeIndex === siblings.length - 1;
 
         // Get container dimension for constraints
-        const containerDimension = parent[parentSplitDimension];
+        const containerDimension =
+          parent[parentSplitDimension] ||
+          (parentSplitDimension === "width" ? cabinetWidth : cabinetHeight);
 
         // Ensure all siblings have initial dimensions
         siblings.forEach((sibling) => {
@@ -892,6 +933,18 @@ const CabinetFaceDivider = ({
     setConfig(cloneDeep(originalConfigRef.current));
     setSelectedNode(null);
     setShowTypeSelector(false);
+    onDimensionChange({
+      target: {
+        name: "width",
+        value: originalConfigRef.current.width,
+      },
+    });
+    onDimensionChange({
+      target: {
+        name: "height",
+        value: originalConfigRef.current.height,
+      },
+    });
   };
 
   return (
@@ -926,9 +979,7 @@ const CabinetFaceDivider = ({
             ref={svgRef}
             width={fixedDisplayWidth}
             height={fixedDisplayHeight}
-            className={`${
-              disabled ? "opacity-50" : ""
-            }`}
+            className={`${disabled ? "opacity-50" : ""}`}
           />
 
           {/* Disabled overlay */}
@@ -965,10 +1016,16 @@ const CabinetFaceDivider = ({
                       <label className="text-xs text-slate-600">W:</label>
                       <input
                         type="number"
-                        value={selectedNode.width.toFixed(2)}
+                        value={selectedNode.width > 0 ? truncateTrailingZeros(selectedNode.width) : selectedNode.width}
                         onChange={(e) =>
                           handleDimensionChange("width", e.target.value)
                         }
+                        onBlur={() => {
+                          // Enforce min value when focus leaves the input
+                          if (selectedNode.width <= 0) {
+                            handleDimensionChange("width", minValue);
+                          }
+                        }}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.25"
                         min={getDimensionConstraints("width").min}
@@ -980,10 +1037,16 @@ const CabinetFaceDivider = ({
                       <label className="text-xs text-slate-600">H:</label>
                       <input
                         type="number"
-                        value={selectedNode.height.toFixed(2)}
+                        value={selectedNode.height > 0 ? truncateTrailingZeros(selectedNode.height) : selectedNode.height}
                         onChange={(e) =>
                           handleDimensionChange("height", e.target.value)
                         }
+                        onBlur={() => {
+                          // Enforce min value when focus leaves the input
+                          if (selectedNode.height <= 0) {
+                            handleDimensionChange("height", minValue);
+                          }
+                        }}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.25"
                         min={getDimensionConstraints("height").min}
@@ -1068,6 +1131,7 @@ CabinetFaceDivider.propTypes = {
   faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
+  onDimensionChange: PropTypes.func,
 };
 
 export default CabinetFaceDivider;
