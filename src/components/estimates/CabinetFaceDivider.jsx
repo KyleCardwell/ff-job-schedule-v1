@@ -234,6 +234,21 @@ const CabinetFaceDivider = ({
         event.stopPropagation();
         handleNodeClick(event, node);
       });
+      
+    // Add center vertical dashed line for pair_door faces
+    if (node.type === "pair_door") {
+      const centerX = x + width / 2;
+      cabinetGroup
+        .append("line")
+        .attr("x1", centerX)
+        .attr("y1", y)
+        .attr("x2", centerX)
+        .attr("y2", y + height)
+        .attr("stroke", faceType?.color || "#6B7280")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "5,5")
+        .attr("pointer-events", "none");
+    }
 
     // Recursively render children first (so they appear behind the parent's handles)
     if (node.children) {

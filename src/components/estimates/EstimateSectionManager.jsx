@@ -186,7 +186,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       {sections.map(({ type, title, component }) => (
         <div
           key={type}
-          className="border border-slate-200 rounded-lg overflow-hidden"
+          className="border border-slate-200 rounded-lg"
         >
           <button
             onClick={() => handleToggleSection(type)}
