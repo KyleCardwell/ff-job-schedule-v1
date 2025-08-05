@@ -86,7 +86,7 @@ const CabinetFaceDivider = ({
 
   useEffect(() => {
     renderCabinet();
-  }, [config, displayWidth, displayHeight]);
+  }, [config, displayWidth, displayHeight, disabled]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
