@@ -23,27 +23,24 @@ const CabinetFaceDivider = ({
   const [dragging, setDragging] = useState(null);
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
+  // State for temporary input values
+  const [inputValues, setInputValues] = useState({ width: "", height: "" });
 
   // Fixed display dimensions
   const fixedDisplayWidth = 300; // Fixed width for the SVG container
   const fixedDisplayHeight = 436; // Fixed height for the SVG container
 
-  // Scale factor to fit cabinet within the fixed display size
+  // Minimum face dimension (2 inches)
+  const minValue = 2;
+
+  // Calculate display scale and offsets
   const scaleX = fixedDisplayWidth / cabinetWidth;
   const scaleY = fixedDisplayHeight / cabinetHeight;
-
-  // Use the smaller scale to maintain aspect ratio
-  const scale = Math.min(scaleX, scaleY); // * 0.98;
-
-  // Calculate cabinet dimensions in the display
+  const scale = Math.min(scaleX, scaleY);
   const displayWidth = cabinetWidth * scale;
   const displayHeight = cabinetHeight * scale;
-
-  // Calculate offsets to center the cabinet in the fixed container
   const offsetX = (fixedDisplayWidth - displayWidth) / 2;
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
-
-  const minValue = 2;
 
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
@@ -757,6 +754,13 @@ const CabinetFaceDivider = ({
       y: event.clientY - svgRect.top,
     });
     setSelectedNode(node);
+    
+    // Initialize input values with current node dimensions
+    setInputValues({
+      width: node.width > 0 ? truncateTrailingZeros(node.width) : node.width,
+      height: node.height > 0 ? truncateTrailingZeros(node.height) : node.height
+    });
+    
     setShowTypeSelector(true);
   };
 
@@ -964,6 +968,36 @@ const CabinetFaceDivider = ({
     });
   };
 
+  // Input handling functions following the user's pattern
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    setInputValues((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const commitValue = (name) => {
+    const raw = inputValues[name];
+    const parsed = parseFloat(raw);
+
+    if (!isNaN(parsed)) {
+      // Use the existing handleDimensionChange function to commit the value
+      handleDimensionChange(name, parsed);
+    }
+  };
+
+  const handleBlur = (e) => {
+    commitValue(e.target.name);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      commitValue(e.target.name);
+    }
+  };
+
   return (
     <div>
       <h4 className="text-sm font-medium text-slate-700">
@@ -1033,16 +1067,11 @@ const CabinetFaceDivider = ({
                       <label className="text-xs text-slate-600">W:</label>
                       <input
                         type="number"
-                        value={selectedNode.width > 0 ? truncateTrailingZeros(selectedNode.width) : selectedNode.width}
-                        onChange={(e) =>
-                          handleDimensionChange("width", e.target.value)
-                        }
-                        onBlur={() => {
-                          // Enforce min value when focus leaves the input
-                          if (selectedNode.width <= 0) {
-                            handleDimensionChange("width", minValue);
-                          }
-                        }}
+                        name="width"
+                        value={inputValues.width}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        onKeyDown={handleKeyDown}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.25"
                         min={getDimensionConstraints("width").min}
@@ -1054,16 +1083,11 @@ const CabinetFaceDivider = ({
                       <label className="text-xs text-slate-600">H:</label>
                       <input
                         type="number"
-                        value={selectedNode.height > 0 ? truncateTrailingZeros(selectedNode.height) : selectedNode.height}
-                        onChange={(e) =>
-                          handleDimensionChange("height", e.target.value)
-                        }
-                        onBlur={() => {
-                          // Enforce min value when focus leaves the input
-                          if (selectedNode.height <= 0) {
-                            handleDimensionChange("height", minValue);
-                          }
-                        }}
+                        name="height"
+                        value={inputValues.height}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        onKeyDown={handleKeyDown}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.25"
                         min={getDimensionConstraints("height").min}
