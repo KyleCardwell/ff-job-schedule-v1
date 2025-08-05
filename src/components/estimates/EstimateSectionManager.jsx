@@ -192,7 +192,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
             onClick={() => handleToggleSection(type)}
             className={`
               w-full px-4 py-3 text-left flex items-center justify-between
-              ${openSectionType === type ? "bg-slate-100" : "bg-white"}
+              ${openSectionType === type ? "bg-slate-100 rounded-t" : "bg-white rounded"}
               hover:bg-slate-200 transition-colors
             `}
           >

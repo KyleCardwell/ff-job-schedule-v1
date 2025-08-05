@@ -4,17 +4,8 @@ import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
+import { FACE_TYPES } from "../../utils/constants";
 import { truncateTrailingZeros } from "../../utils/helpers";
-
-const FACE_TYPES = [
-  { value: "door", label: "Door", color: "#3B82F6" },
-  { value: "pair_door", label: "Pair Door", color: "#8B5CF6" },
-  { value: "drawer", label: "Drawer", color: "#10B981" },
-  { value: "false_front", label: "False Front", color: "#f54d0b" },
-  { value: "panel", label: "Panel", color: "#6B7280" },
-  { value: "open", label: "Open", color: "#F59E0B" },
-  { value: "container", label: "Container", color: "#E5E7EB" },
-];
 
 const CabinetFaceDivider = ({
   cabinetWidth,
@@ -74,20 +65,24 @@ const CabinetFaceDivider = ({
       });
     } else if (config && config.id === "root") {
       // Update root dimensions when cabinet dimensions change
-      // This is what ensures the faces update when the cabinet size changes
-      if (config.width !== cabinetWidth || config.height !== cabinetHeight) {
-        const updatedConfig = cloneDeep(config);
-        updatedConfig.width = cabinetWidth;
-        updatedConfig.height = cabinetHeight;
-        
-        // Recalculate layout for the entire config
-        calculateLayout(updatedConfig);
-        
-        // Update state with the new configuration
-        setConfig(updatedConfig);
-      }
+      // Create a new config object regardless of whether dimensions have changed
+      // to ensure React detects the change and re-renders
+      const updatedConfig = cloneDeep(config);
+      
+      // Update root dimensions first so updateChildrenFromParent uses new values
+      updatedConfig.width = cabinetWidth;
+      updatedConfig.height = cabinetHeight;
+      
+      // Recursively update all children's dimensions based on new parent dimensions
+      updateChildrenFromParent(updatedConfig);
+      
+      // Force recalculation of layout with new dimensions
+      calculateLayout(updatedConfig);
+      
+      // Update state with the new configuration
+      setConfig(updatedConfig);
     }
-  }, [cabinetWidth, cabinetHeight, config]);
+  }, [cabinetWidth, cabinetHeight]);
 
   useEffect(() => {
     renderCabinet();
@@ -403,7 +398,7 @@ const CabinetFaceDivider = ({
 
   // Update children dimensions based on parent constraints
   const updateChildrenFromParent = (node) => {
-    if (!node.children || node.children.length === 0) return;
+    if (!node || !node.children || node.children.length === 0) return;
 
     const splitDimension =
       node.splitDirection === "horizontal" ? "width" : "height";
@@ -415,20 +410,27 @@ const CabinetFaceDivider = ({
       child[fixedDimension] = node[fixedDimension];
     });
 
-    // Ensure split dimension children sum to parent's dimension
-    const totalSplitDimension = node.children.reduce((sum, child) => {
+    // Get the parent's current dimension value that we need to match
+    const parentDimensionValue = node[splitDimension];
+
+    // Calculate the current total of all children's dimensions
+    const totalChildDimension = node.children.reduce((sum, child) => {
       return sum + (child[splitDimension] || 0);
     }, 0);
 
-    if (totalSplitDimension !== node[splitDimension]) {
-      // If totals don't match, distribute proportionally
-      const scale = node[splitDimension] / totalSplitDimension;
+    // If no children have dimensions yet or totals don't match parent dimension, 
+    // distribute appropriately
+    if (totalChildDimension === 0) {
+      // No dimensions yet, divide equally
+      const equalSize = parentDimensionValue / node.children.length;
       node.children.forEach((child) => {
-        if (!child[splitDimension]) {
-          child[splitDimension] = node[splitDimension] / node.children.length;
-        } else {
-          child[splitDimension] = child[splitDimension] * scale;
-        }
+        child[splitDimension] = equalSize;
+      });
+    } else {
+      // Scale all children proportionally to match parent dimension
+      const scale = parentDimensionValue / totalChildDimension;
+      node.children.forEach((child) => {
+        child[splitDimension] = (child[splitDimension] || 0) * scale;
       });
     }
 
@@ -550,7 +552,7 @@ const CabinetFaceDivider = ({
 
         // Distribute remaining space proportionally among other siblings
         const otherSiblings = siblings.filter(
-          (_, index) => index !== nodeIndex
+          (child) => child.id !== selectedNode.id
         );
         const currentOtherTotal = otherSiblings.reduce(
           (sum, sibling) => sum + (sibling[parentSplitDimension] || 0),
