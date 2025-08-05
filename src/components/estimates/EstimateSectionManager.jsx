@@ -186,13 +186,13 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       {sections.map(({ type, title, component }) => (
         <div
           key={type}
-          className="border border-slate-200 rounded-lg overflow-hidden"
+          className="border border-slate-200 rounded-lg"
         >
           <button
             onClick={() => handleToggleSection(type)}
             className={`
               w-full px-4 py-3 text-left flex items-center justify-between
-              ${openSectionType === type ? "bg-slate-100" : "bg-white"}
+              ${openSectionType === type ? "bg-slate-100 rounded-t" : "bg-white rounded"}
               hover:bg-slate-200 transition-colors
             `}
           >

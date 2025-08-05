@@ -516,3 +516,7 @@ export const calculateFinancialTotals = (
 
   return totals;
 };
+
+export function truncateTrailingZeros(num) {
+  return parseFloat(num.toFixed(4)).toString();
+}

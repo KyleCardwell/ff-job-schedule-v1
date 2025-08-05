@@ -222,7 +222,7 @@ const EstimateLayout = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
         {showProjectInfo || !currentEstimate ? (
           <div className="max-w-3xl mx-auto">
             <EstimateProjectForm estimate={currentEstimate} />
