@@ -101,6 +101,7 @@ const CabinetFaceDivider = ({
 
         // Close if clicking outside popup but not on SVG (SVG has its own handler)
         if (!popup && !svg) {
+          
           setShowTypeSelector(false);
           setSelectedNode(null);
         }
@@ -745,6 +746,28 @@ const CabinetFaceDivider = ({
     }
   };
 
+  // Check if a dimension should be disabled (only for direct children of root)
+  const isDimensionDisabled = (dimension, node) => {
+    if (!node || node.id === "root") return false;
+    
+    // Find the parent node
+    const parent = findParent(config, node.id);
+    
+    // Only disable dimensions for direct children of the root
+    if (parent && parent.id === "root") {
+      // For vertical splits, width is constrained for children
+      if (parent.splitDirection === "vertical" && dimension === "width") {
+        return true;
+      }
+      // For horizontal splits, height is constrained for children
+      if (parent.splitDirection === "horizontal" && dimension === "height") {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
   const handleNodeClick = (event, node) => {
     if (disabled) return;
 
@@ -1072,6 +1095,7 @@ const CabinetFaceDivider = ({
                         onChange={handleInputChange}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
+                        disabled={isDimensionDisabled("width", selectedNode)}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.25"
                         min={getDimensionConstraints("width").min}
@@ -1088,6 +1112,7 @@ const CabinetFaceDivider = ({
                         onChange={handleInputChange}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
+                        disabled={isDimensionDisabled("height", selectedNode)}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.25"
                         min={getDimensionConstraints("height").min}
