@@ -19,23 +19,34 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     id: item.id || undefined,
   });
 
+  // Temporary input values for dimensions that will only update formData on commit
+  const [inputValues, setInputValues] = useState({
+    width: item.width || "",
+    height: item.height || "",
+    depth: item.depth || ""
+  });
+
   const [errors, setErrors] = useState({});
 
+  // Handle regular input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Handle numeric inputs
-    if (["width", "height", "depth", "quantity"].includes(name)) {
-      const numValue = value === "" ? "" : Number(value);
-      setFormData({
-        ...formData,
-        [name]: numValue,
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
+    // For non-dimension fields
+    if (!["width", "height", "depth"].includes(name)) {
+      // Handle quantity as numeric
+      if (name === "quantity") {
+        const numValue = value === "" ? "" : Number(value);
+        setFormData({
+          ...formData,
+          [name]: numValue,
+        });
+      } else {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
     }
 
     // Clear error when field is updated
@@ -44,6 +55,47 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
         ...errors,
         [name]: "",
       });
+    }
+  };
+  
+  // Handle dimension input changes without immediately committing
+  const handleDimensionChange = (e) => {
+    const { name, value } = e.target;
+    
+    setInputValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when field is updated
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: "",
+      });
+    }
+  };
+  
+  // Commit dimension value on blur or Enter key
+  const commitDimensionValue = (name) => {
+    const value = inputValues[name];
+    const numValue = value === "" ? "" : Number(value);
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: numValue
+    }));
+  };
+  
+  // Handle input blur event
+  const handleBlur = (e) => {
+    commitDimensionValue(e.target.name);
+  };
+  
+  // Handle Enter key press
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      commitDimensionValue(e.target.name);
     }
   };
 
@@ -78,7 +130,13 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     if (e) {
       e.preventDefault();
     }
-
+    
+    // Commit all dimension values before validation
+    commitDimensionValue("width");
+    commitDimensionValue("height");
+    commitDimensionValue("depth");
+    
+    // Now validate with updated formData
     if (validateForm()) {
       // Calculate face summary before saving
       const finalFormData = { ...formData };
@@ -279,8 +337,10 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
                   type="number"
                   id="width"
                   name="width"
-                  value={formData.width}
-                  onChange={handleChange}
+                  value={inputValues.width}
+                  onChange={handleDimensionChange}
+                  onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   min="0"
                   step="0.125"
                   className={`w-full px-3 py-2 border ${
@@ -304,8 +364,10 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
                   type="number"
                   id="height"
                   name="height"
-                  value={formData.height}
-                  onChange={handleChange}
+                  value={inputValues.height}
+                  onChange={handleDimensionChange}
+                  onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   min="0"
                   step="0.125"
                   className={`w-full px-3 py-2 border ${
@@ -329,8 +391,10 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
                   type="number"
                   id="depth"
                   name="depth"
-                  value={formData.depth}
-                  onChange={handleChange}
+                  value={inputValues.depth}
+                  onChange={handleDimensionChange}
+                  onBlur={handleBlur}
+                  onKeyDown={handleKeyDown}
                   min="0"
                   step="0.125"
                   className={`w-full px-3 py-2 border ${
