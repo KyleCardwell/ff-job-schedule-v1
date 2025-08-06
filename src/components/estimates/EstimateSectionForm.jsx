@@ -14,11 +14,12 @@ const EstimateSectionForm = ({
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const materials = useSelector((state) => state.materials);
   const estimateData = currentEstimate?.estimate_data;
   const sectionData = section?.section_data || currentEstimate?.estimateDefault || {};
 
   const MATERIAL_OPTIONS = estimateData?.materials?.options || [];
-  const CABINET_INTERIOR_OPTIONS = estimateData?.boxMaterials?.options || [];
+  const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = estimateData?.styles || [];
   const FINISH_OPTIONS = estimateData?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
@@ -31,7 +32,7 @@ const EstimateSectionForm = ({
 
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
-    cabinetInterior: sectionData.cabinetInterior || "",
+    boxMaterial: section.box_mat || "",
     material: sectionData.material || "",
     finish: sectionData.finish || [],
     doorStyle: sectionData.doorStyle || "",
@@ -89,8 +90,8 @@ const EstimateSectionForm = ({
       newErrors.style = "Style is required";
     }
 
-    if (!formData.cabinetInterior) {
-      newErrors.cabinetInterior = "Cabinet interior is required";
+    if (!formData.boxMaterial) {
+      newErrors.boxMaterial = "Cabinet interior is required";
     }
 
     if (!formData.material) {
@@ -214,30 +215,30 @@ const EstimateSectionForm = ({
 
             <div>
               <label
-                htmlFor="cabinetInterior"
+                htmlFor="boxMaterial"
                 className="block text-sm font-medium text-slate-700"
               >
                 Cabinet Box Material
               </label>
               <select
-                id="cabinetInterior"
-                name="cabinetInterior"
-                value={formData.cabinetInterior}
+                id="boxMaterial"
+                name="boxMaterial"
+                value={formData.boxMaterial}
                 onChange={handleChange}
                 className={`mt-1 block w-full rounded-md text-sm h-9 ${
-                  errors.cabinetInterior ? "border-red-500" : "border-slate-300"
+                  errors.boxMaterial ? "border-red-500" : "border-slate-300"
                 } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
               >
                 <option value="">Select interior</option>
-                {CABINET_INTERIOR_OPTIONS.map((option) => (
+                {BOX_MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/sqft`}
+                    {`${option.name} - $${option.price}/sheet`}
                   </option>
                 ))}
               </select>
-              {errors.cabinetInterior && (
+              {errors.boxMaterial && (
                 <p className="mt-1 text-xs text-red-500">
-                  {errors.cabinetInterior}
+                  {errors.boxMaterial}
                 </p>
               )}
             </div>

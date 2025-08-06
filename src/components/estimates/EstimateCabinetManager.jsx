@@ -138,13 +138,21 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     
     // Now validate with updated formData
     if (validateForm()) {
-      // Calculate face summary before saving
+      // Calculate face summary and box summary before saving
       const finalFormData = { ...formData };
       
       if (formData.face_config) {
+        const boxSummary = calculateBoxSummary(
+          formData.width, 
+          formData.height, 
+          formData.depth,
+          formData.quantity
+        );
+        
         finalFormData.face_config = {
           ...formData.face_config,
-          faceSummary: calculateFaceSummary(formData.face_config)
+          faceSummary: calculateFaceSummary(formData.face_config),
+          boxSummary: boxSummary
         };
       }
       
@@ -155,6 +163,48 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
   // Helper function to round to nearest 1/16"
   const roundTo16th = (value) => {
     return Math.round(value * 16) / 16;
+  };
+
+  // Calculate box material summary (sides, top, bottom, back)
+  const calculateBoxSummary = (width, height, depth, quantity = 1) => {
+    // Round dimensions to nearest 1/16"
+    const w = roundTo16th(Number(width));
+    const h = roundTo16th(Number(height));
+    const d = roundTo16th(Number(depth));
+    const qty = Number(quantity);
+    
+    // Calculate areas for each component (for a single cabinet)
+    const sideArea = h * d;  // One side panel
+    const topBottomArea = w * d;  // One top/bottom panel
+    const backArea = w * h;  // Back panel
+    
+    // Total area calculation for a single cabinet
+    const singleCabinetArea = (2 * sideArea) + (2 * topBottomArea) + backArea;
+    
+    // Total area for all cabinets
+    const totalArea = singleCabinetArea * qty;
+    
+    // Count of pieces per cabinet type
+    const pieces = {
+      sides: 2 * qty,
+      topBottom: 2 * qty,
+      back: 1 * qty
+    };
+    
+    // Individual dimensions of each piece with quantity factored in
+    const components = [
+      { type: "side", width: d, height: h, area: sideArea, quantity: 2 * qty },
+      { type: "topBottom", width: w, height: d, area: topBottomArea, quantity: 2 * qty },
+      { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty }
+    ];
+    
+    return {
+      totalArea,
+      pieces,
+      components,
+      cabinetCount: qty,
+      areaPerCabinet: singleCabinetArea
+    };
   };
 
   // Calculate face type summary

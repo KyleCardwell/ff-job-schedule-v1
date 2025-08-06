@@ -7,6 +7,7 @@ import {
   fetchEstimateById,
   setCurrentEstimate,
 } from "../../redux/actions/estimates";
+import { fetchSheetGoods } from "../../redux/actions/materials.js";
 import { PATHS } from "../../utils/constants";
 
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
@@ -60,6 +61,10 @@ const EstimateLayout = () => {
 
     loadEstimate();
   }, [dispatch, estimateId, navigate, estimates]);
+
+  useEffect(() => {
+    dispatch(fetchSheetGoods());
+  }, []);
 
   useEffect(() => {
     // Close section form when task changes
