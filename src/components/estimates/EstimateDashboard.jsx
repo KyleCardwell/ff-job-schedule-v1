@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 import { fetchEstimates, clearCurrentEstimate } from "../../redux/actions/estimates";
+import { fetchSheetGoods } from "../../redux/actions/materials";
 import { ESTIMATE_STATUS, PATHS } from "../../utils/constants";
 
 import EstimateDashboardCard from "./EstimateDashboardCard.jsx";
@@ -15,6 +16,7 @@ const EstimateDashboard = () => {
     
     useEffect(() => {
         dispatch(fetchEstimates());
+        dispatch(fetchSheetGoods());
     }, []);
 
     const handleStartNewEstimate = () => {

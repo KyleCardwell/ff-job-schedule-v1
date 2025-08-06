@@ -1,16 +1,19 @@
 import { combineReducers } from "redux";
-import { builders } from "./builders"; // Adjust the import path
-import { holidaysReducer } from "./holidays";
-import { chartDataReducer } from "./chartData";
-import { taskDataReducer } from "./taskData";
-import { completedProjectsReducer } from "./completedProjects";
+
 import authReducer from "../authSlice";
-import { projectsReducer } from "./projects";
+
+import { builders } from "./builders"; // Adjust the import path
 import { chartConfigReducer } from "./chartConfig";
-import { financialsDataReducer } from "./financialsData";
-import { teamMembersReducer } from "./teamMembers";
+import { chartDataReducer } from "./chartData";
+import { completedProjectsReducer } from "./completedProjects";
 import { estimatesReducer } from "./estimates";
 import { featureTogglesReducer } from "./featureToggles";
+import { financialsDataReducer } from "./financialsData";
+import { holidaysReducer } from "./holidays";
+import { materialsReducer } from "./materials";
+import { projectsReducer } from "./projects";
+import { taskDataReducer } from "./taskData";
+import { teamMembersReducer } from "./teamMembers";
 
 const appReducer = combineReducers({
 	auth: authReducer,
@@ -25,6 +28,7 @@ const appReducer = combineReducers({
 	teamMembers: teamMembersReducer,
 	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
+	materials: materialsReducer,
 });
 
 // Root reducer that handles resetting state
