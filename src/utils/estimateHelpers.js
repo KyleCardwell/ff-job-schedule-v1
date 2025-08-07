@@ -1,22 +1,53 @@
+export const calculateBoardFeetFor5PieceDoor = (
+  doorWidth,
+  doorHeight,
+  thickness = 0.75,
+  stileWidth = 3,
+  railWidth = 3,
+  panelThickness = 0.5
+) => {
+  // --- Stiles (2 vertical) ---
+  const stileVolume = 2 * thickness * stileWidth * doorHeight;
+
+  // --- Rails (2 horizontal) ---
+  const railLength = doorWidth - 2 * stileWidth;
+  const railVolume = 2 * thickness * railWidth * railLength;
+
+  // --- Panel (center) ---
+  const panelHeight = doorHeight - 2 * railWidth;
+  const panelWidth = doorWidth - 2 * stileWidth;
+  const panelVolume = panelThickness * panelWidth * panelHeight;
+
+  // Total volume in cubic inches
+  const totalCubicInches = stileVolume + railVolume + panelVolume;
+
+  // Convert to board feet
+  const boardFeet = totalCubicInches / 144;
+
+  return boardFeet.toFixed(2);
+};
+
 // Helper function to calculate box material price
-  export const calculateBoxPrice = (cabinet, boxMaterials) => section => {
-    if (!cabinet.face_config?.boxSummary || !section.box_mat) {
-      return 0;
-    }
+export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
+  if (!cabinet.face_config?.boxSummary || !section.box_mat) {
+    return 0;
+  }
 
-    // Find the selected box material
-    const selectedMaterial = boxMaterials.find(
-      (mat) => mat.id === section.box_mat
-    );
-    if (!selectedMaterial) return 0;
+  // Find the selected box material
+  const selectedMaterial = boxMaterials.find(
+    (mat) => mat.id === section.box_mat
+  );
+  if (!selectedMaterial) return 0;
 
-    // Calculate price based on area and material price
-    const pricePerSquareInch = selectedMaterial.price / selectedMaterial.area;
-    return pricePerSquareInch * cabinet.face_config.boxSummary.totalArea;
-  };
+  // Calculate price based on area and material price
+  const pricePerSquareInch =
+    selectedMaterial.sheet_price / selectedMaterial.area;
+  return pricePerSquareInch * cabinet.face_config.boxSummary.totalArea;
+};
 
-  // Helper function to calculate face material price
-  export const calculateSlabSheetFacePrice = (cabinet, faceMaterials) => section => {
+// Helper function to calculate face material price
+export const calculateSlabSheetFacePrice =
+  (cabinet, faceMaterials) => (section) => {
     if (!cabinet.face_config?.faceSummary || !section.face_mat) {
       return 0;
     }
@@ -28,7 +59,8 @@
     if (!selectedMaterial) return 0;
 
     // Calculate price based on total area of all faces and material price
-    const pricePerSquareInch = selectedMaterial.price / selectedMaterial.area;
+    const pricePerSquareInch =
+      selectedMaterial.sheet_price / selectedMaterial.area;
 
     let totalFaceArea = 0;
     // Sum up the area of all face types
@@ -39,7 +71,8 @@
     return pricePerSquareInch * totalFaceArea;
   };
 
-  export const calculate5PieceHardwoodFacePrice = (cabinet, faceMaterials) => section => {
+export const calculate5PieceHardwoodFacePrice =
+  (cabinet, faceMaterials) => (section) => {
     if (!cabinet.face_config?.faceSummary || !section.face_mat) {
       return 0;
     }
@@ -50,14 +83,40 @@
     );
     if (!selectedMaterial) return 0;
 
-    // Calculate price based on total area of all faces and material price
-    const pricePerSquareInch = selectedMaterial.price / selectedMaterial.area;
+    // For 5-piece hardwood doors, we use price per board foot
+    // The price stored in the material is assumed to be per board foot for hardwood
+    const pricePerBoardFoot = selectedMaterial.bd_ft_price;
 
-    let totalFaceArea = 0;
-    // Sum up the area of all face types
-    Object.values(cabinet.face_config.faceSummary).forEach((faceData) => {
-      totalFaceArea += faceData.totalArea || 0;
-    });
+    let totalPrice = 0;
 
-    return pricePerSquareInch * totalFaceArea;
+    // Calculate price for each face type that requires 5-piece construction
+    Object.entries(cabinet.face_config.faceSummary).forEach(
+      ([faceType, faceData]) => {
+        // Only process door and drawer faces (5-piece components)
+        if (["door", "drawer"].includes(faceType)) {
+          // Calculate board feet and price for each individual face
+          faceData.faces?.forEach((face) => {
+            const width = parseFloat(face.width);
+            const height = parseFloat(face.height);
+
+            // Calculate board feet for this specific door/drawer
+            const boardFeet = parseFloat(
+              calculateBoardFeetFor5PieceDoor(
+                width,
+                height,
+                0.75, // Default thickness of 3/4"
+                3, // Default stile width of 3"
+                3, // Default rail width of 3"
+                0.5 // Default panel thickness of 1/2"
+              )
+            );
+
+            // Add to total price
+            totalPrice += boardFeet * pricePerBoardFoot;
+          });
+        }
+      }
+    );
+
+    return totalPrice;
   };

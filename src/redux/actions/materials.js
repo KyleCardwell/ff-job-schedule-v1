@@ -25,8 +25,8 @@ export const fetchSheetGoods = () => async (dispatch, getState) => {
     const teamId = state.auth.teamId;
 
     const { data, error } = await supabase
-      .from("sheet_goods")
-      .select("id, name, width, height, thickness, area, price, box_mat, face_mat")
+      .from("wood_catalog")
+      .select("id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, 5_piece, slab_door")
       .eq("team_id", teamId)
       .order("name", { ascending: true });
 
@@ -48,7 +48,7 @@ export const addSheetGood = (material) => async (dispatch, getState) => {
     const teamId = state.auth.teamId;
     
     const { data, error } = await supabase
-      .from("sheet_goods")
+      .from("wood_catalog")
       .insert({
         ...material,
         team_id: teamId
@@ -71,7 +71,7 @@ export const addSheetGood = (material) => async (dispatch, getState) => {
 export const updateSheetGood = (material) => async (dispatch) => {
   try {
     const { data, error } = await supabase
-      .from("sheet_goods")
+      .from("wood_catalog")
       .update({
         material_name: material.material_name,
         material_description: material.material_description,
@@ -99,7 +99,7 @@ export const updateSheetGood = (material) => async (dispatch) => {
 export const deleteSheetGood = (id) => async (dispatch) => {
   try {
     const { error } = await supabase
-      .from("sheet_goods")
+      .from("wood_catalog")
       .delete()
       .eq("id", id);
 

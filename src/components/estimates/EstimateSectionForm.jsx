@@ -204,7 +204,7 @@ const EstimateSectionForm = ({
                 <option value="">Select material</option>
                 {FACE_MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/sheet`}
+                    {`${option.name} - $${option.sheet_price}/sheet`}
                   </option>
                 ))}
               </select>
@@ -232,7 +232,7 @@ const EstimateSectionForm = ({
                 <option value="">Select interior</option>
                 {BOX_MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/sheet`}
+                    {`${option.name} - $${option.sheet_price}/sheet`}
                   </option>
                 ))}
               </select>
@@ -289,7 +289,7 @@ const EstimateSectionForm = ({
                 <option value="">Select door style</option>
                 {DOOR_STYLE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/door`}
+                    {`${option.name}`}
                   </option>
                 ))}
               </select>
@@ -382,7 +382,7 @@ const EstimateSectionForm = ({
                 <option value="">Select drawer front style</option>
                 {DRAWER_FRONT_STYLE_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/drawer`}
+                    {option.name}
                   </option>
                 ))}
               </select>
