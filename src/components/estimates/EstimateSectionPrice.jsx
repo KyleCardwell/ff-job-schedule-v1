@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
 
+import { FACE_TYPES } from "../../utils/constants";
 import { calculate5PieceHardwoodFacePrice, calculateBoxPrice, calculateSlabSheetFacePrice } from "../../utils/estimateHelpers";
 
 const EstimateSectionPrice = ({ section }) => {
@@ -11,13 +12,19 @@ const EstimateSectionPrice = ({ section }) => {
   );
 
 
-  // Calculate the total price of all items in the section
-  const totalPrice = useMemo(() => {
-    if (!section) return 0;
+  // Calculate the total price and face counts of all items in the section
+  const sectionCalculations = useMemo(() => {
+    if (!section) return { totalPrice: 0, faceCounts: {} };
 
     let sectionTotal = 0;
+    const faceCounts = {};
 
-    // Calculate cabinet prices
+    // Initialize faceCounts with all face types at 0
+    FACE_TYPES.forEach(type => {
+      faceCounts[type.value] = 0;
+    });
+
+    // Calculate cabinet prices and face counts
     if (section.cabinets && Array.isArray(section.cabinets) && section.cabinets.length > 0) {
       sectionTotal += section.cabinets.reduce((total, cabinet) => {
         if (!cabinet) return total;
@@ -40,6 +47,16 @@ const EstimateSectionPrice = ({ section }) => {
           }
 
           cabinetPrice = (boxPrice + facePrice) * quantity;
+
+          // Count face types if face_config has a faceSummary
+          if (cabinet.face_config.faceSummary) {
+            // Multiply by quantity to account for multiple cabinets of the same type
+            Object.keys(cabinet.face_config.faceSummary).forEach(faceType => {
+              if (Object.prototype.hasOwnProperty.call(faceCounts, faceType)) {
+                faceCounts[faceType] += (cabinet.face_config.faceSummary[faceType].count || 0) * quantity;
+              }
+            });
+          }
         } else {
           // Fallback to direct price if no face configuration
           cabinetPrice = (Number(cabinet.price) || 0) * quantity;
@@ -82,7 +99,7 @@ const EstimateSectionPrice = ({ section }) => {
       }, 0);
     }
 
-    return sectionTotal;
+    return { totalPrice: sectionTotal, faceCounts };
   }, [section, boxMaterials, faceMaterials]);
 
   // Format number as currency
@@ -93,15 +110,36 @@ const EstimateSectionPrice = ({ section }) => {
     }).format(amount);
   };
 
+  // Get total count of faces
+  const totalFaces = Object.values(sectionCalculations.faceCounts).reduce((sum, count) => sum + count, 0);
+
   return (
     <div className="max-w-3xl mx-auto space-y-2 mb-2">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-end items-center">
         <div className="text-slate-300">
-          <span className="text-sm font-medium">Section Total:</span>
+          <span className="text-sm font-medium mr-2">Section Total Price:</span>
         </div>
-        <div className="text-xl font-semibold text-teal-400">
-          {formatCurrency(totalPrice)}
+        <div className="text-xl font-bold text-teal-400">
+          {formatCurrency(sectionCalculations.totalPrice)}
         </div>
+      </div>
+      <div className="bg-gray-800 rounded-md p-2">
+        {totalFaces > 0 ? (
+          <div className="flex flex-wrap gap-6">
+            {Object.entries(sectionCalculations.faceCounts).map(([type, count]) => (
+              count > 0 ? (
+                <div key={type} className="flex justify-between">
+                  <span className="text-sm text-slate-400 mr-2">
+                    {FACE_TYPES.find(t => t.value === type)?.label || type}s:
+                  </span>
+                  <span className="text-sm font-medium text-white">{count}</span>
+                </div>
+              ) : null
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400 italic">Add items below</div>
+        )}
       </div>
     </div>
   );
