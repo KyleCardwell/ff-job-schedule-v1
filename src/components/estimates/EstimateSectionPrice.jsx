@@ -38,7 +38,7 @@ const EstimateSectionPrice = ({ section }) => {
 
           // Calculate face material price
           let facePrice = 0;
-          if (section.section_data && cabinet.face_mat) {
+          if (section.section_data && section.face_mat) {
             if (section.section_data.doorStyle === 'slab_sheet') {
               facePrice = calculateSlabSheetFacePrice(cabinet, faceMaterials || [])(section) || 0;
             } else if (section.section_data.doorStyle === '5_piece_hardwood') {

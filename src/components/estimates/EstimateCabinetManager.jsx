@@ -265,7 +265,11 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           // Round dimensions to nearest 1/16"
           const width = roundTo16th(node.width);
           const height = roundTo16th(node.height);
-          const area = roundTo16th(width * height);
+          
+          // Calculate area (set to 0 for open and container types)
+          const area = (faceType === "open" || faceType === "container") 
+            ? 0 
+            : roundTo16th(width * height);
           
           // Add to summary
           summary[faceType].count += 1;
