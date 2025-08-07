@@ -158,6 +158,34 @@ export const estimatesReducer = (state = initialState, action) => {
       }
       return state;
 
+    case Actions.estimates.UPDATE_SECTION_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { taskId: updateTaskId, sectionId: updateSectionId, updatedSection } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => {
+            if (task.est_task_id === updateTaskId) {
+              return {
+                ...task,
+                sections: task.sections.map(section => {
+                  if (section.est_section_id === updateSectionId) {
+                    // Replace the entire section with the updated one
+                    return updatedSection;
+                  }
+                  return section;
+                })
+              };
+            }
+            return task;
+          })
+        },
+        loading: false,
+        error: null
+      };
+
     case Actions.estimates.UPDATE_SECTION_ITEMS_SUCCESS:
       // eslint-disable-next-line no-case-declarations
       const { type: itemType, data: sectionData } = action.payload;
@@ -218,9 +246,10 @@ export const estimatesReducer = (state = initialState, action) => {
                   if (section.est_section_id === metaSectionId) {
                     return {
                       ...section,
+                      ...updates,
                       section_data: {
                         ...section.section_data,
-                        ...updates
+                        ...updates.section_data
                       }
                     };
                   }

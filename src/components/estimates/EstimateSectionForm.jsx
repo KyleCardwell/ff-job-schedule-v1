@@ -18,7 +18,7 @@ const EstimateSectionForm = ({
   const estimateData = currentEstimate?.estimate_data;
   const sectionData = section?.section_data || currentEstimate?.estimateDefault || {};
 
-  const MATERIAL_OPTIONS = estimateData?.materials?.options || [];
+  const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = estimateData?.styles || [];
   const FINISH_OPTIONS = estimateData?.finishes || [];
@@ -33,7 +33,7 @@ const EstimateSectionForm = ({
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
     boxMaterial: section.box_mat || "",
-    material: sectionData.material || "",
+    faceMaterial: section.face_mat || "",
     finish: sectionData.finish || [],
     doorStyle: sectionData.doorStyle || "",
     drawerFrontStyle: sectionData.drawerFrontStyle || "",
@@ -94,8 +94,8 @@ const EstimateSectionForm = ({
       newErrors.boxMaterial = "Cabinet interior is required";
     }
 
-    if (!formData.material) {
-      newErrors.material = "Material is required";
+    if (!formData.faceMaterial) {
+      newErrors.faceMaterial = "Material is required";
     }
 
     if (!formData.doorStyle) {
@@ -187,29 +187,29 @@ const EstimateSectionForm = ({
 
             <div className="mb-2">
               <label
-                htmlFor="material"
+                htmlFor="faceMaterial"
                 className="block text-sm font-medium text-slate-700"
               >
                 Cabinet Face Material
               </label>
               <select
-                id="material"
-                name="material"
-                value={formData.material}
+                id="faceMaterial"
+                name="faceMaterial"
+                value={formData.faceMaterial}
                 onChange={handleChange}
                 className={`mt-1 block w-full rounded-md text-sm h-9 ${
-                  errors.material ? "border-red-500" : "border-slate-300"
+                  errors.faceMaterial ? "border-red-500" : "border-slate-300"
                 } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
               >
                 <option value="">Select material</option>
-                {MATERIAL_OPTIONS.map((option) => (
+                {FACE_MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/sqft`}
+                    {`${option.name} - $${option.price}/sheet`}
                   </option>
                 ))}
               </select>
-              {errors.material && (
-                <p className="mt-1 text-xs text-red-500">{errors.material}</p>
+              {errors.faceMaterial && (
+                <p className="mt-1 text-xs text-red-500">{errors.faceMaterial}</p>
               )}
             </div>
 

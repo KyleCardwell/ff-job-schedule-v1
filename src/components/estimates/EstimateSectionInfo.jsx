@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { useSelector } from "react-redux";
 
 const EstimateSectionInfo = ({
   selectedTask,
@@ -17,6 +18,8 @@ const EstimateSectionInfo = ({
 
   const sectionData = section?.section_data || {};
   const NOT_SELECTED = "Not Selected";
+
+  const materials = useSelector((state) => state.materials);
 
   const getTitle = () => {
     if (!selectedTask) return "Select a Room";
@@ -43,16 +46,16 @@ const EstimateSectionInfo = ({
     );
   };
 
-  const getMaterialName = (id) => {
+  const getFaceMaterialName = (id) => {
     return (
-      estimate_data?.materials?.options?.find((m) => m.id === id)?.name ||
+      materials?.faceMaterials?.find((m) => m.id === id)?.name ||
       NOT_SELECTED
     );
   };
 
   const getBoxMaterialName = (id) => {
     return (
-      estimate_data?.boxMaterials?.options?.find((m) => m.id === id)?.name ||
+      materials?.boxMaterials?.find((m) => m.id === id)?.name ||
       NOT_SELECTED
     );
   };
@@ -119,11 +122,11 @@ const EstimateSectionInfo = ({
                 </div>
                 <div className="text-slate-400">Face Material:</div>
                 <div className="pl-5 mb-3">
-                  {getMaterialName(sectionData.material)}
+                  {getFaceMaterialName(section.face_mat)}
                 </div>
                 <div className="text-slate-400">Box Material:</div>
                 <div className="pl-5 mb-3">
-                  {getBoxMaterialName(sectionData.cabinetInterior)}
+                  {getBoxMaterialName(section.box_mat)}
                 </div>
                 <div className="text-slate-400">Finish:</div>
                 <div className="pl-5 mb-3">
