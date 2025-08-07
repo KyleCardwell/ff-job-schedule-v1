@@ -15,6 +15,9 @@ const SectionItemList = ({
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
 
+  // Check if any form is currently active (adding or editing)
+  const isFormActive = showNewItem || editingIndex !== -1;
+
   const handleSaveItem = async (item, itemIndex = -1) => {
     try {
       await onSave(item, itemIndex);
@@ -79,15 +82,32 @@ const SectionItemList = ({
                   <div key={col.key} className="flex justify-center space-x-2">
                     <button
                       onClick={() => {
-                        setShowNewItem(false);
-                        setEditingIndex(index)}}
-                      className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
+                        if (!isFormActive) {
+                          setShowNewItem(false);
+                          setEditingIndex(index);
+                        }
+                      }}
+                      disabled={isFormActive}
+                      className={`p-1.5 ${
+                        isFormActive 
+                          ? "text-slate-600 cursor-not-allowed" 
+                          : "text-slate-400 hover:text-blue-500"
+                      } transition-colors`}
                     >
                       <FiEdit2 size={16} />
                     </button>
                     <button
-                      onClick={() => handleDeleteItem(index)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                      onClick={() => {
+                        if (!isFormActive) {
+                          handleDeleteItem(index);
+                        }
+                      }}
+                      disabled={isFormActive}
+                      className={`p-1.5 ${
+                        isFormActive 
+                          ? "text-slate-600 cursor-not-allowed" 
+                          : "text-slate-400 hover:text-red-500"
+                      } transition-colors`}
                     >
                       <FiTrash2 size={16} />
                     </button>
@@ -123,10 +143,17 @@ const SectionItemList = ({
         <div className="my-2">
           <button
             onClick={() => {
-              setShowNewItem(true);
-              setEditingIndex(-1);
+              if (!isFormActive) {
+                setShowNewItem(true);
+                setEditingIndex(-1);
+              }
             }}
-            className="mx-auto py-3 px-4 text-sm font-medium text-blue-500 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center justify-center"
+            disabled={isFormActive}
+            className={`mx-auto py-3 px-4 text-sm font-medium ${
+              isFormActive 
+                ? "text-blue-300 bg-blue-50/50 cursor-not-allowed" 
+                : "text-blue-500 bg-blue-50 hover:bg-blue-100"
+            } rounded-md flex items-center justify-center`}
           >
             <FiPlus className="mr-2" />
             {addButtonText}
