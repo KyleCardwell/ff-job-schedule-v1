@@ -14,14 +14,16 @@ const EstimateSectionPrice = ({ section }) => {
 
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
-    if (!section) return { totalPrice: 0, faceCounts: {} };
+    if (!section) return { totalPrice: 0, faceCounts: {}, facePrices: {} };
 
     let sectionTotal = 0;
     const faceCounts = {};
+    const facePrices = {}; // New object to track prices per face type
 
-    // Initialize faceCounts with all face types at 0
+    // Initialize faceCounts and facePrices with all face types at 0
     FACE_TYPES.forEach(type => {
       faceCounts[type.value] = 0;
+      facePrices[type.value] = 0;
     });
 
     // Calculate cabinet prices and face counts
@@ -36,24 +38,36 @@ const EstimateSectionPrice = ({ section }) => {
           // Calculate box material price
           const boxPrice = calculateBoxPrice(cabinet, boxMaterials || [])(section) || 0;
 
-          // Calculate face material price
+          // Calculate face material price using existing functions - now with price breakdown
           let facePrice = 0;
+          let facePriceByType = {};
+          
           if (section.section_data && section.face_mat) {
             if (section.section_data.doorStyle === 'slab_sheet') {
-              facePrice = calculateSlabSheetFacePrice(cabinet, faceMaterials || [])(section) || 0;
+              const result = calculateSlabSheetFacePrice(cabinet, faceMaterials || [])(section) || { totalPrice: 0, priceByType: {} };
+              facePrice = result.totalPrice;
+              facePriceByType = result.priceByType;
             } else if (section.section_data.doorStyle === '5_piece_hardwood') {
-              facePrice = calculate5PieceHardwoodFacePrice(cabinet, faceMaterials || [])(section) || 0;
+              const result = calculate5PieceHardwoodFacePrice(cabinet, faceMaterials || [])(section) || { totalPrice: 0, priceByType: {} };
+              facePrice = result.totalPrice;
+              facePriceByType = result.priceByType;
             }
           }
 
           cabinetPrice = (boxPrice + facePrice) * quantity;
 
-          // Count face types if face_config has a faceSummary
+          // Count faces and add face prices
           if (cabinet.face_config.faceSummary) {
-            // Multiply by quantity to account for multiple cabinets of the same type
-            Object.keys(cabinet.face_config.faceSummary).forEach(faceType => {
+            // Count faces and add prices for each type
+            Object.entries(cabinet.face_config.faceSummary).forEach(([faceType, faceData]) => {
               if (Object.prototype.hasOwnProperty.call(faceCounts, faceType)) {
-                faceCounts[faceType] += (cabinet.face_config.faceSummary[faceType].count || 0) * quantity;
+                // Count faces
+                faceCounts[faceType] += (faceData.count || 0) * quantity;
+                
+                // Add prices directly from the breakdown
+                if (facePriceByType[faceType]) {
+                  facePrices[faceType] += facePriceByType[faceType] * quantity;
+                }
               }
             });
           }
@@ -99,7 +113,7 @@ const EstimateSectionPrice = ({ section }) => {
       }, 0);
     }
 
-    return { totalPrice: sectionTotal, faceCounts };
+    return { totalPrice: sectionTotal, faceCounts, facePrices };
   }, [section, boxMaterials, faceMaterials]);
 
   // Format number as currency

@@ -49,57 +49,81 @@ export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
 export const calculateSlabSheetFacePrice =
   (cabinet, faceMaterials) => (section) => {
     if (!cabinet.face_config?.faceSummary || !section.face_mat) {
-      return 0;
+      return { totalPrice: 0, priceByType: {} };
     }
 
     // Find the selected face material
     const selectedMaterial = faceMaterials.find(
       (mat) => mat.id === section.face_mat
     );
-    if (!selectedMaterial) return 0;
+    if (!selectedMaterial) return { totalPrice: 0, priceByType: {} };
 
     // Calculate price based on total area of all faces and material price
     const pricePerSquareInch =
       selectedMaterial.sheet_price / selectedMaterial.area;
 
     let totalFaceArea = 0;
-    // Sum up the area of all face types
-    Object.values(cabinet.face_config.faceSummary).forEach((faceData) => {
-      totalFaceArea += faceData.totalArea || 0;
+    let totalPrice = 0;
+    const priceByType = {};
+    
+    // Initialize priceByType for all face types
+    Object.keys(cabinet.face_config.faceSummary).forEach(faceType => {
+      priceByType[faceType] = 0;
+    });
+    
+    // Calculate area and price for each face type
+    Object.entries(cabinet.face_config.faceSummary).forEach(([faceType, faceData]) => {
+      // Skip open or container face types - only these should be excluded
+      if (!["open", "container"].includes(faceType)) {
+        const faceArea = faceData.totalArea || 0;
+        const facePrice = pricePerSquareInch * faceArea;
+        
+        totalFaceArea += faceArea;
+        totalPrice += facePrice;
+        priceByType[faceType] = facePrice;
+      }
     });
 
-    return pricePerSquareInch * totalFaceArea;
+    return { totalPrice, priceByType };
   };
 
 export const calculate5PieceHardwoodFacePrice =
   (cabinet, faceMaterials) => (section) => {
     if (!cabinet.face_config?.faceSummary || !section.face_mat) {
-      return 0;
+      return { totalPrice: 0, priceByType: {} };
     }
 
     // Find the selected face material
     const selectedMaterial = faceMaterials.find(
       (mat) => mat.id === section.face_mat
     );
-    if (!selectedMaterial) return 0;
+    if (!selectedMaterial) return { totalPrice: 0, priceByType: {} };
 
     // For 5-piece hardwood doors, we use price per board foot
     // The price stored in the material is assumed to be per board foot for hardwood
     const pricePerBoardFoot = selectedMaterial.bd_ft_price;
 
     let totalPrice = 0;
+    const priceByType = {};
 
-    // Calculate price for each face type that requires 5-piece construction
+    // Initialize priceByType for all face types
+    Object.keys(cabinet.face_config.faceSummary).forEach(faceType => {
+      priceByType[faceType] = 0;
+    });
+
+    // Calculate price for each face type
     Object.entries(cabinet.face_config.faceSummary).forEach(
       ([faceType, faceData]) => {
-        // Only process door and drawer faces (5-piece components)
-        if (["door", "drawer"].includes(faceType)) {
+        // Skip open or container face types - only these should be excluded
+        if (!["open", "container"].includes(faceType)) {
+          let typeTotalPrice = 0;
+          
           // Calculate board feet and price for each individual face
           faceData.faces?.forEach((face) => {
             const width = parseFloat(face.width);
             const height = parseFloat(face.height);
 
-            // Calculate board feet for this specific door/drawer
+            // Calculate board feet for this specific door/drawer/face
             const boardFeet = parseFloat(
               calculateBoardFeetFor5PieceDoor(
                 width,
@@ -111,12 +135,16 @@ export const calculate5PieceHardwoodFacePrice =
               )
             );
 
-            // Add to total price
-            totalPrice += boardFeet * pricePerBoardFoot;
+            // Calculate price for this face
+            const facePrice = boardFeet * pricePerBoardFoot;
+            typeTotalPrice += facePrice;
+            totalPrice += facePrice;
           });
+          
+          priceByType[faceType] = typeTotalPrice;
         }
       }
     );
 
-    return totalPrice;
+    return { totalPrice, priceByType };
   };
