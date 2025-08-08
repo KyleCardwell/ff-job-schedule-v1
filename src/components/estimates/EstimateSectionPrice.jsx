@@ -160,54 +160,62 @@ const EstimateSectionPrice = ({ section }) => {
     }).format(amount);
   };
 
-  // Get total count of faces
-  const totalFaces = Object.values(sectionCalculations.faceCounts).reduce(
-    (sum, count) => sum + count,
-    0
-  );
-
   return (
-    <div className="max-w-3xl mx-auto space-y-2 mb-2">
-      <div className="flex justify-end items-center">
+    <div className="h-full flex flex-col border-l border-slate-700 p-4 w-80">
+      {/* Section Total Price - Top Section */}
+      <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-600">
         <div className="text-slate-300">
-          <span className="text-sm font-medium mr-2">Section Total Price:</span>
+          <span className="text-sm font-medium">Section Total Price:</span>
         </div>
         <div className="text-xl font-bold text-teal-400">
           {formatCurrency(sectionCalculations.totalPrice)}
         </div>
       </div>
-      {sectionCalculations.boxTotal > 0 && (
-        <div className="flex justify-end items-center">
-          <div className="text-slate-300">
-            <span className="text-sm font-medium mr-2">Box Total Price:</span>
-          </div>
-          <div className="text-xl font-bold text-teal-400">
-            {formatCurrency(sectionCalculations.boxTotal)} ({sectionCalculations.boxCount})
-          </div>
+
+      {/* Content Section - Scrollable */}
+      <div className="flex-1 overflow-auto space-y-4">
+        {/* Price Breakdown - Title */}
+        <div className="bg-slate-700 py-1 px-2 rounded-t-md">
+          <h3 className="text-sm font-medium text-white">Price Breakdown</h3>
         </div>
-      )}
-      <div className="bg-gray-800 rounded-md p-2">
-        {totalFaces > 0 ? (
-          <div className="flex flex-wrap gap-6">
-            {Object.entries(sectionCalculations.faceCounts).map(
-              ([type, count]) =>
-                count > 0 ? (
-                  <div key={type} className="flex justify-between">
-                    <span className="text-sm text-slate-400 mr-2">
-                      {FACE_TYPES.find((t) => t.value === type)?.label || type}
-                      s:
-                    </span>
-                    <span className="text-sm font-medium text-white">
-                      {count}{" "}
-                      {formatCurrency(sectionCalculations.facePrices[type])}
-                    </span>
-                  </div>
-                ) : null
-            )}
+        
+        {/* Price Breakdown - Content - Grid Layout */}
+        <div className="bg-gray-800 rounded-b-md p-3">
+          {/* Header row */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-xs font-medium text-slate-400">Type</div>
+            <div className="text-xs font-medium text-slate-400 text-center">Qty</div>
+            <div className="text-xs font-medium text-slate-400 text-right">Price</div>
           </div>
-        ) : (
-          <div className="text-sm text-slate-400 italic">Add items below</div>
-        )}
+          
+          {/* Box Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Cabinet Boxes:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.boxCount}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.boxTotal)}
+            </span>
+          </div>
+          
+          {/* Face Types - Filter out "open", "container", "pair_door" */}
+          {Object.entries(sectionCalculations.faceCounts)
+            .filter(([type]) => !["open", "container", "pair_door"].includes(type))
+            .map(([type, count]) => (
+              <div key={type} className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0">
+                <span className="text-sm text-slate-300 text-left">
+                  {FACE_TYPES.find((t) => t.value === type)?.label || type}s:
+                </span>
+                <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                  {count}
+                </span>
+                <span className="text-sm font-medium text-teal-400 text-right">
+                  {formatCurrency(sectionCalculations.facePrices[type])}
+                </span>
+              </div>
+            ))}
+        </div>
       </div>
     </div>
   );

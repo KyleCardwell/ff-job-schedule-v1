@@ -266,14 +266,14 @@ const EstimateLayout = () => {
         ) : selectedTaskId && selectedSectionId ? (
           <>
             {selectedSection ? (
-              <>
-                <EstimateSectionPrice section={selectedSection} />
-                <EstimateSectionManager 
-                  taskId={selectedTaskId}
-                  sectionId={selectedSectionId}
-                  section={selectedSection}
-                />
-              </>
+              <div className="flex gap-6 h-full">
+              <EstimateSectionManager 
+                taskId={selectedTaskId}
+                sectionId={selectedSectionId}
+                section={selectedSection}
+              />
+              <EstimateSectionPrice section={selectedSection} />
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-200">
                 Section not found

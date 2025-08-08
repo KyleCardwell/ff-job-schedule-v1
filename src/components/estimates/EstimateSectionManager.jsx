@@ -178,7 +178,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-2">
+    <div className="flex-1 max-w-3xl mx-auto space-y-2">
       {sections.map(({ type, title, component }) => (
         <div
           key={type}
