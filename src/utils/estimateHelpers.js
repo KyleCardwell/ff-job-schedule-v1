@@ -27,6 +27,8 @@ export const calculateBoardFeetFor5PieceDoor = (
   return boardFeet.toFixed(2);
 };
 
+const roundToHundredth = (num) => Math.round(num * 100) / 100;
+
 // Helper function to calculate box material price
 export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
   if (!cabinet.face_config?.boxSummary || !section.box_mat) {
@@ -42,7 +44,7 @@ export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
   // Calculate price based on area and material price
   const pricePerSquareInch =
     selectedMaterial.sheet_price / selectedMaterial.area;
-  return pricePerSquareInch * cabinet.face_config.boxSummary.totalArea;
+  return roundToHundredth(pricePerSquareInch * cabinet.face_config.boxSummary.totalArea);
 };
 
 // Helper function to calculate face material price
@@ -76,7 +78,7 @@ export const calculateSlabSheetFacePrice =
       // Skip open or container face types - only these should be excluded
       if (!["open", "container"].includes(faceType)) {
         const faceArea = faceData.totalArea || 0;
-        const facePrice = pricePerSquareInch * faceArea;
+        const facePrice = roundToHundredth(pricePerSquareInch * faceArea);
         
         totalFaceArea += faceArea;
         totalPrice += facePrice;
@@ -136,7 +138,7 @@ export const calculate5PieceHardwoodFacePrice =
             );
 
             // Calculate price for this face
-            const facePrice = boardFeet * pricePerBoardFoot;
+            const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
             typeTotalPrice += facePrice;
             totalPrice += facePrice;
           });
