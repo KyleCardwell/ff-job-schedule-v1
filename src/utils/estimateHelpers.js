@@ -1,3 +1,5 @@
+import { CABINET_ANCHORS, FINISH_ADJUSTMENTS } from "./constants";
+
 export const calculateBoardFeetFor5PieceDoor = (
   doorWidth,
   doorHeight,
@@ -29,6 +31,81 @@ export const calculateBoardFeetFor5PieceDoor = (
 
 const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
+const interpolateRate = (anchors, targetWidth, type) => {
+  const rates = anchors.map((a) => ({
+    width: a.width,
+    rate: a[type] / (a.width * a.height * a.depth),
+  }));
+
+  if (targetWidth <= rates[0].width) return rates[0].rate;
+  if (targetWidth >= rates[rates.length - 1].width)
+    return rates[rates.length - 1].rate;
+
+  for (let i = 0; i < rates.length - 1; i++) {
+    const a = rates[i],
+      b = rates[i + 1];
+    if (targetWidth >= a.width && targetWidth <= b.width) {
+      const t = (targetWidth - a.width) / (b.width - a.width);
+      return a.rate + t * (b.rate - a.rate);
+    }
+  }
+};
+
+const detectCategory = (height, depth) => {
+  const profiles = {
+    Base: { height: 34.5, depth: 24 },
+    Upper: { height: 30, depth: 12 },
+    Tall: { height: 84, depth: 24 },
+    Bookcase: { height: 84, depth: 12 },
+  };
+
+  let closest = null;
+  let closestDiff = Infinity;
+
+  for (const [cat, dims] of Object.entries(profiles)) {
+    const diff = Math.abs(height - dims.height) + Math.abs(depth - dims.depth);
+    if (diff < closestDiff) {
+      closestDiff = diff;
+      closest = cat;
+    }
+  }
+  return closest;
+};
+
+export const getCabinetHours = (width, height, depth, finishTypes = []) => {
+  const category = detectCategory(height, depth);
+  const anchors = CABINET_ANCHORS[category];
+  const volume = width * height * depth;
+
+  const shopRate   = interpolateRate(anchors, width, "shopHours");
+  const installRate = interpolateRate(anchors, width, "installHours");
+  const finishRate = interpolateRate(anchors, width, "finishHours");
+
+  let shopHours   = volume * shopRate;
+  let installHours = volume * installRate;
+  let finishHours = volume * finishRate;
+
+  // Apply finish adjustments
+  // for (const f of finishTypes) {
+  //   if (FINISH_ADJUSTMENTS[f]) {
+  //     finishHours *= FINISH_ADJUSTMENTS[f];
+  //   }
+  // }
+
+  // Optional scaling for big/heavy cases
+  if (height > 80) {
+    shopHours *= 1.15;
+    installHours *= 1.2;
+  }
+
+  return {
+    category,
+    shopHours: roundToHundredth(shopHours),
+    installHours: roundToHundredth(installHours),
+    finishHours: roundToHundredth(finishHours)
+  };
+}
+
 // Helper function to calculate box material price
 export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
   if (!cabinet.face_config?.boxSummary || !section.box_mat) {
@@ -44,7 +121,9 @@ export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
   // Calculate price based on area and material price
   const pricePerSquareInch =
     selectedMaterial.sheet_price / selectedMaterial.area;
-  return roundToHundredth(pricePerSquareInch * cabinet.face_config.boxSummary.totalArea);
+  return roundToHundredth(
+    pricePerSquareInch * cabinet.face_config.boxSummary.totalArea
+  );
 };
 
 // Helper function to calculate face material price
@@ -64,27 +143,27 @@ export const calculateSlabSheetFacePrice =
     const pricePerSquareInch =
       selectedMaterial.sheet_price / selectedMaterial.area;
 
-    let totalFaceArea = 0;
     let totalPrice = 0;
     const priceByType = {};
-    
+
     // Initialize priceByType for all face types
-    Object.keys(cabinet.face_config.faceSummary).forEach(faceType => {
+    Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
       priceByType[faceType] = 0;
     });
-    
+
     // Calculate area and price for each face type
-    Object.entries(cabinet.face_config.faceSummary).forEach(([faceType, faceData]) => {
-      // Skip open or container face types - only these should be excluded
-      if (!["open", "container"].includes(faceType)) {
-        const faceArea = faceData.totalArea || 0;
-        const facePrice = roundToHundredth(pricePerSquareInch * faceArea);
-        
-        totalFaceArea += faceArea;
-        totalPrice += facePrice;
-        priceByType[faceType] = facePrice;
+    Object.entries(cabinet.face_config.faceSummary).forEach(
+      ([faceType, faceData]) => {
+        // Skip open or container face types - only these should be excluded
+        if (!["open", "container"].includes(faceType)) {
+          const faceArea = faceData.totalArea || 0;
+          const facePrice = roundToHundredth(pricePerSquareInch * faceArea);
+
+          totalPrice += facePrice;
+          priceByType[faceType] = facePrice;
+        }
       }
-    });
+    );
 
     return { totalPrice, priceByType };
   };
@@ -109,7 +188,7 @@ export const calculate5PieceHardwoodFacePrice =
     const priceByType = {};
 
     // Initialize priceByType for all face types
-    Object.keys(cabinet.face_config.faceSummary).forEach(faceType => {
+    Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
       priceByType[faceType] = 0;
     });
 
@@ -119,7 +198,7 @@ export const calculate5PieceHardwoodFacePrice =
         // Skip open or container face types - only these should be excluded
         if (!["open", "container"].includes(faceType)) {
           let typeTotalPrice = 0;
-          
+
           // Calculate board feet and price for each individual face
           faceData.faces?.forEach((face) => {
             const width = parseFloat(face.width);
@@ -142,7 +221,7 @@ export const calculate5PieceHardwoodFacePrice =
             typeTotalPrice += facePrice;
             totalPrice += facePrice;
           });
-          
+
           priceByType[faceType] = typeTotalPrice;
         }
       }

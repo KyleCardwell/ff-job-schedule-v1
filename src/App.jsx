@@ -168,7 +168,7 @@ const App = () => {
 					const state = store.getState();
 					const employees = state.builders.employees;
 					if (employees?.length > 0) {
-						await dispatch(fetchProjects(employees[0].employee_id));
+						// await dispatch(fetchProjects(employees[0].employee_id));
 
 						// After all data is loaded, we can create the holiday map
 						const currentState = store.getState();

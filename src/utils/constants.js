@@ -18,13 +18,13 @@ export const PATHS = {
 export const ESTIMATE_STATUS = {
   DRAFT: "draft",
   FINALIZED: "finalized",
-}
+};
 
 export const SECTION_TYPES = {
-  CABINETS: {type: "cabinets", title: "Cabinets"},
-  LENGTHS: {type: "lengths", title: "Lengths"},
-  ACCESSORIES: {type: "accessories", title: "Accessories"},
-  OTHER: {type: "other", title: "Other"},
+  CABINETS: { type: "cabinets", title: "Cabinets" },
+  LENGTHS: { type: "lengths", title: "Lengths" },
+  ACCESSORIES: { type: "accessories", title: "Accessories" },
+  OTHER: { type: "other", title: "Other" },
 };
 
 export const ITEM_FORM_WIDTHS = {
@@ -42,3 +42,119 @@ export const FACE_TYPES = [
   { value: "open", label: "Open", color: "#F59E0B" },
   { value: "container", label: "Container", color: "#E5E7EB" },
 ];
+
+export const CABINET_ANCHORS = {
+  Base: [
+    {
+      width: 18,
+      height: 34.5,
+      depth: 24,
+      shopHours: 0.65,
+      installHours: 0.5,
+      finishHours: 1.0,
+    },
+    {
+      width: 27,
+      height: 34.5,
+      depth: 24,
+      shopHours: 0.7,
+      installHours: 0.55,
+      finishHours: 1.2,
+    },
+    {
+      width: 36,
+      height: 34.5,
+      depth: 24,
+      shopHours: 0.75,
+      installHours: 0.6,
+      finishHours: 1.4,
+    },
+  ],
+  Upper: [
+    {
+      width: 18,
+      height: 30,
+      depth: 12,
+      shopHours: 0.55,
+      installHours: 0.25,
+      finishHours: 1.0,
+    },
+    {
+      width: 27,
+      height: 30,
+      depth: 12,
+      shopHours: 0.6,
+      installHours: 0.3,
+      finishHours: 1.2,
+    },
+    {
+      width: 36,
+      height: 30,
+      depth: 12,
+      shopHours: 0.65,
+      installHours: 0.4,
+      finishHours: 1.4,
+    },
+  ],
+  Tall: [
+    {
+      width: 18,
+      height: 96,
+      depth: 24,
+      shopHours: 1.0,
+      installHours: 0.6,
+      finishHours: 1.2,
+    },
+    {
+      width: 27,
+      height: 96,
+      depth: 24,
+      shopHours: 1.1,
+      installHours: 0.7,
+      finishHours: 1.4,
+    },
+    {
+      width: 36,
+      height: 96,
+      depth: 24,
+      shopHours: 1.2,
+      installHours: 0.8,
+      finishHours: 1.6,
+    },
+  ],
+  Bookcase: [
+    {
+      width: 18,
+      height: 96,
+      depth: 12,
+      shopHours: 1.5,
+      installHours: 0.9,
+      finishHours: 1.8,
+    },
+    {
+      width: 27,
+      height: 96,
+      depth: 12,
+      shopHours: 1.65,
+      installHours: 1.05,
+      finishHours: 2.1,
+    },
+    {
+      width: 36,
+      height: 96,
+      depth: 12,
+      shopHours: 1.8,
+      installHours: 1.2,
+      finishHours: 2.4,
+    },
+  ],
+};
+
+export const FINISH_ADJUSTMENTS = {
+  clearCoat: 1.0,
+  stain: 1.0, // baseline
+  paint: 1.2, // more labor than stain
+  glaze: 1.15,
+  dryBrush: 1.25,
+  wireBrush: 1.3,
+};

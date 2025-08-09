@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
@@ -23,7 +24,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
   const [inputValues, setInputValues] = useState({
     width: item.width || "",
     height: item.height || "",
-    depth: item.depth || ""
+    depth: item.depth || "",
   });
 
   const [errors, setErrors] = useState({});
@@ -57,16 +58,16 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
       });
     }
   };
-  
+
   // Handle dimension input changes without immediately committing
   const handleDimensionChange = (e) => {
     const { name, value } = e.target;
-    
-    setInputValues(prev => ({
+
+    setInputValues((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Clear error when field is updated
     if (errors[name]) {
       setErrors({
@@ -75,26 +76,26 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
       });
     }
   };
-  
+
   // Commit dimension value on blur or Enter key
   const commitDimensionValue = (name) => {
     const value = inputValues[name];
     const numValue = value === "" ? "" : Number(value);
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: numValue
+      [name]: numValue,
     }));
   };
-  
+
   // Handle input blur event
   const handleBlur = (e) => {
     commitDimensionValue(e.target.name);
   };
-  
+
   // Handle Enter key press
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       commitDimensionValue(e.target.name);
     }
   };
@@ -130,32 +131,39 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     if (e) {
       e.preventDefault();
     }
-    
+
     // Commit all dimension values before validation
     commitDimensionValue("width");
     commitDimensionValue("height");
     commitDimensionValue("depth");
-    
+
     // Now validate with updated formData
     if (validateForm()) {
       // Calculate face summary and box summary before saving
       const finalFormData = { ...formData };
-      
+
       if (formData.face_config) {
         const boxSummary = calculateBoxSummary(
-          formData.width, 
-          formData.height, 
+          formData.width,
+          formData.height,
           formData.depth,
           formData.quantity
         );
-        
+
         finalFormData.face_config = {
           ...formData.face_config,
           faceSummary: calculateFaceSummary(formData.face_config),
-          boxSummary: boxSummary
+          boxSummary: boxSummary,
         };
+
+        finalFormData.cabinetHours = getCabinetHours(
+          formData.width,
+          formData.height,
+          formData.depth,
+          formData.finish_types
+        );
       }
-      
+
       onSave(finalFormData);
     }
   };
@@ -172,67 +180,73 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     const h = roundTo16th(Number(height));
     const d = roundTo16th(Number(depth));
     const qty = Number(quantity);
-    
+
     // Calculate areas for each component (for a single cabinet)
-    const sideArea = h * d;  // One side panel
-    const topBottomArea = w * d;  // One top/bottom panel
-    const backArea = w * h;  // Back panel
-    
+    const sideArea = h * d; // One side panel
+    const topBottomArea = w * d; // One top/bottom panel
+    const backArea = w * h; // Back panel
+
     // Total area calculation for a single cabinet
-    const singleCabinetArea = (2 * sideArea) + (2 * topBottomArea) + backArea;
-    
+    const singleCabinetArea = 2 * sideArea + 2 * topBottomArea + backArea;
+
     // Total area for all cabinets
     const totalArea = singleCabinetArea * qty;
-    
+
     // Count of pieces per cabinet type
     const pieces = {
       sides: 2 * qty,
       topBottom: 2 * qty,
-      back: 1 * qty
+      back: 1 * qty,
     };
-    
+
     // Individual dimensions of each piece with quantity factored in
     const components = [
       { type: "side", width: d, height: h, area: sideArea, quantity: 2 * qty },
-      { type: "topBottom", width: w, height: d, area: topBottomArea, quantity: 2 * qty },
-      { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty }
+      {
+        type: "topBottom",
+        width: w,
+        height: d,
+        area: topBottomArea,
+        quantity: 2 * qty,
+      },
+      { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty },
     ];
-    
+
     return {
       totalArea,
       pieces,
       components,
       cabinetCount: qty,
-      areaPerCabinet: singleCabinetArea
+      areaPerCabinet: singleCabinetArea,
     };
   };
 
   // Calculate face type summary
   const calculateFaceSummary = (node) => {
     const summary = {};
-    
+
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)
       if (!node.children) {
         let faceType = node.type;
-        
+
         // Handle pair doors specially - count them as two separate doors
         if (faceType === "pair_door") {
           faceType = "door"; // Count as regular doors
-          
+
           if (!summary[faceType]) {
             summary[faceType] = {
               count: 0,
               totalArea: 0,
-              faces: []
+              faces: [],
             };
           }
-          
+
           // Calculate dimensions for each door in the pair (split horizontally)
           const doorWidth = roundTo16th(node.width / 2);
           const doorHeight = roundTo16th(node.height);
           const doorArea = roundTo16th(doorWidth * doorHeight);
-          
+
           // Add left door
           summary[faceType].count += 1;
           summary[faceType].totalArea += doorArea;
@@ -240,9 +254,9 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             id: `${node.id}-L`,
             width: doorWidth,
             height: doorHeight,
-            area: doorArea
+            area: doorArea,
           });
-          
+
           // Add right door
           summary[faceType].count += 1;
           summary[faceType].totalArea += doorArea;
@@ -250,7 +264,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             id: `${node.id}-R`,
             width: doorWidth,
             height: doorHeight,
-            area: doorArea
+            area: doorArea,
           });
         } else {
           // Handle all other face types normally
@@ -258,19 +272,20 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             summary[faceType] = {
               count: 0,
               totalArea: 0,
-              faces: []
+              faces: [],
             };
           }
-          
+
           // Round dimensions to nearest 1/16"
           const width = roundTo16th(node.width);
           const height = roundTo16th(node.height);
-          
+
           // Calculate area (set to 0 for open and container types)
-          const area = (faceType === "open" || faceType === "container") 
-            ? 0 
-            : roundTo16th(width * height);
-          
+          const area =
+            faceType === "open" || faceType === "container"
+              ? 0
+              : roundTo16th(width * height);
+
           // Add to summary
           summary[faceType].count += 1;
           summary[faceType].totalArea += area;
@@ -278,30 +293,33 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             id: node.id,
             width: width,
             height: height,
-            area: area
+            area: area,
           });
         }
       } else {
         // Process children recursively
-        node.children.forEach(child => processNode(child));
+        node.children.forEach((child) => processNode(child));
       }
     };
-    
+
     processNode(node);
     return summary;
   };
 
-  const handleFaceConfigSave = useCallback((faceConfig) => {
-    console.log("faceConfig Save");
-    
-    // Only update if the face_config has actually changed
-    if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
-      setFormData(prevData => ({
-        ...prevData,
-        face_config: faceConfig,
-      }));
-    }
-  }, [formData.face_config]);
+  const handleFaceConfigSave = useCallback(
+    (faceConfig) => {
+      console.log("faceConfig Save");
+
+      // Only update if the face_config has actually changed
+      if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
+        setFormData((prevData) => ({
+          ...prevData,
+          face_config: faceConfig,
+        }));
+      }
+    },
+    [formData.face_config]
+  );
 
   const canEditFaces =
     formData.width &&
@@ -323,7 +341,6 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           <div className="space-y-4">
             {/* Basic Info Section */}
             <div className="pb-4 border-b border-slate-200">
-              
               {/* Quantity */}
               <div className="mb-3">
                 <label
@@ -347,7 +364,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
                   <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
                 )}
               </div>
-              
+
               {/* Name */}
               <div>
                 <label
@@ -378,7 +395,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
               <h5 className="text-xs font-medium text-slate-600 mb-3 uppercase tracking-wide">
                 Dimensions (inches)
               </h5>
-              
+
               {/* Width */}
               <div className="mb-3">
                 <label
