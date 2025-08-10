@@ -1,6 +1,15 @@
+import { Switch } from "@headlessui/react";
+import { format , addDays, parseISO } from "date-fns";
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Switch } from "@headlessui/react";
+import { GridLoader } from "react-spinners";
+import { v4 as uuidv4 } from "uuid";
+
+import {
+  buttonClass,
+  modalContainerClass,
+  modalOverlayClass,
+} from "../assets/tailwindConstants";
 import {
   updateBuilder,
   deleteBuilder,
@@ -9,17 +18,8 @@ import {
   updateEmployees,
   deleteEmployees,
 } from "../redux/actions/builders";
-import { format } from "date-fns";
-import { formatDateForInput, normalizeDate } from "../utils/dateUtils";
-import { addDays, parseISO } from "date-fns";
 import { updateTasksAfterBuilderChanges } from "../redux/actions/taskData";
-import {
-  buttonClass,
-  modalContainerClass,
-  modalOverlayClass,
-} from "../assets/tailwindConstants";
-import { GridLoader } from "react-spinners";
-import { v4 as uuidv4 } from "uuid";
+import { formatDateForInput, normalizeDate } from "../utils/dateUtils";
 
 const BuilderModal = ({
   visible,

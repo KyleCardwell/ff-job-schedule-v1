@@ -2,7 +2,7 @@ import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { updateSectionItems } from "../../redux/actions/estimates";

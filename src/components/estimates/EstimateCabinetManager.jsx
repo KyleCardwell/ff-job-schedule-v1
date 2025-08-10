@@ -18,6 +18,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     face_config: item.face_config || [],
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
+    finished_interior: item.finished_interior,
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -31,7 +32,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
 
   // Handle regular input changes
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
 
     // For non-dimension fields
     if (!["width", "height", "depth"].includes(name)) {
@@ -41,6 +42,11 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
         setFormData({
           ...formData,
           [name]: numValue,
+        });
+      } else if (type === "checkbox") {
+        setFormData({
+          ...formData,
+          [name]: checked,
         });
       } else {
         setFormData({
@@ -160,7 +166,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           formData.width,
           formData.height,
           formData.depth,
-          formData.finish_types
+          formData.finished_interior
         );
       }
 
@@ -341,28 +347,50 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           <div className="space-y-4">
             {/* Basic Info Section */}
             <div className="pb-4 border-b border-slate-200">
-              {/* Quantity */}
-              <div className="mb-3">
-                <label
-                  htmlFor="quantity"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Quantity <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="quantity"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleChange}
-                  min="1"
-                  className={`w-full px-3 py-2 border ${
-                    errors.quantity ? "border-red-500" : "border-slate-300"
-                  } rounded-md text-sm`}
-                />
-                {errors.quantity && (
-                  <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-                )}
+              <div className="flex gap-6 items-center justify-between mb-3">
+                {/* Quantity */}
+                <div className="">
+                  <label
+                    htmlFor="quantity"
+                    className="block text-xs font-medium text-slate-700 mb-1"
+                  >
+                    Quantity <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="quantity"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleChange}
+                    min="1"
+                    className={`w-full px-3 py-2 border ${
+                      errors.quantity ? "border-red-500" : "border-slate-300"
+                    } rounded-md text-sm max-w-[72px]`}
+                  />
+                  {errors.quantity && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.quantity}
+                    </p>
+                  )}
+                </div>
+
+                {/* Finished Interior */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="finished_interior"
+                    name="finished_interior"
+                    checked={formData.finished_interior}
+                    onChange={handleChange}
+                    className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                  />
+                  <label
+                    htmlFor="finished_interior"
+                    className="block text-xs font-medium text-slate-700 mb-1"
+                  >
+                    Finished Interior
+                  </label>
+                </div>
               </div>
 
               {/* Name */}

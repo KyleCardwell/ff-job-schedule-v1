@@ -1,4 +1,4 @@
-import { CABINET_ANCHORS, FINISH_ADJUSTMENTS } from "./constants";
+import { CABINET_ANCHORS } from "./constants";
 
 export const calculateBoardFeetFor5PieceDoor = (
   doorWidth,
@@ -72,25 +72,23 @@ const detectCategory = (height, depth) => {
   return closest;
 };
 
-export const getCabinetHours = (width, height, depth, finishTypes = []) => {
+export const getCabinetHours = (width, height, depth, finishedInterior = false) => {
   const category = detectCategory(height, depth);
   const anchors = CABINET_ANCHORS[category];
   const volume = width * height * depth;
 
-  const shopRate   = interpolateRate(anchors, width, "shopHours");
+  let shopRate;
+  if (finishedInterior) {
+    shopRate = interpolateRate(anchors, width, "finShopHours");
+  } else {
+    shopRate = interpolateRate(anchors, width, "shopHours");
+  }
   const installRate = interpolateRate(anchors, width, "installHours");
   const finishRate = interpolateRate(anchors, width, "finishHours");
 
-  let shopHours   = volume * shopRate;
+  let shopHours = volume * shopRate;
   let installHours = volume * installRate;
   let finishHours = volume * finishRate;
-
-  // Apply finish adjustments
-  // for (const f of finishTypes) {
-  //   if (FINISH_ADJUSTMENTS[f]) {
-  //     finishHours *= FINISH_ADJUSTMENTS[f];
-  //   }
-  // }
 
   // Optional scaling for big/heavy cases
   if (height > 80) {

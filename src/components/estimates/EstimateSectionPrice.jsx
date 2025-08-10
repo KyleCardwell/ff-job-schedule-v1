@@ -15,14 +15,35 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.materials
   );
 
+  // Get employee rates from Redux store
+  const employeeTypes = useSelector(
+    (state) => state.chartConfig?.employee_type || []
+  );
+
+  const finishTypes = useSelector(
+    (state) => state.estimates?.currentEstimate?.estimate_data?.finishes || []
+  );
+
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
     if (!section)
-      return { totalPrice: 0, faceCounts: {}, facePrices: {}, boxTotal: 0, boxCount: 0 };
+      return {
+        totalPrice: 0,
+        faceCounts: {},
+        facePrices: {},
+        boxTotal: 0,
+        boxCount: 0,
+        shopHours: 0,
+        finishHours: 0,
+        installHours: 0,
+      };
 
     let sectionTotal = 0;
     let boxTotal = 0; // Track total box prices
     let boxCount = 0; // Track total box count
+    let shopHours = 0; // Track shop hours
+    let finishHours = 0; // Track finish hours
+    let installHours = 0; // Track install hours
     const faceCounts = {};
     const facePrices = {}; // New object to track prices per face type
 
@@ -50,6 +71,31 @@ const EstimateSectionPrice = ({ section }) => {
             calculateBoxPrice(cabinet, boxMaterials || [])(section) || 0;
           boxTotal += boxPrice * quantity; // Add to boxTotal with quantity
           boxCount += quantity; // Add to boxCount with quantity
+
+          // Add cabinet hours if available
+          if (cabinet.cabinetHours) {
+            shopHours += (cabinet.cabinetHours.shopHours || 0) * quantity;
+            if (cabinet.finished_interior) {
+              let addFinishHours = 1;
+
+              if (Array.isArray(section.section_data?.finish)) {
+                section.section_data.finish.forEach((finishId) => {
+                  const finishObj = finishTypes.find(
+                    (ft) => ft.id === finishId
+                  );
+                  if (finishObj?.adjust) {
+                    addFinishHours *= finishObj.adjust;
+                  }
+                });
+              }
+
+              finishHours +=
+                (cabinet.cabinetHours.finishHours || 0) *
+                quantity *
+                addFinishHours;
+            }
+            installHours += (cabinet.cabinetHours.installHours || 0) * quantity;
+          }
 
           // Calculate face material price using existing functions - now with price breakdown
           let facePrice = 0;
@@ -149,7 +195,16 @@ const EstimateSectionPrice = ({ section }) => {
       }, 0);
     }
 
-    return { totalPrice: sectionTotal, faceCounts, facePrices, boxTotal, boxCount };
+    return {
+      totalPrice: sectionTotal,
+      faceCounts,
+      facePrices,
+      boxTotal,
+      boxCount,
+      shopHours,
+      finishHours,
+      installHours,
+    };
   }, [section, boxMaterials, faceMaterials]);
 
   // Format number as currency
@@ -160,6 +215,36 @@ const EstimateSectionPrice = ({ section }) => {
     }).format(amount);
   };
 
+  // Format hours with 1 decimal place
+  const formatHours = (hours) => {
+    return parseFloat(hours || 0).toFixed(1);
+  };
+
+  // Calculate labor costs based on hours and rates
+  const laborCosts = useMemo(() => {
+    const shopRate = employeeTypes.find((et) => et.name === "shop")?.rate || 0;
+    const finishRate =
+      employeeTypes.find((et) => et.name === "finish")?.rate || 0;
+    const installRate =
+      employeeTypes.find((et) => et.name === "install")?.rate || 0;
+
+    const shopCost = sectionCalculations.shopHours * shopRate;
+    const finishCost = sectionCalculations.finishHours * finishRate;
+    const installCost = sectionCalculations.installHours * installRate;
+
+    return {
+      shopCost,
+      finishCost,
+      installCost,
+      totalLaborCost: shopCost + finishCost + installCost,
+    };
+  }, [
+    sectionCalculations.shopHours,
+    sectionCalculations.finishHours,
+    sectionCalculations.installHours,
+    employeeTypes,
+  ]);
+
   return (
     <div className="h-full flex flex-col border-l border-slate-700 p-4 w-80">
       {/* Section Total Price - Top Section */}
@@ -168,7 +253,9 @@ const EstimateSectionPrice = ({ section }) => {
           <span className="text-sm font-medium">Section Total Price:</span>
         </div>
         <div className="text-xl font-bold text-teal-400">
-          {formatCurrency(sectionCalculations.totalPrice)}
+          {formatCurrency(
+            sectionCalculations.totalPrice + laborCosts.totalLaborCost
+          )}
         </div>
       </div>
 
@@ -178,19 +265,25 @@ const EstimateSectionPrice = ({ section }) => {
         <div className="bg-slate-700 py-1 px-2 rounded-t-md">
           <h3 className="text-sm font-medium text-white">Price Breakdown</h3>
         </div>
-        
+
         {/* Price Breakdown - Content - Grid Layout */}
         <div className="bg-gray-800 rounded-b-md p-3">
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-xs font-medium text-slate-400">Type</div>
-            <div className="text-xs font-medium text-slate-400 text-center">Qty</div>
-            <div className="text-xs font-medium text-slate-400 text-right">Price</div>
+            <div className="text-xs font-medium text-slate-400 text-center">
+              Qty
+            </div>
+            <div className="text-xs font-medium text-slate-400 text-right">
+              Price
+            </div>
           </div>
-          
+
           {/* Box Information */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Cabinet Boxes:</span>
+            <span className="text-sm text-slate-300 text-left">
+              Cabinet Boxes:
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.boxCount}
             </span>
@@ -198,12 +291,17 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.boxTotal)}
             </span>
           </div>
-          
+
           {/* Face Types - Filter out "open", "container", "pair_door" */}
           {Object.entries(sectionCalculations.faceCounts)
-            .filter(([type]) => !["open", "container", "pair_door"].includes(type))
+            .filter(
+              ([type]) => !["open", "container", "pair_door"].includes(type)
+            )
             .map(([type, count]) => (
-              <div key={type} className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0">
+              <div
+                key={type}
+                className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0"
+              >
                 <span className="text-sm text-slate-300 text-left">
                   {FACE_TYPES.find((t) => t.value === type)?.label || type}s:
                 </span>
@@ -215,6 +313,69 @@ const EstimateSectionPrice = ({ section }) => {
                 </span>
               </div>
             ))}
+        </div>
+
+        {/* Labor Hours - Title */}
+        <div className="bg-slate-700 py-1 px-2 rounded-t-md mt-4">
+          <h3 className="text-sm font-medium text-white">Labor Hours</h3>
+        </div>
+
+        {/* Labor Hours - Content - Grid Layout */}
+        <div className="bg-gray-800 rounded-b-md p-3">
+          {/* Header row */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-xs font-medium text-slate-400">Category</div>
+            <div className="text-xs font-medium text-slate-400 text-center">
+              Hours
+            </div>
+            <div className="text-xs font-medium text-slate-400 text-right">
+              Cost
+            </div>
+          </div>
+
+          {/* Shop Hours */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Shop:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(sectionCalculations.shopHours)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(laborCosts.shopCost)}
+            </span>
+          </div>
+
+          {/* Finish Hours */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Finish:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(sectionCalculations.finishHours)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(laborCosts.finishCost)}
+            </span>
+          </div>
+
+          {/* Install Hours */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Install:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(sectionCalculations.installHours)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(laborCosts.installCost)}
+            </span>
+          </div>
+
+          {/* Total Labor Cost */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 mt-2 pt-2 border-t border-gray-600">
+            <span className="text-sm font-medium text-white text-left">
+              Total Labor:
+            </span>
+            <span className="text-sm font-medium"></span>
+            <span className="text-sm font-bold text-teal-400 text-right">
+              {formatCurrency(laborCosts.totalLaborCost)}
+            </span>
+          </div>
         </div>
       </div>
     </div>
