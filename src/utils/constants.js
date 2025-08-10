@@ -30,6 +30,7 @@ export const SECTION_TYPES = {
 export const ITEM_FORM_WIDTHS = {
   QUANTITY: "36px",
   DEFAULT: "1fr",
+  THREE_FOURTHS: ".75fr",
   ACTIONS: "72px",
 };
 

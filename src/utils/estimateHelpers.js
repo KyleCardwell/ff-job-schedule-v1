@@ -29,7 +29,7 @@ export const calculateBoardFeetFor5PieceDoor = (
   return boardFeet.toFixed(2);
 };
 
-const roundToHundredth = (num) => Math.round(num * 100) / 100;
+export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
 const interpolateRate = (anchors, targetWidth, type) => {
   const rates = anchors.map((a) => ({
@@ -110,8 +110,11 @@ export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
     return 0;
   }
 
-  // Find the selected box material
-  const selectedMaterial = boxMaterials.find(
+  // Find the selected section face material if finished interior,
+  // otherwise find the selected box material
+  const selectedMaterial = cabinet.finished_interior ? boxMaterials.find(
+    (mat) => mat.id === section.face_mat
+  ): boxMaterials.find(
     (mat) => mat.id === section.box_mat
   );
   if (!selectedMaterial) return 0;

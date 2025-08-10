@@ -551,6 +551,7 @@ CabinetItemForm.propTypes = {
 const EstimateCabinetManager = ({ items, onUpdateItems }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
+    { key: "interior", label: "Interior", width: ITEM_FORM_WIDTHS.THREE_FOURTHS },
     { key: "name", label: "Cabinet", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT },

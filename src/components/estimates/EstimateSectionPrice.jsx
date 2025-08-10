@@ -7,6 +7,7 @@ import {
   calculate5PieceHardwoodFacePrice,
   calculateBoxPrice,
   calculateSlabSheetFacePrice,
+  roundToHundredth,
 } from "../../utils/estimateHelpers";
 
 const EstimateSectionPrice = ({ section }) => {
@@ -43,7 +44,7 @@ const EstimateSectionPrice = ({ section }) => {
     let boxCount = 0; // Track total box count
     let shopHours = 0; // Track shop hours
     let finishHours = 0; // Track finish hours
-    let installHours = 0; // Track install hours
+    let installHours = 1; // Minimum 1 hour for setup and cleanup
     const faceCounts = {};
     const facePrices = {}; // New object to track prices per face type
 
@@ -217,7 +218,7 @@ const EstimateSectionPrice = ({ section }) => {
 
   // Format hours with 1 decimal place
   const formatHours = (hours) => {
-    return parseFloat(hours || 0).toFixed(1);
+    return roundToHundredth(parseFloat(hours || 0));
   };
 
   // Calculate labor costs based on hours and rates
