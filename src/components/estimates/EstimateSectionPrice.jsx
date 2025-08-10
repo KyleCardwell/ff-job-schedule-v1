@@ -44,7 +44,7 @@ const EstimateSectionPrice = ({ section }) => {
     let boxCount = 0; // Track total box count
     let shopHours = 0; // Track shop hours
     let finishHours = 0; // Track finish hours
-    let installHours = 1; // Minimum 1 hour for setup and cleanup
+    let installHours = 0; // Track install hours
     const faceCounts = {};
     const facePrices = {}; // New object to track prices per face type
 
@@ -194,6 +194,11 @@ const EstimateSectionPrice = ({ section }) => {
         const price = Number(item.price) || 0;
         return total + price * quantity;
       }, 0);
+    }
+
+    if (installHours > 0) {
+      // add 1 hour for setup and cleanup
+      installHours += 1;
     }
 
     return {
