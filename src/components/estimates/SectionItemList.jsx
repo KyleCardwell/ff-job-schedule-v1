@@ -41,7 +41,7 @@ const SectionItemList = ({
 
   const handleKeys = (item, index, key, col) => {
     switch (key) {
-      case "finished_interior": {
+      case "interior": {
         if (item.finished_interior) {
           return "F";
         } else {
