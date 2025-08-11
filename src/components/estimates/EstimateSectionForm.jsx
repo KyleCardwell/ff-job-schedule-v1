@@ -1,22 +1,19 @@
-import PropTypes from 'prop-types';
-import { useState } from "react";
+import PropTypes from "prop-types";
+import { useEffect, useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { addSection, updateSection } from "../../redux/actions/estimates";
 
-
-const EstimateSectionForm = ({
-  section = {},
-  onCancel,
-  onSave,
-  taskId
-}) => {
+const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const dispatch = useDispatch();
-  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate
+  );
   const materials = useSelector((state) => state.materials);
   const estimateData = currentEstimate?.estimate_data;
-  const sectionData = section?.section_data || currentEstimate?.estimateDefault || {};
+  const sectionData =
+    section?.section_data || currentEstimate?.estimateDefault || {};
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
@@ -27,8 +24,9 @@ const EstimateSectionForm = ({
     estimateData?.drawerFrontStyles?.options || [];
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
   const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
-  const DRAWER_SLIDE_OPTIONS =
-    estimateData?.drawerSlideTypes || [];
+  const DRAWER_SLIDE_OPTIONS = estimateData?.drawerSlideTypes || [];
+
+  const [mustSelectFinish, setMustSelectFinish] = useState(false);
 
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
@@ -49,11 +47,18 @@ const EstimateSectionForm = ({
 
   const [errors, setErrors] = useState({});
 
+  const clearFinishes = () => {
+    setFormData({
+      ...formData,
+      finish: [],
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value,
+      [name]: +value,
     });
 
     // Clear error when field is updated
@@ -81,6 +86,14 @@ const EstimateSectionForm = ({
       ...formData,
       finish: updatedFinish,
     });
+
+    // Clear error when field is updated
+    if (errors.finish) {
+      setErrors({
+        ...errors,
+        finish: "",
+      });
+    }
   };
 
   const validateForm = () => {
@@ -114,7 +127,7 @@ const EstimateSectionForm = ({
       newErrors.drawerBoxes = "Drawer box type is required";
     }
 
-    if (formData.finish.length === 0) {
+    if (mustSelectFinish && formData.finish.length === 0) {
       newErrors.finish = "At least one finish option is required";
     }
 
@@ -129,19 +142,19 @@ const EstimateSectionForm = ({
       try {
         if (section?.est_section_id) {
           // Update existing section
-          await dispatch(updateSection(
-            currentEstimate.estimate_id,
-            taskId,
-            section.est_section_id,
-            formData
-          ));
+          await dispatch(
+            updateSection(
+              currentEstimate.estimate_id,
+              taskId,
+              section.est_section_id,
+              formData
+            )
+          );
         } else {
           // Create new section
-          const newSection = await dispatch(addSection(
-            currentEstimate.estimate_id,
-            taskId,
-            formData
-          ));
+          const newSection = await dispatch(
+            addSection(currentEstimate.estimate_id, taskId, formData)
+          );
           onSave?.(newSection.est_section_id);
         }
         onCancel?.();
@@ -150,6 +163,20 @@ const EstimateSectionForm = ({
       }
     }
   };
+
+  useEffect(() => {
+    if (formData.faceMaterial) {
+      const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
+        (mat) => mat.id === formData.faceMaterial
+      );
+      if (!selectedMaterial?.needs_finish) {
+        clearFinishes();
+        setMustSelectFinish(false);
+      } else {
+        setMustSelectFinish(true);
+      }
+    }
+  }, [formData.faceMaterial, FACE_MATERIAL_OPTIONS]);
 
   return (
     <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
@@ -209,7 +236,9 @@ const EstimateSectionForm = ({
                 ))}
               </select>
               {errors.faceMaterial && (
-                <p className="mt-1 text-xs text-red-500">{errors.faceMaterial}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.faceMaterial}
+                </p>
               )}
             </div>
 
@@ -251,6 +280,7 @@ const EstimateSectionForm = ({
               {FINISH_OPTIONS.map((option) => (
                 <label key={option.id} className="flex items-center space-x-2">
                   <input
+                    disabled={!mustSelectFinish}
                     type="checkbox"
                     checked={formData.finish.includes(option.id)}
                     onChange={() => handleFinishChange(option.id)}
@@ -262,6 +292,11 @@ const EstimateSectionForm = ({
             </div>
             {errors.finish && (
               <p className="mt-1 text-xs text-red-500">{errors.finish}</p>
+            )}
+            {!mustSelectFinish && (
+              <p className="mt-1 text-xs text-teal-700">
+                The selected face material does not require finish.
+              </p>
             )}
           </div>
         </div>
@@ -528,10 +563,10 @@ const EstimateSectionForm = ({
 };
 
 EstimateSectionForm.propTypes = {
-    section: PropTypes.object,
-    taskId: PropTypes.number,
-    onCancel: PropTypes.func,
-    onSave: PropTypes.func,
+  section: PropTypes.object,
+  taskId: PropTypes.number,
+  onCancel: PropTypes.func,
+  onSave: PropTypes.func,
 };
 
 export default EstimateSectionForm;
