@@ -51,7 +51,7 @@ const EstimateSectionPrice = ({ section }) => {
     let shopHours = 0; // Track shop hours
     let finishHours = 0; // Track finish hours
     let installHours = 0; // Track install hours
-    
+
     // Add new variables for drawer boxes and rollouts
     let drawerBoxCount = 0;
     let drawerBoxTotal = 0;
@@ -82,8 +82,11 @@ const EstimateSectionPrice = ({ section }) => {
 
         if (cabinet.face_config) {
           // Calculate box material price
+          const selectedMaterial = cabinet.finished_interior
+            ? boxMaterials.find((mat) => mat.id === section.face_mat)
+            : boxMaterials.find((mat) => mat.id === section.box_mat);
           const boxPrice =
-            calculateBoxPrice(cabinet, boxMaterials || [])(section) || 0;
+            calculateBoxPrice(cabinet, selectedMaterial)(section) || 0;
           boxTotal += boxPrice * quantity; // Add to boxTotal with quantity
           boxCount += quantity; // Add to boxCount with quantity
 
@@ -91,23 +94,28 @@ const EstimateSectionPrice = ({ section }) => {
           if (cabinet.cabinetHours) {
             shopHours += (cabinet.cabinetHours.shopHours || 0) * quantity;
             if (cabinet.finished_interior) {
-              let addFinishHours = 1;
+              // Check if the selected material needs finishing
+              const needsFinish = selectedMaterial?.needs_finish;
+              
+              if (needsFinish) {
+                let addFinishHours = 1;
 
-              if (Array.isArray(section.section_data?.finish)) {
-                section.section_data.finish.forEach((finishId) => {
-                  const finishObj = finishTypes.find(
-                    (ft) => ft.id === finishId
-                  );
-                  if (finishObj?.adjust) {
-                    addFinishHours *= finishObj.adjust;
-                  }
-                });
+                if (Array.isArray(section.section_data?.finish)) {
+                  section.section_data.finish.forEach((finishId) => {
+                    const finishObj = finishTypes.find(
+                      (ft) => ft.id === finishId
+                    );
+                    if (finishObj?.adjust) {
+                      addFinishHours *= finishObj.adjust;
+                    }
+                  });
+                }
+
+                finishHours +=
+                  (cabinet.cabinetHours.finishHours || 0) *
+                  quantity *
+                  addFinishHours;
               }
-
-              finishHours +=
-                (cabinet.cabinetHours.finishHours || 0) *
-                quantity *
-                addFinishHours;
             }
             installHours += (cabinet.cabinetHours.installHours || 0) * quantity;
           }
@@ -133,30 +141,30 @@ const EstimateSectionPrice = ({ section }) => {
               facePriceByType = result.priceByType;
             }
           }
-          
+
           // Count drawer boxes and rollouts
           const countDrawerBoxesAndRollouts = (node) => {
             if (!node) return;
-            
+
             // Count drawer boxes
             if (node.type === "drawer_front" && node.drawerBoxDimensions) {
               drawerBoxCount += quantity;
               drawerBoxTotal += DRAWER_BOX_PRICE * quantity;
             }
-            
+
             // Count rollouts
             if (node.rollOutQty && node.rollOutQty > 0) {
               const rollOutQty = parseInt(node.rollOutQty, 10);
               rollOutCount += rollOutQty * quantity;
               rollOutTotal += ROLL_OUT_PRICE * rollOutQty * quantity;
             }
-            
+
             // Process children recursively
             if (node.children && Array.isArray(node.children)) {
               node.children.forEach(countDrawerBoxesAndRollouts);
             }
           };
-          
+
           // Process the cabinet face config to count drawer boxes and rollouts
           countDrawerBoxesAndRollouts(cabinet.face_config);
 
@@ -190,7 +198,7 @@ const EstimateSectionPrice = ({ section }) => {
         }
       });
     }
-    
+
     // Add drawer box and rollout totals to section total
     sectionTotal += drawerBoxTotal + rollOutTotal;
 
@@ -366,7 +374,7 @@ const EstimateSectionPrice = ({ section }) => {
                 </span>
               </div>
             ))}
-            {/* Drawer Box Information */}
+          {/* Drawer Box Information */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
             <span className="text-sm text-slate-300 text-left">
               Drawer Boxes:
@@ -381,9 +389,7 @@ const EstimateSectionPrice = ({ section }) => {
 
           {/* Rollout Information */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">
-              Rollouts:
-            </span>
+            <span className="text-sm text-slate-300 text-left">Rollouts:</span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.rollOutCount}
             </span>

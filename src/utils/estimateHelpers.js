@@ -105,19 +105,10 @@ export const getCabinetHours = (width, height, depth, finishedInterior = false) 
 }
 
 // Helper function to calculate box material price
-export const calculateBoxPrice = (cabinet, boxMaterials) => (section) => {
-  if (!cabinet.face_config?.boxSummary || !section.box_mat) {
+export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
+  if (!cabinet.face_config?.boxSummary || !section.box_mat || !selectedMaterial) {
     return 0;
   }
-
-  // Find the selected section face material if finished interior,
-  // otherwise find the selected box material
-  const selectedMaterial = cabinet.finished_interior ? boxMaterials.find(
-    (mat) => mat.id === section.face_mat
-  ): boxMaterials.find(
-    (mat) => mat.id === section.box_mat
-  );
-  if (!selectedMaterial) return 0;
 
   // Calculate price based on area and material price
   const pricePerSquareInch =

@@ -26,7 +26,7 @@ export const fetchSheetGoods = () => async (dispatch, getState) => {
 
     const { data, error } = await supabase
       .from("wood_catalog")
-      .select("id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, 5_piece, slab_door")
+      .select("id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, 5_piece, slab_door, needs_finish")
       .eq("team_id", teamId)
       .order("name", { ascending: true });
 
