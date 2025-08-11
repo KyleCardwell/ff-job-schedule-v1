@@ -37,16 +37,30 @@ const EstimateSectionPrice = ({ section }) => {
         shopHours: 0,
         finishHours: 0,
         installHours: 0,
+        drawerBoxCount: 0,
+        drawerBoxTotal: 0,
+        rollOutCount: 0,
+        rollOutTotal: 0,
       };
 
     let sectionTotal = 0;
+    const faceCounts = {};
+    const facePrices = {}; // New object to track prices per face type
     let boxTotal = 0; // Track total box prices
     let boxCount = 0; // Track total box count
     let shopHours = 0; // Track shop hours
     let finishHours = 0; // Track finish hours
     let installHours = 0; // Track install hours
-    const faceCounts = {};
-    const facePrices = {}; // New object to track prices per face type
+    
+    // Add new variables for drawer boxes and rollouts
+    let drawerBoxCount = 0;
+    let drawerBoxTotal = 0;
+    let rollOutCount = 0;
+    let rollOutTotal = 0;
+
+    // Fixed prices for drawer boxes and rollouts
+    const DRAWER_BOX_PRICE = 50;
+    const ROLL_OUT_PRICE = 60;
 
     // Initialize faceCounts and facePrices with all face types at 0
     FACE_TYPES.forEach((type) => {
@@ -119,6 +133,32 @@ const EstimateSectionPrice = ({ section }) => {
               facePriceByType = result.priceByType;
             }
           }
+          
+          // Count drawer boxes and rollouts
+          const countDrawerBoxesAndRollouts = (node) => {
+            if (!node) return;
+            
+            // Count drawer boxes
+            if (node.type === "drawer_front" && node.drawerBoxDimensions) {
+              drawerBoxCount += quantity;
+              drawerBoxTotal += DRAWER_BOX_PRICE * quantity;
+            }
+            
+            // Count rollouts
+            if (node.rollOutQty && node.rollOutQty > 0) {
+              const rollOutQty = parseInt(node.rollOutQty, 10);
+              rollOutCount += rollOutQty * quantity;
+              rollOutTotal += ROLL_OUT_PRICE * rollOutQty * quantity;
+            }
+            
+            // Process children recursively
+            if (node.children && Array.isArray(node.children)) {
+              node.children.forEach(countDrawerBoxesAndRollouts);
+            }
+          };
+          
+          // Process the cabinet face config to count drawer boxes and rollouts
+          countDrawerBoxesAndRollouts(cabinet.face_config);
 
           cabinetPrice = (boxPrice + facePrice) * quantity;
           sectionTotal += cabinetPrice;
@@ -150,6 +190,9 @@ const EstimateSectionPrice = ({ section }) => {
         }
       });
     }
+    
+    // Add drawer box and rollout totals to section total
+    sectionTotal += drawerBoxTotal + rollOutTotal;
 
     // Calculate length items prices
     if (
@@ -210,6 +253,10 @@ const EstimateSectionPrice = ({ section }) => {
       shopHours,
       finishHours,
       installHours,
+      drawerBoxCount,
+      drawerBoxTotal,
+      rollOutCount,
+      rollOutTotal,
     };
   }, [section, boxMaterials, faceMaterials]);
 
@@ -319,6 +366,31 @@ const EstimateSectionPrice = ({ section }) => {
                 </span>
               </div>
             ))}
+            {/* Drawer Box Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">
+              Drawer Boxes:
+            </span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.drawerBoxCount}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.drawerBoxTotal)}
+            </span>
+          </div>
+
+          {/* Rollout Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">
+              Rollouts:
+            </span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.rollOutCount}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.rollOutTotal)}
+            </span>
+          </div>
         </div>
 
         {/* Labor Hours - Title */}

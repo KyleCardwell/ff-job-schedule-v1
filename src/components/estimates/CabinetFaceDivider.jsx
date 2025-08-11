@@ -944,6 +944,8 @@ const CabinetFaceDivider = ({
       ];
       node.splitDirection = "horizontal";
       node.type = "container";
+      node.rollOutQty = "";
+      node.drawerBoxDimensions = null;
     }
 
     setConfig(newConfig);
