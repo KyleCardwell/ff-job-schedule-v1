@@ -279,12 +279,12 @@ const CabinetFaceDivider = ({
         .attr("y", y + height / 2 + 15)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
-        .attr("fill", "#64748B")
+        .attr("fill", "#ffffff")
         .attr("font-size", "10px")
         .text(
           `${truncateTrailingZeros(node.width)}" × ${truncateTrailingZeros(
             node.height
-          )}"`
+          )} ${node.rollOutQty > 0 ? ` - ${node.rollOutQty} RO` : ""}`
         )
         .style("pointer-events", "none");
     }
@@ -452,9 +452,19 @@ const CabinetFaceDivider = ({
   };
 
   // Calculate roll-out dimensions based on face dimensions and cabinet depth
-  const calculateRollOutDimensions = (faceWidth, cabinetDepth) => {
-    // Height is always 4 inches
-    const height = 4;
+  const calculateRollOutDimensions = (faceWidth, cabinetDepth, faceHeight, type) => {
+    let height = DRAWER_BOX_HEIGHTS[0];
+    if (type === "rollOut") {
+      height = 4.25;
+    } else {
+      const maxHeight = Math.max(faceHeight - 1, minValue);
+      for (let i = DRAWER_BOX_HEIGHTS.length - 1; i >= 0; i--) {
+        if (DRAWER_BOX_HEIGHTS[i] <= maxHeight) {
+          height = DRAWER_BOX_HEIGHTS[i];
+          break;
+        }
+      }
+    }
     // Width is face width minus 2 inches
     const width = Math.max(faceWidth - 2, minValue);
 
@@ -539,7 +549,18 @@ const CabinetFaceDivider = ({
           if (node.rollOutQty > 0) {
             node.rollOutDimensions = calculateRollOutDimensions(
               node.width,
-              cabinetDepth
+              cabinetDepth,
+              node.height,
+              "rollOut"
+            );
+          }
+
+          if (node.type === "drawer_front") {
+            node.drawerBoxDimensions = calculateRollOutDimensions(
+              node.width,
+              cabinetDepth,
+              node.height,
+              node.type
             );
           }
 
