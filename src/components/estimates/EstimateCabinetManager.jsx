@@ -531,6 +531,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           <CabinetFaceDivider
             cabinetWidth={formData.width || 24} // Default width if empty
             cabinetHeight={formData.height || 30} // Default height if empty
+            cabinetDepth={formData.depth || 24} // Default depth if empty
             faceConfig={formData.face_config}
             onSave={handleFaceConfigSave}
             disabled={!canEditFaces}
