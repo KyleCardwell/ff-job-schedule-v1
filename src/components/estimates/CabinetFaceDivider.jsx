@@ -4,7 +4,11 @@ import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
-import { CAN_HAVE_ROLL_OUTS, FACE_TYPES, DRAWER_BOX_HEIGHTS } from "../../utils/constants";
+import {
+  CAN_HAVE_ROLL_OUTS,
+  FACE_TYPES,
+  DRAWER_BOX_HEIGHTS,
+} from "../../utils/constants";
 import { truncateTrailingZeros } from "../../utils/helpers";
 
 const CabinetFaceDivider = ({
@@ -447,21 +451,6 @@ const CabinetFaceDivider = ({
     return Math.round(value * 16) / 16;
   };
 
-  // Deep clone of config object to avoid mutation
-  const deepCloneConfig = (node) => {
-    if (!node) return null;
-
-    const clonedNode = { ...node };
-
-    if (clonedNode.children && Array.isArray(clonedNode.children)) {
-      clonedNode.children = clonedNode.children.map((child) =>
-        deepCloneConfig(child)
-      );
-    }
-
-    return clonedNode;
-  };
-
   // Calculate roll-out dimensions based on face dimensions and cabinet depth
   const calculateRollOutDimensions = (faceWidth, cabinetDepth) => {
     // Height is always 4 inches
@@ -486,32 +475,17 @@ const CabinetFaceDivider = ({
 
     if (!selectedNode) return;
 
-    const newConfig = deepCloneConfig(config);
+    const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
 
     if (node) {
       // Update roll-out quantity
       node.rollOutQty = qty;
 
-      // Calculate dimensions for roll-outs if quantity > 0
-      if (qty > 0) {
-        const rollOutDimensions = calculateRollOutDimensions(
-          node.width,
-          cabinetDepth
-        );
-        node.rollOutDimensions = rollOutDimensions;
-      } else {
-        node.rollOutDimensions = null;
-      }
-
       setConfig(newConfig);
       setSelectedNode({
         ...selectedNode,
         rollOutQty: qty,
-        rollOutDimensions:
-          qty > 0
-            ? calculateRollOutDimensions(selectedNode.width, cabinetDepth)
-            : null,
       });
     }
   };
@@ -525,7 +499,7 @@ const CabinetFaceDivider = ({
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
 
-    const newConfig = deepCloneConfig(config);
+    const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node && newType !== "container") {
       node.type = newType;
@@ -548,12 +522,6 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
-  // Update face summary after any config changes
-  // Removed face summary update logic
-
-  // Update face summary after layout changes
-  // Removed face summary update logic
-
   // Calculate face summary whenever config changes
   useEffect(() => {
     if (config && onSave) {
@@ -562,11 +530,34 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
-        onSave(config);
+        // Create a copy of the config for saving
+        const configForSave = cloneDeep(config);
+
+        // Calculate rollout dimensions for all nodes with rollouts
+        const processNode = (node) => {
+          // Calculate rollout dimensions if needed
+          if (node.rollOutQty > 0) {
+            node.rollOutDimensions = calculateRollOutDimensions(
+              node.width,
+              cabinetDepth
+            );
+          }
+
+          // Process children recursively
+          if (node.children) {
+            node.children.forEach(processNode);
+          }
+        };
+
+        // Process the entire tree
+        processNode(configForSave);
+
+        // Save the config with calculated dimensions
+        onSave(configForSave);
         previousConfigRef.current = configString;
       }
     }
-  }, [config, onSave]);
+  }, [config, onSave, cabinetDepth]);
 
   const handleDimensionChange = (dimension, newValueStr) => {
     // Convert string to number and handle empty input
@@ -1246,17 +1237,6 @@ const CabinetFaceDivider = ({
                           max="10"
                         />
                       </div>
-                      {selectedNode.rollOutQty > 0 &&
-                        selectedNode.rollOutDimensions && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            <div>
-                              Roll-Out Size:{" "}
-                              {selectedNode.rollOutDimensions.width}W ×{" "}
-                              {selectedNode.rollOutDimensions.height}H ×{" "}
-                              {selectedNode.rollOutDimensions.depth}D
-                            </div>
-                          </div>
-                        )}
                     </div>
                   )}
                 </div>
