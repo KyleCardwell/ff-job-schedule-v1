@@ -9,6 +9,8 @@ import {
   calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
   roundToHundredth,
+  calculate5PieceDoorHours,
+  calculateSlabDoorHours,
 } from "../../utils/estimateHelpers";
 
 const EstimateSectionPrice = ({ section }) => {
@@ -52,6 +54,7 @@ const EstimateSectionPrice = ({ section }) => {
     let shopHours = 0; // Track shop hours
     let finishHours = 0; // Track finish hours
     let installHours = 0; // Track install hours
+    let totalFinishHours = 0; // Accumulator for pre-adjusted finish hours
 
     // Add new variables for drawer boxes and rollouts
     let drawerBoxCount = 0;
@@ -121,40 +124,46 @@ const EstimateSectionPrice = ({ section }) => {
             installHours += (cabinet.cabinetHours.installHours || 0) * quantity;
           }
 
-          // Calculate face material price using face summary and styles
+          // Calculate face material price and hours using face summary and styles
           let facePrice = 0;
           let facePriceByType = {};
 
           if (section.section_data && section.face_mat && cabinet.face_config?.faceSummary) {
-            // Find the selected face material
-            const selectedMaterial = faceMaterials.find(
-              (mat) => mat.id === section.face_mat
-            );
+            const selectedMaterial = faceMaterials.find((mat) => mat.id === section.face_mat);
             
             if (selectedMaterial) {
-              // Initialize price by type
               facePriceByType = {};
               Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
                 facePriceByType[faceType] = 0;
               });
               
-              // Calculate price for each face type
               Object.entries(cabinet.face_config.faceSummary).forEach(([faceType, faceData]) => {
-                // Skip open or container face types
                 if (["open", "container"].includes(faceType)) return;
                 
-                // Determine which style to use based on face type
-                let styleToUse;
-                if (faceType === "drawer_front" || faceType === "false_front") {
-                  styleToUse = section.section_data.drawerFrontStyle;
-                } else {
-                  // Default to door style for any other face types
-                  styleToUse = section.section_data.doorStyle;
+                let styleToUse = (faceType === "drawer_front" || faceType === "false_front")
+                  ? section.section_data.drawerFrontStyle
+                  : section.section_data.doorStyle;
+
+                // --- Style-Based Hour Calculation ---
+                if (faceData.faces && Array.isArray(faceData.faces)) {
+                  faceData.faces.forEach((face) => {
+                    let hours = {};
+                    if (styleToUse === "5_piece_hardwood" || styleToUse === "slab_hardwood") {
+                      hours = calculate5PieceDoorHours(face.width, face.height, selectedMaterial.thickness);
+                    } else if (styleToUse === "slab_sheet") {
+                      hours = calculateSlabDoorHours(face.width, face.height);
+                    }
+                    shopHours += (hours.shopHours || 0) * quantity;
+                    installHours += (hours.installHours || 0) * quantity;
+                    if (selectedMaterial.needs_finish) {
+                      totalFinishHours += (hours.finishHours || 0) * quantity;
+                    }
+                    console.log(cabinet.name, faceType, hours)
+                  });
                 }
-                
-                // Calculate price based on the style
+
+                // --- Style-Based Material Price Calculation ---
                 let typeTotalPrice = 0;
-                console.log(faceType, styleToUse)
                 if (styleToUse === "slab_sheet") {
                   typeTotalPrice = calculateSlabSheetFacePrice(faceData, selectedMaterial);
                 } else if (styleToUse === "5_piece_hardwood") {
@@ -162,7 +171,6 @@ const EstimateSectionPrice = ({ section }) => {
                 } else if (styleToUse === "slab_hardwood") {
                   typeTotalPrice = calculateSlabHardwoodFacePrice(faceData, selectedMaterial);
                 }
-                
                 facePriceByType[faceType] = typeTotalPrice;
                 facePrice += typeTotalPrice;
               });
@@ -225,6 +233,19 @@ const EstimateSectionPrice = ({ section }) => {
         }
       });
     }
+
+    // Apply finish adjustments to the total accumulated finish hours
+    let finishMultiplier = 1;
+    const selectedMaterialForFinish = faceMaterials.find((mat) => mat.id === section.face_mat);
+    if (selectedMaterialForFinish?.needs_finish && section.section_data.finish?.length > 0) {
+      section.section_data.finish.forEach((finishId) => {
+        const finishObj = finishTypes.find((ft) => ft.id === finishId);
+        if (finishObj?.adjust) {
+          finishMultiplier *= finishObj.adjust;
+        }
+      });
+    }
+    finishHours += totalFinishHours * finishMultiplier;
 
     // Add drawer box and rollout totals to section total
     sectionTotal += drawerBoxTotal + rollOutTotal;
