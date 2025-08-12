@@ -186,7 +186,6 @@ export const calculate5PieceHardwoodFacePrice = (faceData, selectedMaterial) => 
 
     // Calculate price for this face
     const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
-    console.log(face.id, facePrice)
     totalPrice += facePrice;
   });
 
@@ -228,19 +227,19 @@ export const calculateSlabHardwoodFacePrice = (faceData, selectedMaterial) => {
 // Define the anchor points for interpolation based on door board feet
 const doorHourAnchors = {
   shop: [
-    { boardFeet: 5.5, hours: 0.25 },
-    { boardFeet: 9.5, hours: 0.35 },
-    { boardFeet: 14.5, hours: 0.50 },
+    { boardFeet: 4, hours: 0.25 },
+    { boardFeet: 7.5, hours: 0.35 },
+    { boardFeet: 12, hours: 0.50 },
   ],
   install: [
-    { boardFeet: 5.5, hours: 0.10 },
-    { boardFeet: 9.5, hours: 0.15 },
-    { boardFeet: 14.5, hours: 0.25 },
+    { boardFeet: 4, hours: 0.10 },
+    { boardFeet: 7.5, hours: 0.15 },
+    { boardFeet: 12, hours: 0.25 },
   ],
   finish: [
-    { boardFeet: 5.5, hours: 0.50 },
-    { boardFeet: 9.5, hours: 0.60 },
-    { boardFeet: 14.5, hours: 0.80 },
+    { boardFeet: 4, hours: 0.50 },
+    { boardFeet: 7.5, hours: 0.60 },
+    { boardFeet: 12, hours: 0.80 },
   ],
 };
 
