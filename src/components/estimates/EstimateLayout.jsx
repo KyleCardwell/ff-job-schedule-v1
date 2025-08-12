@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FiArrowLeft } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
@@ -7,12 +7,14 @@ import {
   fetchEstimateById,
   setCurrentEstimate,
 } from "../../redux/actions/estimates";
+import { fetchSheetGoods } from "../../redux/actions/materials.js";
 import { PATHS } from "../../utils/constants";
 
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
 import EstimateSectionManager from "./EstimateSectionManager.jsx"; // Import EstimateSectionManager
+import EstimateSectionPrice from "./EstimateSectionPrice.jsx";
 import EstimateTask from "./EstimateTask.jsx";
 
 const EstimateLayout = () => {
@@ -62,15 +64,28 @@ const EstimateLayout = () => {
   }, [dispatch, estimateId, navigate, estimates]);
 
   useEffect(() => {
+    dispatch(fetchSheetGoods());
+  }, []);
+
+  useEffect(() => {
     // Close section form when task changes
     setShowSectionForm(false);
   }, [selectedTaskId]);
 
   useEffect(() => {}, [currentEstimate]);
 
-  const selectedTask = currentEstimate?.tasks?.find(
-    (task) => task.est_task_id === selectedTaskId
-  );
+  // Memoize the selected task and section to avoid recalculating on every render
+  const selectedTask = useMemo(() => {
+    return currentEstimate?.tasks?.find(
+      (task) => task.est_task_id === selectedTaskId
+    );
+  }, [currentEstimate?.tasks, selectedTaskId]);
+
+  const selectedSection = useMemo(() => {
+    return selectedTask?.sections?.find(
+      (section) => section.est_section_id === selectedSectionId
+    );
+  }, [selectedTask?.sections, selectedSectionId]);
 
   const handleAddTask = () => {
     setSelectedTaskId(null);
@@ -249,13 +264,27 @@ const EstimateLayout = () => {
             />
           </div>
         ) : selectedTaskId && selectedSectionId ? (
-          <EstimateSectionManager
-            taskId={selectedTaskId}
-            sectionId={selectedSectionId}
-          />
+          <>
+            {selectedSection ? (
+              <div className="flex gap-6 h-full">
+              <EstimateSectionManager 
+                taskId={selectedTaskId}
+                sectionId={selectedSectionId}
+                section={selectedSection}
+              />
+              <EstimateSectionPrice section={selectedSection} />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-200">
+                Section not found
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex items-center justify-center h-full text-slate-200">
-            {isNewTask ? "Enter room name" : "Select a room or create a new one"}
+            {isNewTask
+              ? "Enter room name"
+              : "Select a room or create a new one"}
           </div>
         )}
       </div>

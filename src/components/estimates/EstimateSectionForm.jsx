@@ -1,38 +1,36 @@
-import PropTypes from 'prop-types';
-import { useState } from "react";
+import PropTypes from "prop-types";
+import { useEffect, useState, useMemo } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { addSection, updateSection } from "../../redux/actions/estimates";
 
-
-const EstimateSectionForm = ({
-  section = {},
-  onCancel,
-  onSave,
-  taskId
-}) => {
+const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const dispatch = useDispatch();
-  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate
+  );
+  const materials = useSelector((state) => state.materials);
   const estimateData = currentEstimate?.estimate_data;
-  const sectionData = section?.section_data || currentEstimate?.estimateDefault || {};
+  const sectionData =
+    section?.section_data || currentEstimate?.estimateDefault || {};
 
-  const MATERIAL_OPTIONS = estimateData?.materials?.options || [];
-  const CABINET_INTERIOR_OPTIONS = estimateData?.boxMaterials?.options || [];
+  const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
+  const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = estimateData?.styles || [];
   const FINISH_OPTIONS = estimateData?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
-  const DRAWER_FRONT_STYLE_OPTIONS =
-    estimateData?.drawerFrontStyles?.options || [];
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
   const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
-  const DRAWER_SLIDE_OPTIONS =
-    estimateData?.drawerSlideTypes || [];
+  const DRAWER_SLIDE_OPTIONS = estimateData?.drawerSlideTypes || [];
+
+  const [mustSelectFinish, setMustSelectFinish] = useState(false);
+  const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
 
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
-    cabinetInterior: sectionData.cabinetInterior || "",
-    material: sectionData.material || "",
+    boxMaterial: section.box_mat || "",
+    faceMaterial: section.face_mat || "",
     finish: sectionData.finish || [],
     doorStyle: sectionData.doorStyle || "",
     drawerFrontStyle: sectionData.drawerFrontStyle || "",
@@ -48,12 +46,26 @@ const EstimateSectionForm = ({
 
   const [errors, setErrors] = useState({});
 
+  const clearFinishes = () => {
+    setFormData({
+      ...formData,
+      finish: [],
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value,
     });
+
+    if (name === "faceMaterial") {
+      const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
+        (mat) => mat.id === +value
+      );
+      setSelectedFaceMaterial(selectedMaterial);
+    }
 
     // Clear error when field is updated
     if (errors[name]) {
@@ -80,6 +92,14 @@ const EstimateSectionForm = ({
       ...formData,
       finish: updatedFinish,
     });
+
+    // Clear error when field is updated
+    if (errors.finish && updatedFinish.length > 0) {
+      setErrors({
+        ...errors,
+        finish: "",
+      });
+    }
   };
 
   const validateForm = () => {
@@ -89,12 +109,12 @@ const EstimateSectionForm = ({
       newErrors.style = "Style is required";
     }
 
-    if (!formData.cabinetInterior) {
-      newErrors.cabinetInterior = "Cabinet interior is required";
+    if (!formData.boxMaterial) {
+      newErrors.boxMaterial = "Cabinet interior is required";
     }
 
-    if (!formData.material) {
-      newErrors.material = "Material is required";
+    if (!formData.faceMaterial) {
+      newErrors.faceMaterial = "Material is required";
     }
 
     if (!formData.doorStyle) {
@@ -113,7 +133,7 @@ const EstimateSectionForm = ({
       newErrors.drawerBoxes = "Drawer box type is required";
     }
 
-    if (formData.finish.length === 0) {
+    if (mustSelectFinish && formData.finish.length === 0) {
       newErrors.finish = "At least one finish option is required";
     }
 
@@ -128,19 +148,19 @@ const EstimateSectionForm = ({
       try {
         if (section?.est_section_id) {
           // Update existing section
-          await dispatch(updateSection(
-            currentEstimate.estimate_id,
-            taskId,
-            section.est_section_id,
-            formData
-          ));
+          await dispatch(
+            updateSection(
+              currentEstimate.estimate_id,
+              taskId,
+              section.est_section_id,
+              formData
+            )
+          );
         } else {
           // Create new section
-          const newSection = await dispatch(addSection(
-            currentEstimate.estimate_id,
-            taskId,
-            formData
-          ));
+          const newSection = await dispatch(
+            addSection(currentEstimate.estimate_id, taskId, formData)
+          );
           onSave?.(newSection.est_section_id);
         }
         onCancel?.();
@@ -149,6 +169,64 @@ const EstimateSectionForm = ({
       }
     }
   };
+
+  useEffect(() => {
+    if (formData.faceMaterial) {
+      const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
+        (mat) => mat.id === +formData.faceMaterial
+      );
+      setSelectedFaceMaterial(selectedMaterial);
+
+      // Handle finish requirements
+      if (!selectedMaterial?.needs_finish) {
+        clearFinishes();
+        setMustSelectFinish(false);
+      } else {
+        setMustSelectFinish(true);
+      }
+    } else {
+      setSelectedFaceMaterial(null);
+      setMustSelectFinish(false);
+    }
+  }, [formData.faceMaterial, FACE_MATERIAL_OPTIONS]);
+
+  const filteredDoorStyleOptions = useMemo(() => {
+    if (!selectedFaceMaterial) return DOOR_STYLE_OPTIONS;
+
+    return DOOR_STYLE_OPTIONS.filter((option) => {
+      // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
+      if (selectedFaceMaterial["5_piece"] === true) {
+        if (option.id === "5_piece_hardwood" || option.id === "slab_hardwood") {
+          return true;
+        }
+      }
+
+      // If material supports slab doors, include slab_sheet
+      if (selectedFaceMaterial.slab_door === true) {
+        if (option.id === "slab_sheet") {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }, [selectedFaceMaterial, DOOR_STYLE_OPTIONS]);
+
+  useEffect(() => {
+    // If current door style is not in filtered options, reset it
+    if (formData.doorStyle && filteredDoorStyleOptions.length > 0) {
+      const isValidOption = filteredDoorStyleOptions.some(
+        (option) => option.id === formData.doorStyle
+      );
+
+      if (!isValidOption) {
+        setFormData({
+          ...formData,
+          doorStyle: "",
+        });
+      }
+    }
+  }, [filteredDoorStyleOptions, formData.doorStyle]);
 
   return (
     <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
@@ -186,58 +264,60 @@ const EstimateSectionForm = ({
 
             <div className="mb-2">
               <label
-                htmlFor="material"
+                htmlFor="faceMaterial"
                 className="block text-sm font-medium text-slate-700"
               >
                 Cabinet Face Material
               </label>
               <select
-                id="material"
-                name="material"
-                value={formData.material}
+                id="faceMaterial"
+                name="faceMaterial"
+                value={formData.faceMaterial}
                 onChange={handleChange}
                 className={`mt-1 block w-full rounded-md text-sm h-9 ${
-                  errors.material ? "border-red-500" : "border-slate-300"
+                  errors.faceMaterial ? "border-red-500" : "border-slate-300"
                 } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
               >
                 <option value="">Select material</option>
-                {MATERIAL_OPTIONS.map((option) => (
+                {FACE_MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/sqft`}
+                    {`${option.name} - $${option.sheet_price}/sheet`}
                   </option>
                 ))}
               </select>
-              {errors.material && (
-                <p className="mt-1 text-xs text-red-500">{errors.material}</p>
+              {errors.faceMaterial && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.faceMaterial}
+                </p>
               )}
             </div>
 
             <div>
               <label
-                htmlFor="cabinetInterior"
+                htmlFor="boxMaterial"
                 className="block text-sm font-medium text-slate-700"
               >
                 Cabinet Box Material
               </label>
               <select
-                id="cabinetInterior"
-                name="cabinetInterior"
-                value={formData.cabinetInterior}
+                id="boxMaterial"
+                name="boxMaterial"
+                value={formData.boxMaterial}
                 onChange={handleChange}
                 className={`mt-1 block w-full rounded-md text-sm h-9 ${
-                  errors.cabinetInterior ? "border-red-500" : "border-slate-300"
+                  errors.boxMaterial ? "border-red-500" : "border-slate-300"
                 } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
               >
                 <option value="">Select interior</option>
-                {CABINET_INTERIOR_OPTIONS.map((option) => (
+                {BOX_MATERIAL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/sqft`}
+                    {`${option.name} - $${option.sheet_price}/sheet`}
                   </option>
                 ))}
               </select>
-              {errors.cabinetInterior && (
+              {errors.boxMaterial && (
                 <p className="mt-1 text-xs text-red-500">
-                  {errors.cabinetInterior}
+                  {errors.boxMaterial}
                 </p>
               )}
             </div>
@@ -250,6 +330,7 @@ const EstimateSectionForm = ({
               {FINISH_OPTIONS.map((option) => (
                 <label key={option.id} className="flex items-center space-x-2">
                   <input
+                    disabled={!mustSelectFinish}
                     type="checkbox"
                     checked={formData.finish.includes(option.id)}
                     onChange={() => handleFinishChange(option.id)}
@@ -261,6 +342,11 @@ const EstimateSectionForm = ({
             </div>
             {errors.finish && (
               <p className="mt-1 text-xs text-red-500">{errors.finish}</p>
+            )}
+            {!mustSelectFinish && (
+              <p className="mt-1 text-xs text-teal-700">
+                The selected face material does not require finish.
+              </p>
             )}
           </div>
         </div>
@@ -286,9 +372,9 @@ const EstimateSectionForm = ({
                 } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
               >
                 <option value="">Select door style</option>
-                {DOOR_STYLE_OPTIONS.map((option) => (
+                {filteredDoorStyleOptions.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/door`}
+                    {`${option.name}`}
                   </option>
                 ))}
               </select>
@@ -379,9 +465,9 @@ const EstimateSectionForm = ({
                 className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select drawer front style</option>
-                {DRAWER_FRONT_STYLE_OPTIONS.map((option) => (
+                {filteredDoorStyleOptions.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {`${option.name} - $${option.price}/drawer`}
+                    {option.name}
                   </option>
                 ))}
               </select>
@@ -527,10 +613,10 @@ const EstimateSectionForm = ({
 };
 
 EstimateSectionForm.propTypes = {
-    section: PropTypes.object,
-    taskId: PropTypes.number,
-    onCancel: PropTypes.func,
-    onSave: PropTypes.func,
+  section: PropTypes.object,
+  taskId: PropTypes.number,
+  onCancel: PropTypes.func,
+  onSave: PropTypes.func,
 };
 
 export default EstimateSectionForm;

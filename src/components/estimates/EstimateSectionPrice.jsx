@@ -1,0 +1,500 @@
+import PropTypes from "prop-types";
+import React, { useMemo } from "react";
+import { useSelector } from "react-redux";
+
+import { FACE_TYPES } from "../../utils/constants";
+import {
+  calculate5PieceHardwoodFacePrice,
+  calculateBoxPrice,
+  calculateSlabHardwoodFacePrice,
+  calculateSlabSheetFacePrice,
+  roundToHundredth,
+} from "../../utils/estimateHelpers";
+
+const EstimateSectionPrice = ({ section }) => {
+  // Get materials from Redux store
+  const { boxMaterials, faceMaterials } = useSelector(
+    (state) => state.materials
+  );
+
+  // Get employee rates from Redux store
+  const employeeTypes = useSelector(
+    (state) => state.chartConfig?.employee_type || []
+  );
+
+  const finishTypes = useSelector(
+    (state) => state.estimates?.currentEstimate?.estimate_data?.finishes || []
+  );
+
+  // Calculate the total price and face counts of all items in the section
+  const sectionCalculations = useMemo(() => {
+    if (!section)
+      return {
+        totalPrice: 0,
+        faceCounts: {},
+        facePrices: {},
+        boxTotal: 0,
+        boxCount: 0,
+        shopHours: 0,
+        finishHours: 0,
+        installHours: 0,
+        drawerBoxCount: 0,
+        drawerBoxTotal: 0,
+        rollOutCount: 0,
+        rollOutTotal: 0,
+      };
+
+    let sectionTotal = 0;
+    const faceCounts = {};
+    const facePrices = {}; // New object to track prices per face type
+    let boxTotal = 0; // Track total box prices
+    let boxCount = 0; // Track total box count
+    let shopHours = 0; // Track shop hours
+    let finishHours = 0; // Track finish hours
+    let installHours = 0; // Track install hours
+
+    // Add new variables for drawer boxes and rollouts
+    let drawerBoxCount = 0;
+    let drawerBoxTotal = 0;
+    let rollOutCount = 0;
+    let rollOutTotal = 0;
+
+    // Fixed prices for drawer boxes and rollouts
+    const DRAWER_BOX_PRICE = 50;
+    const ROLL_OUT_PRICE = 60;
+
+    // Initialize faceCounts and facePrices with all face types at 0
+    FACE_TYPES.forEach((type) => {
+      faceCounts[type.value] = 0;
+      facePrices[type.value] = 0;
+    });
+
+    // Calculate cabinet prices and face counts
+    if (
+      section.cabinets &&
+      Array.isArray(section.cabinets) &&
+      section.cabinets.length > 0
+    ) {
+      section.cabinets.forEach((cabinet) => {
+        if (!cabinet) return;
+
+        const quantity = Number(cabinet.quantity) || 1;
+        let cabinetPrice = 0;
+
+        if (cabinet.face_config) {
+          // Calculate box material price
+          const selectedMaterial = cabinet.finished_interior
+            ? boxMaterials.find((mat) => mat.id === section.face_mat)
+            : boxMaterials.find((mat) => mat.id === section.box_mat);
+          const boxPrice =
+            calculateBoxPrice(cabinet, selectedMaterial)(section) || 0;
+          boxTotal += boxPrice * quantity; // Add to boxTotal with quantity
+          boxCount += quantity; // Add to boxCount with quantity
+
+          // Add cabinet hours if available
+          if (cabinet.cabinetHours) {
+            shopHours += (cabinet.cabinetHours.shopHours || 0) * quantity;
+            if (cabinet.finished_interior) {
+              // Check if the selected material needs finishing
+              const needsFinish = selectedMaterial?.needs_finish;
+              
+              if (needsFinish) {
+                let addFinishHours = 1;
+
+                if (Array.isArray(section.section_data?.finish)) {
+                  section.section_data.finish.forEach((finishId) => {
+                    const finishObj = finishTypes.find(
+                      (ft) => ft.id === finishId
+                    );
+                    if (finishObj?.adjust) {
+                      addFinishHours *= finishObj.adjust;
+                    }
+                  });
+                }
+
+                finishHours +=
+                  (cabinet.cabinetHours.finishHours || 0) *
+                  quantity *
+                  addFinishHours;
+              }
+            }
+            installHours += (cabinet.cabinetHours.installHours || 0) * quantity;
+          }
+
+          // Calculate face material price using face summary and styles
+          let facePrice = 0;
+          let facePriceByType = {};
+
+          if (section.section_data && section.face_mat && cabinet.face_config?.faceSummary) {
+            // Find the selected face material
+            const selectedMaterial = faceMaterials.find(
+              (mat) => mat.id === section.face_mat
+            );
+            
+            if (selectedMaterial) {
+              // Initialize price by type
+              facePriceByType = {};
+              Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
+                facePriceByType[faceType] = 0;
+              });
+              
+              // Calculate price for each face type
+              Object.entries(cabinet.face_config.faceSummary).forEach(([faceType, faceData]) => {
+                // Skip open or container face types
+                if (["open", "container"].includes(faceType)) return;
+                
+                // Determine which style to use based on face type
+                let styleToUse;
+                if (faceType === "drawer_front" || faceType === "false_front") {
+                  styleToUse = section.section_data.drawerFrontStyle;
+                } else {
+                  // Default to door style for any other face types
+                  styleToUse = section.section_data.doorStyle;
+                }
+                
+                // Calculate price based on the style
+                let typeTotalPrice = 0;
+                console.log(faceType, styleToUse)
+                if (styleToUse === "slab_sheet") {
+                  typeTotalPrice = calculateSlabSheetFacePrice(faceData, selectedMaterial);
+                } else if (styleToUse === "5_piece_hardwood") {
+                  typeTotalPrice = calculate5PieceHardwoodFacePrice(faceData, selectedMaterial);
+                } else if (styleToUse === "slab_hardwood") {
+                  typeTotalPrice = calculateSlabHardwoodFacePrice(faceData, selectedMaterial);
+                }
+                
+                facePriceByType[faceType] = typeTotalPrice;
+                facePrice += typeTotalPrice;
+              });
+            }
+          }
+
+          // Count drawer boxes and rollouts
+          const countDrawerBoxesAndRollouts = (node) => {
+            if (!node) return;
+
+            // Count drawer boxes
+            if (node.type === "drawer_front" && node.drawerBoxDimensions) {
+              drawerBoxCount += quantity;
+              drawerBoxTotal += DRAWER_BOX_PRICE * quantity;
+            }
+
+            // Count rollouts
+            if (node.rollOutQty && node.rollOutQty > 0) {
+              const rollOutQty = parseInt(node.rollOutQty, 10);
+              rollOutCount += rollOutQty * quantity;
+              rollOutTotal += ROLL_OUT_PRICE * rollOutQty * quantity;
+            }
+
+            // Process children recursively
+            if (node.children && Array.isArray(node.children)) {
+              node.children.forEach(countDrawerBoxesAndRollouts);
+            }
+          };
+
+          // Process the cabinet face config to count drawer boxes and rollouts
+          countDrawerBoxesAndRollouts(cabinet.face_config);
+
+          cabinetPrice = (boxPrice + facePrice) * quantity;
+          sectionTotal += cabinetPrice;
+
+          // Count faces and add face prices
+          if (cabinet.face_config.faceSummary) {
+            // Count faces and add prices for each type
+            Object.entries(cabinet.face_config.faceSummary).forEach(
+              ([faceType, faceData]) => {
+                if (
+                  Object.prototype.hasOwnProperty.call(faceCounts, faceType)
+                ) {
+                  // Count faces
+                  faceCounts[faceType] += (faceData.count || 0) * quantity;
+
+                  // Add prices directly from the breakdown
+                  if (facePriceByType[faceType]) {
+                    facePrices[faceType] +=
+                      facePriceByType[faceType] * quantity;
+                  }
+                }
+              }
+            );
+          }
+        } else {
+          // Fallback to direct price if no face configuration
+          cabinetPrice = (Number(cabinet.price) || 0) * quantity;
+          sectionTotal += cabinetPrice;
+        }
+      });
+    }
+
+    // Add drawer box and rollout totals to section total
+    sectionTotal += drawerBoxTotal + rollOutTotal;
+
+    // Calculate length items prices
+    if (
+      section.lengths &&
+      Array.isArray(section.lengths) &&
+      section.lengths.length > 0
+    ) {
+      sectionTotal += section.lengths.reduce((total, item) => {
+        if (!item) return total;
+
+        const quantity = Number(item.quantity) || 1;
+        const price = Number(item.price) || 0;
+        return total + price * quantity;
+      }, 0);
+    }
+
+    // Calculate accessories prices
+    if (
+      section.accessories &&
+      Array.isArray(section.accessories) &&
+      section.accessories.length > 0
+    ) {
+      sectionTotal += section.accessories.reduce((total, item) => {
+        if (!item) return total;
+
+        const quantity = Number(item.quantity) || 1;
+        const price = Number(item.price) || 0;
+        return total + price * quantity;
+      }, 0);
+    }
+
+    // Calculate other item prices
+    if (
+      section.other &&
+      Array.isArray(section.other) &&
+      section.other.length > 0
+    ) {
+      sectionTotal += section.other.reduce((total, item) => {
+        if (!item) return total;
+
+        const quantity = Number(item.quantity) || 1;
+        const price = Number(item.price) || 0;
+        return total + price * quantity;
+      }, 0);
+    }
+
+    if (installHours > 0) {
+      // add 1 hour for setup and cleanup
+      installHours += 1;
+    }
+
+    return {
+      totalPrice: sectionTotal,
+      faceCounts,
+      facePrices,
+      boxTotal,
+      boxCount,
+      shopHours,
+      finishHours,
+      installHours,
+      drawerBoxCount,
+      drawerBoxTotal,
+      rollOutCount,
+      rollOutTotal,
+    };
+  }, [section, boxMaterials, faceMaterials]);
+
+  // Format number as currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
+  // Format hours with 1 decimal place
+  const formatHours = (hours) => {
+    return roundToHundredth(parseFloat(hours || 0));
+  };
+
+  // Calculate labor costs based on hours and rates
+  const laborCosts = useMemo(() => {
+    const shopRate = employeeTypes.find((et) => et.name === "shop")?.rate || 0;
+    const finishRate =
+      employeeTypes.find((et) => et.name === "finish")?.rate || 0;
+    const installRate =
+      employeeTypes.find((et) => et.name === "install")?.rate || 0;
+
+    const shopCost = sectionCalculations.shopHours * shopRate;
+    const finishCost = sectionCalculations.finishHours * finishRate;
+    const installCost = sectionCalculations.installHours * installRate;
+
+    return {
+      shopCost,
+      finishCost,
+      installCost,
+      totalLaborCost: shopCost + finishCost + installCost,
+    };
+  }, [
+    sectionCalculations.shopHours,
+    sectionCalculations.finishHours,
+    sectionCalculations.installHours,
+    employeeTypes,
+  ]);
+
+  return (
+    <div className="h-full flex flex-col border-l border-slate-700 p-4 w-80">
+      {/* Section Total Price - Top Section */}
+      <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-600">
+        <div className="text-slate-300">
+          <span className="text-sm font-medium">Section Total Price:</span>
+        </div>
+        <div className="text-xl font-bold text-teal-400">
+          {formatCurrency(
+            sectionCalculations.totalPrice + laborCosts.totalLaborCost
+          )}
+        </div>
+      </div>
+
+      {/* Content Section - Scrollable */}
+      <div className="flex-1 overflow-auto space-y-4">
+        {/* Price Breakdown - Title */}
+        <div className="bg-slate-700 py-1 px-2 rounded-t-md">
+          <h3 className="text-sm font-medium text-white">Price Breakdown</h3>
+        </div>
+
+        {/* Price Breakdown - Content - Grid Layout */}
+        <div className="bg-gray-800 rounded-b-md p-3">
+          {/* Header row */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-xs font-medium text-slate-400">Type</div>
+            <div className="text-xs font-medium text-slate-400 text-center">
+              Qty
+            </div>
+            <div className="text-xs font-medium text-slate-400 text-right">
+              Price
+            </div>
+          </div>
+
+          {/* Box Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">
+              Cabinet Boxes:
+            </span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.boxCount}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.boxTotal)}
+            </span>
+          </div>
+
+          {/* Face Types - Filter out "open", "container", "pair_door" */}
+          {Object.entries(sectionCalculations.faceCounts)
+            .filter(
+              ([type]) => !["open", "container", "pair_door"].includes(type)
+            )
+            .map(([type, count]) => (
+              <div
+                key={type}
+                className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0"
+              >
+                <span className="text-sm text-slate-300 text-left">
+                  {FACE_TYPES.find((t) => t.value === type)?.label || type}s:
+                </span>
+                <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                  {count}
+                </span>
+                <span className="text-sm font-medium text-teal-400 text-right">
+                  {formatCurrency(sectionCalculations.facePrices[type])}
+                </span>
+              </div>
+            ))}
+          {/* Drawer Box Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">
+              Drawer Boxes:
+            </span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.drawerBoxCount}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.drawerBoxTotal)}
+            </span>
+          </div>
+
+          {/* Rollout Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Rollouts:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.rollOutCount}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.rollOutTotal)}
+            </span>
+          </div>
+        </div>
+
+        {/* Labor Hours - Title */}
+        <div className="bg-slate-700 py-1 px-2 rounded-t-md mt-4">
+          <h3 className="text-sm font-medium text-white">Labor Hours</h3>
+        </div>
+
+        {/* Labor Hours - Content - Grid Layout */}
+        <div className="bg-gray-800 rounded-b-md p-3">
+          {/* Header row */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-xs font-medium text-slate-400">Category</div>
+            <div className="text-xs font-medium text-slate-400 text-center">
+              Hours
+            </div>
+            <div className="text-xs font-medium text-slate-400 text-right">
+              Cost
+            </div>
+          </div>
+
+          {/* Shop Hours */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Shop:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(sectionCalculations.shopHours)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(laborCosts.shopCost)}
+            </span>
+          </div>
+
+          {/* Finish Hours */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Finish:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(sectionCalculations.finishHours)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(laborCosts.finishCost)}
+            </span>
+          </div>
+
+          {/* Install Hours */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Install:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(sectionCalculations.installHours)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(laborCosts.installCost)}
+            </span>
+          </div>
+
+          {/* Total Labor Cost */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 mt-2 pt-2 border-t border-gray-600">
+            <span className="text-sm font-medium text-white text-left">
+              Total Labor:
+            </span>
+            <span className="text-sm font-medium"></span>
+            <span className="text-sm font-bold text-teal-400 text-right">
+              {formatCurrency(laborCosts.totalLaborCost)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+EstimateSectionPrice.propTypes = {
+  section: PropTypes.object,
+};
+
+export default EstimateSectionPrice;

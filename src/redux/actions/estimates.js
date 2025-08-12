@@ -581,11 +581,16 @@ export const addSection = (estimateId, taskId, sectionData) => {
       const maxOrder = currentSections.reduce((max, section) => Math.max(max, section.section_order || 0), 0);
       const newSectionOrder = maxOrder + 1;
 
+      // Extract boxMaterial from the section data
+      const { boxMaterial, faceMaterial, ...restOfSectionData } = sectionData;
+
       // Create the new section
       const { data: newSection, error } = await supabase
         .from('estimate_sections')
         .insert([{
-          section_data: sectionData,
+          section_data: restOfSectionData,
+          box_mat: boxMaterial !== undefined ? +boxMaterial : null,
+          face_mat: faceMaterial !== undefined ? +faceMaterial : null,
           est_task_id: taskId,
           section_order: newSectionOrder
         }])
@@ -598,15 +603,18 @@ export const addSection = (estimateId, taskId, sectionData) => {
       const sectionWithFormattedData = {
         ...newSection,
         section_data: newSection.section_data || {},
-        cabinets: []
+        cabinets: [],
+        lengths: [],
+        accessories: [],
+        other: []
       };
 
-      // Update just the current task with the new section
-      const updatedTask = {
-        ...currentTask,
-        sections: [...currentSections, sectionWithFormattedData]
-          .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
-      };
+      // // Update just the current task with the new section
+      // const updatedTask = {
+      //   ...currentTask,
+      //   sections: [...currentSections, sectionWithFormattedData]
+      //     .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
+      // };
 
       dispatch({
         type: Actions.estimates.ADD_SECTION_SUCCESS,
@@ -637,15 +645,26 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       const { currentEstimate } = getState().estimates;
       const currentTask = currentEstimate?.tasks?.find(task => task.est_task_id === taskId);
       const currentSections = currentTask?.sections || [];
+      
+      // Extract boxMaterial and faceMaterial from updates
+      const { boxMaterial, faceMaterial, ...sectionData } = updates;
+      
+      // Prepare the update payload for Supabase
+      const updatePayload = {
+        // Set box_mat and face_mat separately if provided
+        ...(boxMaterial !== undefined && { box_mat: +boxMaterial }),
+        ...(faceMaterial !== undefined && { face_mat: +faceMaterial }),
+        
+        // Merge the rest into section_data
+        section_data: {
+          ...currentSections.find(s => s.est_section_id === sectionId)?.section_data,
+          ...sectionData
+        }
+      };
 
       const { data: updatedSection, error } = await supabase
         .from('estimate_sections')
-        .update({ 
-          section_data: {
-            ...currentSections.find(s => s.est_section_id === sectionId)?.section_data,
-            ...updates
-          }
-        })
+        .update(updatePayload)
         .eq('est_section_id', sectionId)
         .select()
         .single();
@@ -653,19 +672,19 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       if (error) throw error;
 
       // Update just the current task with the updated section
-      const updatedTask = {
-        ...currentTask,
-        sections: currentSections.map(section =>
-          section.est_section_id === sectionId ? updatedSection : section
-        ).sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
-      };
+      // const updatedTask = {
+      //   ...currentTask,
+      //   sections: currentSections.map(section =>
+      //     section.est_section_id === sectionId ? updatedSection : section
+      //   ).sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
+      // };
 
       dispatch({
         type: Actions.estimates.UPDATE_SECTION_METADATA_SUCCESS,
         payload: {
           taskId,
           sectionId,
-          updates: updatedSection.section_data
+          updates: updatedSection
         }
       });
 

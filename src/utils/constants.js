@@ -18,27 +18,154 @@ export const PATHS = {
 export const ESTIMATE_STATUS = {
   DRAFT: "draft",
   FINALIZED: "finalized",
-}
+};
 
 export const SECTION_TYPES = {
-  CABINETS: {type: "cabinets", title: "Cabinets"},
-  LENGTHS: {type: "lengths", title: "Lengths"},
-  ACCESSORIES: {type: "accessories", title: "Accessories"},
-  OTHER: {type: "other", title: "Other"},
+  CABINETS: { type: "cabinets", title: "Cabinets" },
+  LENGTHS: { type: "lengths", title: "Lengths" },
+  ACCESSORIES: { type: "accessories", title: "Accessories" },
+  OTHER: { type: "other", title: "Other" },
 };
 
 export const ITEM_FORM_WIDTHS = {
   QUANTITY: "36px",
   DEFAULT: "1fr",
+  THREE_FOURTHS: ".75fr",
   ACTIONS: "72px",
 };
 
 export const FACE_TYPES = [
   { value: "door", label: "Door", color: "#3B82F6" },
   { value: "pair_door", label: "Pair Door", color: "#8B5CF6" },
-  { value: "drawer", label: "Drawer", color: "#10B981" },
+  { value: "drawer_front", label: "Drawer Front", color: "#10B981" },
   { value: "false_front", label: "False Front", color: "#f54d0b" },
   { value: "panel", label: "Panel", color: "#6B7280" },
   { value: "open", label: "Open", color: "#F59E0B" },
   { value: "container", label: "Container", color: "#E5E7EB" },
 ];
+
+export const CAN_HAVE_ROLL_OUTS = ["door", "pair_door", "drawer_front", "open"];
+
+export const DRAWER_BOX_HEIGHTS = [
+  2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.125, 11.125, 12.125,
+  13.125, 14.125, 15.125,
+];
+
+export const CABINET_ANCHORS = {
+  Base: [
+    {
+      width: 18,
+      height: 30.5,
+      depth: 24,
+      shopHours: 0.4,
+      finShopHours: 0.65,
+      installHours: 0.5,
+      finishHours: 1.0,
+    },
+    {
+      width: 27,
+      height: 30.5,
+      depth: 24,
+      shopHours: 0.5,
+      finShopHours: 0.7,
+      installHours: 0.55,
+      finishHours: 1.2,
+    },
+    {
+      width: 36,
+      height: 30.5,
+      depth: 24,
+      shopHours: 0.6,
+      finShopHours: 0.75,
+      installHours: 0.6,
+      finishHours: 1.4,
+    },
+  ],
+  Upper: [
+    {
+      width: 18,
+      height: 48,
+      depth: 12,
+      shopHours: 0.3,
+      finShopHours: 0.55,
+      installHours: 0.25,
+      finishHours: 1.0,
+    },
+    {
+      width: 27,
+      height: 48,
+      depth: 12,
+      shopHours: 0.35,
+      finShopHours: 0.6,
+      installHours: 0.3,
+      finishHours: 1.2,
+    },
+    {
+      width: 36,
+      height: 48,
+      depth: 12,
+      shopHours: 0.4,
+      finShopHours: 0.65,
+      installHours: 0.4,
+      finishHours: 1.4,
+    },
+  ],
+  Tall: [
+    {
+      width: 18,
+      height: 96,
+      depth: 24,
+      shopHours: 0.5,
+      finShopHours: 1.0,
+      installHours: 0.6,
+      finishHours: 1.2,
+    },
+    {
+      width: 27,
+      height: 96,
+      depth: 24,
+      shopHours: 0.55,
+      finShopHours: 1.1,
+      installHours: 0.7,
+      finishHours: 1.4,
+    },
+    {
+      width: 36,
+      height: 96,
+      depth: 24,
+      shopHours: 0.6,
+      finShopHours: 1.2,
+      installHours: 0.8,
+      finishHours: 1.6,
+    },
+  ],
+  Bookcase: [
+    {
+      width: 18,
+      height: 96,
+      depth: 12,
+      shopHours: 1.5,
+      finShopHours: 1.5,
+      installHours: 0.9,
+      finishHours: 1.8,
+    },
+    {
+      width: 27,
+      height: 96,
+      depth: 12,
+      shopHours: 1.65,
+      finShopHours: 1.65,
+      installHours: 1.05,
+      finishHours: 2.1,
+    },
+    {
+      width: 36,
+      height: 96,
+      depth: 12,
+      shopHours: 1.8,
+      finShopHours: 1.8,
+      installHours: 1.2,
+      finishHours: 2.4,
+    },
+  ],
+};

@@ -2,7 +2,7 @@ import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { updateSectionItems } from "../../redux/actions/estimates";
@@ -13,24 +13,18 @@ import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
 import EstimateOtherManager from "./EstimateOtherManager.jsx";
 
-const EstimateSectionManager = ({ taskId, sectionId }) => {
+const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   const dispatch = useDispatch();
-  const currentEstimate = useSelector(
-    (state) => state.estimates.currentEstimate
-  );
 
-  const currentSection = currentEstimate?.tasks
-    ?.find((t) => t.est_task_id === taskId)
-    ?.sections?.find((s) => s.est_section_id === sectionId);
-
-  const [openSectionType, setOpenSectionType] = useState(null);
+  // No longer need to look up the section since it's passed as a prop
+  // Keep taskId and sectionId for dispatching actions
 
   // Initialize section data from current section
   const [sectionData, setSectionData] = useState({
-    cabinets: currentSection?.cabinets || [],
-    lengths: currentSection?.lengths || [],
-    accessories: currentSection?.accessories || [],
-    other: currentSection?.other || [],
+    cabinets: section?.cabinets || [],
+    lengths: section?.lengths || [],
+    accessories: section?.accessories || [],
+    other: section?.other || [],
   });
 
   // Create a mapping of section types to their table names
@@ -43,26 +37,28 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
 
   // Helper function to check if there are unsaved changes by comparing with Redux state
   const hasUnsavedChanges = (type, updatedItems) => {
-    const reduxItems = currentSection?.[type] || [];
+    const reduxItems = section?.[type] || [];
     return !isEqual(reduxItems, updatedItems);
   };
 
-  // Update local state when currentSection changes
+  // Update local state when section changes
   useEffect(() => {
-    if (currentSection) {
+    if (section) {
       setSectionData({
-        cabinets: currentSection.cabinets || [],
-        lengths: currentSection.lengths || [],
-        accessories: currentSection.accessories || [],
-        other: currentSection.other || [],
+        cabinets: section.cabinets || [],
+        lengths: section.lengths || [],
+        accessories: section.accessories || [],
+        other: section.other || [],
       });
     }
-  }, [currentSection]);
+  }, [section]);
 
   // Close all accordions when taskId changes
   useEffect(() => {
     setOpenSectionType(null);
   }, [taskId, sectionId]);
+
+  const [openSectionType, setOpenSectionType] = useState(null);
 
   const handleToggleSection = (sectionType) => {
     setOpenSectionType(openSectionType === sectionType ? null : sectionType);
@@ -94,7 +90,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       // On error, revert to the last known good state from Redux
       setSectionData((prev) => ({
         ...prev,
-        [type]: currentSection?.[type] || [],
+        [type]: section?.[type] || [],
       }));
     }
   }, 1000); // 1 second debounce delay
@@ -121,7 +117,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
       console.error("Error saving section data:", error);
       setSectionData((prev) => ({
         ...prev,
-        [type]: currentSection?.[type] || [],
+        [type]: section?.[type] || [],
       }));
     }
   };
@@ -182,7 +178,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-2">
+    <div className="flex-1 max-w-3xl mx-auto space-y-2">
       {sections.map(({ type, title, component }) => (
         <div
           key={type}
@@ -217,6 +213,7 @@ const EstimateSectionManager = ({ taskId, sectionId }) => {
 EstimateSectionManager.propTypes = {
   taskId: PropTypes.number.isRequired,
   sectionId: PropTypes.number.isRequired,
+  section: PropTypes.object.isRequired,
 };
 
 export default EstimateSectionManager;

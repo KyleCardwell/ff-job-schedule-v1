@@ -4,12 +4,17 @@ import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
-import { FACE_TYPES } from "../../utils/constants";
+import {
+  CAN_HAVE_ROLL_OUTS,
+  FACE_TYPES,
+  DRAWER_BOX_HEIGHTS,
+} from "../../utils/constants";
 import { truncateTrailingZeros } from "../../utils/helpers";
 
 const CabinetFaceDivider = ({
   cabinetWidth,
   cabinetHeight,
+  cabinetDepth,
   faceConfig = null,
   onSave,
   disabled = false,
@@ -24,7 +29,11 @@ const CabinetFaceDivider = ({
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
   // State for temporary input values
-  const [inputValues, setInputValues] = useState({ width: "", height: "" });
+  const [inputValues, setInputValues] = useState({
+    width: "",
+    height: "",
+    rollOutQty: "",
+  });
 
   // Fixed display dimensions
   const fixedDisplayWidth = 300; // Fixed width for the SVG container
@@ -65,17 +74,17 @@ const CabinetFaceDivider = ({
       // Create a new config object regardless of whether dimensions have changed
       // to ensure React detects the change and re-renders
       const updatedConfig = cloneDeep(config);
-      
+
       // Update root dimensions first so updateChildrenFromParent uses new values
       updatedConfig.width = cabinetWidth;
       updatedConfig.height = cabinetHeight;
-      
+
       // Recursively update all children's dimensions based on new parent dimensions
       updateChildrenFromParent(updatedConfig);
-      
+
       // Force recalculation of layout with new dimensions
       calculateLayout(updatedConfig);
-      
+
       // Update state with the new configuration
       setConfig(updatedConfig);
     }
@@ -101,7 +110,6 @@ const CabinetFaceDivider = ({
 
         // Close if clicking outside popup but not on SVG (SVG has its own handler)
         if (!popup && !svg) {
-          
           setShowTypeSelector(false);
           setSelectedNode(null);
         }
@@ -145,7 +153,7 @@ const CabinetFaceDivider = ({
       }
     }
   }, []); // Empty dependency array - only run once on mount
-  
+
   // Generate unique ID for new nodes
   const generateId = (parentId, index) => {
     if (!parentId || parentId === "root") {
@@ -227,7 +235,7 @@ const CabinetFaceDivider = ({
         event.stopPropagation();
         handleNodeClick(event, node);
       });
-      
+
     // Add center vertical dashed line for pair_door faces
     if (node.type === "pair_door") {
       const centerX = x + width / 2;
@@ -271,12 +279,12 @@ const CabinetFaceDivider = ({
         .attr("y", y + height / 2 + 15)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
-        .attr("fill", "#64748B")
+        .attr("fill", "#ffffff")
         .attr("font-size", "10px")
         .text(
           `${truncateTrailingZeros(node.width)}" × ${truncateTrailingZeros(
             node.height
-          )}"`
+          )} ${node.rollOutQty > 0 ? ` - ${node.rollOutQty} RO` : ""}`
         )
         .style("pointer-events", "none");
     }
@@ -416,7 +424,7 @@ const CabinetFaceDivider = ({
       return sum + (child[splitDimension] || 0);
     }, 0);
 
-    // If no children have dimensions yet or totals don't match parent dimension, 
+    // If no children have dimensions yet or totals don't match parent dimension,
     // distribute appropriately
     if (totalChildDimension === 0) {
       // No dimensions yet, divide equally
@@ -443,14 +451,86 @@ const CabinetFaceDivider = ({
     return Math.round(value * 16) / 16;
   };
 
-  // Calculate and update face type summary
-  // Removed face summary calculation logic
+  // Calculate roll-out dimensions based on face dimensions and cabinet depth
+  const calculateRollOutDimensions = (faceWidth, cabinetDepth, faceHeight, type) => {
+    let height = DRAWER_BOX_HEIGHTS[0];
+    if (type === "rollOut") {
+      height = 4.25;
+    } else {
+      const maxHeight = Math.max(faceHeight - 1, minValue);
+      for (let i = DRAWER_BOX_HEIGHTS.length - 1; i >= 0; i--) {
+        if (DRAWER_BOX_HEIGHTS[i] <= maxHeight) {
+          height = DRAWER_BOX_HEIGHTS[i];
+          break;
+        }
+      }
+    }
+    // Width is face width minus 2 inches
+    const width = Math.max(faceWidth - 2, minValue);
 
-  // Update face summary after any config changes
-  // Removed face summary update logic
+    // Depth should be a multiple of 3 inches and maximum cabinet depth - 1 inch
+    const maxDepth = Math.max(cabinetDepth - 1, minValue);
+    // Find the largest multiple of 3 that fits within maxDepth
+    const depth = Math.floor(maxDepth / 3) * 3;
 
-  // Update face summary after layout changes
-  // Removed face summary update logic
+    return { width, height, depth };
+  };
+
+  // Handle roll-out quantity change
+  const handleRollOutQtyChange = (e) => {
+    const qty = parseInt(e.target.value) || 0;
+
+    // Update input value state
+    setInputValues({ ...inputValues, rollOutQty: e.target.value });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // Update roll-out quantity
+      node.rollOutQty = qty;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        rollOutQty: qty,
+      });
+    }
+  };
+
+  // Check if face type supports roll-outs
+  const supportsRollOuts = (nodeType) => {
+    return CAN_HAVE_ROLL_OUTS.includes(nodeType);
+  };
+
+  // Handle type change
+  const handleTypeChange = (newType) => {
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+    if (node && newType !== "container") {
+      node.type = newType;
+      // Remove children if changing from container to face type
+      if (node.children) {
+        node.children = null;
+      }
+
+      // Reset roll-out quantity if changing to a type that doesn't support roll-outs
+      if (!CAN_HAVE_ROLL_OUTS.includes(newType)) {
+        node.rollOutQty = 0;
+        if (inputValues.rollOutQty !== "") {
+          setInputValues({ ...inputValues, rollOutQty: "" });
+        }
+      }
+    }
+
+    setConfig(newConfig);
+    setShowTypeSelector(false);
+    setSelectedNode(null);
+  };
 
   // Calculate face summary whenever config changes
   useEffect(() => {
@@ -460,19 +540,53 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
-        onSave(config);
+        // Create a copy of the config for saving
+        const configForSave = cloneDeep(config);
+
+        // Calculate rollout dimensions for all nodes with rollouts
+        const processNode = (node) => {
+          // Calculate rollout dimensions if needed
+          if (node.rollOutQty > 0) {
+            node.rollOutDimensions = calculateRollOutDimensions(
+              node.width,
+              cabinetDepth,
+              node.height,
+              "rollOut"
+            );
+          }
+
+          if (node.type === "drawer_front") {
+            node.drawerBoxDimensions = calculateRollOutDimensions(
+              node.width,
+              cabinetDepth,
+              node.height,
+              node.type
+            );
+          }
+
+          // Process children recursively
+          if (node.children) {
+            node.children.forEach(processNode);
+          }
+        };
+
+        // Process the entire tree
+        processNode(configForSave);
+
+        // Save the config with calculated dimensions
+        onSave(configForSave);
         previousConfigRef.current = configString;
       }
     }
-  }, [config, onSave]);
+  }, [config, onSave, cabinetDepth]);
 
   const handleDimensionChange = (dimension, newValueStr) => {
     // Convert string to number and handle empty input
-    const newValue = newValueStr === '' ? 0 : parseFloat(newValueStr);
-    
+    const newValue = newValueStr === "" ? 0 : parseFloat(newValueStr);
+
     // Allow the input field to show what user is typing, only validate on actual changes
     if (!selectedNode) return;
-    
+
     // Skip further processing if value is invalid, but don't return early on empty/0
     // to allow users to clear the field and type new values
     if (isNaN(newValue)) return;
@@ -492,7 +606,7 @@ const CabinetFaceDivider = ({
       // No siblings, just update the dimension directly
       // But constrain to cabinet dimensions
       const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
-      
+
       // Only enforce minimum value when user has completed input (non-zero value)
       if (newValue > 0) {
         node[dimension] = Math.max(minValue, Math.min(newValue, maxDimension));
@@ -749,10 +863,10 @@ const CabinetFaceDivider = ({
   // Check if a dimension should be disabled (only for direct children of root)
   const isDimensionDisabled = (dimension, node) => {
     if (!node || node.id === "root") return false;
-    
+
     // Find the parent node
     const parent = findParent(config, node.id);
-    
+
     // Only disable dimensions for direct children of the root
     if (parent && parent.id === "root") {
       // For vertical splits, width is constrained for children
@@ -764,7 +878,7 @@ const CabinetFaceDivider = ({
         return true;
       }
     }
-    
+
     return false;
   };
 
@@ -777,33 +891,38 @@ const CabinetFaceDivider = ({
       y: event.clientY - svgRect.top,
     });
     setSelectedNode(node);
-    
+
     // Initialize input values with current node dimensions
     setInputValues({
       width: node.width > 0 ? truncateTrailingZeros(node.width) : node.width,
-      height: node.height > 0 ? truncateTrailingZeros(node.height) : node.height
+      height:
+        node.height > 0 ? truncateTrailingZeros(node.height) : node.height,
+      rollOutQty:
+        node.rollOutQty > 0
+          ? truncateTrailingZeros(node.rollOutQty)
+          : node.rollOutQty || "",
     });
-    
+
     setShowTypeSelector(true);
   };
 
-  const handleTypeChange = (newType) => {
-    if (!selectedNode) return;
+  // const handleTypeChange = (newType) => {
+  //   if (!selectedNode) return;
 
-    const newConfig = cloneDeep(config);
-    const node = findNode(newConfig, selectedNode.id);
-    if (node && newType !== "container") {
-      node.type = newType;
-      // Remove children if changing from container to face type
-      if (node.children) {
-        node.children = null;
-      }
-    }
+  //   const newConfig = cloneDeep(config);
+  //   const node = findNode(newConfig, selectedNode.id);
+  //   if (node && newType !== "container") {
+  //     node.type = newType;
+  //     // Remove children if changing from container to face type
+  //     if (node.children) {
+  //       node.children = null;
+  //     }
+  //   }
 
-    setConfig(newConfig);
-    setShowTypeSelector(false);
-    setSelectedNode(null);
-  };
+  //   setConfig(newConfig);
+  //   setShowTypeSelector(false);
+  //   setSelectedNode(null);
+  // };
 
   const handleSplitHorizontal = () => {
     if (!selectedNode) return;
@@ -825,6 +944,8 @@ const CabinetFaceDivider = ({
       ];
       node.splitDirection = "horizontal";
       node.type = "container";
+      node.rollOutQty = "";
+      node.drawerBoxDimensions = null;
     }
 
     setConfig(newConfig);
@@ -997,7 +1118,7 @@ const CabinetFaceDivider = ({
 
     setInputValues((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -1016,7 +1137,7 @@ const CabinetFaceDivider = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       commitValue(e.target.name);
     }
   };
@@ -1120,6 +1241,27 @@ const CabinetFaceDivider = ({
                       />
                     </div>
                   </div>
+
+                  {/* Roll-Out Quantity Input */}
+                  {supportsRollOuts(selectedNode.type) && (
+                    <div className="mt-2">
+                      <div className="flex items-center space-x-1">
+                        <label className="text-xs text-slate-600">
+                          Roll-Outs:
+                        </label>
+                        <input
+                          type="number"
+                          name="rollOutQty"
+                          value={inputValues.rollOutQty}
+                          onChange={handleRollOutQtyChange}
+                          className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          step="1"
+                          min="0"
+                          max="10"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1194,6 +1336,7 @@ const CabinetFaceDivider = ({
 CabinetFaceDivider.propTypes = {
   cabinetWidth: PropTypes.number.isRequired,
   cabinetHeight: PropTypes.number.isRequired,
+  cabinetDepth: PropTypes.number.isRequired,
   faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
