@@ -6,6 +6,7 @@ import { FACE_TYPES } from "../../utils/constants";
 import {
   calculate5PieceHardwoodFacePrice,
   calculateBoxPrice,
+  calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
   roundToHundredth,
 } from "../../utils/estimateHelpers";
@@ -134,6 +135,13 @@ const EstimateSectionPrice = ({ section }) => {
               facePriceByType = result.priceByType;
             } else if (section.section_data.doorStyle === "5_piece_hardwood") {
               const result = calculate5PieceHardwoodFacePrice(
+                cabinet,
+                faceMaterials || []
+              )(section) || { totalPrice: 0, priceByType: {} };
+              facePrice = result.totalPrice;
+              facePriceByType = result.priceByType;
+            } else if (section.section_data.doorStyle === "slab_hardwood") {
+              const result = calculateSlabHardwoodFacePrice(
                 cabinet,
                 faceMaterials || []
               )(section) || { totalPrice: 0, priceByType: {} };

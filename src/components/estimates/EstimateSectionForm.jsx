@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -20,13 +20,12 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const STYLE_OPTIONS = estimateData?.styles || [];
   const FINISH_OPTIONS = estimateData?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
-  const DRAWER_FRONT_STYLE_OPTIONS =
-    estimateData?.drawerFrontStyles?.options || [];
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
   const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
   const DRAWER_SLIDE_OPTIONS = estimateData?.drawerSlideTypes || [];
 
   const [mustSelectFinish, setMustSelectFinish] = useState(false);
+  const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
 
   const [formData, setFormData] = useState({
     style: sectionData.style || "",
@@ -58,8 +57,15 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: +value,
+      [name]: value,
     });
+
+    if (name === "faceMaterial") {
+      const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
+        (mat) => mat.id === +value
+      );
+      setSelectedFaceMaterial(selectedMaterial);
+    }
 
     // Clear error when field is updated
     if (errors[name]) {
@@ -88,7 +94,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     });
 
     // Clear error when field is updated
-    if (errors.finish) {
+    if (errors.finish && updatedFinish.length > 0) {
       setErrors({
         ...errors,
         finish: "",
@@ -167,16 +173,60 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   useEffect(() => {
     if (formData.faceMaterial) {
       const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
-        (mat) => mat.id === formData.faceMaterial
+        (mat) => mat.id === +formData.faceMaterial
       );
+      setSelectedFaceMaterial(selectedMaterial);
+
+      // Handle finish requirements
       if (!selectedMaterial?.needs_finish) {
         clearFinishes();
         setMustSelectFinish(false);
       } else {
         setMustSelectFinish(true);
       }
+    } else {
+      setSelectedFaceMaterial(null);
+      setMustSelectFinish(false);
     }
   }, [formData.faceMaterial, FACE_MATERIAL_OPTIONS]);
+
+  const filteredDoorStyleOptions = useMemo(() => {
+    if (!selectedFaceMaterial) return DOOR_STYLE_OPTIONS;
+
+    return DOOR_STYLE_OPTIONS.filter((option) => {
+      // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
+      if (selectedFaceMaterial["5_piece"] === true) {
+        if (option.id === "5_piece_hardwood" || option.id === "slab_hardwood") {
+          return true;
+        }
+      }
+
+      // If material supports slab doors, include slab_sheet
+      if (selectedFaceMaterial.slab_door === true) {
+        if (option.id === "slab_sheet") {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }, [selectedFaceMaterial, DOOR_STYLE_OPTIONS]);
+
+  useEffect(() => {
+    // If current door style is not in filtered options, reset it
+    if (formData.doorStyle && filteredDoorStyleOptions.length > 0) {
+      const isValidOption = filteredDoorStyleOptions.some(
+        (option) => option.id === formData.doorStyle
+      );
+
+      if (!isValidOption) {
+        setFormData({
+          ...formData,
+          doorStyle: "",
+        });
+      }
+    }
+  }, [filteredDoorStyleOptions, formData.doorStyle]);
 
   return (
     <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
@@ -322,7 +372,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
               >
                 <option value="">Select door style</option>
-                {DOOR_STYLE_OPTIONS.map((option) => (
+                {filteredDoorStyleOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {`${option.name}`}
                   </option>
@@ -415,7 +465,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">Select drawer front style</option>
-                {DRAWER_FRONT_STYLE_OPTIONS.map((option) => (
+                {filteredDoorStyleOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.name}
                   </option>
