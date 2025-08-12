@@ -133,165 +133,94 @@ export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
   );
 };
 
-// Helper function to calculate face material price
-export const calculateSlabSheetFacePrice =
-  (cabinet, faceMaterials) => (section) => {
-    if (!cabinet.face_config?.faceSummary || !section.face_mat) {
-      return { totalPrice: 0, priceByType: {} };
-    }
+// Helper function to calculate slab sheet face price for a specific face type
+export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
+  if (!faceData || !selectedMaterial) {
+    return 0;
+  }
 
-    // Find the selected face material
-    const selectedMaterial = faceMaterials.find(
-      (mat) => mat.id === section.face_mat
-    );
-    if (!selectedMaterial) return { totalPrice: 0, priceByType: {} };
+  // Calculate price based on total area and material price
+  const pricePerSquareInch = selectedMaterial.sq_in_price || 
+    (selectedMaterial.sheet_price / selectedMaterial.area);
 
-    // Calculate price based on total area of all faces and material price
-    const pricePerSquareInch =
-      selectedMaterial.sheet_price / selectedMaterial.area;
+  let totalPrice = 0;
 
-    let totalPrice = 0;
-    const priceByType = {};
+  // Calculate price for each individual face
+  faceData.faces?.forEach((face) => {
+    const width = parseFloat(face.width);
+    const height = parseFloat(face.height);
+    const sqInches = width * height;
+    const facePrice = roundToHundredth(pricePerSquareInch * sqInches);
+    totalPrice += facePrice;
+  });
 
-    // Initialize priceByType for all face types
-    Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
-      priceByType[faceType] = 0;
-    });
+  return totalPrice;
+};
 
-    // Calculate area and price for each face type
-    Object.entries(cabinet.face_config.faceSummary).forEach(
-      ([faceType, faceData]) => {
-        // Skip open or container face types - only these should be excluded
-        if (!["open", "container"].includes(faceType)) {
-          const faceArea = faceData.totalArea || 0;
-          const facePrice = roundToHundredth(pricePerSquareInch * faceArea);
+// Helper function to calculate 5-piece hardwood face price for a specific face type
+export const calculate5PieceHardwoodFacePrice = (faceData, selectedMaterial) => {
+  if (!faceData || !selectedMaterial) {
+    return 0;
+  }
 
-          totalPrice += facePrice;
-          priceByType[faceType] = facePrice;
-        }
-      }
-    );
+  // For 5-piece hardwood doors, we use price per board foot
+  const pricePerBoardFoot = selectedMaterial.bd_ft_price;
+  let totalPrice = 0;
 
-    return { totalPrice, priceByType };
-  };
+  // Calculate board feet and price for each individual face
+  faceData.faces?.forEach((face) => {
+    const width = parseFloat(face.width);
+    const height = parseFloat(face.height);
 
-export const calculate5PieceHardwoodFacePrice =
-  (cabinet, faceMaterials) => (section) => {
-    if (!cabinet.face_config?.faceSummary || !section.face_mat) {
-      return { totalPrice: 0, priceByType: {} };
-    }
-
-    // Find the selected face material
-    const selectedMaterial = faceMaterials.find(
-      (mat) => mat.id === section.face_mat
-    );
-    if (!selectedMaterial) return { totalPrice: 0, priceByType: {} };
-
-    // For 5-piece hardwood doors, we use price per board foot
-    // The price stored in the material is assumed to be per board foot for hardwood
-    const pricePerBoardFoot = selectedMaterial.bd_ft_price;
-
-    let totalPrice = 0;
-    const priceByType = {};
-
-    // Initialize priceByType for all face types
-    Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
-      priceByType[faceType] = 0;
-    });
-
-    // Calculate price for each face type
-    Object.entries(cabinet.face_config.faceSummary).forEach(
-      ([faceType, faceData]) => {
-        // Skip open or container face types - only these should be excluded
-        if (!["open", "container"].includes(faceType)) {
-          let typeTotalPrice = 0;
-
-          // Calculate board feet and price for each individual face
-          faceData.faces?.forEach((face) => {
-            const width = parseFloat(face.width);
-            const height = parseFloat(face.height);
-
-            // Calculate board feet for this specific door/drawer/face
-            const boardFeet = parseFloat(
-              calculateBoardFeetFor5PieceDoor(
-                width,
-                height,
-                selectedMaterial.thickness,
-                3, // Default stile width of 3"
-                3, // Default rail width of 3"
-                0.5 // Default panel thickness of 1/2"
-              )
-            );
-
-            // Calculate price for this face
-            const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
-            typeTotalPrice += facePrice;
-            totalPrice += facePrice;
-          });
-
-          priceByType[faceType] = typeTotalPrice;
-        }
-      }
+    // Calculate board feet for this specific door/drawer/face
+    const boardFeet = parseFloat(
+      calculateBoardFeetFor5PieceDoor(
+        width,
+        height,
+        selectedMaterial.thickness || 0.75,
+        3, // Default stile width of 3"
+        3, // Default rail width of 3"
+        0.5 // Default panel thickness of 1/2"
+      )
     );
 
-    return { totalPrice, priceByType };
-  };
+    // Calculate price for this face
+    const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
+    console.log(face.id, facePrice)
+    totalPrice += facePrice;
+  });
 
-export const calculateSlabHardwoodFacePrice =
-  (cabinet, faceMaterials) => (section) => {
-    if (!cabinet.face_config?.faceSummary || !section.face_mat) {
-      return { totalPrice: 0, priceByType: {} };
-    }
+  return totalPrice;
+};
 
-    // Find the selected face material
-    const selectedMaterial = faceMaterials.find(
-      (mat) => mat.id === section.face_mat
-    );
-    if (!selectedMaterial) return { totalPrice: 0, priceByType: {} };
+// Helper function to calculate slab hardwood face price for a specific face type
+export const calculateSlabHardwoodFacePrice = (faceData, selectedMaterial) => {
+  if (!faceData || !selectedMaterial) {
+    return 0;
+  }
 
-    // For 5-piece hardwood doors, we use price per board foot
-    // The price stored in the material is assumed to be per board foot for hardwood
-    const pricePerBoardFoot = selectedMaterial.bd_ft_price;
+  // For slab hardwood, we use price per board foot
+  const pricePerBoardFoot = selectedMaterial.bd_ft_price;
+  let totalPrice = 0;
 
-    let totalPrice = 0;
-    const priceByType = {};
+  // Calculate board feet and price for each individual face
+  faceData.faces?.forEach((face) => {
+    const width = parseFloat(face.width);
+    const height = parseFloat(face.height);
 
-    // Initialize priceByType for all face types
-    Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
-      priceByType[faceType] = 0;
-    });
-
-    // Calculate price for each face type
-    Object.entries(cabinet.face_config.faceSummary).forEach(
-      ([faceType, faceData]) => {
-        // Skip open or container face types - only these should be excluded
-        if (!["open", "container"].includes(faceType)) {
-          let typeTotalPrice = 0;
-
-          // Calculate board feet and price for each individual face
-          faceData.faces?.forEach((face) => {
-            const width = parseFloat(face.width);
-            const height = parseFloat(face.height);
-
-            // Calculate board feet for this specific door/drawer/face
-            const boardFeet = parseFloat(
-              calculateBoardFeetForSlabHardwoodDoor(
-                width,
-                height,
-                selectedMaterial.thickness
-              )
-            );
-
-            // Calculate price for this face
-            const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
-            typeTotalPrice += facePrice;
-            totalPrice += facePrice;
-          });
-
-          priceByType[faceType] = typeTotalPrice;
-        }
-      }
+    // Calculate board feet for this specific door/drawer/face
+    const boardFeet = parseFloat(
+      calculateBoardFeetForSlabHardwoodDoor(
+        width,
+        height,
+        selectedMaterial.thickness || 0.75
+      )
     );
 
-    return { totalPrice, priceByType };
-  };
+    // Calculate price for this face
+    const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
+    totalPrice += facePrice;
+  });
+
+  return totalPrice;
+};
