@@ -46,6 +46,9 @@ export const FACE_TYPES = [
 
 export const CAN_HAVE_ROLL_OUTS = ["door", "pair_door", "drawer_front", "open"];
 
+export const DRAWER_BOX_PRICE = 50;
+export const ROLL_OUT_PRICE = 60;
+
 export const DRAWER_BOX_HEIGHTS = [
   2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.125, 11.125, 12.125,
   13.125, 14.125, 15.125,
