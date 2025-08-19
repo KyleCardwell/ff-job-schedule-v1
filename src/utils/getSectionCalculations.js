@@ -8,13 +8,225 @@ import {
   calculateSlabSheetFacePrice,
 } from "./estimateHelpers";
 
+const calculateSingleCabinet = (
+  cabinet,
+  section,
+  boxMaterials,
+  faceMaterials,
+  finishMultiplier
+) => {
+  if (!cabinet) return null;
+
+  const quantity = Number(cabinet.quantity) || 1;
+  let cabinetSubtotal = {
+    price: 0,
+    boxPrice: 0,
+    facePrice: 0,
+    shopHours: 0,
+    finishHours: 0,
+    installHours: 0,
+    faceCounts: {},
+    facePrices: {},
+    drawerBoxCount: 0,
+    drawerBoxTotal: 0,
+    rollOutCount: 0,
+    rollOutTotal: 0,
+  };
+
+  FACE_TYPES.forEach((type) => {
+    cabinetSubtotal.faceCounts[type.value] = 0;
+    cabinetSubtotal.facePrices[type.value] = 0;
+  });
+
+  if (cabinet.face_config) {
+    // Box Price & Hours
+    const selectedBoxMaterial = cabinet.finished_interior
+      ? faceMaterials.find((mat) => mat.id === section.face_mat)
+      : boxMaterials.find((mat) => mat.id === section.box_mat);
+    const boxPrice =
+      calculateBoxPrice(cabinet, selectedBoxMaterial)(section) || 0;
+    cabinetSubtotal.boxPrice = boxPrice * quantity;
+
+    if (cabinet.cabinetHours) {
+      cabinetSubtotal.shopHours +=
+        (cabinet.cabinetHours.shopHours || 0) * quantity;
+      if (cabinet.finished_interior && selectedBoxMaterial?.needs_finish) {
+        cabinetSubtotal.finishHours +=
+          (cabinet.cabinetHours.finishHours || 0) * quantity * finishMultiplier;
+      }
+      cabinetSubtotal.installHours +=
+        (cabinet.cabinetHours.installHours || 0) * quantity;
+    }
+
+    // Face Price & Hours
+    const selectedFaceMaterial = faceMaterials.find(
+      (mat) => mat.id === section.face_mat
+    );
+    if (selectedFaceMaterial && cabinet.face_config.faceSummary) {
+      Object.entries(cabinet.face_config.faceSummary).forEach(
+        ([faceType, faceData]) => {
+          if (["open", "container"].includes(faceType)) return;
+
+          const styleToUse =
+            faceType === "drawer_front" || faceType === "false_front"
+              ? section.section_data.drawerFrontStyle
+              : section.section_data.doorStyle;
+
+          let faceHours = {};
+          if (faceData.faces && Array.isArray(faceData.faces)) {
+            faceData.faces.forEach((face) => {
+              if (
+                styleToUse === "5_piece_hardwood" ||
+                styleToUse === "slab_hardwood"
+              ) {
+                faceHours = calculate5PieceDoorHours(
+                  face.width,
+                  face.height,
+                  selectedFaceMaterial.thickness
+                );
+              } else if (styleToUse === "slab_sheet") {
+                faceHours = calculateSlabDoorHours(face.width, face.height);
+              }
+              cabinetSubtotal.shopHours +=
+                (faceHours.shopHours || 0) * quantity;
+              cabinetSubtotal.installHours +=
+                (faceHours.installHours || 0) * quantity;
+              if (selectedFaceMaterial.needs_finish) {
+                cabinetSubtotal.finishHours +=
+                  (faceHours.finishHours || 0) * quantity * finishMultiplier;
+              }
+            });
+          }
+
+          let typeTotalPrice = 0;
+          if (styleToUse === "slab_sheet") {
+            typeTotalPrice = calculateSlabSheetFacePrice(
+              faceData,
+              selectedFaceMaterial
+            );
+          } else if (styleToUse === "5_piece_hardwood") {
+            typeTotalPrice = calculate5PieceHardwoodFacePrice(
+              faceData,
+              selectedFaceMaterial
+            );
+          } else if (styleToUse === "slab_hardwood") {
+            typeTotalPrice = calculateSlabHardwoodFacePrice(
+              faceData,
+              selectedFaceMaterial
+            );
+          }
+
+          cabinetSubtotal.facePrices[faceType] += typeTotalPrice * quantity;
+          cabinetSubtotal.facePrice += typeTotalPrice * quantity;
+          cabinetSubtotal.faceCounts[faceType] +=
+            (faceData.count || 0) * quantity;
+        }
+      );
+    }
+
+    // Drawer Box and Rollout Calculation
+    const countDrawerAndRollouts = (node) => {
+      if (!node) return;
+      if (node.type === "drawer_front" && node.drawerBoxDimensions) {
+        cabinetSubtotal.drawerBoxCount += quantity;
+        cabinetSubtotal.drawerBoxTotal += 50 * quantity; // DRAWER_BOX_PRICE
+      }
+      if (node.rollOutQty && node.rollOutQty > 0) {
+        const rollOutQty = parseInt(node.rollOutQty, 10);
+        cabinetSubtotal.rollOutCount += rollOutQty * quantity;
+        cabinetSubtotal.rollOutTotal += 60 * rollOutQty * quantity; // ROLL_OUT_PRICE
+      }
+      if (node.children && Array.isArray(node.children)) {
+        node.children.forEach(countDrawerAndRollouts);
+      }
+    };
+    countDrawerAndRollouts(cabinet.face_config);
+
+    cabinetSubtotal.price =
+      cabinetSubtotal.boxPrice + cabinetSubtotal.facePrice;
+  } else {
+    cabinetSubtotal.price = (Number(cabinet.price) || 0) * quantity;
+  }
+
+  return cabinetSubtotal;
+};
+
+const calculateCabinetTotals = (
+  section,
+  boxMaterials,
+  faceMaterials,
+  finishMultiplier
+) => {
+  const totals = {
+    price: 0,
+    boxPrice: 0,
+    boxCount: 0,
+    shopHours: 0,
+    finishHours: 0,
+    installHours: 0,
+    faceCounts: {},
+    facePrices: {},
+    drawerBoxCount: 0,
+    drawerBoxTotal: 0,
+    rollOutCount: 0,
+    rollOutTotal: 0,
+  };
+
+  FACE_TYPES.forEach((type) => {
+    totals.faceCounts[type.value] = 0;
+    totals.facePrices[type.value] = 0;
+  });
+
+  if (section.cabinets && Array.isArray(section.cabinets)) {
+    section.cabinets.forEach((cabinet) => {
+      const subtotal = calculateSingleCabinet(
+        cabinet,
+        section,
+        boxMaterials,
+        faceMaterials,
+        finishMultiplier
+      );
+      if (subtotal) {
+        const quantity = Number(cabinet.quantity) || 1;
+        totals.price += subtotal.price;
+        totals.boxPrice += subtotal.boxPrice;
+        totals.boxCount += quantity;
+        totals.shopHours += subtotal.shopHours;
+        totals.finishHours += subtotal.finishHours;
+        totals.installHours += subtotal.installHours;
+        totals.drawerBoxCount += subtotal.drawerBoxCount;
+        totals.drawerBoxTotal += subtotal.drawerBoxTotal;
+        totals.rollOutCount += subtotal.rollOutCount;
+        totals.rollOutTotal += subtotal.rollOutTotal;
+
+        Object.keys(subtotal.faceCounts).forEach((faceType) => {
+          totals.faceCounts[faceType] += subtotal.faceCounts[faceType];
+          totals.facePrices[faceType] += subtotal.facePrices[faceType];
+        });
+      }
+    });
+  }
+
+  return totals;
+};
+
+const calculateSimpleItemsTotal = (items) => {
+  if (!items || !Array.isArray(items)) return 0;
+  return items.reduce((total, item) => {
+    if (!item) return total;
+    const quantity = Number(item.quantity) || 1;
+    const price = Number(item.price) || 0;
+    return total + price * quantity;
+  }, 0);
+};
+
 export const getSectionCalculations = (
   section,
   boxMaterials,
   faceMaterials,
   finishTypes
 ) => {
-  if (!section)
+  if (!section) {
     return {
       totalPrice: 0,
       faceCounts: {},
@@ -29,218 +241,8 @@ export const getSectionCalculations = (
       rollOutCount: 0,
       rollOutTotal: 0,
     };
-
-  let sectionTotal = 0;
-  const faceCounts = {};
-  const facePrices = {}; // New object to track prices per face type
-  let boxTotal = 0; // Track total box prices
-  let boxCount = 0; // Track total box count
-  let shopHours = 0; // Track shop hours
-  let finishHours = 0; // Track finish hours
-  let installHours = 0; // Track install hours
-  let totalFinishHours = 0; // Accumulator for pre-adjusted finish hours
-
-  // Add new variables for drawer boxes and rollouts
-  let drawerBoxCount = 0;
-  let drawerBoxTotal = 0;
-  let rollOutCount = 0;
-  let rollOutTotal = 0;
-
-  // Fixed prices for drawer boxes and rollouts
-  const DRAWER_BOX_PRICE = 50;
-  const ROLL_OUT_PRICE = 60;
-
-  // Initialize faceCounts and facePrices with all face types at 0
-  FACE_TYPES.forEach((type) => {
-    faceCounts[type.value] = 0;
-    facePrices[type.value] = 0;
-  });
-
-  // Calculate cabinet prices and face counts
-  if (
-    section.cabinets &&
-    Array.isArray(section.cabinets) &&
-    section.cabinets.length > 0
-  ) {
-    section.cabinets.forEach((cabinet) => {
-      if (!cabinet) return;
-
-      const quantity = Number(cabinet.quantity) || 1;
-      let cabinetPrice = 0;
-
-      if (cabinet.face_config) {
-        // Calculate box material price
-        const selectedMaterial = cabinet.finished_interior
-          ? boxMaterials.find((mat) => mat.id === section.face_mat)
-          : boxMaterials.find((mat) => mat.id === section.box_mat);
-        const boxPrice =
-          calculateBoxPrice(cabinet, selectedMaterial)(section) || 0;
-        boxTotal += boxPrice * quantity; // Add to boxTotal with quantity
-        boxCount += quantity; // Add to boxCount with quantity
-
-        // Add cabinet hours if available
-        if (cabinet.cabinetHours) {
-          shopHours += (cabinet.cabinetHours.shopHours || 0) * quantity;
-          if (cabinet.finished_interior) {
-            // Check if the selected material needs finishing
-            const needsFinish = selectedMaterial?.needs_finish;
-
-            if (needsFinish) {
-              let addFinishHours = 1;
-
-              if (Array.isArray(section.section_data?.finish)) {
-                section.section_data.finish.forEach((finishId) => {
-                  const finishObj = finishTypes.find(
-                    (ft) => ft.id === finishId
-                  );
-                  if (finishObj?.adjust) {
-                    addFinishHours *= finishObj.adjust;
-                  }
-                });
-              }
-
-              finishHours +=
-                (cabinet.cabinetHours.finishHours || 0) *
-                quantity *
-                addFinishHours;
-            }
-          }
-          installHours += (cabinet.cabinetHours.installHours || 0) * quantity;
-        }
-
-        // Calculate face material price and hours using face summary and styles
-        let facePrice = 0;
-        let facePriceByType = {};
-
-        if (
-          section.section_data &&
-          section.face_mat &&
-          cabinet.face_config?.faceSummary
-        ) {
-          const selectedMaterial = faceMaterials.find(
-            (mat) => mat.id === section.face_mat
-          );
-
-          if (selectedMaterial) {
-            facePriceByType = {};
-            Object.keys(cabinet.face_config.faceSummary).forEach((faceType) => {
-              facePriceByType[faceType] = 0;
-            });
-
-            Object.entries(cabinet.face_config.faceSummary).forEach(
-              ([faceType, faceData]) => {
-                if (["open", "container"].includes(faceType)) return;
-
-                let styleToUse =
-                  faceType === "drawer_front" || faceType === "false_front"
-                    ? section.section_data.drawerFrontStyle
-                    : section.section_data.doorStyle;
-
-                // --- Style-Based Hour Calculation ---
-                if (faceData.faces && Array.isArray(faceData.faces)) {
-                  faceData.faces.forEach((face) => {
-                    let hours = {};
-                    if (
-                      styleToUse === "5_piece_hardwood" ||
-                      styleToUse === "slab_hardwood"
-                    ) {
-                      hours = calculate5PieceDoorHours(
-                        face.width,
-                        face.height,
-                        selectedMaterial.thickness
-                      );
-                    } else if (styleToUse === "slab_sheet") {
-                      hours = calculateSlabDoorHours(face.width, face.height);
-                    }
-                    shopHours += (hours.shopHours || 0) * quantity;
-                    installHours += (hours.installHours || 0) * quantity;
-                    if (selectedMaterial.needs_finish) {
-                      totalFinishHours += (hours.finishHours || 0) * quantity;
-                    }
-                    console.log(cabinet.name, faceType, hours);
-                  });
-                }
-
-                // --- Style-Based Material Price Calculation ---
-                let typeTotalPrice = 0;
-                if (styleToUse === "slab_sheet") {
-                  typeTotalPrice = calculateSlabSheetFacePrice(
-                    faceData,
-                    selectedMaterial
-                  );
-                } else if (styleToUse === "5_piece_hardwood") {
-                  typeTotalPrice = calculate5PieceHardwoodFacePrice(
-                    faceData,
-                    selectedMaterial
-                  );
-                } else if (styleToUse === "slab_hardwood") {
-                  typeTotalPrice = calculateSlabHardwoodFacePrice(
-                    faceData,
-                    selectedMaterial
-                  );
-                }
-                facePriceByType[faceType] = typeTotalPrice;
-                facePrice += typeTotalPrice;
-              }
-            );
-          }
-        }
-
-        // Count drawer boxes and rollouts
-        const countDrawerBoxesAndRollouts = (node) => {
-          if (!node) return;
-
-          // Count drawer boxes
-          if (node.type === "drawer_front" && node.drawerBoxDimensions) {
-            drawerBoxCount += quantity;
-            drawerBoxTotal += DRAWER_BOX_PRICE * quantity;
-          }
-
-          // Count rollouts
-          if (node.rollOutQty && node.rollOutQty > 0) {
-            const rollOutQty = parseInt(node.rollOutQty, 10);
-            rollOutCount += rollOutQty * quantity;
-            rollOutTotal += ROLL_OUT_PRICE * rollOutQty * quantity;
-          }
-
-          // Process children recursively
-          if (node.children && Array.isArray(node.children)) {
-            node.children.forEach(countDrawerBoxesAndRollouts);
-          }
-        };
-
-        // Process the cabinet face config to count drawer boxes and rollouts
-        countDrawerBoxesAndRollouts(cabinet.face_config);
-
-        cabinetPrice = (boxPrice + facePrice) * quantity;
-        sectionTotal += cabinetPrice;
-
-        // Count faces and add face prices
-        if (cabinet.face_config.faceSummary) {
-          // Count faces and add prices for each type
-          Object.entries(cabinet.face_config.faceSummary).forEach(
-            ([faceType, faceData]) => {
-              if (Object.prototype.hasOwnProperty.call(faceCounts, faceType)) {
-                // Count faces
-                faceCounts[faceType] += (faceData.count || 0) * quantity;
-
-                // Add prices directly from the breakdown
-                if (facePriceByType[faceType]) {
-                  facePrices[faceType] += facePriceByType[faceType] * quantity;
-                }
-              }
-            }
-          );
-        }
-      } else {
-        // Fallback to direct price if no face configuration
-        cabinetPrice = (Number(cabinet.price) || 0) * quantity;
-        sectionTotal += cabinetPrice;
-      }
-    });
   }
 
-  // Apply finish adjustments to the total accumulated finish hours
   let finishMultiplier = 1;
   const selectedMaterialForFinish = faceMaterials.find(
     (mat) => mat.id === section.face_mat
@@ -256,73 +258,43 @@ export const getSectionCalculations = (
       }
     });
   }
-  finishHours += totalFinishHours * finishMultiplier;
 
-  // Add drawer box and rollout totals to section total
-  sectionTotal += drawerBoxTotal + rollOutTotal;
+  const cabinetTotals = calculateCabinetTotals(
+    section,
+    boxMaterials,
+    faceMaterials,
+    finishMultiplier
+  );
 
-  // Calculate length items prices
-  if (
-    section.lengths &&
-    Array.isArray(section.lengths) &&
-    section.lengths.length > 0
-  ) {
-    sectionTotal += section.lengths.reduce((total, item) => {
-      if (!item) return total;
+  const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
+  const accessoriesTotal = calculateSimpleItemsTotal(section.accessories);
+  const otherTotal = calculateSimpleItemsTotal(section.other);
 
-      const quantity = Number(item.quantity) || 1;
-      const price = Number(item.price) || 0;
-      return total + price * quantity;
-    }, 0);
-  }
+  const totalPrice =
+    cabinetTotals.price +
+    cabinetTotals.drawerBoxTotal +
+    cabinetTotals.rollOutTotal +
+    lengthsTotal +
+    accessoriesTotal +
+    otherTotal;
 
-  // Calculate accessories prices
-  if (
-    section.accessories &&
-    Array.isArray(section.accessories) &&
-    section.accessories.length > 0
-  ) {
-    sectionTotal += section.accessories.reduce((total, item) => {
-      if (!item) return total;
-
-      const quantity = Number(item.quantity) || 1;
-      const price = Number(item.price) || 0;
-      return total + price * quantity;
-    }, 0);
-  }
-
-  // Calculate other item prices
-  if (
-    section.other &&
-    Array.isArray(section.other) &&
-    section.other.length > 0
-  ) {
-    sectionTotal += section.other.reduce((total, item) => {
-      if (!item) return total;
-
-      const quantity = Number(item.quantity) || 1;
-      const price = Number(item.price) || 0;
-      return total + price * quantity;
-    }, 0);
-  }
-
+  let installHours = cabinetTotals.installHours;
   if (installHours > 0) {
-    // add 1 hour for setup and cleanup
-    installHours += 1;
+    installHours += 1; // Add 1 hour for setup and cleanup
   }
 
   return {
-    totalPrice: sectionTotal,
-    faceCounts,
-    facePrices,
-    boxTotal,
-    boxCount,
-    shopHours,
-    finishHours,
+    totalPrice,
+    faceCounts: cabinetTotals.faceCounts,
+    facePrices: cabinetTotals.facePrices,
+    boxTotal: cabinetTotals.boxPrice,
+    boxCount: cabinetTotals.boxCount,
+    shopHours: cabinetTotals.shopHours,
+    finishHours: cabinetTotals.finishHours,
     installHours,
-    drawerBoxCount,
-    drawerBoxTotal,
-    rollOutCount,
-    rollOutTotal,
+    drawerBoxCount: cabinetTotals.drawerBoxCount,
+    drawerBoxTotal: cabinetTotals.drawerBoxTotal,
+    rollOutCount: cabinetTotals.rollOutCount,
+    rollOutTotal: cabinetTotals.rollOutTotal,
   };
 };
