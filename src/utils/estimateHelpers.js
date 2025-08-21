@@ -129,7 +129,7 @@ export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
   const pricePerSquareInch =
     selectedMaterial.sheet_price / selectedMaterial.area;
   return roundToHundredth(
-    pricePerSquareInch * cabinet.face_config.boxSummary.totalArea
+    pricePerSquareInch * cabinet.face_config.boxSummary.totalBoxPartsArea
   );
 };
 

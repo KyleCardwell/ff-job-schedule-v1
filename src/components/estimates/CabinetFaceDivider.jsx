@@ -5,10 +5,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
 import {
-  CAN_HAVE_ROLL_OUTS,
+  CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_TYPES,
-  DRAWER_BOX_HEIGHTS,
 } from "../../utils/constants";
+import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
 import { truncateTrailingZeros } from "../../utils/helpers";
 
 const CabinetFaceDivider = ({
@@ -33,6 +33,7 @@ const CabinetFaceDivider = ({
     width: "",
     height: "",
     rollOutQty: "",
+    shelfQty: "",
   });
 
   // Fixed display dimensions
@@ -446,42 +447,12 @@ const CabinetFaceDivider = ({
     });
   };
 
-  // Helper function to round to nearest 1/16"
-  const roundTo16th = (value) => {
-    return Math.round(value * 16) / 16;
-  };
-
-  // Calculate roll-out dimensions based on face dimensions and cabinet depth
-  const calculateRollOutDimensions = (faceWidth, cabinetDepth, faceHeight, type) => {
-    let height = DRAWER_BOX_HEIGHTS[0];
-    if (type === "rollOut") {
-      height = 4.25;
-    } else {
-      const maxHeight = Math.max(faceHeight - 1, minValue);
-      for (let i = DRAWER_BOX_HEIGHTS.length - 1; i >= 0; i--) {
-        if (DRAWER_BOX_HEIGHTS[i] <= maxHeight) {
-          height = DRAWER_BOX_HEIGHTS[i];
-          break;
-        }
-      }
-    }
-    // Width is face width minus 2 inches
-    const width = Math.max(faceWidth - 2, minValue);
-
-    // Depth should be a multiple of 3 inches and maximum cabinet depth - 1 inch
-    const maxDepth = Math.max(cabinetDepth - 1, minValue);
-    // Find the largest multiple of 3 that fits within maxDepth
-    const depth = Math.floor(maxDepth / 3) * 3;
-
-    return { width, height, depth };
-  };
-
-  // Handle roll-out quantity change
-  const handleRollOutQtyChange = (e) => {
+  // Handle roll-out or shelf quantity change
+  const handleRoShQtyChange = (e, type) => {
     const qty = parseInt(e.target.value) || 0;
 
     // Update input value state
-    setInputValues({ ...inputValues, rollOutQty: e.target.value });
+    setInputValues({ ...inputValues, [type]: e.target.value });
 
     if (!selectedNode) return;
 
@@ -490,44 +461,48 @@ const CabinetFaceDivider = ({
 
     if (node) {
       // Update roll-out quantity
-      node.rollOutQty = qty;
+      node[type] = qty;
 
       setConfig(newConfig);
       setSelectedNode({
         ...selectedNode,
-        rollOutQty: qty,
+        [type]: qty,
       });
     }
   };
 
   // Check if face type supports roll-outs
-  const supportsRollOuts = (nodeType) => {
-    return CAN_HAVE_ROLL_OUTS.includes(nodeType);
+  const supportsRollOutsOrShelves = (nodeType) => {
+    return CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(nodeType);
   };
 
   // Handle type change
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
 
-    const newConfig = cloneDeep(config);
-    const node = findNode(newConfig, selectedNode.id);
-    if (node && newType !== "container") {
+    setConfig((prevConfig) => {
+      const newConfig = cloneDeep(prevConfig);
+      const node = findNode(newConfig, selectedNode.id);
+      if (!node || newType === "container") return newConfig;
+
       node.type = newType;
-      // Remove children if changing from container to face type
-      if (node.children) {
-        node.children = null;
-      }
+      node.children = null; // containers only, so reset
 
-      // Reset roll-out quantity if changing to a type that doesn't support roll-outs
-      if (!CAN_HAVE_ROLL_OUTS.includes(newType)) {
+      // Reset roll-outs & shelves if unsupported
+      if (!CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType)) {
         node.rollOutQty = 0;
-        if (inputValues.rollOutQty !== "") {
-          setInputValues({ ...inputValues, rollOutQty: "" });
-        }
-      }
-    }
+        node.shelfQty = 0;
 
-    setConfig(newConfig);
+        setInputValues((prev) => ({
+          ...prev,
+          rollOutQty: "",
+          shelfQty: "",
+        }));
+      }
+
+      return newConfig;
+    });
+
     setShowTypeSelector(false);
     setSelectedNode(null);
   };
@@ -551,7 +526,8 @@ const CabinetFaceDivider = ({
               node.width,
               cabinetDepth,
               node.height,
-              "rollOut"
+              "rollOut",
+              minValue
             );
           }
 
@@ -560,8 +536,16 @@ const CabinetFaceDivider = ({
               node.width,
               cabinetDepth,
               node.height,
-              node.type
+              node.type,
+              minValue
             );
+          }
+
+          if (node.shelfQty > 0) {
+            node.shelfDimensions = {
+              width: node.width,
+              height: cabinetDepth,
+            };
           }
 
           // Process children recursively
@@ -901,28 +885,14 @@ const CabinetFaceDivider = ({
         node.rollOutQty > 0
           ? truncateTrailingZeros(node.rollOutQty)
           : node.rollOutQty || "",
+      shelfQty:
+        node.shelfQty > 0
+          ? truncateTrailingZeros(node.shelfQty)
+          : node.shelfQty || "",
     });
 
     setShowTypeSelector(true);
   };
-
-  // const handleTypeChange = (newType) => {
-  //   if (!selectedNode) return;
-
-  //   const newConfig = cloneDeep(config);
-  //   const node = findNode(newConfig, selectedNode.id);
-  //   if (node && newType !== "container") {
-  //     node.type = newType;
-  //     // Remove children if changing from container to face type
-  //     if (node.children) {
-  //       node.children = null;
-  //     }
-  //   }
-
-  //   setConfig(newConfig);
-  //   setShowTypeSelector(false);
-  //   setSelectedNode(null);
-  // };
 
   const handleSplitHorizontal = () => {
     if (!selectedNode) return;
@@ -946,6 +916,7 @@ const CabinetFaceDivider = ({
       node.type = "container";
       node.rollOutQty = "";
       node.drawerBoxDimensions = null;
+      node.shelfQty = "";
     }
 
     setConfig(newConfig);
@@ -1243,9 +1214,9 @@ const CabinetFaceDivider = ({
                   </div>
 
                   {/* Roll-Out Quantity Input */}
-                  {supportsRollOuts(selectedNode.type) && (
-                    <div className="mt-2">
-                      <div className="flex items-center space-x-1">
+                  {supportsRollOutsOrShelves(selectedNode.type) && (
+                    <div className="mt-2 flex justify-between">
+                      <div className="flex flex-col items-center space-x-1">
                         <label className="text-xs text-slate-600">
                           Roll-Outs:
                         </label>
@@ -1253,7 +1224,22 @@ const CabinetFaceDivider = ({
                           type="number"
                           name="rollOutQty"
                           value={inputValues.rollOutQty}
-                          onChange={handleRollOutQtyChange}
+                          onChange={(e) => handleRoShQtyChange(e, "rollOutQty")}
+                          className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          step="1"
+                          min="0"
+                          max="10"
+                        />
+                      </div>
+                      <div className="flex flex-col items-center space-x-1">
+                        <label className="text-xs text-slate-600">
+                          Shelves:
+                        </label>
+                        <input
+                          type="number"
+                          name="shelfQty"
+                          value={inputValues.shelfQty}
+                          onChange={(e) => handleRoShQtyChange(e, "shelfQty")}
                           className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                           step="1"
                           min="0"

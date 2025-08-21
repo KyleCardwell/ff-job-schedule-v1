@@ -1,4 +1,4 @@
-import { FACE_TYPES } from "./constants";
+import { DRAWER_BOX_HEIGHTS, FACE_TYPES } from "./constants";
 import {
   calculate5PieceDoorHours,
   calculate5PieceHardwoodFacePrice,
@@ -297,4 +297,35 @@ export const getSectionCalculations = (
     rollOutCount: cabinetTotals.rollOutCount,
     rollOutTotal: cabinetTotals.rollOutTotal,
   };
+};
+
+// Calculate roll-out dimensions based on face dimensions and cabinet depth
+export const calculateRollOutDimensions = (
+  faceWidth,
+  cabinetDepth,
+  faceHeight,
+  type,
+  minValue
+) => {
+  let height = DRAWER_BOX_HEIGHTS[0];
+  if (type === "rollOut") {
+    height = 4.25;
+  } else {
+    const maxHeight = Math.max(faceHeight - 1, minValue);
+    for (let i = DRAWER_BOX_HEIGHTS.length - 1; i >= 0; i--) {
+      if (DRAWER_BOX_HEIGHTS[i] <= maxHeight) {
+        height = DRAWER_BOX_HEIGHTS[i];
+        break;
+      }
+    }
+  }
+  // Width is face width minus 2 inches
+  const width = Math.max(faceWidth - 2, minValue);
+
+  // Depth should be a multiple of 3 inches and maximum cabinet depth - 1 inch
+  const maxDepth = Math.max(cabinetDepth - 1, minValue);
+  // Find the largest multiple of 3 that fits within maxDepth
+  const depth = Math.floor(maxDepth / 3) * 3;
+
+  return { width, height, depth };
 };

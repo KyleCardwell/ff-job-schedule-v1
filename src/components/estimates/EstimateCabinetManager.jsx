@@ -153,7 +153,8 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           formData.width,
           formData.height,
           formData.depth,
-          formData.quantity
+          formData.quantity,
+          formData.face_config
         );
 
         finalFormData.face_config = {
@@ -179,8 +180,33 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     return Math.round(value * 16) / 16;
   };
 
+  // Recursive helper to calculate total shelf area from face_config
+  const calculateShelfArea = (node) => {
+    let totalArea = 0;
+
+    if (node.shelfQty && node.shelfDimensions) {
+      const shelfWidth = roundTo16th(node.shelfDimensions.width);
+      const shelfHeight = roundTo16th(node.shelfDimensions.height); // User calls it height, but it's depth
+      totalArea += node.shelfQty * (shelfWidth * shelfHeight);
+    }
+
+    if (node.children) {
+      node.children.forEach((child) => {
+        totalArea += calculateShelfArea(child);
+      });
+    }
+
+    return totalArea;
+  };
+
   // Calculate box material summary (sides, top, bottom, back)
-  const calculateBoxSummary = (width, height, depth, quantity = 1) => {
+  const calculateBoxSummary = (
+    width,
+    height,
+    depth,
+    quantity = 1,
+    faceConfig
+  ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
     const h = roundTo16th(Number(height));
@@ -192,11 +218,15 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
 
+    // Calculate total shelf area from the face config
+    const totalShelfArea = faceConfig ? calculateShelfArea(faceConfig) : 0;
+
     // Total area calculation for a single cabinet
-    const singleCabinetArea = 2 * sideArea + 2 * topBottomArea + backArea;
+    const singleCabinetArea =
+      2 * sideArea + 2 * topBottomArea + backArea + totalShelfArea;
 
     // Total area for all cabinets
-    const totalArea = singleCabinetArea * qty;
+    const totalBoxPartsArea = singleCabinetArea * qty;
 
     // Count of pieces per cabinet type
     const pieces = {
@@ -219,7 +249,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     ];
 
     return {
-      totalArea,
+      totalBoxPartsArea,
       pieces,
       components,
       cabinetCount: qty,

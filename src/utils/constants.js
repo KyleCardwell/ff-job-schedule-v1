@@ -44,7 +44,7 @@ export const FACE_TYPES = [
   { value: "container", label: "Container", color: "#E5E7EB" },
 ];
 
-export const CAN_HAVE_ROLL_OUTS = ["door", "pair_door", "drawer_front", "open"];
+export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = ["door", "pair_door", "drawer_front", "open"];
 
 export const DRAWER_BOX_PRICE = 50;
 export const ROLL_OUT_PRICE = 60;
