@@ -55,6 +55,25 @@ const CabinetFaceDivider = ({
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
   const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
 
+  // Function to normalize reveal dimensions in a loaded config
+  const normalizeRevealDimensions = (node) => {
+    if (!node || !node.children) return;
+
+    const revealValue = reveals.reveal;
+
+    node.children.forEach((child) => {
+      if (child.type === "reveal") {
+        if (node.splitDirection === "horizontal") {
+          child.width = revealValue;
+        } else if (node.splitDirection === "vertical") {
+          child.height = revealValue;
+        }
+      }
+      // Recurse for nested containers
+      normalizeRevealDimensions(child);
+    });
+  };
+
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
       // Initialize with a single root node for new cabinets or empty configs
@@ -78,6 +97,9 @@ const CabinetFaceDivider = ({
       // Create a new config object regardless of whether dimensions have changed
       // to ensure React detects the change and re-renders
       const updatedConfig = cloneDeep(config);
+
+      // Normalize reveals before doing anything else
+      normalizeRevealDimensions(updatedConfig);
 
       // Update root dimensions first so updateChildrenFromParent uses new values
       updatedConfig.width = cabinetWidth - reveals.left - reveals.right;
@@ -478,28 +500,41 @@ const CabinetFaceDivider = ({
       child[fixedDimension] = node[fixedDimension];
     });
 
-    // Get the parent's current dimension value that we need to match
-    const parentDimensionValue = node[splitDimension];
+    const faces = node.children.filter((c) => c.type !== "reveal");
+    const reveal = node.children.find((c) => c.type === "reveal");
 
-    // Calculate the current total of all children's dimensions
-    const totalChildDimension = node.children.reduce((sum, child) => {
-      return sum + (child[splitDimension] || 0);
-    }, 0);
+    // If there are two faces and a reveal, handle their resizing specially
+    if (faces.length === 2 && reveal) {
+      const firstFace = faces[0];
+      const lastFace = faces[1];
+      const revealSize = reveal[splitDimension] || 0;
+      const parentSize = node[splitDimension];
 
-    // If no children have dimensions yet or totals don't match parent dimension,
-    // distribute appropriately
-    if (totalChildDimension === 0) {
-      // No dimensions yet, divide equally
-      const equalSize = parentDimensionValue / node.children.length;
-      node.children.forEach((child) => {
-        child[splitDimension] = equalSize;
-      });
+      // Check if siblings were equal before the parent resize
+      const areSiblingsEqual = firstFace[splitDimension] === lastFace[splitDimension];
+
+      if (areSiblingsEqual) {
+        // If they were equal, they should remain equal
+        const newFaceSize = (parentSize - revealSize) / 2;
+        firstFace[splitDimension] = newFaceSize;
+        lastFace[splitDimension] = newFaceSize;
+      } else {
+        // If they were not equal, the last one fills the remaining space
+        const firstFaceSize = firstFace[splitDimension] || 0;
+        lastFace[splitDimension] = parentSize - firstFaceSize - revealSize;
+      }
     } else {
-      // Scale all children proportionally to match parent dimension
-      const scale = parentDimensionValue / totalChildDimension;
-      node.children.forEach((child) => {
-        child[splitDimension] = (child[splitDimension] || 0) * scale;
-      });
+      // Fallback to proportional scaling for other cases (e.g., no reveals)
+      const totalChildDimension = node.children.reduce((sum, child) => {
+        return sum + (child[splitDimension] || 0);
+      }, 0);
+
+      if (totalChildDimension > 0) {
+        const scale = node[splitDimension] / totalChildDimension;
+        node.children.forEach((child) => {
+          child[splitDimension] = (child[splitDimension] || 0) * scale;
+        });
+      }
     }
 
     // Recursively update grandchildren
