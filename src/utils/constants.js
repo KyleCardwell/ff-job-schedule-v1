@@ -34,18 +34,40 @@ export const ITEM_FORM_WIDTHS = {
   ACTIONS: "72px",
 };
 
+export const SPLIT_DIRECTIONS = {
+  HORIZONTAL: "horizontal",
+  VERTICAL: "vertical",
+};
+
+export const FACE_NAMES = {
+  DOOR: "door",
+  PAIR_DOOR: "pair_door",
+  DRAWER_FRONT: "drawer_front",
+  FALSE_FRONT: "false_front",
+  PANEL: "panel",
+  OPEN: "open",
+  CONTAINER: "container",
+  REVEAL: "reveal",
+  ROOT: "root",
+};
+
 export const FACE_TYPES = [
-  { value: "door", label: "Door", color: "#3B82F6" },
-  { value: "pair_door", label: "Pair Door", color: "#8B5CF6" },
-  { value: "drawer_front", label: "Drawer Front", color: "#10B981" },
-  { value: "false_front", label: "False Front", color: "#f54d0b" },
-  { value: "panel", label: "Panel", color: "#6B7280" },
-  { value: "open", label: "Open", color: "#F59E0B" },
-  { value: "container", label: "Container", color: "#E5E7EB" },
-  { value: "reveal", label: "", color: "#E5E7EB" },
+  { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
+  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
+  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
+  { value: FACE_NAMES.FALSE_FRONT, label: "False Front", color: "#f54d0b" },
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+  { value: FACE_NAMES.OPEN, label: "Open", color: "#F59E0B" },
+  { value: FACE_NAMES.CONTAINER, label: "Container", color: "#E5E7EB" },
+  { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
 ];
 
-export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = ["door", "pair_door", "drawer_front", "open"];
+export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [
+  FACE_NAMES.DOOR,
+  FACE_NAMES.PAIR_DOOR,
+  FACE_NAMES.DRAWER_FRONT,
+  FACE_NAMES.OPEN,
+];
 
 export const DRAWER_BOX_PRICE = 50;
 export const ROLL_OUT_PRICE = 60;
