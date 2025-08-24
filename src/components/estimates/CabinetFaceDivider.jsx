@@ -57,6 +57,10 @@ const CabinetFaceDivider = ({
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
   const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
 
+  const calculateShelfQty = (height) => {
+    return Math.floor(height / 16);
+  };
+
   // Function to normalize reveal dimensions in a loaded config
   const normalizeRevealDimensions = (node) => {
     if (!node || !node.children) return;
@@ -597,8 +601,17 @@ const CabinetFaceDivider = ({
       node.type = newType;
       node.children = null; // containers only, so reset
 
-      // Reset roll-outs & shelves if unsupported
-      if (!CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType)) {
+      // Set default shelf quantity for supported types
+      if (CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType)) {
+        const standardShelfQty = calculateShelfQty(node.height);
+        node.shelfQty = standardShelfQty;
+
+        setInputValues((prev) => ({
+          ...prev,
+          shelfQty: standardShelfQty,
+        }));
+      } else {
+        // Reset roll-outs & shelves if unsupported
         node.rollOutQty = 0;
         node.shelfQty = 0;
 
@@ -1157,6 +1170,7 @@ const CabinetFaceDivider = ({
       x: reveals.left,
       y: reveals.top,
       children: null,
+      shelfQty: calculateShelfQty(cabinetHeight - reveals.top - reveals.bottom),
     };
 
     setConfig(resetConfig);
