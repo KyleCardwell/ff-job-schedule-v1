@@ -5,16 +5,20 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
 import {
-  CAN_HAVE_ROLL_OUTS,
+  CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_TYPES,
-  DRAWER_BOX_HEIGHTS,
+  FACE_REVEALS,
+  FACE_NAMES,
+  SPLIT_DIRECTIONS,
 } from "../../utils/constants";
+import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
 import { truncateTrailingZeros } from "../../utils/helpers";
 
 const CabinetFaceDivider = ({
   cabinetWidth,
   cabinetHeight,
   cabinetDepth,
+  cabinetStyle = "euro",
   faceConfig = null,
   onSave,
   disabled = false,
@@ -33,6 +37,7 @@ const CabinetFaceDivider = ({
     width: "",
     height: "",
     rollOutQty: "",
+    shelfQty: "",
   });
 
   // Fixed display dimensions
@@ -50,45 +55,72 @@ const CabinetFaceDivider = ({
   const displayHeight = cabinetHeight * scale;
   const offsetX = (fixedDisplayWidth - displayWidth) / 2;
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
+  const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+
+  const calculateShelfQty = (height) => {
+    return Math.floor(height / 16);
+  };
+
+  // Function to normalize reveal dimensions in a loaded config
+  const normalizeRevealDimensions = (node) => {
+    if (!node || !node.children) return;
+
+    const revealValue = reveals.reveal;
+
+    node.children.forEach((child) => {
+      if (child.type === FACE_NAMES.REVEAL) {
+        if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
+          child.width = revealValue;
+        } else if (node.splitDirection === SPLIT_DIRECTIONS.VERTICAL) {
+          child.height = revealValue;
+        }
+      }
+      // Recurse for nested containers
+      normalizeRevealDimensions(child);
+    });
+  };
 
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
       // Initialize with a single root node for new cabinets or empty configs
       setConfig({
-        id: "root",
-        type: "door",
-        width: cabinetWidth,
-        height: cabinetHeight,
-        x: 0,
-        y: 0,
+        id: FACE_NAMES.ROOT,
+        type: FACE_NAMES.DOOR,
+        width: cabinetWidth - reveals.left - reveals.right,
+        height: cabinetHeight - reveals.top - reveals.bottom,
+        x: reveals.left,
+        y: reveals.top,
         children: null,
       });
     } else if (config && !config.id) {
       // Ensure existing config has an id
       setConfig({
         ...config,
-        id: "root",
+        id: FACE_NAMES.ROOT,
       });
-    } else if (config && config.id === "root") {
+    } else if (config && config.id === FACE_NAMES.ROOT) {
       // Update root dimensions when cabinet dimensions change
       // Create a new config object regardless of whether dimensions have changed
       // to ensure React detects the change and re-renders
       const updatedConfig = cloneDeep(config);
 
+      // Normalize reveals before doing anything else
+      normalizeRevealDimensions(updatedConfig);
+
       // Update root dimensions first so updateChildrenFromParent uses new values
-      updatedConfig.width = cabinetWidth;
-      updatedConfig.height = cabinetHeight;
+      updatedConfig.width = cabinetWidth - reveals.left - reveals.right;
+      updatedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
 
       // Recursively update all children's dimensions based on new parent dimensions
       updateChildrenFromParent(updatedConfig);
 
       // Force recalculation of layout with new dimensions
-      calculateLayout(updatedConfig);
+      const layoutConfig = calculateLayout(updatedConfig);
 
       // Update state with the new configuration
-      setConfig(updatedConfig);
+      setConfig(layoutConfig);
     }
-  }, [cabinetWidth, cabinetHeight]);
+  }, [cabinetWidth, cabinetHeight, reveals]);
 
   useEffect(() => {
     renderCabinet();
@@ -141,12 +173,12 @@ const CabinetFaceDivider = ({
       } else {
         // Store the default single door config as original
         const defaultConfig = {
-          id: "root",
-          type: "door",
-          width: cabinetWidth,
-          height: cabinetHeight,
-          x: 0,
-          y: 0,
+          id: FACE_NAMES.ROOT,
+          type: FACE_NAMES.DOOR,
+          width: cabinetWidth - reveals.left - reveals.right,
+          height: cabinetHeight - reveals.top - reveals.bottom,
+          x: reveals.left,
+          y: reveals.top,
           children: null,
         };
         originalConfigRef.current = cloneDeep(defaultConfig);
@@ -156,7 +188,7 @@ const CabinetFaceDivider = ({
 
   // Generate unique ID for new nodes
   const generateId = (parentId, index) => {
-    if (!parentId || parentId === "root") {
+    if (!parentId || parentId === FACE_NAMES.ROOT) {
       return index.toString();
     }
     return `${parentId}-${index}`;
@@ -165,43 +197,95 @@ const CabinetFaceDivider = ({
   // Calculate layout for all nodes recursively
   const calculateLayout = (
     node,
-    x = 0,
-    y = 0,
-    width = cabinetWidth,
-    height = cabinetHeight
+    x = node.x,
+    y = node.y,
+    width = node.width,
+    height = node.height,
+    isRoot = true
   ) => {
-    node.x = x;
-    node.y = y;
+    if (!node) return null;
 
-    if (!node.children || node.children.length === 0) {
-      // For leaf nodes, use their stored dimensions or default to calculated ones
-      node.width = node.width || width;
-      node.height = node.height || height;
-    } else {
-      // For container nodes, use calculated dimensions
-      node.width = width;
-      node.height = height;
+    let newX = x;
+    let newY = y;
+    let newWidth = width;
+    let newHeight = height;
 
-      if (node.splitDirection === "horizontal") {
-        // Side by side - use actual widths of children
-        let currentX = x;
-        node.children.forEach((child) => {
-          // Use the child's stored width or calculate proportionally
-          const childWidth = child.width || width / node.children.length;
-          calculateLayout(child, currentX, y, childWidth, height);
+    // Apply outer reveals for the root container
+    if (isRoot) {
+      newX = reveals.left;
+      newY = reveals.top;
+      newWidth = cabinetWidth - (reveals.left + reveals.right);
+      newHeight = cabinetHeight - (reveals.top + reveals.bottom);
+    }
+
+    const newNode = {
+      ...node,
+      x: newX,
+      y: newY,
+      width: newWidth,
+      height: newHeight,
+    };
+
+    if (node.children && node.children.length > 0) {
+      if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
+        const totalGapWidth = node.children
+          .filter((c) => c.type === FACE_NAMES.REVEAL)
+          .reduce((sum, c) => sum + c.width, 0);
+        const availableWidth = newWidth - totalGapWidth;
+        const totalFaceWidth = node.children
+          .filter((c) => c.type !== FACE_NAMES.REVEAL)
+          .reduce((sum, c) => sum + c.width, 0);
+
+        let currentX = newX;
+        newNode.children = node.children.map((child) => {
+          let childWidth = child.width;
+          if (child.type !== FACE_NAMES.REVEAL) {
+            // Scale face nodes proportionally
+            childWidth = (child.width / totalFaceWidth) * availableWidth;
+          }
+          const newChild = calculateLayout(
+            child,
+            currentX,
+            newY,
+            childWidth,
+            newHeight,
+            false
+          );
           currentX += childWidth;
+          return newChild;
         });
       } else {
-        // Stacked - use actual heights of children
-        let currentY = y;
-        node.children.forEach((child) => {
-          // Use the child's stored height or calculate proportionally
-          const childHeight = child.height || height / node.children.length;
-          calculateLayout(child, x, currentY, width, childHeight);
+        // Vertical split
+        const totalGapHeight = node.children
+          .filter((c) => c.type === FACE_NAMES.REVEAL)
+          .reduce((sum, c) => sum + c.height, 0);
+        const availableHeight = newHeight - totalGapHeight;
+        const totalFaceHeight = node.children
+          .filter((c) => c.type !== FACE_NAMES.REVEAL)
+          .reduce((sum, c) => sum + c.height, 0);
+
+        let currentY = newY;
+        newNode.children = node.children.map((child) => {
+          let childHeight = child.height;
+          if (child.type !== FACE_NAMES.REVEAL) {
+            // Scale face nodes proportionally
+            childHeight = (child.height / totalFaceHeight) * availableHeight;
+          }
+          const newChild = calculateLayout(
+            child,
+            newX,
+            currentY,
+            newWidth,
+            childHeight,
+            false
+          );
           currentY += childHeight;
+          return newChild;
         });
       }
     }
+
+    return newNode;
   };
 
   // Render a single node
@@ -209,11 +293,13 @@ const CabinetFaceDivider = ({
     // Skip if node has no width or height
     if (!node || node.width <= 0 || node.height <= 0) return;
 
-    // Calculate display position and size
-    const x = node.x * scale;
-    const y = node.y * scale;
-    const width = node.width * scale;
-    const height = node.height * scale;
+    const strokeWidth = node.type === FACE_NAMES.CONTAINER ? 1 : 2;
+
+    // Calculate display position and size, accounting for stroke width
+    const x = node.x * scale + strokeWidth / 2;
+    const y = node.y * scale + strokeWidth / 2;
+    const width = Math.max(0, node.width * scale - strokeWidth);
+    const height = Math.max(0, node.height * scale - strokeWidth);
 
     const faceType = FACE_TYPES.find((t) => t.value === node.type);
     // Draw rectangle
@@ -224,12 +310,20 @@ const CabinetFaceDivider = ({
       .attr("y", y)
       .attr("width", width)
       .attr("height", height)
-      .attr("fill", faceType?.color || "#6B7280")
-      .attr("fill-opacity", node.type === "container" ? 0.1 : 0.3)
+      .attr(
+        "fill",
+        node.type === FACE_NAMES.REVEAL
+          ? "#E5E7EB"
+          : faceType?.color || "#6B7280"
+      )
+      .attr("fill-opacity", node.type === FACE_NAMES.CONTAINER ? 0.1 : 0.3)
       .attr("stroke", faceType?.color || "#6B7280")
-      .attr("stroke-width", node.type === "container" ? 1 : 2)
-      .attr("stroke-dasharray", node.type === "container" ? "3,3" : "none")
-      .attr("cursor", "pointer")
+      .attr("stroke-width", strokeWidth)
+      .attr(
+        "stroke-dasharray",
+        node.type === FACE_NAMES.CONTAINER ? "3,3" : "none"
+      )
+      .attr("cursor", node.type === FACE_NAMES.REVEAL ? "pointer" : "pointer")
       .style("pointer-events", "all")
       .on("click", (event) => {
         event.stopPropagation();
@@ -237,7 +331,7 @@ const CabinetFaceDivider = ({
       });
 
     // Add center vertical dashed line for pair_door faces
-    if (node.type === "pair_door") {
+    if (node.type === FACE_NAMES.PAIR_DOOR) {
       const centerX = x + width / 2;
       cabinetGroup
         .append("line")
@@ -257,7 +351,7 @@ const CabinetFaceDivider = ({
     }
 
     // Add text label for non-containers
-    if (node.type !== "container") {
+    if (node.type !== FACE_NAMES.CONTAINER) {
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
@@ -268,7 +362,7 @@ const CabinetFaceDivider = ({
         .attr("font-size", "12px")
         .attr("font-weight", "bold")
         .attr("pointer-events", "none")
-        .text(faceType?.label || "Unknown");
+        .text(faceType?.label || "");
     }
 
     // Add dimensions text for leaf nodes
@@ -302,7 +396,10 @@ const CabinetFaceDivider = ({
         .style("pointer-events", "all");
 
       // Only add right handle if not the last sibling in a horizontal split
-      if (nodeParent.splitDirection === "horizontal" && !isLastSibling) {
+      if (
+        nodeParent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL &&
+        !isLastSibling
+      ) {
         // Right edge handle for width adjustment between siblings
         handleGroup
           .append("rect")
@@ -323,7 +420,10 @@ const CabinetFaceDivider = ({
       }
 
       // Only add bottom handle if not the last sibling in a vertical split
-      if (nodeParent.splitDirection === "vertical" && !isLastSibling) {
+      if (
+        nodeParent.splitDirection === SPLIT_DIRECTIONS.VERTICAL &&
+        !isLastSibling
+      ) {
         // Bottom edge handle for height adjustment between siblings
         handleGroup
           .append("rect")
@@ -349,7 +449,7 @@ const CabinetFaceDivider = ({
     if (!config) return;
 
     // Calculate layout for all nodes
-    calculateLayout(config);
+    const layoutConfig = calculateLayout(config);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove(); // Clear the SVG
@@ -369,7 +469,7 @@ const CabinetFaceDivider = ({
       .attr("stroke-width", 2);
 
     // Render the tree
-    renderNode(config);
+    renderNode(layoutConfig);
 
     // Add click handler to SVG background for closing selector
     svg.on("click", () => {
@@ -407,37 +507,51 @@ const CabinetFaceDivider = ({
     if (!node || !node.children || node.children.length === 0) return;
 
     const splitDimension =
-      node.splitDirection === "horizontal" ? "width" : "height";
+      node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "width" : "height";
     const fixedDimension =
-      node.splitDirection === "horizontal" ? "height" : "width";
+      node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "height" : "width";
 
     // All children inherit the fixed dimension from parent
     node.children.forEach((child) => {
       child[fixedDimension] = node[fixedDimension];
     });
 
-    // Get the parent's current dimension value that we need to match
-    const parentDimensionValue = node[splitDimension];
+    const faces = node.children.filter((c) => c.type !== FACE_NAMES.REVEAL);
+    const reveal = node.children.find((c) => c.type === FACE_NAMES.REVEAL);
 
-    // Calculate the current total of all children's dimensions
-    const totalChildDimension = node.children.reduce((sum, child) => {
-      return sum + (child[splitDimension] || 0);
-    }, 0);
+    // If there are two faces and a reveal, handle their resizing specially
+    if (faces.length === 2 && reveal) {
+      const firstFace = faces[0];
+      const lastFace = faces[1];
+      const revealSize = reveal[splitDimension] || 0;
+      const parentSize = node[splitDimension];
 
-    // If no children have dimensions yet or totals don't match parent dimension,
-    // distribute appropriately
-    if (totalChildDimension === 0) {
-      // No dimensions yet, divide equally
-      const equalSize = parentDimensionValue / node.children.length;
-      node.children.forEach((child) => {
-        child[splitDimension] = equalSize;
-      });
+      // Check if siblings were equal before the parent resize
+      const areSiblingsEqual =
+        firstFace[splitDimension] === lastFace[splitDimension];
+
+      if (areSiblingsEqual) {
+        // If they were equal, they should remain equal
+        const newFaceSize = (parentSize - revealSize) / 2;
+        firstFace[splitDimension] = newFaceSize;
+        lastFace[splitDimension] = newFaceSize;
+      } else {
+        // If they were not equal, the last one fills the remaining space
+        const firstFaceSize = firstFace[splitDimension] || 0;
+        lastFace[splitDimension] = parentSize - firstFaceSize - revealSize;
+      }
     } else {
-      // Scale all children proportionally to match parent dimension
-      const scale = parentDimensionValue / totalChildDimension;
-      node.children.forEach((child) => {
-        child[splitDimension] = (child[splitDimension] || 0) * scale;
-      });
+      // Fallback to proportional scaling for other cases (e.g., no reveals)
+      const totalChildDimension = node.children.reduce((sum, child) => {
+        return sum + (child[splitDimension] || 0);
+      }, 0);
+
+      if (totalChildDimension > 0) {
+        const scale = node[splitDimension] / totalChildDimension;
+        node.children.forEach((child) => {
+          child[splitDimension] = (child[splitDimension] || 0) * scale;
+        });
+      }
     }
 
     // Recursively update grandchildren
@@ -446,42 +560,12 @@ const CabinetFaceDivider = ({
     });
   };
 
-  // Helper function to round to nearest 1/16"
-  const roundTo16th = (value) => {
-    return Math.round(value * 16) / 16;
-  };
-
-  // Calculate roll-out dimensions based on face dimensions and cabinet depth
-  const calculateRollOutDimensions = (faceWidth, cabinetDepth, faceHeight, type) => {
-    let height = DRAWER_BOX_HEIGHTS[0];
-    if (type === "rollOut") {
-      height = 4.25;
-    } else {
-      const maxHeight = Math.max(faceHeight - 1, minValue);
-      for (let i = DRAWER_BOX_HEIGHTS.length - 1; i >= 0; i--) {
-        if (DRAWER_BOX_HEIGHTS[i] <= maxHeight) {
-          height = DRAWER_BOX_HEIGHTS[i];
-          break;
-        }
-      }
-    }
-    // Width is face width minus 2 inches
-    const width = Math.max(faceWidth - 2, minValue);
-
-    // Depth should be a multiple of 3 inches and maximum cabinet depth - 1 inch
-    const maxDepth = Math.max(cabinetDepth - 1, minValue);
-    // Find the largest multiple of 3 that fits within maxDepth
-    const depth = Math.floor(maxDepth / 3) * 3;
-
-    return { width, height, depth };
-  };
-
-  // Handle roll-out quantity change
-  const handleRollOutQtyChange = (e) => {
+  // Handle roll-out or shelf quantity change
+  const handleRoShQtyChange = (e, type) => {
     const qty = parseInt(e.target.value) || 0;
 
     // Update input value state
-    setInputValues({ ...inputValues, rollOutQty: e.target.value });
+    setInputValues({ ...inputValues, [type]: e.target.value });
 
     if (!selectedNode) return;
 
@@ -490,44 +574,57 @@ const CabinetFaceDivider = ({
 
     if (node) {
       // Update roll-out quantity
-      node.rollOutQty = qty;
+      node[type] = qty;
 
       setConfig(newConfig);
       setSelectedNode({
         ...selectedNode,
-        rollOutQty: qty,
+        [type]: qty,
       });
     }
   };
 
   // Check if face type supports roll-outs
-  const supportsRollOuts = (nodeType) => {
-    return CAN_HAVE_ROLL_OUTS.includes(nodeType);
+  const supportsRollOutsOrShelves = (nodeType) => {
+    return CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(nodeType);
   };
 
   // Handle type change
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
 
-    const newConfig = cloneDeep(config);
-    const node = findNode(newConfig, selectedNode.id);
-    if (node && newType !== "container") {
+    setConfig((prevConfig) => {
+      const newConfig = cloneDeep(prevConfig);
+      const node = findNode(newConfig, selectedNode.id);
+      if (!node || newType === FACE_NAMES.CONTAINER) return newConfig;
+
       node.type = newType;
-      // Remove children if changing from container to face type
-      if (node.children) {
-        node.children = null;
-      }
+      node.children = null; // containers only, so reset
 
-      // Reset roll-out quantity if changing to a type that doesn't support roll-outs
-      if (!CAN_HAVE_ROLL_OUTS.includes(newType)) {
+      // Set default shelf quantity for supported types
+      if (CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType)) {
+        const standardShelfQty = calculateShelfQty(node.height);
+        node.shelfQty = standardShelfQty;
+
+        setInputValues((prev) => ({
+          ...prev,
+          shelfQty: standardShelfQty,
+        }));
+      } else {
+        // Reset roll-outs & shelves if unsupported
         node.rollOutQty = 0;
-        if (inputValues.rollOutQty !== "") {
-          setInputValues({ ...inputValues, rollOutQty: "" });
-        }
-      }
-    }
+        node.shelfQty = 0;
 
-    setConfig(newConfig);
+        setInputValues((prev) => ({
+          ...prev,
+          rollOutQty: "",
+          shelfQty: "",
+        }));
+      }
+
+      return newConfig;
+    });
+
     setShowTypeSelector(false);
     setSelectedNode(null);
   };
@@ -551,17 +648,26 @@ const CabinetFaceDivider = ({
               node.width,
               cabinetDepth,
               node.height,
-              "rollOut"
+              "rollOut",
+              minValue
             );
           }
 
-          if (node.type === "drawer_front") {
+          if (node.type === FACE_NAMES.DRAWER_FRONT) {
             node.drawerBoxDimensions = calculateRollOutDimensions(
               node.width,
               cabinetDepth,
               node.height,
-              node.type
+              node.type,
+              minValue
             );
+          }
+
+          if (node.shelfQty > 0) {
+            node.shelfDimensions = {
+              width: node.width,
+              height: cabinetDepth,
+            };
           }
 
           // Process children recursively
@@ -581,14 +687,8 @@ const CabinetFaceDivider = ({
   }, [config, onSave, cabinetDepth]);
 
   const handleDimensionChange = (dimension, newValueStr) => {
-    // Convert string to number and handle empty input
     const newValue = newValueStr === "" ? 0 : parseFloat(newValueStr);
-
-    // Allow the input field to show what user is typing, only validate on actual changes
     if (!selectedNode) return;
-
-    // Skip further processing if value is invalid, but don't return early on empty/0
-    // to allow users to clear the field and type new values
     if (isNaN(newValue)) return;
 
     const newConfig = cloneDeep(config);
@@ -596,160 +696,56 @@ const CabinetFaceDivider = ({
     if (!node) return;
 
     const parent = findParent(newConfig, selectedNode.id);
+    if (!parent) return; // Cannot resize the root node directly
 
-    // Root node cannot be resized - it's always the cabinet dimensions
-    if (!parent) {
-      return;
-    }
-
-    if (!parent.children || parent.children.length <= 1) {
-      // No siblings, just update the dimension directly
-      // But constrain to cabinet dimensions
-      const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
-
-      // Only enforce minimum value when user has completed input (non-zero value)
-      if (newValue > 0) {
-        node[dimension] = Math.max(minValue, Math.min(newValue, maxDimension));
-      } else {
-        // Allow zero temporarily during input, will be constrained on blur
-        node[dimension] = newValue;
-      }
+    const dimensionToChange =
+      parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+        ? "width"
+        : "height";
+    if (dimension !== dimensionToChange) {
+      // This is the perpendicular dimension, update all children
+      parent.children.forEach((child) => {
+        if (child.type !== FACE_NAMES.REVEAL) {
+          child[dimension] = newValue;
+        }
+      });
+      node[dimension] = newValue;
     } else {
-      // Determine which dimension the parent controls (split dimension) vs inherited dimension
-      const parentSplitDimension =
-        parent.splitDirection === "horizontal" ? "width" : "height";
-      const parentFixedDimension =
-        parent.splitDirection === "horizontal" ? "height" : "width";
+      // This is the parallel dimension, use direct calculation
+      const reveal = parent.children.find((c) => c.type === FACE_NAMES.REVEAL);
+      const revealSize = reveal ? reveal[dimension] : 0;
 
-      if (dimension === parentSplitDimension) {
-        // Child is adjusting the dimension it can control among siblings
-        // Handle proportional scaling for siblings
-        const siblings = parent.children;
-        const nodeIndex = siblings.findIndex(
-          (sibling) => sibling.id === node.id
+      const sibling = parent.children.find(
+        (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+      );
+
+      if (!sibling) return; // Should not happen in a split with siblings
+
+      const parentSize = parent[dimension];
+      const newSiblingSize = parentSize - newValue - revealSize;
+
+      // Check for constraints
+      if (newValue < minValue || newSiblingSize < minValue) {
+        console.warn(
+          `Dimension change rejected: results in a size smaller than the minimum ${minValue}"`
         );
-        const isLastSibling = nodeIndex === siblings.length - 1;
-
-        // Get container dimension for constraints
-        const containerDimension =
-          parent[parentSplitDimension] ||
-          (parentSplitDimension === "width" ? cabinetWidth : cabinetHeight);
-
-        // Ensure all siblings have initial dimensions
-        siblings.forEach((sibling) => {
-          if (!sibling[parentSplitDimension]) {
-            sibling[parentSplitDimension] =
-              containerDimension / siblings.length;
-          }
-        });
-
-        // Calculate constraints
-        const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
-        const maxValue = Math.max(
-          minValue,
-          containerDimension - otherSiblingsMinTotal
-        );
-
-        // Constrain the new value
-        const constrainedValue = Math.max(
-          minValue,
-          Math.min(newValue, maxValue)
-        );
-
-        // Calculate how much space is left for other siblings
-        const remainingSpace = containerDimension - constrainedValue;
-
-        // Update the changed node
-        node[dimension] = constrainedValue;
-
-        // Distribute remaining space proportionally among other siblings
-        const otherSiblings = siblings.filter(
-          (child) => child.id !== selectedNode.id
-        );
-        const currentOtherTotal = otherSiblings.reduce(
-          (sum, sibling) => sum + (sibling[parentSplitDimension] || 0),
-          0
-        );
-
-        if (otherSiblings.length > 0 && currentOtherTotal > 0) {
-          // Distribute proportionally based on current sizes
-          otherSiblings.forEach((sibling) => {
-            const currentSize =
-              sibling[parentSplitDimension] ||
-              containerDimension / siblings.length;
-            const proportion = currentSize / currentOtherTotal;
-            const newSize = remainingSpace * proportion;
-            sibling[parentSplitDimension] = Math.max(minValue, newSize);
-          });
-        } else if (otherSiblings.length > 0) {
-          // If no current sizes, distribute equally
-          const equalShare = remainingSpace / otherSiblings.length;
-          otherSiblings.forEach((sibling) => {
-            sibling[parentSplitDimension] = Math.max(minValue, equalShare);
-          });
-        }
-      } else {
-        // Child is trying to adjust the dimension it inherited from parent
-        // Check if parent is root - if so, don't allow changing cabinet-locked dimensions
-        const grandparent = findParent(newConfig, parent.id);
-
-        if (!grandparent) {
-          // Parent is root, child cannot change cabinet-locked dimensions
-          const rootFixedDimension =
-            parent.splitDirection === "horizontal" ? "height" : "width";
-          if (dimension === rootFixedDimension) {
-            // This dimension is locked to cabinet size, don't allow changes
-            return;
-          }
-        }
-
-        // Propagate this change up the tree iteratively
-        let currentParent = parent;
-        let currentValue = Math.max(
-          minValue,
-          Math.min(
-            newValue,
-            dimension === "width" ? cabinetWidth : cabinetHeight
-          )
-        );
-
-        while (currentParent) {
-          // Update the parent's dimension
-          currentParent[dimension] = currentValue;
-
-          // Update all children of this parent to inherit the new dimension
-          if (currentParent.children) {
-            currentParent.children.forEach((child) => {
-              child[dimension] = currentValue;
-            });
-          }
-
-          // Check if we need to continue propagating up
-          const grandparent = findParent(newConfig, currentParent.id);
-          if (grandparent) {
-            const grandparentFixedDimension =
-              grandparent.splitDirection === "horizontal" ? "height" : "width";
-            if (dimension === grandparentFixedDimension) {
-              // Continue up the tree
-              currentParent = grandparent;
-              continue;
-            }
-          }
-
-          // Stop propagating
-          break;
-        }
+        return; // Exit if new value is invalid
       }
+
+      // Update the current node's dimension and the sibling's dimension
+      node[dimension] = newValue;
+      sibling[dimension] = newSiblingSize;
     }
 
-    // Update the selected node reference to reflect changes
+    // Recalculate the layout with the new dimensions
+    const layoutConfig = calculateLayout(newConfig);
+    setConfig(layoutConfig);
+
+    // Update the selected node state to reflect the change immediately
     const updatedNode = findNode(newConfig, selectedNode.id);
     if (updatedNode) {
-      setSelectedNode({ ...selectedNode, [dimension]: updatedNode[dimension] });
+      setSelectedNode(updatedNode);
     }
-
-    setConfig(newConfig);
-    updateChildrenFromParent(newConfig);
   };
 
   const handleDragStart = (event, node, dimension) => {
@@ -831,7 +827,9 @@ const CabinetFaceDivider = ({
 
     // Has siblings - calculate based on container and sibling constraints
     const scaleDimension =
-      parent.splitDirection === "horizontal" ? "width" : "height";
+      parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+        ? "width"
+        : "height";
     const containerDimension =
       parent[scaleDimension] ||
       (scaleDimension === "width" ? cabinetWidth : cabinetHeight);
@@ -862,19 +860,25 @@ const CabinetFaceDivider = ({
 
   // Check if a dimension should be disabled (only for direct children of root)
   const isDimensionDisabled = (dimension, node) => {
-    if (!node || node.id === "root") return false;
+    if (!node || node.id === FACE_NAMES.ROOT) return false;
 
     // Find the parent node
     const parent = findParent(config, node.id);
 
     // Only disable dimensions for direct children of the root
-    if (parent && parent.id === "root") {
+    if (parent && parent.id === FACE_NAMES.ROOT) {
       // For vertical splits, width is constrained for children
-      if (parent.splitDirection === "vertical" && dimension === "width") {
+      if (
+        parent.splitDirection === SPLIT_DIRECTIONS.VERTICAL &&
+        dimension === "width"
+      ) {
         return true;
       }
       // For horizontal splits, height is constrained for children
-      if (parent.splitDirection === "horizontal" && dimension === "height") {
+      if (
+        parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL &&
+        dimension === "height"
+      ) {
         return true;
       }
     }
@@ -901,28 +905,14 @@ const CabinetFaceDivider = ({
         node.rollOutQty > 0
           ? truncateTrailingZeros(node.rollOutQty)
           : node.rollOutQty || "",
+      shelfQty:
+        node.shelfQty > 0
+          ? truncateTrailingZeros(node.shelfQty)
+          : node.shelfQty || "",
     });
 
     setShowTypeSelector(true);
   };
-
-  // const handleTypeChange = (newType) => {
-  //   if (!selectedNode) return;
-
-  //   const newConfig = cloneDeep(config);
-  //   const node = findNode(newConfig, selectedNode.id);
-  //   if (node && newType !== "container") {
-  //     node.type = newType;
-  //     // Remove children if changing from container to face type
-  //     if (node.children) {
-  //       node.children = null;
-  //     }
-  //   }
-
-  //   setConfig(newConfig);
-  //   setShowTypeSelector(false);
-  //   setSelectedNode(null);
-  // };
 
   const handleSplitHorizontal = () => {
     if (!selectedNode) return;
@@ -930,22 +920,39 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
+      const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+      const revealWidth = reveals.reveal;
+      const childWidth = (node.width - revealWidth) / 2;
+
       node.children = [
         {
           id: generateId(node.id, 0),
-          type: node.type === "container" ? "door" : node.type,
+          type:
+            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          width: childWidth,
+          height: node.height,
           children: null,
         },
         {
           id: generateId(node.id, 1),
-          type: node.type === "container" ? "door" : node.type,
+          type: FACE_NAMES.REVEAL,
+          width: revealWidth,
+          height: node.height,
+        },
+        {
+          id: generateId(node.id, 2),
+          type:
+            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          width: childWidth,
+          height: node.height,
           children: null,
         },
       ];
-      node.splitDirection = "horizontal";
-      node.type = "container";
+      node.splitDirection = SPLIT_DIRECTIONS.HORIZONTAL;
+      node.type = FACE_NAMES.CONTAINER;
       node.rollOutQty = "";
       node.drawerBoxDimensions = null;
+      node.shelfQty = "";
     }
 
     setConfig(newConfig);
@@ -959,20 +966,36 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
+      const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+      const revealHeight = reveals.reveal;
+      const childHeight = (node.height - revealHeight) / 2;
+
       node.children = [
         {
           id: generateId(node.id, 0),
-          type: node.type === "container" ? "door" : node.type,
+          type:
+            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          width: node.width,
+          height: childHeight,
           children: null,
         },
         {
           id: generateId(node.id, 1),
-          type: node.type === "container" ? "door" : node.type,
+          type: FACE_NAMES.REVEAL,
+          width: node.width,
+          height: revealHeight,
+        },
+        {
+          id: generateId(node.id, 2),
+          type:
+            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          width: node.width,
+          height: childHeight,
           children: null,
         },
       ];
-      node.splitDirection = "vertical";
-      node.type = "container";
+      node.splitDirection = SPLIT_DIRECTIONS.VERTICAL;
+      node.type = FACE_NAMES.CONTAINER;
     }
 
     setConfig(newConfig);
@@ -980,110 +1003,174 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
-  const handleDelete = () => {
-    if (!selectedNode || selectedNode.id === "root") return;
+  let canEqualize = false;
+  if (selectedNode) {
+    const parent = findParent(config, selectedNode.id);
+    const container =
+      selectedNode.type === FACE_NAMES.CONTAINER ? selectedNode : parent;
 
-    // First clear UI state to avoid stale references
+    if (container && container.children) {
+      const faces = container.children.filter(
+        (c) => c.type !== FACE_NAMES.REVEAL
+      );
+      if (faces.length > 1) {
+        canEqualize = true;
+      }
+    }
+  }
+
+  const handleEqualizeSiblings = () => {
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    let containerNode = null;
+
+    if (selectedNode.type === FACE_NAMES.CONTAINER) {
+      containerNode = findNode(newConfig, selectedNode.id);
+    } else {
+      containerNode = findParent(newConfig, selectedNode.id);
+    }
+
+    if (!containerNode || !containerNode.children) return;
+
+    const splitDimension =
+      containerNode.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+        ? "width"
+        : "height";
+    const faces = containerNode.children.filter(
+      (c) => c.type !== FACE_NAMES.REVEAL
+    );
+    const reveals = containerNode.children.filter(
+      (c) => c.type === FACE_NAMES.REVEAL
+    );
+
+    if (faces.length <= 1) return; // No siblings to equalize
+
+    const totalRevealSize = reveals.reduce(
+      (sum, r) => sum + r[splitDimension],
+      0
+    );
+    const availableSize = containerNode[splitDimension] - totalRevealSize;
+    const equalSize = availableSize / faces.length;
+
+    if (equalSize < minValue) {
+      console.warn(
+        `Equalize rejected: results in a size smaller than the minimum ${minValue}"`
+      );
+      return;
+    }
+
+    faces.forEach((face) => {
+      face[splitDimension] = equalSize;
+    });
+
+    const layoutConfig = calculateLayout(newConfig);
+    setConfig(layoutConfig);
     setShowTypeSelector(false);
     setSelectedNode(null);
+  };
 
-    // Create a deep copy of the config to avoid reference issues
+  const handleDeleteNode = () => {
+    if (!selectedNode) return;
+
     const newConfig = cloneDeep(config);
     const parent = findParent(newConfig, selectedNode.id);
 
-    if (parent && parent.children) {
-      // If there are exactly 2 children (which is the max in this structure)
-      if (parent.children.length === 2) {
-        // Find the index of the node being deleted
-        const deleteIndex = parent.children.findIndex(
-          (child) => child.id === selectedNode.id
-        );
-        // Get the remaining sibling that will stay after deletion
-        const remainingSibling = parent.children.filter(
-          (child) => child.id !== selectedNode.id
-        )[0];
-
-        // For horizontal splits, handle x position and width
-        if (parent.splitDirection === "horizontal") {
-          // If deleting the first (left) child, the right child should move left
-          if (deleteIndex === 0) {
-            remainingSibling.x = parent.x;
-          }
-          // In either case, the remaining child should expand to full parent width
-          remainingSibling.width = parent.width;
-        }
-        // For vertical splits, handle y position and height
-        else if (parent.splitDirection === "vertical") {
-          // If deleting the first (top) child, the bottom child should move up
-          if (deleteIndex === 0) {
-            remainingSibling.y = parent.y;
-          }
-          // In either case, the remaining child should expand to full parent height
-          remainingSibling.height = parent.height;
-        }
-
-        // If the remaining sibling has children, update their dimensions too
-        if (remainingSibling.children && remainingSibling.children.length > 0) {
-          updateChildrenFromParent(remainingSibling);
-        }
-      }
-
-      // Remove the selected node
-      parent.children = parent.children.filter(
-        (child) => child.id !== selectedNode.id
+    if (!parent) {
+      // Cannot delete the root, but can reset it
+      Object.assign(newConfig, {
+        type: FACE_NAMES.DOOR,
+        children: null,
+        splitDirection: null,
+        // Keep original dimensions
+      });
+    } else {
+      const nodeIndex = parent.children.findIndex(
+        (c) => c.id === selectedNode.id
       );
+      if (nodeIndex === -1) return;
 
-      // If parent has only one child left, merge it up
-      if (parent.children.length === 1) {
-        const remainingChild = parent.children[0];
+      const deletedNodeSize =
+        parent.children[nodeIndex][
+          parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+            ? "width"
+            : "height"
+        ];
 
-        // Before merging, ensure the remaining child takes up the full parent dimension
-        if (parent.splitDirection === "horizontal") {
-          remainingChild.width = parent.width;
-          remainingChild.x = parent.x;
-        } else if (parent.splitDirection === "vertical") {
-          remainingChild.height = parent.height;
-          remainingChild.y = parent.y;
-        }
-
-        // If the remaining child has children, update their dimensions too
-        if (remainingChild.children && remainingChild.children.length > 0) {
-          updateChildrenFromParent(remainingChild);
-        }
-
-        parent.type = remainingChild.type;
-        parent.children = remainingChild.children;
-        parent.splitDirection = remainingChild.splitDirection;
+      // Remove the node and its adjacent reveal
+      if (nodeIndex > 0) {
+        // Remove the node and the reveal before it
+        parent.children.splice(nodeIndex - 1, 2);
+      } else {
+        // Remove the node and the reveal after it
+        parent.children.splice(nodeIndex, 2);
       }
 
-      // If parent has no children, make it a face type
-      if (parent.children && parent.children.length === 0) {
-        parent.children = null;
-        parent.type = "door";
+      // If only one child remains, collapse the parent container
+      if (parent.children.length === 1) {
+        const grandParent = findParent(newConfig, parent.id);
+        const lastChild = parent.children[0];
+
+        // The last child should expand to fill the parent's dimensions
+        lastChild.width = parent.width;
+        lastChild.height = parent.height;
+
+        if (grandParent) {
+          const parentIndex = grandParent.children.findIndex(
+            (c) => c.id === parent.id
+          );
+          // Replace parent with the last child
+          grandParent.children[parentIndex] = lastChild;
+          // Update child's id to reflect new position in tree
+          lastChild.id = parent.id;
+        } else {
+          // Parent is the root, so the last child becomes the new root
+          Object.assign(newConfig, {
+            ...lastChild,
+            width: cabinetWidth - reveals.left - reveals.right,
+            height: cabinetHeight - reveals.top - reveals.bottom,
+            x: parent.x,
+            y: parent.y,
+          });
+        }
+      } else {
+        // Redistribute the deleted node's size among the remaining siblings
+        const dimension =
+          parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+            ? "width"
+            : "height";
+        const remainingFaces = parent.children.filter(
+          (c) => c.type !== FACE_NAMES.REVEAL
+        );
+        const totalFaceSize = remainingFaces.reduce(
+          (sum, f) => sum + f[dimension],
+          0
+        );
+
+        remainingFaces.forEach((face) => {
+          const proportion = face[dimension] / totalFaceSize;
+          face[dimension] += deletedNodeSize * proportion;
+        });
       }
     }
 
-    // After all modifications, recalculate layout for the entire tree
-    calculateLayout(newConfig);
-
-    // Use React's state update with a fresh object to ensure React detects the change
-    const updatedConfig = cloneDeep(newConfig);
-    setConfig(updatedConfig);
-    setShowTypeSelector(false);
+    setConfig(newConfig);
     setSelectedNode(null);
+    setShowTypeSelector(false);
   };
 
   const handleReset = () => {
     if (disabled) return;
 
     const resetConfig = {
-      id: "root",
-      type: "door",
-      width: cabinetWidth,
-      height: cabinetHeight,
-      x: 0,
-      y: 0,
+      id: FACE_NAMES.ROOT,
+      type: FACE_NAMES.DOOR,
+      width: cabinetWidth - reveals.left - reveals.right,
+      height: cabinetHeight - reveals.top - reveals.bottom,
+      x: reveals.left,
+      y: reveals.top,
       children: null,
+      shelfQty: calculateShelfQty(cabinetHeight - reveals.top - reveals.bottom),
     };
 
     setConfig(resetConfig);
@@ -1094,8 +1181,18 @@ const CabinetFaceDivider = ({
   const handleCancelChanges = () => {
     if (disabled || !originalConfigRef.current) return;
 
+    // Create a fresh copy of the original config
+    const revertedConfig = cloneDeep(originalConfigRef.current);
+
+    // Adjust the root dimensions of the reverted config to match current props
+    revertedConfig.width = cabinetWidth - reveals.left - reveals.right;
+    revertedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
+
+    // Run update logic to ensure children match parent dimensions
+    updateChildrenFromParent(revertedConfig);
+
     // Revert to the original config state
-    setConfig(cloneDeep(originalConfigRef.current));
+    setConfig(revertedConfig);
     setSelectedNode(null);
     setShowTypeSelector(false);
     onDimensionChange({
@@ -1143,7 +1240,7 @@ const CabinetFaceDivider = ({
   };
 
   return (
-    <div>
+    <div onClick={(e) => e.stopPropagation()}>
       <h4 className="text-sm font-medium text-slate-700">
         Cabinet Face Designer
       </h4>
@@ -1151,7 +1248,7 @@ const CabinetFaceDivider = ({
         <div className="flex justify-between items-center mb-2">
           <button
             onClick={handleCancelChanges}
-            className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="invisible px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             title="Cancel changes and revert to original"
             disabled={disabled}
           >
@@ -1216,9 +1313,12 @@ const CabinetFaceDivider = ({
                         onChange={handleInputChange}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        disabled={isDimensionDisabled("width", selectedNode)}
+                        disabled={
+                          isDimensionDisabled("width", selectedNode) ||
+                          selectedNode.type === "reveal"
+                        }
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                        step="0.25"
+                        step="0.125"
                         min={getDimensionConstraints("width").min}
                         max={getDimensionConstraints("width").max}
                       />
@@ -1233,9 +1333,12 @@ const CabinetFaceDivider = ({
                         onChange={handleInputChange}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        disabled={isDimensionDisabled("height", selectedNode)}
+                        disabled={
+                          isDimensionDisabled("height", selectedNode) ||
+                          selectedNode.type === "reveal"
+                        }
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                        step="0.25"
+                        step="0.125"
                         min={getDimensionConstraints("height").min}
                         max={getDimensionConstraints("height").max}
                       />
@@ -1243,9 +1346,9 @@ const CabinetFaceDivider = ({
                   </div>
 
                   {/* Roll-Out Quantity Input */}
-                  {supportsRollOuts(selectedNode.type) && (
-                    <div className="mt-2">
-                      <div className="flex items-center space-x-1">
+                  {supportsRollOutsOrShelves(selectedNode.type) && (
+                    <div className="mt-2 flex justify-between">
+                      <div className="flex flex-col items-center space-x-1">
                         <label className="text-xs text-slate-600">
                           Roll-Outs:
                         </label>
@@ -1253,11 +1356,22 @@ const CabinetFaceDivider = ({
                           type="number"
                           name="rollOutQty"
                           value={inputValues.rollOutQty}
-                          onChange={handleRollOutQtyChange}
+                          onChange={(e) => handleRoShQtyChange(e, "rollOutQty")}
                           className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                           step="1"
-                          min="0"
-                          max="10"
+                        />
+                      </div>
+                      <div className="flex flex-col items-center space-x-1">
+                        <label className="text-xs text-slate-600">
+                          Shelves:
+                        </label>
+                        <input
+                          type="number"
+                          name="shelfQty"
+                          value={inputValues.shelfQty}
+                          onChange={(e) => handleRoShQtyChange(e, "shelfQty")}
+                          className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          step="1"
                         />
                       </div>
                     </div>
@@ -1265,60 +1379,93 @@ const CabinetFaceDivider = ({
                 </div>
               )}
 
-              <div className="text-xs font-medium text-slate-700 mb-2">
-                Change Type:
-              </div>
-              <div className="grid grid-cols-1 gap-1 mb-3">
-                {FACE_TYPES.filter((type) => type.value !== "container").map(
-                  (type) => (
-                    <button
-                      key={type.value}
-                      onClick={() => handleTypeChange(type.value)}
-                      className={`px-2 py-1 text-xs rounded flex items-center ${
-                        selectedNode.type === type.value
-                          ? "bg-blue-100 text-blue-700"
-                          : "hover:bg-slate-100"
-                      }`}
-                    >
-                      <div
-                        className="w-3 h-3 rounded mr-2"
-                        style={{ backgroundColor: type.color }}
-                      />
-                      {type.label}
-                    </button>
-                  )
-                )}
-              </div>
-
-              <div className="border-t border-slate-200 pt-2">
-                <div className="text-xs font-medium text-slate-700 mb-2">
-                  Actions:
-                </div>
-                <div className="flex flex-col space-y-1">
-                  <div className="flex space-x-1">
-                    <button
-                      onClick={handleSplitHorizontal}
-                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                    >
-                      Split Horizontal
-                    </button>
-                    <button
-                      onClick={handleSplitVertical}
-                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                    >
-                      Split Vertical
-                    </button>
+              {selectedNode.type === FACE_NAMES.CONTAINER && (
+                <div className="border-t border-slate-200 mt-3 pt-3">
+                  <div className="text-xs font-medium text-slate-700 mb-2">
+                    Container Actions:
                   </div>
-                  {selectedNode.id !== "root" && (
-                    <button
-                      onClick={handleDelete}
-                      className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <div className="grid grid-cols-1 gap-1">
+                    {canEqualize && (
+                      <button
+                        onClick={handleEqualizeSiblings}
+                        className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                      >
+                        Equalize Children
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {selectedNode.type !== FACE_NAMES.REVEAL && (
+                <>
+                  <div className="text-xs font-medium text-slate-700 mb-2">
+                    Change Type:
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 mb-3">
+                    {FACE_TYPES.filter(
+                      (type) =>
+                        type.value !== FACE_NAMES.CONTAINER &&
+                        type.value !== FACE_NAMES.REVEAL
+                    ).map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => handleTypeChange(type.value)}
+                        className={`px-2 py-1 text-xs rounded flex items-center ${
+                          selectedNode.type === type.value
+                            ? "bg-blue-100 text-blue-700"
+                            : "hover:bg-slate-100"
+                        }`}
+                      >
+                        <div
+                          className="w-3 h-3 rounded mr-2"
+                          style={{ backgroundColor: type.color }}
+                        />
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-2">
+                    <div className="text-xs font-medium text-slate-700 mb-2">
+                      Actions:
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={handleSplitHorizontal}
+                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                        >
+                          Split Horizontal
+                        </button>
+                        <button
+                          onClick={handleSplitVertical}
+                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                        >
+                          Split Vertical
+                        </button>
+                      </div>
+                      {canEqualize &&
+                        selectedNode.type !== FACE_NAMES.CONTAINER && (
+                          <button
+                            onClick={handleEqualizeSiblings}
+                            className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                          >
+                            Equalize Siblings
+                          </button>
+                        )}
+                      {selectedNode.id !== FACE_NAMES.ROOT && (
+                        <button
+                          onClick={handleDeleteNode}
+                          className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -1337,6 +1484,7 @@ CabinetFaceDivider.propTypes = {
   cabinetWidth: PropTypes.number.isRequired,
   cabinetHeight: PropTypes.number.isRequired,
   cabinetDepth: PropTypes.number.isRequired,
+  cabinetStyle: PropTypes.string.isRequired,
   faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   disabled: PropTypes.bool,

@@ -129,7 +129,7 @@ export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
   const pricePerSquareInch =
     selectedMaterial.sheet_price / selectedMaterial.area;
   return roundToHundredth(
-    pricePerSquareInch * cabinet.face_config.boxSummary.totalArea
+    pricePerSquareInch * cabinet.face_config.boxSummary.totalBoxPartsArea
   );
 };
 
@@ -186,7 +186,6 @@ export const calculate5PieceHardwoodFacePrice = (faceData, selectedMaterial) => 
 
     // Calculate price for this face
     const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
-    console.log(face.id, facePrice)
     totalPrice += facePrice;
   });
 
@@ -223,4 +222,138 @@ export const calculateSlabHardwoodFacePrice = (faceData, selectedMaterial) => {
   });
 
   return totalPrice;
+};
+
+// Define the anchor points for interpolation based on door board feet
+const doorHourAnchors = {
+  shop: [
+    { boardFeet: 4, hours: 0.25 },
+    { boardFeet: 7.5, hours: 0.35 },
+    { boardFeet: 12, hours: 0.50 },
+  ],
+  install: [
+    { boardFeet: 4, hours: 0.10 },
+    { boardFeet: 7.5, hours: 0.15 },
+    { boardFeet: 12, hours: 0.25 },
+  ],
+  finish: [
+    { boardFeet: 4, hours: 0.50 },
+    { boardFeet: 7.5, hours: 0.60 },
+    { boardFeet: 12, hours: 0.80 },
+  ],
+};
+
+/**
+ * Interpolates or extrapolates hours based on a set of anchor points and hour type.
+ * @param {Array<Object>} anchors - Array of { boardFeet, hours } points.
+ * @param {number} targetBoardFeet - The door's board feet to calculate hours for.
+ * @param {string} hourType - The type of hour being calculated ('shop', 'install', 'finish').
+ * @returns {number} - The calculated hours.
+ */
+const calculateInterpolated5PieceDoorHours = (anchors, targetBoardFeet, hourType) => {
+  const first = anchors[0];
+  const last = anchors[anchors.length - 1];
+
+  // Handle cases outside the anchor range
+  if (targetBoardFeet < first.boardFeet) {
+    if (hourType === 'shop' || hourType === 'finish') {
+      return roundToHundredth(first.hours * 0.8);
+    }
+    return first.hours; // Install hours are not reduced
+  }
+
+  if (targetBoardFeet > last.boardFeet) {
+    // Extrapolate based on the slope of the last two points
+    const secondLast = anchors[anchors.length - 2];
+    const slope = (last.hours - secondLast.hours) / (last.boardFeet - secondLast.boardFeet);
+    const extrapolated = last.hours + (targetBoardFeet - last.boardFeet) * slope;
+    return roundToHundredth(extrapolated);
+  }
+
+  // Find the two anchor points the target board feet falls between for interpolation
+  const upperIndex = anchors.findIndex((anchor) => anchor.boardFeet >= targetBoardFeet);
+  const upper = anchors[upperIndex];
+  const lower = anchors[upperIndex - 1];
+
+  // If it matches an anchor exactly or lower is not found, return the anchor's hours
+  if (!lower || upper.boardFeet === targetBoardFeet) {
+    return upper.hours;
+  }
+
+  // Perform linear interpolation
+  const boardFeetRange = upper.boardFeet - lower.boardFeet;
+  const hourRange = upper.hours - lower.hours;
+  const boardFeetOffset = targetBoardFeet - lower.boardFeet;
+
+  if (boardFeetRange === 0) return lower.hours; // Avoid division by zero
+
+  const interpolated = lower.hours + (boardFeetOffset / boardFeetRange) * hourRange;
+  return roundToHundredth(interpolated);
+};
+
+/**
+ * Calculates the shop, install, and finish hours for a door of a given size.
+ * @param {number} width - The width of the door.
+ * @param {number} height - The height of the door.
+ * @param {number} thickness - The thickness of the material.
+ * @returns {Object} - An object containing shopHours, installHours, and finishHours.
+ */
+export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
+  const boardFeet = calculateBoardFeetFor5PieceDoor(width, height, thickness);
+
+  return {
+    shopHours: calculateInterpolated5PieceDoorHours(doorHourAnchors.shop, boardFeet, 'shop'),
+    installHours: calculateInterpolated5PieceDoorHours(doorHourAnchors.install, boardFeet, 'install'),
+    finishHours: calculateInterpolated5PieceDoorHours(doorHourAnchors.finish, boardFeet, 'finish'),
+  };
+};
+
+// --- Slab Door Hour Calculation ---
+
+const slabDoorHourAnchors = {
+  shop: [
+    { area: 768, hours: 0.50 },
+    { area: 1440, hours: 0.70 },
+    { area: 2304, hours: 1.00 },
+  ],
+  install: [
+    { area: 768, hours: 0.10 },
+    { area: 1440, hours: 0.15 },
+    { area: 2304, hours: 0.25 },
+  ],
+  finish: [
+    { area: 768, hours: 0.50 },
+    { area: 1440, hours: 0.60 },
+    { area: 2304, hours: 0.80 },
+  ],
+};
+
+const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
+  const first = anchors[0];
+  const last = anchors[anchors.length - 1];
+
+  if (targetArea <= first.area) return first.hours;
+  if (targetArea >= last.area) return last.hours;
+
+  const upperIndex = anchors.findIndex((anchor) => anchor.area >= targetArea);
+  const upper = anchors[upperIndex];
+  const lower = anchors[upperIndex - 1];
+
+  const areaRange = upper.area - lower.area;
+  const hourRange = upper.hours - lower.hours;
+  const areaOffset = targetArea - lower.area;
+
+  if (areaRange === 0) return lower.hours;
+
+  const interpolated = lower.hours + (areaOffset / areaRange) * hourRange;
+  return roundToHundredth(interpolated);
+};
+
+export const calculateSlabDoorHours = (width, height) => {
+  const area = width * height;
+  return {
+    shopHours: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area),
+    installHours: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area),
+    finishHours: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area),
+  };
 };

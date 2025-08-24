@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
 
 const SectionItemList = ({
@@ -11,12 +11,21 @@ const SectionItemList = ({
   onDelete,
   ItemForm,
   hideAddButton = false,
+  formProps = {},
 }) => {
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
 
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingIndex(-1);
+  }, []);
+
+  const handleCancelNew = useCallback(() => {
+    setShowNewItem(false);
+  }, []);
 
   const handleSaveItem = async (item, itemIndex = -1) => {
     try {
@@ -120,7 +129,8 @@ const SectionItemList = ({
               <ItemForm
                 item={item}
                 onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
-                onCancel={() => setEditingIndex(-1)}
+                onCancel={handleCancelEdit}
+                {...formProps}
               />
             </div>
           ) : (
@@ -131,7 +141,7 @@ const SectionItemList = ({
                 gridTemplateColumns: columns.map((c) => c.width).join(" "),
               }}
             >
-              {columns.map((col) => { 
+              {columns.map((col) => {
                 return handleKeys(item, index, col.key, col);
               })}
             </div>
@@ -144,7 +154,8 @@ const SectionItemList = ({
         <div className="p-4">
           <ItemForm
             onSave={(item) => handleSaveItem(item)}
-            onCancel={() => setShowNewItem(false)}
+            onCancel={handleCancelNew}
+            {...formProps}
           />
         </div>
       )}
@@ -195,6 +206,7 @@ SectionItemList.propTypes = {
   onDelete: PropTypes.func.isRequired,
   ItemForm: PropTypes.elementType.isRequired,
   hideAddButton: PropTypes.bool,
+  formProps: PropTypes.object,
 };
 
 export default SectionItemList;

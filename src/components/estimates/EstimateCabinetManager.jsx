@@ -2,13 +2,13 @@ import PropTypes from "prop-types";
 import { useState, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 
-import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+import { FACE_NAMES, ITEM_FORM_WIDTHS, SPLIT_DIRECTIONS } from "../../utils/constants.js";
 import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
 
-const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
+const CabinetItemForm = ({ item = {}, onSave, onCancel, cabinetStyle }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     width: item.width || "",
@@ -153,7 +153,8 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
           formData.width,
           formData.height,
           formData.depth,
-          formData.quantity
+          formData.quantity,
+          formData.face_config
         );
 
         finalFormData.face_config = {
@@ -179,8 +180,79 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     return Math.round(value * 16) / 16;
   };
 
+  // Recursive helper to calculate total shelf area from face_config
+  const calculateShelfArea = (node) => {
+    let totalArea = 0;
+
+    if (node.shelfQty && node.shelfDimensions) {
+      const shelfWidth = roundTo16th(node.shelfDimensions.width);
+      const shelfHeight = roundTo16th(node.shelfDimensions.height); // User calls it height, but it's depth
+      totalArea += node.shelfQty * (shelfWidth * shelfHeight);
+    }
+
+    if (node.children) {
+      node.children.forEach((child) => {
+        totalArea += calculateShelfArea(child);
+      });
+    }
+
+    return totalArea;
+  };
+
+  // Recursive helper to calculate partition area from face_config
+  const calculatePartitionArea = (node, depth) => {
+    let totalArea = 0;
+
+    if (node && node.children && node.children.length > 1) {
+      // Check for partitions between siblings
+      for (let i = 0; i < node.children.length; i++) {
+        const currentChild = node.children[i];
+
+        // A partition is represented by a 'reveal' between two other nodes
+        if (currentChild.type === FACE_NAMES.REVEAL) {
+          const prevSibling = node.children[i - 1];
+          const nextSibling = node.children[i + 1];
+
+          // Only count a partition if it's between two valid siblings
+          if (prevSibling && nextSibling) {
+            // Exception: Don't count partitions between two drawer fronts stacked vertically
+            if (
+              node.splitDirection === SPLIT_DIRECTIONS.VERTICAL &&
+              (prevSibling.type === FACE_NAMES.DRAWER_FRONT ||
+                prevSibling.type === FACE_NAMES.FALSE_FRONT)
+            ) {
+              continue; // Skip this partition
+            }
+
+            // Partition dimensions depend on split direction
+            const partitionWidth = roundTo16th(
+              node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+                ? currentChild.height
+                : currentChild.width
+            );
+
+            totalArea += partitionWidth * depth;
+          }
+        }
+      }
+
+      // Recursively check children for more partitions
+      node.children.forEach((child) => {
+        totalArea += calculatePartitionArea(child, depth);
+      });
+    }
+
+    return totalArea;
+  };
+
   // Calculate box material summary (sides, top, bottom, back)
-  const calculateBoxSummary = (width, height, depth, quantity = 1) => {
+  const calculateBoxSummary = (
+    width,
+    height,
+    depth,
+    quantity = 1,
+    faceConfig
+  ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
     const h = roundTo16th(Number(height));
@@ -192,11 +264,20 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
 
+    // Calculate total shelf area from the face config
+    const totalShelfArea = faceConfig ? calculateShelfArea(faceConfig) : 0;
+
+    // Calculate total partition area from the face config
+    const totalPartitionArea = faceConfig
+      ? calculatePartitionArea(faceConfig, d)
+      : 0;
+
     // Total area calculation for a single cabinet
-    const singleCabinetArea = 2 * sideArea + 2 * topBottomArea + backArea;
+    const singleCabinetArea =
+      2 * sideArea + 2 * topBottomArea + backArea + totalShelfArea + totalPartitionArea;
 
     // Total area for all cabinets
-    const totalArea = singleCabinetArea * qty;
+    const totalBoxPartsArea = singleCabinetArea * qty;
 
     // Count of pieces per cabinet type
     const pieces = {
@@ -219,11 +300,12 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
     ];
 
     return {
-      totalArea,
+      totalBoxPartsArea,
       pieces,
       components,
       cabinetCount: qty,
       areaPerCabinet: singleCabinetArea,
+      partitionArea: totalPartitionArea, // Add for clarity
     };
   };
 
@@ -237,8 +319,8 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
         let faceType = node.type;
 
         // Handle pair doors specially - count them as two separate doors
-        if (faceType === "pair_door") {
-          faceType = "door"; // Count as regular doors
+        if (faceType === FACE_NAMES.PAIR_DOOR) {
+          faceType = FACE_NAMES.DOOR; // Count as regular doors
 
           if (!summary[faceType]) {
             summary[faceType] = {
@@ -288,7 +370,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
 
           // Calculate area (set to 0 for open and container types)
           const area =
-            faceType === "open" || faceType === "container"
+            faceType === FACE_NAMES.OPEN || faceType === FACE_NAMES.CONTAINER
               ? 0
               : roundTo16th(width * height);
 
@@ -314,7 +396,6 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
 
   const handleFaceConfigSave = useCallback(
     (faceConfig) => {
-      console.log("faceConfig Save");
 
       // Only update if the face_config has actually changed
       if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
@@ -532,6 +613,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             cabinetWidth={formData.width || 24} // Default width if empty
             cabinetHeight={formData.height || 30} // Default height if empty
             cabinetDepth={formData.depth || 24} // Default depth if empty
+            cabinetStyle={cabinetStyle}
             faceConfig={formData.face_config}
             onSave={handleFaceConfigSave}
             disabled={!canEditFaces}
@@ -547,9 +629,10 @@ CabinetItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  cabinetStyle: PropTypes.string,
 };
 
-const EstimateCabinetManager = ({ items, onUpdateItems }) => {
+const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
     { key: "interior", label: "Interior", width: ITEM_FORM_WIDTHS.THREE_FOURTHS },
@@ -594,6 +677,7 @@ const EstimateCabinetManager = ({ items, onUpdateItems }) => {
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       ItemForm={CabinetItemForm}
+      formProps={{ cabinetStyle: style }}
     />
   );
 };
@@ -601,6 +685,7 @@ const EstimateCabinetManager = ({ items, onUpdateItems }) => {
 EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
+  style: PropTypes.string,
 };
 
 export default EstimateCabinetManager;

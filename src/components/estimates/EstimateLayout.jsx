@@ -222,7 +222,13 @@ const EstimateLayout = () => {
             setSelectedSectionId(null);
             // If we have a template section, pass its section_data as the initial data
             const initialData = templateSection
-              ? { section_data: { ...templateSection.section_data } }
+              ? {
+                  face_mat: templateSection.face_mat,
+                  box_mat: templateSection.box_mat,
+                  section_data: {
+                    ...templateSection.section_data,
+                  },
+                }
               : {};
             setInitialData(initialData);
             setShowSectionForm(true);
@@ -267,12 +273,12 @@ const EstimateLayout = () => {
           <>
             {selectedSection ? (
               <div className="flex gap-6 h-full">
-              <EstimateSectionManager 
-                taskId={selectedTaskId}
-                sectionId={selectedSectionId}
-                section={selectedSection}
-              />
-              <EstimateSectionPrice section={selectedSection} />
+                <EstimateSectionManager
+                  taskId={selectedTaskId}
+                  sectionId={selectedSectionId}
+                  section={selectedSection}
+                />
+                <EstimateSectionPrice section={selectedSection} />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-200">
