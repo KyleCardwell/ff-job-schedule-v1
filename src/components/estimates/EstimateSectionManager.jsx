@@ -25,6 +25,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     lengths: section?.lengths || [],
     accessories: section?.accessories || [],
     other: section?.other || [],
+    style: section?.section_data?.style || "euro",
   });
 
   // Create a mapping of section types to their table names
@@ -49,6 +50,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         lengths: section.lengths || [],
         accessories: section.accessories || [],
         other: section.other || [],
+        style: section?.section_data?.style || 'euro',
       });
     }
   }, [section]);
@@ -142,6 +144,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateCabinetManager
           items={sectionData.cabinets}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
+          style={sectionData.style}
         />
       ),
     },

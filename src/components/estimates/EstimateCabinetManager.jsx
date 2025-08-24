@@ -8,7 +8,7 @@ import { getCabinetHours } from "../../utils/estimateHelpers.js";
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
 
-const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
+const CabinetItemForm = ({ item = {}, onSave, onCancel, cabinetStyle }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     width: item.width || "",
@@ -562,6 +562,7 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel }) => {
             cabinetWidth={formData.width || 24} // Default width if empty
             cabinetHeight={formData.height || 30} // Default height if empty
             cabinetDepth={formData.depth || 24} // Default depth if empty
+            cabinetStyle={cabinetStyle}
             faceConfig={formData.face_config}
             onSave={handleFaceConfigSave}
             disabled={!canEditFaces}
@@ -577,9 +578,10 @@ CabinetItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  cabinetStyle: PropTypes.string,
 };
 
-const EstimateCabinetManager = ({ items, onUpdateItems }) => {
+const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
     { key: "interior", label: "Interior", width: ITEM_FORM_WIDTHS.THREE_FOURTHS },
@@ -624,6 +626,7 @@ const EstimateCabinetManager = ({ items, onUpdateItems }) => {
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       ItemForm={CabinetItemForm}
+      formProps={{ cabinetStyle: style }}
     />
   );
 };
@@ -631,6 +634,7 @@ const EstimateCabinetManager = ({ items, onUpdateItems }) => {
 EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
+  style: PropTypes.string,
 };
 
 export default EstimateCabinetManager;

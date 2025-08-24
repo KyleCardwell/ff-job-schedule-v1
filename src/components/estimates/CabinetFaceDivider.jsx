@@ -7,6 +7,7 @@ import { FiRotateCcw, FiX } from "react-icons/fi";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_TYPES,
+  FACE_REVEALS,
 } from "../../utils/constants";
 import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
 import { truncateTrailingZeros } from "../../utils/helpers";
@@ -15,6 +16,7 @@ const CabinetFaceDivider = ({
   cabinetWidth,
   cabinetHeight,
   cabinetDepth,
+  cabinetStyle = "euro",
   faceConfig = null,
   onSave,
   disabled = false,
@@ -51,6 +53,7 @@ const CabinetFaceDivider = ({
   const displayHeight = cabinetHeight * scale;
   const offsetX = (fixedDisplayWidth - displayWidth) / 2;
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
+  const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
 
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
@@ -58,10 +61,10 @@ const CabinetFaceDivider = ({
       setConfig({
         id: "root",
         type: "door",
-        width: cabinetWidth,
-        height: cabinetHeight,
-        x: 0,
-        y: 0,
+        width: cabinetWidth - reveals.left - reveals.right,
+        height: cabinetHeight - reveals.top - reveals.bottom,
+        x: reveals.left,
+        y: reveals.top,
         children: null,
       });
     } else if (config && !config.id) {
@@ -77,19 +80,19 @@ const CabinetFaceDivider = ({
       const updatedConfig = cloneDeep(config);
 
       // Update root dimensions first so updateChildrenFromParent uses new values
-      updatedConfig.width = cabinetWidth;
-      updatedConfig.height = cabinetHeight;
+      updatedConfig.width = cabinetWidth - reveals.left - reveals.right;
+      updatedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
 
       // Recursively update all children's dimensions based on new parent dimensions
       updateChildrenFromParent(updatedConfig);
 
       // Force recalculation of layout with new dimensions
-      calculateLayout(updatedConfig);
+      const layoutConfig = calculateLayout(updatedConfig);
 
       // Update state with the new configuration
-      setConfig(updatedConfig);
+      setConfig(layoutConfig);
     }
-  }, [cabinetWidth, cabinetHeight]);
+  }, [cabinetWidth, cabinetHeight, reveals]);
 
   useEffect(() => {
     renderCabinet();
@@ -144,10 +147,10 @@ const CabinetFaceDivider = ({
         const defaultConfig = {
           id: "root",
           type: "door",
-          width: cabinetWidth,
-          height: cabinetHeight,
-          x: 0,
-          y: 0,
+          width: cabinetWidth - reveals.left - reveals.right,
+          height: cabinetHeight - reveals.top - reveals.bottom,
+          x: reveals.left,
+          y: reveals.top,
           children: null,
         };
         originalConfigRef.current = cloneDeep(defaultConfig);
@@ -166,43 +169,95 @@ const CabinetFaceDivider = ({
   // Calculate layout for all nodes recursively
   const calculateLayout = (
     node,
-    x = 0,
-    y = 0,
-    width = cabinetWidth,
-    height = cabinetHeight
+    x = node.x,
+    y = node.y,
+    width = node.width,
+    height = node.height,
+    isRoot = true
   ) => {
-    node.x = x;
-    node.y = y;
+    if (!node) return null;
 
-    if (!node.children || node.children.length === 0) {
-      // For leaf nodes, use their stored dimensions or default to calculated ones
-      node.width = node.width || width;
-      node.height = node.height || height;
-    } else {
-      // For container nodes, use calculated dimensions
-      node.width = width;
-      node.height = height;
+    let newX = x;
+    let newY = y;
+    let newWidth = width;
+    let newHeight = height;
 
+    // Apply outer reveals for the root container
+    if (isRoot) {
+      newX = reveals.left;
+      newY = reveals.top;
+      newWidth = cabinetWidth - (reveals.left + reveals.right);
+      newHeight = cabinetHeight - (reveals.top + reveals.bottom);
+    }
+
+    const newNode = {
+      ...node,
+      x: newX,
+      y: newY,
+      width: newWidth,
+      height: newHeight,
+    };
+
+    if (node.children && node.children.length > 0) {
       if (node.splitDirection === "horizontal") {
-        // Side by side - use actual widths of children
-        let currentX = x;
-        node.children.forEach((child) => {
-          // Use the child's stored width or calculate proportionally
-          const childWidth = child.width || width / node.children.length;
-          calculateLayout(child, currentX, y, childWidth, height);
+        const totalGapWidth = node.children
+          .filter((c) => c.type === "reveal")
+          .reduce((sum, c) => sum + c.width, 0);
+        const availableWidth = newWidth - totalGapWidth;
+        const totalFaceWidth = node.children
+          .filter((c) => c.type !== "reveal")
+          .reduce((sum, c) => sum + c.width, 0);
+
+        let currentX = newX;
+        newNode.children = node.children.map((child) => {
+          let childWidth = child.width;
+          if (child.type !== "reveal") {
+            // Scale face nodes proportionally
+            childWidth = (child.width / totalFaceWidth) * availableWidth;
+          }
+          const newChild = calculateLayout(
+            child,
+            currentX,
+            newY,
+            childWidth,
+            newHeight,
+            false
+          );
           currentX += childWidth;
+          return newChild;
         });
       } else {
-        // Stacked - use actual heights of children
-        let currentY = y;
-        node.children.forEach((child) => {
-          // Use the child's stored height or calculate proportionally
-          const childHeight = child.height || height / node.children.length;
-          calculateLayout(child, x, currentY, width, childHeight);
+        // Vertical split
+        const totalGapHeight = node.children
+          .filter((c) => c.type === "reveal")
+          .reduce((sum, c) => sum + c.height, 0);
+        const availableHeight = newHeight - totalGapHeight;
+        const totalFaceHeight = node.children
+          .filter((c) => c.type !== "reveal")
+          .reduce((sum, c) => sum + c.height, 0);
+
+        let currentY = newY;
+        newNode.children = node.children.map((child) => {
+          let childHeight = child.height;
+          if (child.type !== "reveal") {
+            // Scale face nodes proportionally
+            childHeight = (child.height / totalFaceHeight) * availableHeight;
+          }
+          const newChild = calculateLayout(
+            child,
+            newX,
+            currentY,
+            newWidth,
+            childHeight,
+            false
+          );
           currentY += childHeight;
+          return newChild;
         });
       }
     }
+
+    return newNode;
   };
 
   // Render a single node
@@ -210,11 +265,13 @@ const CabinetFaceDivider = ({
     // Skip if node has no width or height
     if (!node || node.width <= 0 || node.height <= 0) return;
 
-    // Calculate display position and size
-    const x = node.x * scale;
-    const y = node.y * scale;
-    const width = node.width * scale;
-    const height = node.height * scale;
+    const strokeWidth = node.type === "container" ? 1 : 2;
+
+    // Calculate display position and size, accounting for stroke width
+    const x = node.x * scale + strokeWidth / 2;
+    const y = node.y * scale + strokeWidth / 2;
+    const width = Math.max(0, node.width * scale - strokeWidth);
+    const height = Math.max(0, node.height * scale - strokeWidth);
 
     const faceType = FACE_TYPES.find((t) => t.value === node.type);
     // Draw rectangle
@@ -225,14 +282,18 @@ const CabinetFaceDivider = ({
       .attr("y", y)
       .attr("width", width)
       .attr("height", height)
-      .attr("fill", faceType?.color || "#6B7280")
+      .attr(
+        "fill",
+        node.type === "reveal" ? "#E5E7EB" : faceType?.color || "#6B7280"
+      )
       .attr("fill-opacity", node.type === "container" ? 0.1 : 0.3)
       .attr("stroke", faceType?.color || "#6B7280")
-      .attr("stroke-width", node.type === "container" ? 1 : 2)
+      .attr("stroke-width", strokeWidth)
       .attr("stroke-dasharray", node.type === "container" ? "3,3" : "none")
-      .attr("cursor", "pointer")
-      .style("pointer-events", "all")
+      .attr("cursor", node.type === "reveal" ? "default" : "pointer")
+      .style("pointer-events", node.type === "reveal" ? "none" : "all")
       .on("click", (event) => {
+        if (node.type === "reveal") return;
         event.stopPropagation();
         handleNodeClick(event, node);
       });
@@ -269,7 +330,7 @@ const CabinetFaceDivider = ({
         .attr("font-size", "12px")
         .attr("font-weight", "bold")
         .attr("pointer-events", "none")
-        .text(faceType?.label || "Unknown");
+        .text(faceType?.label || "");
     }
 
     // Add dimensions text for leaf nodes
@@ -350,7 +411,7 @@ const CabinetFaceDivider = ({
     if (!config) return;
 
     // Calculate layout for all nodes
-    calculateLayout(config);
+    const layoutConfig = calculateLayout(config);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove(); // Clear the SVG
@@ -370,7 +431,7 @@ const CabinetFaceDivider = ({
       .attr("stroke-width", 2);
 
     // Render the tree
-    renderNode(config);
+    renderNode(layoutConfig);
 
     // Add click handler to SVG background for closing selector
     svg.on("click", () => {
@@ -565,14 +626,8 @@ const CabinetFaceDivider = ({
   }, [config, onSave, cabinetDepth]);
 
   const handleDimensionChange = (dimension, newValueStr) => {
-    // Convert string to number and handle empty input
     const newValue = newValueStr === "" ? 0 : parseFloat(newValueStr);
-
-    // Allow the input field to show what user is typing, only validate on actual changes
     if (!selectedNode) return;
-
-    // Skip further processing if value is invalid, but don't return early on empty/0
-    // to allow users to clear the field and type new values
     if (isNaN(newValue)) return;
 
     const newConfig = cloneDeep(config);
@@ -580,160 +635,54 @@ const CabinetFaceDivider = ({
     if (!node) return;
 
     const parent = findParent(newConfig, selectedNode.id);
+    if (!parent) return; // Cannot resize the root node directly
 
-    // Root node cannot be resized - it's always the cabinet dimensions
-    if (!parent) {
-      return;
-    }
-
-    if (!parent.children || parent.children.length <= 1) {
-      // No siblings, just update the dimension directly
-      // But constrain to cabinet dimensions
-      const maxDimension = dimension === "width" ? cabinetWidth : cabinetHeight;
-
-      // Only enforce minimum value when user has completed input (non-zero value)
-      if (newValue > 0) {
-        node[dimension] = Math.max(minValue, Math.min(newValue, maxDimension));
-      } else {
-        // Allow zero temporarily during input, will be constrained on blur
-        node[dimension] = newValue;
-      }
+    const dimensionToChange =
+      parent.splitDirection === "horizontal" ? "width" : "height";
+    if (dimension !== dimensionToChange) {
+      // This is the perpendicular dimension, update all children
+      parent.children.forEach((child) => {
+        if (child.type !== "reveal") {
+          child[dimension] = newValue;
+        }
+      });
+      node[dimension] = newValue;
     } else {
-      // Determine which dimension the parent controls (split dimension) vs inherited dimension
-      const parentSplitDimension =
-        parent.splitDirection === "horizontal" ? "width" : "height";
-      const parentFixedDimension =
-        parent.splitDirection === "horizontal" ? "height" : "width";
+      // This is the parallel dimension, use direct calculation
+      const reveal = parent.children.find((c) => c.type === "reveal");
+      const revealSize = reveal ? reveal[dimension] : 0;
 
-      if (dimension === parentSplitDimension) {
-        // Child is adjusting the dimension it can control among siblings
-        // Handle proportional scaling for siblings
-        const siblings = parent.children;
-        const nodeIndex = siblings.findIndex(
-          (sibling) => sibling.id === node.id
+      const sibling = parent.children.find(
+        (c) => c.id !== node.id && c.type !== "reveal"
+      );
+
+      if (!sibling) return; // Should not happen in a split with siblings
+
+      const parentSize = parent[dimension];
+      const newSiblingSize = parentSize - newValue - revealSize;
+
+      // Check for constraints
+      if (newValue < minValue || newSiblingSize < minValue) {
+        console.warn(
+          `Dimension change rejected: results in a size smaller than the minimum ${minValue}"`
         );
-        const isLastSibling = nodeIndex === siblings.length - 1;
-
-        // Get container dimension for constraints
-        const containerDimension =
-          parent[parentSplitDimension] ||
-          (parentSplitDimension === "width" ? cabinetWidth : cabinetHeight);
-
-        // Ensure all siblings have initial dimensions
-        siblings.forEach((sibling) => {
-          if (!sibling[parentSplitDimension]) {
-            sibling[parentSplitDimension] =
-              containerDimension / siblings.length;
-          }
-        });
-
-        // Calculate constraints
-        const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
-        const maxValue = Math.max(
-          minValue,
-          containerDimension - otherSiblingsMinTotal
-        );
-
-        // Constrain the new value
-        const constrainedValue = Math.max(
-          minValue,
-          Math.min(newValue, maxValue)
-        );
-
-        // Calculate how much space is left for other siblings
-        const remainingSpace = containerDimension - constrainedValue;
-
-        // Update the changed node
-        node[dimension] = constrainedValue;
-
-        // Distribute remaining space proportionally among other siblings
-        const otherSiblings = siblings.filter(
-          (child) => child.id !== selectedNode.id
-        );
-        const currentOtherTotal = otherSiblings.reduce(
-          (sum, sibling) => sum + (sibling[parentSplitDimension] || 0),
-          0
-        );
-
-        if (otherSiblings.length > 0 && currentOtherTotal > 0) {
-          // Distribute proportionally based on current sizes
-          otherSiblings.forEach((sibling) => {
-            const currentSize =
-              sibling[parentSplitDimension] ||
-              containerDimension / siblings.length;
-            const proportion = currentSize / currentOtherTotal;
-            const newSize = remainingSpace * proportion;
-            sibling[parentSplitDimension] = Math.max(minValue, newSize);
-          });
-        } else if (otherSiblings.length > 0) {
-          // If no current sizes, distribute equally
-          const equalShare = remainingSpace / otherSiblings.length;
-          otherSiblings.forEach((sibling) => {
-            sibling[parentSplitDimension] = Math.max(minValue, equalShare);
-          });
-        }
-      } else {
-        // Child is trying to adjust the dimension it inherited from parent
-        // Check if parent is root - if so, don't allow changing cabinet-locked dimensions
-        const grandparent = findParent(newConfig, parent.id);
-
-        if (!grandparent) {
-          // Parent is root, child cannot change cabinet-locked dimensions
-          const rootFixedDimension =
-            parent.splitDirection === "horizontal" ? "height" : "width";
-          if (dimension === rootFixedDimension) {
-            // This dimension is locked to cabinet size, don't allow changes
-            return;
-          }
-        }
-
-        // Propagate this change up the tree iteratively
-        let currentParent = parent;
-        let currentValue = Math.max(
-          minValue,
-          Math.min(
-            newValue,
-            dimension === "width" ? cabinetWidth : cabinetHeight
-          )
-        );
-
-        while (currentParent) {
-          // Update the parent's dimension
-          currentParent[dimension] = currentValue;
-
-          // Update all children of this parent to inherit the new dimension
-          if (currentParent.children) {
-            currentParent.children.forEach((child) => {
-              child[dimension] = currentValue;
-            });
-          }
-
-          // Check if we need to continue propagating up
-          const grandparent = findParent(newConfig, currentParent.id);
-          if (grandparent) {
-            const grandparentFixedDimension =
-              grandparent.splitDirection === "horizontal" ? "height" : "width";
-            if (dimension === grandparentFixedDimension) {
-              // Continue up the tree
-              currentParent = grandparent;
-              continue;
-            }
-          }
-
-          // Stop propagating
-          break;
-        }
+        return; // Exit if new value is invalid
       }
+
+      // Update the current node's dimension and the sibling's dimension
+      node[dimension] = newValue;
+      sibling[dimension] = newSiblingSize;
     }
 
-    // Update the selected node reference to reflect changes
+    // Recalculate the layout with the new dimensions
+    const layoutConfig = calculateLayout(newConfig);
+    setConfig(layoutConfig);
+
+    // Update the selected node state to reflect the change immediately
     const updatedNode = findNode(newConfig, selectedNode.id);
     if (updatedNode) {
-      setSelectedNode({ ...selectedNode, [dimension]: updatedNode[dimension] });
+      setSelectedNode(updatedNode);
     }
-
-    setConfig(newConfig);
-    updateChildrenFromParent(newConfig);
   };
 
   const handleDragStart = (event, node, dimension) => {
@@ -900,15 +849,29 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
+      const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+      const revealWidth = reveals.reveal;
+      const childWidth = (node.width - revealWidth) / 2;
+
       node.children = [
         {
           id: generateId(node.id, 0),
           type: node.type === "container" ? "door" : node.type,
+          width: childWidth,
+          height: node.height,
           children: null,
         },
         {
           id: generateId(node.id, 1),
+          type: "reveal",
+          width: revealWidth,
+          height: node.height,
+        },
+        {
+          id: generateId(node.id, 2),
           type: node.type === "container" ? "door" : node.type,
+          width: childWidth,
+          height: node.height,
           children: null,
         },
       ];
@@ -930,15 +893,29 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
+      const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+      const revealHeight = reveals.reveal;
+      const childHeight = (node.height - revealHeight) / 2;
+
       node.children = [
         {
           id: generateId(node.id, 0),
           type: node.type === "container" ? "door" : node.type,
+          width: node.width,
+          height: childHeight,
           children: null,
         },
         {
           id: generateId(node.id, 1),
+          type: "reveal",
+          width: node.width,
+          height: revealHeight,
+        },
+        {
+          id: generateId(node.id, 2),
           type: node.type === "container" ? "door" : node.type,
+          width: node.width,
+          height: childHeight,
           children: null,
         },
       ];
@@ -951,97 +928,80 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
-  const handleDelete = () => {
-    if (!selectedNode || selectedNode.id === "root") return;
+  const handleDeleteNode = () => {
+    if (!selectedNode) return;
 
-    // First clear UI state to avoid stale references
-    setShowTypeSelector(false);
-    setSelectedNode(null);
-
-    // Create a deep copy of the config to avoid reference issues
     const newConfig = cloneDeep(config);
     const parent = findParent(newConfig, selectedNode.id);
 
-    if (parent && parent.children) {
-      // If there are exactly 2 children (which is the max in this structure)
-      if (parent.children.length === 2) {
-        // Find the index of the node being deleted
-        const deleteIndex = parent.children.findIndex(
-          (child) => child.id === selectedNode.id
-        );
-        // Get the remaining sibling that will stay after deletion
-        const remainingSibling = parent.children.filter(
-          (child) => child.id !== selectedNode.id
-        )[0];
-
-        // For horizontal splits, handle x position and width
-        if (parent.splitDirection === "horizontal") {
-          // If deleting the first (left) child, the right child should move left
-          if (deleteIndex === 0) {
-            remainingSibling.x = parent.x;
-          }
-          // In either case, the remaining child should expand to full parent width
-          remainingSibling.width = parent.width;
-        }
-        // For vertical splits, handle y position and height
-        else if (parent.splitDirection === "vertical") {
-          // If deleting the first (top) child, the bottom child should move up
-          if (deleteIndex === 0) {
-            remainingSibling.y = parent.y;
-          }
-          // In either case, the remaining child should expand to full parent height
-          remainingSibling.height = parent.height;
-        }
-
-        // If the remaining sibling has children, update their dimensions too
-        if (remainingSibling.children && remainingSibling.children.length > 0) {
-          updateChildrenFromParent(remainingSibling);
-        }
-      }
-
-      // Remove the selected node
-      parent.children = parent.children.filter(
-        (child) => child.id !== selectedNode.id
+    if (!parent) {
+      // Cannot delete the root, but can reset it
+      Object.assign(newConfig, {
+        type: "door",
+        children: null,
+        splitDirection: null,
+        // Keep original dimensions
+      });
+    } else {
+      const nodeIndex = parent.children.findIndex(
+        (c) => c.id === selectedNode.id
       );
+      if (nodeIndex === -1) return;
 
-      // If parent has only one child left, merge it up
-      if (parent.children.length === 1) {
-        const remainingChild = parent.children[0];
+      const deletedNodeSize =
+        parent.children[nodeIndex][
+          parent.splitDirection === "horizontal" ? "width" : "height"
+        ];
 
-        // Before merging, ensure the remaining child takes up the full parent dimension
-        if (parent.splitDirection === "horizontal") {
-          remainingChild.width = parent.width;
-          remainingChild.x = parent.x;
-        } else if (parent.splitDirection === "vertical") {
-          remainingChild.height = parent.height;
-          remainingChild.y = parent.y;
-        }
-
-        // If the remaining child has children, update their dimensions too
-        if (remainingChild.children && remainingChild.children.length > 0) {
-          updateChildrenFromParent(remainingChild);
-        }
-
-        parent.type = remainingChild.type;
-        parent.children = remainingChild.children;
-        parent.splitDirection = remainingChild.splitDirection;
+      // Remove the node and its adjacent reveal
+      if (nodeIndex > 0) {
+        // Remove the node and the reveal before it
+        parent.children.splice(nodeIndex - 1, 2);
+      } else {
+        // Remove the node and the reveal after it
+        parent.children.splice(nodeIndex, 2);
       }
 
-      // If parent has no children, make it a face type
-      if (parent.children && parent.children.length === 0) {
-        parent.children = null;
-        parent.type = "door";
+      // If only one child remains, collapse the parent container
+      if (parent.children.length === 1) {
+        const grandParent = findParent(newConfig, parent.id);
+        const lastChild = parent.children[0];
+        if (grandParent) {
+          const parentIndex = grandParent.children.findIndex(
+            (c) => c.id === parent.id
+          );
+          // Replace parent with the last child
+          grandParent.children[parentIndex] = lastChild;
+          // Update child's id to reflect new position in tree
+          lastChild.id = parent.id;
+        } else {
+          // Parent is the root, so the last child becomes the new root
+          Object.assign(newConfig, {
+            ...lastChild,
+            width: cabinetWidth,
+            height: cabinetHeight,
+          });
+        }
+      } else {
+        // Redistribute the deleted node's size among the remaining siblings
+        const dimension =
+          parent.splitDirection === "horizontal" ? "width" : "height";
+        const remainingFaces = parent.children.filter((c) => c.type !== "reveal");
+        const totalFaceSize = remainingFaces.reduce(
+          (sum, f) => sum + f[dimension],
+          0
+        );
+
+        remainingFaces.forEach((face) => {
+          const proportion = face[dimension] / totalFaceSize;
+          face[dimension] += deletedNodeSize * proportion;
+        });
       }
     }
 
-    // After all modifications, recalculate layout for the entire tree
-    calculateLayout(newConfig);
-
-    // Use React's state update with a fresh object to ensure React detects the change
-    const updatedConfig = cloneDeep(newConfig);
-    setConfig(updatedConfig);
-    setShowTypeSelector(false);
+    setConfig(newConfig);
     setSelectedNode(null);
+    setShowTypeSelector(false);
   };
 
   const handleReset = () => {
@@ -1050,10 +1010,10 @@ const CabinetFaceDivider = ({
     const resetConfig = {
       id: "root",
       type: "door",
-      width: cabinetWidth,
-      height: cabinetHeight,
-      x: 0,
-      y: 0,
+      width: cabinetWidth - reveals.left - reveals.right,
+      height: cabinetHeight - reveals.top - reveals.bottom,
+      x: reveals.left,
+      y: reveals.top,
       children: null,
     };
 
@@ -1189,7 +1149,7 @@ const CabinetFaceDivider = ({
                         onKeyDown={handleKeyDown}
                         disabled={isDimensionDisabled("width", selectedNode)}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                        step="0.25"
+                        step="0.125"
                         min={getDimensionConstraints("width").min}
                         max={getDimensionConstraints("width").max}
                       />
@@ -1206,7 +1166,7 @@ const CabinetFaceDivider = ({
                         onKeyDown={handleKeyDown}
                         disabled={isDimensionDisabled("height", selectedNode)}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                        step="0.25"
+                        step="0.125"
                         min={getDimensionConstraints("height").min}
                         max={getDimensionConstraints("height").max}
                       />
@@ -1227,8 +1187,6 @@ const CabinetFaceDivider = ({
                           onChange={(e) => handleRoShQtyChange(e, "rollOutQty")}
                           className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                           step="1"
-                          min="0"
-                          max="10"
                         />
                       </div>
                       <div className="flex flex-col items-center space-x-1">
@@ -1242,8 +1200,6 @@ const CabinetFaceDivider = ({
                           onChange={(e) => handleRoShQtyChange(e, "shelfQty")}
                           className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                           step="1"
-                          min="0"
-                          max="10"
                         />
                       </div>
                     </div>
@@ -1297,7 +1253,7 @@ const CabinetFaceDivider = ({
                   </div>
                   {selectedNode.id !== "root" && (
                     <button
-                      onClick={handleDelete}
+                      onClick={handleDeleteNode}
                       className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
                     >
                       Delete
@@ -1323,6 +1279,7 @@ CabinetFaceDivider.propTypes = {
   cabinetWidth: PropTypes.number.isRequired,
   cabinetHeight: PropTypes.number.isRequired,
   cabinetDepth: PropTypes.number.isRequired,
+  cabinetStyle: PropTypes.string.isRequired,
   faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   disabled: PropTypes.bool,

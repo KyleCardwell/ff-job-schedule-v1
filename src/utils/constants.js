@@ -42,6 +42,7 @@ export const FACE_TYPES = [
   { value: "panel", label: "Panel", color: "#6B7280" },
   { value: "open", label: "Open", color: "#F59E0B" },
   { value: "container", label: "Container", color: "#E5E7EB" },
+  { value: "gap", label: "", color: "#E5E7EB" },
 ];
 
 export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = ["door", "pair_door", "drawer_front", "open"];
@@ -171,4 +172,21 @@ export const CABINET_ANCHORS = {
       finishHours: 2.4,
     },
   ],
+};
+
+export const FACE_REVEALS = {
+  euro: {
+    top: .125,
+    bottom: .125,
+    left: .0625,
+    right: .0625,
+    reveal: .125,
+  },
+  face_frame: {
+    top: 1.5,
+    bottom: 1.5,
+    left: .75,
+    right: .75,
+    reveal: 1.5,
+  },
 };
