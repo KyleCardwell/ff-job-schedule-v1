@@ -963,6 +963,63 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
+  let canEqualize = false;
+  if (selectedNode) {
+    const parent = findParent(config, selectedNode.id);
+    const container = selectedNode.type === 'container' ? selectedNode : parent;
+
+    if (container && container.children) {
+      const faces = container.children.filter((c) => c.type !== "reveal");
+      if (faces.length > 1) {
+        canEqualize = true;
+      }
+    }
+  }
+
+  const handleEqualizeSiblings = () => {
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    let containerNode = null;
+
+    if (selectedNode.type === "container") {
+      containerNode = findNode(newConfig, selectedNode.id);
+    } else {
+      containerNode = findParent(newConfig, selectedNode.id);
+    }
+
+    if (!containerNode || !containerNode.children) return;
+
+    const splitDimension = containerNode.splitDirection === "horizontal" ? "width" : "height";
+    const faces = containerNode.children.filter((c) => c.type !== "reveal");
+    const reveals = containerNode.children.filter((c) => c.type === "reveal");
+
+    if (faces.length <= 1) return; // No siblings to equalize
+
+    const totalRevealSize = reveals.reduce(
+      (sum, r) => sum + r[splitDimension],
+      0
+    );
+    const availableSize = containerNode[splitDimension] - totalRevealSize;
+    const equalSize = availableSize / faces.length;
+
+    if (equalSize < minValue) {
+      console.warn(
+        `Equalize rejected: results in a size smaller than the minimum ${minValue}"`
+      );
+      return;
+    }
+
+    faces.forEach((face) => {
+      face[splitDimension] = equalSize;
+    });
+
+    const layoutConfig = calculateLayout(newConfig);
+    setConfig(layoutConfig);
+    setShowTypeSelector(false);
+    setSelectedNode(null);
+  };
+
   const handleDeleteNode = () => {
     if (!selectedNode) return;
 
@@ -1261,6 +1318,24 @@ const CabinetFaceDivider = ({
                 </div>
               )}
 
+              {selectedNode.type === "container" && (
+                <div className="border-t border-slate-200 mt-3 pt-3">
+                  <div className="text-xs font-medium text-slate-700 mb-2">
+                    Container Actions:
+                  </div>
+                  <div className="grid grid-cols-1 gap-1">
+                    {canEqualize && (
+                      <button
+                        onClick={handleEqualizeSiblings}
+                        className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                      >
+                        Equalize Children
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {selectedNode.type !== "reveal" && (
                 <>
                   <div className="text-xs font-medium text-slate-700 mb-2">
@@ -1308,6 +1383,14 @@ const CabinetFaceDivider = ({
                           Split Vertical
                         </button>
                       </div>
+                      {canEqualize && selectedNode.type !== 'container' && (
+                        <button
+                          onClick={handleEqualizeSiblings}
+                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                        >
+                          Equalize Siblings
+                        </button>
+                      )}
                       {selectedNode.id !== "root" && (
                         <button
                           onClick={handleDeleteNode}
