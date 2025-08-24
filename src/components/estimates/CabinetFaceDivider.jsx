@@ -312,10 +312,9 @@ const CabinetFaceDivider = ({
       .attr("stroke", faceType?.color || "#6B7280")
       .attr("stroke-width", strokeWidth)
       .attr("stroke-dasharray", node.type === "container" ? "3,3" : "none")
-      .attr("cursor", node.type === "reveal" ? "default" : "pointer")
-      .style("pointer-events", node.type === "reveal" ? "none" : "all")
+      .attr("cursor", node.type === "reveal" ? "pointer" : "pointer")
+      .style("pointer-events", "all")
       .on("click", (event) => {
-        if (node.type === "reveal") return;
         event.stopPropagation();
         handleNodeClick(event, node);
       });
@@ -511,7 +510,8 @@ const CabinetFaceDivider = ({
       const parentSize = node[splitDimension];
 
       // Check if siblings were equal before the parent resize
-      const areSiblingsEqual = firstFace[splitDimension] === lastFace[splitDimension];
+      const areSiblingsEqual =
+        firstFace[splitDimension] === lastFace[splitDimension];
 
       if (areSiblingsEqual) {
         // If they were equal, they should remain equal
@@ -1001,6 +1001,11 @@ const CabinetFaceDivider = ({
       if (parent.children.length === 1) {
         const grandParent = findParent(newConfig, parent.id);
         const lastChild = parent.children[0];
+
+        // The last child should expand to fill the parent's dimensions
+        lastChild.width = parent.width;
+        lastChild.height = parent.height;
+
         if (grandParent) {
           const parentIndex = grandParent.children.findIndex(
             (c) => c.id === parent.id
@@ -1013,15 +1018,19 @@ const CabinetFaceDivider = ({
           // Parent is the root, so the last child becomes the new root
           Object.assign(newConfig, {
             ...lastChild,
-            width: cabinetWidth,
-            height: cabinetHeight,
+            width: cabinetWidth - reveals.left - reveals.right,
+            height: cabinetHeight - reveals.top - reveals.bottom,
+            x: parent.x,
+            y: parent.y,
           });
         }
       } else {
         // Redistribute the deleted node's size among the remaining siblings
         const dimension =
           parent.splitDirection === "horizontal" ? "width" : "height";
-        const remainingFaces = parent.children.filter((c) => c.type !== "reveal");
+        const remainingFaces = parent.children.filter(
+          (c) => c.type !== "reveal"
+        );
         const totalFaceSize = remainingFaces.reduce(
           (sum, f) => sum + f[dimension],
           0
@@ -1060,8 +1069,18 @@ const CabinetFaceDivider = ({
   const handleCancelChanges = () => {
     if (disabled || !originalConfigRef.current) return;
 
+    // Create a fresh copy of the original config
+    const revertedConfig = cloneDeep(originalConfigRef.current);
+
+    // Adjust the root dimensions of the reverted config to match current props
+    revertedConfig.width = cabinetWidth - reveals.left - reveals.right;
+    revertedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
+
+    // Run update logic to ensure children match parent dimensions
+    updateChildrenFromParent(revertedConfig);
+
     // Revert to the original config state
-    setConfig(cloneDeep(originalConfigRef.current));
+    setConfig(revertedConfig);
     setSelectedNode(null);
     setShowTypeSelector(false);
     onDimensionChange({
@@ -1182,7 +1201,7 @@ const CabinetFaceDivider = ({
                         onChange={handleInputChange}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        disabled={isDimensionDisabled("width", selectedNode)}
+                        disabled={isDimensionDisabled("width", selectedNode) || selectedNode.type === 'reveal'}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.125"
                         min={getDimensionConstraints("width").min}
@@ -1199,7 +1218,7 @@ const CabinetFaceDivider = ({
                         onChange={handleInputChange}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        disabled={isDimensionDisabled("height", selectedNode)}
+                        disabled={isDimensionDisabled("height", selectedNode) || selectedNode.type === 'reveal'}
                         className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                         step="0.125"
                         min={getDimensionConstraints("height").min}
@@ -1242,60 +1261,65 @@ const CabinetFaceDivider = ({
                 </div>
               )}
 
-              <div className="text-xs font-medium text-slate-700 mb-2">
-                Change Type:
-              </div>
-              <div className="grid grid-cols-1 gap-1 mb-3">
-                {FACE_TYPES.filter((type) => type.value !== "container").map(
-                  (type) => (
-                    <button
-                      key={type.value}
-                      onClick={() => handleTypeChange(type.value)}
-                      className={`px-2 py-1 text-xs rounded flex items-center ${
-                        selectedNode.type === type.value
-                          ? "bg-blue-100 text-blue-700"
-                          : "hover:bg-slate-100"
-                      }`}
-                    >
-                      <div
-                        className="w-3 h-3 rounded mr-2"
-                        style={{ backgroundColor: type.color }}
-                      />
-                      {type.label}
-                    </button>
-                  )
-                )}
-              </div>
-
-              <div className="border-t border-slate-200 pt-2">
-                <div className="text-xs font-medium text-slate-700 mb-2">
-                  Actions:
-                </div>
-                <div className="flex flex-col space-y-1">
-                  <div className="flex space-x-1">
-                    <button
-                      onClick={handleSplitHorizontal}
-                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                    >
-                      Split Horizontal
-                    </button>
-                    <button
-                      onClick={handleSplitVertical}
-                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                    >
-                      Split Vertical
-                    </button>
+              {selectedNode.type !== "reveal" && (
+                <>
+                  <div className="text-xs font-medium text-slate-700 mb-2">
+                    Change Type:
                   </div>
-                  {selectedNode.id !== "root" && (
-                    <button
-                      onClick={handleDeleteNode}
-                      className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 gap-1 mb-3">
+                    {FACE_TYPES.filter(
+                      (type) =>
+                        type.value !== "container" && type.value !== "reveal"
+                    ).map((type) => (
+                      <button
+                        key={type.value}
+                        onClick={() => handleTypeChange(type.value)}
+                        className={`px-2 py-1 text-xs rounded flex items-center ${
+                          selectedNode.type === type.value
+                            ? "bg-blue-100 text-blue-700"
+                            : "hover:bg-slate-100"
+                        }`}
+                      >
+                        <div
+                          className="w-3 h-3 rounded mr-2"
+                          style={{ backgroundColor: type.color }}
+                        />
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-2">
+                    <div className="text-xs font-medium text-slate-700 mb-2">
+                      Actions:
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={handleSplitHorizontal}
+                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                        >
+                          Split Horizontal
+                        </button>
+                        <button
+                          onClick={handleSplitVertical}
+                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                        >
+                          Split Vertical
+                        </button>
+                      </div>
+                      {selectedNode.id !== "root" && (
+                        <button
+                          onClick={handleDeleteNode}
+                          className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

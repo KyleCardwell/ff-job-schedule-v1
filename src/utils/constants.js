@@ -42,7 +42,7 @@ export const FACE_TYPES = [
   { value: "panel", label: "Panel", color: "#6B7280" },
   { value: "open", label: "Open", color: "#F59E0B" },
   { value: "container", label: "Container", color: "#E5E7EB" },
-  { value: "gap", label: "", color: "#E5E7EB" },
+  { value: "reveal", label: "", color: "#E5E7EB" },
 ];
 
 export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = ["door", "pair_door", "drawer_front", "open"];
