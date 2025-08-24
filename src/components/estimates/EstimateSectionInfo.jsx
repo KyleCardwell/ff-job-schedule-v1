@@ -122,11 +122,11 @@ const EstimateSectionInfo = ({
                 </div>
                 <div className="text-slate-400">Face Material:</div>
                 <div className="pl-5 mb-3">
-                  {getFaceMaterialName(section.face_mat)}
+                  {getFaceMaterialName(section?.face_mat)}
                 </div>
                 <div className="text-slate-400">Box Material:</div>
                 <div className="pl-5 mb-3">
-                  {getBoxMaterialName(section.box_mat)}
+                  {getBoxMaterialName(section?.box_mat)}
                 </div>
                 <div className="text-slate-400">Finish:</div>
                 <div className="pl-5 mb-3">
