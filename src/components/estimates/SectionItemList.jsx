@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useState, useCallback } from "react";
-import { FiPlus, FiEdit2, FiTrash2, FiMove } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { LuArrowDownUp } from "react-icons/lu";
 
 import ReorderModal from "../common/ReorderModal.jsx";
 
@@ -132,17 +133,17 @@ const SectionItemList = ({
             {col.label}
           </div>
         ))}
-        {onReorder && items.length > 1 && (
+        {/* {onReorder && items.length > 1 && (
           <div className="flex justify-end">
             <button
               onClick={() => setIsReorderModalOpen(true)}
               className="text-slate-500 hover:text-blue-500"
               aria-label="Reorder items"
             >
-              <FiMove size={16} />
+              <LuArrowDownUp size={16} />
             </button>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Items List */}
@@ -191,7 +192,23 @@ const SectionItemList = ({
 
       {/* Add Item Button */}
       {!showNewItem && !hideAddButton && (
-        <div className="my-2">
+        <div className="my-2 relative">
+          {onReorder && items.length > 1 && (
+            <div className="flex justify-end absolute bottom-2 left-4">
+              <button
+                onClick={() => setIsReorderModalOpen(true)}
+                className={`text-slate-500 ${
+                  isFormActive
+                    ? "text-slate-600 cursor-not-allowed"
+                    : "hover:text-teal-500"
+                }`}
+                aria-label="Reorder items"
+                disabled={isFormActive}
+              >
+                <LuArrowDownUp size={20} />
+              </button>
+            </div>
+          )}
           <button
             onClick={() => {
               if (!isFormActive) {
@@ -217,7 +234,10 @@ const SectionItemList = ({
           open={isReorderModalOpen}
           onClose={() => setIsReorderModalOpen(false)}
           onSave={handleSaveOrder}
-          items={items.map((item) => ({ id: item.id, name: item.name || `Item ${item.id}` }))}
+          items={items.map((item) => ({
+            id: item.id,
+            name: item.name || `Item ${item.id}`,
+          }))}
           title="Reorder Items"
         />
       )}

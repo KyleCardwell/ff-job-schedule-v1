@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { FiArrowLeft, FiMove } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
+import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -154,15 +155,15 @@ const EstimateLayout = () => {
           {currentEstimate && (
             <>
               {/* Tasks List Header */}
-              <div className="py-3 px-4 text-sm font-medium text-slate-200 flex justify-between items-center">
-                <span>Rooms</span>
+              <div className="py-3 px-4 text-md font-medium text-slate-200 flex justify-between items-center border-b border-slate-200">
+                <span className="font-semibold">Rooms</span>
                 {currentEstimate?.tasks?.length > 1 && (
                   <button
                     onClick={() => setIsReorderModalOpen(true)}
                     className="text-slate-400 hover:text-teal-400"
                     aria-label="Reorder rooms"
                   >
-                    <FiMove size={16} />
+                    <LuArrowDownUp size={20} />
                   </button>
                 )}
               </div>
@@ -314,10 +315,12 @@ const EstimateLayout = () => {
         open={isReorderModalOpen}
         onClose={() => setIsReorderModalOpen(false)}
         onSave={handleSaveTaskOrder}
-        items={currentEstimate?.tasks?.map((task) => ({
-          id: task.est_task_id,
-          name: task.est_task_name,
-        })) || []}
+        items={
+          currentEstimate?.tasks?.map((task) => ({
+            id: task.est_task_id,
+            name: task.est_task_name,
+          })) || []
+        }
         title="Reorder Rooms"
       />
     </div>
