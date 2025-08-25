@@ -1,6 +1,8 @@
 import PropTypes from "prop-types";
 import { useState, useCallback } from "react";
-import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2, FiMove } from "react-icons/fi";
+
+import ReorderModal from "../common/ReorderModal.jsx";
 
 const SectionItemList = ({
   items,
@@ -9,12 +11,14 @@ const SectionItemList = ({
   emptyStateText,
   onSave,
   onDelete,
+  onReorder,
   ItemForm,
   hideAddButton = false,
   formProps = {},
 }) => {
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
@@ -45,6 +49,15 @@ const SectionItemList = ({
       await onDelete(itemIndex);
     } catch (error) {
       console.error("Error deleting item:", error);
+    }
+  };
+
+  const handleSaveOrder = async (orderedIds) => {
+    try {
+      await onReorder(orderedIds);
+      setIsReorderModalOpen(false);
+    } catch (error) {
+      console.error("Error saving order:", error);
     }
   };
 
@@ -106,7 +119,7 @@ const SectionItemList = ({
     <div className="max-w-3xl mx-auto">
       {/* Column Headers */}
       <div
-        className="grid gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200"
+        className="grid gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200 items-center"
         style={{
           gridTemplateColumns: columns.map((c) => c.width).join(" "),
         }}
@@ -119,6 +132,17 @@ const SectionItemList = ({
             {col.label}
           </div>
         ))}
+        {onReorder && items.length > 1 && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsReorderModalOpen(true)}
+              className="text-slate-500 hover:text-blue-500"
+              aria-label="Reorder items"
+            >
+              <FiMove size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Items List */}
@@ -187,6 +211,16 @@ const SectionItemList = ({
           </button>
         </div>
       )}
+
+      {onReorder && (
+        <ReorderModal
+          open={isReorderModalOpen}
+          onClose={() => setIsReorderModalOpen(false)}
+          onSave={handleSaveOrder}
+          items={items.map((item) => ({ id: item.id, name: item.name || `Item ${item.id}` }))}
+          title="Reorder Items"
+        />
+      )}
     </div>
   );
 };
@@ -204,6 +238,7 @@ SectionItemList.propTypes = {
   emptyStateText: PropTypes.string.isRequired,
   onSave: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
+  onReorder: PropTypes.func,
   ItemForm: PropTypes.elementType.isRequired,
   hideAddButton: PropTypes.bool,
   formProps: PropTypes.object,

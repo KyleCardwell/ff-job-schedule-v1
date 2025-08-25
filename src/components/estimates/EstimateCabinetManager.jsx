@@ -668,6 +668,14 @@ const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
     }
   };
 
+  const handleReorderItems = (orderedIds) => {
+    // Create a map for quick lookup
+    const itemsMap = new Map(items.map(item => [item.id || item.temp_id, item]));
+    // Re-create the array in the new order
+    const reorderedItems = orderedIds.map(id => itemsMap.get(id)).filter(Boolean);
+    onUpdateItems(reorderedItems);
+  };
+
   return (
     <SectionItemList
       items={items}
@@ -676,6 +684,7 @@ const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
       emptyStateText="No cabinet items added yet. Click the button below to add one."
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
+      onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
       formProps={{ cabinetStyle: style }}
     />

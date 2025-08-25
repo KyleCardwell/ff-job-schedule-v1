@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiMove } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -9,6 +9,7 @@ import {
 } from "../../redux/actions/estimates";
 import { fetchSheetGoods } from "../../redux/actions/materials.js";
 import { PATHS } from "../../utils/constants";
+import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
@@ -32,6 +33,7 @@ const EstimateLayout = () => {
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -102,6 +104,11 @@ const EstimateLayout = () => {
     setIsNewTask(false);
   };
 
+  const handleSaveTaskOrder = (orderedTaskIds) => {
+    console.log("New task order:", orderedTaskIds);
+    // TODO: Dispatch an action to update the task order in Redux and DB
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-slate-800 text-slate-200">
@@ -147,8 +154,17 @@ const EstimateLayout = () => {
           {currentEstimate && (
             <>
               {/* Tasks List Header */}
-              <div className="py-3 px-4 text-sm font-medium text-slate-200">
-                Rooms
+              <div className="py-3 px-4 text-sm font-medium text-slate-200 flex justify-between items-center">
+                <span>Rooms</span>
+                {currentEstimate?.tasks?.length > 1 && (
+                  <button
+                    onClick={() => setIsReorderModalOpen(true)}
+                    className="text-slate-400 hover:text-teal-400"
+                    aria-label="Reorder rooms"
+                  >
+                    <FiMove size={16} />
+                  </button>
+                )}
               </div>
 
               {/* Tasks List */}
@@ -294,6 +310,16 @@ const EstimateLayout = () => {
           </div>
         )}
       </div>
+      <ReorderModal
+        open={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        onSave={handleSaveTaskOrder}
+        items={currentEstimate?.tasks?.map((task) => ({
+          id: task.est_task_id,
+          name: task.est_task_name,
+        })) || []}
+        title="Reorder Rooms"
+      />
     </div>
   );
 };
