@@ -311,6 +311,49 @@ export const estimatesReducer = (state = initialState, action) => {
         error: null
       };
 
+    case Actions.estimates.UPDATE_SECTION_ITEM_ORDER_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.estimates.UPDATE_SECTION_ITEM_ORDER_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { sectionId: orderSectionId, itemType: orderItemType, orderedIds } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => ({
+            ...task,
+            sections: task.sections.map(section => {
+              if (section.est_section_id === orderSectionId) {
+                const items = section[orderItemType] || [];
+                const itemsMap = new Map(items.map(item => [item.id, item]));
+                const reorderedItems = orderedIds.map(id => itemsMap.get(id)).filter(Boolean);
+
+                return {
+                  ...section,
+                  [orderItemType]: reorderedItems,
+                };
+              }
+              return section;
+            })
+          }))
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.UPDATE_SECTION_ITEM_ORDER_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
     case Actions.estimates.UPDATE_ESTIMATE_ERROR:
       return {
         ...state,

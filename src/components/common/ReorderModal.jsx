@@ -6,6 +6,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
@@ -50,7 +51,12 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title }) => 
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">{title || 'Reorder Items'}</h2>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        >
           <SortableContext items={items} strategy={verticalListSortingStrategy}>
             <div className="max-h-96 overflow-y-auto pr-2">
               {items.map(item => (

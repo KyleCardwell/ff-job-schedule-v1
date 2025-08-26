@@ -2,13 +2,23 @@ import PropTypes from "prop-types";
 import { useState, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 
-import { FACE_NAMES, ITEM_FORM_WIDTHS, SPLIT_DIRECTIONS } from "../../utils/constants.js";
+import {
+  FACE_NAMES,
+  ITEM_FORM_WIDTHS,
+  SPLIT_DIRECTIONS,
+} from "../../utils/constants.js";
 import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
 
-const CabinetItemForm = ({ item = {}, onSave, onCancel, cabinetStyle }) => {
+const CabinetItemForm = ({
+  item = {},
+  onSave,
+  onCancel,
+  cabinetStyle,
+  onDeleteItem,
+}) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     width: item.width || "",
@@ -274,7 +284,11 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel, cabinetStyle }) => {
 
     // Total area calculation for a single cabinet
     const singleCabinetArea =
-      2 * sideArea + 2 * topBottomArea + backArea + totalShelfArea + totalPartitionArea;
+      2 * sideArea +
+      2 * topBottomArea +
+      backArea +
+      totalShelfArea +
+      totalPartitionArea;
 
     // Total area for all cabinets
     const totalBoxPartsArea = singleCabinetArea * qty;
@@ -396,7 +410,6 @@ const CabinetItemForm = ({ item = {}, onSave, onCancel, cabinetStyle }) => {
 
   const handleFaceConfigSave = useCallback(
     (faceConfig) => {
-
       // Only update if the face_config has actually changed
       if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
         setFormData((prevData) => ({
@@ -630,12 +643,23 @@ CabinetItemForm.propTypes = {
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   cabinetStyle: PropTypes.string,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
+const EstimateCabinetManager = ({
+  items,
+  onUpdateItems,
+  onReorderItems,
+  style,
+  onDeleteItem,
+}) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
-    { key: "interior", label: "Interior", width: ITEM_FORM_WIDTHS.THREE_FOURTHS },
+    {
+      key: "interior",
+      label: "Interior",
+      width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
+    },
     { key: "name", label: "Cabinet", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT },
@@ -661,19 +685,15 @@ const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
 
   const handleDeleteItem = async (itemIndex) => {
     try {
-      const updatedItems = items.filter((_, index) => index !== itemIndex);
-      onUpdateItems(updatedItems);
+      const itemToDelete = items[itemIndex];
+      onDeleteItem(itemToDelete);
     } catch (error) {
       console.error("Error deleting item:", error);
     }
   };
 
-  const handleReorderItems = (orderedIds) => {
-    // Create a map for quick lookup
-    const itemsMap = new Map(items.map(item => [item.id || item.temp_id, item]));
-    // Re-create the array in the new order
-    const reorderedItems = orderedIds.map(id => itemsMap.get(id)).filter(Boolean);
-    onUpdateItems(reorderedItems);
+  const handleReorderItems = (reorderedItems) => {
+    onReorderItems(reorderedItems);
   };
 
   return (
@@ -686,7 +706,7 @@ const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyle: style }}
+      formProps={{ cabinetStyle: style, onDeleteItem }}
     />
   );
 };
@@ -694,7 +714,9 @@ const EstimateCabinetManager = ({ items, onUpdateItems, style }) => {
 EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
+  onReorderItems: PropTypes.func.isRequired,
   style: PropTypes.string,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
 export default EstimateCabinetManager;

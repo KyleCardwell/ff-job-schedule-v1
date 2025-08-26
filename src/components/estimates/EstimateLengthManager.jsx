@@ -7,7 +7,7 @@ import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
 import SectionItemList from "./SectionItemList.jsx";
 
-const LengthItemForm = ({ item = {}, onSave, onCancel }) => {
+const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     length: item.length || "",
@@ -179,9 +179,10 @@ LengthItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateLengthManager = ({ items, onUpdateItems }) => {
+const EstimateLengthManager = ({ items, onUpdateItems, onReorderItems, onDeleteItem }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
     { key: "name", label: "Name", width: ITEM_FORM_WIDTHS.DEFAULT },
@@ -207,11 +208,15 @@ const EstimateLengthManager = ({ items, onUpdateItems }) => {
 
   const handleDeleteItem = async (itemIndex) => {
     try {
-      const updatedItems = items.filter((_, index) => index !== itemIndex);
-      onUpdateItems(updatedItems);
+      const itemToDelete = items[itemIndex];
+      onDeleteItem(itemToDelete);
     } catch (error) {
       console.error("Error deleting item:", error);
     }
+  };
+
+  const handleReorderItems = (reorderedItems) => {
+    onReorderItems(reorderedItems);
   };
 
   return (
@@ -222,6 +227,7 @@ const EstimateLengthManager = ({ items, onUpdateItems }) => {
       emptyStateText="No length items added yet. Click the button below to add one."
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
+      onReorder={handleReorderItems}
       ItemForm={LengthItemForm}
     />
   );
@@ -230,6 +236,8 @@ const EstimateLengthManager = ({ items, onUpdateItems }) => {
 EstimateLengthManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
+  onReorderItems: PropTypes.func.isRequired,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
 export default EstimateLengthManager;
