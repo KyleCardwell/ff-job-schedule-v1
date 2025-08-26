@@ -13,8 +13,9 @@ import { useState, useEffect } from 'react';
 
 import SortableItem from './SortableItem.jsx';
 
-const ReorderModal = ({ items: initialItems, open, onClose, onSave, title }) => {
+const ReorderModal = ({ items: initialItems, open, onClose, onSave, title, idKey = 'id' }) => {
   const [items, setItems] = useState(initialItems);
+  const itemName = idKey === 'est_task_id' ? 'est_task_name' : 'name';
 
   useEffect(() => {
     setItems(initialItems);
@@ -32,15 +33,15 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title }) => 
 
     if (active.id !== over.id) {
       setItems((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+        const oldIndex = items.findIndex((item) => item[idKey] === active.id);
+        const newIndex = items.findIndex((item) => item[idKey] === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
   };
 
   const handleSave = () => {
-    const orderedIds = items.map(item => item.id);
+    const orderedIds = items.map(item => item[idKey]);
     onSave(orderedIds);
     onClose();
   };
@@ -57,11 +58,11 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title }) => 
           onDragEnd={handleDragEnd}
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         >
-          <SortableContext items={items} strategy={verticalListSortingStrategy}>
+          <SortableContext items={items.map(i => i[idKey])} strategy={verticalListSortingStrategy}>
             <div className="max-h-96 overflow-y-auto pr-2">
               {items.map(item => (
-                <SortableItem key={item.id} id={item.id}>
-                  {item.name || item.id} 
+                <SortableItem key={item[idKey]} id={item[idKey]}>
+                  {item[itemName] || item[idKey]} 
                 </SortableItem>
               ))}
             </div>
@@ -88,4 +89,5 @@ ReorderModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   title: PropTypes.string,
+  idKey: PropTypes.string,
 };

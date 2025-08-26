@@ -354,6 +354,42 @@ export const estimatesReducer = (state = initialState, action) => {
         error: action.payload,
       };
 
+    case Actions.estimates.UPDATE_TASK_ORDER_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.estimates.UPDATE_TASK_ORDER_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { estimateId, orderedTaskIds } = action.payload;
+      if (state.currentEstimate && state.currentEstimate.estimate_id === estimateId) {
+        const tasksMap = new Map(state.currentEstimate.tasks.map(task => [task.est_task_id, task]));
+        const reorderedTasks = orderedTaskIds.map(id => tasksMap.get(id)).filter(Boolean);
+
+        return {
+          ...state,
+          currentEstimate: {
+            ...state.currentEstimate,
+            task_order: orderedTaskIds,
+            tasks: reorderedTasks,
+          },
+          loading: false,
+        };
+      }
+      return {
+        ...state,
+        loading: false,
+      };
+
+    case Actions.estimates.UPDATE_TASK_ORDER_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
     case Actions.estimates.UPDATE_ESTIMATE_ERROR:
       return {
         ...state,

@@ -236,8 +236,7 @@ export const fetchEstimateById = (estimateId) => {
                 other: section.other || [],
               }))
               .sort((a, b) => (a.section_order || 0) - (b.section_order || 0)),
-          }))
-          .sort((a, b) => (a.task_order || 0) - (b.task_order || 0)),
+          })),
         estimateDefault: data.estimates_default,
       };
 
@@ -422,44 +421,24 @@ export const updateEstimateProject = (estimateId, projectData) => {
 };
 
 // Generic function to update an order array column in any table
-export const updateOrderArray = (
+export const updateOrderArray = async (
   tableName,
   idColumn,
   rowId,
   orderColumn,
   orderedIds
 ) => {
-  return async (dispatch) => {
-    try {
-      // Note: You'll need to add these action types to your Actions object
-      dispatch({ type: Actions.estimates.UPDATE_ORDER_ARRAY_START });
+  try {
+    const { error } = await supabase
+      .from(tableName)
+      .update({ [orderColumn]: orderedIds })
+      .eq(idColumn, rowId);
 
-      const { error } = await supabase
-        .from(tableName)
-        .update({ [orderColumn]: orderedIds })
-        .eq(idColumn, rowId);
-
-      if (error) throw error;
-
-      dispatch({
-        type: Actions.estimates.UPDATE_ORDER_ARRAY_SUCCESS,
-        payload: {
-          tableName,
-          idColumn,
-          rowId,
-          orderColumn,
-          orderedIds,
-        },
-      });
-    } catch (error) {
-      console.error(`Error updating order for ${tableName}:`, error);
-      dispatch({
-        type: Actions.estimates.UPDATE_ORDER_ARRAY_ERROR,
-        payload: error.message,
-      });
-      throw error;
-    }
-  };
+    if (error) throw error;
+  } catch (error) {
+    console.error(`Error updating order for ${tableName}:`, error);
+    throw error;
+  }
 };
 
 // Add a new task to an estimate
@@ -940,14 +919,12 @@ export const updateSectionItems = (
 
       if (finalOrderedIds.length > 0) {
         const orderColumn = `${itemType}_order`;
-        await dispatch(
-          updateOrderArray(
-            "estimate_sections",
-            "est_section_id",
-            sectionId,
-            orderColumn,
-            finalOrderedIds
-          )
+        await updateOrderArray(
+          "estimate_sections",
+          "est_section_id",
+          sectionId,
+          orderColumn,
+          finalOrderedIds
         );
       }
 
@@ -983,18 +960,53 @@ export const updateSectionItems = (
 // Update the order of items for a specific section
 export const updateSectionItemOrder = (sectionId, tableName, orderedIds) => {
   return async (dispatch) => {
-    const itemType = tableName.replace("estimate_", "");
-    const orderColumn = `${itemType}_order`;
+    dispatch({ type: Actions.estimates.UPDATE_SECTION_ITEM_ORDER_START });
+    try {
+      const itemType = tableName.replace("estimate_", "");
+      const orderColumn = `${itemType}_order`;
 
-    // Re-use the generic order update action
-    await dispatch(
-      updateOrderArray(
+      await updateOrderArray(
         "estimate_sections",
         "est_section_id",
         sectionId,
         orderColumn,
         orderedIds
-      )
-    );
+      );
+
+      dispatch({
+        type: Actions.estimates.UPDATE_SECTION_ITEM_ORDER_SUCCESS,
+        payload: { sectionId, itemType, orderedIds },
+      });
+    } catch (error) {
+      dispatch({
+        type: Actions.estimates.UPDATE_SECTION_ITEM_ORDER_ERROR,
+        payload: error.message,
+      });
+    }
+  };
+};
+
+// Update the order of tasks for an estimate
+export const updateTaskOrder = (estimateId, orderedTaskIds) => {
+  return async (dispatch) => {
+    dispatch({ type: Actions.estimates.UPDATE_TASK_ORDER_START });
+    try {
+      await updateOrderArray(
+        'estimates',      // The table name
+        'estimate_id',    // The column to match for the row ID
+        estimateId,       // The ID of the estimate to update
+        'tasks_order',    // The column containing the order array
+        orderedTaskIds    // The new array of ordered task IDs
+      );
+      dispatch({
+        type: Actions.estimates.UPDATE_TASK_ORDER_SUCCESS,
+        payload: { estimateId, orderedTaskIds },
+      });
+    } catch (error) {
+      dispatch({
+        type: Actions.estimates.UPDATE_TASK_ORDER_ERROR,
+        payload: error.message,
+      });
+    }
   };
 };

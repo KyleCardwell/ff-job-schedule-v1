@@ -7,6 +7,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   fetchEstimateById,
   setCurrentEstimate,
+  updateTaskOrder,
 } from "../../redux/actions/estimates";
 import { fetchSheetGoods } from "../../redux/actions/materials.js";
 import { PATHS } from "../../utils/constants";
@@ -106,8 +107,9 @@ const EstimateLayout = () => {
   };
 
   const handleSaveTaskOrder = (orderedTaskIds) => {
-    console.log("New task order:", orderedTaskIds);
-    // TODO: Dispatch an action to update the task order in Redux and DB
+    if (currentEstimate?.estimate_id) {
+      dispatch(updateTaskOrder(currentEstimate.estimate_id, orderedTaskIds));
+    }
   };
 
   if (loading) {
@@ -315,13 +317,9 @@ const EstimateLayout = () => {
         open={isReorderModalOpen}
         onClose={() => setIsReorderModalOpen(false)}
         onSave={handleSaveTaskOrder}
-        items={
-          currentEstimate?.tasks?.map((task) => ({
-            id: task.est_task_id,
-            name: task.est_task_name,
-          })) || []
-        }
+        items={currentEstimate.tasks}
         title="Reorder Rooms"
+        idKey="est_task_id"
       />
     </div>
   );
