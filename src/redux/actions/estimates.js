@@ -223,6 +223,7 @@ export const fetchEstimateById = (estimateId) => {
         city: data.city,
         zip: data.zip,
         estimate_data: data.estimate_data,
+        tasks_order: data.tasks_order,
         tasks: (data.tasks || [])
           .map((task) => ({
             ...task.task,
@@ -449,11 +450,6 @@ export const addTask = (estimateId, taskName) => {
 
       const { currentEstimate } = getState().estimates;
       const currentTasks = currentEstimate?.tasks || [];
-      const maxOrder = currentTasks.reduce(
-        (max, task) => Math.max(max, task.task_order || 0),
-        -1
-      );
-      const newTaskOrder = maxOrder + 1;
 
       // Create the new task - the database trigger will create the initial section
       const { data: newTask, error: insertError } = await supabase
@@ -462,13 +458,22 @@ export const addTask = (estimateId, taskName) => {
           {
             estimate_id: estimateId,
             est_task_name: taskName.trim(),
-            task_order: newTaskOrder,
           },
         ])
         .select()
         .single();
 
       if (insertError) throw insertError;
+
+      // Add the new task ID to the order array and update the estimate
+      const newTasksOrder = [...(currentEstimate.tasks_order || []), newTask.est_task_id];
+      await updateOrderArray(
+        'estimates',
+        'estimate_id',
+        estimateId,
+        'tasks_order',
+        newTasksOrder
+      );
 
       // Fetch the task with sections using task_full_details view
       const { data: taskWithSections, error: fetchError } = await supabase
@@ -491,9 +496,8 @@ export const addTask = (estimateId, taskName) => {
           type: "task",
           data: {
             estimateId,
-            tasks: [...currentTasks, taskWithFormattedSections].sort(
-              (a, b) => (a.task_order || 0) - (b.task_order || 0)
-            ),
+            tasks: [...currentTasks, taskWithFormattedSections],
+            tasks_order: newTasksOrder,
           },
         },
       });
@@ -572,7 +576,7 @@ export const updateTask = (estimateId, taskId, updates) => {
 export const deleteTask = (estimateId, taskId) => {
   return async (dispatch, getState) => {
     try {
-      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+      dispatch({ type: Actions.estimates.DELETE_ESTIMATE_TASK_START });
 
       const { error } = await supabase
         .from("estimate_tasks")
@@ -581,23 +585,24 @@ export const deleteTask = (estimateId, taskId) => {
 
       if (error) throw error;
 
+      // Remove the task ID from the order array in the estimate
       const { currentEstimate } = getState().estimates;
+      const newTasksOrder = currentEstimate.tasks_order.filter(id => id !== taskId);
+      await updateOrderArray(
+        'estimates',
+        'estimate_id',
+        currentEstimate.estimate_id,
+        'tasks_order',
+        newTasksOrder
+      );
+
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
-        payload: {
-          type: "task",
-          data: {
-            estimateId,
-            tasks: currentEstimate.tasks.filter(
-              (task) => task.est_task_id !== taskId
-            ),
-          },
-        },
+        type: Actions.estimates.DELETE_ESTIMATE_TASK_SUCCESS,
+        payload: { taskId, newTasksOrder },
       });
     } catch (error) {
-      console.error("Error deleting task:", error);
       dispatch({
-        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        type: Actions.estimates.DELETE_ESTIMATE_TASK_ERROR,
         payload: error.message,
       });
       throw error;

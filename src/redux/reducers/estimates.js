@@ -132,12 +132,12 @@ export const estimatesReducer = (state = initialState, action) => {
           error: null
         };
       } else if (type === 'task') {
-        const { tasks } = data;
         return {
           ...state,
           currentEstimate: {
             ...state.currentEstimate,
-            tasks
+            tasks: data.tasks,
+            tasks_order: data.tasks_order,
           },
           loading: false,
           error: null
@@ -372,7 +372,7 @@ export const estimatesReducer = (state = initialState, action) => {
           ...state,
           currentEstimate: {
             ...state.currentEstimate,
-            task_order: orderedTaskIds,
+            tasks_order: orderedTaskIds,
             tasks: reorderedTasks,
           },
           loading: false,
@@ -384,6 +384,33 @@ export const estimatesReducer = (state = initialState, action) => {
       };
 
     case Actions.estimates.UPDATE_TASK_ORDER_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    case Actions.estimates.DELETE_ESTIMATE_TASK_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.estimates.DELETE_ESTIMATE_TASK_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.filter(
+            (task) => task.est_task_id !== action.payload.taskId
+          ),
+          tasks_order: action.payload.newTasksOrder,
+        },
+      };
+
+    case Actions.estimates.DELETE_ESTIMATE_TASK_ERROR:
       return {
         ...state,
         loading: false,
