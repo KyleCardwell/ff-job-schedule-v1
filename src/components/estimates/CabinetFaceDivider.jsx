@@ -388,7 +388,7 @@ const CabinetFaceDivider = ({
     if (nodeParent && nodeParent.children && nodeParent.children.length > 1) {
       const siblings = nodeParent.children;
       const nodeIndex = siblings.findIndex((sibling) => sibling.id === node.id);
-      const isLastSibling = nodeIndex === siblings.length - 1;
+      const isMidOrLastSibling = nodeIndex > 0;
 
       // Create a group for handles with high z-index
       const handleGroup = cabinetGroup
@@ -398,7 +398,7 @@ const CabinetFaceDivider = ({
       // Only add right handle if not the last sibling in a horizontal split
       if (
         nodeParent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL &&
-        !isLastSibling
+        !isMidOrLastSibling
       ) {
         // Right edge handle for width adjustment between siblings
         handleGroup
@@ -422,7 +422,7 @@ const CabinetFaceDivider = ({
       // Only add bottom handle if not the last sibling in a vertical split
       if (
         nodeParent.splitDirection === SPLIT_DIRECTIONS.VERTICAL &&
-        !isLastSibling
+        !isMidOrLastSibling
       ) {
         // Bottom edge handle for height adjustment between siblings
         handleGroup
@@ -724,8 +724,11 @@ const CabinetFaceDivider = ({
       const parentSize = parent[dimension];
       const newSiblingSize = parentSize - newValue - revealSize;
 
-      // Check for constraints
-      if (newValue < minValue || newSiblingSize < minValue) {
+      // Check for constraints. Allow dragging away from a too-small size.
+      if (
+        (newValue < minValue && newValue < node[dimension]) ||
+        (newSiblingSize < minValue && newSiblingSize < sibling[dimension])
+      ) {
         console.warn(
           `Dimension change rejected: results in a size smaller than the minimum ${minValue}"`
         );
