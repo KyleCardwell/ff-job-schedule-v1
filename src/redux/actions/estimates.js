@@ -224,20 +224,10 @@ export const fetchEstimateById = (estimateId) => {
         zip: data.zip,
         estimate_data: data.estimate_data,
         tasks_order: data.tasks_order,
-        tasks: (data.tasks || [])
-          .map((task) => ({
-            ...task.task,
-            sections: (task.sections || [])
-              .map((section) => ({
-                ...section,
-                section_data: section.section_data || {},
-                cabinets: section.cabinets || [],
-                lengths: section.lengths || [],
-                accessories: section.accessories || [],
-                other: section.other || [],
-              }))
-              .sort((a, b) => (a.section_order || 0) - (b.section_order || 0)),
-          })),
+        tasks: (data.tasks || []).map((task) => ({
+          ...task.task,
+          sections: (task.sections || []),
+        })),
         estimateDefault: data.estimates_default,
       };
 
@@ -612,20 +602,9 @@ export const deleteTask = (estimateId, taskId) => {
 
 // Add a new section to a task
 export const addSection = (estimateId, taskId, sectionData) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
-
-      const { currentEstimate } = getState().estimates;
-      const currentTask = currentEstimate?.tasks?.find(
-        (task) => task.est_task_id === taskId
-      );
-      const currentSections = currentTask?.sections || [];
-      const maxOrder = currentSections.reduce(
-        (max, section) => Math.max(max, section.section_order || 0),
-        0
-      );
-      const newSectionOrder = maxOrder + 1;
 
       // Extract boxMaterial from the section data
       const { boxMaterial, faceMaterial, ...restOfSectionData } = sectionData;
@@ -639,7 +618,6 @@ export const addSection = (estimateId, taskId, sectionData) => {
             box_mat: boxMaterial !== undefined ? +boxMaterial : null,
             face_mat: faceMaterial !== undefined ? +faceMaterial : null,
             est_task_id: taskId,
-            section_order: newSectionOrder,
           },
         ])
         .select()
@@ -656,13 +634,6 @@ export const addSection = (estimateId, taskId, sectionData) => {
         accessories: [],
         other: [],
       };
-
-      // Update just the current task with the new section
-      // const updatedTask = {
-      //   ...currentTask,
-      //   sections: [...currentSections, sectionWithFormattedData]
-      //     .sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
-      // };
 
       dispatch({
         type: Actions.estimates.ADD_SECTION_SUCCESS,
@@ -722,14 +693,6 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
 
       if (error) throw error;
 
-      // Update just the current task with the updated section
-      // const updatedTask = {
-      //   ...currentTask,
-      //   sections: currentSections.map(section =>
-      //     section.est_section_id === sectionId ? updatedSection : section
-      //   ).sort((a, b) => (a.section_order || 0) - (b.section_order || 0))
-      // };
-
       dispatch({
         type: Actions.estimates.UPDATE_SECTION_METADATA_SUCCESS,
         payload: {
@@ -779,8 +742,7 @@ export const deleteSection = (estimateId, taskId, sectionId) => {
       const updatedTask = {
         ...currentTask,
         sections: currentSections
-          .filter((section) => section.est_section_id !== sectionId)
-          .sort((a, b) => (a.section_order || 0) - (b.section_order || 0)),
+          .filter((section) => section.est_section_id !== sectionId),
       };
 
       dispatch({
