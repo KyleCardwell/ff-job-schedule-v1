@@ -876,29 +876,10 @@ export const updateSectionItems = (
         }
       }
 
-      // Extract the item type from table name (e.g., 'estimate_cabinets' -> 'cabinets')
-      const itemType = tableName.replace("estimate_", "");
-
-      // After all operations, derive the final order from the processed items
-      const finalOrderedIds = processedItems
-        .map((item) => item.id)
-        .filter(Boolean);
-
-      if (finalOrderedIds.length > 0) {
-        const orderColumn = `${itemType}_order`;
-        await updateOrderArray(
-          "estimate_sections",
-          "est_section_id",
-          sectionId,
-          orderColumn,
-          finalOrderedIds
-        );
-      }
-
       dispatch({
         type: Actions.estimates.UPDATE_SECTION_ITEMS_SUCCESS,
         payload: {
-          type: itemType,
+          type: tableName.replace("estimate_", ""),
           data: {
             sectionId,
             tableName,
