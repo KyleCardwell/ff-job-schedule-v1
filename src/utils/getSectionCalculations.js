@@ -34,6 +34,7 @@ const calculateSingleCabinet = (
   };
 
   FACE_TYPES.forEach((type) => {
+    if (type.value === 'reveal') return;
     cabinetSubtotal.faceCounts[type.value] = 0;
     cabinetSubtotal.facePrices[type.value] = 0;
   });
@@ -65,7 +66,7 @@ const calculateSingleCabinet = (
     if (selectedFaceMaterial && cabinet.face_config.faceSummary) {
       Object.entries(cabinet.face_config.faceSummary).forEach(
         ([faceType, faceData]) => {
-          if (["open", "container"].includes(faceType)) return;
+          if (["open", "container", "reveal"].includes(faceType)) return;
 
           const styleToUse =
             faceType === "drawer_front" || faceType === "false_front"
@@ -173,6 +174,7 @@ const calculateCabinetTotals = (
   };
 
   FACE_TYPES.forEach((type) => {
+    if (type.value === 'reveal') return;
     totals.faceCounts[type.value] = 0;
     totals.facePrices[type.value] = 0;
   });

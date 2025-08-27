@@ -5,7 +5,7 @@ import { v4 as uuid } from "uuid";
 
 import SectionItemList from "./SectionItemList.jsx";
 
-const OtherItemForm = ({ item = {}, onSave, onCancel }) => {
+const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     quantity: item.quantity || 1,
@@ -198,9 +198,10 @@ OtherItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateOtherManager = ({ items, onUpdateItems }) => {
+const EstimateOtherManager = ({ items, onUpdateItems, onDeleteItem }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
     { key: "name", label: "Item", width: "1fr" },
@@ -226,11 +227,15 @@ const EstimateOtherManager = ({ items, onUpdateItems }) => {
 
   const handleDeleteItem = async (itemIndex) => {
     try {
-      const updatedItems = items.filter((_, index) => index !== itemIndex);
-      onUpdateItems(updatedItems);
+      const itemToDelete = items[itemIndex];
+      onDeleteItem(itemToDelete);
     } catch (error) {
       console.error("Error deleting item:", error);
     }
+  };
+
+  const handleReorderItems = (reorderedItems) => {
+    onUpdateItems(reorderedItems);
   };
 
   return (
@@ -241,6 +246,7 @@ const EstimateOtherManager = ({ items, onUpdateItems }) => {
       emptyStateText="No other items added yet. Click the button below to add one."
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
+      onReorder={handleReorderItems}
       ItemForm={OtherItemForm}
       hideAddButton
     />
@@ -250,6 +256,7 @@ const EstimateOtherManager = ({ items, onUpdateItems }) => {
 EstimateOtherManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
 export default EstimateOtherManager;

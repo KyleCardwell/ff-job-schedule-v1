@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { FiArrowLeft } from "react-icons/fi";
+import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
 import {
   fetchEstimateById,
   setCurrentEstimate,
+  updateTaskOrder,
 } from "../../redux/actions/estimates";
 import { fetchSheetGoods } from "../../redux/actions/materials.js";
 import { PATHS } from "../../utils/constants";
+import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
@@ -32,6 +35,7 @@ const EstimateLayout = () => {
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -102,6 +106,12 @@ const EstimateLayout = () => {
     setIsNewTask(false);
   };
 
+  const handleSaveTaskOrder = (orderedTaskIds) => {
+    if (currentEstimate?.estimate_id) {
+      dispatch(updateTaskOrder(currentEstimate.estimate_id, orderedTaskIds));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-slate-800 text-slate-200">
@@ -147,8 +157,17 @@ const EstimateLayout = () => {
           {currentEstimate && (
             <>
               {/* Tasks List Header */}
-              <div className="py-3 px-4 text-sm font-medium text-slate-200">
-                Rooms
+              <div className="py-3 px-4 text-md font-medium text-slate-200 flex justify-between items-center border-b border-slate-200">
+                <span className="font-semibold">Rooms</span>
+                {currentEstimate?.tasks?.length > 1 && (
+                  <button
+                    onClick={() => setIsReorderModalOpen(true)}
+                    className="text-slate-400 hover:text-teal-400"
+                    aria-label="Reorder rooms"
+                  >
+                    <LuArrowDownUp size={20} />
+                  </button>
+                )}
               </div>
 
               {/* Tasks List */}
@@ -294,6 +313,14 @@ const EstimateLayout = () => {
           </div>
         )}
       </div>
+      <ReorderModal
+        open={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        onSave={handleSaveTaskOrder}
+        items={currentEstimate.tasks}
+        title="Reorder Rooms"
+        idKey="est_task_id"
+      />
     </div>
   );
 };

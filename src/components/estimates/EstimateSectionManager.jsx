@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
 import { useDispatch } from "react-redux";
 
-import { useDebouncedCallback } from "../../hooks/useDebounce";
-import { updateSectionItems } from "../../redux/actions/estimates";
+// import { useDebouncedCallback } from "../../hooks/useDebounce";
+import { updateSectionItems, updateSectionItemOrder } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
+import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
 import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
@@ -16,9 +17,6 @@ import EstimateOtherManager from "./EstimateOtherManager.jsx";
 const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   const dispatch = useDispatch();
 
-  // No longer need to look up the section since it's passed as a prop
-  // Keep taskId and sectionId for dispatching actions
-
   // Initialize section data from current section
   const [sectionData, setSectionData] = useState({
     cabinets: section?.cabinets || [],
@@ -27,6 +25,9 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     other: section?.other || [],
     style: section?.section_data?.style || "euro",
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Create a mapping of section types to their table names
   const sectionTableMapping = {
@@ -68,37 +69,37 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     
     
   // Debounced save to database
-  const debouncedSave = useDebouncedCallback(async (type, updatedItems) => {
-    try {
-      // Only save if there are actual changes compared to Redux state
-      if (!hasUnsavedChanges(type, updatedItems)) {
-        console.log(`No changes detected for ${type}. Skipping save.`);
-        return;
-      }
+  // const debouncedSave = useDebouncedCallback(async (type, updatedItems) => {
+  //   try {
+  //     // Only save if there are actual changes compared to Redux state
+  //     if (!hasUnsavedChanges(type, updatedItems)) {
+  //       console.log(`No changes detected for ${type}. Skipping save.`);
+  //       return;
+  //     }
 
-      if (sectionId) {
-        console.log(`Saving changes for ${type}`);
+  //     if (sectionId) {
+  //       console.log(`Saving changes for ${type}`);
         
-        const tableName = sectionTableMapping[type];
-        // For now, we'll pass an empty array for idsToDelete - you can enhance this later
-        const idsToDelete = [];
+  //       const tableName = sectionTableMapping[type];
+  //       // For now, we'll pass an empty array for idsToDelete - you can enhance this later
+  //       const idsToDelete = [];
         
-        await dispatch(updateSectionItems(tableName, sectionId, updatedItems, idsToDelete));
+  //       await dispatch(updateSectionItems(tableName, sectionId, updatedItems, idsToDelete));
         
-        console.log(`Successfully saved ${type} changes`);
-      }
-    } catch (error) {
-      console.error("Error saving section data:", error);
-      // On error, revert to the last known good state from Redux
-      setSectionData((prev) => ({
-        ...prev,
-        [type]: section?.[type] || [],
-      }));
-    }
-  }, 1000); // 1 second debounce delay
+  //       console.log(`Successfully saved ${type} changes`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error saving section data:", error);
+  //     // On error, revert to the last known good state from Redux
+  //     setSectionData((prev) => ({
+  //       ...prev,
+  //       [type]: section?.[type] || [],
+  //     }));
+  //   }
+  // }, 1000); // 1 second debounce delay
 
   // Immediate save function (no debounce)
-  const saveImmediately = async (type, updatedItems) => {
+  const saveImmediately = async (type, updatedItems, idsToDelete = []) => {
     try {
       if (!hasUnsavedChanges(type, updatedItems)) {
         console.log(`No changes detected for ${type}. Skipping save.`);
@@ -109,7 +110,6 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         console.log(`Immediately saving changes for ${type}`);
         
         const tableName = sectionTableMapping[type];
-        const idsToDelete = [];
         
         await dispatch(updateSectionItems(tableName, sectionId, updatedItems, idsToDelete));
         
@@ -124,6 +124,39 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     }
   };
 
+  const handleDeleteRequest = (type, item) => {
+    setItemToDelete({ type, item });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
+  };
+
+  const handleDeleteItem = () => {
+    if (!itemToDelete) return;
+
+    const { type, item: itemToDeleteData } = itemToDelete;
+
+    if (!itemToDeleteData || typeof itemToDeleteData.id === 'undefined') return;
+
+    const updatedItems = sectionData[type].filter((item) => {
+      if (item.id) return item.id !== itemToDeleteData.id;
+      if (item.temp_id) return item.temp_id !== itemToDeleteData.temp_id;
+      return false;
+    });
+
+    setSectionData((prev) => ({
+      ...prev,
+      [type]: updatedItems,
+    }));
+
+    saveImmediately(type, updatedItems, [itemToDeleteData.id]);
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
+  };
+
   const handleUpdateItems = (type, updatedItems) => {
     // Update local state immediately (optimistic update)
     setSectionData((prev) => ({
@@ -131,9 +164,22 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
       [type]: updatedItems,
     }));
 
-    // Debounced save to database
-    // debouncedSave(type, updatedItems);
-    saveImmediately(type, updatedItems);
+    saveImmediately(type, updatedItems, []);
+  };
+
+  const handleReorderItems = (type, orderedIds) => {
+    const items = sectionData[type];
+    const itemsMap = new Map(items.map(item => [item.id || item.temp_id, item]));
+    const reorderedItems = orderedIds.map(id => itemsMap.get(id)).filter(Boolean);
+
+    setSectionData((prev) => ({
+      ...prev,
+      [type]: reorderedItems,
+    }));
+
+    // Dispatch the new action to save only the order
+    const tableName = sectionTableMapping[type];
+    dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
   const sections = [
@@ -144,6 +190,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateCabinetManager
           items={sectionData.cabinets}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.CABINETS.type, item)}
+          onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)}
           style={sectionData.style}
         />
       ),
@@ -155,6 +203,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateLengthManager
           items={sectionData.lengths}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.LENGTHS.type, items)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.LENGTHS.type, item)}
+          onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.LENGTHS.type, orderedIds)}
         />
       ),
     },
@@ -165,6 +215,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateAccessoriesManager
           items={sectionData.accessories}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.ACCESSORIES.type, items)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.ACCESSORIES.type, item)}
+          onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.ACCESSORIES.type, orderedIds)}
         />
       ),
     },
@@ -175,6 +227,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateOtherManager
           items={sectionData.other}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.OTHER.type, items)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.OTHER.type, item)}
+          onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.OTHER.type, orderedIds)}
         />
       ),
     },
@@ -209,6 +263,13 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
           )}
         </div>
       ))}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onCancel={handleCancelDelete}
+        onConfirm={handleDeleteItem}
+        title="Confirm Deletion"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+      />
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
 import SectionItemList from "./SectionItemList.jsx";
 
-const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
+const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     quantity: item.quantity || 1,
@@ -171,9 +171,10 @@ AccessoryItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateAccessoriesManager = ({ items, onUpdateItems }) => {
+const EstimateAccessoriesManager = ({ items, onUpdateItems, onReorderItems, onDeleteItem }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
     { key: "name", label: "Accessory", width: ITEM_FORM_WIDTHS.DEFAULT },
@@ -199,11 +200,15 @@ const EstimateAccessoriesManager = ({ items, onUpdateItems }) => {
 
   const handleDeleteItem = async (itemIndex) => {
     try {
-      const updatedItems = items.filter((_, index) => index !== itemIndex);
-      onUpdateItems(updatedItems);
+      const itemToDelete = items[itemIndex];
+      onDeleteItem(itemToDelete);
     } catch (error) {
       console.error("Error deleting item:", error);
     }
+  };
+
+  const handleReorderItems = (orderedIds) => {
+    onReorderItems(orderedIds);
   };
 
   return (
@@ -214,6 +219,7 @@ const EstimateAccessoriesManager = ({ items, onUpdateItems }) => {
       emptyStateText="No accessory items added yet. Click the button below to add one."
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
+      onReorder={handleReorderItems}
       ItemForm={AccessoryItemForm}
     />
   );
@@ -222,6 +228,8 @@ const EstimateAccessoriesManager = ({ items, onUpdateItems }) => {
 EstimateAccessoriesManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
+  onReorderItems: PropTypes.func.isRequired,
+  onDeleteItem: PropTypes.func.isRequired,
 };
 
 export default EstimateAccessoriesManager;

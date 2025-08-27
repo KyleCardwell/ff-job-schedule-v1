@@ -132,12 +132,12 @@ export const estimatesReducer = (state = initialState, action) => {
           error: null
         };
       } else if (type === 'task') {
-        const { tasks } = data;
         return {
           ...state,
           currentEstimate: {
             ...state.currentEstimate,
-            tasks
+            tasks: data.tasks,
+            tasks_order: data.tasks_order,
           },
           loading: false,
           error: null
@@ -309,6 +309,112 @@ export const estimatesReducer = (state = initialState, action) => {
         },
         loading: false,
         error: null
+      };
+
+    case Actions.estimates.UPDATE_SECTION_ITEM_ORDER_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.estimates.UPDATE_SECTION_ITEM_ORDER_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { sectionId: orderSectionId, itemType: orderItemType, orderedIds } = action.payload;
+      
+      return {
+        ...state,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.map(task => ({
+            ...task,
+            sections: task.sections.map(section => {
+              if (section.est_section_id === orderSectionId) {
+                const items = section[orderItemType] || [];
+                const itemsMap = new Map(items.map(item => [item.id, item]));
+                const reorderedItems = orderedIds.map(id => itemsMap.get(id)).filter(Boolean);
+
+                return {
+                  ...section,
+                  [orderItemType]: reorderedItems,
+                };
+              }
+              return section;
+            })
+          }))
+        },
+        loading: false,
+        error: null
+      };
+
+    case Actions.estimates.UPDATE_SECTION_ITEM_ORDER_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    case Actions.estimates.UPDATE_TASK_ORDER_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.estimates.UPDATE_TASK_ORDER_SUCCESS:
+      // eslint-disable-next-line no-case-declarations
+      const { estimateId, orderedTaskIds } = action.payload;
+      if (state.currentEstimate && state.currentEstimate.estimate_id === estimateId) {
+        const tasksMap = new Map(state.currentEstimate.tasks.map(task => [task.est_task_id, task]));
+        const reorderedTasks = orderedTaskIds.map(id => tasksMap.get(id)).filter(Boolean);
+
+        return {
+          ...state,
+          currentEstimate: {
+            ...state.currentEstimate,
+            tasks_order: orderedTaskIds,
+            tasks: reorderedTasks,
+          },
+          loading: false,
+        };
+      }
+      return {
+        ...state,
+        loading: false,
+      };
+
+    case Actions.estimates.UPDATE_TASK_ORDER_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+      };
+
+    case Actions.estimates.DELETE_ESTIMATE_TASK_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.estimates.DELETE_ESTIMATE_TASK_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        currentEstimate: {
+          ...state.currentEstimate,
+          tasks: state.currentEstimate.tasks.filter(
+            (task) => task.est_task_id !== action.payload.taskId
+          ),
+          tasks_order: action.payload.newTasksOrder,
+        },
+      };
+
+    case Actions.estimates.DELETE_ESTIMATE_TASK_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
       };
 
     case Actions.estimates.UPDATE_ESTIMATE_ERROR:
