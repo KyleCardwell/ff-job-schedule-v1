@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 // import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { updateSectionItems, updateSectionItemOrder } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
+import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
 import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
@@ -24,6 +25,9 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     other: section?.other || [],
     style: section?.section_data?.style || "euro",
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Create a mapping of section types to their table names
   const sectionTableMapping = {
@@ -120,22 +124,26 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     }
   };
 
-  const handleUpdateItems = (type, updatedItems) => {
-    // Update local state immediately (optimistic update)
-    setSectionData((prev) => ({
-      ...prev,
-      [type]: updatedItems,
-    }));
-
-    saveImmediately(type, updatedItems, []);
+  const handleDeleteRequest = (type, item) => {
+    setItemToDelete({ type, item });
+    setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteItem = (type, itemToDelete) => {
-    if (!itemToDelete || typeof itemToDelete.id === 'undefined') return;
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
+  };
+
+  const handleDeleteItem = () => {
+    if (!itemToDelete) return;
+
+    const { type, item: itemToDeleteData } = itemToDelete;
+
+    if (!itemToDeleteData || typeof itemToDeleteData.id === 'undefined') return;
 
     const updatedItems = sectionData[type].filter((item) => {
-      if (item.id) return item.id !== itemToDelete.id;
-      if (item.temp_id) return item.temp_id !== itemToDelete.temp_id;
+      if (item.id) return item.id !== itemToDeleteData.id;
+      if (item.temp_id) return item.temp_id !== itemToDeleteData.temp_id;
       return false;
     });
 
@@ -144,7 +152,19 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
       [type]: updatedItems,
     }));
 
-    saveImmediately(type, updatedItems, [itemToDelete.id]);
+    saveImmediately(type, updatedItems, [itemToDeleteData.id]);
+    setIsDeleteModalOpen(false);
+    setItemToDelete(null);
+  };
+
+  const handleUpdateItems = (type, updatedItems) => {
+    // Update local state immediately (optimistic update)
+    setSectionData((prev) => ({
+      ...prev,
+      [type]: updatedItems,
+    }));
+
+    saveImmediately(type, updatedItems, []);
   };
 
   const handleReorderItems = (type, orderedIds) => {
@@ -170,7 +190,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateCabinetManager
           items={sectionData.cabinets}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
-          onDeleteItem={(item) => handleDeleteItem(SECTION_TYPES.CABINETS.type, item)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.CABINETS.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)}
           style={sectionData.style}
         />
@@ -183,7 +203,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateLengthManager
           items={sectionData.lengths}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.LENGTHS.type, items)}
-          onDeleteItem={(item) => handleDeleteItem(SECTION_TYPES.LENGTHS.type, item)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.LENGTHS.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.LENGTHS.type, orderedIds)}
         />
       ),
@@ -195,7 +215,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateAccessoriesManager
           items={sectionData.accessories}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.ACCESSORIES.type, items)}
-          onDeleteItem={(item) => handleDeleteItem(SECTION_TYPES.ACCESSORIES.type, item)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.ACCESSORIES.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.ACCESSORIES.type, orderedIds)}
         />
       ),
@@ -207,7 +227,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         <EstimateOtherManager
           items={sectionData.other}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.OTHER.type, items)}
-          onDeleteItem={(item) => handleDeleteItem(SECTION_TYPES.OTHER.type, item)}
+          onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.OTHER.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.OTHER.type, orderedIds)}
         />
       ),
@@ -243,6 +263,13 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
           )}
         </div>
       ))}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onCancel={handleCancelDelete}
+        onConfirm={handleDeleteItem}
+        title="Confirm Deletion"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+      />
     </div>
   );
 };
