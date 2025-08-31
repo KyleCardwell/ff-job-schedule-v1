@@ -22,6 +22,7 @@ import CompletedProjectView from "./components/completedProjects/CompletedProjec
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout.jsx";
 import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";
+import MockAuth from "./mocks/mockAuth.js";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { fetchFeatureToggles } from "./redux/actions/featureToggles";
@@ -50,7 +51,7 @@ const authContainerStyle = {
 	borderRadius: "8px",
 };
 
-const App = () => {
+const AppContent = () => {
 	const dispatch = useDispatch();
 	const {
 		session,
@@ -316,6 +317,22 @@ const App = () => {
 			</div>
 		</Router>
 	);
+};
+
+const App = () => {
+	const isDevelopment = import.meta.env.DEV;
+	const urlParams = new URLSearchParams(window.location.search);
+	const useMockAuth = isDevelopment && urlParams.get("mock") === "true";
+
+	if (useMockAuth) {
+		return (
+			<MockAuth>
+				<AppContent />
+			</MockAuth>
+		);
+	}
+
+	return <AppContent />;
 };
 
 export default App;

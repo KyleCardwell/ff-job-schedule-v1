@@ -344,7 +344,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
         <div className="text-red-500 text-sm mt-2">{errors.save}</div>
       )}
     </div>
-    // </div>
   );
 });
 
