@@ -32,7 +32,7 @@ const AdminDashboard = () => {
   const location = useLocation();
 
   const { dayWidth, workday_hours: workdayHours } = useSelector(
-    (state) => state.chartConfig.workday_hours
+    (state) => state.chartConfig
   );
   const { roleId, permissions } = useSelector((state) => state.auth);
 

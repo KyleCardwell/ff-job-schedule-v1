@@ -59,6 +59,7 @@ export const builders = (state = initialState, action) => {
             employee_color: action.payload.employee_color,
             timeOff: action.payload.timeOff,
             employee_type: action.payload.employee_type,
+            team_service_id: action.payload.team_service_id,
             employee_rate: action.payload.employee_rate,
           },
         ], // Add new builder to the array
