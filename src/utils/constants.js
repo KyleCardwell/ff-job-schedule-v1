@@ -5,6 +5,7 @@ export const PATHS = {
   MANAGE_CHART: "/manage/chart",
   MANAGE_HOLIDAYS: "/manage/holidays",
   MANAGE_TEAM: "/manage/team",
+  MANAGE_SERVICES: "/manage/services",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
   SETTINGS: "/settings",

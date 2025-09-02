@@ -12,6 +12,7 @@ import { financialsDataReducer } from "./financialsData";
 import { holidaysReducer } from "./holidays";
 import { materialsReducer } from "./materials";
 import { projectsReducer } from "./projects";
+import servicesReducer from "./services";
 import { taskDataReducer } from "./taskData";
 import { teamMembersReducer } from "./teamMembers";
 
@@ -29,6 +30,7 @@ const appReducer = combineReducers({
 	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
 	materials: materialsReducer,
+	services: servicesReducer,
 });
 
 // Root reducer that handles resetting state

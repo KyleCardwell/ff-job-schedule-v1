@@ -16,7 +16,6 @@ SettingsSection.propTypes = {
   title: PropTypes.string,
   children: PropTypes.node,
   error: PropTypes.string,
-  addLabel: PropTypes.string,
 };
 
 export default SettingsSection;
