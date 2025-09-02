@@ -29,7 +29,7 @@ export const fetchEmployees = () => async (dispatch) => {
 	try {
 		const { data, error } = await supabase
 			.from("employees")
-			.select("employee_id, employee_name, employee_color, time_off, employee_type, employee_rate, can_schedule, scheduling_conflicts")
+			.select("employee_id, employee_name, employee_color, time_off, employee_type, team_service_id, employee_rate, can_schedule, scheduling_conflicts")
 			.order("employee_id", { ascending: true });
 
 		if (error) throw error;
@@ -75,7 +75,8 @@ export const addEmployees = (employees) => async (dispatch, getState) => {
 					employee_name: employee.employee_name,
 					employee_color: employee.employee_color,
 					time_off: employee.time_off,
-					employee_type: employee.employee_type,
+					// employee_type: employee.employee_type,
+					team_service_id: employee.team_service_id,
 					employee_rate: employee.employee_rate,
 					team_id: state.auth.teamId,
 					can_schedule: employee.can_schedule,
@@ -111,7 +112,8 @@ export const updateEmployees = (employees) => async (dispatch) => {
 					employee_name: employee.employee_name,
 					employee_color: employee.employee_color,
 					time_off: employee.time_off,
-					employee_type: employee.employee_type,
+					// employee_type: employee.employee_type,
+					team_service_id: employee.team_service_id,
 					employee_rate: employee.employee_rate,
 					can_schedule: employee.can_schedule,
 				})

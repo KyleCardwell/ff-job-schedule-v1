@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 import { FACE_TYPES } from "../../utils/constants";
@@ -15,8 +15,8 @@ const EstimateSectionPrice = ({ section }) => {
   );
 
   // Get employee rates from Redux store
-  const employeeTypes = useSelector(
-    (state) => state.chartConfig?.employee_type || []
+  const services = useSelector(
+    (state) => state.services?.allServices || []
   );
 
   const finishTypes = useSelector(
@@ -43,11 +43,11 @@ const EstimateSectionPrice = ({ section }) => {
 
   // Calculate labor costs based on hours and rates
   const laborCosts = useMemo(() => {
-    const shopRate = employeeTypes.find((et) => et.name === "shop")?.rate || 0;
+    const shopRate = services.find((et) => et.service_name === "Shop")?.hourly_rate || 0;
     const finishRate =
-      employeeTypes.find((et) => et.name === "finish")?.rate || 0;
+      services.find((et) => et.service_name === "Finish")?.hourly_rate || 0;
     const installRate =
-      employeeTypes.find((et) => et.name === "install")?.rate || 0;
+      services.find((et) => et.service_name === "Install")?.hourly_rate || 0;
 
     const shopCost = sectionCalculations.shopHours * shopRate;
     const finishCost = sectionCalculations.finishHours * finishRate;
@@ -63,7 +63,7 @@ const EstimateSectionPrice = ({ section }) => {
     sectionCalculations.shopHours,
     sectionCalculations.finishHours,
     sectionCalculations.installHours,
-    employeeTypes,
+    services,
   ]);
 
   return (

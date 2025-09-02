@@ -26,15 +26,13 @@ const EmployeeSettings = forwardRef((props, ref) => {
   const { chartStartDate, dayWidth } = useSelector((state) => state.chartData);
 
   const { workday_hours } = useSelector((state) => state.chartConfig);
+  const services = useSelector((state) => state.services.allServices);
 
   const dispatch = useDispatch();
   const employees = useSelector((state) => state.builders.employees);
   const { holidayMap } = useSelector((state) => state.holidays);
   const subTasksByEmployee = useSelector(
     (state) => state.taskData.subTasksByEmployee
-  );
-  const employeeTypes = useSelector(
-    (state) => state.chartConfig.employee_type || []
   );
 
   const [localEmployees, setLocalEmployees] = useState(employees);
@@ -54,7 +52,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
       employee_name: "Unassigned",
       employee_color: "#FFC0CC",
       time_off: [],
-      employee_type: {},
+      team_service_id: null,
       employee_rate: null,
       markedForDeletion: false,
       can_schedule: true,
@@ -99,18 +97,10 @@ const EmployeeSettings = forwardRef((props, ref) => {
     setLocalEmployees(updatedEmployees);
   };
 
-  const handleEmployeeTypeChange = (employeeId, selectedType) => {
+  const handleServiceChange = (employeeId, value) => {
     const updatedEmployees = localEmployees.map((employee) =>
       employee.employee_id === employeeId
-        ? {
-            ...employee,
-            employee_type: selectedType
-              ? {
-                  id: selectedType.id,
-                  name: selectedType.name,
-                }
-              : null,
-          }
+        ? { ...employee, team_service_id: value }
         : employee
     );
     setLocalEmployees(updatedEmployees);
@@ -209,7 +199,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
       employee_color: "#000000",
       time_off: [],
       employee_rate: 0,
-      employee_type: null,
+      team_service_id: services?.[0]?.team_service_id,
       markedForDeletion: false,
       can_schedule: true,
     };
@@ -244,11 +234,11 @@ const EmployeeSettings = forwardRef((props, ref) => {
         };
       }
 
-      // Validate employee type
-      if (!employee.employee_type?.id) {
+      // Validate team service
+      if (!employee.team_service_id) {
         newErrors[employee.employee_id] = {
           ...newErrors[employee.employee_id],
-          employee_type: "Employee type is required",
+          team_service_id: "Service is required",
         };
       }
 
@@ -341,7 +331,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
             employee_name: localEmployee.employee_name,
             employee_color: localEmployee.employee_color,
             time_off: localEmployee.time_off,
-            employee_type: localEmployee.employee_type,
+            team_service_id: localEmployee.team_service_id,
             employee_rate: localEmployee.employee_rate,
             can_schedule: localEmployee.can_schedule,
           });
@@ -354,7 +344,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
               existingEmployee.time_off,
               localEmployee.time_off
             ) ||
-            existingEmployee.employee_type !== localEmployee.employee_type ||
+            existingEmployee.team_service_id !== localEmployee.team_service_id ||
             existingEmployee.employee_rate !== localEmployee.employee_rate ||
             existingEmployee.can_schedule !== localEmployee.can_schedule;
 
@@ -562,7 +552,7 @@ const EmployeeSettings = forwardRef((props, ref) => {
             <EmployeeSettingsCard
               key={employee.employee_id || `employee-${index}`}
               employee={employee}
-              employeeTypes={employeeTypes}
+              services={services}
               onNameChange={(value) =>
                 handleNameChange(employee.employee_id, value)
               }
@@ -572,8 +562,8 @@ const EmployeeSettings = forwardRef((props, ref) => {
               onCanScheduleChange={(value) =>
                 handleCanScheduleChange(employee.employee_id, value)
               }
-              onEmployeeTypeChange={(value) =>
-                handleEmployeeTypeChange(employee.employee_id, value)
+              onServiceChange={(value) =>
+                handleServiceChange(employee.employee_id, value)
               }
               onEmployeeRateChange={(value) =>
                 handleEmployeeRateChange(employee.employee_id, value)

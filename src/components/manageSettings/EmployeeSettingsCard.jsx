@@ -4,11 +4,11 @@ import { formatDateForInput } from "../../utils/dateUtils";
 
 const EmployeeSettingsCard = ({
   employee,
-  employeeTypes = [],
+  services = [],
   onNameChange,
   onColorChange,
   onCanScheduleChange,
-  onEmployeeTypeChange,
+  onServiceChange,
   onEmployeeRateChange,
   onAddTimeOff,
   onTimeOffChange,
@@ -107,30 +107,25 @@ const EmployeeSettingsCard = ({
             </div>
           )}
 
-          {/* Employee Type and Rate */}
+          {/* Service and Rate */}
           {!defaultEmployee && (
             <div className="flex gap-4">
               <div className="flex-1 flex gap-2 items-center">
                 <label className="block text-sm font-medium text-slate-200">
-                  Type
+                  Service
                 </label>
                 <select
-                  value={employee.employee_type?.id || ""}
-                  onChange={(e) => {
-                    const selectedType = employeeTypes.find(
-                      (t) => t.id === e.target.value
-                    );
-                    onEmployeeTypeChange(selectedType || null);
-                  }}
+                  value={employee.team_service_id || ""}
+                  onChange={(e) => onServiceChange(+e.target.value)}
                   className={`w-full bg-slate-600 text-slate-200 px-2 py-1.5 rounded ${
-                    errors.employee_type ? "border border-red-500" : ""
+                    errors.team_service_id ? "border border-red-500" : ""
                   }`}
                   disabled={employee.markedForDeletion}
                 >
-                  <option value="">Select Type</option>
-                  {employeeTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
+                  <option value="">Select Service</option>
+                  {services.map((service) => (
+                    <option key={service.team_service_id} value={service.team_service_id}>
+                      {service.service_name}
                     </option>
                   ))}
                 </select>
@@ -282,39 +277,16 @@ const EmployeeSettingsCard = ({
 };
 
 EmployeeSettingsCard.propTypes = {
-  employee: PropTypes.shape({
-    employee_name: PropTypes.string,
-    employee_color: PropTypes.string,
-    employee_type: PropTypes.shape({
-      id: PropTypes.string,
-      name: PropTypes.string,
-    }),
-    employee_rate: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    can_schedule: PropTypes.bool,
-    time_off: PropTypes.arrayOf(
-      PropTypes.shape({
-        start: PropTypes.string,
-        end: PropTypes.string,
-      })
-    ),
-    markedForDeletion: PropTypes.bool,
-  }),
-  employeeTypes: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string,
-      name: PropTypes.string,
-    })
-  ),
-  onNameChange: PropTypes.func,
-  onColorChange: PropTypes.func,
-  onCanScheduleChange: PropTypes.func,
-  onEmployeeTypeChange: PropTypes.func,
-  onEmployeeRateChange: PropTypes.func,
-  onAddTimeOff: PropTypes.func,
-  onTimeOffChange: PropTypes.func,
-  onRemoveTimeOff: PropTypes.func,
-  onDelete: PropTypes.func,
-  onMarkForDeletion: PropTypes.func,
+  employee: PropTypes.object.isRequired,
+  services: PropTypes.array.isRequired,
+  onNameChange: PropTypes.func.isRequired,
+  onColorChange: PropTypes.func.isRequired,
+  onCanScheduleChange: PropTypes.func.isRequired,
+  onServiceChange: PropTypes.func.isRequired,
+  onEmployeeRateChange: PropTypes.func.isRequired,
+  onAddTimeOff: PropTypes.func.isRequired,
+  onRemoveTimeOff: PropTypes.func.isRequired,
+  onMarkForDeletion: PropTypes.func.isRequired,
   showRates: PropTypes.bool,
   errors: PropTypes.object,
   timeOffVisible: PropTypes.bool,

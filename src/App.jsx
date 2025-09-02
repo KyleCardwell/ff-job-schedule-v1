@@ -28,6 +28,7 @@ import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { fetchFeatureToggles } from "./redux/actions/featureToggles";
 import { defineHolidays } from "./redux/actions/holidays.js";
 import { fetchProjects } from "./redux/actions/projects";
+import { fetchServices } from "./redux/actions/services.js";
 import {
 	fetchTeamMemberData,
 	fetchTeamMemberRole,
@@ -164,6 +165,7 @@ const AppContent = () => {
 					dispatch(fetchFeatureToggles()); // Add feature toggles fetch
 					await dispatch(fetchChartConfig());
 					await dispatch(fetchEmployees());
+					await dispatch(fetchServices(teamId));
 
 					// Get first employee after employees are loaded
 					const state = store.getState();
