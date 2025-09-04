@@ -43,11 +43,11 @@ const EstimateSectionPrice = ({ section }) => {
 
   // Calculate labor costs based on hours and rates
   const laborCosts = useMemo(() => {
-    const shopRate = services.find((et) => et.service_name === "Shop")?.hourly_rate || 0;
+    const shopRate = services.find((et) => et.service_id === 2)?.hourly_rate || 0;
     const finishRate =
-      services.find((et) => et.service_name === "Finish")?.hourly_rate || 0;
+      services.find((et) => et.service_id === 3)?.hourly_rate || 0;
     const installRate =
-      services.find((et) => et.service_name === "Install")?.hourly_rate || 0;
+      services.find((et) => et.service_id === 4)?.hourly_rate || 0;
 
     const shopCost = sectionCalculations.shopHours * shopRate;
     const finishCost = sectionCalculations.finishHours * finishRate;

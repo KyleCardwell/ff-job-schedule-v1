@@ -31,6 +31,7 @@ const FinancialsInputModal = ({
     (state) => state?.financialsData?.taskFinancials ?? {}
   );
   const chartConfig = useSelector((state) => state.chartConfig);
+  const services = useSelector((state) => state.services?.allServices);
 
   const { canViewProfitLoss } = usePermissions();
 
@@ -79,14 +80,14 @@ const FinancialsInputModal = ({
         const hoursData = financialData["hours"] || {};
 
         // Create employee type structure
-        const employeeTypeData =
-          chartConfig.employee_type?.map((type) => {
+        const servicesData = services?.map((service) => {
             // Find the type data in the array
-            const typeData = hoursData.data?.find(
-              (t) => t.type_id === type.id
+            const serviceData = hoursData.data?.find(
+              (t) => t.team_service_id === service.team_service_id
             ) || {
-              type_id: type.id,
-              type_name: type.name,
+              service_id: service.service_id,
+              service_name: service.service_name,
+              team_service_id: service.team_service_id,
               estimate: 0,
               fixedAmount: 0,
               actual_cost: 0,
@@ -94,21 +95,22 @@ const FinancialsInputModal = ({
             };
 
             return {
-              type_id: type.id,
-              type_name: type.name,
-              estimate: typeData.estimate || 0,
-              fixedAmount: typeData.fixedAmount || 0,
-              actual_cost: typeData.actual_cost || 0,
-              inputRows: typeData.inputRows || [],
+              service_id: service.service_id,
+              service_name: service.service_name,
+              team_service_id: service.team_service_id,
+              estimate: serviceData.estimate || 0,
+              fixedAmount: serviceData.fixedAmount || 0,
+              actual_cost: serviceData.actual_cost || 0,
+              inputRows: serviceData.inputRows || [],
             };
           }) || [];
 
         // Calculate total estimate from employee type estimates and fixed amounts
-        const totalEstimate = employeeTypeData.reduce((sum, type) => {
-          const employeeType = chartConfig.employee_type.find(
-            (et) => et.id === type.type_id
+        const totalEstimate = servicesData.reduce((sum, type) => {
+          const service = services.find(
+            (et) => et.team_service_id === type.team_service_id
           );
-          const hourlyEstimate = (type.estimate || 0) * (employeeType?.rate || 0);
+          const hourlyEstimate = (type.estimate || 0) * (service?.hourly_rate || 0);
           const fixedAmount = type.fixedAmount || 0;
           return sum + hourlyEstimate + fixedAmount;
         }, 0);
@@ -118,7 +120,7 @@ const FinancialsInputModal = ({
           sectionName: name.charAt(0).toUpperCase() + name.slice(1),
           estimate: totalEstimate,
           actual_cost: hoursData.actual_cost || 0,
-          data: employeeTypeData,
+          data: servicesData,
         };
       }
 
@@ -141,11 +143,11 @@ const FinancialsInputModal = ({
     });
 
     setLocalSections(initialSections);
-  }, [financialSections, chartConfig.employee_type]);
+  }, [financialSections, chartConfig, services]);
 
   const calculateTotals = useMemo(() => {
-    return calculateFinancialTotals(localSections, chartConfig, adjustments);
-  }, [localSections, chartConfig, adjustments]);
+    return calculateFinancialTotals(localSections, services, adjustments);
+  }, [localSections, services, adjustments]);
 
   useEffect(() => {
     setModalTotals({
@@ -301,6 +303,7 @@ const FinancialsInputModal = ({
               <FinancialsAccordion
                 sections={localSections}
                 employees={employees}
+                services={services}
                 onSectionUpdate={handleSectionUpdate}
               />
             </div>

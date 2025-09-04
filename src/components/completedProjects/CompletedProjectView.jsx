@@ -27,6 +27,7 @@ const CompletedProjectView = () => {
   const project = projectFinancials?.find((p) => p.project_id === +projectId);
 
   const chartConfig = useSelector((state) => state.chartConfig);
+  const services = useSelector((state) => state.services?.allServices);
 
   useEffect(() => {
     if (!projectId) return;
@@ -78,9 +79,9 @@ const CompletedProjectView = () => {
         };
       });
 
-      const taskTotals = calculateFinancialTotals(taskSections, chartConfig);
+      const taskTotals = calculateFinancialTotals(taskSections, services);
       const adjustedTotals = task.adjustments 
-        ? calculateFinancialTotals(taskSections, chartConfig, task.adjustments)
+        ? calculateFinancialTotals(taskSections, services, task.adjustments)
         : taskTotals;
 
       return {
@@ -93,7 +94,7 @@ const CompletedProjectView = () => {
       ...totals,
       profit: totals.estimate - totals.actual
     };
-  }, [projectFinancials, chartConfig]);
+  }, [projectFinancials, services]);
 
   // Get the most recent update date from all task financials
   const dateUpdated = useMemo(() => {
@@ -231,9 +232,9 @@ const CompletedProjectView = () => {
             };
           });
 
-          const taskTotals = calculateFinancialTotals(taskSections, chartConfig);
+          const taskTotals = calculateFinancialTotals(taskSections, services);
           const adjustedTotals = task.adjustments 
-            ? calculateFinancialTotals(taskSections, chartConfig, task.adjustments)
+            ? calculateFinancialTotals(taskSections, services, task.adjustments)
             : taskTotals;
 
           const estimate = adjustedTotals.total || adjustedTotals.estimate || 0;

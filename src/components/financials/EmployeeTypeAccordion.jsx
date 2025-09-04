@@ -4,42 +4,41 @@ import { useMemo } from "react";
 import { usePermissions } from "../../hooks/usePermissions";
 
 const EmployeeTypeAccordion = ({
-  type,
+  service,
   employees,
-  typeData = { estimate: 0, actual_cost: 0, inputRows: [] },
+  serviceData = { estimate: 0, actual_cost: 0, inputRows: [] },
   onAddRow,
   onInputChange,
   onBlur,
   isExpanded,
-  onToggle
+  onToggle,
+  onDeleteRow
 }) => {
   const { canViewProfitLoss } = usePermissions();
 
-  const availableEmployees = [
+  const availableEmployees = useMemo(() => [
     { employee_id: 'fixed_amount', employee_name: 'Fixed Amount', is_fixed_amount: true },
-    ...employees.filter((e, index) => e.employee_type?.id === type.id && index !== 0)
-  ];
+    ...employees.filter(e => e.team_service_id === service.team_service_id)
+  ], [employees, service.team_service_id]);
 
   const actualHours = useMemo(() => 
-    (typeData?.inputRows || []).reduce((sum, row) => {
-      // Don't count fixed amounts in the hours total
+    (serviceData?.inputRows || []).reduce((sum, row) => {
       if (row.employee_id === 'fixed_amount') return sum;
-      // Use the decimal value from hours object, or fall back to direct value for backward compatibility
       const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
       return sum + hoursValue;
     }, 0),
-    [typeData?.inputRows]
+    [serviceData?.inputRows]
   );
-  const estimatedHours = typeData?.estimate || 0;
+  const estimatedHours = serviceData?.estimate || 0;
   const difference = estimatedHours - actualHours;
 
   return (
     <div className="border border-gray-100 rounded-lg mb-4">
       <button
-        onClick={() => onToggle(type.id)}
+        onClick={() => onToggle(service.team_service_id)}
         className="w-full px-4 py-2 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors duration-150 ease-in-out rounded-lg"
       >
-        <h4 className="text-sm font-medium text-gray-700">{type.name}</h4>
+        <h4 className="text-sm font-medium text-gray-700 capitalize">{service.service_name}</h4>
         <div className="flex items-center gap-4">
           <div className="text-sm space-x-4">
             <span className="text-gray-600">Est: <span className="font-medium">{estimatedHours.toFixed(2)} hrs</span></span>
@@ -48,7 +47,7 @@ const EmployeeTypeAccordion = ({
               Δ: <span className="font-medium">{difference.toFixed(2)} hrs</span>
             </span>
             {canViewProfitLoss && (
-              <span className="text-gray-600">Cost: <span className="font-medium">${(typeData?.actual_cost || 0).toFixed(2)}</span></span>
+              <span className="text-gray-600">Cost: <span className="font-medium">${(serviceData?.actual_cost || 0).toFixed(2)}</span></span>
             )}
           </div>
           <div className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
@@ -59,11 +58,9 @@ const EmployeeTypeAccordion = ({
         </div>
       </button>
 
-      <div className={`transition-all duration-200 ease-in-out overflow-hidden ${
-        isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
-      }`}>
+      <div className={`transition-all duration-200 ease-in-out overflow-hidden ${isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"}`}>
         <div className="p-4 space-y-2">
-          {(typeData?.inputRows || []).map((row) => (
+          {(serviceData?.inputRows || []).map((row) => (
             <div key={row.id} className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
               <select
                 value={row.employee_id}
@@ -94,7 +91,7 @@ const EmployeeTypeAccordion = ({
                 pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
               />
               <button
-                onClick={() => onInputChange(row.id, "delete")}
+                onClick={() => onDeleteRow(row.id)}
                 className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +101,7 @@ const EmployeeTypeAccordion = ({
             </div>
           ))}
           <button
-            onClick={() => onAddRow(type.id)}
+            onClick={() => onAddRow(service.team_service_id)}
             className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
           >
             Add Row
@@ -116,14 +113,15 @@ const EmployeeTypeAccordion = ({
 };
 
 EmployeeTypeAccordion.propTypes = {
-  type: PropTypes.object,
-  employees: PropTypes.array,
-  typeData: PropTypes.object,
-  onAddRow: PropTypes.func,
-  onInputChange: PropTypes.func,
-  onBlur: PropTypes.func,
-  isExpanded: PropTypes.bool,
-  onToggle: PropTypes.func,
+  service: PropTypes.object.isRequired,
+  employees: PropTypes.array.isRequired,
+  serviceData: PropTypes.object.isRequired,
+  onAddRow: PropTypes.func.isRequired,
+  onInputChange: PropTypes.func.isRequired,
+  onBlur: PropTypes.func.isRequired,
+  isExpanded: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  onDeleteRow: PropTypes.func.isRequired,
 };
 
 export default EmployeeTypeAccordion;

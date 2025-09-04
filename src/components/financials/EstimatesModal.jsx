@@ -16,25 +16,30 @@ const EstimatesModal = ({
   subtotal,
   total,
 }) => {
-  const chartConfig = useSelector((state) => state.chartConfig);
+  const services = useSelector((state) => state.services?.allServices || []);
 
-  const handleEstimateChange = (sectionId, value, typeId = null, isFixedAmount = false) => {
+  const handleEstimateChange = (
+    sectionId,
+    value,
+    serviceId = null,
+    isFixedAmount = false
+  ) => {
     // Convert empty string to null instead of 0
-    const numValue = value === '' ? null : parseFloat(value);
-    
+    const numValue = value === "" ? null : parseFloat(value);
+
     setLocalSections((prevSections) => {
       const newSections = prevSections.map((section) => {
         if (section.id === sectionId) {
-          if (section.id === "hours" && typeId) {
-            // Update specific employee type estimate in hours section
-            const updatedData = section.data.map((typeData) => {
-              if (typeData.type_id === typeId) {
+          if (section.id === "hours" && serviceId) {
+            // Update specific service estimate in hours section
+            const updatedData = section.data.map((serviceData) => {
+              if (serviceData.service_id === serviceId) {
                 return {
-                  ...typeData,
-                  [isFixedAmount ? 'fixedAmount' : 'estimate']: numValue,
+                  ...serviceData,
+                  [isFixedAmount ? "fixedAmount" : "estimate"]: numValue,
                 };
               }
-              return typeData;
+              return serviceData;
             });
 
             return {
@@ -57,8 +62,8 @@ const EstimatesModal = ({
   };
 
   const formatEstimate = (value) => {
-    if (value === null || value === undefined || value === '') return '';
-    return value === 0 ? '' : value.toString();
+    if (value === null || value === undefined || value === "") return "";
+    return value === 0 ? "" : value.toString();
   };
 
   if (!isOpen) return null;
@@ -80,13 +85,12 @@ const EstimatesModal = ({
                 </h4>
                 <div className="flex flex-row flex-wrap gap-x-12 gap-y-4 pl-4 pt-4">
                   {priceSections.map((section) => (
-                    <div
-                      key={section.id}
-                      className="flex items-center gap-4"
-                    >
+                    <div key={section.id} className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col items-start">
-                          <label className="text-sm text-gray-800">{section.sectionName}</label>
+                          <label className="text-sm text-gray-800">
+                            {section.sectionName}
+                          </label>
                           <input
                             type="number"
                             value={formatEstimate(section.estimate)}
@@ -108,29 +112,31 @@ const EstimatesModal = ({
                   Hours
                 </h4>
                 <div className="space-y-3 pl-4 pt-4">
-                  {chartConfig.employee_type?.map((type) => {
-                    const typeData = hoursSection?.data?.find(
-                      (t) => t.type_id === type.id
+                  {services?.map((service) => {
+                    const serviceData = hoursSection?.data?.find(
+                      (s) => s.service_id === service.service_id
                     );
                     return (
                       <div
-                        key={type.id}
+                        key={service.service_id}
                         className="flex items-center justify-end gap-4 px-6"
                       >
-                        <h3 className="text-sm font-medium text-gray-700">
-                          {type.name}
+                        <h3 className="text-sm font-medium text-gray-700 capitalize">
+                          {service.service_name}
                         </h3>
                         <div className="flex items-center gap-4">
                           <div className="flex flex-col items-end">
-                            <label className="text-xs text-gray-500">Hours</label>
+                            <label className="text-xs text-gray-500">
+                              Hours
+                            </label>
                             <input
                               type="number"
-                              value={formatEstimate(typeData?.estimate)}
+                              value={formatEstimate(serviceData?.estimate)}
                               onChange={(e) =>
                                 handleEstimateChange(
                                   "hours",
                                   e.target.value,
-                                  type.id
+                                  service.service_id
                                 )
                               }
                               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
@@ -139,15 +145,17 @@ const EstimatesModal = ({
                             />
                           </div>
                           <div className="flex flex-col items-end">
-                            <label className="text-xs text-gray-500">Fixed Amount</label>
+                            <label className="text-xs text-gray-500">
+                              Fixed Amount
+                            </label>
                             <input
                               type="number"
-                              value={formatEstimate(typeData?.fixedAmount)}
+                              value={formatEstimate(serviceData?.fixedAmount)}
                               onChange={(e) =>
                                 handleEstimateChange(
                                   "hours",
                                   e.target.value,
-                                  type.id,
+                                  service.service_id,
                                   true
                                 )
                               }
