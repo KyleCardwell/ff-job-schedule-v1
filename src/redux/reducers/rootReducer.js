@@ -3,6 +3,7 @@ import { combineReducers } from "redux";
 import authReducer from "../authSlice";
 
 import { builders } from "./builders"; // Adjust the import path
+import cabinetAnchorsReducer from "./cabinetAnchors";
 import cabinetTypesReducer from "./cabinetTypes";
 import { chartConfigReducer } from "./chartConfig";
 import { chartDataReducer } from "./chartData";
@@ -33,6 +34,7 @@ const appReducer = combineReducers({
 	materials: materialsReducer,
 	services: servicesReducer,
 	cabinetTypes: cabinetTypesReducer,
+	cabinetAnchors: cabinetAnchorsReducer,
 });
 
 // Root reducer that handles resetting state

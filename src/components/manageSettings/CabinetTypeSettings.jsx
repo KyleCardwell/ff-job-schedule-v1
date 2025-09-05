@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { fetchCabinetTypes, addCabinetType, updateCabinetType } from '../../redux/actions/cabinetTypes';
 
+import CabinetAnchorsTable from './CabinetAnchorsTable.jsx';
 import CabinetTypeCard from './CabinetTypeCard.jsx';
 import SettingsSection from './SettingsSection.jsx';
 
@@ -147,13 +148,15 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
                 </div>
 
                 {localTypes.filter(t => t.is_active).map(type => (
-                  <CabinetTypeCard
-                    key={type.id}
-                    type={type}
-                    onInputChange={handleInputChange}
-                    onRemove={() => toggleActiveState(type.id)}
-                    errors={validationErrors[type.id]}
-                  />
+                  <div key={type.id}>
+                    <CabinetTypeCard
+                      type={type}
+                      onInputChange={handleInputChange}
+                      onRemove={() => toggleActiveState(type.id)}
+                      errors={validationErrors[type.id]}
+                    />
+                    {/* {!type.isNew && <CabinetAnchorsTable cabinetTypeId={type.id} />} */}
+                  </div>
                 ))}
               </div>
             </SettingsSection>
@@ -188,6 +191,21 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
           </>
         )}
       </div>
+
+      <div className="z-10 bg-slate-800 py-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-200">Manage Cabinet Anchors</h2>
+        </div>
+      </div>
+
+      {localTypes.filter(t => t.is_active).map(type => (
+        <div className="mt-4" key={type.id}>
+          <div className="sticky top-0 z-10 bg-slate-800 flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-200">{type.name}</h2>
+          </div>
+          <CabinetAnchorsTable key={type.id} cabinetTypeId={type.id} />
+        </div>
+      ))}
     </div>
   );
 });
