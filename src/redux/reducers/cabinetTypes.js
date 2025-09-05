@@ -11,7 +11,6 @@ const cabinetTypesReducer = (state = initialState, action) => {
     case cabinetTypes.FETCH_CABINET_TYPES_START:
     case cabinetTypes.ADD_CABINET_TYPE_START:
     case cabinetTypes.UPDATE_CABINET_TYPE_START:
-    case cabinetTypes.DELETE_CABINET_TYPE_START:
       return { ...state, loading: true, error: null };
 
     case cabinetTypes.FETCH_CABINET_TYPES_SUCCESS:
@@ -29,17 +28,9 @@ const cabinetTypesReducer = (state = initialState, action) => {
         ),
       };
 
-    case cabinetTypes.DELETE_CABINET_TYPE_SUCCESS:
-      return {
-        ...state,
-        loading: false,
-        types: state.types.filter((type) => type.id !== action.payload),
-      };
-
     case cabinetTypes.FETCH_CABINET_TYPES_ERROR:
     case cabinetTypes.ADD_CABINET_TYPE_ERROR:
     case cabinetTypes.UPDATE_CABINET_TYPE_ERROR:
-    case cabinetTypes.DELETE_CABINET_TYPE_ERROR:
       return { ...state, loading: false, error: action.payload };
 
     default:

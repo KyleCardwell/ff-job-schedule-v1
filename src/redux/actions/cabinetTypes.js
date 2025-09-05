@@ -97,28 +97,3 @@ export const updateCabinetType = (id, updates) => {
     }
   };
 };
-
-// Delete a cabinet type
-export const deleteCabinetType = (id) => {
-  return async (dispatch) => {
-    try {
-      dispatch({ type: cabinetTypes.DELETE_CABINET_TYPE_START });
-
-      const { error } = await supabase.from("cabinet_types").delete().eq("id", id);
-
-      if (error) throw error;
-
-      dispatch({
-        type: cabinetTypes.DELETE_CABINET_TYPE_SUCCESS,
-        payload: id,
-      });
-    } catch (error) {
-      console.error("Error deleting cabinet type:", error);
-      dispatch({
-        type: cabinetTypes.DELETE_CABINET_TYPE_ERROR,
-        payload: error.message,
-      });
-      throw error;
-    }
-  };
-};

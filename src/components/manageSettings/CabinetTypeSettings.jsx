@@ -3,7 +3,7 @@ import { FiPlus } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { v4 as uuidv4 } from 'uuid';
 
-import { fetchCabinetTypes, addCabinetType, updateCabinetType, deleteCabinetType } from '../../redux/actions/cabinetTypes';
+import { fetchCabinetTypes, addCabinetType, updateCabinetType } from '../../redux/actions/cabinetTypes';
 
 import CabinetTypeCard from './CabinetTypeCard.jsx';
 import SettingsSection from './SettingsSection.jsx';
@@ -19,7 +19,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
   }, [dispatch]);
 
   useEffect(() => {
-    setLocalTypes(types ? types.map(t => ({ ...t, markedForDeletion: false })) : []);
+    setLocalTypes(types || []);
   }, [types]);
 
   const handleInputChange = (id, field, value) => {
@@ -28,10 +28,10 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
     );
   };
 
-  const handleMarkForDeletion = (id) => {
+  const toggleActiveState = (id) => {
     setLocalTypes(prev =>
       prev.map(type =>
-        type.id === id ? { ...type, markedForDeletion: !type.markedForDeletion } : type
+        type.id === id ? { ...type, is_active: !type.is_active } : type
       )
     );
   };
@@ -44,6 +44,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       default_height: 0,
       default_depth: 0,
       isNew: true,
+      is_active: true,
     };
     setLocalTypes(prev => [...prev, newType]);
   };
@@ -71,33 +72,31 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       return; // Stop the save process if there are validation errors
     }
 
-    const typesToUpdate = localTypes.filter(t => !t.isNew && !t.markedForDeletion);
-    const typesToAdd = localTypes.filter(t => t.isNew && !t.markedForDeletion);
-    const typesToDelete = localTypes.filter(t => !t.isNew && t.markedForDeletion);
+    const typesToUpdate = [];
+    const typesToAdd = localTypes.filter(t => t.isNew);
 
-    if (typesToDelete.length > 0) {
-      if (!window.confirm('You are about to permanently remove one or more cabinet types. This action cannot be undone.')) {
-        return; // Stop if user cancels deletion
+    localTypes.forEach(localType => {
+      if (!localType.isNew) {
+        const originalType = types.find(t => t.id === localType.id);
+        if (JSON.stringify(originalType) !== JSON.stringify(localType)) {
+          typesToUpdate.push(localType);
+        }
       }
-      typesToDelete.forEach(type => dispatch(deleteCabinetType(type.id)));
-    }
+    });
 
     typesToUpdate.forEach(type => {
-      const originalType = types.find(t => t.id === type.id);
-      if (JSON.stringify(originalType) !== JSON.stringify(type)) {
-        const { id, ...data } = type;
-        dispatch(updateCabinetType(id, data));
-      }
+      const { id, ...data } = type;
+      dispatch(updateCabinetType(id, data));
     });
 
     typesToAdd.forEach(type => {
       const { id, isNew, ...data } = type;
-      dispatch(addCabinetType(data));
+      dispatch(addCabinetType({ ...data, is_active: true }));
     });
   };
 
   const handleCancel = () => {
-    setLocalTypes(types ? types.map(t => ({ ...t, markedForDeletion: false })) : []);
+    setLocalTypes(types || []);
     setValidationErrors({});
   };
 
@@ -130,33 +129,63 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
           </div>
         )}
         {!loading && !error && (
-          <SettingsSection title="">
-            <div className="space-y-2 p-1">
-              {/* Header */}
-              <div className="grid grid-cols-6 gap-4 px-4 font-bold text-slate-400 items-end">
-                <div className="col-span-2">Name</div>
-                <div className="col-span-3 flex flex-col bg-slate-600">
-                  <div>Default Dimensions</div>
-                  <div className="grid grid-cols-3 gap-4">
+          <>
+            <SettingsSection title={localTypes.some(t => !t.is_active) ? "Active Cabinet Types" : ""}>
+              <div className="space-y-2 p-1">
+                {/* Header */}
+                <div className="grid grid-cols-6 gap-4 px-4 font-bold text-slate-400 items-end">
+                  <div className="col-span-2">Name</div>
+                  <div className="col-span-3 flex flex-col">
+                    <div className="text-center">Default Dimensions</div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>Width</div>
+                      <div>Height</div>
+                      <div>Depth</div>
+                    </div>
+                  </div>
+                  <div className="text-right">Actions</div>
+                </div>
+
+                {localTypes.filter(t => t.is_active).map(type => (
+                  <CabinetTypeCard
+                    key={type.id}
+                    type={type}
+                    onInputChange={handleInputChange}
+                    onRemove={() => toggleActiveState(type.id)}
+                    errors={validationErrors[type.id]}
+                  />
+                ))}
+              </div>
+            </SettingsSection>
+
+            {localTypes.some(t => !t.is_active) && (
+              <SettingsSection title="Inactive Cabinet Types">
+                <div className="space-y-2 p-1">
+                <div className="grid grid-cols-6 gap-4 px-4 font-bold text-slate-400 items-end">
+                    <div className="col-span-2">Name</div>
                     <div>Width</div>
                     <div>Height</div>
                     <div>Depth</div>
+                    <div className="text-right">Actions</div>
                   </div>
+                  
+                  {localTypes.filter(t => !t.is_active).map(type => (
+                    <div key={type.id} className="grid grid-cols-6 gap-4 items-center bg-slate-800 p-2 rounded-md text-slate-500">
+                      <div className="col-span-2">{type.name}</div>
+                      <div className="">{type.default_width}</div>
+                      <div className="">{type.default_height}</div>
+                      <div className="">{type.default_depth}</div>
+                      <div className="flex justify-end">
+                        <button onClick={() => toggleActiveState(type.id)} className="p-2 text-slate-400 hover:text-white">
+                          Reactivate
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div>Actions</div>
-              </div>
-
-              {localTypes.map(type => (
-                <CabinetTypeCard
-                  key={type.id}
-                  type={type}
-                  onInputChange={handleInputChange}
-                  onRemove={() => handleMarkForDeletion(type.id)}
-                  errors={validationErrors[type.id]}
-                />
-              ))}
-            </div>
-          </SettingsSection>
+              </SettingsSection>
+            )}
+          </>
         )}
       </div>
     </div>
