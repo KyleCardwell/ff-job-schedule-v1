@@ -14,6 +14,7 @@ import {
   headerButtonColor,
 } from "../../assets/tailwindConstants";
 import { PATHS } from "../../utils/constants";
+import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
@@ -44,6 +45,15 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_SERVICES,
       component: ServiceSettings,
       props: { },
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
+    },
+    {
+      id: "cabinet-types",
+      label: "Cabinet Types",
+      path: PATHS.MANAGE_CABINET_TYPES,
+      component: CabinetTypeSettings,
+      props: {},
       requiresAdmin: true,
       maxWidthClass: "max-w-[720px]",
     },
