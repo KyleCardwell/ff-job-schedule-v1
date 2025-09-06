@@ -20,122 +20,81 @@ export const fetchCabinetAnchors = () => {
   };
 };
 
-// Create a new cabinet anchor and its services
-export const createCabinetAnchor = (anchorData) => {
+// Batch save all changes for cabinet anchors
+export const saveCabinetAnchors = (newAnchors, updatedAnchors, deletedIds) => {
   return async (dispatch, getState) => {
-    dispatch({ type: Actions.CREATE_CABINET_ANCHOR_START });
-    try {
-      const { teamId } = getState().auth;
-      const { cabinet_type_id, width, height, depth, services } = anchorData;
-
-      // 1. Insert into cabinet_anchors
-      const { data: newAnchor, error: anchorError } = await supabase
-        .from('cabinet_anchors')
-        .insert({
-          team_id: teamId,
-          cabinet_type_id,
-          width,
-          height,
-          depth,
-          volume: width * height * depth,
-        })
-        .select()
-        .single();
-
-      if (anchorError) throw anchorError;
-
-      // 2. Insert into cabinet_anchor_services
-      const serviceEntries = services.map((service) => ({
-        cabinet_anchor_id: newAnchor.id,
-        team_service_id: service.team_service_id,
-        hours: service.hours,
-      }));
-
-      const { error: servicesError } = await supabase
-        .from('cabinet_anchor_services')
-        .insert(serviceEntries);
-
-      if (servicesError) throw servicesError;
-
-      // 3. Refetch the newly created anchor in its final shape
-      const { data: finalAnchor, error: refetchError } = await supabase
-        .rpc('get_team_cabinet_anchors', { p_team_id: teamId })
-        .eq('id', newAnchor.id)
-        .single();
-
-      if (refetchError) throw refetchError;
-
-      dispatch({ type: Actions.CREATE_CABINET_ANCHOR_SUCCESS, payload: finalAnchor });
-      return finalAnchor;
-    } catch (error) {
-      dispatch({ type: Actions.CREATE_CABINET_ANCHOR_ERROR, payload: error.message });
-      throw error;
-    }
-  };
-};
-
-// Update an existing cabinet anchor and its services
-export const updateCabinetAnchor = (anchorId, updates, services) => {
-  return async (dispatch, getState) => {
-    dispatch({ type: Actions.UPDATE_CABINET_ANCHOR_START });
+    dispatch({ type: Actions.UPDATE_CABINET_ANCHOR_START }); // Generic start action
     try {
       const { teamId } = getState().auth;
 
-      // 1. Update the main anchor dimensions
-      const { error: anchorError } = await supabase
-        .from('cabinet_anchors')
-        .update({ ...updates, volume: updates.width * updates.height * updates.depth })
-        .eq('id', anchorId);
+      // 1. Deletions
+      if (deletedIds && deletedIds.length > 0) {
+        const { error } = await supabase.from('cabinet_anchors').delete().in('id', deletedIds);
+        if (error) throw error;
+      }
 
-      if (anchorError) throw anchorError;
+      // 2. Updates
+      if (updatedAnchors && updatedAnchors.length > 0) {
+        const updatePromises = updatedAnchors.map(anchor => {
+          const { id, cabinet_type_id, width, height, depth, services } = anchor;
+          return supabase.rpc('update_cabinet_anchor_with_services', {
+            p_anchor_id: id,
+            p_team_id: teamId,
+            p_cabinet_type_id: cabinet_type_id,
+            p_width: width,
+            p_height: height,
+            p_depth: depth,
+            p_services: services,
+          });
+        });
 
-      // 2. Upsert service hours
-      const serviceEntries = services.map((service) => ({
-        cabinet_anchor_id: anchorId,
-        team_service_id: service.team_service_id,
-        hours: service.hours,
-      }));
+        const results = await Promise.all(updatePromises);
+        results.forEach(res => { if (res.error) throw res.error; });
+      }
 
-      const { error: servicesError } = await supabase
-        .from('cabinet_anchor_services')
-        .upsert(serviceEntries, { onConflict: ['cabinet_anchor_id', 'team_service_id'] });
+      // 3. Creations
+      if (newAnchors && newAnchors.length > 0) {
+        const createPromises = newAnchors.map(anchor => {
+          const { isNew, markedForDeletion, ...rest } = anchor;
+          const { cabinet_type_id, width, height, depth, services } = rest;
+          
+          // Ensure services is properly formatted as a JSONB array
+          const formattedServices = Array.isArray(services) ? services : [];
+          
+          const params = {
+            p_team_id: teamId,
+            p_cabinet_type_id: cabinet_type_id,
+            p_width: width,
+            p_height: height,
+            p_depth: depth,
+            p_services: formattedServices,
+          };
+          
+          console.log('Creating anchor with params:', params);
+          return supabase.rpc('create_cabinet_anchor_with_services', params);
+        });
+        
+        const createResults = await Promise.all(createPromises);
+        createResults.forEach(res => {
+          if (res.error) {
+            console.error('Error creating anchor:', res.error);
+            throw res.error;
+          }
+        });
+      }
+      
+      // After all operations, refetch the entire list to ensure correct sorting and data
+      await dispatch(fetchCabinetAnchors());
 
-      if (servicesError) throw servicesError;
-
-      // 3. Refetch the updated anchor in its final shape
-      const { data: finalAnchor, error: refetchError } = await supabase
-        .rpc('get_team_cabinet_anchors', { p_team_id: teamId })
-        .eq('id', anchorId)
-        .single();
-
-      if (refetchError) throw refetchError;
-
-      dispatch({ type: Actions.UPDATE_CABINET_ANCHOR_SUCCESS, payload: finalAnchor });
-      return finalAnchor;
     } catch (error) {
+      console.error('Error saving cabinet anchors:', {
+        errorMessage: error.message,
+        errorDetails: error,
+        updatedAnchors,
+        newAnchors,
+        deletedIds,
+      });
       dispatch({ type: Actions.UPDATE_CABINET_ANCHOR_ERROR, payload: error.message });
-      throw error;
-    }
-  };
-};
-
-// Delete a cabinet anchor
-export const deleteCabinetAnchor = (anchorId) => {
-  return async (dispatch) => {
-    dispatch({ type: Actions.DELETE_CABINET_ANCHOR_START });
-    try {
-      // RLS should ensure cascading delete on cabinet_anchor_services
-      const { error } = await supabase
-        .from('cabinet_anchors')
-        .delete()
-        .eq('id', anchorId);
-
-      if (error) throw error;
-
-      dispatch({ type: Actions.DELETE_CABINET_ANCHOR_SUCCESS, payload: anchorId });
-      return anchorId;
-    } catch (error) {
-      dispatch({ type: Actions.DELETE_CABINET_ANCHOR_ERROR, payload: error.message });
       throw error;
     }
   };

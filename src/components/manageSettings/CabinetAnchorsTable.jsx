@@ -1,212 +1,300 @@
-import React, { useState, useEffect } from 'react';
-import { FiPlus, FiTrash2, FiEdit, FiSave, FiX } from 'react-icons/fi';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState } from "react";
+import { FiPlus, FiTrash2, FiEdit } from "react-icons/fi";
+import { useSelector } from "react-redux";
+import { v4 as uuidv4 } from "uuid";
 
-import { fetchCabinetAnchors, createCabinetAnchor, updateCabinetAnchor, deleteCabinetAnchor } from '../../redux/actions/cabinetAnchors';
-
-const AnchorRow = ({ anchor, services, onSave, onDelete }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState(anchor);
-
-  useEffect(() => {
-    setEditedData(anchor);
-  }, [anchor]);
+const AnchorRow = ({
+  anchor,
+  services,
+  onDelete,
+  onUndo,
+  isNew,
+  onCancelNew,
+  onChange,
+  errors = {},
+}) => {
+  const [isEditing, setIsEditing] = useState(isNew);
+  const gridCols = `repeat(${3 + services.length}, minmax(0, 1fr)) auto`;
 
   const handleInputChange = (e, serviceId) => {
     const { name, value } = e.target;
-    const numValue = value === '' ? '' : parseFloat(value);
 
+    let updatedAnchor;
     if (serviceId) {
-      setEditedData(prev => ({
-        ...prev,
-        services: prev.services.map(s => s.team_service_id === serviceId ? { ...s, hours: numValue } : s)
-      }));
+      const updatedServices = anchor.services.map((s) =>
+        s.team_service_id === serviceId ? { ...s, hours: value } : s
+      );
+      updatedAnchor = { ...anchor, services: updatedServices };
     } else {
-      setEditedData(prev => ({ ...prev, [name]: numValue }));
+      updatedAnchor = { ...anchor, [name]: value };
     }
-  };
-
-  const handleSave = () => {
-    onSave(editedData);
-    setIsEditing(false);
+    onChange(updatedAnchor);
   };
 
   const handleCancel = () => {
-    setEditedData(anchor);
-    setIsEditing(false);
+    if (isNew) {
+      onCancelNew(anchor.id);
+    } else {
+      onChange(null, anchor.id); // Signal parent to revert this anchor's changes
+      setIsEditing(false);
+    }
   };
+
+  if (anchor.markedForDeletion) {
+    return (
+      <div
+        className="grid border-b border-slate-700/50 pb-2"
+        style={{ gridTemplateColumns: gridCols }}
+      >
+        <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40 rounded-l-md">
+          {anchor.width}
+        </div>
+        <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40">
+          {anchor.height}
+        </div>
+        <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40">
+          {anchor.depth}
+        </div>
+        {Array.isArray(services) &&
+          services.map((s) => (
+            <div
+              key={s.team_service_id}
+              className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40"
+            >
+              {anchor.services.find(
+                (ans) => ans.team_service_id === s.team_service_id
+              )?.hours || 0}
+            </div>
+          ))}
+        <div className="px-4 py-2 text-right bg-red-900/30 hover:bg-red-900/40 rounded-r-md">
+          <button
+            onClick={() => onUndo(anchor.id)}
+            className="text-slate-300 hover:text-white"
+          >
+            Undo
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isEditing) {
     return (
-      <tr className="bg-slate-700/50">
-        <td className="p-2"><input type="number" name="width" value={editedData.width} onChange={handleInputChange} className="bg-slate-900 w-full p-1" /></td>
-        <td className="p-2"><input type="number" name="height" value={editedData.height} onChange={handleInputChange} className="bg-slate-900 w-full p-1" /></td>
-        <td className="p-2"><input type="number" name="depth" value={editedData.depth} onChange={handleInputChange} className="bg-slate-900 w-full p-1" /></td>
-        {services.map(s => (
-          <td key={s.id} className="p-2">
-            <input
-              type="number"
-              value={editedData.services.find(ans => ans.team_service_id === s.id)?.hours || ''}
-              onChange={(e) => handleInputChange(e, s.id)}
-              className="bg-slate-900 w-full p-1"
-            />
-          </td>
-        ))}
-        <td className="p-2 text-right">
-          <button onClick={handleSave} className="p-2 text-green-400"><FiSave /></button>
-          <button onClick={handleCancel} className="p-2 text-red-400"><FiX /></button>
-        </td>
-      </tr>
+      <div
+        className="grid border-b border-slate-700/50 pb-2"
+        style={{ gridTemplateColumns: gridCols }}
+      >
+        <div className="p-2">
+          <input
+            type="number"
+            name="width"
+            value={anchor.width}
+            onChange={handleInputChange}
+            className={`bg-slate-900 w-full p-1 rounded-md ${
+              errors && errors.width ? "border border-red-500" : ""
+            }`}
+          />
+        </div>
+        <div className="p-2">
+          <input
+            type="number"
+            name="height"
+            value={anchor.height}
+            onChange={handleInputChange}
+            className={`bg-slate-900 w-full p-1 rounded-md ${
+              errors && errors.height ? "border border-red-500" : ""
+            }`}
+          />
+        </div>
+        <div className="p-2">
+          <input
+            type="number"
+            name="depth"
+            value={anchor.depth}
+            onChange={handleInputChange}
+            className={`bg-slate-900 w-full p-1 rounded-md ${
+              errors && errors.depth ? "border border-red-500" : ""
+            }`}
+          />
+        </div>
+        {Array.isArray(services) &&
+          services.map((s) => (
+            <div key={s.team_service_id} className="p-2">
+              <input
+                type="number"
+                value={
+                  anchor.services.find(
+                    (ans) => ans.team_service_id === s.team_service_id
+                  )?.hours || ""
+                }
+                onChange={(e) => handleInputChange(e, s.team_service_id)}
+                className="bg-slate-900 w-full p-1 rounded-md"
+              />
+            </div>
+          ))}
+        <div className="p-2 text-right">
+          <button
+            onClick={() => setIsEditing(false)}
+            className="p-2 text-green-400"
+          >
+            Done
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <tr className='bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50'>
-      <td className="px-4 py-2">{anchor.width}</td>
-      <td className="px-4 py-2">{anchor.height}</td>
-      <td className="px-4 py-2">{anchor.depth}</td>
-      {services.map(s => (
-        <td key={s.id} className="px-4 py-2">
-          {anchor.services.find(ans => ans.team_service_id === s.id)?.hours || 0}
-        </td>
-      ))}
-      <td className="px-4 py-2 text-right">
-        <button onClick={() => setIsEditing(true)} className="p-2 text-slate-400 hover:text-white"><FiEdit /></button>
-        <button onClick={() => onDelete(anchor.id)} className="p-2 text-slate-400 hover:text-red-400"><FiTrash2 /></button>
-      </td>
-    </tr>
+    <div
+      className="grid border-b border-slate-700/50 pb-2 hover:bg-slate-700/50 text-slate-200"
+      style={{ gridTemplateColumns: gridCols }}
+    >
+      <div className="px-4 py-2 rounded-l-md flex items-center">
+        {anchor.width}
+      </div>
+      <div className="px-4 py-2 flex items-center">{anchor.height}</div>
+      <div className="px-4 py-2 flex items-center">{anchor.depth}</div>
+      {Array.isArray(services) &&
+        services.map((s) => (
+          <div
+            key={s.team_service_id}
+            className="px-4 py-2 flex items-center"
+          >
+            {anchor.services.find(
+              (ans) => ans.team_service_id === s.team_service_id
+            )?.hours || 0}
+          </div>
+        ))}
+      <div className="px-4 py-2 text-right hover:bg-slate-700/50 rounded-r-md">
+        <button
+          onClick={() => setIsEditing(true)}
+          className="p-2 text-slate-200 hover:text-teal-400"
+        >
+          <FiEdit />
+        </button>
+        <button
+          onClick={() => onDelete(anchor.id)}
+          className="p-2 text-slate-200 hover:text-red-400"
+        >
+          <FiTrash2 />
+        </button>
+      </div>
+    </div>
   );
 };
 
-const CabinetAnchorsTable = ({ cabinetTypeId }) => {
-  const dispatch = useDispatch();
-  const { items: anchors, loading } = useSelector((state) => state.cabinetAnchors);
-  const services = useSelector((state) => state.services.allServices);
-  const teamId = useSelector((state) => state.auth.teamId);
+const CabinetAnchorsTable = ({
+  cabinetTypeId,
+  anchors,
+  errors,
+  onAnchorsChange,
+}) => {
+  const services = useSelector(
+    (state) => state.services?.allServices.filter((s) => s.is_active) || []
+  );
+  const gridCols = `repeat(${3 + services.length}, minmax(0, 1fr)) auto`;
 
-  const [localAnchors, setLocalAnchors] = useState([]);
-  const [newAnchor, setNewAnchor] = useState(null);
-
-  useEffect(() => {
-    if (teamId) {
-      dispatch(fetchCabinetAnchors(teamId));
-    }
-  }, [dispatch, teamId]);
-
-  useEffect(() => {
-    const filtered = anchors
-      .filter(a => a.cabinet_type_id === cabinetTypeId)
-      .sort((a, b) => a.volume - b.volume); // Sort by volume
-    setLocalAnchors(filtered);
-  }, [anchors, cabinetTypeId]);
-
-  const handleAddNew = () => {
-    const initialServices = services.map(s => ({ team_service_id: s.id, hours: 0 }));
-    setNewAnchor({ width: '', height: '', depth: '', services: initialServices });
-  };
-
-  const handleCancelNew = () => {
-    setNewAnchor(null);
-  };
-
-  const handleSaveNew = () => {
-    const payload = {
-      team_id: teamId,
+  const handleAddNew = (currentServices) => {
+    const initialServices = currentServices.map((s) => ({
+      id: s.id,
+      team_service_id: s.team_service_id,
+      hours: "",
+    }));
+    const newAnchor = {
+      id: uuidv4(),
+      isNew: true,
+      width: "",
+      height: "",
+      depth: "",
       cabinet_type_id: cabinetTypeId,
-      width: parseFloat(newAnchor.width),
-      height: parseFloat(newAnchor.height),
-      depth: parseFloat(newAnchor.depth),
-      services: newAnchor.services.map(s => ({...s, hours: parseFloat(s.hours)}))
+      services: initialServices,
+      markedForDeletion: false,
     };
-    dispatch(createCabinetAnchor(payload));
-    setNewAnchor(null);
+    onAnchorsChange([...anchors, newAnchor]);
   };
 
-  const handleUpdate = (updatedAnchor) => {
-    const { id, width, height, depth, services: anchorServices } = updatedAnchor;
-    const payload = {
-        anchorId: id,
-        updates: { width, height, depth },
-        services: anchorServices
-    };
-    dispatch(updateCabinetAnchor(payload));
-  };
-
-  const handleDelete = (anchorId) => {
-    if (window.confirm('Are you sure you want to delete this anchor?')) {
-        dispatch(deleteCabinetAnchor(anchorId));
-    }
-  };
-
-  const handleNewAnchorInputChange = (e, serviceId) => {
-    const { name, value } = e.target;
-    const numValue = value; // Keep as string for input control
-
-    if (serviceId) {
-      setNewAnchor(prev => ({
-        ...prev,
-        services: prev.services.map(s => s.team_service_id === serviceId ? { ...s, hours: numValue } : s)
-      }));
+  const handleRowChange = (updatedAnchor, anchorIdToRevert) => {
+    if (updatedAnchor === null) {
+      // Revert changes - this would need original data from parent
+      // For now, just keep the current anchor unchanged
+      return;
     } else {
-      setNewAnchor(prev => ({ ...prev, [name]: numValue }));
+      const updatedAnchors = anchors.map((a) =>
+        a.id === updatedAnchor.id ? updatedAnchor : a
+      );
+      onAnchorsChange(updatedAnchors);
     }
+  };
+
+  const handleMarkForDeletion = (idToDelete) => {
+    const updatedAnchors = anchors.map((a) =>
+      a.id === idToDelete ? { ...a, markedForDeletion: true } : a
+    );
+    onAnchorsChange(updatedAnchors);
+  };
+
+  const handleUndoDelete = (idToUndo) => {
+    const updatedAnchors = anchors.map((a) =>
+      a.id === idToUndo ? { ...a, markedForDeletion: false } : a
+    );
+    onAnchorsChange(updatedAnchors);
+  };
+
+  const handleCancelNew = (id) => {
+    const updatedAnchors = anchors.filter((a) => a.id !== id);
+    onAnchorsChange(updatedAnchors);
   };
 
   return (
     <div className="p-4 bg-slate-800/50 rounded-lg mt-4 border border-slate-700">
-      <h3 className="text-md font-bold text-slate-300 mb-2">Labor Hour Anchors</h3>
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-left text-slate-400">
-          <thead className="text-xs text-slate-400 uppercase bg-slate-700">
-            <tr>
-              <th scope="col" className="px-4 py-2">Width</th>
-              <th scope="col" className="px-4 py-2">Height</th>
-              <th scope="col" className="px-4 py-2">Depth</th>
-              {services.map(s => <th key={s.id} scope="col" className="px-4 py-2 whitespace-nowrap">{s.name} Hrs</th>)}
-              <th scope="col" className="px-4 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {localAnchors.map(anchor => (
-                <AnchorRow 
-                    key={anchor.id}
-                    anchor={anchor}
-                    services={services}
-                    onSave={handleUpdate}
-                    onDelete={handleDelete}
-                />
+        <div 
+          className="grid border-b-2 border-slate-600 mb-2" 
+          style={{ gridTemplateColumns: gridCols }}
+        >
+          <div className="px-4 py-2 flex items-center text-xs text-slate-400 uppercase font-semibold bg-slate-700">
+            Width
+          </div>
+          <div className="px-4 py-2 flex items-center text-xs text-slate-400 uppercase font-semibold bg-slate-700">
+            Height
+          </div>
+          <div className="px-4 py-2 flex items-center text-xs text-slate-400 uppercase font-semibold bg-slate-700">
+            Depth
+          </div>
+          {Array.isArray(services) &&
+            services.map((s) => (
+              <div
+                key={s.team_service_id}
+                className="px-4 py-2 flex items-center text-xs text-slate-400 uppercase font-semibold bg-slate-700 whitespace-nowrap"
+              >
+                {s.service_name}
+              </div>
             ))}
+          <div className="px-4 py-2 flex items-center justify-end text-xs text-slate-400 uppercase font-semibold bg-slate-700">
+            Actions
+          </div>
+        </div>
 
-            {/* New Anchor Input Row */}
-            {newAnchor && (
-              <tr className="bg-slate-700/50">
-                <td className="p-2"><input type="number" name="width" value={newAnchor.width} onChange={handleNewAnchorInputChange} className="bg-slate-900 w-full p-1" /></td>
-                <td className="p-2"><input type="number" name="height" value={newAnchor.height} onChange={handleNewAnchorInputChange} className="bg-slate-900 w-full p-1" /></td>
-                <td className="p-2"><input type="number" name="depth" value={newAnchor.depth} onChange={handleNewAnchorInputChange} className="bg-slate-900 w-full p-1" /></td>
-                {services.map(s => (
-                  <td key={s.id} className="p-2">
-                    <input 
-                      type="number" 
-                      value={newAnchor.services.find(ans => ans.team_service_id === s.id)?.hours || ''}
-                      onChange={(e) => handleNewAnchorInputChange(e, s.id)}
-                      className="bg-slate-900 w-full p-1"
-                    />
-                  </td>
-                ))}
-                <td className="p-2 text-right">
-                  <button onClick={handleSaveNew} className="p-2 text-green-400 hover:text-green-300"><FiSave /></button>
-                  <button onClick={handleCancelNew} className="p-2 text-red-400 hover:text-red-300"><FiX /></button>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        {anchors.map((anchor) => (
+          <AnchorRow
+            key={anchor.id}
+            anchor={anchor}
+            services={services}
+            onDelete={handleMarkForDeletion}
+            onUndo={handleUndoDelete}
+            isNew={anchor.isNew}
+            onCancelNew={handleCancelNew}
+            onChange={handleRowChange}
+            errors={errors[anchor.id]}
+          />
+        ))}
       </div>
-      {!newAnchor && (
-        <button onClick={handleAddNew} className="mt-2 flex items-center px-2 py-1 text-sm bg-slate-600 text-slate-200 rounded-md hover:bg-slate-500">
-          <FiPlus className="mr-2" /> Add Anchor
-        </button>
-      )}
+      <button
+        onClick={() => handleAddNew(services)}
+        className="mt-4 flex items-center px-2 py-1 text-sm bg-slate-600 text-slate-200 rounded-md hover:bg-slate-500"
+      >
+        <FiPlus className="mr-2" /> Add Anchor
+      </button>
     </div>
   );
 };
