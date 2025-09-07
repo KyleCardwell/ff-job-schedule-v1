@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FiPlus, FiTrash2, FiEdit } from "react-icons/fi";
+import { FiPlus, FiTrash2, FiEdit, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -12,9 +12,9 @@ const AnchorRow = ({
   onCancelNew,
   onChange,
   errors = {},
+  gridCols
 }) => {
   const [isEditing, setIsEditing] = useState(isNew);
-  const gridCols = `repeat(${3 + services.length}, minmax(0, 1fr)) auto`;
 
   const handleInputChange = (e, serviceId) => {
     const { name, value } = e.target;
@@ -146,7 +146,7 @@ const AnchorRow = ({
 
   return (
     <div
-      className="grid border-b border-slate-700/50 pb-2 hover:bg-slate-700/50 text-slate-200"
+      className="grid border-b border-slate-700/50 pb-2 hover:bg-slate-600/50 text-slate-200"
       style={{ gridTemplateColumns: gridCols }}
     >
       <div className="px-4 py-2 rounded-l-md flex items-center">
@@ -165,19 +165,30 @@ const AnchorRow = ({
             )?.hours || 0}
           </div>
         ))}
-      <div className="px-4 py-2 text-right hover:bg-slate-700/50 rounded-r-md">
+      <div className="px-4 py-2 text-right rounded-r-md">
         <button
           onClick={() => setIsEditing(true)}
           className="p-2 text-slate-200 hover:text-teal-400"
         >
           <FiEdit />
         </button>
-        <button
-          onClick={() => onDelete(anchor.id)}
-          className="p-2 text-slate-200 hover:text-red-400"
-        >
-          <FiTrash2 />
-        </button>
+        {anchor.isNew ? (
+          <button
+            onClick={() => onDelete(anchor.id)}
+            className="p-2 text-slate-200 hover:text-red-400 font-bold"
+            title="Remove (not yet saved)"
+          >
+            <FiX className="stroke-2" />
+          </button>
+        ) : (
+          <button
+            onClick={() => onDelete(anchor.id)}
+            className="p-2 text-slate-200 hover:text-red-400"
+            title="Mark for deletion"
+          >
+            <FiTrash2 />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -192,7 +203,7 @@ const CabinetAnchorsTable = ({
   const services = useSelector(
     (state) => state.services?.allServices.filter((s) => s.is_active) || []
   );
-  const gridCols = `repeat(${3 + services.length}, minmax(0, 1fr)) auto`;
+  const gridCols = `repeat(${3 + services.length}, minmax(0, 1fr)) 100px`;
 
   const handleAddNew = (currentServices) => {
     const initialServices = currentServices.map((s) => ({
@@ -227,10 +238,19 @@ const CabinetAnchorsTable = ({
   };
 
   const handleMarkForDeletion = (idToDelete) => {
-    const updatedAnchors = anchors.map((a) =>
-      a.id === idToDelete ? { ...a, markedForDeletion: true } : a
-    );
-    onAnchorsChange(updatedAnchors);
+    // Find the anchor to check if it's new
+    const anchorToDelete = anchors.find(a => a.id === idToDelete);
+    
+    if (anchorToDelete && anchorToDelete.isNew) {
+      // If it's a new anchor, remove it directly
+      onAnchorsChange(anchors.filter(a => a.id !== idToDelete));
+    } else {
+      // Otherwise, mark it for deletion
+      const updatedAnchors = anchors.map((a) =>
+        a.id === idToDelete ? { ...a, markedForDeletion: true } : a
+      );
+      onAnchorsChange(updatedAnchors);
+    }
   };
 
   const handleUndoDelete = (idToUndo) => {
@@ -246,7 +266,7 @@ const CabinetAnchorsTable = ({
   };
 
   return (
-    <div className="p-4 bg-slate-800/50 rounded-lg mt-4 border border-slate-700">
+    <>
       <div className="overflow-x-auto">
         <div 
           className="grid border-b-2 border-slate-600 mb-2" 
@@ -286,6 +306,7 @@ const CabinetAnchorsTable = ({
             onCancelNew={handleCancelNew}
             onChange={handleRowChange}
             errors={errors[anchor.id]}
+            gridCols={gridCols}
           />
         ))}
       </div>
@@ -295,7 +316,7 @@ const CabinetAnchorsTable = ({
       >
         <FiPlus className="mr-2" /> Add Anchor
       </button>
-    </div>
+    </>
   );
 };
 

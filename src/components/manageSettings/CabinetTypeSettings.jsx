@@ -1,4 +1,4 @@
-import isEqual from 'lodash/isEqual';
+import isEqual from "lodash/isEqual";
 import React, {
   useEffect,
   useState,
@@ -9,13 +9,15 @@ import { FiPlus } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
-import { fetchCabinetAnchors, saveCabinetAnchors } from "../../redux/actions/cabinetAnchors";
+import {
+  fetchCabinetAnchors,
+  saveCabinetAnchors,
+} from "../../redux/actions/cabinetAnchors";
 import {
   fetchCabinetTypes,
   addCabinetType,
   updateCabinetType,
 } from "../../redux/actions/cabinetTypes";
-
 
 import CabinetAnchorsTable from "./CabinetAnchorsTable.jsx";
 import CabinetTypeCard from "./CabinetTypeCard.jsx";
@@ -24,7 +26,9 @@ import SettingsSection from "./SettingsSection.jsx";
 const CabinetTypeSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
   const { types, loading, error } = useSelector((state) => state.cabinetTypes);
-  const { itemsByType: anchorsByType } = useSelector((state) => state.cabinetAnchors) || { itemsByType: {} };
+  const { itemsByType: anchorsByType } = useSelector(
+    (state) => state.cabinetAnchors
+  ) || { itemsByType: {} };
   const { teamId } = useSelector((state) => state.auth);
 
   // All state managed in parent
@@ -50,14 +54,16 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
     // Process anchors by type - they're already grouped by cabinet_type_id in the new structure
     const processedAnchors = {};
     const originalProcessed = {};
-    
+
     // Iterate through each cabinet type
     Object.entries(anchorsByType).forEach(([typeId, anchors]) => {
-      processedAnchors[typeId] = anchors.map(anchor => ({ 
-        ...anchor, 
-        markedForDeletion: false 
+      processedAnchors[typeId] = anchors.map((anchor) => ({
+        ...anchor,
+        markedForDeletion: false,
       }));
-      originalProcessed[typeId] = JSON.parse(JSON.stringify(processedAnchors[typeId]));
+      originalProcessed[typeId] = JSON.parse(
+        JSON.stringify(processedAnchors[typeId])
+      );
     });
 
     setLocalAnchors(processedAnchors);
@@ -93,9 +99,9 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
 
   // Anchor management functions
   const handleAnchorChange = (cabinetTypeId, anchors) => {
-    setLocalAnchors(prev => ({
+    setLocalAnchors((prev) => ({
       ...prev,
-      [cabinetTypeId]: anchors
+      [cabinetTypeId]: anchors,
     }));
   };
 
@@ -104,13 +110,16 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
     let hasAnchorErrors = false;
 
     Object.entries(localAnchors).forEach(([typeId, anchors]) => {
-      anchors.forEach(anchor => {
+      anchors.forEach((anchor) => {
         if (anchor.markedForDeletion) return;
 
         const anchorErrors = {};
-        if (anchor.width === '' || anchor.width === null) anchorErrors.width = 'Required';
-        if (anchor.height === '' || anchor.height === null) anchorErrors.height = 'Required';
-        if (anchor.depth === '' || anchor.depth === null) anchorErrors.depth = 'Required';
+        if (anchor.width === "" || anchor.width === null)
+          anchorErrors.width = "Required";
+        if (anchor.height === "" || anchor.height === null)
+          anchorErrors.height = "Required";
+        if (anchor.depth === "" || anchor.depth === null)
+          anchorErrors.depth = "Required";
 
         if (Object.keys(anchorErrors).length > 0) {
           if (!newAnchorErrors[typeId]) newAnchorErrors[typeId] = {};
@@ -126,7 +135,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
 
   const parseAnchorValues = (anchor) => {
     const parseNumeric = (val) => {
-      if (val === '' || val === null || val === undefined) {
+      if (val === "" || val === null || val === undefined) {
         return null;
       }
       const num = parseFloat(val);
@@ -138,10 +147,12 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       width: parseNumeric(anchor.width),
       height: parseNumeric(anchor.height),
       depth: parseNumeric(anchor.depth),
-      services: anchor.services?.map(s => ({
-        ...s, 
-        hours: s.hours === '' || s.hours === null ? 0 : parseFloat(s.hours) || 0
-      })) || []
+      services:
+        anchor.services?.map((s) => ({
+          ...s,
+          hours:
+            s.hours === "" || s.hours === null ? 0 : parseFloat(s.hours) || 0,
+        })) || [],
     };
   };
 
@@ -172,7 +183,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
     const anchorsValid = validateAllAnchors();
 
     if (hasTypeErrors || !anchorsValid) {
-      console.log('Validation failed - stopping save');
+      console.log("Validation failed - stopping save");
       return;
     }
 
@@ -205,28 +216,45 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
         const parsedAnchors = anchors.map(parseAnchorValues);
         const originalTypeAnchors = originalAnchors[typeId] || [];
 
-        const newAnchors = parsedAnchors.filter(
-          anchor => anchor.isNew && !anchor.markedForDeletion
-        );
+        const newAnchors = parsedAnchors
+          .filter((anchor) => anchor.isNew && !anchor.markedForDeletion)
+          .map((anchor) => ({
+            ...anchor,
+            cabinet_type_id: typeId,
+          }));
 
-        const updatedAnchors = parsedAnchors.filter(localAnchor => {
-          if (localAnchor.isNew || localAnchor.markedForDeletion) return false;
-          const original = originalTypeAnchors.find(oa => oa.id === localAnchor.id);
-          return original && !isEqual(original, localAnchor);
-        });
+        const updatedAnchors = parsedAnchors
+          .filter((localAnchor) => {
+            if (localAnchor.isNew || localAnchor.markedForDeletion)
+              return false;
+            const original = originalTypeAnchors.find(
+              (oa) => oa.id === localAnchor.id
+            );
+            return original && !isEqual(original, localAnchor);
+          })
+          .map((anchor) => ({
+            ...anchor,
+            cabinet_type_id: typeId,
+          }));
 
         const deletedIds = parsedAnchors
-          .filter(anchor => !anchor.isNew && anchor.markedForDeletion)
-          .map(anchor => anchor.id);
+          .filter((anchor) => !anchor.isNew && anchor.markedForDeletion)
+          .map((anchor) => anchor.id);
 
-        if (newAnchors.length > 0 || updatedAnchors.length > 0 || deletedIds.length > 0) {
-          await dispatch(saveCabinetAnchors(newAnchors, updatedAnchors, deletedIds));
+        if (
+          newAnchors.length > 0 ||
+          updatedAnchors.length > 0 ||
+          deletedIds.length > 0
+        ) {
+          await dispatch(
+            saveCabinetAnchors(newAnchors, updatedAnchors, deletedIds)
+          );
         }
       }
 
-      console.log('Save completed successfully');
+      console.log("Save completed successfully");
     } catch (error) {
-      console.error('Error during save:', error);
+      console.error("Error during save:", error);
     }
   };
 
@@ -262,7 +290,8 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
         {loading && <div className="p-4 text-white">Loading...</div>}
         {error && <div className="p-4 text-red-500">Error: {error}</div>}
-        {(Object.keys(validationErrors).length > 0 || Object.keys(anchorErrors).length > 0) && (
+        {(Object.keys(validationErrors).length > 0 ||
+          Object.keys(anchorErrors).length > 0) && (
           <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
             Please fill out all required fields.
           </div>
@@ -342,7 +371,8 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
             )}
             {localTypes.some((t) => t.isNew) && (
               <div className="p-2 mt-0 text-red-300 bg-red-900/50 border border-red-700 rounded-md">
-                To add anchors for a newly added cabinet type, please Save Changes first
+                To add anchors for a newly added cabinet type, please Save
+                Changes first
               </div>
             )}
           </>
@@ -360,17 +390,16 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       {localTypes
         .filter((t) => t.is_active && !t.isNew)
         .map((type) => (
-          <div className="mt-4" key={type.id}>
-            <div className="bg-slate-800 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-200">{type.name}</h2>
-            </div>
+          <SettingsSection key={type.id} title={type.name}>
             <CabinetAnchorsTable
               cabinetTypeId={type.id}
               anchors={localAnchors[type.id] || []}
               errors={anchorErrors[type.id] || {}}
-              onAnchorsChange={(anchors) => handleAnchorChange(type.id, anchors)}
+              onAnchorsChange={(anchors) =>
+                handleAnchorChange(type.id, anchors)
+              }
             />
-          </div>
+          </SettingsSection>
         ))}
     </div>
   );
