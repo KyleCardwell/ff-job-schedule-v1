@@ -4,6 +4,8 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
+import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
+import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import {
   fetchEstimateById,
   setCurrentEstimate,
@@ -69,6 +71,8 @@ const EstimateLayout = () => {
 
   useEffect(() => {
     dispatch(fetchSheetGoods());
+    dispatch(fetchCabinetTypes());
+    dispatch(fetchCabinetAnchors())
   }, []);
 
   useEffect(() => {

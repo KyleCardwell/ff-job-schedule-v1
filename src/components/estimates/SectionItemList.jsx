@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { useState, useCallback } from "react";
 import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
+import { useSelector } from "react-redux";
 
 import ReorderModal from "../common/ReorderModal.jsx";
 
@@ -17,6 +18,7 @@ const SectionItemList = ({
   hideAddButton = false,
   formProps = {},
 }) => {
+  const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
@@ -70,6 +72,9 @@ const SectionItemList = ({
         } else {
           return "U";
         }
+      }
+      case "type": {
+        return cabinetTypes.find((t) => t.id === item.type)?.name;
       }
       case "actions":
         return (
@@ -167,7 +172,11 @@ const SectionItemList = ({
               }}
             >
               {columns.map((col) => {
-                return handleKeys(item, index, col.key, col);
+                return (
+                  <div key={col.key} className="text-sm">
+                    {handleKeys(item, index, col.key, col)}
+                  </div>
+                );
               })}
             </div>
           )
