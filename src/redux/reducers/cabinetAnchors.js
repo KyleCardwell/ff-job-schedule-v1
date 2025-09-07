@@ -1,7 +1,7 @@
 import { cabinetAnchors as Actions } from '../actionTypes/cabinetAnchors';
 
 const initialState = {
-  items: [],
+  itemsByType: {},  
   loading: false,
   error: null,
 };
@@ -12,7 +12,7 @@ const cabinetAnchorsReducer = (state = initialState, action) => {
     case Actions.FETCH_CABINET_ANCHORS_START:
       return { ...state, loading: true, error: null };
     case Actions.FETCH_CABINET_ANCHORS_SUCCESS:
-      return { ...state, loading: false, items: action.payload };
+      return { ...state, loading: false, itemsByType: action.payload };
     case Actions.FETCH_CABINET_ANCHORS_ERROR:
       return { ...state, loading: false, error: action.payload };
 

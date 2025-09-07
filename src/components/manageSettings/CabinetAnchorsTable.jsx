@@ -90,7 +90,7 @@ const AnchorRow = ({
             name="width"
             value={anchor.width}
             onChange={handleInputChange}
-            className={`bg-slate-900 w-full p-1 rounded-md ${
+            className={`w-full p-1 rounded-md ${
               errors && errors.width ? "border border-red-500" : ""
             }`}
           />
@@ -101,7 +101,7 @@ const AnchorRow = ({
             name="height"
             value={anchor.height}
             onChange={handleInputChange}
-            className={`bg-slate-900 w-full p-1 rounded-md ${
+            className={`w-full p-1 rounded-md ${
               errors && errors.height ? "border border-red-500" : ""
             }`}
           />
@@ -112,7 +112,7 @@ const AnchorRow = ({
             name="depth"
             value={anchor.depth}
             onChange={handleInputChange}
-            className={`bg-slate-900 w-full p-1 rounded-md ${
+            className={`w-full p-1 rounded-md ${
               errors && errors.depth ? "border border-red-500" : ""
             }`}
           />
@@ -128,7 +128,7 @@ const AnchorRow = ({
                   )?.hours || ""
                 }
                 onChange={(e) => handleInputChange(e, s.team_service_id)}
-                className="bg-slate-900 w-full p-1 rounded-md"
+                className="w-full p-1 rounded-md"
               />
             </div>
           ))}

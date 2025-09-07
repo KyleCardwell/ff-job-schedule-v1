@@ -24,7 +24,7 @@ import SettingsSection from "./SettingsSection.jsx";
 const CabinetTypeSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
   const { types, loading, error } = useSelector((state) => state.cabinetTypes);
-  const { items: allAnchors } = useSelector((state) => state.cabinetAnchors) || { items: [] };
+  const { itemsByType: anchorsByType } = useSelector((state) => state.cabinetAnchors) || { itemsByType: {} };
   const { teamId } = useSelector((state) => state.auth);
 
   // All state managed in parent
@@ -47,23 +47,22 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
   }, [types]);
 
   useEffect(() => {
-    // Group anchors by cabinet type
-    const anchorsByType = {};
-    const originalAnchorsByType = {};
+    // Process anchors by type - they're already grouped by cabinet_type_id in the new structure
+    const processedAnchors = {};
+    const originalProcessed = {};
     
-    allAnchors.forEach(anchor => {
-      const typeId = anchor.cabinet_type_id;
-      if (!anchorsByType[typeId]) {
-        anchorsByType[typeId] = [];
-        originalAnchorsByType[typeId] = [];
-      }
-      anchorsByType[typeId].push({ ...anchor, markedForDeletion: false });
-      originalAnchorsByType[typeId].push({ ...anchor, markedForDeletion: false });
+    // Iterate through each cabinet type
+    Object.entries(anchorsByType).forEach(([typeId, anchors]) => {
+      processedAnchors[typeId] = anchors.map(anchor => ({ 
+        ...anchor, 
+        markedForDeletion: false 
+      }));
+      originalProcessed[typeId] = JSON.parse(JSON.stringify(processedAnchors[typeId]));
     });
 
-    setLocalAnchors(anchorsByType);
-    setOriginalAnchors(JSON.parse(JSON.stringify(anchorsByType)));
-  }, [allAnchors]);
+    setLocalAnchors(processedAnchors);
+    setOriginalAnchors(originalProcessed);
+  }, [anchorsByType]);
 
   const handleInputChange = (id, field, value) => {
     setLocalTypes((prev) =>
@@ -350,7 +349,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
         )}
       </div>
 
-      <div className="z-10 bg-slate-800 py-4">
+      <div className="z-10 bg-slate-800 py-4 sticky top-0 z-10">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold text-slate-200">
             Manage Cabinet Anchors
@@ -362,7 +361,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
         .filter((t) => t.is_active && !t.isNew)
         .map((type) => (
           <div className="mt-4" key={type.id}>
-            <div className="sticky top-0 z-10 bg-slate-800 flex justify-between items-center">
+            <div className="bg-slate-800 flex justify-between items-center">
               <h2 className="text-lg font-bold text-slate-200">{type.name}</h2>
             </div>
             <CabinetAnchorsTable
