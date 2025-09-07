@@ -21,6 +21,7 @@ const CabinetItemForm = ({
   onDeleteItem,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
+  const cabinetAnchors = useSelector((state) => state.cabinetAnchors.itemsByType);
   const [formData, setFormData] = useState({
     type: item.type || "",
     width: item.width || "",
@@ -179,7 +180,8 @@ const CabinetItemForm = ({
           formData.width,
           formData.height,
           formData.depth,
-          formData.finished_interior
+          formData.finished_interior,
+          cabinetAnchors[formData.type]
         );
       }
 

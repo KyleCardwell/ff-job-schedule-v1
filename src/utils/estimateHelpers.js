@@ -34,9 +34,8 @@ export const calculateBoardFeetFor5PieceDoor = (
 export const calculateBoardFeetForSlabHardwoodDoor = (
   doorWidth,
   doorHeight,
-  thickness = 0.75,
+  thickness = 0.75
 ) => {
-
   // Total volume in cubic inches
   const totalCubicInches = doorWidth * doorHeight * thickness;
 
@@ -46,11 +45,23 @@ export const calculateBoardFeetForSlabHardwoodDoor = (
   return roundToHundredth(boardFeet);
 };
 
-const interpolateRate = (anchors, targetWidth, type) => {
-  const rates = anchors.map((a) => ({
-    width: a.width,
-    rate: a[type] / (a.width * a.height * a.depth),
-  }));
+const interpolateRate = (anchors, targetWidth, team_service_id) => {
+  const rates = anchors.map((a) => {
+    const service = a.services.find(
+      (s) => s.team_service_id === team_service_id
+    );
+    const hours = service ? service.hours : 0;
+    // volume is pre-calculated, but let's be safe
+    const volume = a.volume || a.width * a.height * a.depth;
+    if (volume === 0) return { width: a.width, rate: 0 };
+    return {
+      width: a.width,
+      rate: hours / volume,
+    };
+  });
+
+  // Ensure anchors are sorted by width
+  rates.sort((a, b) => a.width - b.width);
 
   if (targetWidth <= rates[0].width) return rates[0].rate;
   if (targetWidth >= rates[rates.length - 1].width)
@@ -60,68 +71,61 @@ const interpolateRate = (anchors, targetWidth, type) => {
     const a = rates[i],
       b = rates[i + 1];
     if (targetWidth >= a.width && targetWidth <= b.width) {
+      if (b.width - a.width === 0) return a.rate; // Avoid division by zero
       const t = (targetWidth - a.width) / (b.width - a.width);
       return a.rate + t * (b.rate - a.rate);
     }
   }
+
+  // Fallback for safety, should not be reached with sorted widths
+  return rates[rates.length - 1].rate;
 };
 
-const detectCategory = (height, depth) => {
-  const profiles = {
-    Base: { height: 34.5, depth: 24 },
-    Upper: { height: 30, depth: 12 },
-    Tall: { height: 84, depth: 24 },
-    Bookcase: { height: 84, depth: 12 },
-  };
-
-  let closest = null;
-  let closestDiff = Infinity;
-
-  for (const [cat, dims] of Object.entries(profiles)) {
-    const diff = Math.abs(height - dims.height) + Math.abs(depth - dims.depth);
-    if (diff < closestDiff) {
-      closestDiff = diff;
-      closest = cat;
-    }
+export const getCabinetHours = (
+  width,
+  height,
+  depth,
+  finishedInterior = false,
+  anchors
+) => {
+  if (!anchors || anchors.length === 0) {
+    return {};
   }
-  return closest;
-};
 
-export const getCabinetHours = (width, height, depth, finishedInterior = false) => {
-  const category = detectCategory(height, depth);
-  const anchors = CABINET_ANCHORS[category];
   const volume = width * height * depth;
 
-  let shopRate;
-  if (finishedInterior) {
-    shopRate = interpolateRate(anchors, width, "finShopHours");
-  } else {
-    shopRate = interpolateRate(anchors, width, "shopHours");
-  }
-  const installRate = interpolateRate(anchors, width, "installHours");
-  const finishRate = interpolateRate(anchors, width, "finishHours");
+  // Get all unique team_service_ids from the anchors
+  const serviceIds = [
+    ...new Set(
+      anchors.flatMap((a) => a.services.map((s) => s.team_service_id))
+    ),
+  ];
 
-  let shopHours = volume * shopRate;
-  let installHours = volume * installRate;
-  let finishHours = volume * finishRate;
+  const hoursByService = {};
 
-  // Optional scaling for big/heavy cases
-  if (height > 80) {
-    shopHours *= 1.15;
-    installHours *= 1.2;
-  }
+  serviceIds.forEach((serviceId) => {
+    const rate = interpolateRate(anchors, width, serviceId);
+    let hours = volume * rate;
 
-  return {
-    category,
-    shopHours: roundToHundredth(shopHours),
-    installHours: roundToHundredth(installHours),
-    finishHours: roundToHundredth(finishHours)
-  };
-}
+    // Optional scaling for big/heavy cases (can be customized if needed)
+    if (height > 80) {
+      // This logic might need to be service-specific in the future
+      hours *= 1.15;
+    }
+
+    hoursByService[serviceId] = roundToHundredth(hours);
+  });
+
+  return hoursByService;
+};
 
 // Helper function to calculate box material price
 export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
-  if (!cabinet.face_config?.boxSummary || !section.box_mat || !selectedMaterial) {
+  if (
+    !cabinet.face_config?.boxSummary ||
+    !section.box_mat ||
+    !selectedMaterial
+  ) {
     return 0;
   }
 
@@ -140,8 +144,9 @@ export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
   }
 
   // Calculate price based on total area and material price
-  const pricePerSquareInch = selectedMaterial.sq_in_price || 
-    (selectedMaterial.sheet_price / selectedMaterial.area);
+  const pricePerSquareInch =
+    selectedMaterial.sq_in_price ||
+    selectedMaterial.sheet_price / selectedMaterial.area;
 
   let totalPrice = 0;
 
@@ -158,7 +163,10 @@ export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
 };
 
 // Helper function to calculate 5-piece hardwood face price for a specific face type
-export const calculate5PieceHardwoodFacePrice = (faceData, selectedMaterial) => {
+export const calculate5PieceHardwoodFacePrice = (
+  faceData,
+  selectedMaterial
+) => {
   if (!faceData || !selectedMaterial) {
     return 0;
   }
@@ -229,17 +237,17 @@ const doorHourAnchors = {
   shop: [
     { boardFeet: 4, hours: 0.25 },
     { boardFeet: 7.5, hours: 0.35 },
-    { boardFeet: 12, hours: 0.50 },
+    { boardFeet: 12, hours: 0.5 },
   ],
   install: [
-    { boardFeet: 4, hours: 0.10 },
+    { boardFeet: 4, hours: 0.1 },
     { boardFeet: 7.5, hours: 0.15 },
     { boardFeet: 12, hours: 0.25 },
   ],
   finish: [
-    { boardFeet: 4, hours: 0.50 },
-    { boardFeet: 7.5, hours: 0.60 },
-    { boardFeet: 12, hours: 0.80 },
+    { boardFeet: 4, hours: 0.5 },
+    { boardFeet: 7.5, hours: 0.6 },
+    { boardFeet: 12, hours: 0.8 },
   ],
 };
 
@@ -250,13 +258,17 @@ const doorHourAnchors = {
  * @param {string} hourType - The type of hour being calculated ('shop', 'install', 'finish').
  * @returns {number} - The calculated hours.
  */
-const calculateInterpolated5PieceDoorHours = (anchors, targetBoardFeet, hourType) => {
+const calculateInterpolated5PieceDoorHours = (
+  anchors,
+  targetBoardFeet,
+  hourType
+) => {
   const first = anchors[0];
   const last = anchors[anchors.length - 1];
 
   // Handle cases outside the anchor range
   if (targetBoardFeet < first.boardFeet) {
-    if (hourType === 'shop' || hourType === 'finish') {
+    if (hourType === "shop" || hourType === "finish") {
       return roundToHundredth(first.hours * 0.8);
     }
     return first.hours; // Install hours are not reduced
@@ -265,13 +277,17 @@ const calculateInterpolated5PieceDoorHours = (anchors, targetBoardFeet, hourType
   if (targetBoardFeet > last.boardFeet) {
     // Extrapolate based on the slope of the last two points
     const secondLast = anchors[anchors.length - 2];
-    const slope = (last.hours - secondLast.hours) / (last.boardFeet - secondLast.boardFeet);
-    const extrapolated = last.hours + (targetBoardFeet - last.boardFeet) * slope;
+    const slope =
+      (last.hours - secondLast.hours) / (last.boardFeet - secondLast.boardFeet);
+    const extrapolated =
+      last.hours + (targetBoardFeet - last.boardFeet) * slope;
     return roundToHundredth(extrapolated);
   }
 
   // Find the two anchor points the target board feet falls between for interpolation
-  const upperIndex = anchors.findIndex((anchor) => anchor.boardFeet >= targetBoardFeet);
+  const upperIndex = anchors.findIndex(
+    (anchor) => anchor.boardFeet >= targetBoardFeet
+  );
   const upper = anchors[upperIndex];
   const lower = anchors[upperIndex - 1];
 
@@ -287,7 +303,8 @@ const calculateInterpolated5PieceDoorHours = (anchors, targetBoardFeet, hourType
 
   if (boardFeetRange === 0) return lower.hours; // Avoid division by zero
 
-  const interpolated = lower.hours + (boardFeetOffset / boardFeetRange) * hourRange;
+  const interpolated =
+    lower.hours + (boardFeetOffset / boardFeetRange) * hourRange;
   return roundToHundredth(interpolated);
 };
 
@@ -302,9 +319,21 @@ export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
   const boardFeet = calculateBoardFeetFor5PieceDoor(width, height, thickness);
 
   return {
-    shopHours: calculateInterpolated5PieceDoorHours(doorHourAnchors.shop, boardFeet, 'shop'),
-    installHours: calculateInterpolated5PieceDoorHours(doorHourAnchors.install, boardFeet, 'install'),
-    finishHours: calculateInterpolated5PieceDoorHours(doorHourAnchors.finish, boardFeet, 'finish'),
+    shopHours: calculateInterpolated5PieceDoorHours(
+      doorHourAnchors.shop,
+      boardFeet,
+      "shop"
+    ),
+    installHours: calculateInterpolated5PieceDoorHours(
+      doorHourAnchors.install,
+      boardFeet,
+      "install"
+    ),
+    finishHours: calculateInterpolated5PieceDoorHours(
+      doorHourAnchors.finish,
+      boardFeet,
+      "finish"
+    ),
   };
 };
 
@@ -312,19 +341,19 @@ export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
 
 const slabDoorHourAnchors = {
   shop: [
-    { area: 768, hours: 0.50 },
-    { area: 1440, hours: 0.70 },
-    { area: 2304, hours: 1.00 },
+    { area: 768, hours: 0.5 },
+    { area: 1440, hours: 0.7 },
+    { area: 2304, hours: 1.0 },
   ],
   install: [
-    { area: 768, hours: 0.10 },
+    { area: 768, hours: 0.1 },
     { area: 1440, hours: 0.15 },
     { area: 2304, hours: 0.25 },
   ],
   finish: [
-    { area: 768, hours: 0.50 },
-    { area: 1440, hours: 0.60 },
-    { area: 2304, hours: 0.80 },
+    { area: 768, hours: 0.5 },
+    { area: 1440, hours: 0.6 },
+    { area: 2304, hours: 0.8 },
   ],
 };
 
@@ -352,8 +381,17 @@ const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
 export const calculateSlabDoorHours = (width, height) => {
   const area = width * height;
   return {
-    shopHours: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area),
-    installHours: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area),
-    finishHours: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area),
+    shopHours: calculateInterpolatedSlabDoorHours(
+      slabDoorHourAnchors.shop,
+      area
+    ),
+    installHours: calculateInterpolatedSlabDoorHours(
+      slabDoorHourAnchors.install,
+      area
+    ),
+    finishHours: calculateInterpolatedSlabDoorHours(
+      slabDoorHourAnchors.finish,
+      area
+    ),
   };
 };
