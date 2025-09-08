@@ -197,6 +197,7 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
             return {
               estimate: typeData.estimate || 0,
               fixedAmount: typeData.fixedAmount || 0,
+              rateOverride: typeData.rateOverride || null,
               actual_cost: typeActualCost,
               inputRows: typeData.inputRows || [],
               team_service_id: typeData.team_service_id,

@@ -59,10 +59,10 @@ const CompletedProjectView = () => {
 
   // Calculate project totals
   const projectTotals = useMemo(() => {
-    if (!projectFinancials?.length) return { estimate: 0, actual: 0, profit: 0 };
+    if (!projectFinancials?.length || !services?.length) return { estimate: 0, actual: 0, profit: 0 };
 
     const totals = projectFinancials.reduce((acc, task) => {
-      if (!task.financial_data) return acc;
+      if (!task.financial_data || !services?.length) return acc;
 
       // Transform financial_data into sections array for calculateFinancialTotals
       const taskSections = Object.entries(task.financial_data).map(([id, section]) => {
@@ -215,7 +215,7 @@ const CompletedProjectView = () => {
         </div>
 
         {projectFinancials.map((task, index) => {
-          if (!task.financial_data) return null;
+          if (!task.financial_data || !services?.length) return null;
 
           // Transform financial_data into sections array for calculateFinancialTotals
           const taskSections = Object.entries(task.financial_data).map(([id, section]) => {

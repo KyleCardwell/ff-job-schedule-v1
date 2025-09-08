@@ -479,10 +479,11 @@ export const calculateFinancialTotals = (
         const estimateTotal =
           section.data?.reduce((typeAcc, typeData) => {
             const service = services?.find(
-              (service) => service.service_id === typeData.service_id
+              (service) => service.team_service_id === typeData.team_service_id
             );
+            const rate = typeData.rateOverride ?? service?.hourly_rate ?? 0;
             const hourlyEstimate =
-              (typeData.estimate || 0) * (service?.hourly_rate || 0);
+              (typeData.estimate || 0) * rate;
             const fixedAmount = typeData.fixedAmount || 0;
             return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;

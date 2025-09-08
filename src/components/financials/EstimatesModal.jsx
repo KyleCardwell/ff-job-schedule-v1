@@ -22,7 +22,7 @@ const EstimatesModal = ({
     sectionId,
     value,
     serviceId = null,
-    isFixedAmount = false
+    fieldName = "estimate"
   ) => {
     // Convert empty string to null instead of 0
     const numValue = value === "" ? null : parseFloat(value);
@@ -36,7 +36,7 @@ const EstimatesModal = ({
               if (serviceData.service_id === serviceId) {
                 return {
                   ...serviceData,
-                  [isFixedAmount ? "fixedAmount" : "estimate"]: numValue,
+                  [fieldName]: numValue,
                 };
               }
               return serviceData;
@@ -83,7 +83,7 @@ const EstimatesModal = ({
                 <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
                   Prices
                 </h4>
-                <div className="flex flex-row flex-wrap gap-x-12 gap-y-4 pl-4 pt-4">
+                <div className="flex flex-row flex-wrap gap-x-12 gap-y-4 pt-4">
                   {priceSections.map((section) => (
                     <div key={section.id} className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
@@ -107,11 +107,11 @@ const EstimatesModal = ({
                   ))}
                 </div>
               </div>
-              <div>
+              <div className="">
                 <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
                   Hours
                 </h4>
-                <div className="space-y-3 pl-4 pt-4">
+                <div className="space-y-3 pt-4">
                   {services?.map((service) => {
                     const serviceData = hoursSection?.data?.find(
                       (s) => s.service_id === service.service_id
@@ -119,9 +119,9 @@ const EstimatesModal = ({
                     return (
                       <div
                         key={service.service_id}
-                        className="flex items-center justify-end gap-4 px-6"
+                        className="flex items-center justify-end gap-4"
                       >
-                        <h3 className="text-sm font-medium text-gray-700 capitalize">
+                        <h3 className="text-sm font-medium text-gray-700 capitalize w-16 text-right">
                           {service.service_name}
                         </h3>
                         <div className="flex items-center gap-4">
@@ -136,10 +136,11 @@ const EstimatesModal = ({
                                 handleEstimateChange(
                                   "hours",
                                   e.target.value,
-                                  service.service_id
+                                  service.service_id,
+                                  "estimate"
                                 )
                               }
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
                               placeholder="0"
                               step="0.01"
                             />
@@ -156,11 +157,31 @@ const EstimatesModal = ({
                                   "hours",
                                   e.target.value,
                                   service.service_id,
-                                  true
+                                  "fixedAmount"
                                 )
                               }
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
                               placeholder="0"
+                              step="0.01"
+                            />
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <label className="text-xs text-gray-500">
+                              Rate Override
+                            </label>
+                            <input
+                              type="number"
+                              value={formatEstimate(serviceData?.rateOverride)}
+                              onChange={(e) =>
+                                handleEstimateChange(
+                                  "hours",
+                                  e.target.value,
+                                  service.service_id,
+                                  "rateOverride"
+                                )
+                              }
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+                              placeholder="Rate"
                               step="0.01"
                             />
                           </div>

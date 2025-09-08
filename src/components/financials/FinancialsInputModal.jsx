@@ -90,6 +90,7 @@ const FinancialsInputModal = ({
               team_service_id: service.team_service_id,
               estimate: 0,
               fixedAmount: 0,
+              rateOverride: null, // Initialize with null
               actual_cost: 0,
               inputRows: [],
             };
@@ -100,6 +101,7 @@ const FinancialsInputModal = ({
               team_service_id: service.team_service_id,
               estimate: serviceData.estimate || 0,
               fixedAmount: serviceData.fixedAmount || 0,
+              rateOverride: serviceData.rateOverride || null, // Load the override value
               actual_cost: serviceData.actual_cost || 0,
               inputRows: serviceData.inputRows || [],
             };
@@ -110,7 +112,9 @@ const FinancialsInputModal = ({
           const service = services.find(
             (et) => et.team_service_id === type.team_service_id
           );
-          const hourlyEstimate = (type.estimate || 0) * (service?.hourly_rate || 0);
+          // Use override rate if it exists, otherwise use the default rate
+          const rate = type.rateOverride ?? service?.hourly_rate ?? 0;
+          const hourlyEstimate = (type.estimate || 0) * rate;
           const fixedAmount = type.fixedAmount || 0;
           return sum + hourlyEstimate + fixedAmount;
         }, 0);
