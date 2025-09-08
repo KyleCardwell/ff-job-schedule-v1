@@ -167,6 +167,32 @@ const FinancialsInputModal = ({
     }));
   };
 
+  const handleEstimatesClose = () => {
+    const newSections = localSections.map((section) => {
+      if (section.id === "hours") {
+        // Recalculate the total estimate for the entire hours section
+        const newTotalEstimate = section.data.reduce((total, serviceData) => {
+          const service = services.find(
+            (s) => s.team_service_id === serviceData.team_service_id
+          );
+          const rate = serviceData.rateOverride ?? service?.hourly_rate ?? 0;
+
+          // The estimate is based on the estimated hours, not actuals
+          const hourlyEstimate = (serviceData.estimate || 0) * rate;
+          const fixedAmount = serviceData.fixedAmount || 0;
+
+          return total + hourlyEstimate + fixedAmount;
+        }, 0);
+
+        return { ...section, estimate: newTotalEstimate };
+      }
+      return section;
+    });
+
+    setLocalSections(newSections);
+    setIsEstimatesOpen(false);
+  };
+
   const handleSectionUpdate = (sectionId, newData) => {
     setLocalSections((prevSections) =>
       prevSections.map((section) => {
@@ -346,7 +372,7 @@ const FinancialsInputModal = ({
       {isEstimatesOpen && (
         <EstimatesModal
           isOpen={isEstimatesOpen}
-          onClose={() => setIsEstimatesOpen(false)}
+          onClose={handleEstimatesClose}
           localSections={localSections}
           setLocalSections={setLocalSections}
           adjustments={adjustments}

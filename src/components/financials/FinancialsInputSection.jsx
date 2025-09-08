@@ -271,7 +271,7 @@ const FinancialsInputSection = ({
         const service = services.find(
           (s) => s.team_service_id === serviceData.team_service_id
         );
-        const rate = service?.hourly_rate || 0;
+        const rate = serviceData.rateOverride ?? service?.hourly_rate ?? 0;
 
         // Multiply estimate hours by rate for this type
         const serviceEstimate = (serviceData.estimate || 0) * rate;
