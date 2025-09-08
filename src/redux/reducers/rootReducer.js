@@ -3,6 +3,8 @@ import { combineReducers } from "redux";
 import authReducer from "../authSlice";
 
 import { builders } from "./builders"; // Adjust the import path
+import cabinetAnchorsReducer from "./cabinetAnchors";
+import cabinetTypesReducer from "./cabinetTypes";
 import { chartConfigReducer } from "./chartConfig";
 import { chartDataReducer } from "./chartData";
 import { completedProjectsReducer } from "./completedProjects";
@@ -12,6 +14,7 @@ import { financialsDataReducer } from "./financialsData";
 import { holidaysReducer } from "./holidays";
 import { materialsReducer } from "./materials";
 import { projectsReducer } from "./projects";
+import servicesReducer from "./services";
 import { taskDataReducer } from "./taskData";
 import { teamMembersReducer } from "./teamMembers";
 
@@ -29,6 +32,9 @@ const appReducer = combineReducers({
 	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
 	materials: materialsReducer,
+	services: servicesReducer,
+	cabinetTypes: cabinetTypesReducer,
+	cabinetAnchors: cabinetAnchorsReducer,
 });
 
 // Root reducer that handles resetting state

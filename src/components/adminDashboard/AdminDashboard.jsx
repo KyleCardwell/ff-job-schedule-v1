@@ -14,9 +14,11 @@ import {
   headerButtonColor,
 } from "../../assets/tailwindConstants";
 import { PATHS } from "../../utils/constants";
+import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
+import ServiceSettings from '../manageSettings/ServiceSettings.jsx';
 import TeamSettings from "../manageSettings/TeamSettings.jsx";
 
 // Wrapper component to handle ref forwarding
@@ -31,12 +33,30 @@ const AdminDashboard = () => {
   const location = useLocation();
 
   const { dayWidth, workday_hours: workdayHours } = useSelector(
-    (state) => state.chartConfig.workday_hours
+    (state) => state.chartConfig
   );
   const { roleId, permissions } = useSelector((state) => state.auth);
 
   // Define all possible tabs
   const allTabs = [
+    {
+      id: "services",
+      label: "Services",
+      path: PATHS.MANAGE_SERVICES,
+      component: ServiceSettings,
+      props: { },
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
+    },
+    {
+      id: "cabinet-types",
+      label: "Cabinet Types",
+      path: PATHS.MANAGE_CABINET_TYPES,
+      component: CabinetTypeSettings,
+      props: {},
+      requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
+    },
     {
       id: "employees",
       label: "Employees",
@@ -70,7 +90,7 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_TEAM,
       component: TeamSettings,
       props: {},
-      requiresAdmin: false,
+      requiresAdmin: true,
       requiresPermission: "can_manage_teams",
       maxWidthClass: "max-w-[1000px]",
     },

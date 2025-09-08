@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useCallback } from "react";
+import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import {
@@ -19,8 +20,10 @@ const CabinetItemForm = ({
   cabinetStyle,
   onDeleteItem,
 }) => {
+  const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
+  const cabinetAnchors = useSelector((state) => state.cabinetAnchors.itemsByType);
   const [formData, setFormData] = useState({
-    name: item.name || "",
+    type: item.type || "",
     width: item.width || "",
     height: item.height || "",
     depth: item.depth || "",
@@ -47,7 +50,7 @@ const CabinetItemForm = ({
     // For non-dimension fields
     if (!["width", "height", "depth"].includes(name)) {
       // Handle quantity as numeric
-      if (name === "quantity") {
+      if (name === "quantity" || name === "type") {
         const numValue = value === "" ? "" : Number(value);
         setFormData({
           ...formData,
@@ -119,8 +122,8 @@ const CabinetItemForm = ({
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+    if (!formData.type) {
+      newErrors.type = "Cabinet Type is required";
     }
 
     if (!formData.width) {
@@ -177,7 +180,8 @@ const CabinetItemForm = ({
           formData.width,
           formData.height,
           formData.depth,
-          formData.finished_interior
+          formData.finished_interior,
+          cabinetAnchors[formData.type]
         );
       }
 
@@ -487,27 +491,34 @@ const CabinetItemForm = ({
                 </div>
               </div>
 
-              {/* Name */}
+              {/* Cabinet Type */}
               <div>
                 <label
-                  htmlFor="name"
+                  htmlFor="type"
                   className="block text-xs font-medium text-slate-700 mb-1"
                 >
-                  Name <span className="text-red-500">*</span>
+                  Cabinet Type <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type || ""}
                   onChange={handleChange}
                   className={`w-full px-3 py-2 border ${
-                    errors.name ? "border-red-500" : "border-slate-300"
+                    errors.type ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
-                  placeholder="Base Cabinet, Wall Cabinet, etc."
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                >
+                  <option value="">Select Cabinet Type</option>
+                  {cabinetTypes
+                    .filter((type) => type.is_active)
+                    .map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                </select>
+                {errors.type && (
+                  <p className="text-red-500 text-xs mt-1">{errors.type}</p>
                 )}
               </div>
             </div>
@@ -644,6 +655,7 @@ CabinetItemForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
   cabinetStyle: PropTypes.string,
   onDeleteItem: PropTypes.func.isRequired,
+  cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
 const EstimateCabinetManager = ({
@@ -652,6 +664,7 @@ const EstimateCabinetManager = ({
   onReorderItems,
   style,
   onDeleteItem,
+  cabinetTypes,
 }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
@@ -660,7 +673,7 @@ const EstimateCabinetManager = ({
       label: "Interior",
       width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
     },
-    { key: "name", label: "Cabinet", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "type", label: "Type", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT },
     { key: "depth", label: "Depth", width: ITEM_FORM_WIDTHS.DEFAULT },
@@ -706,7 +719,7 @@ const EstimateCabinetManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyle: style, onDeleteItem }}
+      formProps={{ cabinetStyle: style, onDeleteItem, cabinetTypes }}
     />
   );
 };
@@ -717,6 +730,7 @@ EstimateCabinetManager.propTypes = {
   onReorderItems: PropTypes.func.isRequired,
   style: PropTypes.string,
   onDeleteItem: PropTypes.func.isRequired,
+  cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
 export default EstimateCabinetManager;

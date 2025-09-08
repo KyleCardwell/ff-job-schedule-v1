@@ -1,4 +1,3 @@
-
 import _ from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -19,12 +18,12 @@ const FinancialsInputSection = ({
   onToggle,
   sectionId,
   employees = [],
+  services = [],
 }) => {
   const [localInputRows, setLocalInputRows] = useState([]);
   const [localData, setLocalData] = useState([]); // For hours section
-  const [expandedTypeId, setExpandedTypeId] = useState(null);
+  const [expandedServiceId, setExpandedServiceId] = useState(null);
   const isHoursSection = sectionId === "hours";
-  const chartConfig = useSelector((state) => state.chartConfig);
 
   const { canViewProfitLoss } = usePermissions();
 
@@ -56,23 +55,22 @@ const FinancialsInputSection = ({
     }
   }, [onUpdate, localInputRows, localData, isHoursSection]);
 
-  const handleAddHoursRow = (type_id) => {
+  const handleAddHoursRow = (team_service_id) => {
     const newRow = {
       id: uuidv4(),
       employee_id: "",
       hours: 0,
-      type_id,
     };
 
     // For hours section, we update the localData array
-    const updatedData = localData.map((typeData) => {
-      if (typeData.type_id === type_id) {
+    const updatedData = localData.map((serviceData) => {
+      if (serviceData.team_service_id === team_service_id) {
         return {
-          ...typeData,
-          inputRows: [...(typeData.inputRows || []), newRow],
+          ...serviceData,
+          inputRows: [...(serviceData.inputRows || []), newRow],
         };
       }
-      return typeData;
+      return serviceData;
     });
     handleUpdateRows(updatedData);
     // For hours section, just pass the updated data array
@@ -100,15 +98,15 @@ const FinancialsInputSection = ({
     return Number(parseFloat(timeStr).toFixed(2)) || 0;
   };
 
-  const handleHoursInputChange = (rowId, field, value, type_id) => {
+  const handleHoursInputChange = (rowId, field, value, team_service_id) => {
     if (field === "delete") {
-      handleDeleteRow(rowId, type_id);
+      handleDeleteRow(rowId, team_service_id);
       return;
     }
 
-    const updatedData = localData.map((typeData) => {
-      if (typeData.type_id === type_id) {
-        let updatedRows = (typeData.inputRows || []).map((row) => {
+    const updatedData = localData.map((serviceData) => {
+      if (serviceData.team_service_id === team_service_id) {
+        let updatedRows = (serviceData.inputRows || []).map((row) => {
           if (row.id === rowId) {
             // Handle empty or invalid input
             if (field === "hours") {
@@ -136,6 +134,7 @@ const FinancialsInputSection = ({
 
         // Update actual_cost based on whether it's a fixed amount or hourly
         if (field === "employee_id" || field === "hours") {
+
           updatedRows = updatedRows.map(row => {
             if (row.employee_id === 'fixed_amount') {
               // For fixed amount, use the decimal value
@@ -164,9 +163,9 @@ const FinancialsInputSection = ({
           (sum, row) => sum + (row.actual_cost || 0),
           0
         );
-        return { ...typeData, inputRows: updatedRows, actual_cost };
+        return { ...serviceData, inputRows: updatedRows, actual_cost };
       }
-      return typeData;
+      return serviceData;
     });
     handleUpdateRows(updatedData);
     onUpdate(updatedData);
@@ -212,12 +211,12 @@ const FinancialsInputSection = ({
     });
   };
 
-  const handleDeleteRow = (rowId, type_id = null) => {
+  const handleDeleteRow = (rowId, team_service_id = null) => {
     if (isHoursSection) {
       // For hours section, remove row from the specific type
-      const updatedData = localData.map((typeData) => {
-        if (typeData.type_id === type_id) {
-          const updatedRows = typeData.inputRows.filter(
+      const updatedData = localData.map((serviceData) => {
+        if (serviceData.team_service_id === team_service_id) {
+          const updatedRows = serviceData.inputRows.filter(
             (row) => row.id !== rowId
           );
           // Recalculate actual_cost for this type
@@ -225,9 +224,9 @@ const FinancialsInputSection = ({
             (sum, row) => sum + (row.actual_cost || 0),
             0
           );
-          return { ...typeData, inputRows: updatedRows, actual_cost };
+          return { ...serviceData, inputRows: updatedRows, actual_cost };
         }
-        return typeData;
+        return serviceData;
       });
       handleUpdateRows(updatedData);
       onUpdate(updatedData);
@@ -239,16 +238,17 @@ const FinancialsInputSection = ({
     }
   };
 
-  const handleToggleType = (typeId) => {
-    setExpandedTypeId((current) => (current === typeId ? null : typeId));
+  const handleToggleService = (teamServiceId) => {
+    // const teamServiceId = services.find((s) => s.service_id === serviceId)?.team_service_id;
+    setExpandedServiceId((current) => (current === teamServiceId ? null : teamServiceId));
   };
 
   const rowsTotal = useMemo(() => {
     if (isHoursSection) {
-      return (localData || []).reduce((sum, typeData) => {
+      return (localData || []).reduce((sum, serviceData) => {
         return (
           sum +
-          ((typeData?.inputRows || []).reduce(
+          ((serviceData?.inputRows || []).reduce(
             (sum, row) => sum + (row?.hours?.decimal || 0),
             0
           ) || 0)
@@ -266,24 +266,24 @@ const FinancialsInputSection = ({
     if (!isHoursSection) return null;
 
     return localData.reduce(
-      (acc, typeData) => {
-        // Find the employee type to get its rate
-        const employeeType = chartConfig.employee_type?.find(
-          (type) => type.id === typeData.type_id
+      (acc, serviceData) => {
+        // Find the service to get its rate
+        const service = services.find(
+          (s) => s.team_service_id === serviceData.team_service_id
         );
-        const rate = employeeType?.rate || 0;
+        const rate = service?.hourly_rate || 0;
 
         // Multiply estimate hours by rate for this type
-        const typeEstimate = (typeData.estimate || 0) * rate;
+        const serviceEstimate = (serviceData.estimate || 0) * rate;
 
         return {
-          estimate: acc.estimate + typeEstimate,
-          actual: acc.actual + (typeData.actual_cost || 0),
+          estimate: acc.estimate + serviceEstimate,
+          actual: acc.actual + (serviceData.actual_cost || 0),
         };
       },
       { estimate: 0, actual: 0 }
     );
-  }, [isHoursSection, localData, chartConfig.employee_type]);
+  }, [isHoursSection, localData, services]);
 
   const formatEstimate = (value) => {
     if (value === null || value === undefined || value === '') return '';
@@ -406,30 +406,30 @@ const FinancialsInputSection = ({
         <div className="p-4 space-y-4 bg-white">
           {isHoursSection ? (
             <div className="space-y-4">
-              {chartConfig.employee_type?.map((type) => {
-                const typeData = localData.find(
-                  (d) => d.type_id === type.id
+              {services?.map((service) => {
+                const serviceData = localData.find(
+                  (d) => d.team_service_id === service.team_service_id
                 ) || {
-                  type_id: type.id,
-                  type_name: type.name,
+                  team_service_id: service.team_service_id,
+                  service_name: service.service_name,
                   estimate: 0,
                   actual_cost: 0,
                   inputRows: [],
                 };
                 return (
                   <EmployeeTypeAccordion
-                    key={type.id}
-                    type={type}
+                    key={service.team_service_id}
+                    service={service}
                     employees={employees}
-                    typeData={typeData}
+                    serviceData={serviceData}
                     onAddRow={handleAddHoursRow}
                     onInputChange={(rowId, field, value) =>
-                      handleHoursInputChange(rowId, field, value, type.id)
+                      handleHoursInputChange(rowId, field, value, service.team_service_id)
                     }
                     onBlur={handleBlur}
-                    isExpanded={expandedTypeId === type.id}
-                    onToggle={handleToggleType}
-                    onDeleteRow={(rowId) => handleDeleteRow(rowId, type.id)}
+                    isExpanded={expandedServiceId === service.team_service_id}
+                    onToggle={handleToggleService}
+                    onDeleteRow={(rowId) => handleDeleteRow(rowId, service.team_service_id)}
                   />
                 );
               })}
@@ -512,6 +512,7 @@ FinancialsInputSection.propTypes = {
   onToggle: PropTypes.func,
   sectionId: PropTypes.string,
   employees: PropTypes.array,
+  services: PropTypes.array,
 };
 
 export default FinancialsInputSection;

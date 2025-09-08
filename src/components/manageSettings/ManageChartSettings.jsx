@@ -15,7 +15,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
 
   const chartConfig = useSelector((state) => state.chartConfig);
   const [settings, setSettings] = useState({});
-  const [employeeTypes, setEmployeeTypes] = useState([]);
   const [estimateSections, setEstimateSections] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -44,32 +43,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
     if (!maxTaskNumber || maxTaskNumber <= minTaskNumber) {
       newErrors.maxTaskNumber =
         "Max task number must be greater than min task number";
-    }
-
-    // Validate employee types
-    if (!employeeTypes || employeeTypes.length < 1) {
-      newErrors.employeeTypes = "At least one employee type is required";
-    } else {
-      const duplicateTypes = employeeTypes.filter(
-        (type, index) =>
-          employeeTypes.findIndex(
-            (t) => t.name.toLowerCase() === type.name.toLowerCase()
-          ) !== index
-      );
-
-      if (duplicateTypes.length > 0) {
-        newErrors.employeeTypes = "Duplicate employee types are not allowed";
-      }
-
-      const emptyTypes = employeeTypes.some((type) => !type.name.trim());
-      if (emptyTypes) {
-        newErrors.employeeTypes = "Empty employee types are not allowed";
-      }
-
-      const emptyRates = employeeTypes.some((type) => !type.rate && type.rate !== 0);
-      if (emptyRates) {
-        newErrors.employeeTypes = "All employee types must have an hourly rate";
-      }
     }
 
     // Validate estimate sections
@@ -122,23 +95,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
     }
   };
 
-  const handleEmployeeTypeChange = (id, field, value) => {
-    setEmployeeTypes((prev) =>
-      prev.map((type) => (type.id === id ? { ...type, [field]: value } : type))
-    );
-    if (errors.employeeTypes) {
-      setErrors((prev) => ({ ...prev, employeeTypes: null }));
-    }
-  };
-
-  const handleRemoveEmployeeType = (id) => {
-    setEmployeeTypes((prev) => prev.filter((type) => type.id !== id));
-  };
-
-  const handleAddEmployeeType = () => {
-    setEmployeeTypes((prev) => [...prev, { id: uuidv4(), name: "", rate: 0 }]);
-  };
-
   const handleEstimateSectionChange = (id, value) => {
     setEstimateSections((prev) =>
       prev.map((section) =>
@@ -167,14 +123,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
       company_name: chartConfig.company_name,
       workdayHours: chartConfig.workday_hours || 8,
     });
-    setEmployeeTypes(
-      (chartConfig.employee_type || []).map((type) => {
-        if (typeof type === "string") {
-          return { id: uuidv4(), name: type, rate: 0 }; // Convert old string format
-        }
-        return { ...type, rate: type.rate || 0 }; // Keep existing object format with rate
-      })
-    );
+
     setEstimateSections(
       (chartConfig.estimate_sections || []).map((section) => {
         if (typeof section === "string") {
@@ -195,11 +144,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
       await dispatch(
         saveSettings({
           ...settings,
-          employee_type: employeeTypes.map((type) => ({
-            id: type.id,
-            name: type.name.trim(),
-            rate: type.rate,
-          })),
           estimate_sections: estimateSections.map((section) => ({
             id: section.id,
             name: section.name.trim(),
@@ -234,15 +178,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
       company_name: chartConfig.company_name,
       workdayHours: chartConfig.workday_hours || 8,
     });
-    // Initialize from existing types, preserving their ids if they exist
-    setEmployeeTypes(
-      (chartConfig.employee_type || []).map((type) => {
-        if (typeof type === "string") {
-          return { id: uuidv4(), name: type, rate: 0 }; // Convert old string format
-        }
-        return { ...type, rate: type.rate || 0 }; // Keep existing object format with rate
-      })
-    );
+    
     setEstimateSections(
       (chartConfig.estimate_sections || []).map((section) => {
         if (typeof section === "string") {
@@ -314,20 +250,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
         />
       </SettingsSection>
 
-      <SettingsSection title="Employee Types" error={errors.employeeTypes}>
-        <SettingsList
-          items={employeeTypes}
-          columns={[
-            { field: 'name', label: 'Category', width: '200px', placeholder: 'Enter category' },
-            { field: 'rate', label: 'Hourly Rate', width: '120px', placeholder: 'Enter rate' }
-          ]}
-          onDelete={handleRemoveEmployeeType}
-          onChange={handleEmployeeTypeChange}
-          onAdd={handleAddEmployeeType}
-          addLabel="Add Employee Type"
-        />
-      </SettingsSection>
-
       <SettingsSection title="Estimate Sections" error={errors.estimateSections}>
         <SettingsList
           items={estimateSections}
@@ -344,7 +266,6 @@ const ManageChartSettings = forwardRef((props, ref) => {
         <div className="text-red-500 text-sm mt-2">{errors.save}</div>
       )}
     </div>
-    // </div>
   );
 });
 

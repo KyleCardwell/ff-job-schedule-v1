@@ -113,7 +113,6 @@ export const saveSettings = (settings) => async (dispatch, getState) => {
         min_task_number: settings.minTaskNumber,
         max_task_number: settings.maxTaskNumber,
         workday_hours: settings.workdayHours,
-        employee_type: settings.employee_type,
         estimate_sections: settings.estimate_sections,
         company_name: settings.company_name,
       })

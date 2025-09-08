@@ -8,7 +8,6 @@ const initialState = {
   company_name: null,
   workday_hours: null,
   estimate_sections: [],
-  employee_type: [],
   loading: false,
   error: null,
 };
@@ -32,7 +31,6 @@ export const chartConfigReducer = (state = initialState, action) => {
         max_task_number: action.payload.max_task_number,
         company_name: action.payload.company_name,
         workday_hours: action.payload.workday_hours,
-        employee_type: action.payload.employee_type || [],
         estimate_sections: action.payload.estimate_sections || [],
         error: null,
       };

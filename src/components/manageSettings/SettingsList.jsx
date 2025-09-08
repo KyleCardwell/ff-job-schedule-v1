@@ -18,21 +18,25 @@ const SettingsList = ({ items, columns, onDelete, onChange, onAdd, addLabel }) =
           <React.Fragment key={item.id}>
             {columns.map((col, index) => (
               <div key={index}>
-                <input
-                  type={col.type || "text"}
-                  value={col.getValue ? col.getValue(item) : (item[col.field] || "")}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (col.setValue) {
-                      const newItem = col.setValue(item, value);
-                      onChange(item.id, col.field, value);
-                    } else {
-                      onChange(item.id, col.field, value);
-                    }
-                  }}
-                  className="w-full bg-slate-600 text-slate-200 px-2 py-1 mb-2"
-                  placeholder={col.placeholder}
-                />
+                {col.render ? (
+                  col.render(item, (field, value) => onChange(item.id, field, value))
+                ) : (
+                  <input
+                    type={col.type || "text"}
+                    value={col.getValue ? col.getValue(item) : (item[col.field] || "")}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (col.setValue) {
+                        const newItem = col.setValue(item, value);
+                        onChange(item.id, col.field, value);
+                      } else {
+                        onChange(item.id, col.field, value);
+                      }
+                    }}
+                    className="w-full bg-slate-600 text-slate-200 px-2 py-1 mb-2"
+                    placeholder={col.placeholder}
+                  />
+                )}
               </div>
             ))}
             <button
@@ -78,6 +82,7 @@ SettingsList.propTypes = {
     type: PropTypes.string,
     getValue: PropTypes.func,
     setValue: PropTypes.func,
+    render: PropTypes.func,
   })),
   onDelete: PropTypes.func,
   onChange: PropTypes.func,

@@ -306,12 +306,12 @@ export const sortAndAdjustDates = (
       if (!a.hard_start_date && b.hard_start_date) return 1;
 
       // If both have same hard_start_date status, consider drag direction
-        if (a.isDragged) {
-          return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
-        }
-        if (b.isDragged) {
-          return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
-        }
+      if (a.isDragged) {
+        return a.draggedLeft ? -1 : 1; // Go first if dragged left, last if dragged right
+      }
+      if (b.isDragged) {
+        return b.draggedLeft ? 1 : -1; // Go last if dragged left, first if dragged right
+      }
     }
     return dateComparison;
   });
@@ -326,7 +326,7 @@ export const sortAndAdjustDates = (
 
     // Calculate start date
     let start_date = normalizeDate(current.start_date);
-    
+
     // Handle non-hard-start tasks that need to follow previous task
     if (!current.hard_start_date) {
       // If task is dragged left, use its original start date unless it would overlap with previous task
@@ -335,17 +335,30 @@ export const sortAndAdjustDates = (
         const prevTask = arrayToProcess[i - 1];
         if (prevTask) {
           // If previous task is a hard start task or if current task would overlap with previous task
-          if (prevTask.hard_start_date || new Date(start_date) < new Date(prevTask.end_date)) {
+          if (
+            prevTask.hard_start_date ||
+            new Date(start_date) < new Date(prevTask.end_date)
+          ) {
             start_date = normalizeDate(
-              getNextWorkday(prevTask.end_date, holidayMap, current.employee_id, timeOffByBuilder)
+              getNextWorkday(
+                prevTask.end_date,
+                holidayMap,
+                current.employee_id,
+                timeOffByBuilder
+              )
             );
           }
         }
-      } 
+      }
       // If not dragged or dragged right, always start after previous task
       else if (lastEndDate) {
         start_date = normalizeDate(
-          getNextWorkday(lastEndDate, holidayMap, current.employee_id, timeOffByBuilder)
+          getNextWorkday(
+            lastEndDate,
+            holidayMap,
+            current.employee_id,
+            timeOffByBuilder
+          )
         );
       }
     }
@@ -391,7 +404,10 @@ export const sortAndAdjustDates = (
           return false;
         }
         const conflictDate = new Date(date);
-        return new Date(end_date) > conflictDate && new Date(start_date) < conflictDate;
+        return (
+          new Date(end_date) > conflictDate &&
+          new Date(start_date) < conflictDate
+        );
       })
       .map(([date, info]) => ({
         conflicting_task: current.task_name,
@@ -446,7 +462,7 @@ export const reconstructJobsForRedux = (flatJobs) => {
 
 export const calculateFinancialTotals = (
   sections,
-  chartConfig,
+  services,
   adjustments = null
 ) => {
   const totals = sections.reduce(
@@ -462,11 +478,11 @@ export const calculateFinancialTotals = (
         // For estimate, multiply estimated hours by employee type rates and add fixed amounts
         const estimateTotal =
           section.data?.reduce((typeAcc, typeData) => {
-            const employeeType = chartConfig.employee_type?.find(
-              (type) => type.id === typeData.type_id
+            const service = services?.find(
+              (service) => service.service_id === typeData.service_id
             );
             const hourlyEstimate =
-              (typeData.estimate || 0) * (employeeType?.rate || 0);
+              (typeData.estimate || 0) * (service?.hourly_rate || 0);
             const fixedAmount = typeData.fixedAmount || 0;
             return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;
