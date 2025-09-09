@@ -20,6 +20,7 @@ const FinancialsInputSection = ({
   employees = [],
   services = [],
 }) => {
+  const { overheadRate } = useSelector((state) => state.financialsData);
   const [localInputRows, setLocalInputRows] = useState([]);
   const [localData, setLocalData] = useState([]); // For hours section
   const [expandedServiceId, setExpandedServiceId] = useState(null);
@@ -60,6 +61,7 @@ const FinancialsInputSection = ({
       id: uuidv4(),
       employee_id: "",
       hours: 0,
+      isOvertime: false,
     };
 
     // For hours section, we update the localData array
@@ -81,19 +83,19 @@ const FinancialsInputSection = ({
   const timeToDecimal = (time) => {
     // Handle null/undefined
     if (!time) return 0;
-    
+
     // If it's already a number, return it rounded
-    if (typeof time === 'number') return Number(time.toFixed(2));
-    
+    if (typeof time === "number") return Number(time.toFixed(2));
+
     // Convert to string for processing
     const timeStr = time.toString().trim();
-    
+
     // If it's in HH:MM format
-    if (timeStr.includes(':')) {
-      const [hours, minutes] = timeStr.split(':').map(Number);
+    if (timeStr.includes(":")) {
+      const [hours, minutes] = timeStr.split(":").map(Number);
       return Number((hours + minutes / 60).toFixed(2));
     }
-    
+
     // Otherwise treat as decimal
     return Number(parseFloat(timeStr).toFixed(2)) || 0;
   };
@@ -108,50 +110,77 @@ const FinancialsInputSection = ({
       if (serviceData.team_service_id === team_service_id) {
         let updatedRows = (serviceData.inputRows || []).map((row) => {
           if (row.id === rowId) {
-            // Handle empty or invalid input
+            // Handle employee_id change - reset overtime if changing to fixed_amount
+            if (field === "employee_id") {
+              // If switching to fixed_amount, uncheck overtime
+              if (value === "fixed_amount") {
+                return {
+                  ...row,
+                  [field]: value,
+                  isOvertime: false, // Reset overtime flag
+                };
+              }
+              return {
+                ...row,
+                [field]: value,
+              };
+            }
+            
+            // Handle empty or invalid input for hours
             if (field === "hours") {
               if (!value.trim()) {
                 return {
                   ...row,
-                  hours: { display: '', decimal: 0 }
+                  hours: { display: "", decimal: 0 },
                 };
               }
               return {
                 ...row,
                 hours: {
                   display: value,
-                  decimal: timeToDecimal(value)
-                }
+                  decimal: timeToDecimal(value),
+                },
               };
             }
+            
+            // Handle other field changes
             return {
               ...row,
-              [field]: value
+              [field]: value,
             };
           }
           return row;
         });
 
         // Update actual_cost based on whether it's a fixed amount or hourly
-        if (field === "employee_id" || field === "hours") {
-
-          updatedRows = updatedRows.map(row => {
-            if (row.employee_id === 'fixed_amount') {
+        if (
+          field === "employee_id" ||
+          field === "hours" ||
+          field === "isOvertime"
+        ) {
+          updatedRows = updatedRows.map((row) => {
+            if (row.employee_id === "fixed_amount") {
               // For fixed amount, use the decimal value
               return {
                 ...row,
-                actual_cost: row.hours?.decimal || 0
+                actual_cost: row.hours?.decimal || 0,
               };
             } else if (row.employee_id) {
               // For regular employees, multiply decimal hours by rate
               const selectedEmployee = employees.find(
                 (e) => e.employee_id === +row.employee_id
               );
+
+              // Apply overtime multiplier if overtime is checked
+              const overtimeMultiplier = row.isOvertime ? 1.5 : 1;
+
               return {
                 ...row,
                 actual_cost: selectedEmployee
-                  ? selectedEmployee.employee_rate * (row.hours?.decimal || 0)
-                  : 0
+                  ? (selectedEmployee.employee_rate * overtimeMultiplier +
+                      overheadRate) *
+                    (row.hours?.decimal || 0)
+                  : 0,
               };
             }
             return row;
@@ -240,7 +269,9 @@ const FinancialsInputSection = ({
 
   const handleToggleService = (teamServiceId) => {
     // const teamServiceId = services.find((s) => s.service_id === serviceId)?.team_service_id;
-    setExpandedServiceId((current) => (current === teamServiceId ? null : teamServiceId));
+    setExpandedServiceId((current) =>
+      current === teamServiceId ? null : teamServiceId
+    );
   };
 
   const rowsTotal = useMemo(() => {
@@ -286,8 +317,8 @@ const FinancialsInputSection = ({
   }, [isHoursSection, localData, services]);
 
   const formatEstimate = (value) => {
-    if (value === null || value === undefined || value === '') return '';
-    return value === 0 ? '' : value.toString();
+    if (value === null || value === undefined || value === "") return "";
+    return value === 0 ? "" : value.toString();
   };
 
   return (
@@ -348,14 +379,16 @@ const FinancialsInputSection = ({
             ) : (
               <>
                 <span className="text-sm font-medium">
-                  Est: ${(estimate || 0).toLocaleString(undefined, {
+                  Est: $
+                  {(estimate || 0).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </span>
                 {canViewProfitLoss && (
                   <span className="text-sm font-medium">
-                    Act: ${(rowsTotal || 0).toLocaleString(undefined, {
+                    Act: $
+                    {(rowsTotal || 0).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -369,10 +402,14 @@ const FinancialsInputSection = ({
                         : "text-red-600"
                     }`}
                   >
-                    Δ: ${((estimate || 0) - (rowsTotal || 0)).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    Δ: $
+                    {((estimate || 0) - (rowsTotal || 0)).toLocaleString(
+                      undefined,
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }
+                    )}
                   </span>
                 )}
               </>
@@ -424,12 +461,19 @@ const FinancialsInputSection = ({
                     serviceData={serviceData}
                     onAddRow={handleAddHoursRow}
                     onInputChange={(rowId, field, value) =>
-                      handleHoursInputChange(rowId, field, value, service.team_service_id)
+                      handleHoursInputChange(
+                        rowId,
+                        field,
+                        value,
+                        service.team_service_id
+                      )
                     }
                     onBlur={handleBlur}
                     isExpanded={expandedServiceId === service.team_service_id}
                     onToggle={handleToggleService}
-                    onDeleteRow={(rowId) => handleDeleteRow(rowId, service.team_service_id)}
+                    onDeleteRow={(rowId) =>
+                      handleDeleteRow(rowId, service.team_service_id)
+                    }
                   />
                 );
               })}

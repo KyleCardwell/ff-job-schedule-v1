@@ -61,7 +61,7 @@ const EmployeeTypeAccordion = ({
       <div className={`transition-all duration-200 ease-in-out overflow-hidden ${isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"}`}>
         <div className="p-4 space-y-2">
           {(serviceData?.inputRows || []).map((row) => (
-            <div key={row.id} className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
+            <div key={row.id} className="grid grid-cols-[1fr,1fr,auto,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
               <select
                 value={row.employee_id}
                 onChange={(e) => onInputChange(row.id, "employee_id", e.target.value)}
@@ -90,6 +90,28 @@ const EmployeeTypeAccordion = ({
                     : "Hours (HH:MM or decimal)"}
                 pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
               />
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`overtime-${row.id}`}
+                  checked={row.isOvertime || false}
+                  onChange={(e) => onInputChange(row.id, "isOvertime", e.target.checked)}
+                  disabled={!row.employee_id || row.employee_id === 'fixed_amount'}
+                  className={`h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                    !row.employee_id || row.employee_id === 'fixed_amount' ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                />
+                <label 
+                  htmlFor={`overtime-${row.id}`} 
+                  className={`ml-2 text-sm ${
+                    !row.employee_id || row.employee_id === 'fixed_amount' 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : 'text-gray-700'
+                  }`}
+                >
+                  Overtime
+                </label>
+              </div>
               <button
                 onClick={() => onDeleteRow(row.id)}
                 className="p-2 text-red-600 hover:text-red-800 focus:outline-none"

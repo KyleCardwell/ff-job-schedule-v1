@@ -43,6 +43,7 @@ import {
 import store from "./redux/store";
 import { PATHS } from "./utils/constants.js";
 import { supabase } from "./utils/supabase";
+import { fetchOverheadRate } from "./redux/actions/financialsData.js";
 
 const authContainerStyle = {
 	maxWidth: "400px",
@@ -166,6 +167,7 @@ const AppContent = () => {
 					await dispatch(fetchChartConfig());
 					await dispatch(fetchEmployees());
 					await dispatch(fetchServices(teamId));
+					await dispatch(fetchOverheadRate());
 
 					// Get first employee after employees are loaded
 					const state = store.getState();
