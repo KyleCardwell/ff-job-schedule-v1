@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 
 import { usePermissions } from "../../hooks/usePermissions";
 
@@ -15,6 +15,8 @@ const EmployeeTypeAccordion = ({
   onDeleteRow
 }) => {
   const { canViewProfitLoss } = usePermissions();
+  const selectRefs = useRef({});
+  const prevRowsLengthRef = useRef(serviceData?.inputRows?.length || 0);
 
   const availableEmployees = useMemo(() => [
     { employee_id: 'fixed_amount', employee_name: 'Fixed Amount', is_fixed_amount: true },
@@ -31,6 +33,27 @@ const EmployeeTypeAccordion = ({
   );
   const estimatedHours = serviceData?.estimate || 0;
   const difference = estimatedHours - actualHours;
+
+  // Focus on the select element when a new row is added
+  useEffect(() => {
+    const currentRowsLength = serviceData?.inputRows?.length || 0;
+    
+    // If a new row was added
+    if (currentRowsLength > prevRowsLengthRef.current && isExpanded) {
+      // Get the last row's ID
+      const lastRowId = serviceData.inputRows[currentRowsLength - 1].id;
+      
+      // Focus on the select element of the last row
+      if (selectRefs.current[lastRowId]) {
+        setTimeout(() => {
+          selectRefs.current[lastRowId].focus();
+        }, 0);
+      }
+    }
+    
+    // Update the previous rows length reference
+    prevRowsLengthRef.current = currentRowsLength;
+  }, [serviceData.inputRows, isExpanded]);
 
   return (
     <div className="border border-gray-100 rounded-lg mb-4">
@@ -63,6 +86,7 @@ const EmployeeTypeAccordion = ({
           {(serviceData?.inputRows || []).map((row) => (
             <div key={row.id} className="grid grid-cols-[1fr,1fr,auto,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
               <select
+                ref={el => selectRefs.current[row.id] = el}
                 value={row.employee_id}
                 onChange={(e) => onInputChange(row.id, "employee_id", e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

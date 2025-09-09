@@ -1,6 +1,6 @@
 import _ from "lodash";
 import PropTypes from "prop-types";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -25,6 +25,8 @@ const FinancialsInputSection = ({
   const [localData, setLocalData] = useState([]); // For hours section
   const [expandedServiceId, setExpandedServiceId] = useState(null);
   const isHoursSection = sectionId === "hours";
+  const inputRefs = useRef({});
+  const prevRowsLengthRef = useRef(inputRows.length);
 
   const { canViewProfitLoss } = usePermissions();
 
@@ -36,6 +38,29 @@ const FinancialsInputSection = ({
       setLocalInputRows(inputRows);
     }
   }, [data, inputRows]); // Update when props change
+
+  // Focus on the first input of newly added row
+  useEffect(() => {
+    if (isHoursSection) return; // Skip for hours section
+    
+    const currentRowsLength = localInputRows.length;
+    
+    // If a new row was added and the section is expanded
+    if (currentRowsLength > prevRowsLengthRef.current && isExpanded) {
+      // Get the last row's ID
+      const lastRowId = localInputRows[currentRowsLength - 1].id;
+      
+      // Focus on the first input of the last row
+      if (inputRefs.current[lastRowId]) {
+        setTimeout(() => {
+          inputRefs.current[lastRowId].focus();
+        }, 0);
+      }
+    }
+    
+    // Update the previous rows length reference
+    prevRowsLengthRef.current = currentRowsLength;
+  }, [localInputRows, isExpanded, isHoursSection]);
 
   const handleUpdateRows = useCallback(
     (newRows) => {
@@ -260,7 +285,7 @@ const FinancialsInputSection = ({
       handleUpdateRows(updatedData);
       onUpdate(updatedData);
     } else {
-      // For non-hours sections      const updatedRows = localInputRows.filter((row) => row.id !== rowId);
+      // For non-hours sections
       const updatedRows = localInputRows.filter((row) => row.id !== rowId);
       handleUpdateRows(updatedRows);
       onUpdate({ inputRows: updatedRows });
@@ -494,6 +519,7 @@ const FinancialsInputSection = ({
                     className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center"
                   >
                     <input
+                      ref={(el) => (inputRefs.current[row.id] = el)}
                       type="text"
                       value={row.invoice || ""}
                       onChange={(e) =>

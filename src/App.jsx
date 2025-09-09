@@ -26,6 +26,7 @@ import MockAuth from "./mocks/mockAuth.js";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { fetchFeatureToggles } from "./redux/actions/featureToggles";
+import { fetchOverheadRate } from "./redux/actions/financialsData.js";
 import { defineHolidays } from "./redux/actions/holidays.js";
 import { fetchProjects } from "./redux/actions/projects";
 import { fetchServices } from "./redux/actions/services.js";
@@ -43,7 +44,6 @@ import {
 import store from "./redux/store";
 import { PATHS } from "./utils/constants.js";
 import { supabase } from "./utils/supabase";
-import { fetchOverheadRate } from "./redux/actions/financialsData.js";
 
 const authContainerStyle = {
 	maxWidth: "400px",
