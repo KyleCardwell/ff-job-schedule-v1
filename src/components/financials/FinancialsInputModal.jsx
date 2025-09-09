@@ -274,7 +274,9 @@ const FinancialsInputModal = ({
                   {({ getRootProps, acceptedFile }) => (
                     <button
                       {...getRootProps()}
-                      className={`${buttonClass} bg-blue-500 hover:bg-blue-700`}
+                      className={`${buttonClass} bg-blue-500 hover:bg-blue-700 opacity-50 cursor-not-allowed`}
+                      disabled
+                      onClick={(e) => e.preventDefault()}
                     >
                       Upload CSV
                     </button>
