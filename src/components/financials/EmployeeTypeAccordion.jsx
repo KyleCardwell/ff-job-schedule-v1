@@ -90,20 +90,28 @@ const EmployeeTypeAccordion = ({
                     : "Hours (HH:MM or decimal)"}
                 pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
               />
-              {row.employee_id && row.employee_id !== 'fixed_amount' && (
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`overtime-${row.id}`}
-                    checked={row.isOvertime || false}
-                    onChange={(e) => onInputChange(row.id, "isOvertime", e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor={`overtime-${row.id}`} className="ml-2 text-sm text-gray-700">
-                    Overtime
-                  </label>
-                </div>
-              )}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`overtime-${row.id}`}
+                  checked={row.isOvertime || false}
+                  onChange={(e) => onInputChange(row.id, "isOvertime", e.target.checked)}
+                  disabled={!row.employee_id || row.employee_id === 'fixed_amount'}
+                  className={`h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                    !row.employee_id || row.employee_id === 'fixed_amount' ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                />
+                <label 
+                  htmlFor={`overtime-${row.id}`} 
+                  className={`ml-2 text-sm ${
+                    !row.employee_id || row.employee_id === 'fixed_amount' 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : 'text-gray-700'
+                  }`}
+                >
+                  Overtime
+                </label>
+              </div>
               <button
                 onClick={() => onDeleteRow(row.id)}
                 className="p-2 text-red-600 hover:text-red-800 focus:outline-none"

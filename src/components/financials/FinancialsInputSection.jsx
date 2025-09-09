@@ -110,7 +110,23 @@ const FinancialsInputSection = ({
       if (serviceData.team_service_id === team_service_id) {
         let updatedRows = (serviceData.inputRows || []).map((row) => {
           if (row.id === rowId) {
-            // Handle empty or invalid input
+            // Handle employee_id change - reset overtime if changing to fixed_amount
+            if (field === "employee_id") {
+              // If switching to fixed_amount, uncheck overtime
+              if (value === "fixed_amount") {
+                return {
+                  ...row,
+                  [field]: value,
+                  isOvertime: false, // Reset overtime flag
+                };
+              }
+              return {
+                ...row,
+                [field]: value,
+              };
+            }
+            
+            // Handle empty or invalid input for hours
             if (field === "hours") {
               if (!value.trim()) {
                 return {
@@ -126,6 +142,8 @@ const FinancialsInputSection = ({
                 },
               };
             }
+            
+            // Handle other field changes
             return {
               ...row,
               [field]: value,
