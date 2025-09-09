@@ -364,7 +364,11 @@ const CompletedProjectView = () => {
                 </div>
 
                 {expandedTaskId === task.financials_id && (
-                  <TaskFinancialsBreakdown task={task} services={services} />
+                  <TaskFinancialsBreakdown
+                    task={task}
+                    services={services}
+                    color={index % 2 === 0 ? "bg-gray-50" : ""}
+                  />
                 )}
               </div>
             );
