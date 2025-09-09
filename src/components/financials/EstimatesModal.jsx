@@ -311,67 +311,94 @@ const EstimatesModal = ({
                 <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
                   Adjustments
                 </h4>
-                <div className="space-y-3 pt-4 px-6">
-                  <div className="flex gap-4 justify-end items-center">
-                    <h3 className="text-sm font-medium text-gray-700">
+                <div className="pt-4 px-6 space-y-3">
+                  {/* Profit Row */}
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700 flex-1">
                       Profit (%)
                     </h3>
-                    <input
-                      type="number"
-                      value={adjustments.profit}
-                      onChange={(e) =>
-                        onAdjustmentChange("profit", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
-                      placeholder="0"
-                      step="0.01"
-                    />
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        value={adjustments.profit || ""}
+                        onChange={(e) =>
+                          onAdjustmentChange("profit", e.target.value)
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        placeholder="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
+                      ${formatCurrency((subtotal || 0) * ((adjustments.profit || 0) / 100))}
+                    </span>
                   </div>
-                  <div className="flex gap-4 justify-end items-center">
-                    <h3 className="text-sm font-medium text-gray-700">
+                  
+                  {/* Commission Row */}
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700 flex-1">
                       Commission (%)
                     </h3>
-                    <input
-                      type="number"
-                      value={adjustments.commission}
-                      onChange={(e) =>
-                        onAdjustmentChange("commission", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
-                      placeholder="0"
-                      step="0.01"
-                    />
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        value={adjustments.commission || ""}
+                        onChange={(e) =>
+                          onAdjustmentChange("commission", e.target.value)
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        placeholder="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
+                      ${formatCurrency((subtotal || 0) * ((adjustments.commission || 0) / 100))}
+                    </span>
                   </div>
-                  <div className="flex gap-4 justify-end items-center">
-                    <h3 className="text-sm font-medium text-gray-700">
+                  
+                  {/* Discount Row */}
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700 flex-1">
                       Discount (%)
                     </h3>
-                    <input
-                      type="number"
-                      value={adjustments.discount}
-                      onChange={(e) =>
-                        onAdjustmentChange("discount", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
-                      placeholder="0"
-                      step="0.01"
-                    />
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        value={adjustments.discount || ""}
+                        onChange={(e) =>
+                          onAdjustmentChange("discount", e.target.value)
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        placeholder="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
+                      ${formatCurrency((subtotal || 0) * ((adjustments.discount || 0) / 100))}
+                    </span>
                   </div>
-                  <div className="flex gap-4 justify-end items-center">
-                    <h3 className="text-sm font-medium text-gray-700">
+                  
+                  {/* Quantity Row */}
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700 flex-1">
                       Quantity
                     </h3>
-                    <input
-                      type="number"
-                      value={adjustments.quantity}
-                      onChange={(e) =>
-                        onAdjustmentChange("quantity", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
-                      placeholder="1"
-                      min="1"
-                      step="1"
-                    />
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        value={adjustments.quantity || ""}
+                        onChange={(e) =>
+                          onAdjustmentChange("quantity", e.target.value)
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        placeholder="1"
+                        min="1"
+                        step="1"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
+                      {/* Empty cell for alignment */}
+                    </span>
                   </div>
                 </div>
               </div>
