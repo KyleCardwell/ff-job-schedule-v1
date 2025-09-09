@@ -101,6 +101,35 @@ export const fetchTaskFinancials = (taskId, projectId) => {
   };
 };
 
+export const fetchOverheadRate = () => {
+  return async (dispatch, getState) => {
+    try {
+      const { teamId } = getState().auth;
+      const { data: teamData, error: teamError } = await supabase
+      .from('teams')
+      .select('overhead_rate')
+      .eq('team_id', teamId)
+      .single();
+
+      if (teamError) {
+        if (teamError.code === 'PGRST204') {
+          throw new Error('You do not have permission to view financial records');
+        }
+        throw teamError;
+      }
+
+      dispatch({
+        type: Actions.financialsData.FETCH_OVERHEAD_RATE,
+        payload: teamData.overhead_rate,
+      });
+    } catch (error) {
+      dispatch(setError(error.message));
+      throw error;
+    }
+  }
+}
+
+
 export const fetchProjectFinancials = (projectId) => {
   return async (dispatch) => {
     dispatch(setLoading(true));

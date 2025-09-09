@@ -3,6 +3,7 @@ import { Actions } from "../actions";
 const initialState = {
   taskFinancials: [],
   projectFinancials: [],
+  overheadRate: null,
   loading: false,
   error: null,
 };
@@ -39,6 +40,13 @@ export const financialsDataReducer = (state = initialState, action) => {
       return {
         ...state,
         projectFinancials: action.payload,
+        error: null,
+      };
+
+    case Actions.financialsData.FETCH_OVERHEAD_RATE:
+      return {
+        ...state,
+        overheadRate: action.payload,
         error: null,
       };
 
