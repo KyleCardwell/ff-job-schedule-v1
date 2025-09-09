@@ -37,12 +37,12 @@ const CompletedProjectsContainer = () => {
   return (
     <div className="flex flex-col h-full pb-6 bg-slate-800">
       {/* Fixed header */}
-      <div className="sticky top-0 z-10 bg-slate-800 px-6 pt-6">
+      <div className="flex sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full">
         <ProjectSearchFilter onFilterChange={handleFilterChange} />
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 space-y-6 max-w-[1200px] mx-auto w-full">
         {completedProjects?.map((project) => (
           <CompletedProjectCard
             key={project.project_id}

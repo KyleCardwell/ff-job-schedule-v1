@@ -30,7 +30,7 @@ const ProjectSearchFilter = ({ onFilterChange }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white shadow rounded-lg px-4 py-3 mb-6 w-full"
+      className="flex-1 bg-white shadow rounded-lg px-4 py-3 mb-6 w-full print:hidden w-full"
     >
       <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-end">
         {/* Search Input */}

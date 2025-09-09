@@ -90,6 +90,7 @@ const FinancialsInputModal = ({
               team_service_id: service.team_service_id,
               estimate: 0,
               fixedAmount: 0,
+              rateOverride: null, // Initialize with null
               actual_cost: 0,
               inputRows: [],
             };
@@ -100,6 +101,7 @@ const FinancialsInputModal = ({
               team_service_id: service.team_service_id,
               estimate: serviceData.estimate || 0,
               fixedAmount: serviceData.fixedAmount || 0,
+              rateOverride: serviceData.rateOverride || null, // Load the override value
               actual_cost: serviceData.actual_cost || 0,
               inputRows: serviceData.inputRows || [],
             };
@@ -110,7 +112,9 @@ const FinancialsInputModal = ({
           const service = services.find(
             (et) => et.team_service_id === type.team_service_id
           );
-          const hourlyEstimate = (type.estimate || 0) * (service?.hourly_rate || 0);
+          // Use override rate if it exists, otherwise use the default rate
+          const rate = type.rateOverride ?? service?.hourly_rate ?? 0;
+          const hourlyEstimate = (type.estimate || 0) * rate;
           const fixedAmount = type.fixedAmount || 0;
           return sum + hourlyEstimate + fixedAmount;
         }, 0);
@@ -161,6 +165,32 @@ const FinancialsInputModal = ({
       ...prev,
       [field]: parseFloat(value) || 0,
     }));
+  };
+
+  const handleEstimatesClose = () => {
+    const newSections = localSections.map((section) => {
+      if (section.id === "hours") {
+        // Recalculate the total estimate for the entire hours section
+        const newTotalEstimate = section.data.reduce((total, serviceData) => {
+          const service = services.find(
+            (s) => s.team_service_id === serviceData.team_service_id
+          );
+          const rate = serviceData.rateOverride ?? service?.hourly_rate ?? 0;
+
+          // The estimate is based on the estimated hours, not actuals
+          const hourlyEstimate = (serviceData.estimate || 0) * rate;
+          const fixedAmount = serviceData.fixedAmount || 0;
+
+          return total + hourlyEstimate + fixedAmount;
+        }, 0);
+
+        return { ...section, estimate: newTotalEstimate };
+      }
+      return section;
+    });
+
+    setLocalSections(newSections);
+    setIsEstimatesOpen(false);
   };
 
   const handleSectionUpdate = (sectionId, newData) => {
@@ -342,7 +372,7 @@ const FinancialsInputModal = ({
       {isEstimatesOpen && (
         <EstimatesModal
           isOpen={isEstimatesOpen}
-          onClose={() => setIsEstimatesOpen(false)}
+          onClose={handleEstimatesClose}
           localSections={localSections}
           setLocalSections={setLocalSections}
           adjustments={adjustments}
