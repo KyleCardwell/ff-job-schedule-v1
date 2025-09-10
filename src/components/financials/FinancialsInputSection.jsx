@@ -383,22 +383,24 @@ const FinancialsInputSection = ({
                     </span>
                   </span>
                 </span>
-                {canViewProfitLoss && (
-                  <span className="">
-                    Act:{" "}
-                    <span className="font-medium">
-                      $
-                      {hoursTotals.actual.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      {" "}
-                      <span className="text-gray-500">
-                        ({hoursTotals.actualHours.toFixed(2)} hrs)
-                      </span>
+                <span className="">
+                  Act:{" "}
+                  <span className="font-medium">
+                    {canViewProfitLoss ? (
+                      <>
+                        $
+                        {hoursTotals.actual.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        {" "}
+                      </>
+                    ) : null}
+                    <span className="text-gray-500">
+                      ({hoursTotals.actualHours.toFixed(2)} hrs)
                     </span>
                   </span>
-                )}
+                </span>
                 {canViewProfitLoss && (
                   <span
                     className={`${
