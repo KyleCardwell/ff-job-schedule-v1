@@ -27,17 +27,39 @@ const TaskFinancialsBreakdown = ({ task, services, color }) => {
                   const rate = service.rateOverride ?? serviceInfo?.hourly_rate ?? 0;
                   const estimate = (service.estimate || 0) * rate + (service.fixedAmount || 0);
                   
+                  // Calculate actual hours, excluding fixed_amount entries
+                  const actualHours = (service.inputRows || []).reduce(
+                    (sum, row) => {
+                      if (row.employee_id === 'fixed_amount') return sum;
+                      const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
+                      return sum + hoursValue;
+                    },
+                    0
+                  );
+                  
                   return (
                     <div key={service.team_service_id} className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 text-sm py-2 hover:bg-gray-200">
                       <div></div>
                       <div className="text-gray-600">{serviceInfo?.service_name}</div>
                       <div className="text-right">
+                        <span className="text-gray-500">
+                          ({service.estimate.toFixed(2)} hrs)
+                        </span>
+                        {" "}
                         ${estimate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                       <div className="text-right">
+                        <span className="text-gray-500">
+                          ({actualHours.toFixed(2)} hrs)
+                        </span>
+                        {" "}
                         ${service.actual_cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                       <div className={`text-right mx-2 ${estimate - service.actual_cost >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        <span className={`text-gray-500 ${service.estimate - actualHours >= 0 ? "text-green-800" : "text-red-800"}`}>
+                          ({(service.estimate - actualHours).toFixed(2)} hrs)
+                        </span>
+                        {" "}
                         ${(estimate - service.actual_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
