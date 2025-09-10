@@ -332,12 +332,24 @@ const FinancialsInputSection = ({
         // Multiply estimate hours by rate for this type
         const serviceEstimate = (serviceData.estimate || 0) * rate;
 
+        // Calculate actual hours from input rows
+        const actualHours = (serviceData.inputRows || []).reduce(
+          (sum, row) => {
+            if (row.employee_id === 'fixed_amount') return sum;
+            const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
+            return sum + hoursValue;
+          },
+          0
+        );
+
         return {
           estimate: acc.estimate + serviceEstimate,
           actual: acc.actual + (serviceData.actual_cost || 0),
+          totalHours: acc.totalHours + (serviceData.estimate || 0),
+          actualHours: acc.actualHours + actualHours,
         };
       },
-      { estimate: 0, actual: 0 }
+      { estimate: 0, actual: 0, totalHours: 0, actualHours: 0 }
     );
   }, [isHoursSection, localData, services]);
 
@@ -365,6 +377,10 @@ const FinancialsInputSection = ({
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
+                    {" "}
+                    <span className="text-gray-500">
+                      ({hoursTotals.totalHours.toFixed(2)} hrs)
+                    </span>
                   </span>
                 </span>
                 {canViewProfitLoss && (
@@ -376,6 +392,10 @@ const FinancialsInputSection = ({
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
+                      {" "}
+                      <span className="text-gray-500">
+                        ({hoursTotals.actualHours.toFixed(2)} hrs)
+                      </span>
                     </span>
                   </span>
                 )}
