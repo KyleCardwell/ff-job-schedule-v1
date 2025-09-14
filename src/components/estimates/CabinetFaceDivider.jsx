@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_TYPES,
@@ -25,6 +26,8 @@ const CabinetFaceDivider = ({
   onDimensionChange = null,
 }) => {
   const svgRef = useRef();
+  const typeSelectorPopupRef = useRef(null);
+  const handleEditorPopupRef = useRef(null);
   const [config, setConfig] = useState(faceConfig);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -45,6 +48,10 @@ const CabinetFaceDivider = ({
     rollOutQty: "",
     shelfQty: "",
   });
+
+  // Apply focus trap to popups
+  useFocusTrap(typeSelectorPopupRef, showTypeSelector);
+  useFocusTrap(handleEditorPopupRef, showHandlePopup);
 
   // Fixed display dimensions
   const fixedDisplayWidth = 300; // Fixed width for the SVG container
@@ -1342,6 +1349,7 @@ const CabinetFaceDivider = ({
           {/* Handle Dimension Editor Popup */}
           {showHandlePopup && selectedHandle && !disabled && (
             <div
+              ref={handleEditorPopupRef}
               className="handle-editor-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
               style={{
                 left: Math.min(handlePopupPosition.x, fixedDisplayWidth - 250),
@@ -1404,6 +1412,7 @@ const CabinetFaceDivider = ({
           {/* Type Selector Popup */}
           {showTypeSelector && selectedNode && !disabled && (
             <div
+              ref={typeSelectorPopupRef}
               className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10"
               style={{
                 left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
