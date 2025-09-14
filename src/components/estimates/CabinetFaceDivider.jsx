@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 
+import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_TYPES,
@@ -25,20 +26,32 @@ const CabinetFaceDivider = ({
   onDimensionChange = null,
 }) => {
   const svgRef = useRef();
+  const typeSelectorPopupRef = useRef(null);
+  const handleEditorPopupRef = useRef(null);
   const [config, setConfig] = useState(faceConfig);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectorPosition, setSelectorPosition] = useState({ x: 0, y: 0 });
+  const [showHandlePopup, setShowHandlePopup] = useState(false);
+  const [handlePopupPosition, setHandlePopupPosition] = useState({
+    x: 0,
+    y: 0,
+  });
+  const [selectedHandle, setSelectedHandle] = useState(null); // e.g., { parent, splitDirection }
+  const [handleInputValues, setHandleInputValues] = useState({});
   const [dragging, setDragging] = useState(null);
+  const dragHappened = useRef(false); // Ref to track if a drag occurred
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
   // State for temporary input values
   const [inputValues, setInputValues] = useState({
-    width: "",
-    height: "",
     rollOutQty: "",
     shelfQty: "",
   });
+
+  // Apply focus trap to popups
+  useFocusTrap(typeSelectorPopupRef, showTypeSelector);
+  useFocusTrap(handleEditorPopupRef, showHandlePopup);
 
   // Fixed display dimensions
   const fixedDisplayWidth = 300; // Fixed width for the SVG container
@@ -111,7 +124,7 @@ const CabinetFaceDivider = ({
       updatedConfig.width = cabinetWidth - reveals.left - reveals.right;
       updatedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
 
-      // Recursively update all children's dimensions based on new parent dimensions
+      // Recursively update all children to scale proportionally
       updateChildrenFromParent(updatedConfig);
 
       // Force recalculation of layout with new dimensions
@@ -124,7 +137,7 @@ const CabinetFaceDivider = ({
 
   useEffect(() => {
     renderCabinet();
-  }, [config, displayWidth, displayHeight, disabled]);
+  }, [config, displayWidth, displayHeight, disabled, showHandlePopup, selectedHandle]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -159,10 +172,29 @@ const CabinetFaceDivider = ({
     };
   }, [showTypeSelector]);
 
-  // Update children positions and sizes when parent changes
   useEffect(() => {
-    updateChildrenFromParent(config);
-  }, [config]);
+    const handleClickOutside = (event) => {
+      if (showHandlePopup) {
+        const popup = event.target.closest(".handle-editor-popup");
+        // Check if the click is on a handle element
+        const handle = event.target.closest(
+          '[cursor="ew-resize"], [cursor="ns-resize"]'
+        );
+
+        if (!popup && !handle) {
+          setShowHandlePopup(false);
+        }
+      }
+    };
+
+    if (showHandlePopup) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showHandlePopup]);
 
   // Store the original config only once when component first mounts
   useEffect(() => {
@@ -238,11 +270,7 @@ const CabinetFaceDivider = ({
 
         let currentX = newX;
         newNode.children = node.children.map((child) => {
-          let childWidth = child.width;
-          if (child.type !== FACE_NAMES.REVEAL) {
-            // Scale face nodes proportionally
-            childWidth = (child.width / totalFaceWidth) * availableWidth;
-          }
+          const childWidth = child.width;
           const newChild = calculateLayout(
             child,
             currentX,
@@ -266,11 +294,7 @@ const CabinetFaceDivider = ({
 
         let currentY = newY;
         newNode.children = node.children.map((child) => {
-          let childHeight = child.height;
-          if (child.type !== FACE_NAMES.REVEAL) {
-            // Scale face nodes proportionally
-            childHeight = (child.height / totalFaceHeight) * availableHeight;
-          }
+          const childHeight = child.height;
           const newChild = calculateLayout(
             child,
             newX,
@@ -286,6 +310,42 @@ const CabinetFaceDivider = ({
     }
 
     return newNode;
+  };
+
+  // Update children dimensions based on parent constraints
+  const updateChildrenFromParent = (node) => {
+    if (!node || !node.children || node.children.length === 0) return;
+
+    const splitDimension =
+      node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "width" : "height";
+    const fixedDimension =
+      node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "height" : "width";
+
+    // All children inherit the fixed dimension from parent
+    node.children.forEach((child) => {
+      child[fixedDimension] = node[fixedDimension];
+    });
+
+    const faces = node.children.filter((c) => c.type !== FACE_NAMES.REVEAL);
+    const reveal = node.children.find((c) => c.type === FACE_NAMES.REVEAL);
+
+    if (faces.length > 0) {
+      const totalChildSize = faces.reduce(
+        (sum, f) => sum + f[splitDimension],
+        0
+      );
+      const revealSize = reveal ? reveal[splitDimension] : 0;
+      const scaleFactor = (node[splitDimension] - revealSize) / totalChildSize;
+
+      faces.forEach((face) => {
+        face[splitDimension] *= scaleFactor;
+      });
+    }
+
+    // Recursively update grandchildren
+    node.children.forEach((child) => {
+      updateChildrenFromParent(child);
+    });
   };
 
   // Render a single node
@@ -415,7 +475,13 @@ const CabinetFaceDivider = ({
           .style("pointer-events", "all")
           .on("mousedown", (event) => {
             event.stopPropagation();
+            dragHappened.current = false; // Reset drag flag
             handleDragStart(event, node, "width");
+          })
+          .on("click", (event) => {
+            if (dragHappened.current) return; // Don't open popup if a drag happened
+            event.stopPropagation();
+            handleHandleClick(event, nodeParent, SPLIT_DIRECTIONS.HORIZONTAL);
           });
       }
 
@@ -439,7 +505,13 @@ const CabinetFaceDivider = ({
           .style("pointer-events", "all")
           .on("mousedown", (event) => {
             event.stopPropagation();
+            dragHappened.current = false; // Reset drag flag
             handleDragStart(event, node, "height");
+          })
+          .on("click", (event) => {
+            if (dragHappened.current) return; // Don't open popup if a drag happened
+            event.stopPropagation();
+            handleHandleClick(event, nodeParent, SPLIT_DIRECTIONS.VERTICAL);
           });
       }
     }
@@ -459,6 +531,11 @@ const CabinetFaceDivider = ({
       .append("g")
       .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
+    // Create a dedicated group for highlights, added last to be on top
+    const highlightGroup = svg
+      .append("g")
+      .attr("transform", `translate(${offsetX}, ${offsetY})`);
+
     // Add background
     cabinetGroup
       .append("rect")
@@ -471,10 +548,38 @@ const CabinetFaceDivider = ({
     // Render the tree
     renderNode(layoutConfig);
 
+    // Add highlight borders if the handle popup is open
+    if (showHandlePopup && selectedHandle) {
+      const parentNode = findNode(layoutConfig, selectedHandle.parent.id);
+      if (parentNode && parentNode.children) {
+        parentNode.children.forEach((child) => {
+          if (child.type !== FACE_NAMES.REVEAL) {
+            const strokeWidth = child.type === FACE_NAMES.CONTAINER ? 1 : 2;
+            const x = child.x * scale + strokeWidth / 2;
+            const y = child.y * scale + strokeWidth / 2;
+            const width = Math.max(0, child.width * scale - strokeWidth);
+            const height = Math.max(0, child.height * scale - strokeWidth);
+
+            highlightGroup
+              .append("rect")
+              .attr("x", x + 1)
+              .attr("y", y + 1)
+              .attr("width", width - 2)
+              .attr("height", height - 2)
+              .attr("fill", "none")
+              .attr("stroke", "#000000")
+              .attr("stroke-width", 3)
+              .attr("pointer-events", "none");
+          }
+        });
+      }
+    }
+
     // Add click handler to SVG background for closing selector
     svg.on("click", () => {
       setShowTypeSelector(false);
       setSelectedNode(null);
+      setShowHandlePopup(false);
     });
   };
 
@@ -500,64 +605,6 @@ const CabinetFaceDivider = ({
       }
     }
     return null;
-  };
-
-  // Update children dimensions based on parent constraints
-  const updateChildrenFromParent = (node) => {
-    if (!node || !node.children || node.children.length === 0) return;
-
-    const splitDimension =
-      node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "width" : "height";
-    const fixedDimension =
-      node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "height" : "width";
-
-    // All children inherit the fixed dimension from parent
-    node.children.forEach((child) => {
-      child[fixedDimension] = node[fixedDimension];
-    });
-
-    const faces = node.children.filter((c) => c.type !== FACE_NAMES.REVEAL);
-    const reveal = node.children.find((c) => c.type === FACE_NAMES.REVEAL);
-
-    // If there are two faces and a reveal, handle their resizing specially
-    if (faces.length === 2 && reveal) {
-      const firstFace = faces[0];
-      const lastFace = faces[1];
-      const revealSize = reveal[splitDimension] || 0;
-      const parentSize = node[splitDimension];
-
-      // Check if siblings were equal before the parent resize
-      const areSiblingsEqual =
-        firstFace[splitDimension] === lastFace[splitDimension];
-
-      if (areSiblingsEqual) {
-        // If they were equal, they should remain equal
-        const newFaceSize = (parentSize - revealSize) / 2;
-        firstFace[splitDimension] = newFaceSize;
-        lastFace[splitDimension] = newFaceSize;
-      } else {
-        // If they were not equal, the last one fills the remaining space
-        const firstFaceSize = firstFace[splitDimension] || 0;
-        lastFace[splitDimension] = parentSize - firstFaceSize - revealSize;
-      }
-    } else {
-      // Fallback to proportional scaling for other cases (e.g., no reveals)
-      const totalChildDimension = node.children.reduce((sum, child) => {
-        return sum + (child[splitDimension] || 0);
-      }, 0);
-
-      if (totalChildDimension > 0) {
-        const scale = node[splitDimension] / totalChildDimension;
-        node.children.forEach((child) => {
-          child[splitDimension] = (child[splitDimension] || 0) * scale;
-        });
-      }
-    }
-
-    // Recursively update grandchildren
-    node.children.forEach((child) => {
-      updateChildrenFromParent(child);
-    });
   };
 
   // Handle roll-out or shelf quantity change
@@ -686,112 +733,94 @@ const CabinetFaceDivider = ({
     }
   }, [config, onSave, cabinetDepth]);
 
-  const handleDimensionChange = (dimension, newValueStr) => {
-    const newValue = newValueStr === "" ? 0 : parseFloat(newValueStr);
-    if (!selectedNode) return;
-    if (isNaN(newValue)) return;
-
-    const newConfig = cloneDeep(config);
-    const node = findNode(newConfig, selectedNode.id);
-    if (!node) return;
-
-    const parent = findParent(newConfig, selectedNode.id);
-    if (!parent) return; // Cannot resize the root node directly
-
-    const dimensionToChange =
-      parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
-        ? "width"
-        : "height";
-    if (dimension !== dimensionToChange) {
-      // This is the perpendicular dimension, update all children
-      parent.children.forEach((child) => {
-        if (child.type !== FACE_NAMES.REVEAL) {
-          child[dimension] = newValue;
-        }
-      });
-      node[dimension] = newValue;
-    } else {
-      // This is the parallel dimension, use direct calculation
-      const reveal = parent.children.find((c) => c.type === FACE_NAMES.REVEAL);
-      const revealSize = reveal ? reveal[dimension] : 0;
-
-      const sibling = parent.children.find(
-        (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
-      );
-
-      if (!sibling) return; // Should not happen in a split with siblings
-
-      const parentSize = parent[dimension];
-      const newSiblingSize = parentSize - newValue - revealSize;
-
-      // Check for constraints. Allow dragging away from a too-small size.
-      if (
-        (newValue < minValue && newValue < node[dimension]) ||
-        (newSiblingSize < minValue && newSiblingSize < sibling[dimension])
-      ) {
-        console.warn(
-          `Dimension change rejected: results in a size smaller than the minimum ${minValue}"`
-        );
-        return; // Exit if new value is invalid
-      }
-
-      // Update the current node's dimension and the sibling's dimension
-      node[dimension] = newValue;
-      sibling[dimension] = newSiblingSize;
-    }
-
-    // Recalculate the layout with the new dimensions
-    const layoutConfig = calculateLayout(newConfig);
-    setConfig(layoutConfig);
-
-    // Update the selected node state to reflect the change immediately
-    const updatedNode = findNode(newConfig, selectedNode.id);
-    if (updatedNode) {
-      setSelectedNode(updatedNode);
-    }
-  };
-
   const handleDragStart = (event, node, dimension) => {
     if (disabled) return;
 
     event.preventDefault();
     event.stopPropagation();
-    setSelectedNode(node); // Set the selected node so handleDimensionChange works properly
+
+    const parent = findParent(config, node.id);
+    if (!parent) return;
+    const sibling = parent.children.find(
+      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+    );
+    if (!sibling) return;
+
     setDragging({
       node,
       dimension,
       startX: event.clientX,
       startY: event.clientY,
+      originalNodeSize: node[dimension],
+      originalSiblingSize: sibling[dimension],
     });
   };
 
   const handleDrag = (event) => {
     if (!dragging) return;
 
-    const { node, dimension, startX, startY } = dragging;
+    const {
+      node,
+      dimension,
+      startX,
+      startY,
+      originalNodeSize,
+      originalSiblingSize,
+    } = dragging;
 
-    // Calculate delta based on dimension
-    let delta;
-    if (dimension === "width") {
-      delta = (event.clientX - startX) / scale;
-    } else {
-      delta = (event.clientY - startY) / scale;
+    // If mouse has moved more than a small threshold, consider it a drag
+    if (
+      Math.abs(event.clientX - startX) > 3 ||
+      Math.abs(event.clientY - startY) > 3
+    ) {
+      dragHappened.current = true;
     }
 
+    // Calculate raw delta from the start of the drag
+    let rawDelta;
+    if (dimension === "width") {
+      rawDelta = (event.clientX - startX) / scale;
+    } else {
+      rawDelta = (event.clientY - startY) / scale;
+    }
+
+    // Quantize the delta to the desired step
+    const dragStep = 0.0625;
+    const delta = Math.round(rawDelta / dragStep) * dragStep;
+
     // Get the current node value from config (not the stale dragging reference)
-    const currentNode = findNode(config, node.id);
+    const newConfig = cloneDeep(config);
+    const currentNode = findNode(newConfig, node.id);
     if (!currentNode) return;
 
-    // Use the existing handleDimensionChange function with the new calculated value
-    const newValue = currentNode[dimension] + delta;
-    handleDimensionChange(dimension, newValue);
+    const parent = findParent(newConfig, node.id);
+    if (!parent) return;
 
-    // Update drag start position for next move
-    setDragging({
-      ...dragging,
-      startX: event.clientX,
-      startY: event.clientY,
-    });
+    const sibling = parent.children.find(
+      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+    );
+    if (!sibling) return;
+
+    const newValue = originalNodeSize + delta;
+    const newSiblingValue = originalSiblingSize - delta;
+
+    if (newValue < minValue || newSiblingValue < minValue) {
+      return; // Prevent resizing below minimum
+    }
+
+    currentNode[dimension] = newValue;
+    sibling[dimension] = newSiblingValue;
+
+    // Update children if the resized nodes are containers
+    if (currentNode.children) {
+      updateChildrenFromParent(currentNode);
+    }
+    if (sibling.children) {
+      updateChildrenFromParent(sibling);
+    }
+
+    // Update the config
+    setConfig(newConfig);
   };
 
   const handleDragEnd = () => {
@@ -808,7 +837,143 @@ const CabinetFaceDivider = ({
       document.removeEventListener("mousemove", handleDrag);
       document.removeEventListener("mouseup", handleDragEnd);
     };
-  }, [dragging]);
+  }, [dragging, config, scale]);
+
+  const handleHandleClick = (event, parentNode, splitDirection) => {
+    if (disabled) return;
+
+    const svgRect = svgRef.current.getBoundingClientRect();
+    setHandlePopupPosition({
+      x: event.clientX - svgRect.left,
+      y: event.clientY - svgRect.top,
+    });
+    setSelectedHandle({ parent: parentNode, splitDirection });
+
+    // Initialize input values for the handle popup
+    const initialValues = {};
+    const dimension =
+      splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "width" : "height";
+    parentNode.children.forEach((child) => {
+      initialValues[child.id] = child[dimension];
+    });
+    setHandleInputValues(initialValues);
+
+    setShowHandlePopup(true);
+
+    // Also close the other popup if it's open
+    setShowTypeSelector(false);
+    setSelectedNode(null);
+  };
+
+  const handleSiblingDimensionChange = (childId, dimension, newValueStr) => {
+    const step = 0.0625;
+    const roundedValue = Math.round(parseFloat(newValueStr) / step) * step;
+
+    const newValue = roundedValue === "" ? 0 : parseFloat(roundedValue);
+    if (!selectedHandle || isNaN(newValue)) return;
+
+    const newConfig = cloneDeep(config);
+    const parentNode = findNode(newConfig, selectedHandle.parent.id);
+
+    if (!parentNode || !parentNode.children) return;
+
+    const node = parentNode.children.find((c) => c.id === childId);
+    if (!node) return;
+
+    if (node.type === FACE_NAMES.REVEAL) {
+      // Logic for when a REVEAL is edited
+      const siblings = parentNode.children.filter(
+        (c) => c.type !== FACE_NAMES.REVEAL
+      );
+      if (siblings.length !== 2) return; // This logic only works for exactly 2 siblings
+
+      const originalRevealNode = selectedHandle.parent.children.find(
+        (c) => c.id === childId
+      );
+      const oldRevealSize = originalRevealNode[dimension];
+      const revealDelta = newValue - oldRevealSize;
+      const adjustment = revealDelta / 2;
+
+      const newSibling1Size = siblings[0][dimension] - adjustment;
+      const newSibling2Size = siblings[1][dimension] - adjustment;
+
+      if (newSibling1Size < minValue || newSibling2Size < minValue) {
+        console.warn(
+          `Change rejected: Sibling size would be less than ${minValue}"`
+        );
+        setHandleInputValues((prev) => ({ ...prev, [childId]: oldRevealSize }));
+        return;
+      }
+
+      node[dimension] = newValue;
+      siblings[0][dimension] = newSibling1Size;
+      siblings[1][dimension] = newSibling2Size;
+
+      setHandleInputValues((prev) => ({
+        ...prev,
+        [node.id]: newValue,
+        [siblings[0].id]: newSibling1Size,
+        [siblings[1].id]: newSibling2Size,
+      }));
+    } else {
+      // Logic for when a regular FACE is edited
+      const sibling = parentNode.children.find(
+        (c) => c.id !== childId && c.type !== FACE_NAMES.REVEAL
+      );
+      const reveal = parentNode.children.find(
+        (c) => c.type === FACE_NAMES.REVEAL
+      );
+
+      if (!sibling || !reveal) return;
+
+      const parentSize = parentNode[dimension];
+      const revealSize = reveal[dimension];
+      const newSiblingSize = parentSize - newValue - revealSize;
+
+      if (newSiblingSize < minValue) {
+        console.warn(
+          `Change rejected: Sibling size would be less than ${minValue}"`
+        );
+        const originalNode = selectedHandle.parent.children.find(
+          (c) => c.id === childId
+        );
+        const originalSibling = selectedHandle.parent.children.find(
+          (c) => c.id === sibling.id
+        );
+        setHandleInputValues((prev) => ({
+          ...prev,
+          [originalNode.id]: originalNode[dimension],
+          [originalSibling.id]: originalSibling[dimension],
+        }));
+        return;
+      }
+
+      node[dimension] = newValue;
+      sibling[dimension] = newSiblingSize;
+
+      setHandleInputValues((prev) => ({
+        ...prev,
+        [node.id]: newValue,
+        [sibling.id]: newSiblingSize,
+      }));
+    }
+
+    // Update children of all affected nodes if they are containers
+    parentNode.children.forEach((child) => {
+      if (child.children) {
+        updateChildrenFromParent(child);
+      }
+    });
+
+    const layoutConfig = calculateLayout(newConfig);
+    setConfig(layoutConfig);
+  };
+
+  const handleSiblingInputChange = (e) => {
+    const { name, value } = e.target;
+
+    setHandleInputValues((prev) => ({ ...prev, [name]: value }));
+  };
 
   // Calculate min/max constraints for dimension inputs
   const getDimensionConstraints = (dimension) => {
@@ -901,9 +1066,6 @@ const CabinetFaceDivider = ({
 
     // Initialize input values with current node dimensions
     setInputValues({
-      width: node.width > 0 ? truncateTrailingZeros(node.width) : node.width,
-      height:
-        node.height > 0 ? truncateTrailingZeros(node.height) : node.height,
       rollOutQty:
         node.rollOutQty > 0
           ? truncateTrailingZeros(node.rollOutQty)
@@ -1006,33 +1168,11 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
-  let canEqualize = false;
-  if (selectedNode) {
-    const parent = findParent(config, selectedNode.id);
-    const container =
-      selectedNode.type === FACE_NAMES.CONTAINER ? selectedNode : parent;
-
-    if (container && container.children) {
-      const faces = container.children.filter(
-        (c) => c.type !== FACE_NAMES.REVEAL
-      );
-      if (faces.length > 1) {
-        canEqualize = true;
-      }
-    }
-  }
-
   const handleEqualizeSiblings = () => {
-    if (!selectedNode) return;
+    if (!selectedHandle) return;
 
     const newConfig = cloneDeep(config);
-    let containerNode = null;
-
-    if (selectedNode.type === FACE_NAMES.CONTAINER) {
-      containerNode = findNode(newConfig, selectedNode.id);
-    } else {
-      containerNode = findParent(newConfig, selectedNode.id);
-    }
+    const containerNode = findNode(newConfig, selectedHandle.parent.id);
 
     if (!containerNode || !containerNode.children) return;
 
@@ -1063,14 +1203,15 @@ const CabinetFaceDivider = ({
       return;
     }
 
+    const newInputValues = { ...handleInputValues };
     faces.forEach((face) => {
       face[splitDimension] = equalSize;
+      newInputValues[face.id] = equalSize;
     });
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
-    setShowTypeSelector(false);
-    setSelectedNode(null);
+    setHandleInputValues(newInputValues);
   };
 
   const handleDeleteNode = () => {
@@ -1191,9 +1332,6 @@ const CabinetFaceDivider = ({
     revertedConfig.width = cabinetWidth - reveals.left - reveals.right;
     revertedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
 
-    // Run update logic to ensure children match parent dimensions
-    updateChildrenFromParent(revertedConfig);
-
     // Revert to the original config state
     setConfig(revertedConfig);
     setSelectedNode(null);
@@ -1225,11 +1363,6 @@ const CabinetFaceDivider = ({
   const commitValue = (name) => {
     const raw = inputValues[name];
     const parsed = parseFloat(raw);
-
-    if (!isNaN(parsed)) {
-      // Use the existing handleDimensionChange function to commit the value
-      handleDimensionChange(name, parsed);
-    }
   };
 
   const handleBlur = (e) => {
@@ -1280,21 +1413,84 @@ const CabinetFaceDivider = ({
           {/* Disabled overlay */}
           {disabled && (
             <div className="absolute inset-0 bg-slate-100 bg-opacity-75 flex items-center justify-center rounded">
-              <div className="text-center">
-                <p className="text-sm text-slate-600 font-medium">
-                  Face Designer Disabled
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Please enter valid width, height, and depth dimensions
-                </p>
+            <div className="text-center">
+              <p className="text-sm text-slate-600 font-medium">
+                Face Designer Disabled
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Please enter valid width, height, and depth dimensions
+              </p>
+            </div>
+          </div>
+          )}
+
+          {/* Handle Dimension Editor Popup */}
+          {showHandlePopup && selectedHandle && !disabled && (
+            <div
+              ref={handleEditorPopupRef}
+              className="handle-editor-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
+              style={{
+                left: Math.min(handlePopupPosition.x, fixedDisplayWidth - 250),
+                top: Math.min(handlePopupPosition.y, fixedDisplayHeight - 200),
+              }}
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+            >
+              <div className="text-xs font-medium text-slate-700 mb-2">
+                Edit Sibling Dimensions
               </div>
+              <div className="text-xs text-slate-500 mb-2 border-b pb-2">
+                Container: {truncateTrailingZeros(selectedHandle.parent.width)}&quot; W × {truncateTrailingZeros(selectedHandle.parent.height)}&quot; H
+              </div>
+              {selectedHandle.parent.children.map((child) => {
+                const dimension =
+                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+                    ? "width"
+                    : "height";
+                const faceType = FACE_TYPES.find((t) => t.value === child.type);
+                const isReveal = child.type === FACE_NAMES.REVEAL;
+
+                return (
+                  <div
+                    key={child.id}
+                    className="flex items-center justify-between space-x-2 mb-1"
+                  >
+                    <label className="text-xs text-slate-600 truncate w-24">
+                      {faceType?.label || "Reveal"}
+                    </label>
+                    <input
+                      type="number"
+                      name={child.id}
+                      value={handleInputValues[child.id] || ''}
+                      onChange={handleSiblingInputChange}
+                      onBlur={(e) =>
+                        handleSiblingDimensionChange(
+                          child.id,
+                          dimension,
+                          e.target.value
+                        )
+                      }
+                      className="w-20 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                      step="0.0625"
+                    />
+                  </div>
+                );
+              })}
+              {selectedHandle.parent.children.filter(c => c.type !== FACE_NAMES.REVEAL).length > 1 && (
+                <button
+                  onClick={handleEqualizeSiblings}
+                  className="mt-2 w-full px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                >
+                  Equalize Siblings
+                </button>
+              )}
             </div>
           )}
 
           {/* Type Selector Popup */}
           {showTypeSelector && selectedNode && !disabled && (
             <div
-              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-100"
+              ref={typeSelectorPopupRef}
+              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10"
               style={{
                 left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
                 top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
@@ -1309,42 +1505,16 @@ const CabinetFaceDivider = ({
                   <div className="flex space-x-2 items-center">
                     <div className="flex items-center space-x-1">
                       <label className="text-xs text-slate-600">W:</label>
-                      <input
-                        type="number"
-                        name="width"
-                        value={inputValues.width}
-                        onChange={handleInputChange}
-                        onBlur={handleBlur}
-                        onKeyDown={handleKeyDown}
-                        disabled={
-                          isDimensionDisabled("width", selectedNode) ||
-                          selectedNode.type === "reveal"
-                        }
-                        className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                        step="0.125"
-                        min={getDimensionConstraints("width").min}
-                        max={getDimensionConstraints("width").max}
-                      />
+                      <span className="w-20 px-1 py-0.5 text-xs font-semibold text-slate-800">
+                        {truncateTrailingZeros(selectedNode.width)}&quot;
+                      </span>
                     </div>
                     <span className="text-xs text-slate-400">×</span>
                     <div className="flex items-center space-x-1">
                       <label className="text-xs text-slate-600">H:</label>
-                      <input
-                        type="number"
-                        name="height"
-                        value={inputValues.height}
-                        onChange={handleInputChange}
-                        onBlur={handleBlur}
-                        onKeyDown={handleKeyDown}
-                        disabled={
-                          isDimensionDisabled("height", selectedNode) ||
-                          selectedNode.type === "reveal"
-                        }
-                        className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                        step="0.125"
-                        min={getDimensionConstraints("height").min}
-                        max={getDimensionConstraints("height").max}
-                      />
+                      <span className="w-20 px-1 py-0.5 text-xs font-semibold text-slate-800">
+                        {truncateTrailingZeros(selectedNode.height)}&quot;
+                      </span>
                     </div>
                   </div>
 
@@ -1388,14 +1558,18 @@ const CabinetFaceDivider = ({
                     Container Actions:
                   </div>
                   <div className="grid grid-cols-1 gap-1">
-                    {canEqualize && (
-                      <button
-                        onClick={handleEqualizeSiblings}
-                        className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                      >
-                        Equalize Children
-                      </button>
-                    )}
+                    <button
+                      onClick={handleSplitHorizontal}
+                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                    >
+                      Split Horizontal
+                    </button>
+                    <button
+                      onClick={handleSplitVertical}
+                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                    >
+                      Split Vertical
+                    </button>
                   </div>
                 </div>
               )}
@@ -1433,38 +1607,27 @@ const CabinetFaceDivider = ({
                     <div className="text-xs font-medium text-slate-700 mb-2">
                       Actions:
                     </div>
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex-1 flex flex-col space-y-1">
                       <div className="flex space-x-1">
                         <button
                           onClick={handleSplitHorizontal}
-                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                          className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
                         >
                           Split Horizontal
                         </button>
                         <button
                           onClick={handleSplitVertical}
-                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                          className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
                         >
                           Split Vertical
                         </button>
                       </div>
-                      {canEqualize &&
-                        selectedNode.type !== FACE_NAMES.CONTAINER && (
-                          <button
-                            onClick={handleEqualizeSiblings}
-                            className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                          >
-                            Equalize Siblings
-                          </button>
-                        )}
-                      {selectedNode.id !== FACE_NAMES.ROOT && (
-                        <button
-                          onClick={handleDeleteNode}
-                          className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                        >
-                          Delete
-                        </button>
-                      )}
+                      <button
+                        onClick={handleDeleteNode}
+                        className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </>

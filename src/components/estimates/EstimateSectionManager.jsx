@@ -2,7 +2,7 @@ import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { FiChevronDown, FiChevronRight } from "react-icons/fi";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 // import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { updateSectionItems, updateSectionItemOrder } from "../../redux/actions/estimates";
@@ -16,6 +16,7 @@ import EstimateOtherManager from "./EstimateOtherManager.jsx";
 
 const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   const dispatch = useDispatch();
+  const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
 
   // Initialize section data from current section
   const [sectionData, setSectionData] = useState({
@@ -193,6 +194,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
           onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.CABINETS.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)}
           style={sectionData.style}
+          cabinetTypes={cabinetTypes}
         />
       ),
     },
