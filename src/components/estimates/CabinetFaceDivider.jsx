@@ -124,6 +124,9 @@ const CabinetFaceDivider = ({
       updatedConfig.width = cabinetWidth - reveals.left - reveals.right;
       updatedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
 
+      // Recursively update all children to scale proportionally
+      updateChildrenFromParent(updatedConfig);
+
       // Force recalculation of layout with new dimensions
       const layoutConfig = calculateLayout(updatedConfig);
 
@@ -1564,17 +1567,17 @@ const CabinetFaceDivider = ({
                     <div className="text-xs font-medium text-slate-700 mb-2">
                       Actions:
                     </div>
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex-1 flex flex-col space-y-1">
                       <div className="flex space-x-1">
                         <button
                           onClick={handleSplitHorizontal}
-                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                          className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
                         >
                           Split Horizontal
                         </button>
                         <button
                           onClick={handleSplitVertical}
-                          className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                          className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
                         >
                           Split Vertical
                         </button>
