@@ -134,7 +134,7 @@ const CabinetFaceDivider = ({
 
   useEffect(() => {
     renderCabinet();
-  }, [config, displayWidth, displayHeight, disabled]);
+  }, [config, displayWidth, displayHeight, disabled, showHandlePopup, selectedHandle]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -528,6 +528,11 @@ const CabinetFaceDivider = ({
       .append("g")
       .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
+    // Create a dedicated group for highlights, added last to be on top
+    const highlightGroup = svg
+      .append("g")
+      .attr("transform", `translate(${offsetX}, ${offsetY})`);
+
     // Add background
     cabinetGroup
       .append("rect")
@@ -539,6 +544,33 @@ const CabinetFaceDivider = ({
 
     // Render the tree
     renderNode(layoutConfig);
+
+    // Add highlight borders if the handle popup is open
+    if (showHandlePopup && selectedHandle) {
+      const parentNode = findNode(layoutConfig, selectedHandle.parent.id);
+      if (parentNode && parentNode.children) {
+        parentNode.children.forEach((child) => {
+          if (child.type !== FACE_NAMES.REVEAL) {
+            const strokeWidth = child.type === FACE_NAMES.CONTAINER ? 1 : 2;
+            const x = child.x * scale + strokeWidth / 2;
+            const y = child.y * scale + strokeWidth / 2;
+            const width = Math.max(0, child.width * scale - strokeWidth);
+            const height = Math.max(0, child.height * scale - strokeWidth);
+
+            highlightGroup
+              .append("rect")
+              .attr("x", x + 1)
+              .attr("y", y + 1)
+              .attr("width", width - 2)
+              .attr("height", height - 2)
+              .attr("fill", "none")
+              .attr("stroke", "#000000")
+              .attr("stroke-width", 3)
+              .attr("pointer-events", "none");
+          }
+        });
+      }
+    }
 
     // Add click handler to SVG background for closing selector
     svg.on("click", () => {
@@ -1127,13 +1159,15 @@ const CabinetFaceDivider = ({
       return;
     }
 
+    const newInputValues = { ...handleInputValues };
     faces.forEach((face) => {
       face[splitDimension] = equalSize;
+      newInputValues[face.id] = equalSize;
     });
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
-    // setShowHandlePopup(false);
+    setHandleInputValues(newInputValues);
   };
 
   const handleDeleteNode = () => {
