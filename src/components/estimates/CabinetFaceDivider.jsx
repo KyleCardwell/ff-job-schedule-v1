@@ -238,11 +238,7 @@ const CabinetFaceDivider = ({
 
         let currentX = newX;
         newNode.children = node.children.map((child) => {
-          let childWidth = child.width;
-          if (child.type !== FACE_NAMES.REVEAL) {
-            // Scale face nodes proportionally
-            childWidth = (child.width / totalFaceWidth) * availableWidth;
-          }
+          const childWidth = child.width;
           const newChild = calculateLayout(
             child,
             currentX,
@@ -266,11 +262,7 @@ const CabinetFaceDivider = ({
 
         let currentY = newY;
         newNode.children = node.children.map((child) => {
-          let childHeight = child.height;
-          if (child.type !== FACE_NAMES.REVEAL) {
-            // Scale face nodes proportionally
-            childHeight = (child.height / totalFaceHeight) * availableHeight;
-          }
+          const childHeight = child.height;
           const newChild = calculateLayout(
             child,
             newX,
@@ -560,6 +552,118 @@ const CabinetFaceDivider = ({
     });
   };
 
+  // Helper function to propagate dimension changes up the tree
+  const propagateDimensionChange = (rootConfig, node, dimension) => {
+    let currentNode = node;
+    let currentParent = findParent(rootConfig, currentNode.id);
+
+    while (currentParent) {
+      const isVertical = currentParent.splitDirection === SPLIT_DIRECTIONS.VERTICAL;
+      const parentSplitDim = isVertical ? "height" : "width";
+      const parentPerpDim = isVertical ? "width" : "height";
+
+      const isRootParent = currentParent.id === rootConfig.id;
+
+      // If the changed dimension is the parent's split axis (we're changing sizes that sum to parent's size)
+      if (dimension === parentSplitDim) {
+        const reveal = currentParent.children[1];
+        const revealSize = reveal ? (reveal[dimension] || 0) : 0;
+        const faces = currentParent.children.filter((c) => c.type !== FACE_NAMES.REVEAL);
+
+        if (isRootParent) {
+          // Root is fixed — do NOT change root[dimension].
+          // Instead adjust the *other* face(s) so total stays equal to the root's fixed size.
+          // We assume the normal layout has two faces around the reveal (face, reveal, face).
+          if (faces.length === 2) {
+            const changedFace = faces.find((f) => f.id === currentNode.id);
+            const otherFace = faces.find((f) => f.id !== currentNode.id);
+            if (changedFace && otherFace) {
+              // compute what the other face must be so sum + reveal == root fixed size
+              const newOtherSize = Math.max(0, currentParent[dimension] - changedFace[dimension] - revealSize);
+              otherFace[dimension] = newOtherSize;
+            }
+          } else {
+            // If structure is different, fallback: recompute parent total but do not overwrite root dimension.
+            // (rare case; keep conservative)
+            // no-op or implement custom logic for multi-face parents
+          }
+        } else {
+          // Non-root parent: set parent size to sum(children) + reveal
+          currentParent[dimension] =
+            faces.reduce((sum, c) => sum + c[dimension], 0) + revealSize;
+        }
+      } else if (dimension === parentPerpDim) {
+        // Perpendicular update: parent and all immediate children adopt the same value,
+        // but **do not change the root**'s perpendicular dimension.
+        if (!isRootParent) {
+          const newValue = currentNode[dimension];
+          currentParent[dimension] = newValue;
+          currentParent.children.forEach((sibling) => {
+            sibling[dimension] = newValue;
+          });
+        } else {
+          // Parent is root: skip changing root (we can't change root),
+          // and do not force children here — root locks those children anyway.
+          // (No-op)
+        }
+      } else {
+        break; // safety fallback
+      }
+
+      currentNode = currentParent;
+      currentParent = findParent(rootConfig, currentNode.id);
+    }
+  };
+
+  // Helper function to apply a delta change to dimensions
+  const applyDeltaChange = (rootConfig, node, parent, dimension, delta) => {
+    const isVertical = parent.splitDirection === SPLIT_DIRECTIONS.VERTICAL;
+    const splitDimension = isVertical ? "height" : "width";
+    const perpDimension = isVertical ? "width" : "height";
+
+    const parentIsRoot = parent.id === rootConfig.id;
+
+    if (dimension === perpDimension) {
+      // Perpendicular change → set parent + siblings (but not root)
+      if (!parentIsRoot) {
+        const newValue = node[dimension] + delta;
+        parent[dimension] = newValue;
+        parent.children.forEach((child) => (child[dimension] = newValue));
+        propagateDimensionChange(rootConfig, parent, dimension);
+      }
+    } else {
+      // Parallel change → adjust node and sibling
+      const reveal = parent.children[1];
+      const revealSize = reveal ? reveal[dimension] : 0;
+
+      const sibling = parent.children.find(
+        (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+      );
+      if (!sibling) return;
+
+      const newNodeSize = node[dimension] + delta;
+      const newSiblingSize = sibling[dimension] - delta;
+
+      if (
+        (newNodeSize < minValue && newNodeSize < node[dimension]) ||
+        (newSiblingSize < minValue && newSiblingSize < sibling[dimension])
+      ) {
+        console.warn(
+          `Dimension change rejected: results in a size smaller than the minimum ${minValue}"`
+        );
+        return;
+      }
+
+      node[dimension] = newNodeSize;
+      sibling[dimension] = newSiblingSize;
+
+      // Update parent total (respect root rule in propagateDimensionChange)
+      parent[dimension] = newNodeSize + newSiblingSize + revealSize;
+
+      propagateDimensionChange(rootConfig, parent, dimension);
+    }
+  };
+
   // Handle roll-out or shelf quantity change
   const handleRoShQtyChange = (e, type) => {
     const qty = parseInt(e.target.value) || 0;
@@ -686,65 +790,34 @@ const CabinetFaceDivider = ({
     }
   }, [config, onSave, cabinetDepth]);
 
+  // Handle dimension change
   const handleDimensionChange = (dimension, newValueStr) => {
     const newValue = newValueStr === "" ? 0 : parseFloat(newValueStr);
     if (!selectedNode) return;
     if (isNaN(newValue)) return;
 
+    // Work on a fresh copy of config
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (!node) return;
 
-    const parent = findParent(newConfig, selectedNode.id);
-    if (!parent) return; // Cannot resize the root node directly
+    const parent = findParent(newConfig, node.id);
+    if (!parent) return; // root cannot be resized directly
 
-    const dimensionToChange =
-      parent.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
-        ? "width"
-        : "height";
-    if (dimension !== dimensionToChange) {
-      // This is the perpendicular dimension, update all children
-      parent.children.forEach((child) => {
-        if (child.type !== FACE_NAMES.REVEAL) {
-          child[dimension] = newValue;
-        }
-      });
-      node[dimension] = newValue;
-    } else {
-      // This is the parallel dimension, use direct calculation
-      const reveal = parent.children.find((c) => c.type === FACE_NAMES.REVEAL);
-      const revealSize = reveal ? reveal[dimension] : 0;
+    // Calculate delta, just like drag does
+    const currentValue = node[dimension];
+    const delta = newValue - currentValue;
 
-      const sibling = parent.children.find(
-        (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
-      );
+    if (delta === 0) return; // no change
 
-      if (!sibling) return; // Should not happen in a split with siblings
+    // Apply delta through same logic as drag
+    applyDeltaChange(newConfig, node, parent, dimension, delta);
 
-      const parentSize = parent[dimension];
-      const newSiblingSize = parentSize - newValue - revealSize;
-
-      // Check for constraints. Allow dragging away from a too-small size.
-      if (
-        (newValue < minValue && newValue < node[dimension]) ||
-        (newSiblingSize < minValue && newSiblingSize < sibling[dimension])
-      ) {
-        console.warn(
-          `Dimension change rejected: results in a size smaller than the minimum ${minValue}"`
-        );
-        return; // Exit if new value is invalid
-      }
-
-      // Update the current node's dimension and the sibling's dimension
-      node[dimension] = newValue;
-      sibling[dimension] = newSiblingSize;
-    }
-
-    // Recalculate the layout with the new dimensions
+    // Recalculate layout
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
 
-    // Update the selected node state to reflect the change immediately
+    // Update selected node
     const updatedNode = findNode(newConfig, selectedNode.id);
     if (updatedNode) {
       setSelectedNode(updatedNode);
@@ -782,9 +855,17 @@ const CabinetFaceDivider = ({
     const currentNode = findNode(config, node.id);
     if (!currentNode) return;
 
-    // Use the existing handleDimensionChange function with the new calculated value
-    const newValue = currentNode[dimension] + delta;
-    handleDimensionChange(dimension, newValue);
+    // Create a new config for this update
+    const newConfig = cloneDeep(config);
+    const updatedNode = findNode(newConfig, node.id);
+    const parent = findParent(newConfig, node.id);
+    if (!updatedNode || !parent) return;
+
+    // Apply the delta change
+    applyDeltaChange(newConfig, updatedNode, parent, dimension, delta);
+
+    // Update the config
+    setConfig(newConfig);
 
     // Update drag start position for next move
     setDragging({
