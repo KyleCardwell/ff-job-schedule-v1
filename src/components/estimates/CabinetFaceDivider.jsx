@@ -162,6 +162,30 @@ const CabinetFaceDivider = ({
     };
   }, [showTypeSelector]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showHandlePopup) {
+        const popup = event.target.closest(".handle-editor-popup");
+        // Check if the click is on a handle element
+        const handle = event.target.closest(
+          '[cursor="ew-resize"], [cursor="ns-resize"]'
+        );
+
+        if (!popup && !handle) {
+          setShowHandlePopup(false);
+        }
+      }
+    };
+
+    if (showHandlePopup) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showHandlePopup]);
+
   // Store the original config only once when component first mounts
   useEffect(() => {
     // Only set the original config if it hasn't been set yet
@@ -672,19 +696,35 @@ const CabinetFaceDivider = ({
 
     event.preventDefault();
     event.stopPropagation();
-    setSelectedNode(node); // Set the selected node so handleDimensionChange works properly
+
+    const parent = findParent(config, node.id);
+    if (!parent) return;
+    const sibling = parent.children.find(
+      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+    );
+    if (!sibling) return;
+
     setDragging({
       node,
       dimension,
       startX: event.clientX,
       startY: event.clientY,
+      originalNodeSize: node[dimension],
+      originalSiblingSize: sibling[dimension],
     });
   };
 
   const handleDrag = (event) => {
     if (!dragging) return;
 
-    const { node, dimension, startX, startY } = dragging;
+    const {
+      node,
+      dimension,
+      startX,
+      startY,
+      originalNodeSize,
+      originalSiblingSize,
+    } = dragging;
 
     // If mouse has moved more than a small threshold, consider it a drag
     if (
@@ -694,13 +734,17 @@ const CabinetFaceDivider = ({
       dragHappened.current = true;
     }
 
-    // Calculate delta based on dimension
-    let delta;
+    // Calculate raw delta from the start of the drag
+    let rawDelta;
     if (dimension === "width") {
-      delta = (event.clientX - startX) / scale;
+      rawDelta = (event.clientX - startX) / scale;
     } else {
-      delta = (event.clientY - startY) / scale;
+      rawDelta = (event.clientY - startY) / scale;
     }
+
+    // Quantize the delta to the desired step
+    const dragStep = 0.0625;
+    const delta = Math.round(rawDelta / dragStep) * dragStep;
 
     // Get the current node value from config (not the stale dragging reference)
     const newConfig = cloneDeep(config);
@@ -715,11 +759,8 @@ const CabinetFaceDivider = ({
     );
     if (!sibling) return;
 
-    const reveal = parent.children.find((c) => c.type === FACE_NAMES.REVEAL);
-    const revealSize = reveal ? reveal[dimension] : 0;
-
-    const newValue = currentNode[dimension] + delta;
-    const newSiblingValue = parent[dimension] - newValue - revealSize;
+    const newValue = originalNodeSize + delta;
+    const newSiblingValue = originalSiblingSize - delta;
 
     if (newValue < minValue || newSiblingValue < minValue) {
       return; // Prevent resizing below minimum
@@ -736,13 +777,8 @@ const CabinetFaceDivider = ({
       updateChildrenFromParent(sibling);
     }
 
-    // Update the config and drag state
+    // Update the config
     setConfig(newConfig);
-    setDragging({
-      ...dragging,
-      startX: event.clientX,
-      startY: event.clientY,
-    });
   };
 
   const handleDragEnd = () => {
@@ -788,12 +824,16 @@ const CabinetFaceDivider = ({
   };
 
   const handleSiblingDimensionChange = (childId, dimension, newValueStr) => {
-    const newValue = newValueStr === "" ? 0 : parseFloat(newValueStr);
+    const step = 0.0625;
+    const roundedValue = Math.round(parseFloat(newValueStr) / step) * step;
+
+    const newValue = roundedValue === "" ? 0 : parseFloat(roundedValue);
     if (!selectedHandle || isNaN(newValue)) return;
 
     const newConfig = cloneDeep(config);
     const parentNode = findNode(newConfig, selectedHandle.parent.id);
-    if (!parentNode) return;
+
+    if (!parentNode || !parentNode.children) return;
 
     const node = parentNode.children.find((c) => c.id === childId);
     const sibling = parentNode.children.find(
@@ -813,17 +853,26 @@ const CabinetFaceDivider = ({
       console.warn(
         `Change rejected: Sibling size would be less than ${minValue}"`
       );
-      // Revert input value if invalid
-      setHandleInputValues((prev) => ({
+      // Revert input values to the last valid state from the main config
+      const originalNode = selectedHandle.parent.children.find(c => c.id === childId);
+      const originalSibling = selectedHandle.parent.children.find(c => c.id !== childId && c.type !== FACE_NAMES.REVEAL);
+      setHandleInputValues(prev => ({
         ...prev,
-        [sibling.id]: sibling[dimension],
-        [node.id]: node[dimension],
+        [originalNode.id]: originalNode[dimension],
+        [originalSibling.id]: originalSibling[dimension],
       }));
       return;
     }
 
     node[dimension] = newValue;
     sibling[dimension] = newSiblingSize;
+
+    // After calculations, update the input state for both siblings with the new values
+    setHandleInputValues(prev => ({
+      ...prev,
+      [node.id]: newValue,
+      [sibling.id]: newSiblingSize,
+    }));
 
     // Update children of the resized nodes if they are containers
     if (node.children) {
@@ -835,34 +884,12 @@ const CabinetFaceDivider = ({
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
+    // setShowHandlePopup(false);
   };
 
   const handleSiblingInputChange = (e) => {
     const { name, value } = e.target;
     setHandleInputValues((prev) => ({ ...prev, [name]: value }));
-
-    // Live update sibling value
-    const dimension =
-      selectedHandle.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
-        ? "width"
-        : "height";
-    const parentNode = selectedHandle.parent;
-    const parentSize = parentNode[dimension];
-    const reveal = parentNode.children.find(
-      (c) => c.type === FACE_NAMES.REVEAL
-    );
-    const revealSize = reveal ? reveal[dimension] : 0;
-
-    const sibling = parentNode.children.find(
-      (c) => c.id !== name && c.type !== FACE_NAMES.REVEAL
-    );
-    if (sibling) {
-      const newSiblingSize = parentSize - parseFloat(value) - revealSize;
-      setHandleInputValues((prev) => ({
-        ...prev,
-        [sibling.id]: newSiblingSize,
-      }));
-    }
   };
 
   // Calculate min/max constraints for dimension inputs
@@ -1058,33 +1085,11 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
-  let canEqualize = false;
-  if (selectedNode) {
-    const parent = findParent(config, selectedNode.id);
-    const container =
-      selectedNode.type === FACE_NAMES.CONTAINER ? selectedNode : parent;
-
-    if (container && container.children) {
-      const faces = container.children.filter(
-        (c) => c.type !== FACE_NAMES.REVEAL
-      );
-      if (faces.length > 1) {
-        canEqualize = true;
-      }
-    }
-  }
-
   const handleEqualizeSiblings = () => {
-    if (!selectedNode) return;
+    if (!selectedHandle) return;
 
     const newConfig = cloneDeep(config);
-    let containerNode = null;
-
-    if (selectedNode.type === FACE_NAMES.CONTAINER) {
-      containerNode = findNode(newConfig, selectedNode.id);
-    } else {
-      containerNode = findParent(newConfig, selectedNode.id);
-    }
+    const containerNode = findNode(newConfig, selectedHandle.parent.id);
 
     if (!containerNode || !containerNode.children) return;
 
@@ -1121,8 +1126,7 @@ const CabinetFaceDivider = ({
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
-    setShowTypeSelector(false);
-    setSelectedNode(null);
+    // setShowHandlePopup(false);
   };
 
   const handleDeleteNode = () => {
@@ -1324,15 +1328,15 @@ const CabinetFaceDivider = ({
           {/* Disabled overlay */}
           {disabled && (
             <div className="absolute inset-0 bg-slate-100 bg-opacity-75 flex items-center justify-center rounded">
-              <div className="text-center">
-                <p className="text-sm text-slate-600 font-medium">
-                  Face Designer Disabled
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Please enter valid width, height, and depth dimensions
-                </p>
-              </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-600 font-medium">
+                Face Designer Disabled
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Please enter valid width, height, and depth dimensions
+              </p>
             </div>
+          </div>
           )}
 
           {/* Handle Dimension Editor Popup */}
@@ -1341,12 +1345,15 @@ const CabinetFaceDivider = ({
               className="handle-editor-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
               style={{
                 left: Math.min(handlePopupPosition.x, fixedDisplayWidth - 250),
-                top: Math.min(handlePopupPosition.y, fixedDisplayHeight - 150),
+                top: Math.min(handlePopupPosition.y, fixedDisplayHeight - 200),
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
             >
               <div className="text-xs font-medium text-slate-700 mb-2">
                 Edit Sibling Dimensions
+              </div>
+              <div className="text-xs text-slate-500 mb-2 border-b pb-2">
+                Container: {truncateTrailingZeros(selectedHandle.parent.width)}&quot; W × {truncateTrailingZeros(selectedHandle.parent.height)}&quot; H
               </div>
               {selectedHandle.parent.children.map((child) => {
                 const dimension =
@@ -1367,9 +1374,7 @@ const CabinetFaceDivider = ({
                     <input
                       type="number"
                       name={child.id}
-                      value={truncateTrailingZeros(
-                        parseFloat(handleInputValues[child.id] || 0)
-                      )}
+                      value={handleInputValues[child.id] || ''}
                       onChange={handleSiblingInputChange}
                       onBlur={(e) =>
                         handleSiblingDimensionChange(
@@ -1379,18 +1384,20 @@ const CabinetFaceDivider = ({
                         )
                       }
                       className="w-20 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                      step="0.125"
+                      step="0.0625"
                       disabled={isReveal} // Reveals are not editable
                     />
                   </div>
                 );
               })}
-              <button
-                onClick={() => setShowHandlePopup(false)}
-                className="mt-2 w-full px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-              >
-                Close
-              </button>
+              {selectedHandle.parent.children.filter(c => c.type !== FACE_NAMES.REVEAL).length > 1 && (
+                <button
+                  onClick={handleEqualizeSiblings}
+                  className="mt-2 w-full px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                >
+                  Equalize Siblings
+                </button>
+              )}
             </div>
           )}
 
@@ -1465,14 +1472,18 @@ const CabinetFaceDivider = ({
                     Container Actions:
                   </div>
                   <div className="grid grid-cols-1 gap-1">
-                    {canEqualize && (
-                      <button
-                        onClick={handleEqualizeSiblings}
-                        className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                      >
-                        Equalize Children
-                      </button>
-                    )}
+                    <button
+                      onClick={handleSplitHorizontal}
+                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                    >
+                      Split Horizontal
+                    </button>
+                    <button
+                      onClick={handleSplitVertical}
+                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                    >
+                      Split Vertical
+                    </button>
                   </div>
                 </div>
               )}
@@ -1525,23 +1536,12 @@ const CabinetFaceDivider = ({
                           Split Vertical
                         </button>
                       </div>
-                      {canEqualize &&
-                        selectedNode.type !== FACE_NAMES.CONTAINER && (
-                          <button
-                            onClick={handleEqualizeSiblings}
-                            className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                          >
-                            Equalize Siblings
-                          </button>
-                        )}
-                      {selectedNode.id !== FACE_NAMES.ROOT && (
-                        <button
-                          onClick={handleDeleteNode}
-                          className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                        >
-                          Delete
-                        </button>
-                      )}
+                      <button
+                        onClick={handleDeleteNode}
+                        className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </>
