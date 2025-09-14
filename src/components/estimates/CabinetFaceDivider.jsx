@@ -837,7 +837,7 @@ const CabinetFaceDivider = ({
       document.removeEventListener("mousemove", handleDrag);
       document.removeEventListener("mouseup", handleDragEnd);
     };
-  }, [dragging]);
+  }, [dragging, config, scale]);
 
   const handleHandleClick = (event, parentNode, splitDirection) => {
     if (disabled) return;
@@ -878,59 +878,100 @@ const CabinetFaceDivider = ({
     if (!parentNode || !parentNode.children) return;
 
     const node = parentNode.children.find((c) => c.id === childId);
-    const sibling = parentNode.children.find(
-      (c) => c.id !== childId && c.type !== FACE_NAMES.REVEAL
-    );
-    const reveal = parentNode.children.find(
-      (c) => c.type === FACE_NAMES.REVEAL
-    );
+    if (!node) return;
 
-    if (!node || !sibling || !reveal) return;
-
-    const parentSize = parentNode[dimension];
-    const revealSize = reveal[dimension];
-    const newSiblingSize = parentSize - newValue - revealSize;
-
-    if (newSiblingSize < minValue) {
-      console.warn(
-        `Change rejected: Sibling size would be less than ${minValue}"`
+    if (node.type === FACE_NAMES.REVEAL) {
+      // Logic for when a REVEAL is edited
+      const siblings = parentNode.children.filter(
+        (c) => c.type !== FACE_NAMES.REVEAL
       );
-      // Revert input values to the last valid state from the main config
-      const originalNode = selectedHandle.parent.children.find(c => c.id === childId);
-      const originalSibling = selectedHandle.parent.children.find(c => c.id !== childId && c.type !== FACE_NAMES.REVEAL);
-      setHandleInputValues(prev => ({
+      if (siblings.length !== 2) return; // This logic only works for exactly 2 siblings
+
+      const originalRevealNode = selectedHandle.parent.children.find(
+        (c) => c.id === childId
+      );
+      const oldRevealSize = originalRevealNode[dimension];
+      const revealDelta = newValue - oldRevealSize;
+      const adjustment = revealDelta / 2;
+
+      const newSibling1Size = siblings[0][dimension] - adjustment;
+      const newSibling2Size = siblings[1][dimension] - adjustment;
+
+      if (newSibling1Size < minValue || newSibling2Size < minValue) {
+        console.warn(
+          `Change rejected: Sibling size would be less than ${minValue}"`
+        );
+        setHandleInputValues((prev) => ({ ...prev, [childId]: oldRevealSize }));
+        return;
+      }
+
+      node[dimension] = newValue;
+      siblings[0][dimension] = newSibling1Size;
+      siblings[1][dimension] = newSibling2Size;
+
+      setHandleInputValues((prev) => ({
         ...prev,
-        [originalNode.id]: originalNode[dimension],
-        [originalSibling.id]: originalSibling[dimension],
+        [node.id]: newValue,
+        [siblings[0].id]: newSibling1Size,
+        [siblings[1].id]: newSibling2Size,
       }));
-      return;
+    } else {
+      // Logic for when a regular FACE is edited
+      const sibling = parentNode.children.find(
+        (c) => c.id !== childId && c.type !== FACE_NAMES.REVEAL
+      );
+      const reveal = parentNode.children.find(
+        (c) => c.type === FACE_NAMES.REVEAL
+      );
+
+      if (!sibling || !reveal) return;
+
+      const parentSize = parentNode[dimension];
+      const revealSize = reveal[dimension];
+      const newSiblingSize = parentSize - newValue - revealSize;
+
+      if (newSiblingSize < minValue) {
+        console.warn(
+          `Change rejected: Sibling size would be less than ${minValue}"`
+        );
+        const originalNode = selectedHandle.parent.children.find(
+          (c) => c.id === childId
+        );
+        const originalSibling = selectedHandle.parent.children.find(
+          (c) => c.id === sibling.id
+        );
+        setHandleInputValues((prev) => ({
+          ...prev,
+          [originalNode.id]: originalNode[dimension],
+          [originalSibling.id]: originalSibling[dimension],
+        }));
+        return;
+      }
+
+      node[dimension] = newValue;
+      sibling[dimension] = newSiblingSize;
+
+      setHandleInputValues((prev) => ({
+        ...prev,
+        [node.id]: newValue,
+        [sibling.id]: newSiblingSize,
+      }));
     }
 
-    node[dimension] = newValue;
-    sibling[dimension] = newSiblingSize;
-
-    // After calculations, update the input state for both siblings with the new values
-    setHandleInputValues(prev => ({
-      ...prev,
-      [node.id]: newValue,
-      [sibling.id]: newSiblingSize,
-    }));
-
-    // Update children of the resized nodes if they are containers
-    if (node.children) {
-      updateChildrenFromParent(node);
-    }
-    if (sibling.children) {
-      updateChildrenFromParent(sibling);
-    }
+    // Update children of all affected nodes if they are containers
+    parentNode.children.forEach((child) => {
+      if (child.children) {
+        updateChildrenFromParent(child);
+      }
+    });
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
-    // setShowHandlePopup(false);
   };
 
   const handleSiblingInputChange = (e) => {
     const { name, value } = e.target;
+
     setHandleInputValues((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -1430,7 +1471,6 @@ const CabinetFaceDivider = ({
                       }
                       className="w-20 px-1 py-0.5 text-xs border border-slate-300 rounded"
                       step="0.0625"
-                      disabled={isReveal} // Reveals are not editable
                     />
                   </div>
                 );
