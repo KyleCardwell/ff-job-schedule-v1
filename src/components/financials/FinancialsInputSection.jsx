@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
 import { usePermissions } from "../../hooks/usePermissions";
+import { safeEvaluate } from "../../utils/mathUtils";
 
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
 
@@ -24,6 +25,7 @@ const FinancialsInputSection = ({
   const [localInputRows, setLocalInputRows] = useState([]);
   const [localData, setLocalData] = useState([]); // For hours section
   const [expandedServiceId, setExpandedServiceId] = useState(null);
+  const [inputValues, setInputValues] = useState({}); // For cost inputs
   const isHoursSection = sectionId === "hours";
   const inputRefs = useRef({});
   const prevRowsLengthRef = useRef(inputRows.length);
@@ -42,14 +44,14 @@ const FinancialsInputSection = ({
   // Focus on the first input of newly added row
   useEffect(() => {
     if (isHoursSection) return; // Skip for hours section
-    
+
     const currentRowsLength = localInputRows.length;
-    
+
     // If a new row was added and the section is expanded
     if (currentRowsLength > prevRowsLengthRef.current && isExpanded) {
       // Get the last row's ID
       const lastRowId = localInputRows[currentRowsLength - 1].id;
-      
+
       // Focus on the first input of the last row
       if (inputRefs.current[lastRowId]) {
         setTimeout(() => {
@@ -57,7 +59,7 @@ const FinancialsInputSection = ({
         }, 0);
       }
     }
-    
+
     // Update the previous rows length reference
     prevRowsLengthRef.current = currentRowsLength;
   }, [localInputRows, isExpanded, isHoursSection]);
@@ -150,7 +152,7 @@ const FinancialsInputSection = ({
                 [field]: value,
               };
             }
-            
+
             // Handle empty or invalid input for hours
             if (field === "hours") {
               if (!value.trim()) {
@@ -167,7 +169,7 @@ const FinancialsInputSection = ({
                 },
               };
             }
-            
+
             // Handle other field changes
             return {
               ...row,
@@ -233,6 +235,7 @@ const FinancialsInputSection = ({
     };
     const updatedRows = [...localInputRows, newRow];
     handleUpdateRows(updatedRows);
+    setInputValues((prev) => ({ ...prev, [`${newRow.id}-cost`]: "" }));
     // Update parent with complete section data
     onUpdate({
       estimate,
@@ -247,16 +250,59 @@ const FinancialsInputSection = ({
       return;
     }
 
+    if (field === "cost") {
+      // For cost field, just update the string value in state
+      setInputValues((prev) => ({
+        ...prev,
+        [`${rowId}-cost`]: value,
+      }));
+      return;
+    }
+
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
-        const parsedValue = field === "cost" ? parseFloat(value) || 0 : value;
         return {
           ...row,
-          [field]: parsedValue,
+          [field]: value,
         };
       }
       return row;
     });
+    handleUpdateRows(updatedRows);
+    onUpdate({
+      estimate,
+      actual_cost: updatedRows.reduce((sum, row) => sum + (row.cost || 0), 0),
+      inputRows: updatedRows,
+    });
+  };
+
+  const handleCostBlur = (rowId, value) => {
+    let numValue = 0;
+    
+    if (value.trim() !== "") {
+      // First try to evaluate as a math expression
+      const evaluatedValue = safeEvaluate(value);
+      
+      if (evaluatedValue !== null) {
+        numValue = evaluatedValue;
+      } else {
+        // Fall back to regular parsing if evaluation fails
+        const parsed = parseFloat(value);
+        numValue = !isNaN(parsed) ? parsed : 0;
+      }
+    }
+
+    // Update the model with the numeric value
+    const updatedRows = localInputRows.map((row) => {
+      if (row.id === rowId) {
+        return {
+          ...row,
+          cost: numValue,
+        };
+      }
+      return row;
+    });
+    
     handleUpdateRows(updatedRows);
     onUpdate({
       estimate,
@@ -288,6 +334,14 @@ const FinancialsInputSection = ({
       // For non-hours sections
       const updatedRows = localInputRows.filter((row) => row.id !== rowId);
       handleUpdateRows(updatedRows);
+      
+      // Also clean up the input values for the deleted row
+      setInputValues((prev) => {
+        const newValues = { ...prev };
+        delete newValues[`${rowId}-cost`];
+        return newValues;
+      });
+      
       onUpdate({ inputRows: updatedRows });
     }
   };
@@ -333,14 +387,11 @@ const FinancialsInputSection = ({
         const serviceEstimate = (serviceData.estimate || 0) * rate;
 
         // Calculate actual hours from input rows
-        const actualHours = (serviceData.inputRows || []).reduce(
-          (sum, row) => {
-            if (row.employee_id === 'fixed_amount') return sum;
-            const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
-            return sum + hoursValue;
-          },
-          0
-        );
+        const actualHours = (serviceData.inputRows || []).reduce((sum, row) => {
+          if (row.employee_id === "fixed_amount") return sum;
+          const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
+          return sum + hoursValue;
+        }, 0);
 
         return {
           estimate: acc.estimate + serviceEstimate,
@@ -376,8 +427,7 @@ const FinancialsInputSection = ({
                     {hoursTotals.estimate.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })}
-                    {" "}
+                    })}{" "}
                     <span className="text-gray-500">
                       ({hoursTotals.totalHours.toFixed(2)} hrs)
                     </span>
@@ -392,8 +442,7 @@ const FinancialsInputSection = ({
                         {hoursTotals.actual.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        })}
-                        {" "}
+                        })}{" "}
                       </>
                     ) : null}
                     <span className="text-gray-500">
@@ -551,12 +600,12 @@ const FinancialsInputSection = ({
                       placeholder="Invoice"
                     />
                     <input
-                      type="number"
-                      value={formatEstimate(row.cost)}
+                      type="text"
+                      value={inputValues[`${row.id}-cost`] ?? ""}
                       onChange={(e) =>
                         handleInputChange(row.id, "cost", e.target.value)
                       }
-                      step="0.01"
+                      onBlur={(e) => handleCostBlur(row.id, e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Cost"
                     />
