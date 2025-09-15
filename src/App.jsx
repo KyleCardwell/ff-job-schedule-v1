@@ -77,7 +77,12 @@ const AppContent = () => {
 		async (session) => {
 			if (!session) {
 				dispatch(clearAuth());
-				initialFetchDone.current = false;
+				return;
+			}
+
+			// If the user hasn't changed, don't re-fetch user data
+			const state = store.getState();
+			if (state.auth.session?.user?.id === session.user.id) {
 				return;
 			}
 
@@ -132,10 +137,6 @@ const AppContent = () => {
 		// Get initial session
 		supabase.auth.getSession().then(({ data: { session } }) => {
 			if (mounted) {
-				// Fetch feature toggles as soon as we have a session
-				if (session) {
-					dispatch(fetchFeatureToggles());
-				}
 				fetchUserData(session);
 			}
 		});
@@ -145,10 +146,6 @@ const AppContent = () => {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange((_event, session) => {
 			if (mounted) {
-				// Fetch feature toggles on auth state change if we have a session
-				if (session) {
-					dispatch(fetchFeatureToggles());
-				}
 				fetchUserData(session);
 			}
 		});
@@ -157,13 +154,13 @@ const AppContent = () => {
 			mounted = false;
 			subscription.unsubscribe();
 		};
-	}, [fetchUserData, dispatch]);
+	}, [fetchUserData]);
 
 	useEffect(() => {
 		const fetchData = async () => {
 			if (session && teamId && !initialFetchDone.current) {
 				try {
-					dispatch(fetchFeatureToggles()); // Add feature toggles fetch
+					await dispatch(fetchFeatureToggles()); // Add feature toggles fetch
 					await dispatch(fetchChartConfig());
 					await dispatch(fetchEmployees());
 					await dispatch(fetchServices(teamId));
