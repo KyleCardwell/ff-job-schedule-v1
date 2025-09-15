@@ -17,11 +17,14 @@ import { calculateFinancialTotals } from "../../utils/helpers";
 import EstimatesModal from "./EstimatesModal.jsx";
 import FinancialsAccordion from "./FinancialsAccordion.jsx";
 
-const FinancialsInputModal = ({
-  isOpen,
-  onClose,
-  selectedTask,
-}) => {
+const DEFAULT_ADJUSTMENTS = {
+  profit: 20,
+  commission: 10,
+  discount: 0,
+  quantity: 1,
+};
+
+const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const dispatch = useDispatch();
 
   const { CSVReader } = useCSVReader();
@@ -41,25 +44,18 @@ const FinancialsInputModal = ({
   const [localSections, setLocalSections] = useState([]);
   const [modalTotals, setModalTotals] = useState({ estimate: 0, actual: 0 });
   const [isEstimatesOpen, setIsEstimatesOpen] = useState(false);
-  const [adjustments, setAdjustments] = useState({
-    profit: 20,
-    commission: 10,
-    discount: 0,
-    quantity: 1,
-  });
+  const [adjustments, setAdjustments] = useState(DEFAULT_ADJUSTMENTS);
 
   useEffect(() => {
-    if (!financialSections) return;
-
-    // Load adjustments from financialSections if they exist
-    if (financialSections.adjustments) {
-      setAdjustments({
-        profit: financialSections.adjustments.profit || 20,
-        commission: financialSections.adjustments.commission || 10,
-        discount: financialSections.adjustments.discount || 0,
-        quantity: financialSections.adjustments.quantity || 1,
-      });
+    if (!financialSections) {
+      setAdjustments(DEFAULT_ADJUSTMENTS);
+      return;
     }
+
+    setAdjustments({
+      ...DEFAULT_ADJUSTMENTS,
+      ...(financialSections.adjustments ?? {}),
+    });
 
     const sectionTypes = [
       { id: "hours", name: "hours" },
@@ -80,7 +76,8 @@ const FinancialsInputModal = ({
         const hoursData = financialData["hours"] || {};
 
         // Create employee type structure
-        const servicesData = services?.map((service) => {
+        const servicesData =
+          services?.map((service) => {
             // Find the type data in the array
             const serviceData = hoursData.data?.find(
               (t) => t.team_service_id === service.team_service_id
@@ -130,7 +127,7 @@ const FinancialsInputModal = ({
 
       // For other sections, find the matching section in financial_data by name
       const sectionKey = Object.keys(financialData).find(
-        key => financialData[key].name.toLowerCase() === name.toLowerCase()
+        (key) => financialData[key].name.toLowerCase() === name.toLowerCase()
       );
       const sectionData = sectionKey ? financialData[sectionKey] : {};
 
