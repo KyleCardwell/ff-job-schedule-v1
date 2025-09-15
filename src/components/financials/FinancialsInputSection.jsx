@@ -303,6 +303,12 @@ const FinancialsInputSection = ({
       return row;
     });
     
+    // Update the input value to show the calculated result
+    setInputValues((prev) => ({
+      ...prev,
+      [`${rowId}-cost`]: numValue.toString(),
+    }));
+    
     handleUpdateRows(updatedRows);
     onUpdate({
       estimate,
