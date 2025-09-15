@@ -515,7 +515,7 @@ export const calculateFinancialTotals = (
     const subtotal = totals.estimate;
     const profitAmount = subtotal * (adjustments.profit / 100);
     const commissionAmount = subtotal * (adjustments.commission / 100);
-    const discountAmount = subtotal * (adjustments.discount / 100);
+    const discountAmount = (subtotal + profitAmount + commissionAmount) * (adjustments.discount / 100);
     // Round up to nearest 5
     const adjustedEstimate =
       Math.ceil(

@@ -1,4 +1,4 @@
-import { create, all } from 'mathjs';
+import { create, all } from "mathjs";
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { useSelector } from "react-redux";
@@ -13,14 +13,29 @@ const math = create(all);
 const limitedEvaluate = math.evaluate;
 
 // Restrict the scope to basic arithmetic
-math.import({
-  import: function () { throw new Error('Function import is disabled') },
-  createUnit: function () { throw new Error('Function createUnit is disabled') },
-  evaluate: function () { throw new Error('Function evaluate is disabled') },
-  parse: function () { throw new Error('Function parse is disabled') },
-  simplify: function () { throw new Error('Function simplify is disabled') },
-  derivative: function () { throw new Error('Function derivative is disabled') }
-}, { override: true });
+math.import(
+  {
+    import: function () {
+      throw new Error("Function import is disabled");
+    },
+    createUnit: function () {
+      throw new Error("Function createUnit is disabled");
+    },
+    evaluate: function () {
+      throw new Error("Function evaluate is disabled");
+    },
+    parse: function () {
+      throw new Error("Function parse is disabled");
+    },
+    simplify: function () {
+      throw new Error("Function simplify is disabled");
+    },
+    derivative: function () {
+      throw new Error("Function derivative is disabled");
+    },
+  },
+  { override: true }
+);
 
 // Safe evaluation function
 const safeEvaluate = (expression) => {
@@ -29,7 +44,7 @@ const safeEvaluate = (expression) => {
     if (!/^[0-9+\-*/().\s]*$/.test(expression)) {
       return null;
     }
-    
+
     const result = limitedEvaluate(expression);
     return !isNaN(result) && isFinite(result) ? result : null;
   } catch {
@@ -183,6 +198,11 @@ const EstimatesModal = ({
   const priceSections = localSections.filter(
     (section) => section.id !== "hours"
   );
+
+  const comissionAmount = subtotal * (adjustments.commission / 100);
+  const profitAmount = subtotal * (adjustments.profit / 100);
+  const discountAmount =
+    (subtotal + profitAmount + comissionAmount) * (adjustments.discount / 100);
 
   return (
     <div className={modalOverlayClass}>
@@ -368,10 +388,13 @@ const EstimatesModal = ({
                       />
                     </div>
                     <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      ${formatCurrency((subtotal || 0) * ((adjustments.profit || 0) / 100))}
+                      $
+                      {formatCurrency(
+                        (subtotal || 0) * ((adjustments.profit || 0) / 100)
+                      )}
                     </span>
                   </div>
-                  
+
                   {/* Commission Row */}
                   <div className="flex items-center">
                     <h3 className="text-sm font-medium text-gray-700 flex-1">
@@ -390,10 +413,13 @@ const EstimatesModal = ({
                       />
                     </div>
                     <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      ${formatCurrency((subtotal || 0) * ((adjustments.commission || 0) / 100))}
+                      $
+                      {formatCurrency(
+                        (subtotal || 0) * ((adjustments.commission || 0) / 100)
+                      )}
                     </span>
                   </div>
-                  
+
                   {/* Discount Row */}
                   <div className="flex items-center">
                     <h3 className="text-sm font-medium text-gray-700 flex-1">
@@ -412,10 +438,10 @@ const EstimatesModal = ({
                       />
                     </div>
                     <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      ${formatCurrency((subtotal || 0) * ((adjustments.discount || 0) / 100))}
+                      ${formatCurrency(discountAmount)}
                     </span>
                   </div>
-                  
+
                   {/* Quantity Row */}
                   <div className="flex items-center">
                     <h3 className="text-sm font-medium text-gray-700 flex-1">
