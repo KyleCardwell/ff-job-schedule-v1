@@ -137,7 +137,14 @@ const CabinetFaceDivider = ({
 
   useEffect(() => {
     renderCabinet();
-  }, [config, displayWidth, displayHeight, disabled, showHandlePopup, selectedHandle]);
+  }, [
+    config,
+    displayWidth,
+    displayHeight,
+    disabled,
+    showHandlePopup,
+    selectedHandle,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -1413,15 +1420,15 @@ const CabinetFaceDivider = ({
           {/* Disabled overlay */}
           {disabled && (
             <div className="absolute inset-0 bg-slate-100 bg-opacity-75 flex items-center justify-center rounded">
-            <div className="text-center">
-              <p className="text-sm text-slate-600 font-medium">
-                Face Designer Disabled
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Please enter valid width, height, and depth dimensions
-              </p>
+              <div className="text-center">
+                <p className="text-sm text-slate-600 font-medium">
+                  Face Designer Disabled
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Please enter valid width, height, and depth dimensions
+                </p>
+              </div>
             </div>
-          </div>
           )}
 
           {/* Handle Dimension Editor Popup */}
@@ -1430,8 +1437,18 @@ const CabinetFaceDivider = ({
               ref={handleEditorPopupRef}
               className="handle-editor-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
               style={{
-                left: Math.min(handlePopupPosition.x, fixedDisplayWidth - 250),
-                top: Math.min(handlePopupPosition.y, fixedDisplayHeight - 200),
+                left: Math.min(
+                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
+                    ? handlePopupPosition.x - 180 // Position to the left of vertical handle
+                    : handlePopupPosition.x,
+                  fixedDisplayWidth - 250
+                ),
+                top: Math.min(
+                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
+                    ? handlePopupPosition.y - 100
+                    : handlePopupPosition.y,
+                  fixedDisplayHeight - 200
+                ),
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
             >
@@ -1439,7 +1456,15 @@ const CabinetFaceDivider = ({
                 Edit Sibling Dimensions
               </div>
               <div className="text-xs text-slate-500 mb-2 border-b pb-2">
-                Container: {truncateTrailingZeros(selectedHandle.parent.width)}&quot; W × {truncateTrailingZeros(selectedHandle.parent.height)}&quot; H
+                Container: {truncateTrailingZeros(selectedHandle.parent.width)}
+                &quot; W × {truncateTrailingZeros(selectedHandle.parent.height)}
+                &quot; H
+              </div>
+              <div className="text-xs text-right font-semibold text-slate-500 mb-2 capitalize">
+                Modify{" "}
+                {selectedHandle.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+                  ? "Widths"
+                  : "Heights"}
               </div>
               {selectedHandle.parent.children.map((child) => {
                 const dimension =
@@ -1460,7 +1485,7 @@ const CabinetFaceDivider = ({
                     <input
                       type="number"
                       name={child.id}
-                      value={handleInputValues[child.id] || ''}
+                      value={handleInputValues[child.id] || ""}
                       onChange={handleSiblingInputChange}
                       onBlur={(e) =>
                         handleSiblingDimensionChange(
@@ -1475,7 +1500,9 @@ const CabinetFaceDivider = ({
                   </div>
                 );
               })}
-              {selectedHandle.parent.children.filter(c => c.type !== FACE_NAMES.REVEAL).length > 1 && (
+              {selectedHandle.parent.children.filter(
+                (c) => c.type !== FACE_NAMES.REVEAL
+              ).length > 1 && (
                 <button
                   onClick={handleEqualizeSiblings}
                   className="mt-2 w-full px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
