@@ -1,4 +1,3 @@
-import { create, all } from "mathjs";
 import PropTypes from "prop-types";
 import { useState } from "react";
 import { useSelector } from "react-redux";
@@ -7,50 +6,7 @@ import {
   modalContainerClass,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
-
-// Create a limited math.js instance with only the functions we need
-const math = create(all);
-const limitedEvaluate = math.evaluate;
-
-// Restrict the scope to basic arithmetic
-math.import(
-  {
-    import: function () {
-      throw new Error("Function import is disabled");
-    },
-    createUnit: function () {
-      throw new Error("Function createUnit is disabled");
-    },
-    evaluate: function () {
-      throw new Error("Function evaluate is disabled");
-    },
-    parse: function () {
-      throw new Error("Function parse is disabled");
-    },
-    simplify: function () {
-      throw new Error("Function simplify is disabled");
-    },
-    derivative: function () {
-      throw new Error("Function derivative is disabled");
-    },
-  },
-  { override: true }
-);
-
-// Safe evaluation function
-const safeEvaluate = (expression) => {
-  try {
-    // Only allow basic math operations and numbers
-    if (!/^[0-9+\-*/().\s]*$/.test(expression)) {
-      return null;
-    }
-
-    const result = limitedEvaluate(expression);
-    return !isNaN(result) && isFinite(result) ? result : null;
-  } catch {
-    return null;
-  }
-};
+import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
 
 const EstimatesModal = ({
   isOpen,
@@ -99,11 +55,11 @@ const EstimatesModal = ({
       const evaluatedValue = safeEvaluate(value);
 
       if (evaluatedValue !== null) {
-        numValue = evaluatedValue;
+        numValue = formatNumberValue(evaluatedValue);
       } else {
         // Fall back to regular parsing if evaluation fails
         const parsed = parseFloat(value);
-        numValue = !isNaN(parsed) ? parsed : null;
+        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : null;
       }
     }
 
