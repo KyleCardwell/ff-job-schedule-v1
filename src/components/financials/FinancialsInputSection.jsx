@@ -32,14 +32,28 @@ const FinancialsInputSection = ({
 
   const { canViewProfitLoss } = usePermissions();
 
-  // Initialize local state from props only once
+  // Initialize local state from props
   useEffect(() => {
     if (isHoursSection) {
       setLocalData(data);
     } else {
       setLocalInputRows(inputRows);
     }
-  }, [data, inputRows]); // Update when props change
+  }, [data, inputRows, isHoursSection]);
+
+  // Initialize inputValues for existing rows to display their costs
+  useEffect(() => {
+    if (!isHoursSection && localInputRows.length > 0) {
+      const initialInputValues = localInputRows.reduce((acc, row) => {
+        acc[`${row.id}-cost`] = row.cost?.toString() || "";
+        return acc;
+      }, {});
+      setInputValues(initialInputValues);
+    } else if (!isHoursSection && localInputRows.length === 0) {
+      // Clear inputValues when all rows are deleted
+      setInputValues({});
+    }
+  }, [localInputRows, isHoursSection]);
 
   // Focus on the first input of newly added row
   useEffect(() => {
