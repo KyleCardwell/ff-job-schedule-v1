@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
 import { usePermissions } from "../../hooks/usePermissions";
-import { safeEvaluate } from "../../utils/mathUtils";
+import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
 
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
 
@@ -284,11 +284,11 @@ const FinancialsInputSection = ({
       const evaluatedValue = safeEvaluate(value);
       
       if (evaluatedValue !== null) {
-        numValue = evaluatedValue;
+        numValue = formatNumberValue(evaluatedValue);
       } else {
         // Fall back to regular parsing if evaluation fails
         const parsed = parseFloat(value);
-        numValue = !isNaN(parsed) ? parsed : 0;
+        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : 0;
       }
     }
 

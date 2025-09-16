@@ -47,3 +47,23 @@ export const safeEvaluate = (expression) => {
     return null;
   }
 };
+
+/**
+ * Formats a number value to handle decimals appropriately
+ * - Rounds to 2 decimal places if the number has a decimal part
+ * - Returns whole numbers without decimal places
+ * @param {number} value - The number to format
+ * @returns {number} - The formatted number
+ */
+export const formatNumberValue = (value) => {
+  if (value === null || value === undefined) return null;
+  
+  // Check if the number has a decimal part
+  if (value % 1 !== 0) {
+    // Round to 2 decimal places
+    return Math.round(value * 100) / 100;
+  }
+  
+  // Return whole numbers as is
+  return value;
+};

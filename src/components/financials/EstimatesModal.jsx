@@ -6,7 +6,7 @@ import {
   modalContainerClass,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
-import { safeEvaluate } from "../../utils/mathUtils";
+import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
 
 const EstimatesModal = ({
   isOpen,
@@ -55,11 +55,11 @@ const EstimatesModal = ({
       const evaluatedValue = safeEvaluate(value);
 
       if (evaluatedValue !== null) {
-        numValue = evaluatedValue;
+        numValue = formatNumberValue(evaluatedValue);
       } else {
         // Fall back to regular parsing if evaluation fails
         const parsed = parseFloat(value);
-        numValue = !isNaN(parsed) ? parsed : null;
+        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : null;
       }
     }
 
