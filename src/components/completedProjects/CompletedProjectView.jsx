@@ -9,6 +9,7 @@ import {
   fetchTaskFinancials,
 } from "../../redux/actions/financialsData";
 import { calculateFinancialTotals } from "../../utils/helpers";
+import GeneratePdfButton from "../common/GeneratePdfButton.jsx";
 import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
 
 import TaskFinancialsBreakdown from "./TaskFinancialsBreakdown.jsx";
@@ -88,7 +89,11 @@ const CompletedProjectView = () => {
 
         const taskTotals = calculateFinancialTotals(taskSections, services);
         const adjustedTotals = task.adjustments
-          ? calculateFinancialTotals(taskSections, services, task.adjustments)
+          ? calculateFinancialTotals(
+              taskSections,
+              services,
+              task.adjustments
+            )
           : taskTotals;
 
         return {
@@ -179,15 +184,22 @@ const CompletedProjectView = () => {
   return (
     <div className="p-6 bg-slate-800 print:bg-white h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-6 max-w-[1200px] mx-auto ">
-        <div className="flex-1 flex justify-start">
+        <div className="flex-1 flex justify-start space-x-2">
           <button
             onClick={() => navigate("/completed")}
             className={`${buttonClass} bg-blue-500 print:hidden`}
           >
             Back to Projects
           </button>
+          <GeneratePdfButton
+            project={project}
+            projectFinancials={projectFinancials}
+            projectTotals={projectTotals}
+            dateUpdated={dateUpdated}
+            services={services}
+          />
         </div>
-        <h1 className="flex-1 text-2xl font-bold text-white print:text-black">
+        <h1 className="flex-1 text-2xl font-bold text-white print:text-black text-center">
           {project.project_name}
         </h1>
         <div className="flex-1 flex flex-col text-right">
@@ -207,7 +219,7 @@ const CompletedProjectView = () => {
           <div className="text-center">
             <div className="text-gray-600">Estimated</div>
             <div className="text-2xl font-bold">
-              $
+              ${" "}
               {(projectTotals.estimate || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -217,7 +229,7 @@ const CompletedProjectView = () => {
           <div className="text-center">
             <div className="text-gray-600">Actual</div>
             <div className="text-2xl font-bold">
-              $
+              ${" "}
               {(projectTotals.actual || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -233,7 +245,7 @@ const CompletedProjectView = () => {
                   : "text-red-600"
               }`}
             >
-              $
+              ${" "}
               {(projectTotals.profit || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
@@ -337,14 +349,14 @@ const CompletedProjectView = () => {
                     </button> */}
                   </div>
                   <div className="text-right">
-                    $
+                    ${" "}
                     {estimate.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </div>
                   <div className="text-right">
-                    $
+                    ${" "}
                     {actual.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -355,7 +367,7 @@ const CompletedProjectView = () => {
                       taskProfit >= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
-                    $
+                    ${" "}
                     {taskProfit.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
