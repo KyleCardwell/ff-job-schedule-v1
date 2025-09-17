@@ -47,13 +47,16 @@ const GeneratePdfButton = ({
         project.project_completed_at
       ).toLocaleDateString();
 
+      // Get today's date for the report
+      const today = new Date().toLocaleDateString();
+
       // Summary table for all tasks
       const summaryTableBody = [
         [
           { text: "Job #", bold: true },
           { text: "Room Name", bold: true },
           { text: "Estimate", bold: true, alignment: "right" },
-          { text: "Actual", bold: true, alignment: "right" },
+          { text: "Cost", bold: true, alignment: "right" },
           { text: "Profit/Loss", bold: true, alignment: "right" },
         ],
       ];
@@ -61,9 +64,20 @@ const GeneratePdfButton = ({
       // Content array for the PDF
       const content = [
         {
-          text: project.project_name,
-          style: "header",
-          alignment: "center",
+          columns: [
+            {
+              text: project.project_name,
+              style: "header",
+              alignment: "left",
+              width: "*",
+            },
+            {
+              text: `Report Date: ${today}`,
+              alignment: "right",
+              width: "auto",
+              margin: [0, 10, 0, 0],
+            },
+          ],
           margin: [0, 0, 0, 10],
         },
         {
@@ -89,8 +103,8 @@ const GeneratePdfButton = ({
             widths: ["*", "*", "*"],
             body: [
               [
-                { text: "Estimated", bold: true, alignment: "center" },
-                { text: "Actual", bold: true, alignment: "center" },
+                { text: "Estimate", bold: true, alignment: "center" },
+                { text: "Cost", bold: true, alignment: "center" },
                 { text: "Profit/Loss", bold: true, alignment: "center" },
               ],
               [
@@ -122,7 +136,12 @@ const GeneratePdfButton = ({
                       maximumFractionDigits: 2,
                     }
                   )}`,
-                  color: (projectTotals.profit || 0) >= 0 ? "green" : "red",
+                  color:
+                    (projectTotals.profit || 0) > 0
+                      ? "green"
+                      : (projectTotals.profit || 0) < 0
+                      ? "red"
+                      : "blue",
                   alignment: "center",
                 },
               ],
@@ -192,7 +211,7 @@ const GeneratePdfButton = ({
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}`,
-            color: taskProfit >= 0 ? "green" : "red",
+            color: taskProfit > 0 ? "green" : taskProfit < 0 ? "red" : "blue",
             alignment: "right",
           },
         ]);
@@ -222,7 +241,7 @@ const GeneratePdfButton = ({
               [
                 { text: "Hours", bold: true },
                 { text: "Estimate", bold: true, alignment: "right" },
-                { text: "Actual", bold: true, alignment: "right" },
+                { text: "Cost", bold: true, alignment: "right" },
                 { text: "Profit/Loss", bold: true, alignment: "right" },
               ],
             ];
@@ -316,7 +335,7 @@ const GeneratePdfButton = ({
                   //   [
                   //     { text: "Category", bold: true },
                   //     { text: "Estimated", bold: true, alignment: "right" },
-                  //     { text: "Actual", bold: true, alignment: "right" },
+                  //     { text: "Cost", bold: true, alignment: "right" },
                   //     { text: "Difference", bold: true, alignment: "right" },
                   //   ],
                   [
@@ -392,7 +411,8 @@ const GeneratePdfButton = ({
                   })}`,
                   bold: true,
                   alignment: "right",
-                  color: taskProfit >= 0 ? "green" : "red",
+                  color:
+                    taskProfit > 0 ? "green" : taskProfit < 0 ? "red" : "blue",
                 },
               ],
             ],
@@ -422,18 +442,25 @@ const GeneratePdfButton = ({
       content.push({ text: "", pageBreak: "after" });
 
       // Add detailed breakdowns title
-    //   content.push({
-    //     text: "Detailed Task Breakdowns",
-    //     style: "header",
-    //     alignment: "center",
-    //     margin: [0, 0, 0, 20],
-    //   });
+      //   content.push({
+      //     text: "Detailed Task Breakdowns",
+      //     style: "header",
+      //     alignment: "center",
+      //     margin: [0, 0, 0, 20],
+      //   });
 
       // Add all task breakdowns
       content.push(...taskBreakdowns);
 
       const docDefinition = {
         content: content,
+        footer: (currentPage, pageCount) => {
+          return {
+            text: `Page ${currentPage} of ${pageCount}`,
+            alignment: "right",
+            margin: [0, 10, 20, 0],
+          };
+        },
         styles: {
           header: {
             fontSize: 22,
