@@ -62,7 +62,8 @@ const GeneratePdfButton = ({
         ],
       ];
 
-      const profitPercent = (projectTotals.profit || 0) / (projectTotals.estimate || 0) * 100;
+      const profitPercent =
+        ((projectTotals.profit || 0) / (projectTotals.estimate || 0)) * 100;
 
       // Content array for the PDF
       const content = [
@@ -231,7 +232,8 @@ const GeneratePdfButton = ({
           },
           {
             text: `${profitPercent.toFixed(2)}%`,
-            color: profitPercent > 0 ? "green" : profitPercent < 0 ? "red" : "blue",
+            color:
+              profitPercent > 0 ? "green" : profitPercent < 0 ? "red" : "blue",
             alignment: "right",
           },
         ]);
@@ -324,7 +326,7 @@ const GeneratePdfButton = ({
                   color: costColor,
                 },
               ]);
-              
+
               // Second row - Hours information
               hoursTableBody.push([
                 " Hours",
@@ -353,26 +355,26 @@ const GeneratePdfButton = ({
                   body: hoursTableBody,
                 },
                 layout: {
-                  hLineWidth: function(i, node) {
+                  hLineWidth: function (i, node) {
                     // Remove lines between estimate and hours rows (every odd line except header)
                     if (i > 0 && i < node.table.body.length && i % 2 === 0) {
                       return 0;
                     }
                     return 0.5;
                   },
-                  vLineWidth: function() {
+                  vLineWidth: function () {
                     return 0;
                   },
-                  paddingBottom: function(i) {
+                  paddingBottom: function (i) {
                     // Add extra padding after hours rows (every even row)
                     if (i > 0 && i % 2 === 0) {
                       return 8;
                     }
                     return 2;
                   },
-                  hLineColor: function() {
-                    return '#aaa';
-                  }
+                  hLineColor: function () {
+                    return "#aaa";
+                  },
                 },
                 margin: [0, 0, 0, 10],
               });
@@ -475,7 +477,20 @@ const GeneratePdfButton = ({
               ],
             ],
           },
-          layout: "lightHorizontalLines",
+          layout: {
+            hLineWidth: function () {
+              return 0.5;
+            },
+            vLineWidth: function () {
+              return 0;
+            },
+            paddingBottom: function () {
+              return 2;
+            },
+            hLineColor: function () {
+              return "#aaa";
+            },
+          },
           margin: [0, 5, 0, 10],
         });
 
