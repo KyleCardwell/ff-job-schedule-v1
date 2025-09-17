@@ -522,8 +522,9 @@ export const calculateFinancialTotals = (
       Math.ceil(
         (subtotal + profitAmount + commissionAmount - discountAmount) / 5
       ) *
-      5 *
-      adjustments.quantity + (adjustments.addToTotal || 0);
+        5 *
+        adjustments.quantity +
+      (adjustments.addToTotal || 0);
 
     const adjustedActual =
       totals.actual + commissionAmount * adjustments.quantity;
@@ -533,13 +534,47 @@ export const calculateFinancialTotals = (
       subtotal,
       total: adjustedEstimate,
       actual: adjustedActual,
-      commission: [
-        "commission",
-        {
-          name: "commission",
-          estimate: commissionTotal,
-          actual_cost: commissionTotal,
-        },
+      adjustments: [
+        [
+          "addToSubtotal",
+          {
+            name: "Adjust Subtotal",
+            estimate: adjustments.addToSubtotal || 0,
+            actual_cost: 0,
+          },
+        ],
+        [
+          "commission",
+          {
+            name: "commission",
+            estimate: commissionTotal,
+            actual_cost: commissionTotal,
+          },
+        ],
+        [
+          "profit",
+          {
+            name: "profit",
+            estimate: profitAmount,
+            actual_cost: 0,
+          },
+        ],
+        [
+          "discount",
+          {
+            name: "discount",
+            estimate: discountAmount,
+            actual_cost: discountAmount,
+          },
+        ],
+        [
+          "addToTotal",
+          {
+            name: "Adjust Total",
+            estimate: adjustments.addToTotal || 0,
+            actual_cost: 0,
+          },
+        ],
       ],
     };
   }

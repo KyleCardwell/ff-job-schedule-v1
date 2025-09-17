@@ -1,12 +1,12 @@
 import PropTypes from 'prop-types';
 
-const TaskFinancialsBreakdown = ({ task, services, color, commission }) => {
+const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   if (!task.financial_data) {
     return <div className="text-gray-500">No financial data for this task.</div>;
   }
 
   const sections = Object.entries(task.financial_data);
-  sections.push(commission);
+  sections.push(...adjustments);
 
   return (
     <div className={`${color} pb-5`}>

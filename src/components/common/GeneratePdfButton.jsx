@@ -247,7 +247,7 @@ const GeneratePdfButton = ({
 
         // Process each section in the task
         const sections = Object.entries(task.financial_data);
-        sections.push(adjustedTotals.commission);
+        sections.push(...adjustedTotals.adjustments);
         sections.forEach(([id, sectionData]) => {
           if (id === "hours") {
             // Hours section with service breakdowns
