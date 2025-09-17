@@ -22,6 +22,8 @@ const DEFAULT_ADJUSTMENTS = {
   commission: 10,
   discount: 0,
   quantity: 1,
+  addToSubtotal: 0,
+  addToTotal: 0,
 };
 
 const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {

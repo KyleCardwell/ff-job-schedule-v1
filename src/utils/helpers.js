@@ -511,7 +511,7 @@ export const calculateFinancialTotals = (
 
   if (adjustments) {
     // Calculate final totals with adjustments
-    const subtotal = totals.estimate;
+    const subtotal = totals.estimate + (adjustments.addToSubtotal || 0);
     const profitAmount = subtotal * (adjustments.profit / 100);
     const commissionAmount = subtotal * (adjustments.commission / 100);
     const discountAmount =
@@ -523,7 +523,7 @@ export const calculateFinancialTotals = (
         (subtotal + profitAmount + commissionAmount - discountAmount) / 5
       ) *
       5 *
-      adjustments.quantity;
+      adjustments.quantity + (adjustments.addToTotal || 0);
 
     const adjustedActual =
       totals.actual + commissionAmount * adjustments.quantity;
