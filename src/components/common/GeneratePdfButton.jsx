@@ -58,8 +58,11 @@ const GeneratePdfButton = ({
           { text: "Estimate", bold: true, alignment: "right" },
           { text: "Cost", bold: true, alignment: "right" },
           { text: "Profit/Loss", bold: true, alignment: "right" },
+          { text: "%", bold: true, alignment: "right" },
         ],
       ];
+
+      const profitPercent = (projectTotals.profit || 0) / (projectTotals.estimate || 0) * 100;
 
       // Content array for the PDF
       const content = [
@@ -100,12 +103,13 @@ const GeneratePdfButton = ({
         },
         {
           table: {
-            widths: ["*", "*", "*"],
+            widths: ["*", "*", "*", "*"],
             body: [
               [
                 { text: "Estimate", bold: true, alignment: "center" },
                 { text: "Cost", bold: true, alignment: "center" },
                 { text: "Profit/Loss", bold: true, alignment: "center" },
+                { text: "Profit %", bold: true, alignment: "center" },
               ],
               [
                 {
@@ -140,6 +144,16 @@ const GeneratePdfButton = ({
                     (projectTotals.profit || 0) > 0
                       ? "green"
                       : (projectTotals.profit || 0) < 0
+                      ? "red"
+                      : "blue",
+                  alignment: "center",
+                },
+                {
+                  text: `${profitPercent.toFixed(2)}%`,
+                  color:
+                    profitPercent > 0
+                      ? "green"
+                      : profitPercent < 0
                       ? "red"
                       : "blue",
                   alignment: "center",
@@ -187,6 +201,7 @@ const GeneratePdfButton = ({
         const estimate = adjustedTotals.total || adjustedTotals.estimate || 0;
         const actual = adjustedTotals.actual || 0;
         const taskProfit = estimate - actual;
+        const profitPercent = (taskProfit / estimate) * 100;
 
         // Add to summary table
         summaryTableBody.push([
@@ -214,6 +229,11 @@ const GeneratePdfButton = ({
             color: taskProfit > 0 ? "green" : taskProfit < 0 ? "red" : "blue",
             alignment: "right",
           },
+          {
+            text: `${profitPercent.toFixed(2)}%`,
+            color: profitPercent > 0 ? "green" : profitPercent < 0 ? "red" : "blue",
+            alignment: "right",
+          },
         ]);
 
         // Create detailed breakdown for this task
@@ -227,6 +247,7 @@ const GeneratePdfButton = ({
 
         // Process each section in the task
         const sections = Object.entries(task.financial_data);
+        sections.push(adjustedTotals.commission);
         sections.forEach(([id, sectionData]) => {
           if (id === "hours") {
             // Hours section with service breakdowns
@@ -239,7 +260,7 @@ const GeneratePdfButton = ({
             // Table for hours breakdown
             const hoursTableBody = [
               [
-                { text: "Hours", bold: true },
+                { text: "Category", bold: true },
                 { text: "Estimate", bold: true, alignment: "right" },
                 { text: "Cost", bold: true, alignment: "right" },
                 { text: "Profit/Loss", bold: true, alignment: "right" },
@@ -266,43 +287,59 @@ const GeneratePdfButton = ({
                 0
               );
 
+              // Calculate differences
+              const hoursDiff = service.estimate - actualHours;
+              const costDiff = estimate - service.actual_cost;
+
+              // Determine colors
+              const hoursColor =
+                hoursDiff > 0 ? "green" : hoursDiff < 0 ? "red" : "blue";
+
+              const costColor =
+                costDiff > 0 ? "green" : costDiff < 0 ? "red" : "blue";
+
+              // First row - Service name and financial values
               hoursTableBody.push([
                 serviceInfo?.service_name || "Unknown Service",
                 {
-                  text: `(${service.estimate.toFixed(
-                    2
-                  )} hrs)  $${estimate.toLocaleString(undefined, {
+                  text: `$${estimate.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}`,
                   alignment: "right",
                 },
                 {
-                  text: `(${actualHours.toFixed(
-                    2
-                  )} hrs)  $${service.actual_cost.toLocaleString(undefined, {
+                  text: `$${service.actual_cost.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}`,
                   alignment: "right",
                 },
                 {
-                  text: `(${(service.estimate - actualHours).toFixed(
-                    2
-                  )} hrs)  $${(estimate - service.actual_cost).toLocaleString(
-                    undefined,
-                    {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }
-                  )}`,
+                  text: `$${costDiff.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
                   alignment: "right",
-                  color:
-                    estimate - service.actual_cost > 0
-                      ? "green"
-                      : estimate - service.actual_cost < 0
-                      ? "red"
-                      : "blue",
+                  color: costColor,
+                },
+              ]);
+              
+              // Second row - Hours information
+              hoursTableBody.push([
+                " Hours",
+                {
+                  text: service.estimate.toFixed(2),
+                  alignment: "right",
+                },
+                {
+                  text: actualHours.toFixed(2),
+                  alignment: "right",
+                },
+                {
+                  text: hoursDiff.toFixed(2),
+                  alignment: "right",
+                  color: hoursColor,
                 },
               ]);
             });
@@ -315,7 +352,28 @@ const GeneratePdfButton = ({
                   widths: ["*", "*", "*", "*"],
                   body: hoursTableBody,
                 },
-                layout: "lightHorizontalLines",
+                layout: {
+                  hLineWidth: function(i, node) {
+                    // Remove lines between estimate and hours rows (every odd line except header)
+                    if (i > 0 && i < node.table.body.length && i % 2 === 0) {
+                      return 0;
+                    }
+                    return 0.5;
+                  },
+                  vLineWidth: function() {
+                    return 0;
+                  },
+                  paddingBottom: function(i) {
+                    // Add extra padding after hours rows (every even row)
+                    if (i > 0 && i % 2 === 0) {
+                      return 8;
+                    }
+                    return 2;
+                  },
+                  hLineColor: function() {
+                    return '#aaa';
+                  }
+                },
                 margin: [0, 0, 0, 10],
               });
             }
@@ -387,7 +445,7 @@ const GeneratePdfButton = ({
             widths: ["*", "*", "*", "*"],
             body: [
               [
-                { text: "Task Totals", bold: true },
+                { text: "Totals", bold: true },
                 {
                   text: `$${estimate.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
@@ -432,7 +490,7 @@ const GeneratePdfButton = ({
       content.push({
         table: {
           headerRows: 1,
-          widths: ["10%", "*", "15%", "15%", "15%"],
+          widths: ["10%", "*", "15%", "15%", "15%", "8%"],
           body: summaryTableBody,
         },
         layout: "lightHorizontalLines",

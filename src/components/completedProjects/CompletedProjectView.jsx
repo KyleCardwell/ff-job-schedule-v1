@@ -380,6 +380,7 @@ const CompletedProjectView = () => {
                     task={task}
                     services={services}
                     color={index % 2 === 0 ? "bg-gray-50" : ""}
+                    commission={adjustedTotals.commission}
                   />
                 )}
               </div>

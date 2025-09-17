@@ -1,11 +1,12 @@
 import PropTypes from 'prop-types';
 
-const TaskFinancialsBreakdown = ({ task, services, color }) => {
+const TaskFinancialsBreakdown = ({ task, services, color, commission }) => {
   if (!task.financial_data) {
     return <div className="text-gray-500">No financial data for this task.</div>;
   }
 
   const sections = Object.entries(task.financial_data);
+  sections.push(commission);
 
   return (
     <div className={`${color} pb-5`}>
@@ -87,6 +88,22 @@ const TaskFinancialsBreakdown = ({ task, services, color }) => {
             </div>
           );
         })}
+
+        {/* <div>
+          <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 text-sm">
+            <div></div>
+            <div className="font-semibold capitalize text-gray-800">Commission</div>
+            <div className="text-right">
+              ${commission.estimate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-right">
+              ${commission.actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className={`text-right mx-2 ${commission.estimate - commission.actual >= 0 ? "text-green-600" : "text-red-600"}`}>
+              ${(commission.estimate - commission.actual).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        </div> */}
       </div>
     </div>
   );

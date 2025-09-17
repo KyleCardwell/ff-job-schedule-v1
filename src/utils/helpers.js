@@ -482,8 +482,7 @@ export const calculateFinancialTotals = (
               (service) => service.team_service_id === typeData.team_service_id
             );
             const rate = typeData.rateOverride ?? service?.hourly_rate ?? 0;
-            const hourlyEstimate =
-              (typeData.estimate || 0) * rate;
+            const hourlyEstimate = (typeData.estimate || 0) * rate;
             const fixedAmount = typeData.fixedAmount || 0;
             return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;
@@ -515,7 +514,9 @@ export const calculateFinancialTotals = (
     const subtotal = totals.estimate;
     const profitAmount = subtotal * (adjustments.profit / 100);
     const commissionAmount = subtotal * (adjustments.commission / 100);
-    const discountAmount = (subtotal + profitAmount + commissionAmount) * (adjustments.discount / 100);
+    const discountAmount =
+      (subtotal + profitAmount + commissionAmount) *
+      (adjustments.discount / 100);
     // Round up to nearest 5
     const adjustedEstimate =
       Math.ceil(
@@ -524,10 +525,22 @@ export const calculateFinancialTotals = (
       5 *
       adjustments.quantity;
 
+    const adjustedActual =
+      totals.actual + commissionAmount * adjustments.quantity;
+    const commissionTotal = commissionAmount * adjustments.quantity;
+
     return {
       subtotal,
       total: adjustedEstimate,
-      actual: totals.actual,
+      actual: adjustedActual,
+      commission: [
+        "commission",
+        {
+          name: "commission",
+          estimate: commissionTotal,
+          actual_cost: commissionTotal,
+        },
+      ],
     };
   }
 
