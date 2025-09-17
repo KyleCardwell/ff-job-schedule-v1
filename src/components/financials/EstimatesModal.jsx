@@ -149,6 +149,34 @@ const EstimatesModal = ({
     });
   };
 
+  // Handle add amount fields blur with math expression support
+  const handleAddAmountBlur = (value, fieldName) => {
+    // Convert to number or null if empty
+    let numValue = 0;
+    if (value !== "") {
+      // First try to evaluate as a math expression
+      const evaluatedValue = safeEvaluate(value);
+
+      if (evaluatedValue !== null) {
+        numValue = formatNumberValue(evaluatedValue);
+      } else {
+        // Fall back to regular parsing if evaluation fails
+        const parsed = parseFloat(value);
+        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : 0;
+      }
+    }
+
+    // Clear the input value from state since we've processed it
+    setInputValues((prev) => {
+      const newValues = { ...prev };
+      delete newValues[fieldName];
+      return newValues;
+    });
+
+    // Update the actual data with the numeric value
+    onAdjustmentChange(fieldName, numValue);
+  };
+
   if (!isOpen) return null;
 
   const priceSections = localSections.filter(
@@ -418,6 +446,51 @@ const EstimatesModal = ({
                     </div>
                     <span className="text-sm text-gray-500 text-right ml-4 w-24">
                       {/* Empty cell for alignment */}
+                    </span>
+                  </div>
+                  
+                  {/* Add Amount Row */}
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700 flex-1">
+                      Add to Subtotal ($)
+                    </h3>
+                    <div className="w-20">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={inputValues.addToSubtotal !== undefined ? inputValues.addToSubtotal : (adjustments.addToSubtotal || "")}
+                        onChange={(e) =>
+                          setInputValues((prev) => ({ ...prev, addToSubtotal: e.target.value }))
+                        }
+                        onBlur={(e) => handleAddAmountBlur(e.target.value, "addToSubtotal")}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        placeholder="0"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
+                      ${formatCurrency(adjustments.addToSubtotal || 0)}
+                    </span>
+                  </div>
+                  {/* Add Amount Row */}
+                  <div className="flex items-center">
+                    <h3 className="text-sm font-medium text-gray-700 flex-1">
+                      Add to Total ($)
+                    </h3>
+                    <div className="w-20">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={inputValues.addToTotal !== undefined ? inputValues.addToTotal : (adjustments.addToTotal || "")}
+                        onChange={(e) =>
+                          setInputValues((prev) => ({ ...prev, addToTotal: e.target.value }))
+                        }
+                        onBlur={(e) => handleAddAmountBlur(e.target.value, "addToTotal")}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        placeholder="0"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
+                      ${formatCurrency(adjustments.addToTotal || 0)}
                     </span>
                   </div>
                 </div>

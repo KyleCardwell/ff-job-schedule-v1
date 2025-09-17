@@ -482,8 +482,7 @@ export const calculateFinancialTotals = (
               (service) => service.team_service_id === typeData.team_service_id
             );
             const rate = typeData.rateOverride ?? service?.hourly_rate ?? 0;
-            const hourlyEstimate =
-              (typeData.estimate || 0) * rate;
+            const hourlyEstimate = (typeData.estimate || 0) * rate;
             const fixedAmount = typeData.fixedAmount || 0;
             return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;
@@ -512,22 +511,71 @@ export const calculateFinancialTotals = (
 
   if (adjustments) {
     // Calculate final totals with adjustments
-    const subtotal = totals.estimate;
+    const subtotal = totals.estimate + (adjustments.addToSubtotal || 0);
     const profitAmount = subtotal * (adjustments.profit / 100);
     const commissionAmount = subtotal * (adjustments.commission / 100);
-    const discountAmount = (subtotal + profitAmount + commissionAmount) * (adjustments.discount / 100);
+    const discountAmount =
+      (subtotal + profitAmount + commissionAmount) *
+      (adjustments.discount / 100);
     // Round up to nearest 5
     const adjustedEstimate =
       Math.ceil(
         (subtotal + profitAmount + commissionAmount - discountAmount) / 5
       ) *
-      5 *
-      adjustments.quantity;
+        5 *
+        adjustments.quantity +
+      (adjustments.addToTotal || 0);
+
+    const adjustedActual =
+      totals.actual + commissionAmount * adjustments.quantity;
+    const commissionTotal = commissionAmount * adjustments.quantity;
 
     return {
       subtotal,
       total: adjustedEstimate,
-      actual: totals.actual,
+      actual: adjustedActual,
+      adjustments: [
+        [
+          "addToSubtotal",
+          {
+            name: "Adjust Subtotal",
+            estimate: adjustments.addToSubtotal || 0,
+            actual_cost: 0,
+          },
+        ],
+        [
+          "commission",
+          {
+            name: "commission",
+            estimate: commissionTotal,
+            actual_cost: commissionTotal,
+          },
+        ],
+        [
+          "profit",
+          {
+            name: "profit",
+            estimate: profitAmount,
+            actual_cost: 0,
+          },
+        ],
+        [
+          "discount",
+          {
+            name: "discount",
+            estimate: discountAmount,
+            actual_cost: discountAmount,
+          },
+        ],
+        [
+          "addToTotal",
+          {
+            name: "Adjust Total",
+            estimate: adjustments.addToTotal || 0,
+            actual_cost: 0,
+          },
+        ],
+      ],
     };
   }
 
