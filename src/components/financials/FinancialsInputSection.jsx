@@ -245,7 +245,7 @@ const FinancialsInputSection = ({
     const newRow = {
       id: uuidv4(),
       invoice: "",
-      cost: 0,
+      cost: "",
     };
     const updatedRows = [...localInputRows, newRow];
     handleUpdateRows(updatedRows);
@@ -291,18 +291,20 @@ const FinancialsInputSection = ({
   };
 
   const handleCostBlur = (rowId, value) => {
-    let numValue = 0;
-    
-    if (value.trim() !== "") {
+    let numValue;
+
+    if (value.trim() === "") {
+      numValue = ""; // preserve empty
+    } else {
       // First try to evaluate as a math expression
       const evaluatedValue = safeEvaluate(value);
-      
+
       if (evaluatedValue !== null) {
         numValue = formatNumberValue(evaluatedValue);
       } else {
         // Fall back to regular parsing if evaluation fails
         const parsed = parseFloat(value);
-        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : 0;
+        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : "";
       }
     }
 
@@ -311,18 +313,18 @@ const FinancialsInputSection = ({
       if (row.id === rowId) {
         return {
           ...row,
-          cost: numValue,
+          cost: numValue === "" ? null : numValue, // store null for empty
         };
       }
       return row;
     });
-    
+
     // Update the input value to show the calculated result
     setInputValues((prev) => ({
       ...prev,
-      [`${rowId}-cost`]: numValue.toString(),
+      [`${rowId}-cost`]: numValue === "" ? "" : numValue.toString(),
     }));
-    
+
     handleUpdateRows(updatedRows);
     onUpdate({
       estimate,
@@ -354,14 +356,14 @@ const FinancialsInputSection = ({
       // For non-hours sections
       const updatedRows = localInputRows.filter((row) => row.id !== rowId);
       handleUpdateRows(updatedRows);
-      
+
       // Also clean up the input values for the deleted row
       setInputValues((prev) => {
         const newValues = { ...prev };
         delete newValues[`${rowId}-cost`];
         return newValues;
       });
-      
+
       onUpdate({ inputRows: updatedRows });
     }
   };
