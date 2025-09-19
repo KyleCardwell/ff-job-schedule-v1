@@ -176,7 +176,8 @@ const GeneratePdfButton = ({
       const taskBreakdowns = [];
 
       projectFinancials.forEach((task) => {
-        if (!task.financial_data || !services?.length) return;
+        // Skip tasks with no financial data, no services, or null adjustments
+        if (!task.financial_data || !services?.length || task.adjustments === null) return;
 
         const taskSections = Object.entries(task.financial_data).map(
           ([id, section]) => {
