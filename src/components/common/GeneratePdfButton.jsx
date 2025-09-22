@@ -75,12 +75,12 @@ const GeneratePdfButton = ({
               alignment: "left",
               width: "*",
             },
-            {
-              text: `Report Date: ${today}`,
-              alignment: "right",
-              width: "auto",
-              margin: [0, 10, 0, 0],
-            },
+            // {
+            //   text: `Report Date: ${today}`,
+            //   alignment: "right",
+            //   width: "auto",
+            //   margin: [0, 10, 0, 0],
+            // },
           ],
           margin: [0, 0, 0, 10],
         },
@@ -527,12 +527,13 @@ const GeneratePdfButton = ({
       content.push(...taskBreakdowns);
 
       const docDefinition = {
+        pageSize: "Letter",
         content: content,
         footer: (currentPage, pageCount) => {
           return {
-            text: `Page ${currentPage} of ${pageCount}`,
+            text: `Report Date: ${today}           Page ${currentPage} of ${pageCount}`,
             alignment: "right",
-            margin: [0, 10, 20, 0],
+            margin: [0, 10, 40, 0],
           };
         },
         styles: {
