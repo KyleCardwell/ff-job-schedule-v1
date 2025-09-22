@@ -3,10 +3,10 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 import React, { useEffect, useCallback, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-	BrowserRouter as Router,
-	Route,
-	Routes,
-	Navigate,
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
 } from "react-router-dom";
 import GridLoader from "react-spinners/GridLoader";
 
@@ -31,309 +31,315 @@ import { defineHolidays } from "./redux/actions/holidays.js";
 import { fetchProjects } from "./redux/actions/projects";
 import { fetchServices } from "./redux/actions/services.js";
 import {
-	fetchTeamMemberData,
-	fetchTeamMemberRole,
+  fetchTeamMemberData,
+  fetchTeamMemberRole,
 } from "./redux/actions/teamMembers.js";
 import { Actions } from "./redux/actions.js";
 import {
-	setSession,
-	clearAuth,
-	setUserTeam,
-	setLoading,
+  setSession,
+  clearAuth,
+  setUserTeam,
+  setLoading,
 } from "./redux/authSlice";
 import store from "./redux/store";
 import { PATHS } from "./utils/constants.js";
 import { supabase } from "./utils/supabase";
 
 const authContainerStyle = {
-	maxWidth: "400px",
-	margin: "100px auto",
-	padding: "20px",
-	boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-	borderRadius: "8px",
+  maxWidth: "400px",
+  margin: "100px auto",
+  padding: "20px",
+  boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+  borderRadius: "8px",
 };
 
 const AppContent = () => {
-	const dispatch = useDispatch();
-	const {
-		session,
-		loading: authLoading,
-		teamId,
-	} = useSelector((state) => state.auth);
-	const { loading: chartLoading } = useSelector((state) => state.chartData);
-	const { loading: configLoading, company_name } = useSelector((state) => state.chartConfig);
-	const { loading: buildersLoading } = useSelector((state) => state.builders);
-	const initialFetchDone = useRef(false);
-	const lastAuthFetch = useRef(null);
-	const [isOpen, setIsOpen] = useState(false);
+  const dispatch = useDispatch();
+  const {
+    session,
+    loading: authLoading,
+    teamId,
+  } = useSelector((state) => state.auth);
+  const { loading: chartLoading } = useSelector((state) => state.chartData);
+  const { loading: configLoading, company_name } = useSelector(
+    (state) => state.chartConfig
+  );
+  const { loading: buildersLoading } = useSelector((state) => state.builders);
+  const { loading: featureTogglesLoading } = useSelector(
+    (state) => state.featureToggles
+  );
+  const initialFetchDone = useRef(false);
+  const lastAuthFetch = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
 
-	useEffect(() => {
-		if (company_name) {
-			document.title = `${company_name} Schedule`;
-		}
-	}, [company_name]);
+  useEffect(() => {
+    if (company_name) {
+      document.title = `${company_name} Schedule`;
+    }
+  }, [company_name]);
 
-	const fetchUserData = useCallback(
-		async (session) => {
-			if (!session) {
-				dispatch(clearAuth());
-				return;
-			}
+  const fetchUserData = useCallback(
+    async (session) => {
+      if (!session) {
+        dispatch(clearAuth());
+        return;
+      }
 
-			// If the user hasn't changed, don't re-fetch user data
-			const state = store.getState();
-			if (state.auth.session?.user?.id === session.user.id) {
-				return;
-			}
+      // If the user hasn't changed, don't re-fetch user data
+      const state = store.getState();
+      if (state.auth.session?.user?.id === session.user.id) {
+        return;
+      }
 
-			// Debounce auth fetches by 1 second
-			const now = Date.now();
-			if (lastAuthFetch.current && now - lastAuthFetch.current < 1000) {
-				return;
-			}
-			lastAuthFetch.current = now;
+      // Debounce auth fetches by 1 second
+      const now = Date.now();
+      if (lastAuthFetch.current && now - lastAuthFetch.current < 1000) {
+        return;
+      }
+      lastAuthFetch.current = now;
 
-			try {
-				dispatch(setLoading(true));
+      try {
+        dispatch(setLoading(true));
 
-				const { teamMemberData, error: teamMemberError } =
-					await fetchTeamMemberData(dispatch, session.user.id);
+        const { teamMemberData, error: teamMemberError } =
+          await fetchTeamMemberData(dispatch, session.user.id);
 
-				// If user not found in team_members, still set session but no team
-				if (teamMemberError && teamMemberError.code === "PGRST116") {
-					dispatch(setSession(session));
-					return;
-				}
+        // If user not found in team_members, still set session but no team
+        if (teamMemberError && teamMemberError.code === "PGRST116") {
+          dispatch(setSession(session));
+          return;
+        }
 
-				const roleData = await fetchTeamMemberRole(
-					dispatch,
-					teamMemberData.role_id
-				);
+        const roleData = await fetchTeamMemberRole(
+          dispatch,
+          teamMemberData.role_id
+        );
 
-				dispatch(
-					setUserTeam({
-						teamId: teamMemberData.team_id,
-						teamName: teamMemberData.team_name,
-						roleId: teamMemberData.role_id,
-						permissions: roleData,
-						customPermissions: teamMemberData.custom_permissions,
-					})
-				);
+        dispatch(
+          setUserTeam({
+            teamId: teamMemberData.team_id,
+            teamName: teamMemberData.team_name,
+            roleId: teamMemberData.role_id,
+            permissions: roleData,
+            customPermissions: teamMemberData.custom_permissions,
+          })
+        );
 
-				dispatch(setSession(session));
-			} catch (error) {
-				console.error("Error fetching user data:", error);
-				dispatch(clearAuth());
-			} finally {
-				dispatch(setLoading(false));
-			}
-		},
-		[dispatch]
-	);
+        dispatch(setSession(session));
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        dispatch(clearAuth());
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
 
-	useEffect(() => {
-		let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-		// Get initial session
-		supabase.auth.getSession().then(({ data: { session } }) => {
-			if (mounted) {
-				fetchUserData(session);
-			}
-		});
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        fetchUserData(session);
+      }
+    });
 
-		// Listen for auth changes
-		const {
-			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, session) => {
-			if (mounted) {
-				fetchUserData(session);
-			}
-		});
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        fetchUserData(session);
+      }
+    });
 
-		return () => {
-			mounted = false;
-			subscription.unsubscribe();
-		};
-	}, [fetchUserData]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchUserData]);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			if (session && teamId && !initialFetchDone.current) {
-				try {
-					await dispatch(fetchFeatureToggles()); // Add feature toggles fetch
-					await dispatch(fetchChartConfig());
-					await dispatch(fetchEmployees());
-					await dispatch(fetchServices(teamId));
-					await dispatch(fetchOverheadRate());
+  useEffect(() => {
+    const fetchData = async () => {
+      // Only run if we have a session and haven't fetched before.
+      if (!session || initialFetchDone.current) return;
 
-					// Get first employee after employees are loaded
-					const state = store.getState();
-					const employees = state.builders.employees;
-					if (employees?.length > 0) {
-						// await dispatch(fetchProjects(employees[0].employee_id));
+      try {
+        // Mark that we are starting the fetch immediately.
+        initialFetchDone.current = true;
 
-						// After all data is loaded, we can create the holiday map
-						const currentState = store.getState();
-						const { chartStartDate, chartEndDate } = currentState.chartData;
-						const { standardHolidays, customHolidays } = currentState.holidays;
+        // Fetch all non-team-dependent data.
+        await dispatch(fetchFeatureToggles());
+        await dispatch(fetchChartConfig());
+        await dispatch(fetchEmployees());
 
-						if (
-							chartStartDate &&
-							chartEndDate &&
-							standardHolidays &&
-							customHolidays
-						) {
-							const holidayMap = defineHolidays(
-								chartStartDate,
-								chartEndDate,
-								standardHolidays,
-								customHolidays
-							);
-							// You can either dispatch this to store or use it directly
-							dispatch({
-								type: Actions.holidays.SET_HOLIDAY_MAP,
-								payload: holidayMap,
-							});
-						}
-					}
+        // If a teamId exists, fetch team-dependent data.
+        await dispatch(fetchServices());
+        await dispatch(fetchOverheadRate());
 
-					initialFetchDone.current = true;
-				} catch (error) {
-					console.error("Error fetching data:", error);
-				}
-			}
-		};
+        // After all data is loaded, create the holiday map.
+        const currentState = store.getState();
+        const { chartStartDate, chartEndDate } = currentState.chartData;
+        const { standardHolidays, customHolidays } = currentState.holidays;
 
-		fetchData();
-	}, [session, teamId, dispatch]);
+        if (
+          chartStartDate &&
+          chartEndDate &&
+          standardHolidays &&
+          customHolidays
+        ) {
+          const holidayMap = defineHolidays(
+            chartStartDate,
+            chartEndDate,
+            standardHolidays,
+            customHolidays
+          );
+          dispatch({
+            type: Actions.holidays.SET_HOLIDAY_MAP,
+            payload: holidayMap,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+        // In case of an error, we should probably allow the app to continue.
+        initialFetchDone.current = true;
+      }
+    };
 
-	useEffect(() => {
-		setIsOpen(false);
-	}, [session]);
+    fetchData();
+  }, [session, dispatch]); // Only depend on session and dispatch.
 
-	const isLoading =
-		authLoading ||
-		(!initialFetchDone.current &&
-			(chartLoading || configLoading || buildersLoading));
+  useEffect(() => {
+    setIsOpen(false);
+  }, [session]);
 
-	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center h-screen">
-				<div className="text-center">
-					<GridLoader color="#4F46E5" />
-					<p className="mt-4 text-gray-600">Loading Job Schedule...</p>
-				</div>
-			</div>
-		);
-	}
+  const isLoading =
+    authLoading ||
+    !initialFetchDone.current ||
+    configLoading ||
+    buildersLoading ||
+    featureTogglesLoading;
 
-	if (!session) {
-		return (
-			<div style={authContainerStyle}>
-				<Auth
-					supabaseClient={supabase}
-					appearance={{ theme: ThemeSupa }}
-					providers={[]}
-				/>
-			</div>
-		);
-	}
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <GridLoader color="#4F46E5" />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-	// Show TeamJoin if user is logged in but has no team
-	if (!teamId) {
-		return (
-			<Router>
-				<TeamJoin />
-			</Router>
-		);
-	}
+  if (!session) {
+    return (
+      <div style={authContainerStyle}>
+        <Auth
+          supabaseClient={supabase}
+          appearance={{ theme: ThemeSupa }}
+          providers={[]}
+        />
+      </div>
+    );
+  }
 
-	return (
-		<Router>
-			<div className="App min-h-screen bg-gray-50">
-				<ErrorBoundary>
-					<Header onMenuClick={() => setIsOpen(!isOpen)} isMenuOpen={isOpen} />
-					<main className="pt-[50px] flex-1 h-screen">
-						<Routes>
-							<Route path={PATHS.HOME} element={<ChartContainer />} />
-							<Route
-								path={`${PATHS.MANAGE}/*`}
-								element={
-									<ProtectedRoute>
-										<AdminDashboard />
-									</ProtectedRoute>
-								}
-							/>
-							<Route path={PATHS.ESTIMATES}>
-								<Route
-									index
-									element={
-										<ProtectedRoute>
-											<EstimateDashboard />
-										</ProtectedRoute>
-									}
-								/>
-								<Route
-									path={PATHS.IN_PROGRESS_ESTIMATES}
-									element={
-										<ProtectedRoute>
-											<InProgressEstimates />
-										</ProtectedRoute>
-									}
-								/>
-								<Route
-									path={PATHS.NEW_ESTIMATE}
-									element={
-										<ProtectedRoute>
-											<EstimateLayout />
-										</ProtectedRoute>
-									}
-								/>
-								<Route
-									path={PATHS.IN_PROGRESS_ESTIMATES + "/:estimateId"}
-									element={
-										<ProtectedRoute>
-											<EstimateLayout />
-										</ProtectedRoute>
-									}
-								/>
-							</Route>
-							<Route
-								path={PATHS.COMPLETED}
-								element={<CompletedJobsContainer />}
-							/>
-							<Route
-								path={PATHS.COMPLETED_PROJECT}
-								element={
-									<ProtectedRoute>
-										<CompletedProjectView />
-									</ProtectedRoute>
-								}
-							/>
-							<Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
-						</Routes>
-					</main>
-					<Navigation isOpen={isOpen} onClose={() => setIsOpen(false)} />
-				</ErrorBoundary>
-			</div>
-		</Router>
-	);
+  // Show TeamJoin if user is logged in but has no team
+  if (!teamId) {
+    return (
+      <Router>
+        <TeamJoin />
+      </Router>
+    );
+  }
+
+  return (
+    <Router>
+      <div className="App min-h-screen bg-gray-50">
+        <ErrorBoundary>
+          <Header onMenuClick={() => setIsOpen(!isOpen)} isMenuOpen={isOpen} />
+          <main className="pt-[50px] flex-1 h-screen">
+            <Routes>
+              <Route path={PATHS.HOME} element={<ChartContainer />} />
+              <Route
+                path={`${PATHS.MANAGE}/*`}
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path={PATHS.ESTIMATES}>
+                <Route
+                  index
+                  element={
+                    <ProtectedRoute>
+                      <EstimateDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={PATHS.IN_PROGRESS_ESTIMATES}
+                  element={
+                    <ProtectedRoute>
+                      <InProgressEstimates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={PATHS.NEW_ESTIMATE}
+                  element={
+                    <ProtectedRoute>
+                      <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={PATHS.IN_PROGRESS_ESTIMATES + "/:estimateId"}
+                  element={
+                    <ProtectedRoute>
+                      <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
+              <Route
+                path={PATHS.COMPLETED}
+                element={<CompletedJobsContainer />}
+              />
+              <Route
+                path={PATHS.COMPLETED_PROJECT}
+                element={
+                  <ProtectedRoute>
+                    <CompletedProjectView />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
+            </Routes>
+          </main>
+          <Navigation isOpen={isOpen} onClose={() => setIsOpen(false)} />
+        </ErrorBoundary>
+      </div>
+    </Router>
+  );
 };
 
 const App = () => {
-	const isDevelopment = import.meta.env.DEV;
-	const urlParams = new URLSearchParams(window.location.search);
-	const useMockAuth = isDevelopment && urlParams.get("mock") === "true";
+  const isDevelopment = import.meta.env.DEV;
+  const urlParams = new URLSearchParams(window.location.search);
+  const useMockAuth = isDevelopment && urlParams.get("mock") === "true";
 
-	if (useMockAuth) {
-		return (
-			<MockAuth>
-				<AppContent />
-			</MockAuth>
-		);
-	}
+  if (useMockAuth) {
+    return (
+      <MockAuth>
+        <AppContent />
+      </MockAuth>
+    );
+  }
 
-	return <AppContent />;
+  return <AppContent />;
 };
 
 export default App;
