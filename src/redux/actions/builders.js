@@ -1,32 +1,10 @@
 import { supabase } from "../../utils/supabase";
 import { Actions } from "../actions";
 
-export const addBuilder = (name, color, timeOff) => {
-	return {
-		type: Actions.builders.ADD_BUILDER,
-		payload: { name, color, timeOff },
-	};
-};
-
-export const deleteBuilder = (id) => ({
-	type: Actions.builders.DELETE_BUILDER,
-	payload: id,
-});
-
-export const updateBuilder = (builder) => ({
-	type: Actions.builders.UPDATE_BUILDER,
-	payload: builder,
-});
-
-// Add new action type for setting builders from Supabase
-export const setEmployees = (employees) => ({
-	type: Actions.employees.SET_EMPLOYEES,
-	payload: employees,
-});
-
 // Add fetch function to be called when your app initializes
 export const fetchEmployees = () => async (dispatch) => {
 	try {
+		dispatch({ type: Actions.employees.FETCH_EMPLOYEES_START })
 		const { data, error } = await supabase
 			.from("employees")
 			.select("employee_id, employee_name, employee_color, time_off, employee_type, team_service_id, employee_rate, can_schedule, scheduling_conflicts")
@@ -34,9 +12,10 @@ export const fetchEmployees = () => async (dispatch) => {
 
 		if (error) throw error;
 
-		dispatch(setEmployees(data));
+		dispatch({ type: Actions.employees.FETCH_EMPLOYEES_SUCCESS, payload: data })
 	} catch (error) {
 		console.error("Error fetching employees:", error);
+		dispatch({ type: Actions.employees.FETCH_EMPLOYEES_ERROR })
 	}
 };
 

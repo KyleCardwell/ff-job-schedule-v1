@@ -1,9 +1,10 @@
 import { supabase } from "../../utils/supabase";
 import { Actions } from "../actions";
 
-export const fetchServices = (teamId) => async (dispatch) => {
-  dispatch({ type: Actions.services.FETCH_SERVICES_START });
+export const fetchServices = () => async (dispatch, getState) => {
+  const { teamId } = getState().auth;
   try {
+    dispatch({ type: Actions.services.FETCH_SERVICES_START });
     const { data, error } = await supabase
       .from("team_services_view")
       .select("*")

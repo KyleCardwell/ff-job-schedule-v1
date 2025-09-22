@@ -44,6 +44,8 @@ const ffBuilders = [
 const initialState = {
   builders: [], // Array to store builder objects with id, name, and color
   employees: [],
+  loading: false,
+  error: null,
 };
 
 export const builders = (state = initialState, action) => {
@@ -83,10 +85,26 @@ export const builders = (state = initialState, action) => {
         ),
       };
 
-    case Actions.employees.SET_EMPLOYEES:
+    case Actions.employees.FETCH_EMPLOYEES_START:
+      return {
+        ...state,
+        loading: true,
+        error: null,
+      };
+
+    case Actions.employees.FETCH_EMPLOYEES_SUCCESS:
       return {
         ...state,
         employees: [...action.payload],
+        loading: false,
+        error: null,
+      };
+
+    case Actions.employees.FETCH_EMPLOYEES_ERROR:
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
       };
 
     case Actions.employees.UPDATE_EMPLOYEE:
