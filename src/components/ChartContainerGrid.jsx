@@ -16,7 +16,9 @@ import {
   headerButtonColor,
 } from "../assets/tailwindConstants";
 import { usePermissions } from "../hooks/usePermissions";
+import { defineHolidays } from "../redux/actions/holidays.js";
 import { fetchProjects } from "../redux/actions/projects";
+import { Actions } from "../redux/actions.js";
 import { normalizeDate } from "../utils/dateUtils";
 import { calculateXPosition } from "../utils/helpers";
 
@@ -35,6 +37,7 @@ export const ChartContainer = () => {
   const {
     chartData,
     chartStartDate,
+    chartEndDate,
     earliestStartDate,
     latestStartDate,
     numDays,
@@ -43,7 +46,9 @@ export const ChartContainer = () => {
   const { workday_hours: workdayHours } = useSelector(
     (state) => state.chartConfig
   );
-  const { holidayMap } = useSelector((state) => state.holidays);
+  const { holidayMap, standardHolidays, customHolidays } = useSelector(
+    (state) => state.holidays
+  );
 
   const employees = useSelector((state) => state.builders.employees);
   const defaultEmployeeId = employees[0]?.employee_id;
@@ -62,6 +67,22 @@ export const ChartContainer = () => {
       dispatch(fetchProjects(employees[0].employee_id));
     }
   }, [employees, dispatch]);
+
+  useEffect(() => {
+    // Create the holiday map whenever the date range or holiday lists change.
+    if (chartStartDate && chartEndDate && standardHolidays && customHolidays) {
+      const newHolidayMap = defineHolidays(
+        chartStartDate,
+        chartEndDate,
+        standardHolidays,
+        customHolidays
+      );
+      dispatch({
+        type: Actions.holidays.SET_HOLIDAY_MAP,
+        payload: newHolidayMap,
+      });
+    }
+  }, [dispatch, chartStartDate, chartEndDate, standardHolidays, customHolidays]);
 
   const { activeRoomsData, lastJobsIndex, someTaskAssigned } = useMemo(() => {
     let someTaskAssigned = false;
@@ -694,7 +715,6 @@ export const ChartContainer = () => {
     chartStartDate,
     dayWidth,
     employees,
-    holidayMap,
     isExpanded,
     numDays,
     activeRoomsData,
