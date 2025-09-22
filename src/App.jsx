@@ -27,14 +27,11 @@ import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
 import { fetchFeatureToggles } from "./redux/actions/featureToggles";
 import { fetchOverheadRate } from "./redux/actions/financialsData.js";
-import { defineHolidays } from "./redux/actions/holidays.js";
-import { fetchProjects } from "./redux/actions/projects";
 import { fetchServices } from "./redux/actions/services.js";
 import {
   fetchTeamMemberData,
   fetchTeamMemberRole,
 } from "./redux/actions/teamMembers.js";
-import { Actions } from "./redux/actions.js";
 import {
   setSession,
   clearAuth,
@@ -55,22 +52,18 @@ const authContainerStyle = {
 
 const AppContent = () => {
   const dispatch = useDispatch();
-  const {
-    session,
-    loading: authLoading,
-    teamId,
-  } = useSelector((state) => state.auth);
-  const { loading: chartLoading } = useSelector((state) => state.chartData);
-  const { loading: configLoading, company_name } = useSelector(
+  const { session, teamId } = useSelector((state) => state.auth);
+  const { company_name, loading: configLoading } = useSelector(
     (state) => state.chartConfig
   );
-  const { loading: buildersLoading } = useSelector((state) => state.builders);
   const { loading: featureTogglesLoading } = useSelector(
     (state) => state.featureToggles
   );
-  const initialFetchDone = useRef(false);
-  const lastAuthFetch = useRef(null);
+
+  const [authChecked, setAuthChecked] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const initialFetchDone = useRef(false);
+  const fetchUserDataRef = useRef();
 
   useEffect(() => {
     if (company_name) {
@@ -79,34 +72,26 @@ const AppContent = () => {
   }, [company_name]);
 
   const fetchUserData = useCallback(
-    async (session) => {
-      if (!session) {
+    async (currentSession) => {
+      if (!currentSession) {
         dispatch(clearAuth());
+        initialFetchDone.current = false;
+        setIsOpen(false);
         return;
       }
 
-      // If the user hasn't changed, don't re-fetch user data
       const state = store.getState();
-      if (state.auth.session?.user?.id === session.user.id) {
+      if (state.auth.session?.user?.id === currentSession.user.id) {
         return;
       }
-
-      // Debounce auth fetches by 1 second
-      const now = Date.now();
-      if (lastAuthFetch.current && now - lastAuthFetch.current < 1000) {
-        return;
-      }
-      lastAuthFetch.current = now;
 
       try {
         dispatch(setLoading(true));
-
         const { teamMemberData, error: teamMemberError } =
-          await fetchTeamMemberData(dispatch, session.user.id);
+          await fetchTeamMemberData(dispatch, currentSession.user.id);
 
-        // If user not found in team_members, still set session but no team
         if (teamMemberError && teamMemberError.code === "PGRST116") {
-          dispatch(setSession(session));
+          dispatch(setSession(currentSession));
           return;
         }
 
@@ -124,8 +109,8 @@ const AppContent = () => {
             customPermissions: teamMemberData.custom_permissions,
           })
         );
-
-        dispatch(setSession(session));
+        dispatch(setSession(currentSession));
+        dispatch(fetchFeatureToggles());
       } catch (error) {
         console.error("Error fetching user data:", error);
         dispatch(clearAuth());
@@ -137,21 +122,30 @@ const AppContent = () => {
   );
 
   useEffect(() => {
+    fetchUserDataRef.current = fetchUserData;
+  }, [fetchUserData]);
+
+  useEffect(() => {
     let mounted = true;
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) {
-        fetchUserData(session);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: currentSession } }) => {
+        if (mounted) {
+          fetchUserDataRef.current(currentSession);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setAuthChecked(true);
+        }
+      });
 
-    // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (mounted) {
-        fetchUserData(session);
+        fetchUserDataRef.current(newSession);
       }
     });
 
@@ -159,76 +153,35 @@ const AppContent = () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, [dispatch]);
 
   useEffect(() => {
     const fetchData = async () => {
-      // Only run if we have a session and haven't fetched before.
-      if (!session || initialFetchDone.current) return;
+      if (!session || !teamId || initialFetchDone.current) return;
+
+      initialFetchDone.current = true;
 
       try {
-        // Mark that we are starting the fetch immediately.
-        initialFetchDone.current = true;
-
-        // Fetch all non-team-dependent data.
-        await dispatch(fetchFeatureToggles());
-        await dispatch(fetchChartConfig());
-        await dispatch(fetchEmployees());
-
-        // If a teamId exists, fetch team-dependent data.
-        await dispatch(fetchServices());
-        await dispatch(fetchOverheadRate());
-
-        // After all data is loaded, create the holiday map.
-        const currentState = store.getState();
-        const { chartStartDate, chartEndDate } = currentState.chartData;
-        const { standardHolidays, customHolidays } = currentState.holidays;
-
-        if (
-          chartStartDate &&
-          chartEndDate &&
-          standardHolidays &&
-          customHolidays
-        ) {
-          const holidayMap = defineHolidays(
-            chartStartDate,
-            chartEndDate,
-            standardHolidays,
-            customHolidays
-          );
-          dispatch({
-            type: Actions.holidays.SET_HOLIDAY_MAP,
-            payload: holidayMap,
-          });
-        }
+        await Promise.all([
+          dispatch(fetchChartConfig()),
+          dispatch(fetchEmployees()),
+          dispatch(fetchServices()),
+          dispatch(fetchOverheadRate()),
+        ]);
       } catch (error) {
-        console.error("Error fetching initial data:", error);
-        // In case of an error, we should probably allow the app to continue.
-        initialFetchDone.current = true;
+        console.error("Error fetching initial app data:", error);
+        initialFetchDone.current = false;
       }
     };
 
     fetchData();
-  }, [session, dispatch]); // Only depend on session and dispatch.
+  }, [session, teamId, dispatch]);
 
-  useEffect(() => {
-    setIsOpen(false);
-  }, [session]);
-
-  const isLoading =
-    authLoading ||
-    !initialFetchDone.current ||
-    configLoading ||
-    buildersLoading ||
-    featureTogglesLoading;
-
-  if (isLoading) {
+  // Show a global loader until auth is checked and critical data is loaded.
+  if (!authChecked || featureTogglesLoading || configLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <GridLoader color="#4F46E5" />
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <GridLoader color="#4F46E5" />
       </div>
     );
   }
@@ -245,7 +198,6 @@ const AppContent = () => {
     );
   }
 
-  // Show TeamJoin if user is logged in but has no team
   if (!teamId) {
     return (
       <Router>
@@ -260,6 +212,7 @@ const AppContent = () => {
         <ErrorBoundary>
           <Header onMenuClick={() => setIsOpen(!isOpen)} isMenuOpen={isOpen} />
           <main className="pt-[50px] flex-1 h-screen">
+            <Navigation isOpen={isOpen} onClose={() => setIsOpen(false)} />
             <Routes>
               <Route path={PATHS.HOME} element={<ChartContainer />} />
               <Route
@@ -319,7 +272,6 @@ const AppContent = () => {
               <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
             </Routes>
           </main>
-          <Navigation isOpen={isOpen} onClose={() => setIsOpen(false)} />
         </ErrorBoundary>
       </div>
     </Router>
