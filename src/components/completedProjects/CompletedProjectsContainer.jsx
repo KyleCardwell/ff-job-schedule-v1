@@ -7,6 +7,7 @@ import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
 
 import CompletedProjectCard from "./CompletedProjectCard.jsx";
 import "./CompletedProjectsContainer.css";
+import PdfCompletedListComponent from "./PdfCompletedListComponent.jsx";
 import ProjectSearchFilter from "./ProjectSearchFilter.jsx";
 
 const CompletedProjectsContainer = () => {
@@ -15,7 +16,8 @@ const CompletedProjectsContainer = () => {
     (state) => state.completedProjects
   );
 
-  const [isFinancialsInputModalOpen, setIsFinancialsInputModalOpen] = useState(false);
+  const [isFinancialsInputModalOpen, setIsFinancialsInputModalOpen] =
+    useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
   const handleFilterChange = (filters) => {
@@ -27,7 +29,11 @@ const CompletedProjectsContainer = () => {
   }, [dispatch]);
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-600">Loading completed projects...</div>;
+    return (
+      <div className="text-center py-8 text-gray-600">
+        Loading completed projects...
+      </div>
+    );
   }
 
   if (error) {
@@ -37,7 +43,8 @@ const CompletedProjectsContainer = () => {
   return (
     <div className="flex flex-col h-full pb-6 bg-slate-800">
       {/* Fixed header */}
-      <div className="flex sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full">
+      <PdfCompletedListComponent completedProjects={completedProjects} />
+      <div className="flex sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full items-center">
         <ProjectSearchFilter onFilterChange={handleFilterChange} />
       </div>
 
