@@ -8,7 +8,9 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   }
 
   const sections = Object.entries(task.financial_data);
-  sections.push(...adjustments);
+  if (adjustments?.length > 0) {
+    sections.push(...adjustments);
+  }
 
   return (
     <div className={`${color} pb-5`}>
