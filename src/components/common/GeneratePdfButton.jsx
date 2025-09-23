@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 
-import { buttonClass } from "../../assets/tailwindConstants";
+import { buttonClass, headerButtonClass, headerButtonColor } from "../../assets/tailwindConstants";
 import { calculateFinancialTotals } from "../../utils/helpers";
 
 // Use CDN approach for pdfMake to avoid font loading issues
@@ -177,7 +177,12 @@ const GeneratePdfButton = ({
 
       projectFinancials.forEach((task) => {
         // Skip tasks with no financial data, no services, or null adjustments
-        if (!task.financial_data || !services?.length || task.adjustments === null) return;
+        if (
+          !task.financial_data ||
+          !services?.length ||
+          task.adjustments === null
+        )
+          return;
 
         const taskSections = Object.entries(task.financial_data).map(
           ([id, section]) => {
@@ -572,13 +577,15 @@ const GeneratePdfButton = ({
   };
 
   return (
-    <button
-      onClick={generatePdf}
-      className={`${buttonClass} bg-green-500 print:hidden`}
-      disabled={!project || !projectFinancials?.length || isGenerating}
-    >
-      {isGenerating ? "Generating..." : "Generate PDF"}
-    </button>
+    <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
+      <button
+        onClick={generatePdf}
+        className={`${headerButtonClass} ${headerButtonColor}`}
+        disabled={!project || !projectFinancials?.length || isGenerating}
+      >
+        {isGenerating ? "Generating..." : "Generate PDF"}
+      </button>
+    </div>
   );
 };
 
