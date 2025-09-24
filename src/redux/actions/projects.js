@@ -530,7 +530,7 @@ export const fetchCompletedProjects =
             task_id: task.task_id,
             task_number: task.task_number,
             task_name: task.task_name,
-            costing_complete: task.project_financials.costing_complete,
+            costing_complete: task.project_financials?.costing_complete || null,
           })),
       }));
 
