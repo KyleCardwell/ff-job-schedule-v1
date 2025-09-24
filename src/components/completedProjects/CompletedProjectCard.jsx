@@ -81,9 +81,9 @@ const CompletedProjectCard = ({
         <span>{completedDate}</span>
         <div className="flex items-center justify-center gap-2">
           {costingComplete ? (
-            <FiCheck className="text-green-500" />
+            <FiCheck className="text-green-500" size={24}/>
           ) : (
-            <FiX className="text-red-500" />
+            <FiX className="text-red-500" size={24}/>
           )}
           <span>{costingComplete ? "Complete" : "Incomplete"}</span>
         </div>
@@ -96,7 +96,11 @@ const CompletedProjectCard = ({
           </button>
         </div>
       </div>
-      {isExpanded && (
+      <div
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
         <div className="p-4 bg-gray-100">
           <div className="grid grid-cols-[100px_1fr_150px] gap-px bg-gray-500 border border-gray-500">
             <div className="contents font-bold text-center">
@@ -142,9 +146,9 @@ const CompletedProjectCard = ({
                     className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
                   >
                     {task.costing_complete ? (
-                      <FiCheck className="text-green-500" size={20} />
+                      <FiCheck className="text-green-500" size={24} />
                     ) : (
-                      <FiX className="text-red-500" size={20} />
+                      <FiX className="text-red-500" size={24} />
                     )}
                   </div>
                 </div>
@@ -152,7 +156,7 @@ const CompletedProjectCard = ({
             })}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
