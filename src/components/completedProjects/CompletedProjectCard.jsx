@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
+import { FiCheck, FiX } from "react-icons/fi";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -9,7 +10,6 @@ import {
   fetchProjectFinancials,
   fetchTaskFinancials,
 } from "../../redux/actions/financialsData";
-import { FiCheck, FiX } from "react-icons/fi";
 
 // const categories = ["Busybusy", "Alpha", "Probox", "Doors", "Other"];
 

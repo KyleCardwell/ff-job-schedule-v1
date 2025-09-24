@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
+import { FiCheck, FiX } from "react-icons/fi";
 import { useCSVReader } from "react-papaparse";
 import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
@@ -47,6 +48,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const [modalTotals, setModalTotals] = useState({ estimate: 0, actual: 0 });
   const [isEstimatesOpen, setIsEstimatesOpen] = useState(false);
   const [adjustments, setAdjustments] = useState(DEFAULT_ADJUSTMENTS);
+  const [isTaskCostingComplete, setIsTaskCostingComplete] = useState(false);
 
   useEffect(() => {
     if (!financialSections) {
@@ -124,6 +126,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           estimate: totalEstimate,
           actual_cost: hoursData.actual_cost || 0,
           data: servicesData,
+          completedAt: hoursData.completedAt || null,
         };
       }
 
@@ -142,11 +145,29 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           ...row,
           id: row.id || uuidv4(),
         })),
+        completedAt: sectionData.completedAt || null,
       };
     });
 
     setLocalSections(initialSections);
   }, [financialSections, chartConfig, services]);
+
+  useEffect(() => {
+    const allSectionsComplete = localSections.every((section) => {
+      return section.completedAt;
+    });
+    setIsTaskCostingComplete(allSectionsComplete);
+  }, [localSections]);
+
+  const handleCompletionChange = (sectionId, isChecked) => {
+    setLocalSections((prevSections) =>
+      prevSections.map((section) =>
+        section.id === sectionId
+          ? { ...section, completedAt: isChecked ? new Date().toISOString() : null }
+          : section
+      )
+    );
+  };
 
   const calculateTotals = useMemo(() => {
     return calculateFinancialTotals(localSections, services, adjustments);
@@ -231,7 +252,8 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
         saveProjectFinancials(
           financialSections.financials_id,
           localSections,
-          adjustments
+          adjustments,
+          isTaskCostingComplete
         )
       );
 
@@ -281,8 +303,13 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                     </button>
                   )}
                 </CSVReader>
-                <h2 className="text-lg font-bold w-full text-center">
+                <h2 className="text-lg font-bold w-full text-center flex items-center justify-center gap-2">
                   {`${selectedTask.project_name} - ${selectedTask.task_number} - ${selectedTask.task_name}`}
+                  {isTaskCostingComplete ? (
+                    <FiCheck className="text-green-500" size={24} />
+                  ) : (
+                    <FiX className="text-red-500" size={24} />
+                  )}
                 </h2>
                 <button
                   onClick={() => setIsEstimatesOpen(true)}
@@ -336,6 +363,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                 employees={employees}
                 services={services}
                 onSectionUpdate={handleSectionUpdate}
+                onCompletionChange={handleCompletionChange}
               />
             </div>
 

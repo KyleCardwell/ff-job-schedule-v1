@@ -17,11 +17,11 @@ export const createProjectFinancials = (projectId, tasks) => {
     dispatch(setLoading(true));
     try {
       const { teamId } = getState().auth;
-      
+
       const projectFinancialsData = tasks.map((task) => ({
         project_id: projectId,
         task_id: task.task_id,
-        team_id: teamId
+        team_id: teamId,
       }));
 
       const { data, error } = await supabase
@@ -29,8 +29,10 @@ export const createProjectFinancials = (projectId, tasks) => {
         .insert(projectFinancialsData);
 
       if (error) {
-        if (error.code === 'PGRST204') {
-          throw new Error('You do not have permission to create financial records');
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to create financial records"
+          );
         }
         throw error;
       }
@@ -59,8 +61,10 @@ export const fetchTaskFinancials = (taskId, projectId) => {
         .single();
 
       if (error) {
-        if (error.code === 'PGRST204') {
-          throw new Error('You do not have permission to view financial records');
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to view financial records"
+          );
         }
         // If no data exists, create a new row
         if (error.code === "PGRST116") {
@@ -69,14 +73,16 @@ export const fetchTaskFinancials = (taskId, projectId) => {
             .insert({
               task_id: taskId,
               project_id: projectId,
-              team_id: teamId
+              team_id: teamId,
             })
             .select()
             .single();
 
           if (insertError) {
-            if (insertError.code === 'PGRST204') {
-              throw new Error('You do not have permission to create financial records');
+            if (insertError.code === "PGRST204") {
+              throw new Error(
+                "You do not have permission to create financial records"
+              );
             }
             throw insertError;
           }
@@ -106,14 +112,16 @@ export const fetchOverheadRate = () => {
     try {
       const { teamId } = getState().auth;
       const { data: teamData, error: teamError } = await supabase
-      .from('teams')
-      .select('overhead_rate')
-      .eq('team_id', teamId)
-      .single();
+        .from("teams")
+        .select("overhead_rate")
+        .eq("team_id", teamId)
+        .single();
 
       if (teamError) {
-        if (teamError.code === 'PGRST204') {
-          throw new Error('You do not have permission to view financial records');
+        if (teamError.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to view financial records"
+          );
         }
         throw teamError;
       }
@@ -126,9 +134,8 @@ export const fetchOverheadRate = () => {
       dispatch(setError(error.message));
       throw error;
     }
-  }
-}
-
+  };
+};
 
 export const fetchProjectFinancials = (projectId) => {
   return async (dispatch) => {
@@ -141,8 +148,8 @@ export const fetchProjectFinancials = (projectId) => {
         .single();
 
       if (projectError) {
-        if (projectError.code === 'PGRST204') {
-          throw new Error('You do not have permission to view this project');
+        if (projectError.code === "PGRST204") {
+          throw new Error("You do not have permission to view this project");
         }
         if (projectError.code === "PGRST116" || !projectData) {
           dispatch(setError("Project not found"));
@@ -168,11 +175,13 @@ export const fetchProjectFinancials = (projectId) => {
         `
         )
         .eq("project_id", projectId)
-        .order('tasks(task_created_at)', { ascending: true });
+        .order("tasks(task_created_at)", { ascending: true });
 
       if (error) {
-        if (error.code === 'PGRST204') {
-          throw new Error('You do not have permission to view financial records');
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to view financial records"
+          );
         }
         if (error.code === "PGRST116" || data.length < 1) {
           dispatch(setError("Project not found"));
@@ -209,7 +218,12 @@ export const fetchProjectFinancials = (projectId) => {
   };
 };
 
-export const saveProjectFinancials = (financialsId, sections, adjustments) => {
+export const saveProjectFinancials = (
+  financialsId,
+  sections,
+  adjustments,
+  isTaskCostingComplete
+) => {
   return async (dispatch) => {
     try {
       // Create update object directly
@@ -244,6 +258,7 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
             estimate: section.estimate || 0,
             actual_cost: totalActualCost,
             data: processedData,
+            completedAt: section.completedAt || null,
           };
         } else {
           // For non-hours sections
@@ -257,27 +272,37 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
             estimate: section.estimate || 0,
             actual_cost: actualCost,
             data: section.inputRows || [],
+            completedAt: section.completedAt || null,
           };
         }
 
         return acc;
       }, {});
 
+      const costingComplete = isTaskCostingComplete
+        ? new Date().toISOString()
+        : null;
+
       const financialData = {
         financial_data: updateData,
         adjustments: adjustments,
         financials_updated_at: new Date().toISOString(),
-      }
+        costing_complete: costingComplete,
+      };
 
       // Update the project_financials table
       const { data, error } = await supabase
         .from("project_financials")
         .update(financialData)
-        .eq("financials_id", financialsId);
+        .eq("financials_id", financialsId)
+        .select("project_id, task_id, costing_complete")
+        .single();
 
       if (error) {
-        if (error.code === 'PGRST204') {
-          throw new Error('You do not have permission to modify financial records');
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to modify financial records"
+          );
         }
         throw error;
       }
@@ -285,6 +310,11 @@ export const saveProjectFinancials = (financialsId, sections, adjustments) => {
       dispatch({
         type: Actions.financialsData.SAVE_TASK_FINANCIALS_SUCCESS,
         payload: { financials: sections },
+      });
+
+      dispatch({
+        type: Actions.completedProjects.UPDATE_SINGLE_COMPLETED_TASK,
+        payload: data,
       });
 
       return { success: true };
