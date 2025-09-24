@@ -3,7 +3,13 @@ import { useState } from "react";
 
 import FinancialsInputSection from "./FinancialsInputSection.jsx";
 
-const FinancialsAccordion = ({ sections, employees, services, onSectionUpdate }) => {
+const FinancialsAccordion = ({
+  sections,
+  employees,
+  services,
+  onSectionUpdate,
+  onCompletionChange,
+}) => {
   const [openSectionId, setOpenSectionId] = useState(null);
 
   const handleToggleSection = (sectionId) => {
@@ -22,6 +28,7 @@ const FinancialsAccordion = ({ sections, employees, services, onSectionUpdate })
           isExpanded={openSectionId === section.id}
           onToggle={() => handleToggleSection(section.id)}
           onUpdate={(updates) => onSectionUpdate(section.id, updates)}
+          onCompletionChange={onCompletionChange}
         />
       ))}
     </div>
@@ -33,6 +40,7 @@ FinancialsAccordion.propTypes = {
   employees: PropTypes.array,
   onSectionUpdate: PropTypes.func,
   services: PropTypes.array,
+  onCompletionChange: PropTypes.func,
 };
 
 export default FinancialsAccordion;

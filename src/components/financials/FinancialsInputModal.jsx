@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
+import { FiCheck, FiX } from "react-icons/fi";
 import { useCSVReader } from "react-papaparse";
 import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
@@ -47,6 +48,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const [modalTotals, setModalTotals] = useState({ estimate: 0, actual: 0 });
   const [isEstimatesOpen, setIsEstimatesOpen] = useState(false);
   const [adjustments, setAdjustments] = useState(DEFAULT_ADJUSTMENTS);
+  const [isTaskCostingComplete, setIsTaskCostingComplete] = useState(false);
 
   useEffect(() => {
     if (!financialSections) {
@@ -115,6 +117,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           const rate = type.rateOverride ?? service?.hourly_rate ?? 0;
           const hourlyEstimate = (type.estimate || 0) * rate;
           const fixedAmount = type.fixedAmount || 0;
+
           return sum + hourlyEstimate + fixedAmount;
         }, 0);
 
@@ -124,6 +127,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           estimate: totalEstimate,
           actual_cost: hoursData.actual_cost || 0,
           data: servicesData,
+          completedAt: hoursData.completedAt || null,
         };
       }
 
@@ -142,11 +146,39 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           ...row,
           id: row.id || uuidv4(),
         })),
+        completedAt: sectionData.completedAt || null,
       };
     });
 
     setLocalSections(initialSections);
   }, [financialSections, chartConfig, services]);
+
+  useEffect(() => {
+    const allSectionsComplete = localSections.every((section) => {
+      return section.completedAt;
+    });
+    setIsTaskCostingComplete(allSectionsComplete);
+  }, [localSections]);
+
+  const handleSelectAll = (isChecked) => {
+    const newTimestamp = isChecked ? new Date().toISOString() : null;
+    setLocalSections((prevSections) =>
+      prevSections.map((section) => ({ ...section, completedAt: newTimestamp }))
+    );
+  };
+
+  const handleCompletionChange = (sectionId, isChecked) => {
+    setLocalSections((prevSections) =>
+      prevSections.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              completedAt: isChecked ? new Date().toISOString() : null,
+            }
+          : section
+      )
+    );
+  };
 
   const calculateTotals = useMemo(() => {
     return calculateFinancialTotals(localSections, services, adjustments);
@@ -231,7 +263,8 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
         saveProjectFinancials(
           financialSections.financials_id,
           localSections,
-          adjustments
+          adjustments,
+          isTaskCostingComplete
         )
       );
 
@@ -281,8 +314,13 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                     </button>
                   )}
                 </CSVReader>
-                <h2 className="text-lg font-bold w-full text-center">
+                <h2 className="text-lg font-bold w-full text-center flex items-center justify-center gap-2">
                   {`${selectedTask.project_name} - ${selectedTask.task_number} - ${selectedTask.task_name}`}
+                  {isTaskCostingComplete ? (
+                    <FiCheck className="text-green-500" size={24} />
+                  ) : (
+                    <FiX className="text-red-500" size={24} />
+                  )}
                 </h2>
                 <button
                   onClick={() => setIsEstimatesOpen(true)}
@@ -292,39 +330,56 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                 </button>
               </div>
 
-              <div className="flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Estimate:</span>
-                    <span className="font-bold">
-                      ${formatCurrency(modalTotals.estimate)}
-                    </span>
-                  </div>
-                  {canViewProfitLoss && (
+              <div className="flex gap-4">
+                <div className="flex-1 flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-6 text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-600">Actual:</span>
+                      <span className="font-medium text-gray-600">
+                        Estimate:
+                      </span>
                       <span className="font-bold">
-                        ${formatCurrency(modalTotals.actual)}
+                        ${formatCurrency(modalTotals.estimate)}
                       </span>
                     </div>
-                  )}
-                  {canViewProfitLoss && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-600">Profit:</span>
-                      <span
-                        className={`font-bold ${
-                          modalTotals.estimate - modalTotals.actual >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        $
-                        {formatCurrency(
-                          modalTotals.estimate - modalTotals.actual
-                        )}
-                      </span>
-                    </div>
-                  )}
+                    {canViewProfitLoss && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-600">
+                          Actual:
+                        </span>
+                        <span className="font-bold">
+                          ${formatCurrency(modalTotals.actual)}
+                        </span>
+                      </div>
+                    )}
+                    {canViewProfitLoss && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-600">
+                          Profit:
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            modalTotals.estimate - modalTotals.actual >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          $
+                          {formatCurrency(
+                            modalTotals.estimate - modalTotals.actual
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-center w-10">
+                  <div>Done</div>
+                  <input
+                    type="checkbox"
+                    checked={isTaskCostingComplete}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="h-6 w-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  />
                 </div>
               </div>
             </div>
@@ -336,6 +391,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                 employees={employees}
                 services={services}
                 onSectionUpdate={handleSectionUpdate}
+                onCompletionChange={handleCompletionChange}
               />
             </div>
 

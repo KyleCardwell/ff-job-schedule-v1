@@ -91,7 +91,7 @@ export const fetchProjectsOptions = {
 
 export const fetchCompletedProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration)",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, project_financials (costing_complete))",
 };
 
 export const fetchProjects =
@@ -530,6 +530,7 @@ export const fetchCompletedProjects =
             task_id: task.task_id,
             task_number: task.task_number,
             task_name: task.task_name,
+            costing_complete: task.project_financials?.costing_complete || null,
           })),
       }));
 

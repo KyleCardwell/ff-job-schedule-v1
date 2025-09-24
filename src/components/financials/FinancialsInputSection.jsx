@@ -20,6 +20,8 @@ const FinancialsInputSection = ({
   sectionId,
   employees = [],
   services = [],
+  completedAt,
+  onCompletionChange,
 }) => {
   const { overheadRate } = useSelector((state) => state.financialsData);
   const [localInputRows, setLocalInputRows] = useState([]);
@@ -432,235 +434,247 @@ const FinancialsInputSection = ({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg mb-4">
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors duration-150 ease-in-out"
-      >
-        <h3 className="text-lg font-medium text-gray-900">{sectionName}</h3>
-        <div className="flex items-center gap-4">
-          <div className="text-sm space-x-4">
-            {isHoursSection ? (
-              <>
-                <span className="">
-                  Est:{" "}
-                  <span className="font-medium">
-                    $
-                    {hoursTotals.estimate.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    <span className="text-gray-500">
-                      ({hoursTotals.totalHours.toFixed(2)} hrs)
-                    </span>
-                  </span>
-                </span>
-                <span className="">
-                  Act:{" "}
-                  <span className="font-medium">
-                    {canViewProfitLoss ? (
-                      <>
-                        $
-                        {hoursTotals.actual.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                      </>
-                    ) : null}
-                    <span className="text-gray-500">
-                      ({hoursTotals.actualHours.toFixed(2)} hrs)
-                    </span>
-                  </span>
-                </span>
-                {canViewProfitLoss && (
-                  <span
-                    className={`${
-                      (hoursTotals.estimate || 0) - (hoursTotals.actual || 0) >=
-                      0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    Δ:{" "}
+    <div className="flex gap-4">
+      <div className="border border-gray-200 rounded-lg mb-4 flex-1">
+        <button
+          onClick={onToggle}
+          className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors duration-150 ease-in-out"
+        >
+          <h3 className="text-lg font-medium text-gray-900">{sectionName}</h3>
+          <div className="flex items-center gap-4">
+            <div className="text-sm space-x-4">
+              {isHoursSection ? (
+                <>
+                  <span className="">
+                    Est:{" "}
                     <span className="font-medium">
                       $
-                      {(
-                        (hoursTotals.estimate || 0) - (hoursTotals.actual || 0)
-                      ).toLocaleString(undefined, {
+                      {hoursTotals.estimate.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
-                      })}
+                      })}{" "}
+                      <span className="text-gray-500">
+                        ({hoursTotals.totalHours.toFixed(2)} hrs)
+                      </span>
                     </span>
                   </span>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="text-sm font-medium">
-                  Est: $
-                  {(estimate || 0).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-                {canViewProfitLoss && (
+                  <span className="">
+                    Act:{" "}
+                    <span className="font-medium">
+                      {canViewProfitLoss ? (
+                        <>
+                          $
+                          {hoursTotals.actual.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                        </>
+                      ) : null}
+                      <span className="text-gray-500">
+                        ({hoursTotals.actualHours.toFixed(2)} hrs)
+                      </span>
+                    </span>
+                  </span>
+                  {canViewProfitLoss && (
+                    <span
+                      className={`${
+                        (hoursTotals.estimate || 0) -
+                          (hoursTotals.actual || 0) >=
+                        0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      Δ:{" "}
+                      <span className="font-medium">
+                        $
+                        {(
+                          (hoursTotals.estimate || 0) -
+                          (hoursTotals.actual || 0)
+                        ).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
                   <span className="text-sm font-medium">
-                    Act: $
-                    {(rowsTotal || 0).toLocaleString(undefined, {
+                    Est: $
+                    {(estimate || 0).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </span>
-                )}
-                {canViewProfitLoss && (
-                  <span
-                    className={`text-sm font-medium ${
-                      (estimate || 0) - (rowsTotal || 0) >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    Δ: $
-                    {((estimate || 0) - (rowsTotal || 0)).toLocaleString(
-                      undefined,
-                      {
+                  {canViewProfitLoss && (
+                    <span className="text-sm font-medium">
+                      Act: $
+                      {(rowsTotal || 0).toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  )}
+                  {canViewProfitLoss && (
+                    <span
+                      className={`text-sm font-medium ${
+                        (estimate || 0) - (rowsTotal || 0) >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      Δ: $
+                      {((estimate || 0) - (rowsTotal || 0)).toLocaleString(
+                        undefined,
+                        {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }
+                      )}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            <div
+              className={`transform transition-transform duration-200 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            >
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+          </div>
+        </button>
+
+        <div
+          className={`transition-all duration-200 ease-in-out overflow-hidden ${
+            isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="p-4 bg-white">
+            {isHoursSection ? (
+              <div className="space-y-4">
+                {services?.map((service) => {
+                  const serviceData = localData.find(
+                    (d) => d.team_service_id === service.team_service_id
+                  ) || {
+                    team_service_id: service.team_service_id,
+                    service_name: service.service_name,
+                    estimate: 0,
+                    actual_cost: 0,
+                    inputRows: [],
+                  };
+                  return (
+                    <EmployeeTypeAccordion
+                      key={service.team_service_id}
+                      service={service}
+                      employees={employees}
+                      serviceData={serviceData}
+                      onAddRow={handleAddHoursRow}
+                      onInputChange={(rowId, field, value) =>
+                        handleHoursInputChange(
+                          rowId,
+                          field,
+                          value,
+                          service.team_service_id
+                        )
                       }
-                    )}
-                  </span>
+                      onBlur={handleBlur}
+                      isExpanded={expandedServiceId === service.team_service_id}
+                      onToggle={handleToggleService}
+                      onDeleteRow={(rowId) =>
+                        handleDeleteRow(rowId, service.team_service_id)
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {localInputRows.length > 0 && (
+                  <div className="grid grid-cols-[1fr,1fr,36px] gap-4 font-medium text-sm text-gray-600 text-left mb-1">
+                    <span>Invoice</span>
+                    <span>Cost</span>
+                    <span></span>
+                  </div>
                 )}
+                <div className="space-y-2">
+                  {localInputRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="grid grid-cols-[1fr,1fr,36px] gap-4 items-center"
+                    >
+                      <input
+                        ref={(el) => (inputRefs.current[row.id] = el)}
+                        type="text"
+                        value={row.invoice || ""}
+                        onChange={(e) =>
+                          handleInputChange(row.id, "invoice", e.target.value)
+                        }
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Invoice"
+                      />
+                      <input
+                        type="text"
+                        value={inputValues[`${row.id}-cost`] ?? ""}
+                        onChange={(e) =>
+                          handleInputChange(row.id, "cost", e.target.value)
+                        }
+                        onBlur={(e) => handleCostBlur(row.id, e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Cost"
+                      />
+                      <button
+                        onClick={() => handleDeleteRow(row.id)}
+                        className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleAddInvoiceRow}
+                  className="w-36 py-2 px-4 mt-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
+                >
+                  Add Row
+                </button>
               </>
             )}
           </div>
-          <div
-            className={`transform transition-transform duration-200 ${
-              isExpanded ? "rotate-180" : ""
-            }`}
-          >
-            <svg
-              className="w-5 h-5 text-gray-500"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </div>
         </div>
-      </button>
-
-      <div
-        className={`transition-all duration-200 ease-in-out overflow-hidden ${
-          isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="p-4 space-y-4 bg-white">
-          {isHoursSection ? (
-            <div className="space-y-4">
-              {services?.map((service) => {
-                const serviceData = localData.find(
-                  (d) => d.team_service_id === service.team_service_id
-                ) || {
-                  team_service_id: service.team_service_id,
-                  service_name: service.service_name,
-                  estimate: 0,
-                  actual_cost: 0,
-                  inputRows: [],
-                };
-                return (
-                  <EmployeeTypeAccordion
-                    key={service.team_service_id}
-                    service={service}
-                    employees={employees}
-                    serviceData={serviceData}
-                    onAddRow={handleAddHoursRow}
-                    onInputChange={(rowId, field, value) =>
-                      handleHoursInputChange(
-                        rowId,
-                        field,
-                        value,
-                        service.team_service_id
-                      )
-                    }
-                    onBlur={handleBlur}
-                    isExpanded={expandedServiceId === service.team_service_id}
-                    onToggle={handleToggleService}
-                    onDeleteRow={(rowId) =>
-                      handleDeleteRow(rowId, service.team_service_id)
-                    }
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <>
-              {localInputRows.length > 0 && (
-                <div className="grid grid-cols-3 gap-4 font-medium text-sm text-gray-600 px-4 mb-2">
-                  <span>Invoice</span>
-                  <span>Cost</span>
-                  <span></span>
-                </div>
-              )}
-              <div className="space-y-2">
-                {localInputRows.map((row) => (
-                  <div
-                    key={row.id}
-                    className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center"
-                  >
-                    <input
-                      ref={(el) => (inputRefs.current[row.id] = el)}
-                      type="text"
-                      value={row.invoice || ""}
-                      onChange={(e) =>
-                        handleInputChange(row.id, "invoice", e.target.value)
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Invoice"
-                    />
-                    <input
-                      type="text"
-                      value={inputValues[`${row.id}-cost`] ?? ""}
-                      onChange={(e) =>
-                        handleInputChange(row.id, "cost", e.target.value)
-                      }
-                      onBlur={(e) => handleCostBlur(row.id, e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Cost"
-                    />
-                    <button
-                      onClick={() => handleDeleteRow(row.id)}
-                      className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={handleAddInvoiceRow}
-                className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
-              >
-                Add Row
-              </button>
-            </>
-          )}
-        </div>
+      </div>
+      <div className="w-10">
+        <input
+          type="checkbox"
+          checked={!!completedAt}
+          onChange={(e) => onCompletionChange(sectionId, e.target.checked)}
+          className="h-6 w-6 mt-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+        />
       </div>
     </div>
   );
@@ -676,6 +690,8 @@ FinancialsInputSection.propTypes = {
   sectionId: PropTypes.string,
   employees: PropTypes.array,
   services: PropTypes.array,
+  completedAt: PropTypes.string,
+  onCompletionChange: PropTypes.func,
 };
 
 export default FinancialsInputSection;
