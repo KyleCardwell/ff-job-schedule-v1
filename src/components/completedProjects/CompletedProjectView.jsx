@@ -4,10 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { buttonClass } from "../../assets/tailwindConstants";
-import {
-  fetchProjectFinancials,
-  fetchTaskFinancials,
-} from "../../redux/actions/financialsData";
+import { fetchProjectFinancials } from "../../redux/actions/financialsData";
 import { calculateFinancialTotals } from "../../utils/helpers";
 import GeneratePdfButton from "../common/GeneratePdfButton.jsx";
 import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
@@ -30,7 +27,6 @@ const CompletedProjectView = () => {
   } = useSelector((state) => state.financialsData);
   const project = projectFinancials?.find((p) => p.project_id === +projectId);
 
-  const chartConfig = useSelector((state) => state.chartConfig);
   const services = useSelector((state) => state.services?.allServices);
 
   useEffect(() => {
@@ -44,22 +40,6 @@ const CompletedProjectView = () => {
       navigate("/completed");
     }
   }, [projectId, projectFinancialsError, dispatch, navigate]);
-
-  const handleEditClick = (taskId, taskName, taskNumber) => {
-    dispatch(fetchTaskFinancials(taskId, projectId))
-      .then((data) => {
-        setSelectedTask({
-          task_id: taskId,
-          task_name: taskName,
-          task_number: taskNumber,
-          project_name: project?.project_name,
-        });
-        setIsFinancialsModalOpen(true);
-      })
-      .catch((error) => {
-        console.error("Error fetching financial data:", error);
-      });
-  };
 
   // Calculate project totals
   const projectTotals = useMemo(() => {
@@ -89,11 +69,7 @@ const CompletedProjectView = () => {
 
         const taskTotals = calculateFinancialTotals(taskSections, services);
         const adjustedTotals = task.adjustments
-          ? calculateFinancialTotals(
-              taskSections,
-              services,
-              task.adjustments
-            )
+          ? calculateFinancialTotals(taskSections, services, task.adjustments)
           : taskTotals;
 
         return {
@@ -334,19 +310,6 @@ const CompletedProjectView = () => {
                       ></path>
                     </svg>
                     <span>{task.task_name}</span>
-                    {/* <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditClick(
-                          task.task_id,
-                          task.task_name,
-                          task.task_number
-                        );
-                      }}
-                      className="absolute left-0 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 opacity-0 group-hover:opacity-100"
-                    >
-                      Edit
-                    </button> */}
                   </div>
                   <div className="text-right">
                     ${" "}

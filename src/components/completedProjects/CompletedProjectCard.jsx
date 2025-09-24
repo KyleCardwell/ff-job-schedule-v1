@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import { buttonClass } from "../../assets/tailwindConstants";
 import { usePermissions } from "../../hooks/usePermissions";
+import { Actions } from "../../redux/actions";
 import {
   fetchProjectFinancials,
   fetchTaskFinancials,
@@ -31,18 +32,17 @@ const CompletedProjectCard = ({
 
   const costingComplete = project.tasks.every((task) => task.costing_complete);
 
-  const handleEditClick = async (taskId, taskName, taskNumber) => {
+  const handleEditClick = (taskId, taskName, taskNumber) => {
     try {
-      const data = await dispatch(
-        fetchTaskFinancials(taskId, project.project_id)
-      );
+      dispatch({ type: Actions.financialsData.CLEAR_TASK_FINANCIALS });
+      setIsFinancialsInputModalOpen(true);
+      dispatch(fetchTaskFinancials(taskId, project.project_id));
       setSelectedTask({
         task_id: taskId,
         task_name: taskName,
         task_number: taskNumber,
         project_name: project.project_name,
       });
-      setIsFinancialsInputModalOpen(true);
     } catch (error) {
       console.error("Error fetching financial data:", error);
     }
