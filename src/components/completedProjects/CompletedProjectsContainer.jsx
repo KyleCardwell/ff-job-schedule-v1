@@ -44,18 +44,26 @@ const CompletedProjectsContainer = () => {
     <div className="flex flex-col h-full pb-6 bg-slate-800">
       {/* Fixed header */}
       <PdfCompletedListComponent completedProjects={completedProjects} />
-      <div className="flex sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full items-center">
+      {/* Sticky Header Container */}
+      <div className="sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full">
         <ProjectSearchFilter onFilterChange={handleFilterChange} />
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-gray-200 border-b-2 border-gray-300 mt-4 text-center">
+          <span className="p-2 font-bold">Project</span>
+          <span className="p-2 font-bold">Shop Completed</span>
+          <span className="p-2 font-bold">Costing Complete</span>
+          <span className="p-2 font-bold"></span>
+        </div>
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6 space-y-6 max-w-[1200px] mx-auto w-full">
-        {completedProjects?.map((project) => (
+      <div className="flex-1 overflow-y-auto px-6 max-w-[1200px] mx-auto w-full">
+        {completedProjects?.map((project, index) => (
           <CompletedProjectCard
             key={project.project_id}
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
             setSelectedTask={setSelectedTask}
+            bgColor={index % 2 === 0 ? "bg-gray-200 hover:bg-gray-300" : "bg-white hover:bg-gray-300"}
           />
         ))}
       </div>

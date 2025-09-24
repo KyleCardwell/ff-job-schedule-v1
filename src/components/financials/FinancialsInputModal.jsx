@@ -33,15 +33,15 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const { CSVReader } = useCSVReader();
 
   const { employees } = useSelector((state) => state.builders);
-  const financialSections = useSelector(
-    (state) => state?.financialsData?.taskFinancials ?? {}
+  const { taskFinancials:financialSections = {}, loading, errors } = useSelector(
+    (state) => state.financialsData
   );
   const chartConfig = useSelector((state) => state.chartConfig);
   const services = useSelector((state) => state.services?.allServices);
 
   const { canViewProfitLoss } = usePermissions();
 
-  const [errors, setErrors] = useState({});
+  const [errorsState, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [localSections, setLocalSections] = useState([]);
@@ -292,135 +292,146 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
       {isOpen && (
         <div className={modalOverlayClass}>
           <div className={`${modalContainerClass} max-h-[90vh] flex flex-col`}>
-            {isSaving && (
-              <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
+            {loading ? (
+              <div className="flex justify-center items-center h-[744px]">
                 <GridLoader color="maroon" size={15} />
-                <p>Saving...</p>
               </div>
-            )}
+            ) : (
+              <>
+                {isSaving && (
+                  <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
+                    <GridLoader color="maroon" size={15} />
+                    <p>Saving...</p>
+                  </div>
+                )}
 
-            {/* Fixed Header */}
-            <div className="flex-none bg-white px-4 pt-5">
-              <div className="flex justify-between mb-4">
-                <CSVReader onUploadAccepted={handleOnFileLoad}>
-                  {({ getRootProps, acceptedFile }) => (
-                    <button
-                      {...getRootProps()}
-                      className={`${buttonClass} bg-blue-500 hover:bg-blue-700 opacity-50 cursor-not-allowed`}
-                      disabled
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      Upload CSV
-                    </button>
-                  )}
-                </CSVReader>
-                <h2 className="text-lg font-bold w-full text-center flex items-center justify-center gap-2">
-                  {`${selectedTask.project_name} - ${selectedTask.task_number} - ${selectedTask.task_name}`}
-                  {isTaskCostingComplete ? (
-                    <FiCheck className="text-green-500" size={24} />
-                  ) : (
-                    <FiX className="text-red-500" size={24} />
-                  )}
-                </h2>
-                <button
-                  onClick={() => setIsEstimatesOpen(true)}
-                  className={`${buttonClass} bg-green-800`}
-                >
-                  Estimates
-                </button>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex-1 flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-600">
-                        Estimate:
-                      </span>
-                      <span className="font-bold">
-                        ${formatCurrency(modalTotals.estimate)}
-                      </span>
-                    </div>
-                    {canViewProfitLoss && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-600">
-                          Actual:
-                        </span>
-                        <span className="font-bold">
-                          ${formatCurrency(modalTotals.actual)}
-                        </span>
-                      </div>
-                    )}
-                    {canViewProfitLoss && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-600">
-                          Profit:
-                        </span>
-                        <span
-                          className={`font-bold ${
-                            modalTotals.estimate - modalTotals.actual >= 0
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
+                {/* Fixed Header */}
+                <div className="flex-none bg-white px-4 pt-5">
+                  <div className="flex justify-between mb-4">
+                    <CSVReader onUploadAccepted={handleOnFileLoad}>
+                      {({ getRootProps, acceptedFile }) => (
+                        <button
+                          {...getRootProps()}
+                          className={`${buttonClass} bg-blue-500 hover:bg-blue-700 opacity-50 cursor-not-allowed`}
+                          disabled
+                          onClick={(e) => e.preventDefault()}
                         >
-                          $
-                          {formatCurrency(
-                            modalTotals.estimate - modalTotals.actual
-                          )}
-                        </span>
+                          Upload CSV
+                        </button>
+                      )}
+                    </CSVReader>
+                    <h2 className="text-lg font-bold w-full text-center flex items-center justify-center gap-2">
+                      {`${selectedTask.project_name} - ${selectedTask.task_number} - ${selectedTask.task_name}`}
+                      {isTaskCostingComplete ? (
+                        <FiCheck className="text-green-500" size={24} />
+                      ) : (
+                        <FiX className="text-red-500" size={24} />
+                      )}
+                    </h2>
+                    <button
+                      onClick={() => setIsEstimatesOpen(true)}
+                      className={`${buttonClass} bg-green-800`}
+                    >
+                      Estimates
+                    </button>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <div className="flex-1 flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-600">
+                            Estimate:
+                          </span>
+                          <span className="font-bold">
+                            ${formatCurrency(modalTotals.estimate)}
+                          </span>
+                        </div>
+                        {canViewProfitLoss && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-600">
+                              Actual:
+                            </span>
+                            <span className="font-bold">
+                              ${formatCurrency(modalTotals.actual)}
+                            </span>
+                          </div>
+                        )}
+                        {canViewProfitLoss && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-600">
+                              Profit:
+                            </span>
+                            <span
+                              className={`font-bold ${
+                                modalTotals.estimate - modalTotals.actual >= 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              $
+                              {formatCurrency(
+                                modalTotals.estimate - modalTotals.actual
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <div className="flex flex-col items-center w-10">
+                      <div>Done</div>
+                      <input
+                        type="checkbox"
+                        checked={isTaskCostingComplete}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="h-6 w-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-col items-center w-10">
-                  <div>Done</div>
-                  <input
-                    type="checkbox"
-                    checked={isTaskCostingComplete}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-6 w-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto min-h-0 px-4">
+                  <FinancialsAccordion
+                    sections={localSections}
+                    employees={employees}
+                    services={services}
+                    onSectionUpdate={handleSectionUpdate}
+                    onCompletionChange={handleCompletionChange}
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto min-h-0 px-4">
-              <FinancialsAccordion
-                sections={localSections}
-                employees={employees}
-                services={services}
-                onSectionUpdate={handleSectionUpdate}
-                onCompletionChange={handleCompletionChange}
-              />
-            </div>
-
-            {/* Fixed Footer */}
-            <div className="modal-actions flex-shrink-0 flex justify-between mt-4">
-              <button className={`${buttonClass} bg-red-500`} onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                className={`${buttonClass} bg-blue-500`}
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </button>
-            </div>
-            {errors.messages && errors.messages.length > 0 && (
-              <div className="error-messages">
-                {errors.messages.map((message, index) => (
-                  <div key={index} className="error general-error">
-                    {message}
+                {/* Fixed Footer */}
+                <div className="modal-actions flex-shrink-0 flex justify-between mt-4">
+                  <button
+                    className={`${buttonClass} bg-red-500`}
+                    onClick={onClose}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className={`${buttonClass} bg-blue-500`}
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+                {errorsState.messages && errorsState.messages.length > 0 && (
+                  <div className="error-messages">
+                    {errorsState.messages.map((message, index) => (
+                      <div key={index} className="error general-error">
+                        {message}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-            {saveError && (
-              <div className="error-messages">
-                <div className="error general-error">{saveError}</div>
-              </div>
+                )}
+                {saveError && (
+                  <div className="error-messages">
+                    <div className="error general-error">{saveError}</div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

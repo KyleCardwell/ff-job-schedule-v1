@@ -1,7 +1,7 @@
 import { Actions } from "../actions";
 
 const initialState = {
-  taskFinancials: [],
+  taskFinancials: {},
   projectFinancials: [],
   overheadRate: null,
   loading: false,
@@ -40,6 +40,13 @@ export const financialsDataReducer = (state = initialState, action) => {
       return {
         ...state,
         projectFinancials: action.payload,
+        error: null,
+      };
+
+    case Actions.financialsData.CLEAR_TASK_FINANCIALS:
+      return {
+        ...state,
+        taskFinancials: {},
         error: null,
       };
 
