@@ -28,6 +28,8 @@ const CompletedProjectCard = ({
     project.project_completed_at
   ).toLocaleDateString();
 
+  const costingComplete = project.tasks.every((task) => task.costing_complete);
+
   const handleEditClick = async (taskId, taskName, taskNumber) => {
     try {
       const data = await dispatch(
@@ -80,7 +82,7 @@ const CompletedProjectCard = ({
         <div className="contents font-bold">
           <span className="p-2 bg-gray-100">Job Number</span>
           <span className="p-2 bg-gray-100">Room Name</span>
-          <span className="p-2 bg-gray-100">Costing Complete</span>
+          <span className="p-2 bg-gray-100">Costing {costingComplete ? "Complete" : "Incomplete"}</span>
         </div>
         {project.tasks.map((task, index) => {
           const bgColor = index % 2 === 0 ? "bg-gray-50" : "bg-white";

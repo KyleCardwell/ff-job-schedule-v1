@@ -563,7 +563,7 @@ const FinancialsInputSection = ({
             isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <div className="p-4 space-y-4 bg-white">
+          <div className="p-4 bg-white">
             {isHoursSection ? (
               <div className="space-y-4">
                 {services?.map((service) => {
@@ -604,7 +604,7 @@ const FinancialsInputSection = ({
             ) : (
               <>
                 {localInputRows.length > 0 && (
-                  <div className="grid grid-cols-3 gap-4 font-medium text-sm text-gray-600 px-4 mb-2">
+                  <div className="grid grid-cols-[1fr,1fr,36px] gap-4 font-medium text-sm text-gray-600 text-left mb-1">
                     <span>Invoice</span>
                     <span>Cost</span>
                     <span></span>
@@ -614,7 +614,7 @@ const FinancialsInputSection = ({
                   {localInputRows.map((row) => (
                     <div
                       key={row.id}
-                      className="grid grid-cols-[1fr,1fr,auto] gap-4 items-center"
+                      className="grid grid-cols-[1fr,1fr,36px] gap-4 items-center"
                     >
                       <input
                         ref={(el) => (inputRefs.current[row.id] = el)}
@@ -659,7 +659,7 @@ const FinancialsInputSection = ({
                 </div>
                 <button
                   onClick={handleAddInvoiceRow}
-                  className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
+                  className="w-36 py-2 px-4 mt-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
                 >
                   Add Row
                 </button>
@@ -668,7 +668,7 @@ const FinancialsInputSection = ({
           </div>
         </div>
       </div>
-      <div>
+      <div className="w-10">
         <input
           type="checkbox"
           checked={!!completedAt}

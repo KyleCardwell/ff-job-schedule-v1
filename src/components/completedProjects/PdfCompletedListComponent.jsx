@@ -108,7 +108,7 @@ const PdfCompletedListComponent = ({ completedProjects }) => {
   };
 
   return (
-    <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
+    <div className="fixed right-0 top-0 h-[50px] z-[50] flex print:hidden">
     <button
       onClick={generatePdf}
       className={`${headerButtonClass} ${headerButtonColor}`}

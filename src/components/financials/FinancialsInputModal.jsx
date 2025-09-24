@@ -117,6 +117,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           const rate = type.rateOverride ?? service?.hourly_rate ?? 0;
           const hourlyEstimate = (type.estimate || 0) * rate;
           const fixedAmount = type.fixedAmount || 0;
+
           return sum + hourlyEstimate + fixedAmount;
         }, 0);
 
@@ -159,11 +160,21 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
     setIsTaskCostingComplete(allSectionsComplete);
   }, [localSections]);
 
+  const handleSelectAll = (isChecked) => {
+    const newTimestamp = isChecked ? new Date().toISOString() : null;
+    setLocalSections((prevSections) =>
+      prevSections.map((section) => ({ ...section, completedAt: newTimestamp }))
+    );
+  };
+
   const handleCompletionChange = (sectionId, isChecked) => {
     setLocalSections((prevSections) =>
       prevSections.map((section) =>
         section.id === sectionId
-          ? { ...section, completedAt: isChecked ? new Date().toISOString() : null }
+          ? {
+              ...section,
+              completedAt: isChecked ? new Date().toISOString() : null,
+            }
           : section
       )
     );
@@ -319,39 +330,56 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                 </button>
               </div>
 
-              <div className="flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Estimate:</span>
-                    <span className="font-bold">
-                      ${formatCurrency(modalTotals.estimate)}
-                    </span>
-                  </div>
-                  {canViewProfitLoss && (
+              <div className="flex gap-4">
+                <div className="flex-1 flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-6 text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-600">Actual:</span>
+                      <span className="font-medium text-gray-600">
+                        Estimate:
+                      </span>
                       <span className="font-bold">
-                        ${formatCurrency(modalTotals.actual)}
+                        ${formatCurrency(modalTotals.estimate)}
                       </span>
                     </div>
-                  )}
-                  {canViewProfitLoss && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-600">Profit:</span>
-                      <span
-                        className={`font-bold ${
-                          modalTotals.estimate - modalTotals.actual >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        $
-                        {formatCurrency(
-                          modalTotals.estimate - modalTotals.actual
-                        )}
-                      </span>
-                    </div>
-                  )}
+                    {canViewProfitLoss && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-600">
+                          Actual:
+                        </span>
+                        <span className="font-bold">
+                          ${formatCurrency(modalTotals.actual)}
+                        </span>
+                      </div>
+                    )}
+                    {canViewProfitLoss && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-600">
+                          Profit:
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            modalTotals.estimate - modalTotals.actual >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          $
+                          {formatCurrency(
+                            modalTotals.estimate - modalTotals.actual
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-center w-10">
+                  <div>Done</div>
+                  <input
+                    type="checkbox"
+                    checked={isTaskCostingComplete}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="h-6 w-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  />
                 </div>
               </div>
             </div>
