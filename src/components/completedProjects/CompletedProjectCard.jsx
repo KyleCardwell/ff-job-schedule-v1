@@ -23,6 +23,7 @@ const CompletedProjectCard = ({
   setIsFinancialsInputModalOpen,
   setSelectedTask,
   bgColor,
+  bgHoverColor,
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ const CompletedProjectCard = ({
   return (
     <div className={`border-b border-gray-300 ${bgColor}`}>
       <div
-        className={`grid grid-cols-[1fr_1fr_1fr_150px] items-center sticky top-0 z-10 ${bgColor}`}
+        className={`grid grid-cols-[1fr_1fr_1fr_150px] items-center sticky top-0 z-10 ${bgColor} hover:${bgHoverColor}`}
         onMouseEnter={() => setHoveredProjectId(project.project_id)}
         onMouseLeave={() => setHoveredProjectId(null)}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -83,9 +84,7 @@ const CompletedProjectCard = ({
             <FiX className="text-red-500" size={24} />
           )}
           <span>{costingComplete ? "Complete" : "Incomplete"}</span>
-          <button
-            className="justify-self-end p-2 absolute right-2"
-          >
+          <button className="justify-self-end p-2 absolute right-2">
             {isExpanded ? (
               <FiChevronUp size={20} />
             ) : (
@@ -110,35 +109,38 @@ const CompletedProjectCard = ({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="p-4 bg-gray-100">
+          <div className={`p-4 ${bgColor}`}>
             <div className="grid grid-cols-[100px_1fr_150px_150px] gap-px bg-gray-500 border border-gray-500">
               <div className="contents font-bold text-center">
-                <span className="p-2 bg-gray-200">Job Number</span>
-                <span className="p-2 bg-gray-200">Room Name</span>
-                <span className="p-2 bg-gray-200">Costing Complete</span>
-                <span className="p-2 bg-gray-200">Actions</span>
+                <span className="p-2 bg-gray-300">Job Number</span>
+                <span className="p-2 bg-gray-300">Room Name</span>
+                <span className="p-2 bg-gray-300">Costing Complete</span>
+                <span className="p-2 bg-gray-300">Actions</span>
               </div>
               {project.tasks.map((task, index) => {
-                const taskBgColor = index % 2 === 0 ? "bg-gray-50" : "bg-white";
+                const taskBgColor =
+                  index % 2 === 0 ? "bg-gray-200" : "bg-white";
+                const taskBgHoverColor =
+                  index % 2 === 0
+                    ? "group-hover/row:bg-blue-100"
+                    : "group-hover/row:bg-blue-50";
                 return (
                   <div
                     key={task.task_id}
-                    className="contents group"
+                    className="contents group/row"
                     onMouseEnter={() => setHoveredTaskId(task.task_id)}
                     onMouseLeave={() => setHoveredTaskId(null)}
                   >
-                    <span
-                      className={`p-2 ${taskBgColor} group-hover:bg-blue-50`}
-                    >
+                    <span className={`p-2 ${taskBgColor} ${taskBgHoverColor}`}>
                       {task.task_number}
                     </span>
                     <div
-                      className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50`}
+                      className={`relative p-2 ${taskBgColor} ${taskBgHoverColor}`}
                     >
                       <span>{task.task_name}</span>
                     </div>
                     <div
-                      className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
+                      className={`relative p-2 ${taskBgColor} ${taskBgHoverColor} flex justify-center items-center flex justify-center items-center`}
                     >
                       {task.costing_complete ? (
                         <FiCheck className="text-green-500" size={24} />
@@ -147,7 +149,7 @@ const CompletedProjectCard = ({
                       )}
                     </div>
                     <div
-                      className={`${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
+                      className={`${taskBgColor} ${taskBgHoverColor} flex justify-center items-center`}
                     >
                       <button
                         onClick={() =>

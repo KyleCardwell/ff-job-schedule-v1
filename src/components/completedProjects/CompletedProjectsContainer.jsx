@@ -51,7 +51,9 @@ const CompletedProjectsContainer = () => {
           <span className="p-2 font-bold">Project</span>
           <span className="p-2 font-bold">Shop Completed</span>
           <span className="p-2 font-bold">Costing Complete</span>
-          <span className="p-2 font-bold border-l border-gray-400">Actions</span>
+          <span className="p-2 font-bold border-l border-gray-400">
+            Actions
+          </span>
         </div>
       </div>
 
@@ -63,11 +65,8 @@ const CompletedProjectsContainer = () => {
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
             setSelectedTask={setSelectedTask}
-            bgColor={
-              index % 2 === 0
-                ? "bg-gray-200 hover:bg-teal-200"
-                : "bg-white hover:bg-teal-100"
-            }
+            bgColor={index % 2 === 0 ? "bg-gray-200" : "bg-white"}
+            bgHoverColor={index % 2 === 0 ? "bg-teal-200" : "bg-teal-100"}
           />
         ))}
       </div>
