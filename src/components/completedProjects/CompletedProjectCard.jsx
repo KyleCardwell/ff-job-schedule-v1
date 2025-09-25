@@ -11,7 +11,6 @@ import {
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { buttonClass } from "../../assets/tailwindConstants";
 import { usePermissions } from "../../hooks/usePermissions";
 import { Actions } from "../../redux/actions";
 import {
@@ -75,16 +74,6 @@ const CompletedProjectCard = ({
       >
         <div className="flex items-center gap-4 ml-2 py-2">
           <span className="ml-4 font-bold">{jobName}</span>
-          {/* <button
-            onClick={handleViewClick}
-            className={`px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 ${
-              hoveredProjectId === project.project_id
-                ? "opacity-100"
-                : "opacity-0"
-            } ${!canViewProfitLoss ? "hidden" : ""}`}
-          >
-            View
-          </button> */}
         </div>
         <span>{completedDate}</span>
         <div className="flex items-center justify-center gap-2 relative">
@@ -95,97 +84,91 @@ const CompletedProjectCard = ({
           )}
           <span>{costingComplete ? "Complete" : "Incomplete"}</span>
           <button
-            // onClick={() => setIsExpanded(!isExpanded)}
             className="justify-self-end p-2 absolute right-2"
           >
-            {isExpanded ? <FiChevronUp size={20}/> : <FiChevronDown size={20}/>}
+            {isExpanded ? (
+              <FiChevronUp size={20} />
+            ) : (
+              <FiChevronDown size={20} />
+            )}
           </button>
         </div>
         <div className="flex items-center justify-center h-full border-l border-gray-400">
           <button
             onClick={handleViewClick}
-            className={`text-gray-600 hover:text-blue-900 mx-auto ${!canViewProfitLoss ? "hidden" : ""}`}
+            className={`text-gray-600 hover:text-blue-900 mx-auto ${
+              !canViewProfitLoss ? "hidden" : ""
+            }`}
           >
             <FaEye size={20} />
           </button>
         </div>
       </div>
       <div
-        className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isExpanded ? "opacity-100" : "max-h-0 opacity-0"
+        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
         }`}
       >
-        <div className="p-4 bg-gray-100">
-          <div className="grid grid-cols-[100px_1fr_150px_150px] gap-px bg-gray-500 border border-gray-500">
-            <div className="contents font-bold text-center">
-              <span className="p-2 bg-gray-200">Job Number</span>
-              <span className="p-2 bg-gray-200">Room Name</span>
-              <span className="p-2 bg-gray-200">Costing Complete</span>
-              <span className="p-2 bg-gray-200">Actions</span>
+        <div className="overflow-hidden">
+          <div className="p-4 bg-gray-100">
+            <div className="grid grid-cols-[100px_1fr_150px_150px] gap-px bg-gray-500 border border-gray-500">
+              <div className="contents font-bold text-center">
+                <span className="p-2 bg-gray-200">Job Number</span>
+                <span className="p-2 bg-gray-200">Room Name</span>
+                <span className="p-2 bg-gray-200">Costing Complete</span>
+                <span className="p-2 bg-gray-200">Actions</span>
+              </div>
+              {project.tasks.map((task, index) => {
+                const taskBgColor = index % 2 === 0 ? "bg-gray-50" : "bg-white";
+                return (
+                  <div
+                    key={task.task_id}
+                    className="contents group"
+                    onMouseEnter={() => setHoveredTaskId(task.task_id)}
+                    onMouseLeave={() => setHoveredTaskId(null)}
+                  >
+                    <span
+                      className={`p-2 ${taskBgColor} group-hover:bg-blue-50`}
+                    >
+                      {task.task_number}
+                    </span>
+                    <div
+                      className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50`}
+                    >
+                      <span>{task.task_name}</span>
+                    </div>
+                    <div
+                      className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
+                    >
+                      {task.costing_complete ? (
+                        <FiCheck className="text-green-500" size={24} />
+                      ) : (
+                        <FiX className="text-red-500" size={24} />
+                      )}
+                    </div>
+                    <div
+                      className={`${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
+                    >
+                      <button
+                        onClick={() =>
+                          handleEditClick(
+                            task.task_id,
+                            task.task_name,
+                            task.task_number
+                          )
+                        }
+                        className={`text-blue-600 hover:text-blue-900 mx-auto ${
+                          !canEditFinancials ? "hidden" : ""
+                        }`}
+                        aria-label="Edit estimate"
+                      >
+                        <FiEdit size={20} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            {project.tasks.map((task, index) => {
-              const taskBgColor = index % 2 === 0 ? "bg-gray-50" : "bg-white";
-              return (
-                <div
-                  key={task.task_id}
-                  className="contents group"
-                  onMouseEnter={() => setHoveredTaskId(task.task_id)}
-                  onMouseLeave={() => setHoveredTaskId(null)}
-                >
-                  <span className={`p-2 ${taskBgColor} group-hover:bg-blue-50`}>
-                    {task.task_number}
-                  </span>
-                  <div
-                    className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50`}
-                  >
-                    {/* <button
-                      onClick={() =>
-                        handleEditClick(
-                          task.task_id,
-                          task.task_name,
-                          task.task_number
-                        )
-                      }
-                      className={`absolute left-2 px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-opacity duration-200 ${
-                        hoveredTaskId === task.task_id
-                          ? "opacity-100"
-                          : "opacity-0"
-                      } ${!canEditFinancials ? "hidden" : ""}`}
-                    >
-                      Edit
-                    </button> */}
-
-                    <span>{task.task_name}</span>
-                  </div>
-                  <div
-                    className={`relative p-2 ${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
-                  >
-                    {task.costing_complete ? (
-                      <FiCheck className="text-green-500" size={24} />
-                    ) : (
-                      <FiX className="text-red-500" size={24} />
-                    )}
-                  </div>
-                  <div
-                    className={`${taskBgColor} group-hover:bg-blue-50 flex justify-center items-center`}
-                  >
-                    <button
-                      onClick={() =>
-                        handleEditClick(
-                          task.task_id,
-                          task.task_name,
-                          task.task_number
-                        )
-                      }
-                      className={`text-blue-600 hover:text-blue-900 mx-auto ${!canEditFinancials ? "hidden" : ""}`}
-                      aria-label="Edit estimate"
-                    >
-                      <FiEdit size={20} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
