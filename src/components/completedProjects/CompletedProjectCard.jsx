@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
+import { FaEye } from "react-icons/fa";
 import {
   FiCheck,
   FiChevronDown,
@@ -17,7 +18,6 @@ import {
   fetchProjectFinancials,
   fetchTaskFinancials,
 } from "../../redux/actions/financialsData";
-import { FaEye } from "react-icons/fa";
 
 const CompletedProjectCard = ({
   project,
@@ -68,7 +68,7 @@ const CompletedProjectCard = ({
   return (
     <div className={`border-b border-gray-300 ${bgColor}`}>
       <div
-        className="grid grid-cols-[1fr_1fr_1fr_150px] items-center"
+        className={`grid grid-cols-[1fr_1fr_1fr_150px] items-center sticky top-0 z-10 ${bgColor}`}
         onMouseEnter={() => setHoveredProjectId(project.project_id)}
         onMouseLeave={() => setHoveredProjectId(null)}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -177,7 +177,7 @@ const CompletedProjectCard = ({
                           task.task_number
                         )
                       }
-                      className="text-blue-600 hover:text-blue-900 mx-auto"
+                      className={`text-blue-600 hover:text-blue-900 mx-auto ${!canEditFinancials ? "hidden" : ""}`}
                       aria-label="Edit estimate"
                     >
                       <FiEdit size={20} />
