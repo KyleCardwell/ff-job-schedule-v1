@@ -37,7 +37,9 @@ const CompletedProjectCard = ({
     project.project_completed_at
   ).toLocaleDateString();
 
-  const costingComplete = project.tasks.every((task) => task.costing_complete);
+  const incompleteTasksCount = project.tasks.filter(
+    (task) => !task.costing_complete
+  ).length;
 
   const handleEditClick = (taskId, taskName, taskNumber) => {
     try {
@@ -78,12 +80,14 @@ const CompletedProjectCard = ({
         </div>
         <span>{completedDate}</span>
         <div className="flex items-center justify-center gap-2 relative">
-          {costingComplete ? (
+          {incompleteTasksCount === 0 ? (
             <FiCheck className="text-green-500" size={24} />
           ) : (
             <FiX className="text-red-500" size={24} />
           )}
-          <span>{costingComplete ? "Complete" : "Incomplete"}</span>
+          <span>
+            {incompleteTasksCount === 0 ? "Complete" : `${incompleteTasksCount} Incomplete`}
+          </span>
           <button className="justify-self-end p-2 absolute right-2">
             {isExpanded ? (
               <FiChevronUp size={20} />
