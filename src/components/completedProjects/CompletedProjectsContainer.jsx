@@ -47,11 +47,11 @@ const CompletedProjectsContainer = () => {
       {/* Sticky Header Container */}
       <div className="sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full">
         <ProjectSearchFilter onFilterChange={handleFilterChange} />
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-gray-200 border-b-2 border-gray-300 mt-4 text-center">
+        <div className="grid grid-cols-[1fr_1fr_1fr_150px] bg-gray-200 border-b-2 border-gray-400 mt-4 text-center">
           <span className="p-2 font-bold">Project</span>
           <span className="p-2 font-bold">Shop Completed</span>
           <span className="p-2 font-bold">Costing Complete</span>
-          <span className="p-2 font-bold"></span>
+          <span className="p-2 font-bold border-l border-gray-400">Actions</span>
         </div>
       </div>
 
@@ -63,7 +63,11 @@ const CompletedProjectsContainer = () => {
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
             setSelectedTask={setSelectedTask}
-            bgColor={index % 2 === 0 ? "bg-gray-200 hover:bg-gray-300" : "bg-white hover:bg-gray-300"}
+            bgColor={
+              index % 2 === 0
+                ? "bg-gray-200 hover:bg-teal-200"
+                : "bg-white hover:bg-teal-100"
+            }
           />
         ))}
       </div>
