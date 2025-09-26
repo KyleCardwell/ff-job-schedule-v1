@@ -15,7 +15,7 @@ import {
 } from "../../redux/actions/cabinetAnchors";
 import {
   fetchCabinetTypes,
-  addCabinetType,
+  // addCabinetType,
   updateCabinetType,
 } from "../../redux/actions/cabinetTypes";
 
@@ -71,23 +71,25 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
   }, [anchorsByType]);
 
   const handleInputChange = (id, field, value) => {
-    setLocalTypes((prev) =>
-      prev.map((type) => (type.id === id ? { ...type, [field]: value } : type))
+    setLocalTypes(
+      localTypes.map((t) =>
+        t.team_cabinet_type_id === id ? { ...t, [field]: value } : t
+      )
     );
   };
 
   const toggleActiveState = (id) => {
-    setLocalTypes((prev) =>
-      prev.map((type) =>
-        type.id === id ? { ...type, is_active: !type.is_active } : type
+    setLocalTypes(
+      localTypes.map((t) =>
+        t.team_cabinet_type_id === id ? { ...t, is_active: !t.is_active } : t
       )
     );
   };
 
   const handleAddNew = () => {
     const newType = {
-      id: uuidv4(),
-      name: "",
+      team_cabinet_type_id: uuidv4(),
+      cabinet_type_name: "",
       default_width: 0,
       default_height: 0,
       default_depth: 0,
@@ -163,7 +165,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
 
     localTypes.forEach((type) => {
       const errors = {};
-      if (!type.name) errors.name = true;
+      if (!type.cabinet_type_name) errors.cabinet_type_name = true;
       if (type.default_width == null || type.default_width === "")
         errors.default_width = true;
       if (type.default_height == null || type.default_height === "")
@@ -172,7 +174,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
         errors.default_depth = true;
 
       if (Object.keys(errors).length > 0) {
-        newErrors[type.id] = errors;
+        newErrors[type.team_cabinet_type_id] = errors;
         hasTypeErrors = true;
       }
     });
@@ -190,11 +192,10 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
     try {
       // Save cabinet types first
       const typesToUpdate = [];
-      const typesToAdd = localTypes.filter((t) => t.isNew);
 
       localTypes.forEach((localType) => {
         if (!localType.isNew) {
-          const originalType = types.find((t) => t.id === localType.id);
+          const originalType = types.find((t) => t.team_cabinet_type_id === localType.team_cabinet_type_id);
           if (JSON.stringify(originalType) !== JSON.stringify(localType)) {
             typesToUpdate.push(localType);
           }
@@ -202,13 +203,8 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       });
 
       typesToUpdate.forEach((type) => {
-        const { id, ...data } = type;
-        dispatch(updateCabinetType(id, data));
-      });
-
-      typesToAdd.forEach((type) => {
-        const { id, isNew, ...data } = type;
-        dispatch(addCabinetType({ ...data, is_active: true }));
+        const { team_cabinet_type_id, cabinet_type_name, created_at, team_id, ...data } = type;
+        dispatch(updateCabinetType(team_cabinet_type_id, data));
       });
 
       // Save all anchors
@@ -220,7 +216,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
           .filter((anchor) => anchor.isNew && !anchor.markedForDeletion)
           .map((anchor) => ({
             ...anchor,
-            cabinet_type_id: typeId,
+            team_cabinet_type_id: typeId,
           }));
 
         const updatedAnchors = parsedAnchors
@@ -234,7 +230,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
           })
           .map((anchor) => ({
             ...anchor,
-            cabinet_type_id: typeId,
+            team_cabinet_type_id: typeId,
           }));
 
         const deletedIds = parsedAnchors
@@ -277,13 +273,13 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
           <h2 className="text-lg font-bold text-slate-200">
             Manage Cabinet Types
           </h2>
-          <button
+          {/* <button
             onClick={handleAddNew}
             className="flex items-center px-2 py-2 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
           >
             <FiPlus className="h-5 w-5 mr-2" />
             Add Type
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -306,7 +302,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
               }
             >
               <div className="space-y-2 p-1">
-                <div className="grid grid-cols-6 gap-4 px-4 font-bold text-slate-400 items-end">
+                <div className="grid grid-cols-5 gap-4 px-4 font-bold text-slate-400 items-end">
                   <div className="col-span-2">Name</div>
                   <div className="col-span-3 flex flex-col">
                     <div className="text-center">Default Dimensions</div>
@@ -316,18 +312,18 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
                       <div>Depth</div>
                     </div>
                   </div>
-                  <div className="text-right">Actions</div>
+                  {/* <div className="text-right">Actions</div> */}
                 </div>
 
                 {localTypes
                   .filter((t) => t.is_active)
                   .map((type) => (
-                    <div key={type.id}>
+                    <div key={type.team_cabinet_type_id}>
                       <CabinetTypeCard
                         type={type}
                         onInputChange={handleInputChange}
-                        onRemove={() => toggleActiveState(type.id)}
-                        errors={validationErrors[type.id]}
+                        onRemove={() => toggleActiveState(type.team_cabinet_type_id)}
+                        errors={validationErrors[type.team_cabinet_type_id]}
                       />
                     </div>
                   ))}
@@ -349,16 +345,16 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
                     .filter((t) => !t.is_active)
                     .map((type) => (
                       <div
-                        key={type.id}
+                        key={type.team_cabinet_type_id}
                         className="grid grid-cols-6 gap-4 items-center bg-slate-800 p-2 rounded-md text-slate-500"
                       >
-                        <div className="col-span-2">{type.name}</div>
+                        <div className="col-span-2">{type.cabinet_type_name}</div>
                         <div className="">{type.default_width}</div>
                         <div className="">{type.default_height}</div>
                         <div className="">{type.default_depth}</div>
                         <div className="flex justify-end">
                           <button
-                            onClick={() => toggleActiveState(type.id)}
+                            onClick={() => toggleActiveState(type.team_cabinet_type_id)}
                             className="p-2 text-slate-400 hover:text-white"
                           >
                             Reactivate
@@ -369,12 +365,6 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
                 </div>
               </SettingsSection>
             )}
-            {localTypes.some((t) => t.isNew) && (
-              <div className="p-2 mt-0 text-red-300 bg-red-900/50 border border-red-700 rounded-md">
-                To add anchors for a newly added cabinet type, please Save
-                Changes first
-              </div>
-            )}
           </>
         )}
       </div>
@@ -382,7 +372,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       <div className="z-10 bg-slate-800 py-4 sticky top-0 z-10">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold text-slate-200">
-            Manage Cabinet Anchors
+            Manage Cabinet Anchors - Time (hours)
           </h2>
         </div>
       </div>
@@ -390,13 +380,13 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       {localTypes
         .filter((t) => t.is_active && !t.isNew)
         .map((type) => (
-          <SettingsSection key={type.id} title={type.name}>
+          <SettingsSection key={type.team_cabinet_type_id} title={type.cabinet_type_name}>
             <CabinetAnchorsTable
-              cabinetTypeId={type.id}
-              anchors={localAnchors[type.id] || []}
-              errors={anchorErrors[type.id] || {}}
+              cabinetTypeId={type.cabinet_type_id}
+              anchors={localAnchors[type.cabinet_type_id] || []}
+              errors={anchorErrors[type.cabinet_type_id] || {}}
               onAnchorsChange={(anchors) =>
-                handleAnchorChange(type.id, anchors)
+                handleAnchorChange(type.cabinet_type_id, anchors)
               }
             />
           </SettingsSection>

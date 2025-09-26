@@ -10,10 +10,10 @@ export const fetchCabinetTypes = () => {
       const { teamId } = getState().auth;
 
       const { data, error } = await supabase
-        .from("cabinet_types")
+        .from("team_cabinet_types_view")
         .select("*")
         .eq("team_id", teamId)
-        .order("id", { ascending: true });
+        .order("cabinet_type_id", { ascending: true });
 
       if (error) throw error;
 
@@ -35,36 +35,36 @@ export const fetchCabinetTypes = () => {
 };
 
 // Add a new cabinet type
-export const addCabinetType = (cabinetTypeData) => {
-  return async (dispatch, getState) => {
-    try {
-      dispatch({ type: cabinetTypes.ADD_CABINET_TYPE_START });
+// export const addCabinetType = (cabinetTypeData) => {
+//   return async (dispatch, getState) => {
+//     try {
+//       dispatch({ type: cabinetTypes.ADD_CABINET_TYPE_START });
 
-      const { teamId } = getState().auth;
-      const { data, error } = await supabase
-        .from("cabinet_types")
-        .insert([{ ...cabinetTypeData, team_id: teamId }])
-        .select()
-        .single();
+//       const { teamId } = getState().auth;
+//       const { data, error } = await supabase
+//         .from("team_cabinet_types")
+//         .insert([{ ...cabinetTypeData, team_id: teamId }])
+//         .select()
+//         .single();
 
-      if (error) throw error;
+//       if (error) throw error;
 
-      dispatch({
-        type: cabinetTypes.ADD_CABINET_TYPE_SUCCESS,
-        payload: data,
-      });
+//       dispatch({
+//         type: cabinetTypes.ADD_CABINET_TYPE_SUCCESS,
+//         payload: data,
+//       });
 
-      return data;
-    } catch (error) {
-      console.error("Error adding cabinet type:", error);
-      dispatch({
-        type: cabinetTypes.ADD_CABINET_TYPE_ERROR,
-        payload: error.message,
-      });
-      throw error;
-    }
-  };
-};
+//       return data;
+//     } catch (error) {
+//       console.error("Error adding cabinet type:", error);
+//       dispatch({
+//         type: cabinetTypes.ADD_CABINET_TYPE_ERROR,
+//         payload: error.message,
+//       });
+//       throw error;
+//     }
+//   };
+// };
 
 // Update an existing cabinet type
 export const updateCabinetType = (id, updates) => {
@@ -73,7 +73,7 @@ export const updateCabinetType = (id, updates) => {
       dispatch({ type: cabinetTypes.UPDATE_CABINET_TYPE_START });
 
       const { data, error } = await supabase
-        .from("cabinet_types")
+        .from("team_cabinet_types")
         .update(updates)
         .eq("id", id)
         .select()

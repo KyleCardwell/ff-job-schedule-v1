@@ -17,14 +17,28 @@ const cabinetTypesReducer = (state = initialState, action) => {
       return { ...state, loading: false, types: action.payload };
 
     case cabinetTypes.ADD_CABINET_TYPE_SUCCESS:
-      return { ...state, loading: false, types: [...state.types, action.payload] };
+      return {
+        ...state,
+        loading: false,
+        types: [...state.types, action.payload],
+      };
 
     case cabinetTypes.UPDATE_CABINET_TYPE_SUCCESS:
       return {
         ...state,
         loading: false,
-        types: state.types.map((type) =>
-          type.id === action.payload.id ? action.payload : type
+        types: state.types.map((type) =>{
+
+          if (type.team_cabinet_type_id === action.payload.id) {
+            return {...type,
+              default_width: action.payload.default_width,
+              default_height: action.payload.default_height,
+              default_depth: action.payload.default_depth,
+            };
+          } else {
+            return type;
+          }
+        }
         ),
       };
 
