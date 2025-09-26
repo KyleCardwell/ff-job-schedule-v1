@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useSelector } from "react-redux";
 import {
   useNavigate,
@@ -13,6 +13,7 @@ import {
   headerButtonClass,
   headerButtonColor,
 } from "../../assets/tailwindConstants";
+import useFeatureToggles from '../../hooks/useFeatureToggles.js';
 import { PATHS } from "../../utils/constants";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
@@ -36,6 +37,7 @@ const AdminDashboard = () => {
     (state) => state.chartConfig
   );
   const { roleId, permissions } = useSelector((state) => state.auth);
+  const featureToggles = useFeatureToggles();
 
   // Define all possible tabs
   const allTabs = [
@@ -55,6 +57,7 @@ const AdminDashboard = () => {
       component: CabinetTypeSettings,
       props: {},
       requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
       maxWidthClass: "max-w-[720px]",
     },
     {
@@ -96,12 +99,28 @@ const AdminDashboard = () => {
     },
   ];
 
-  // Filter tabs based on permissions
-  const tabs = allTabs.filter((tab) => {
-    if (roleId === 1) return true; // Admin can see all tabs
-    if (tab.requiresAdmin) return false; // Non-admins can't see admin-only tabs
-    return permissions?.[tab.requiresPermission]; // Check specific permission
-  });
+  // Filter tabs based on permissions and feature toggles
+  const tabs = useMemo(() => {
+    return allTabs.filter((tab) => {
+      // 1. Check for feature toggle first
+      if (tab.requiresFeatureToggle && !featureToggles[tab.requiresFeatureToggle]) {
+        return false;
+      }
+
+      // 2. Check for admin-only tabs
+      if (tab.requiresAdmin && roleId !== 1) {
+        return false;
+      }
+
+      // 3. Check for specific permissions (for non-admins)
+      if (roleId !== 1 && tab.requiresPermission && !permissions.includes(tab.requiresPermission)) {
+        return false;
+      }
+
+      // If all checks pass, show the tab
+      return true;
+    });
+  }, [roleId, permissions, featureToggles]);
 
   const handleSave = async () => {
     if (!activeComponentRef.current?.handleSave) return;
