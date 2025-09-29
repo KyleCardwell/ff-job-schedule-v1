@@ -59,14 +59,13 @@ const CompletedProjectsContainer = () => {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 max-w-[1200px] mx-auto w-full">
-        {completedProjects?.map((project, index) => (
+      {completedProjects?.map((project, index) => (
           <CompletedProjectCard
             key={project.project_id}
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
             setSelectedTask={setSelectedTask}
-            bgColor={index % 2 === 0 ? "bg-gray-200" : "bg-white"}
-            bgHoverColor={index % 2 === 0 ? "bg-teal-200" : "bg-teal-100"}
+            index={index}
           />
         ))}
       </div>
