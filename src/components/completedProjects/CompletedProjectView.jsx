@@ -463,7 +463,7 @@ const CompletedProjectView = () => {
       {/* Tasks List */}
       <div className="bg-white shadow rounded-lg p-6 max-w-[1200px] mx-auto">
         {/* Scrollable container for tasks */}
-        <div className="max-h-[800px] overflow-y-scroll">
+        <div className="max-h-[800px] overflow-y-auto scrollbar-stable">
           {/* Header row - will stay fixed */}
           <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 font-semibold border-b pb-2 sticky top-0 bg-white z-10">
             <div>Job #</div>
