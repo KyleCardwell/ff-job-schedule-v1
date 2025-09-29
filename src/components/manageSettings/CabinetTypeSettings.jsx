@@ -15,7 +15,6 @@ import {
 } from "../../redux/actions/cabinetAnchors";
 import {
   fetchCabinetTypes,
-  // addCabinetType,
   updateCabinetType,
 } from "../../redux/actions/cabinetTypes";
 

@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
+import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import {
   fetchEstimateById,
@@ -73,6 +74,7 @@ const EstimateLayout = () => {
     dispatch(fetchSheetGoods());
     dispatch(fetchCabinetTypes());
     dispatch(fetchCabinetAnchors())
+    dispatch(fetchTeamCabinetStyles())
   }, []);
 
   useEffect(() => {
