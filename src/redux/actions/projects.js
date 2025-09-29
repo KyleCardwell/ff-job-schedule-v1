@@ -491,7 +491,8 @@ export const fetchCompletedProjects =
       let query = supabase
         .from("projects")
         .select(fetchCompletedProjectsOptions.select)
-        .not("project_completed_at", "is", null);
+        .not("project_completed_at", "is", null)
+        .order("project_name", { ascending: true });
 
       // Add search filter if searchTerm is provided
       if (searchTerm) {

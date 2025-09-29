@@ -18,6 +18,7 @@ const CompletedProjectView = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isFinancialsModalOpen, setIsFinancialsModalOpen] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [isTotalsExpanded, setIsTotalsExpanded] = useState(false);
 
   // Get financials from Redux store
   const {
@@ -44,7 +45,7 @@ const CompletedProjectView = () => {
   // Calculate project totals
   const projectTotals = useMemo(() => {
     if (!projectFinancials?.length || !services?.length)
-      return { estimate: 0, actual: 0, profit: 0 };
+      return { estimate: 0, actual: 0, profit: 0, sections: {} };
 
     const totals = projectFinancials.reduce(
       (acc, task) => {
@@ -57,12 +58,14 @@ const CompletedProjectView = () => {
               return {
                 id,
                 data: section.data || [],
+                name: section.name,
               };
             }
             return {
               id,
               estimate: section.estimate || 0,
               inputRows: section.data || [],
+              name: section.name,
             };
           }
         );
@@ -72,14 +75,72 @@ const CompletedProjectView = () => {
           ? calculateFinancialTotals(taskSections, services, task.adjustments)
           : taskTotals;
 
+        // Aggregate sections
+        const newSections = { ...acc.sections };
+        Object.entries(adjustedTotals.sections || {}).forEach(
+          ([sectionId, sectionData]) => {
+            if (!newSections[sectionId]) {
+              newSections[sectionId] = {
+                estimate: 0,
+                actual_cost: 0,
+                name: sectionData.name,
+                services: sectionId === "hours" ? {} : undefined,
+              };
+            }
+            newSections[sectionId].estimate += sectionData.estimate || 0;
+            newSections[sectionId].actual_cost += sectionData.actual_cost || 0;
+
+            // Aggregate services for hours section
+            if (sectionId === "hours" && sectionData.services) {
+              Object.entries(sectionData.services).forEach(
+                ([serviceId, serviceData]) => {
+                  if (!newSections[sectionId].services[serviceId]) {
+                    newSections[sectionId].services[serviceId] = {
+                      estimate: 0,
+                      actual_cost: 0,
+                      service_name: serviceData.service_name,
+                      estimated_hours: 0,
+                      actual_hours: 0,
+                    };
+                  }
+                  newSections[sectionId].services[serviceId].estimate +=
+                    serviceData.estimate || 0;
+                  newSections[sectionId].services[serviceId].actual_cost +=
+                    serviceData.actual_cost || 0;
+                  newSections[sectionId].services[serviceId].estimated_hours +=
+                    serviceData.estimated_hours || 0;
+                  newSections[sectionId].services[serviceId].actual_hours +=
+                    serviceData.actual_hours || 0;
+                }
+              );
+            }
+          }
+        );
+
+        // Aggregate adjustments (commission, profit, discount, etc.)
+        if (adjustedTotals.adjustments) {
+          adjustedTotals.adjustments.forEach(([adjustmentId, adjustmentData]) => {
+            if (!newSections[adjustmentId]) {
+              newSections[adjustmentId] = {
+                estimate: 0,
+                actual_cost: 0,
+                name: adjustmentData.name,
+              };
+            }
+            newSections[adjustmentId].estimate += adjustmentData.estimate || 0;
+            newSections[adjustmentId].actual_cost += adjustmentData.actual_cost || 0;
+          });
+        }
+
         return {
           estimate:
             acc.estimate +
             (adjustedTotals.total || adjustedTotals.estimate || 0),
           actual: acc.actual + (adjustedTotals.actual || 0),
+          sections: newSections,
         };
       },
-      { estimate: 0, actual: 0 }
+      { estimate: 0, actual: 0, sections: {} }
     );
 
     return {
@@ -189,7 +250,7 @@ const CompletedProjectView = () => {
       </div>
 
       {/* Project Totals */}
-      <div className="bg-white shadow rounded-lg p-6 mb-4 max-w-[1200px] mx-auto">
+      <div className="bg-white shadow rounded-lg p-6 mb-4 max-w-[1200px] mx-auto flex flex-col">
         <h2 className="text-xl font-semibold mb-4">Project Totals</h2>
         <div className="grid grid-cols-3 gap-8">
           <div className="text-center">
@@ -229,21 +290,188 @@ const CompletedProjectView = () => {
             </div>
           </div>
         </div>
+        <div className="flex-1 flex self-end justify-end mt-4">
+          <button
+            onClick={() => setIsTotalsExpanded(!isTotalsExpanded)}
+            className="text-gray-600 hover:text-gray-800"
+          >
+            {isTotalsExpanded ? "Hide" : "Show"} Totals
+          </button>
+        </div>
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isTotalsExpanded
+              ? "max-h-[2000px] opacity-100"
+              : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="mt-6 border-t pt-4">
+            <div className="space-y-2">
+              {/* Header */}
+              <div className="grid grid-cols-4 gap-4 font-semibold text-sm text-gray-600 border-b pb-2">
+                <div>Section</div>
+                <div className="text-right">Estimated</div>
+                <div className="text-right">Actual</div>
+                <div className="text-right">Profit/Loss</div>
+              </div>
+
+              {/* Section rows */}
+              {Object.entries(projectTotals.sections || {}).map(
+                ([sectionId, sectionData]) => {
+                  const profit =
+                    (sectionData.estimate || 0) -
+                    (sectionData.actual_cost || 0);
+
+                  return (
+                    <div key={sectionId}>
+                      {/* Section header row */}
+                      {sectionId === "hours" ? (
+                        // Hours section - just show the header without totals
+                        <div className="grid grid-cols-4 gap-4 text-sm py-2 font-semibold">
+                          <div className="capitalize">{sectionData.name}</div>
+                          <div className="text-right"></div>
+                          <div className="text-right"></div>
+                          <div className="text-right"></div>
+                        </div>
+                      ) : (
+                        // Other sections - show header with totals
+                        <div className="grid grid-cols-4 gap-4 text-sm py-2 hover:bg-gray-50 font-semibold">
+                          <div className="capitalize">{sectionData.name}</div>
+                          <div className="text-right">
+                            $
+                            {(sectionData.estimate || 0).toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }
+                            )}
+                          </div>
+                          <div className="text-right">
+                            $
+                            {(sectionData.actual_cost || 0).toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }
+                            )}
+                          </div>
+                          <div
+                            className={`text-right font-medium ${
+                              profit >= 0 ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            $
+                            {profit.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Service breakdown for hours section */}
+                      {sectionId === "hours" && sectionData.services && (
+                        <div className="">
+                          {Object.entries(sectionData.services).map(
+                            ([serviceId, serviceData]) => {
+                              const serviceProfit =
+                                (serviceData.estimate || 0) -
+                                (serviceData.actual_cost || 0);
+                              const hoursDiff =
+                                (serviceData.estimated_hours || 0) -
+                                (serviceData.actual_hours || 0);
+                              return (
+                                <div
+                                  key={serviceId}
+                                  className="grid grid-cols-4 gap-4 text-sm py-1 hover:bg-gray-50 text-gray-600"
+                                >
+                                  <div className="">
+                                    {serviceData.service_name}
+                                  </div>
+                                  <div className="text-right">
+                                    $
+                                    {(serviceData.estimate || 0).toLocaleString(
+                                      undefined,
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      }
+                                    )}
+                                    <div className="text-gray-500 text-xs">
+                                      (
+                                      {(
+                                        serviceData.estimated_hours || 0
+                                      ).toFixed(2)}{" "}
+                                      hrs)
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    $
+                                    {(
+                                      serviceData.actual_cost || 0
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}
+                                    <div className="text-gray-500 text-xs">
+                                      (
+                                      {(serviceData.actual_hours || 0).toFixed(
+                                        2
+                                      )}{" "}
+                                      hrs)
+                                    </div>
+                                  </div>
+                                  <div
+                                    className={`text-right ${
+                                      serviceProfit >= 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    $
+                                    {serviceProfit.toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}
+                                    <div
+                                      className={`text-xs ${
+                                        hoursDiff >= 0
+                                          ? "text-green-600"
+                                          : "text-red-600"
+                                      }`}
+                                    >
+                                      ({hoursDiff.toFixed(2)} hrs)
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tasks List */}
       <div className="bg-white shadow rounded-lg p-6 max-w-[1200px] mx-auto">
-        {/* Header row - will stay fixed */}
-        <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 font-semibold border-b pb-2 sticky top-0 bg-white z-10">
-          <div>Job #</div>
-          <div>Room Name</div>
-          <div className="text-right">Estimated</div>
-          <div className="text-right">Actual</div>
-          <div className="text-right mx-2">Profit/Loss</div>
-        </div>
-
         {/* Scrollable container for tasks */}
-        <div className="max-h-[800px] overflow-y-auto">
+        <div className="max-h-[800px] overflow-y-auto scrollbar-stable">
+          {/* Header row - will stay fixed */}
+          <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 font-semibold border-b pb-2 sticky top-0 bg-white z-10">
+            <div>Job #</div>
+            <div>Room Name</div>
+            <div className="text-right">Estimated</div>
+            <div className="text-right">Actual</div>
+            <div className="text-right mx-2">Profit/Loss</div>
+          </div>
           {projectFinancials.map((task, index) => {
             if (!task.financial_data || !services?.length) return null;
 
@@ -338,14 +566,20 @@ const CompletedProjectView = () => {
                   </div>
                 </div>
 
-                {expandedTaskId === task.financials_id && (
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    expandedTaskId === task.financials_id
+                      ? "max-h-[2000px] opacity-100"
+                      : "max-h-0 opacity-0"
+                  }`}
+                >
                   <TaskFinancialsBreakdown
                     task={task}
                     services={services}
                     color={index % 2 === 0 ? "bg-gray-50" : ""}
                     adjustments={adjustedTotals.adjustments}
                   />
-                )}
+                </div>
               </div>
             );
           })}
