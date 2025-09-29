@@ -10,5 +10,13 @@ export default {
 			},
 		},
 	},
-	plugins: [],
+	plugins: [
+		function({ addUtilities }) {
+			addUtilities({
+				'.scrollbar-stable': {
+					'scrollbar-gutter': 'stable',
+				},
+			});
+		},
+	],
 };
