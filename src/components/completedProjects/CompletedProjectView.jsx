@@ -462,17 +462,16 @@ const CompletedProjectView = () => {
 
       {/* Tasks List */}
       <div className="bg-white shadow rounded-lg p-6 max-w-[1200px] mx-auto">
-        {/* Header row - will stay fixed */}
-        <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 font-semibold border-b pb-2 sticky top-0 bg-white z-10">
-          <div>Job #</div>
-          <div>Room Name</div>
-          <div className="text-right">Estimated</div>
-          <div className="text-right">Actual</div>
-          <div className="text-right mx-2">Profit/Loss</div>
-        </div>
-
         {/* Scrollable container for tasks */}
         <div className="max-h-[800px] overflow-y-scroll">
+          {/* Header row - will stay fixed */}
+          <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 font-semibold border-b pb-2 sticky top-0 bg-white z-10">
+            <div>Job #</div>
+            <div>Room Name</div>
+            <div className="text-right">Estimated</div>
+            <div className="text-right">Actual</div>
+            <div className="text-right mx-2">Profit/Loss</div>
+          </div>
           {projectFinancials.map((task, index) => {
             if (!task.financial_data || !services?.length) return null;
 
