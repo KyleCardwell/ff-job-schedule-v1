@@ -13,7 +13,9 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   }
 
   return (
-    <div className={`${color} pb-5`}>
+    <div
+      className={`${color} pb-5 transition-all duration-300 ease-in-out animate-in slide-in-from-top-2`}
+    >
       <div className="">
         {sections.map(([id, sectionData]) => {
           if (id === "hours") {
@@ -82,8 +84,8 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                           estimate - service.actual_cost > 0
                             ? "text-green-600"
                             : estimate - service.actual_cost < 0
-                              ? "text-red-600"
-                              : "text-blue-600"
+                            ? "text-red-600"
+                            : "text-blue-600"
                         }`}
                       >
                         $
@@ -96,8 +98,8 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                             estimate - service.actual_cost > 0
                               ? "text-green-600"
                               : estimate - service.actual_cost < 0
-                                ? "text-red-600"
-                                : "text-blue-600"
+                              ? "text-red-600"
+                              : "text-blue-600"
                           }`}
                         >
                           ({(service.estimate - actualHours).toFixed(2)} hrs)

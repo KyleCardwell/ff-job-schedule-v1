@@ -22,8 +22,7 @@ const CompletedProjectCard = ({
   project,
   setIsFinancialsInputModalOpen,
   setSelectedTask,
-  bgColor,
-  bgHoverColor,
+  index,
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -31,6 +30,9 @@ const CompletedProjectCard = ({
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoveredProjectId, setHoveredProjectId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const bgColor = index % 2 === 0 ? "bg-gray-200" : "bg-white";
+  const bgHoverColor = index % 2 === 0 ? "bg-teal-200" : "bg-teal-100";
 
   const jobName = project.project_name;
   const completedDate = new Date(
@@ -70,7 +72,15 @@ const CompletedProjectCard = ({
   return (
     <div className={`border-b border-gray-300 ${bgColor}`}>
       <div
-        className={`grid grid-cols-[1fr_1fr_1fr_150px] items-center sticky top-0 z-10 ${bgColor} hover:${bgHoverColor}`}
+        className={`grid grid-cols-[1fr_1fr_1fr_150px] items-center sticky top-0 z-10 cursor-pointer transition-colors duration-200 ${
+          hoveredProjectId === project.project_id
+            ? index % 2 === 0
+              ? "bg-teal-200"
+              : "bg-teal-100"
+            : index % 2 === 0
+            ? "bg-gray-200"
+            : "bg-white"
+        }`}
         onMouseEnter={() => setHoveredProjectId(project.project_id)}
         onMouseLeave={() => setHoveredProjectId(null)}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -86,7 +96,9 @@ const CompletedProjectCard = ({
             <FiX className="text-red-500" size={24} />
           )}
           <span>
-            {incompleteTasksCount === 0 ? "Complete" : `${incompleteTasksCount} Incomplete`}
+            {incompleteTasksCount === 0
+              ? "Complete"
+              : `${incompleteTasksCount} Incomplete`}
           </span>
           <button className="justify-self-end p-2 absolute right-2">
             {isExpanded ? (
@@ -186,7 +198,7 @@ CompletedProjectCard.propTypes = {
   project: PropTypes.object.isRequired,
   setIsFinancialsInputModalOpen: PropTypes.func.isRequired,
   setSelectedTask: PropTypes.func.isRequired,
-  bgColor: PropTypes.string,
+  index: PropTypes.number.isRequired,
 };
 
 export default CompletedProjectCard;
