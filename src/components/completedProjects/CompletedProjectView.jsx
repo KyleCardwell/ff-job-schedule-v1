@@ -117,6 +117,21 @@ const CompletedProjectView = () => {
           }
         );
 
+        // Aggregate adjustments (commission, profit, discount, etc.)
+        if (adjustedTotals.adjustments) {
+          adjustedTotals.adjustments.forEach(([adjustmentId, adjustmentData]) => {
+            if (!newSections[adjustmentId]) {
+              newSections[adjustmentId] = {
+                estimate: 0,
+                actual_cost: 0,
+                name: adjustmentData.name,
+              };
+            }
+            newSections[adjustmentId].estimate += adjustmentData.estimate || 0;
+            newSections[adjustmentId].actual_cost += adjustmentData.actual_cost || 0;
+          });
+        }
+
         return {
           estimate:
             acc.estimate +
@@ -457,7 +472,7 @@ const CompletedProjectView = () => {
         </div>
 
         {/* Scrollable container for tasks */}
-        <div className="max-h-[800px] overflow-y-auto">
+        <div className="max-h-[800px] overflow-y-scroll">
           {projectFinancials.map((task, index) => {
             if (!task.financial_data || !services?.length) return null;
 
