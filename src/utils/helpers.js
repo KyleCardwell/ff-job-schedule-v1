@@ -487,10 +487,46 @@ export const calculateFinancialTotals = (
             return typeAcc + hourlyEstimate + fixedAmount;
           }, 0) || 0;
 
+        // Build services breakdown for hours section
+        const servicesBreakdown = {};
+        section.data?.forEach((typeData) => {
+          const service = services?.find(
+            (s) => s.team_service_id === typeData.team_service_id
+          );
+          const rate = typeData.rateOverride ?? service?.hourly_rate ?? 0;
+          const estimate =
+            (typeData.estimate || 0) * rate + (typeData.fixedAmount || 0);
+
+          // Calculate actual hours, excluding fixed_amount entries
+          const actualHours = (typeData.inputRows || []).reduce((sum, row) => {
+            if (row.employee_id === "fixed_amount") return sum;
+            const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
+            return sum + hoursValue;
+          }, 0);
+
+          servicesBreakdown[typeData.team_service_id] = {
+            estimate,
+            actual_cost: typeData.actual_cost || 0,
+            service_name: service?.service_name || "Unknown Service",
+            team_service_id: typeData.team_service_id,
+            estimated_hours: typeData.estimate || 0,
+            actual_hours: actualHours,
+          };
+        });
+
         return {
           ...acc,
           actual: acc.actual + actualTotal,
           estimate: acc.estimate + estimateTotal,
+          sections: {
+            ...acc.sections,
+            [section.id]: {
+              // actual_cost: actualTotal,
+              // estimate: estimateTotal || 0,
+              name: section.name,
+              services: servicesBreakdown,
+            },
+          },
         };
       } else {
         // For non-hours sections, calculate actual from input rows
@@ -503,10 +539,18 @@ export const calculateFinancialTotals = (
           ...acc,
           actual: acc.actual + actualTotal,
           estimate: acc.estimate + (section.estimate || 0),
+          sections: {
+            ...acc.sections,
+            [section.id]: {
+              actual_cost: actualTotal,
+              estimate: section.estimate || 0,
+              name: section.name,
+            },
+          },
         };
       }
     },
-    { actual: 0, estimate: 0 }
+    { actual: 0, estimate: 0, sections: {} }
   );
 
   if (adjustments) {
@@ -534,6 +578,7 @@ export const calculateFinancialTotals = (
       subtotal,
       total: adjustedEstimate,
       actual: adjustedActual,
+      sections: totals.sections,
       adjustments: [
         [
           "addToSubtotal",
