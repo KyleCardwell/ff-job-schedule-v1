@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
+const CabinetTypeStyleRow = ({ typeStyle, onChange, isGroupActive = false }) => {
   const defaultConfig = {
     reveal_top: '',
     reveal_bottom: '',
@@ -33,7 +33,7 @@ const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
             id={`reveal_top-${typeStyle.team_cabinet_style_id}`}
             value={config.reveal_top}
             onChange={(e) => handleRevealChange("reveal_top", e.target.value)}
-            disabled={!typeStyle.is_active}
+            disabled={!isGroupActive}
             step="0.0625"
             className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
           />
@@ -45,7 +45,7 @@ const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
             id={`reveal_bottom-${typeStyle.team_cabinet_style_id}`}
             value={config.reveal_bottom}
             onChange={(e) => handleRevealChange("reveal_bottom", e.target.value)}
-            disabled={!typeStyle.is_active}
+            disabled={!isGroupActive}
             step="0.0625"
             className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
           />
@@ -57,7 +57,7 @@ const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
             id={`reveal_left-${typeStyle.team_cabinet_style_id}`}
             value={config.reveal_left}
             onChange={(e) => handleRevealChange("reveal_left", e.target.value)}
-            disabled={!typeStyle.is_active}
+            disabled={!isGroupActive}
             step="0.0625"
             className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
           />
@@ -69,7 +69,7 @@ const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
             id={`reveal_right-${typeStyle.team_cabinet_style_id}`}
             value={config.reveal_right}
             onChange={(e) => handleRevealChange("reveal_right", e.target.value)}
-            disabled={!typeStyle.is_active}
+            disabled={!isGroupActive}
             step="0.0625"
             className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
           />
@@ -81,7 +81,7 @@ const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
             id={`reveal_mid-${typeStyle.team_cabinet_style_id}`}
             value={config.reveal_mid}
             onChange={(e) => handleRevealChange("reveal_mid", e.target.value)}
-            disabled={!typeStyle.is_active}
+            disabled={!isGroupActive}
             step="0.0625"
             className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
           />
@@ -94,6 +94,7 @@ const CabinetTypeStyleRow = ({ typeStyle, onChange }) => {
 CabinetTypeStyleRow.propTypes = {
   typeStyle: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired,
+  isGroupActive: PropTypes.bool,
 };
 
 export default CabinetTypeStyleRow;

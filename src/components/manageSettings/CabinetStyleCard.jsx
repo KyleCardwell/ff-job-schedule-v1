@@ -5,25 +5,21 @@ import CabinetTypeStyleRow from "./CabinetTypeStyleRow.jsx";
 
 const CabinetStyleCard = ({ styleGroup, onChange }) => {
   const handleGroupIsActiveChange = (isActive) => {
-    styleGroup.types.forEach(typeStyle => {
-      onChange(typeStyle.team_cabinet_style_id, "is_active", isActive);
-    });
+    onChange(styleGroup.cabinet_style_id, "is_active", isActive);
   };
-
-  const areAllTypesActive = styleGroup.types.every(t => t.is_active);
 
   return (
     <div className={`relative`}>
         <div className="flex items-center gap-2 absolute right-4 top-[-52px]">
           <label className="block text-sm font-bold text-slate-200">Active</label>
           <Switch
-            checked={areAllTypesActive}
+            checked={styleGroup.is_active}
             onChange={handleGroupIsActiveChange}
-            className={`${areAllTypesActive ? "bg-blue-600" : "bg-gray-200"}
+            className={`${styleGroup.is_active ? "bg-blue-600" : "bg-gray-200"}
               relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
           >
             <span
-              className={`${areAllTypesActive ? "translate-x-6" : "translate-x-1"}
+              className={`${styleGroup.is_active ? "translate-x-6" : "translate-x-1"}
                 inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
             />
           </Switch>
@@ -35,7 +31,8 @@ const CabinetStyleCard = ({ styleGroup, onChange }) => {
           <CabinetTypeStyleRow 
             key={typeStyle.team_cabinet_style_id} 
             typeStyle={typeStyle} 
-            onChange={onChange} 
+            onChange={onChange}
+            isGroupActive={styleGroup.is_active}
           />
         ))}
       </div>

@@ -1,33 +1,15 @@
 import { supabase } from "../../utils/supabase";
 import { cabinetStyles } from "../actionTypes";
 
-export const fetchTeamCabinetStyles = () => async (dispatch, getState) => {
-  const { teamId } = getState().auth;
+export const fetchTeamCabinetStyles = () => async (dispatch) => {
   try {
     dispatch({ type: cabinetStyles.FETCH_TEAM_CABINET_STYLES_START });
-    const { data, error } = await supabase
-      .from("team_cabinet_styles_view")
-      .select("*")
-      .eq("team_id", teamId);
+    const { data, error } = await supabase.rpc("get_team_cabinet_styles");
     if (error) throw error;
-
-    const groupedStyles = data.reduce((acc, style) => {
-      const { cabinet_style_id, cabinet_style_name, description } = style;
-      if (!acc[cabinet_style_id]) {
-        acc[cabinet_style_id] = {
-          cabinet_style_id,
-          cabinet_style_name,
-          description,
-          types: [],
-        };
-      }
-      acc[cabinet_style_id].types.push(style);
-      return acc;
-    }, {});
 
     dispatch({
       type: cabinetStyles.FETCH_TEAM_CABINET_STYLES_SUCCESS,
-      payload: groupedStyles,
+      payload: data,
     });
   } catch (error) {
     dispatch({

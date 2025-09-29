@@ -1,7 +1,7 @@
 import { cabinetStyles } from "../actionTypes";
 
 const initialState = {
-  styles: {},
+  styles: [],
   loading: false,
   error: null,
 };
@@ -14,55 +14,44 @@ const cabinetStylesReducer = (state = initialState, action) => {
       return { ...state, loading: true, error: null };
 
     case cabinetStyles.FETCH_TEAM_CABINET_STYLES_SUCCESS:
+      // Payload is now an ARRAY of groups: [{ cabinet_style_id, cabinet_style_name, description, types: [...] }, ...]
       return { ...state, loading: false, styles: action.payload };
 
     case cabinetStyles.ADD_TEAM_CABINET_STYLE_SUCCESS:
-      // This case might need adjustment depending on how single additions are handled.
-      // For now, assuming it might not be used with the new grouped structure.
-      return {
-        ...state,
-        loading: false,
-      };
+      return { ...state, loading: false };
 
     case cabinetStyles.UPDATE_TEAM_CABINET_STYLES_SUCCESS: {
-      const updatedStylesArray = action.payload;
-      // Create a shallow copy of the styles object to avoid direct mutation
-      const newStyles = { ...state.styles };
+      const updatedStylesArray = action.payload; // array of rows from team_cabinet_styles
 
-      updatedStylesArray.forEach((updatedStyle) => {
-        const { cabinet_style_id } = updatedStyle;
-        const styleGroup = newStyles[cabinet_style_id];
+      // For each group in styles, update its types where there's a matching update
+      const newStyles = state.styles.map((group) => {
+        const updatesForGroup = updatedStylesArray.filter(
+          (u) => u.cabinet_style_id === group.cabinet_style_id
+        );
+        if (updatesForGroup.length === 0) return group;
 
-        if (styleGroup) {
-          const typeIndex = styleGroup.types.findIndex(
-            (t) => t.team_cabinet_style_id === updatedStyle.id
+        // Create a new types array with merged updates
+        const newTypes = group.types.map((type) => {
+          const match = updatesForGroup.find(
+            (u) => u.id === type.team_cabinet_style_id
           );
+          return match ? { ...type, ...match } : type;
+        });
 
-          if (typeIndex !== -1) {
-            // Create a new 'types' array using .map() to ensure immutability
-            const newTypes = styleGroup.types.map((type, index) => {
-              if (index === typeIndex) {
-                // For the item to be updated, return a new object with merged properties
-                return { ...type, ...updatedStyle };
-              }
-              // For all other items, return the original object
-              return type;
-            });
-
-            // Replace the old style group with a new one containing the new 'types' array
-            newStyles[cabinet_style_id] = {
-              ...styleGroup,
-              types: newTypes,
-            };
-          }
+        // Get the is_active value from the first update for this group
+        // (all updates for a group will have the same is_active value)
+        const groupIsActive = updatesForGroup[0]?.is_active;
+        
+        // Only update is_active if it's defined in the updates
+        const updatedGroup = { ...group, types: newTypes };
+        if (groupIsActive !== undefined) {
+          updatedGroup.is_active = groupIsActive;
         }
+
+        return updatedGroup;
       });
 
-      return {
-        ...state,
-        loading: false,
-        styles: newStyles,
-      };
+      return { ...state, loading: false, styles: newStyles };
     }
 
     case cabinetStyles.FETCH_TEAM_CABINET_STYLES_ERROR:

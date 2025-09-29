@@ -1,19 +1,29 @@
 import isEqual from "lodash/isEqual";
-import React, { useEffect, useState, useImperativeHandle, forwardRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 
-import { fetchTeamCabinetStyles, saveTeamCabinetStyles } from "../../redux/actions/cabinetStyles";
+import {
+  fetchTeamCabinetStyles,
+  saveTeamCabinetStyles,
+} from "../../redux/actions/cabinetStyles";
 
 import CabinetStyleCard from "./CabinetStyleCard.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const CabinetStyleSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
-  const { styles: groupedStyles, loading } = useSelector((state) => state.cabinetStyles);
+  const { styles: groupedStyles, loading } = useSelector(
+    (state) => state.cabinetStyles
+  );
   const { teamId } = useSelector((state) => state.auth);
 
-  const [localStyles, setLocalStyles] = useState({});
-  const [originalStyles, setOriginalStyles] = useState({});
+  const [localStyles, setLocalStyles] = useState([]);
+  const [originalStyles, setOriginalStyles] = useState([]);
 
   useEffect(() => {
     if (teamId) {
@@ -22,73 +32,103 @@ const CabinetStyleSettings = forwardRef((props, ref) => {
   }, [dispatch, teamId]);
 
   useEffect(() => {
-    if (groupedStyles) {
-      setLocalStyles(groupedStyles);
-      setOriginalStyles(groupedStyles);
+    if (groupedStyles && groupedStyles.length > 0) {
+      // Deep copy to prevent local edits from affecting original state reference
+      const deepCopiedStyles = JSON.parse(JSON.stringify(groupedStyles));
+      setLocalStyles(deepCopiedStyles);
+      setOriginalStyles(deepCopiedStyles);
     }
   }, [groupedStyles]);
 
-  const handleStyleChange = (team_cabinet_style_id, field, value) => {
-    setLocalStyles(prevGroupedStyles => {
-      const newGroupedStyles = JSON.parse(JSON.stringify(prevGroupedStyles));
-      
-      // Find which group the style belongs to
-      const groupKey = Object.keys(newGroupedStyles).find(key => 
-        newGroupedStyles[key].types.some(t => t.team_cabinet_style_id === team_cabinet_style_id)
-      );
+  const handleStyleChange = (id, field, value) => {
+    setLocalStyles((prevStyles) => {
+      // Create a deep copy to avoid mutation
+      const newStyles = JSON.parse(JSON.stringify(prevStyles));
 
-      if (groupKey) {
-        const styleGroup = newGroupedStyles[groupKey];
-        // Map over the types array of only that specific group
-        styleGroup.types = styleGroup.types.map(style => {
-          if (style.team_cabinet_style_id === team_cabinet_style_id) {
-            const newStyle = { ...style };
-            if (field.startsWith("config.")) {
-              const configField = field.split('.')[1];
-              newStyle.config = { ...newStyle.config, [configField]: value };
-            } else {
-              newStyle[field] = value;
-            }
-            return newStyle;
-          }
-          return style;
-        });
+      // Handle group-level changes like is_active
+      if (field === "is_active") {
+        const groupIndex = newStyles.findIndex(
+          (g) => g.cabinet_style_id === id
+        );
+        if (groupIndex !== -1) {
+          newStyles[groupIndex].is_active = value;
+          return newStyles;
+        }
       }
 
-      return newGroupedStyles;
+      // Handle type-level changes (config fields)
+      for (const group of newStyles) {
+        const typeIndex = group.types.findIndex(
+          (t) => t.team_cabinet_style_id === id
+        );
+        if (typeIndex !== -1) {
+          if (field.startsWith("config.")) {
+            const configField = field.split(".")[1];
+            group.types[typeIndex].config = {
+              ...group.types[typeIndex].config,
+              [configField]: value,
+            };
+          } else {
+            group.types[typeIndex][field] = value;
+          }
+          break;
+        }
+      }
+
+      return newStyles;
     });
   };
 
   const handleSaveChanges = () => {
-    const flattenedLocalStyles = Object.values(localStyles).flatMap(group => group.types);
-    const flattenedOriginalStyles = Object.values(originalStyles).flatMap(group => group.types);
-    
-    // Find styles that have been changed by comparing with original styles
-    const changedStyles = flattenedLocalStyles.filter(localStyle => {
-      const originalStyle = flattenedOriginalStyles.find(
-        origStyle => origStyle.team_cabinet_style_id === localStyle.team_cabinet_style_id
+    const changesToSave = [];
+
+    // Compare each group and its types to find changes
+    localStyles.forEach((localGroup) => {
+      const originalGroup = originalStyles.find(
+        (og) => og.cabinet_style_id === localGroup.cabinet_style_id
       );
-      
-      if (!originalStyle) return true; // New style
-      
-      // Only compare the config and is_active fields
-      return !isEqual(localStyle.config, originalStyle.config) || 
-             localStyle.is_active !== originalStyle.is_active;
+
+      if (!originalGroup) return; // Skip if no matching original group (shouldn't happen)
+
+      // Check if group's is_active changed
+      const activeChanged = localGroup.is_active !== originalGroup.is_active;
+
+      // If active status changed, we need to update ALL types in this group
+      if (activeChanged) {
+        localGroup.types.forEach((localType) => {
+          changesToSave.push({
+            team_cabinet_style_id: localType.team_cabinet_style_id,
+            config: localType.config,
+            is_active: localGroup.is_active, // Use group-level is_active
+            team_id: teamId,
+          });
+        });
+      } else {
+        // If active status didn't change, only check for config changes
+        localGroup.types.forEach((localType) => {
+          const originalType = originalGroup.types.find(
+            (ot) => ot.cabinet_type_id === localType.cabinet_type_id
+          );
+
+          if (!originalType) return; // Skip if no matching original type
+
+          const configChanged = !isEqual(localType.config, originalType.config);
+
+          if (configChanged) {
+            changesToSave.push({
+              team_cabinet_style_id: localType.team_cabinet_style_id,
+              config: localType.config,
+              is_active: localGroup.is_active, // Use group-level is_active
+              team_id: teamId,
+            });
+          }
+        });
+      }
     });
-    
-    if (changedStyles.length === 0) {
-      return; // No changes to save
+
+    if (changesToSave.length > 0) {
+      dispatch(saveTeamCabinetStyles(changesToSave));
     }
-    
-    // Only include necessary fields for the update
-    const changesToSave = changedStyles.map(style => ({
-      team_cabinet_style_id: style.team_cabinet_style_id,
-      config: style.config,
-      is_active: style.is_active,
-      team_id: teamId,
-    }));
-    
-    dispatch(saveTeamCabinetStyles(changesToSave));
   };
 
   useImperativeHandle(ref, () => ({
@@ -98,12 +138,13 @@ const CabinetStyleSettings = forwardRef((props, ref) => {
 
   return (
     <div className="flex flex-col gap-4 mt-4">
-      {Object.values(localStyles).map((group) => (
-        <SettingsSection key={group.cabinet_style_id} title={group.cabinet_style_name} loading={loading}>
-          <CabinetStyleCard
-            styleGroup={group}
-            onChange={handleStyleChange}
-          />
+      {localStyles.map((group) => (
+        <SettingsSection
+          key={group.cabinet_style_id}
+          title={group.cabinet_style_name}
+          loading={loading}
+        >
+          <CabinetStyleCard styleGroup={group} onChange={handleStyleChange} />
         </SettingsSection>
       ))}
     </div>
