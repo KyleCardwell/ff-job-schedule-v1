@@ -25,6 +25,7 @@ const CabinetItemForm = ({
   const cabinetAnchors = useSelector(
     (state) => state.cabinetAnchors.itemsByType
   );
+  const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const [formData, setFormData] = useState({
     type: item.type || "",
     width: item.width || "",
@@ -35,6 +36,7 @@ const CabinetItemForm = ({
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
     finished_interior: item.finished_interior,
+    cabinet_style_override: item.cabinet_style_override,
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -52,13 +54,46 @@ const CabinetItemForm = ({
 
     // For non-dimension fields
     if (!["width", "height", "depth"].includes(name)) {
-      // Handle quantity as numeric
-      if (name === "quantity" || name === "type") {
+      // Handle numeric fields
+      if (name === "quantity" || name === "type" || name === "cabinet_style_override") {
         const numValue = value === "" ? "" : Number(value);
-        setFormData({
-          ...formData,
-          [name]: numValue,
-        });
+        
+        // When cabinet_style_override or type changes, update rootReveals in face_config
+        if ((name === "cabinet_style_override" || name === "type") && formData.face_config) {
+          // Determine which style to use
+          const effectiveStyleId = name === "cabinet_style_override" 
+            ? (numValue === -1 ? cabinetStyleId : numValue)
+            : (formData.cabinet_style_override === -1 || !formData.cabinet_style_override ? cabinetStyleId : formData.cabinet_style_override);
+          
+          // Determine which type to use
+          const effectiveTypeId = name === "type" ? numValue : formData.type;
+          
+          // Find the style and type config
+          const style = cabinetStyles.find((s) => s.cabinet_style_id === effectiveStyleId);
+          const typeConfig = style?.types?.find((t) => t.cabinet_type_id === effectiveTypeId);
+          
+          // Update face_config with new rootReveals if config exists
+          if (typeConfig?.config) {
+            setFormData({
+              ...formData,
+              [name]: numValue,
+              face_config: {
+                ...formData.face_config,
+                rootReveals: typeConfig.config,
+              },
+            });
+          } else {
+            setFormData({
+              ...formData,
+              [name]: numValue,
+            });
+          }
+        } else {
+          setFormData({
+            ...formData,
+            [name]: numValue,
+          });
+        }
       } else if (type === "checkbox") {
         setFormData({
           ...formData,
@@ -163,6 +198,11 @@ const CabinetItemForm = ({
     if (validateForm()) {
       // Calculate face summary and box summary before saving
       const finalFormData = { ...formData };
+
+      // Convert cabinet_style_override to null if default option (-1) is selected
+      if (formData.cabinet_style_override === -1) {
+        finalFormData.cabinet_style_override = null;
+      }
 
       if (formData.face_config) {
         const boxSummary = calculateBoxSummary(
@@ -288,7 +328,7 @@ const CabinetItemForm = ({
     const sideArea = h * d; // One side panel
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
-    const bandingLength = (2 * h) + (2 * w) + (2 * d)
+    const bandingLength = 2 * h + 2 * w + 2 * d;
 
     // Calculate total shelf area from the face config
     const { totalArea: totalShelfArea, shelfBandingLength } = faceConfig
@@ -310,7 +350,8 @@ const CabinetItemForm = ({
 
     // Total area for all cabinets
     // const totalBoxPartsArea = singleCabinetArea * qty;
-    const totalBandingLength = (bandingLength + shelfBandingLength + partitionBandingLength);
+    const totalBandingLength =
+      bandingLength + shelfBandingLength + partitionBandingLength;
 
     // Count of pieces per cabinet type
     const pieces = {
@@ -507,8 +548,46 @@ const CabinetItemForm = ({
                 </div>
               </div>
 
-              {/* Cabinet Type */}
+              {/* Cabinet Style */}
               <div>
+                <label
+                  htmlFor="cabinet_style_override"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Cabinet Style
+                </label>
+                <select
+                  id="cabinet_style_override"
+                  name="cabinet_style_override"
+                  value={formData.cabinet_style_override || -1}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border ${
+                    errors.cabinet_style_override
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  } rounded-md text-sm`}
+                >
+                  <option value={-1}>Match Section</option>
+                  {cabinetStyles
+                    .filter((style) => style.is_active)
+                    .map((style) => (
+                      <option
+                        key={style.cabinet_style_id}
+                        value={style.cabinet_style_id}
+                      >
+                        {style.cabinet_style_name}
+                      </option>
+                    ))}
+                </select>
+                {errors.cabinet_style_override && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.cabinet_style_override}
+                  </p>
+                )}
+              </div>
+
+              {/* Cabinet Type */}
+              <div className="mt-2">
                 <label
                   htmlFor="type"
                   className="block text-xs font-medium text-slate-700 mb-1"
@@ -528,7 +607,10 @@ const CabinetItemForm = ({
                   {cabinetTypes
                     .filter((type) => type.is_active)
                     .map((type) => (
-                      <option key={type.cabinet_type_id} value={type.cabinet_type_id}>
+                      <option
+                        key={type.cabinet_type_id}
+                        value={type.cabinet_type_id}
+                      >
                         {type.cabinet_type_name}
                       </option>
                     ))}

@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { cloneDeep } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
@@ -60,7 +60,7 @@ const CabinetFaceDivider = ({
 
   // Fixed display dimensions
   const fixedDisplayWidth = 300; // Fixed width for the SVG container
-  const fixedDisplayHeight = 436; // Fixed height for the SVG container
+  const fixedDisplayHeight = 480; // Fixed height for the SVG container
 
   // Minimum face dimension (2 inches)
   const minValue = 2;
@@ -76,7 +76,24 @@ const CabinetFaceDivider = ({
 
   const style = cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId);
   const type = style.types.find((type) => type.cabinet_type_id === cabinetTypeId);
-  const reveals = type?.config;
+  
+  // Use rootReveals from config if available, otherwise fall back to type config
+  // Use ref to maintain stable reference and only update when values actually change
+  const revealsRef = useRef(null);
+  const currentReveals = config?.rootReveals || type?.config || {
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    reveal: 0,
+  };
+  
+  // Only update ref if reveals actually changed (deep comparison)
+  if (!isEqual(revealsRef.current, currentReveals)) {
+    revealsRef.current = currentReveals;
+  }
+  
+  const reveals = revealsRef.current;
 
   const calculateShelfQty = (height) => {
     return Math.floor(height / 16);
@@ -101,29 +118,110 @@ const CabinetFaceDivider = ({
     });
   };
 
+  // Separate useEffect to handle rootReveals changes from parent (faceConfig prop)
+  useEffect(() => {
+    // Check if the incoming faceConfig has different rootReveals than our local config state
+    if (faceConfig?.rootReveals && config?.id === FACE_NAMES.ROOT && !isEqual(faceConfig.rootReveals, config.rootReveals)) {
+      // Update the ref to the new reveals
+      revealsRef.current = faceConfig.rootReveals;
+      
+      const updatedConfig = cloneDeep(config);
+      
+      // Update rootReveals with the new values from parent
+      updatedConfig.rootReveals = faceConfig.rootReveals;
+      
+      // Normalize reveal dimensions with new reveals
+      // We need to use the new reveals value directly
+      const normalizeWithNewReveals = (node) => {
+        if (!node || !node.children) return;
+        
+        const revealValue = faceConfig.rootReveals.reveal;
+        
+        node.children.forEach((child) => {
+          if (child.type === FACE_NAMES.REVEAL) {
+            if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
+              child.width = revealValue;
+            } else if (node.splitDirection === SPLIT_DIRECTIONS.VERTICAL) {
+              child.height = revealValue;
+            }
+          }
+          // Recurse for nested containers
+          normalizeWithNewReveals(child);
+        });
+      };
+      
+      normalizeWithNewReveals(updatedConfig);
+      
+      // Update root dimensions based on new reveals
+      updatedConfig.width = cabinetWidth - faceConfig.rootReveals.left - faceConfig.rootReveals.right;
+      updatedConfig.height = cabinetHeight - faceConfig.rootReveals.top - faceConfig.rootReveals.bottom;
+      updatedConfig.x = faceConfig.rootReveals.left;
+      updatedConfig.y = faceConfig.rootReveals.top;
+      
+      // Recursively update all children to scale proportionally
+      updateChildrenFromParent(updatedConfig);
+      
+      // Force recalculation of layout with new dimensions
+      const layoutConfig = calculateLayout(updatedConfig);
+      
+      // Update state with the new configuration
+      setConfig(layoutConfig);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faceConfig?.rootReveals, config?.rootReveals, cabinetWidth, cabinetHeight]);
+
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
       // Initialize with a single root node for new cabinets or empty configs
+      const initialReveals = type?.config || {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        reveal: 0,
+      };
+      
       setConfig({
         id: FACE_NAMES.ROOT,
         type: FACE_NAMES.DOOR,
-        width: cabinetWidth - reveals.left - reveals.right,
-        height: cabinetHeight - reveals.top - reveals.bottom,
-        x: reveals.left,
-        y: reveals.top,
+        width: cabinetWidth - initialReveals.left - initialReveals.right,
+        height: cabinetHeight - initialReveals.top - initialReveals.bottom,
+        x: initialReveals.left,
+        y: initialReveals.top,
         children: null,
+        rootReveals: initialReveals,
       });
     } else if (config && !config.id) {
-      // Ensure existing config has an id
+      // Ensure existing config has an id and rootReveals
+      const configReveals = config.rootReveals || type?.config || {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        reveal: 0,
+      };
+      
       setConfig({
         ...config,
         id: FACE_NAMES.ROOT,
+        rootReveals: configReveals,
       });
     } else if (config && config.id === FACE_NAMES.ROOT) {
       // Update root dimensions when cabinet dimensions change
       // Create a new config object regardless of whether dimensions have changed
       // to ensure React detects the change and re-renders
       const updatedConfig = cloneDeep(config);
+
+      // Ensure rootReveals exists (for backward compatibility with old configs)
+      if (!updatedConfig.rootReveals) {
+        updatedConfig.rootReveals = type?.config || {
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          reveal: 0,
+        };
+      }
 
       // Normalize reveals before doing anything else
       normalizeRevealDimensions(updatedConfig);
@@ -1100,7 +1198,7 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
-      const reveals = type?.config;
+      const reveals = faceConfig.rootReveals;
       const revealWidth = reveals.reveal;
       const childWidth = (node.width - revealWidth) / 2;
 
@@ -1153,7 +1251,7 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
-      const reveals = type?.config;
+      const reveals = faceConfig.rootReveals;
       const revealHeight = reveals.reveal;
       const childHeight = (node.height - revealHeight) / 2;
 
@@ -1353,6 +1451,7 @@ const CabinetFaceDivider = ({
       y: reveals.top,
       children: null,
       shelfQty: calculateShelfQty(cabinetHeight - reveals.top - reveals.bottom),
+      rootReveals: reveals,
     };
 
     setConfig(resetConfig);
@@ -1708,7 +1807,6 @@ CabinetFaceDivider.propTypes = {
   cabinetWidth: PropTypes.number.isRequired,
   cabinetHeight: PropTypes.number.isRequired,
   cabinetDepth: PropTypes.number.isRequired,
-  cabinetStyle: PropTypes.string.isRequired,
   cabinetTypeId: PropTypes.number.isRequired,
   cabinetStyleId: PropTypes.number.isRequired,
   faceConfig: PropTypes.object,
