@@ -133,11 +133,45 @@ export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
   const pricePerSquareInch =
     selectedMaterial.sheet_price / selectedMaterial.area;
   return roundToHundredth(
-    pricePerSquareInch * cabinet.face_config.boxSummary.totalBoxPartsArea
+    pricePerSquareInch * cabinet.face_config.boxSummary.areaPerCabinet
   );
 };
 
-// Helper function to calculate slab sheet face price for a specific face type
+export const calculateOutsourceCabinetCost = (
+  cabinet,
+  material,
+  laborPricePerSheet,
+  roundingIncrement = 0.2,
+  edgeBandPricePerFoot = .15,
+  taxRate = 0.10
+) => {
+  // const sheetSqft = (material.width * material.height) / 144;
+
+  const area = cabinet.face_config.boxSummary.areaPerCabinet;
+
+  // const sqft = area / 144;
+  const rawSheets = roundToHundredth(area / material.area);
+  const roundedSheets =
+    roundToHundredth(Math.ceil(rawSheets / roundingIncrement) * roundingIncrement);
+
+  const sheetCost = roundedSheets * ((material.sheet_price * 1.5) + laborPricePerSheet);
+
+  const bandingCost = (cabinet.face_config.boxSummary.bandingLength / 12) * (0 + edgeBandPricePerFoot);
+
+  // ----- TOTAL COST -----
+  const totalCost = (sheetCost + bandingCost) * (1 + taxRate);
+
+  return {
+    // sqft,
+    rawSheets,
+    roundedSheets,
+    sheetCost: parseFloat(sheetCost.toFixed(2)),
+    bandingLength: cabinet.face_config.boxSummary.bandingLength / 12,
+    bandingCost: parseFloat(bandingCost.toFixed(2)),
+    totalCost: parseFloat(totalCost.toFixed(2)),
+  };
+};
+
 export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
   if (!faceData || !selectedMaterial) {
     return 0;

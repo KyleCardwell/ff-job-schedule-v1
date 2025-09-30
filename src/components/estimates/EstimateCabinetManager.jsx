@@ -18,7 +18,6 @@ const CabinetItemForm = ({
   onSave,
   onCancel,
   cabinetStyleId,
-  cabinetTypeId,
   onDeleteItem,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
@@ -52,15 +51,20 @@ const CabinetItemForm = ({
   useEffect(() => {
     // Only run if cabinet_style_override is null (using section default)
     if (
-      (item.cabinet_style_override === null || item.cabinet_style_override === undefined) &&
+      (item.cabinet_style_override === null ||
+        item.cabinet_style_override === undefined) &&
       item.face_config &&
       item.type &&
       cabinetStyles.length > 0
     ) {
       // Find the style and type config for the section's style
-      const style = cabinetStyles.find((s) => s.cabinet_style_id === cabinetStyleId);
-      const typeConfig = style?.types?.find((t) => t.cabinet_type_id === item.type);
-      
+      const style = cabinetStyles.find(
+        (s) => s.cabinet_style_id === cabinetStyleId
+      );
+      const typeConfig = style?.types?.find(
+        (t) => t.cabinet_type_id === item.type
+      );
+
       // Update rootReveals to match the section's style config
       if (typeConfig?.config) {
         setFormData((prev) => ({
@@ -82,23 +86,40 @@ const CabinetItemForm = ({
     // For non-dimension fields
     if (!["width", "height", "depth"].includes(name)) {
       // Handle numeric fields
-      if (name === "quantity" || name === "type" || name === "cabinet_style_override") {
+      if (
+        name === "quantity" ||
+        name === "type" ||
+        name === "cabinet_style_override"
+      ) {
         const numValue = value === "" ? "" : Number(value);
-        
+
         // When cabinet_style_override or type changes, update rootReveals in face_config
-        if ((name === "cabinet_style_override" || name === "type") && formData.face_config) {
+        if (
+          (name === "cabinet_style_override" || name === "type") &&
+          formData.face_config
+        ) {
           // Determine which style to use
-          const effectiveStyleId = name === "cabinet_style_override" 
-            ? (numValue === -1 ? cabinetStyleId : numValue)
-            : (formData.cabinet_style_override === -1 || !formData.cabinet_style_override ? cabinetStyleId : formData.cabinet_style_override);
-          
+          const effectiveStyleId =
+            name === "cabinet_style_override"
+              ? numValue === -1
+                ? cabinetStyleId
+                : numValue
+              : formData.cabinet_style_override === -1 ||
+                !formData.cabinet_style_override
+              ? cabinetStyleId
+              : formData.cabinet_style_override;
+
           // Determine which type to use
           const effectiveTypeId = name === "type" ? numValue : formData.type;
-          
+
           // Find the style and type config
-          const style = cabinetStyles.find((s) => s.cabinet_style_id === effectiveStyleId);
-          const typeConfig = style?.types?.find((t) => t.cabinet_type_id === effectiveTypeId);
-          
+          const style = cabinetStyles.find(
+            (s) => s.cabinet_style_id === effectiveStyleId
+          );
+          const typeConfig = style?.types?.find(
+            (t) => t.cabinet_type_id === effectiveTypeId
+          );
+
           // Update face_config with new rootReveals if config exists
           if (typeConfig?.config) {
             setFormData({
@@ -231,13 +252,24 @@ const CabinetItemForm = ({
         finalFormData.cabinet_style_override = null;
       }
 
+      
+
       if (formData.face_config) {
+        // Determine effective style ID (use override if set, otherwise section default)
+        const effectiveStyleId =
+          formData.cabinet_style_override &&
+          formData.cabinet_style_override !== -1
+            ? formData.cabinet_style_override
+            : cabinetStyleId;
+
         const boxSummary = calculateBoxSummary(
           formData.width,
           formData.height,
           formData.depth,
           formData.quantity,
-          formData.face_config
+          formData.face_config,
+          effectiveStyleId,
+          formData.type
         );
 
         finalFormData.face_config = {
@@ -251,7 +283,7 @@ const CabinetItemForm = ({
           formData.height,
           formData.depth,
           formData.finished_interior,
-          cabinetAnchors[formData.type]
+          cabinetAnchors[formData.type],
         );
       }
 
@@ -288,7 +320,7 @@ const CabinetItemForm = ({
   };
 
   // Recursive helper to calculate partition area from face_config
-  const calculatePartitionArea = (node, depth) => {
+  const calculatePartitionArea = (node, depth, cabStyleId) => {
     let totalArea = 0;
     let partitionBandingLength = 0;
 
@@ -321,14 +353,17 @@ const CabinetItemForm = ({
             );
 
             totalArea += partitionWidth * depth;
-            partitionBandingLength += partitionWidth;
+            // Banding partitions is only for cabinet style 13 (European)
+            if (cabStyleId === 13) {
+              partitionBandingLength += partitionWidth;
+            }
           }
         }
       }
 
       // Recursively check children for more partitions
       node.children.forEach((child) => {
-        const childResult = calculatePartitionArea(child, depth);
+        const childResult = calculatePartitionArea(child, depth, cabStyleId);
         totalArea += childResult.totalArea;
         partitionBandingLength += childResult.partitionBandingLength;
       });
@@ -343,7 +378,9 @@ const CabinetItemForm = ({
     height,
     depth,
     quantity = 1,
-    faceConfig
+    faceConfig,
+    cabinetStyleId,
+    cabinetTypeId
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -355,7 +392,16 @@ const CabinetItemForm = ({
     const sideArea = h * d; // One side panel
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
-    const bandingLength = 2 * h + 2 * w + 2 * d;
+
+    let bandingLength = 0;
+    // Banding front edges is only for cabinet style 13 (European)
+    if (cabinetStyleId === 13) {
+      bandingLength = 2 * h + 2 * w;
+    }
+    // Banding bottom edges is only for cabinet type 2 (Upper)
+    if (cabinetTypeId === 2) {
+      bandingLength += 2 * d;
+    }
 
     // Calculate total shelf area from the face config
     const { totalArea: totalShelfArea, shelfBandingLength } = faceConfig
@@ -364,7 +410,7 @@ const CabinetItemForm = ({
 
     // Calculate total partition area from the face config
     const { totalArea: totalPartitionArea, partitionBandingLength } = faceConfig
-      ? calculatePartitionArea(faceConfig, d)
+      ? calculatePartitionArea(faceConfig, d, cabinetStyleId)
       : { totalArea: 0, partitionBandingLength: 0 };
 
     // Total area calculation for a single cabinet
@@ -790,7 +836,6 @@ const EstimateCabinetManager = ({
   onUpdateItems,
   onReorderItems,
   cabinetStyleId,
-  cabinetTypeId,
   onDeleteItem,
   cabinetTypes,
 }) => {
@@ -847,7 +892,7 @@ const EstimateCabinetManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyleId, cabinetTypeId, onDeleteItem, cabinetTypes }}
+      formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes }}
     />
   );
 };

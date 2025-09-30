@@ -3,6 +3,7 @@ import {
   calculate5PieceDoorHours,
   calculate5PieceHardwoodFacePrice,
   calculateBoxPrice,
+  calculateOutsourceCabinetCost,
   calculateSlabDoorHours,
   calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
@@ -34,7 +35,7 @@ const calculateSingleCabinet = (
   };
 
   FACE_TYPES.forEach((type) => {
-    if (type.value === 'reveal') return;
+    if (type.value === "reveal") return;
     cabinetSubtotal.faceCounts[type.value] = 0;
     cabinetSubtotal.facePrices[type.value] = 0;
   });
@@ -44,9 +45,24 @@ const calculateSingleCabinet = (
     const selectedBoxMaterial = cabinet.finished_interior
       ? faceMaterials.find((mat) => mat.id === section.face_mat)
       : boxMaterials.find((mat) => mat.id === section.box_mat);
-    const boxPrice =
-      calculateBoxPrice(cabinet, selectedBoxMaterial)(section) || 0;
+    // const boxPrice =
+    //   calculateBoxPrice(cabinet, selectedBoxMaterial)(section) || 0;
+    
+    const cabinetCost = calculateOutsourceCabinetCost(
+      cabinet,
+      selectedBoxMaterial,
+      75, //labor price per sheet
+      0.3, //rounding increment
+      0.15, //edge band price per foot
+      0.1 //tax rate
+    );
+
+    const boxPrice = cabinetCost.totalCost || 0
+
     cabinetSubtotal.boxPrice = boxPrice * quantity;
+
+    console.log("cabinetCost", cabinet.type, cabinetCost);
+    // console.log("cabinetCost", cabinet.type, cabinetCost);
 
     if (cabinet.cabinetHours) {
       cabinetSubtotal.shopHours +=
@@ -174,7 +190,7 @@ const calculateCabinetTotals = (
   };
 
   FACE_TYPES.forEach((type) => {
-    if (type.value === 'reveal') return;
+    if (type.value === "reveal") return;
     totals.faceCounts[type.value] = 0;
     totals.facePrices[type.value] = 0;
   });
