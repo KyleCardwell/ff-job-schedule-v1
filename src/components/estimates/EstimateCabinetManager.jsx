@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
@@ -47,6 +47,33 @@ const CabinetItemForm = ({
   });
 
   const [errors, setErrors] = useState({});
+
+  // Sync rootReveals on mount if cabinet_style_override is null
+  useEffect(() => {
+    // Only run if cabinet_style_override is null (using section default)
+    if (
+      (item.cabinet_style_override === null || item.cabinet_style_override === undefined) &&
+      item.face_config &&
+      item.type &&
+      cabinetStyles.length > 0
+    ) {
+      // Find the style and type config for the section's style
+      const style = cabinetStyles.find((s) => s.cabinet_style_id === cabinetStyleId);
+      const typeConfig = style?.types?.find((t) => t.cabinet_type_id === item.type);
+      
+      // Update rootReveals to match the section's style config
+      if (typeConfig?.config) {
+        setFormData((prev) => ({
+          ...prev,
+          face_config: {
+            ...prev.face_config,
+            rootReveals: typeConfig.config,
+          },
+        }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Handle regular input changes
   const handleChange = (e) => {
