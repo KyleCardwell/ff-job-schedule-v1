@@ -197,20 +197,3 @@ export const CABINET_ANCHORS = {
     },
   ],
 };
-
-export const FACE_REVEALS = {
-  euro: {
-    top: .125,
-    bottom: .125,
-    left: .0625,
-    right: .0625,
-    reveal: .125,
-  },
-  face_frame: {
-    top: 1.5,
-    bottom: 1.5,
-    left: .75,
-    right: .75,
-    reveal: 1.5,
-  },
-};

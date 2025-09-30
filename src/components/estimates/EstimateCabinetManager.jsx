@@ -17,11 +17,14 @@ const CabinetItemForm = ({
   item = {},
   onSave,
   onCancel,
-  cabinetStyle,
+  cabinetStyleId,
+  cabinetTypeId,
   onDeleteItem,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
-  const cabinetAnchors = useSelector((state) => state.cabinetAnchors.itemsByType);
+  const cabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors.itemsByType
+  );
   const [formData, setFormData] = useState({
     type: item.type || "",
     width: item.width || "",
@@ -197,25 +200,30 @@ const CabinetItemForm = ({
   // Recursive helper to calculate total shelf area from face_config
   const calculateShelfArea = (node) => {
     let totalArea = 0;
+    let shelfBandingLength = 0;
 
     if (node.shelfQty && node.shelfDimensions) {
       const shelfWidth = roundTo16th(node.shelfDimensions.width);
       const shelfHeight = roundTo16th(node.shelfDimensions.height); // User calls it height, but it's depth
       totalArea += node.shelfQty * (shelfWidth * shelfHeight);
+      shelfBandingLength += (node.shelfQty || 0) * shelfWidth;
     }
 
     if (node.children) {
       node.children.forEach((child) => {
-        totalArea += calculateShelfArea(child);
+        const childResult = calculateShelfArea(child);
+        totalArea += childResult.totalArea;
+        shelfBandingLength += childResult.shelfBandingLength;
       });
     }
 
-    return totalArea;
+    return { totalArea, shelfBandingLength };
   };
 
   // Recursive helper to calculate partition area from face_config
   const calculatePartitionArea = (node, depth) => {
     let totalArea = 0;
+    let partitionBandingLength = 0;
 
     if (node && node.children && node.children.length > 1) {
       // Check for partitions between siblings
@@ -246,17 +254,20 @@ const CabinetItemForm = ({
             );
 
             totalArea += partitionWidth * depth;
+            partitionBandingLength += partitionWidth;
           }
         }
       }
 
       // Recursively check children for more partitions
       node.children.forEach((child) => {
-        totalArea += calculatePartitionArea(child, depth);
+        const childResult = calculatePartitionArea(child, depth);
+        totalArea += childResult.totalArea;
+        partitionBandingLength += childResult.partitionBandingLength;
       });
     }
 
-    return totalArea;
+    return { totalArea, partitionBandingLength };
   };
 
   // Calculate box material summary (sides, top, bottom, back)
@@ -277,14 +288,17 @@ const CabinetItemForm = ({
     const sideArea = h * d; // One side panel
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
+    const bandingLength = (2 * h) + (2 * w) + (2 * d)
 
     // Calculate total shelf area from the face config
-    const totalShelfArea = faceConfig ? calculateShelfArea(faceConfig) : 0;
+    const { totalArea: totalShelfArea, shelfBandingLength } = faceConfig
+      ? calculateShelfArea(faceConfig)
+      : { totalArea: 0, shelfBandingLength: 0 };
 
     // Calculate total partition area from the face config
-    const totalPartitionArea = faceConfig
+    const { totalArea: totalPartitionArea, partitionBandingLength } = faceConfig
       ? calculatePartitionArea(faceConfig, d)
-      : 0;
+      : { totalArea: 0, partitionBandingLength: 0 };
 
     // Total area calculation for a single cabinet
     const singleCabinetArea =
@@ -295,7 +309,8 @@ const CabinetItemForm = ({
       totalPartitionArea;
 
     // Total area for all cabinets
-    const totalBoxPartsArea = singleCabinetArea * qty;
+    // const totalBoxPartsArea = singleCabinetArea * qty;
+    const totalBandingLength = (bandingLength + shelfBandingLength + partitionBandingLength);
 
     // Count of pieces per cabinet type
     const pieces = {
@@ -318,12 +333,13 @@ const CabinetItemForm = ({
     ];
 
     return {
-      totalBoxPartsArea,
+      // totalBoxPartsArea,
       pieces,
       components,
       cabinetCount: qty,
       areaPerCabinet: singleCabinetArea,
       partitionArea: totalPartitionArea, // Add for clarity
+      bandingLength: totalBandingLength,
     };
   };
 
@@ -512,8 +528,8 @@ const CabinetItemForm = ({
                   {cabinetTypes
                     .filter((type) => type.is_active)
                     .map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
+                      <option key={type.cabinet_type_id} value={type.cabinet_type_id}>
+                        {type.cabinet_type_name}
                       </option>
                     ))}
                 </select>
@@ -637,7 +653,8 @@ const CabinetItemForm = ({
             cabinetWidth={formData.width || 24} // Default width if empty
             cabinetHeight={formData.height || 30} // Default height if empty
             cabinetDepth={formData.depth || 24} // Default depth if empty
-            cabinetStyle={cabinetStyle}
+            cabinetStyleId={cabinetStyleId}
+            cabinetTypeId={item.type}
             faceConfig={formData.face_config}
             onSave={handleFaceConfigSave}
             disabled={!canEditFaces}
@@ -653,7 +670,8 @@ CabinetItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  cabinetStyle: PropTypes.string,
+  cabinetStyleId: PropTypes.number,
+  cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
@@ -662,7 +680,8 @@ const EstimateCabinetManager = ({
   items,
   onUpdateItems,
   onReorderItems,
-  style,
+  cabinetStyleId,
+  cabinetTypeId,
   onDeleteItem,
   cabinetTypes,
 }) => {
@@ -719,7 +738,7 @@ const EstimateCabinetManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyle: style, onDeleteItem, cabinetTypes }}
+      formProps={{ cabinetStyleId, cabinetTypeId, onDeleteItem, cabinetTypes }}
     />
   );
 };
@@ -728,7 +747,8 @@ EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
-  style: PropTypes.string,
+  cabinetStyleId: PropTypes.number,
+  cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };

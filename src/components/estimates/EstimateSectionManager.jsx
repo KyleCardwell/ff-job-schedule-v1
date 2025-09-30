@@ -193,7 +193,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
           onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.CABINETS.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)}
-          style={sectionData.style}
+          cabinetStyleId={section.cabinet_style_id}
           cabinetTypes={cabinetTypes}
         />
       ),

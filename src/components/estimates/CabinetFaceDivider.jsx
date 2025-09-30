@@ -3,12 +3,12 @@ import { cloneDeep } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
+import { useSelector } from "react-redux";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_TYPES,
-  FACE_REVEALS,
   FACE_NAMES,
   SPLIT_DIRECTIONS,
 } from "../../utils/constants";
@@ -19,7 +19,8 @@ const CabinetFaceDivider = ({
   cabinetWidth,
   cabinetHeight,
   cabinetDepth,
-  cabinetStyle = "euro",
+  cabinetStyleId,
+  cabinetTypeId,
   faceConfig = null,
   onSave,
   disabled = false,
@@ -28,6 +29,10 @@ const CabinetFaceDivider = ({
   const svgRef = useRef();
   const typeSelectorPopupRef = useRef(null);
   const handleEditorPopupRef = useRef(null);
+
+  const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
+
   const [config, setConfig] = useState(faceConfig);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -68,7 +73,10 @@ const CabinetFaceDivider = ({
   const displayHeight = cabinetHeight * scale;
   const offsetX = (fixedDisplayWidth - displayWidth) / 2;
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
-  const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+
+  const style = cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId);
+  const type = style.types.find((type) => type.cabinet_type_id === cabinetTypeId);
+  const reveals = type?.config;
 
   const calculateShelfQty = (height) => {
     return Math.floor(height / 16);
@@ -1092,17 +1100,23 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
-      const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+      const reveals = type?.config;
       const revealWidth = reveals.reveal;
       const childWidth = (node.width - revealWidth) / 2;
+
+      const childType =
+        node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type;
+
+      const canHaveShelves = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType);
 
       node.children = [
         {
           id: generateId(node.id, 0),
-          type:
-            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          type: childType,
           width: childWidth,
           height: node.height,
+          rollOutQty: null,
+          shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
         },
         {
@@ -1113,18 +1127,19 @@ const CabinetFaceDivider = ({
         },
         {
           id: generateId(node.id, 2),
-          type:
-            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          type: childType,
           width: childWidth,
           height: node.height,
+          rollOutQty: null,
+          shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
         },
       ];
       node.splitDirection = SPLIT_DIRECTIONS.HORIZONTAL;
       node.type = FACE_NAMES.CONTAINER;
-      node.rollOutQty = "";
+      node.rollOutQty = 0;
       node.drawerBoxDimensions = null;
-      node.shelfQty = "";
+      node.shelfQty = 0;
     }
 
     setConfig(newConfig);
@@ -1138,17 +1153,23 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
-      const reveals = FACE_REVEALS[cabinetStyle] || FACE_REVEALS.face_frame;
+      const reveals = type?.config;
       const revealHeight = reveals.reveal;
       const childHeight = (node.height - revealHeight) / 2;
+
+      const childType =
+        node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type;
+
+      const canHaveShelves = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType);
 
       node.children = [
         {
           id: generateId(node.id, 0),
-          type:
-            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          type: childType,
           width: node.width,
           height: childHeight,
+          rollOutQty: null,
+          shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
         },
         {
@@ -1159,15 +1180,19 @@ const CabinetFaceDivider = ({
         },
         {
           id: generateId(node.id, 2),
-          type:
-            node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type,
+          type: childType,
           width: node.width,
           height: childHeight,
+          rollOutQty: null,
+          shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
         },
       ];
       node.splitDirection = SPLIT_DIRECTIONS.VERTICAL;
       node.type = FACE_NAMES.CONTAINER;
+      node.rollOutQty = 0;
+      node.shelfQty = 0;
+      node.drawerBoxDimensions = null;
     }
 
     setConfig(newConfig);
@@ -1275,13 +1300,19 @@ const CabinetFaceDivider = ({
           // Update child's id to reflect new position in tree
           lastChild.id = parent.id;
         } else {
+          const canHaveShelves = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(
+            lastChild.type
+          );
+          const newHeight = cabinetHeight - reveals.top - reveals.bottom;
           // Parent is the root, so the last child becomes the new root
           Object.assign(newConfig, {
             ...lastChild,
             width: cabinetWidth - reveals.left - reveals.right,
-            height: cabinetHeight - reveals.top - reveals.bottom,
+            height: newHeight,
             x: parent.x,
             y: parent.y,
+            rollOutQty: null,
+            shelfQty: canHaveShelves ? calculateShelfQty(newHeight) : null,
           });
         }
       } else {
@@ -1678,6 +1709,8 @@ CabinetFaceDivider.propTypes = {
   cabinetHeight: PropTypes.number.isRequired,
   cabinetDepth: PropTypes.number.isRequired,
   cabinetStyle: PropTypes.string.isRequired,
+  cabinetTypeId: PropTypes.number.isRequired,
+  cabinetStyleId: PropTypes.number.isRequired,
   faceConfig: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
