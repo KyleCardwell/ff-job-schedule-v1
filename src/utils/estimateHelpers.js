@@ -119,56 +119,255 @@ export const getCabinetHours = (
   return hoursByService;
 };
 
-// Helper function to calculate box material price
-export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
-  if (
-    !cabinet.face_config?.boxSummary ||
-    !section.box_mat ||
-    !selectedMaterial
-  ) {
-    return 0;
-  }
+// // Helper function to calculate box material price
+// export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
+//   if (
+//     !cabinet.face_config?.boxSummary ||
+//     !section.box_mat ||
+//     !selectedMaterial
+//   ) {
+//     return 0;
+//   }
 
-  // Calculate price based on area and material price
-  const pricePerSquareInch =
-    selectedMaterial.sheet_price / selectedMaterial.area;
-  return roundToHundredth(
-    pricePerSquareInch * cabinet.face_config.boxSummary.areaPerCabinet
-  );
-};
+//   // Calculate price based on area and material price
+//   const pricePerSquareInch =
+//     selectedMaterial.sheet_price / selectedMaterial.area;
+//   return roundToHundredth(
+//     pricePerSquareInch * cabinet.face_config.boxSummary.areaPerCabinet
+//   );
+// };
 
-export const calculateOutsourceCabinetCost = (
-  cabinet,
-  material,
-  laborPricePerSheet,
+// export const calculateOutsourceCabinetCost = (
+//   cabinet,
+//   material,
+//   laborPricePerSheet,
+//   roundingIncrement = 0.2,
+//   edgeBandPricePerFoot = .15,
+//   taxRate = 0.10
+// ) => {
+//   // const sheetSqft = (material.width * material.height) / 144;
+
+//   const area = cabinet.face_config.boxSummary.areaPerCabinet;
+
+//   // const sqft = area / 144;
+//   const rawSheets = roundToHundredth(area / material.area);
+//   const roundedSheets =
+//     roundToHundredth(Math.ceil(rawSheets / roundingIncrement) * roundingIncrement);
+
+//   const sheetCost = roundedSheets * ((material.sheet_price * 1.5) + laborPricePerSheet);
+
+//   const bandingCost = (cabinet.face_config.boxSummary.bandingLength / 12) * (0 + edgeBandPricePerFoot);
+
+//   // ----- TOTAL COST -----
+//   const totalCost = (sheetCost + bandingCost) * (1 + taxRate);
+
+//   return {
+//     // sqft,
+//     rawSheets,
+//     roundedSheets,
+//     sheetCost: parseFloat(sheetCost.toFixed(2)),
+//     bandingLength: cabinet.face_config.boxSummary.bandingLength / 12,
+//     bandingCost: parseFloat(bandingCost.toFixed(2)),
+//     totalCost: parseFloat(totalCost.toFixed(2)),
+//   };
+// };
+
+// export const calculateOutsourceCabinetCostCNC = (
+//   cabinet,
+//   material,
+//   setupCost = 5,
+//   cutPricePerFoot,
+//   drillCostPerHingeBore = 1,
+//   drillCostPerSlide = 1,
+//   roundingIncrement = 0.2,
+//   edgeBandPricePerFoot = .15,
+//   taxRate = 0.10
+// ) => {
+//   // const sheetSqft = (material.width * material.height) / 144;
+
+//   const area = cabinet.face_config.boxSummary.areaPerCabinet;
+//   const perimeter = cabinet.face_config.boxSummary.singleBoxPerimeterLength;
+//   const parts = cabinet.face_config.boxSummary.singleBoxPartsCount;
+//   const { totalHinges, totalSlides } = cabinet.face_config.boxSummary?.boxHardware || {};
+
+//   // const sqft = area / 144;
+//   const rawSheets = roundToHundredth(area / material.area);
+//   const roundedSheets =
+//     roundToHundredth(Math.ceil(rawSheets / roundingIncrement) * roundingIncrement);
+
+//   const sheetCost = roundedSheets * (material.sheet_price * 1);
+
+//   const bandingCost = (cabinet.face_config.boxSummary.bandingLength / 12) * (0 + edgeBandPricePerFoot);
+
+//   const cutCost = (perimeter / 12) * cutPricePerFoot;
+
+//   // drill 2 holes per part on average
+//   const hingeBoreCost = totalHinges * drillCostPerHingeBore;
+
+//   const slideCost = (2 * totalSlides) * drillCostPerSlide;
+
+//   // ----- TOTAL COST -----
+//   const totalCost = (sheetCost + bandingCost + cutCost + hingeBoreCost + slideCost + setupCost) * (1 + taxRate);
+
+//   return {
+//     // sqft,
+//     rawSheets,
+//     roundedSheets,
+//     sheetCost: parseFloat(sheetCost.toFixed(2)),
+//     bandingLength: cabinet.face_config.boxSummary.bandingLength / 12,
+//     bandingCost: parseFloat(bandingCost.toFixed(2)),
+//     totalCost: parseFloat(totalCost.toFixed(2)),
+//   };
+// };
+
+export const calculateOutsourceBatchCostCNC = (
+  section,
+  boxMaterials,
+  faceMaterials,
+  cutPricePerFoot,
+  drillCostPerHingeBore = 1,
+  drillCostPerSlide = 1,
   roundingIncrement = 0.2,
-  edgeBandPricePerFoot = .15,
-  taxRate = 0.10
+  edgeBandPricePerFoot = 0.15,
+  taxRate = 0.10,
+  setupCostPerSheet = 5,
+  wasteFactor = 0.10 // 10% waste factor for cuts, defects, and layout inefficiency
 ) => {
-  // const sheetSqft = (material.width * material.height) / 144;
+  if (!section || !section.cabinets || section.cabinets.length === 0 || !boxMaterials || !faceMaterials) {
+    return {
+      sheetCount: 0,
+      totalArea: 0,
+      totalCost: 0,
+      totalCostBeforeTax: 0,
+      costPerSqFt: 0,
+      cabinetBreakdown: [],
+    };
+  }
+  
+  // --- Group cabinets by material (box vs face for finished interiors) ---
+  const groupedByMaterial = section.cabinets.reduce((acc, cab) => {
+    if (!cab.face_config?.boxSummary) return acc;
+    
+      const selectedBoxMaterial = cab.finished_interior
+      ? faceMaterials.find((mat) => mat.id === section.face_mat)
+      : boxMaterials.find((mat) => mat.id === section.box_mat);
+    
+    const materialKey = cab.finished_interior ? 'face' : 'box';
+    if (!acc[materialKey]) {
+      acc[materialKey] = {
+        material: selectedBoxMaterial,
+        cabinets: [],
+        totals: { area: 0, perimeter: 0, bandingLength: 0, hinges: 0, slides: 0 }
+      };
+    }
+    
+    const qty = Number(cab.quantity) || 1;
+    const { boxSummary } = cab.face_config;
+    const { areaPerCabinet, singleBoxPerimeterLength, bandingLength, boxHardware } = boxSummary;
 
-  const area = cabinet.face_config.boxSummary.areaPerCabinet;
+    acc[materialKey].totals.area += areaPerCabinet * qty;
+    acc[materialKey].totals.perimeter += singleBoxPerimeterLength * qty;
+    acc[materialKey].totals.bandingLength += bandingLength * qty;
+    acc[materialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
+    acc[materialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
+    acc[materialKey].cabinets.push(cab);
 
-  // const sqft = area / 144;
-  const rawSheets = roundToHundredth(area / material.area);
-  const roundedSheets =
-    roundToHundredth(Math.ceil(rawSheets / roundingIncrement) * roundingIncrement);
+    return acc;
+  }, {});
 
-  const sheetCost = roundedSheets * ((material.sheet_price * 1.5) + laborPricePerSheet);
+  // --- Calculate costs for each material group ---
+  const materialResults = Object.entries(groupedByMaterial).map(([materialKey, group]) => {
+    const { material, totals, cabinets: groupCabinets } = group;
 
-  const bandingCost = (cabinet.face_config.boxSummary.bandingLength / 12) * (0 + edgeBandPricePerFoot);
+    // --- Core cost calculations ---
+    // Dynamic waste factor: higher for small jobs, lower for large jobs
+    // Small jobs have more setup cuts and less efficient layouts
+    const sheetsEstimate = totals.area / material.area;
+    let adjustedWasteFactor = wasteFactor;
+    
+    if (sheetsEstimate < 1) {
+      // Very small jobs: 15-20% waste
+      adjustedWasteFactor = wasteFactor * 4;
+    } else if (sheetsEstimate < 3) {
+      // Small jobs: 12-15% waste
+      adjustedWasteFactor = wasteFactor * 1.5;
+    } else if (sheetsEstimate > 10) {
+      // Large jobs: 5-7% waste (better utilization)
+      adjustedWasteFactor = wasteFactor;
+    }
+    
+    const areaWithWaste = totals.area * (1 + adjustedWasteFactor);
+    const rawSheets = areaWithWaste / material.area;
+    // Ensure minimum 1 sheet per material group to avoid unrealistic zero-cost scenarios
+    const roundedSheets = Math.max(
+      Math.ceil(rawSheets / roundingIncrement) * roundingIncrement,
+      1
+    );
 
-  // ----- TOTAL COST -----
-  const totalCost = (sheetCost + bandingCost) * (1 + taxRate);
+    const sheetCost = roundedSheets * material.sheet_price;
+    // Setup cost per whole sheet (can't have fractional sheet setups)
+    const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
+    const cutCost = (totals.perimeter / 12) * cutPricePerFoot;
+    const bandingCost = (totals.bandingLength / 12) * edgeBandPricePerFoot;
+    const hingeBoreCost = totals.hinges * drillCostPerHingeBore;
+    // totals.slides counts one slide pair, so multiply by to include each slide
+    const slideCost = (2 * totals.slides) * drillCostPerSlide;
+
+    const totalCostBeforeTax =
+      sheetCost + setupCost + cutCost + bandingCost + hingeBoreCost + slideCost;
+
+    const totalCost = totalCostBeforeTax * (1 + taxRate);
+
+    // --- Distribute cost proportionally by cabinet area ---
+    const totalArea = totals.area;
+    const cabinetBreakdown = groupCabinets.map((cab) => {
+      const qty = Number(cab.quantity) || 1;
+      const cabArea = cab.face_config.boxSummary.areaPerCabinet * qty;
+      const share = totalArea > 0 ? cabArea / totalArea : 0;
+      const cabCost = totalCost * share;
+
+      return {
+        id: cab.id || cab.temp_id,
+        type: cab.type,
+        quantity: qty,
+        area: parseFloat(cabArea.toFixed(2)),
+        costShare: parseFloat(share.toFixed(4)),
+        cost: parseFloat(cabCost.toFixed(2)),
+        finishedInterior: cab.finished_interior || false,
+      };
+    });
+
+    return {
+      materialType: materialKey,
+      material: material.name || 'Unknown',
+      sheetCount: parseFloat(roundedSheets.toFixed(2)),
+      totalArea: parseFloat(totals.area.toFixed(2)),
+      totalCost: parseFloat(totalCost.toFixed(2)),
+      totalCostBeforeTax: parseFloat(totalCostBeforeTax.toFixed(2)),
+      costPerSqFt: totals.area > 0 ? parseFloat((totalCost / (totals.area / 144)).toFixed(2)) : 0,
+      breakdown: {
+        sheetCost: parseFloat(sheetCost.toFixed(2)),
+        setupCost: parseFloat(setupCost.toFixed(2)),
+        cutCost: parseFloat(cutCost.toFixed(2)),
+        bandingCost: parseFloat(bandingCost.toFixed(2)),
+        hingeBoreCost: parseFloat(hingeBoreCost.toFixed(2)),
+        slideCost: parseFloat(slideCost.toFixed(2)),
+      },
+      cabinetBreakdown,
+    };
+  });
+
+  // --- Combine results ---
+  const combinedTotalCost = materialResults.reduce((sum, result) => sum + result.totalCost, 0);
+  const combinedTotalArea = materialResults.reduce((sum, result) => sum + result.totalArea, 0);
+  const allCabinetBreakdown = materialResults.flatMap(result => result.cabinetBreakdown);
 
   return {
-    // sqft,
-    rawSheets,
-    roundedSheets,
-    sheetCost: parseFloat(sheetCost.toFixed(2)),
-    bandingLength: cabinet.face_config.boxSummary.bandingLength / 12,
-    bandingCost: parseFloat(bandingCost.toFixed(2)),
-    totalCost: parseFloat(totalCost.toFixed(2)),
+    totalCost: parseFloat(combinedTotalCost.toFixed(2)),
+    totalArea: parseFloat(combinedTotalArea.toFixed(2)),
+    costPerSqFt: combinedTotalArea > 0 ? parseFloat((combinedTotalCost / (combinedTotalArea / 144)).toFixed(2)) : 0,
+    materialGroups: materialResults,
+    cabinetBreakdown: allCabinetBreakdown,
   };
 };
 

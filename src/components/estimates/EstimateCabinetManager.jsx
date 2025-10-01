@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import {
+  CAN_HAVE_PULLS,
   FACE_NAMES,
   ITEM_FORM_WIDTHS,
   SPLIT_DIRECTIONS,
@@ -252,8 +253,6 @@ const CabinetItemForm = ({
         finalFormData.cabinet_style_override = null;
       }
 
-      
-
       if (formData.face_config) {
         // Determine effective style ID (use override if set, otherwise section default)
         const effectiveStyleId =
@@ -283,7 +282,7 @@ const CabinetItemForm = ({
           formData.height,
           formData.depth,
           formData.finished_interior,
-          cabinetAnchors[formData.type],
+          cabinetAnchors[formData.type]
         );
       }
 
@@ -297,15 +296,58 @@ const CabinetItemForm = ({
   };
 
   // Recursive helper to calculate total shelf area from face_config
+  const countFaceHardware = (node) => {
+    let totalHinges = 0;
+    let totalPulls = 0;
+    let totalSlides = 0;
+
+    if (node.type === FACE_NAMES.DOOR) {
+      const usableHeight = Math.max(node.height - 8, 0); // inset 4" top and bottom
+      totalHinges += 2 + Math.floor(usableHeight / 33);
+    }
+    if (node.type === FACE_NAMES.PAIR_DOOR) {
+      const usableHeight = Math.max(node.height - 8, 0); // inset 4" top and bottom
+      totalHinges += 2 * (2 + Math.floor(usableHeight / 33));
+    }
+
+    if (node.type === FACE_NAMES.DRAWER_FRONT) {
+      totalSlides += 1;
+    }
+
+    if (node.rollOutQty > 0) {
+      totalSlides += node.rollOutQty;
+    }
+
+    if (CAN_HAVE_PULLS.includes(node.type)) {
+      totalPulls += 1;
+    }
+
+    if (node.children) {
+      node.children.forEach((child) => {
+        const childResult = countFaceHardware(child);
+        totalHinges += childResult.totalHinges;
+        totalPulls += childResult.totalPulls;
+        totalSlides += childResult.totalSlides;
+      });
+    }
+
+    return { totalHinges, totalPulls, totalSlides };
+  };
+
+  // Recursive helper to calculate total shelf area from face_config
   const calculateShelfArea = (node) => {
     let totalArea = 0;
     let shelfBandingLength = 0;
+    let shelfCount = 0;
+    let shelfPerimeterLength = 0;
 
     if (node.shelfQty && node.shelfDimensions) {
       const shelfWidth = roundTo16th(node.shelfDimensions.width);
       const shelfHeight = roundTo16th(node.shelfDimensions.height); // User calls it height, but it's depth
       totalArea += node.shelfQty * (shelfWidth * shelfHeight);
       shelfBandingLength += (node.shelfQty || 0) * shelfWidth;
+      shelfCount += node.shelfQty;
+      shelfPerimeterLength += node.shelfQty * (2 * (shelfWidth + shelfHeight));
     }
 
     if (node.children) {
@@ -313,16 +355,20 @@ const CabinetItemForm = ({
         const childResult = calculateShelfArea(child);
         totalArea += childResult.totalArea;
         shelfBandingLength += childResult.shelfBandingLength;
+        shelfCount += childResult.shelfCount;
+        shelfPerimeterLength += childResult.shelfPerimeterLength;
       });
     }
 
-    return { totalArea, shelfBandingLength };
+    return { totalArea, shelfBandingLength, shelfCount, shelfPerimeterLength };
   };
 
   // Recursive helper to calculate partition area from face_config
   const calculatePartitionArea = (node, depth, cabStyleId) => {
     let totalArea = 0;
     let partitionBandingLength = 0;
+    let partitionCount = 0;
+    let partitionPerimeterLength = 0;
 
     if (node && node.children && node.children.length > 1) {
       // Check for partitions between siblings
@@ -357,6 +403,8 @@ const CabinetItemForm = ({
             if (cabStyleId === 13) {
               partitionBandingLength += partitionWidth;
             }
+            partitionCount += 1;
+            partitionPerimeterLength += 2 * (partitionWidth + depth);
           }
         }
       }
@@ -366,10 +414,17 @@ const CabinetItemForm = ({
         const childResult = calculatePartitionArea(child, depth, cabStyleId);
         totalArea += childResult.totalArea;
         partitionBandingLength += childResult.partitionBandingLength;
+        partitionCount += childResult.partitionCount;
+        partitionPerimeterLength += childResult.partitionPerimeterLength;
       });
     }
 
-    return { totalArea, partitionBandingLength };
+    return {
+      totalArea,
+      partitionBandingLength,
+      partitionCount,
+      partitionPerimeterLength,
+    };
   };
 
   // Calculate box material summary (sides, top, bottom, back)
@@ -393,6 +448,14 @@ const CabinetItemForm = ({
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
 
+    const sidePerimeterLength = 2 * (2 * (h + d));
+    const topBottomPerimeterLength = 2 * (2 * (w + d));
+    const backPerimeterLength = 2 * (w + h);
+
+    const boxPerimeterLength =
+      sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength;
+    const boxPartsCount = 5;
+
     let bandingLength = 0;
     // Banding front edges is only for cabinet style 13 (European)
     if (cabinetStyleId === 13) {
@@ -404,14 +467,36 @@ const CabinetItemForm = ({
     }
 
     // Calculate total shelf area from the face config
-    const { totalArea: totalShelfArea, shelfBandingLength } = faceConfig
+    const {
+      totalArea: totalShelfArea,
+      shelfBandingLength,
+      shelfCount,
+      shelfPerimeterLength,
+    } = faceConfig
       ? calculateShelfArea(faceConfig)
-      : { totalArea: 0, shelfBandingLength: 0 };
+      : {
+          totalArea: 0,
+          shelfBandingLength: 0,
+          shelfCount: 0,
+          shelfPerimeterLength: 0,
+        };
 
     // Calculate total partition area from the face config
-    const { totalArea: totalPartitionArea, partitionBandingLength } = faceConfig
+    const {
+      totalArea: totalPartitionArea,
+      partitionBandingLength,
+      partitionCount,
+      partitionPerimeterLength,
+    } = faceConfig
       ? calculatePartitionArea(faceConfig, d, cabinetStyleId)
-      : { totalArea: 0, partitionBandingLength: 0 };
+      : {
+          totalArea: 0,
+          partitionBandingLength: 0,
+          partitionCount: 0,
+          partitionPerimeterLength: 0,
+        };
+
+    const boxHardware = countFaceHardware(faceConfig);
 
     // Total area calculation for a single cabinet
     const singleCabinetArea =
@@ -446,6 +531,10 @@ const CabinetItemForm = ({
       { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty },
     ];
 
+    const singleBoxPartsCount = boxPartsCount + shelfCount + partitionCount;
+    const singleBoxPerimeterLength =
+      boxPerimeterLength + shelfPerimeterLength + partitionPerimeterLength;
+
     return {
       // totalBoxPartsArea,
       pieces,
@@ -454,6 +543,9 @@ const CabinetItemForm = ({
       areaPerCabinet: singleCabinetArea,
       partitionArea: totalPartitionArea, // Add for clarity
       bandingLength: totalBandingLength,
+      singleBoxPartsCount,
+      singleBoxPerimeterLength,
+      boxHardware,
     };
   };
 

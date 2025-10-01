@@ -71,6 +71,12 @@ export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [
   FACE_NAMES.OPEN,
 ];
 
+export const CAN_HAVE_PULLS = [
+  FACE_NAMES.DOOR,
+  FACE_NAMES.PAIR_DOOR,
+  FACE_NAMES.DRAWER_FRONT,
+];
+
 export const DRAWER_BOX_PRICE = 50;
 export const ROLL_OUT_PRICE = 60;
 
