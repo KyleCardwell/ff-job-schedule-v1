@@ -184,7 +184,7 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header with Save/Cancel */}
-        <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
+        <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
           <button
             className={`${headerButtonClass} ${headerButtonColor}`}
             onClick={handleCancel}

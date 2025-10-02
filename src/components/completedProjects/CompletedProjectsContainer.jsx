@@ -104,7 +104,7 @@ const CompletedProjectsContainer = () => {
       {/* Scrollable content with sticky header inside */}
       <div className="flex-1 overflow-y-auto px-6 max-w-[1200px] mx-auto w-full">
         {/* Sticky table header */}
-        <div className="sticky top-0 z-50 bg-slate-800 pb-0">
+        <div className="sticky top-0 z-20 bg-slate-800 pb-0">
           <div className="grid grid-cols-[1fr_1fr_1fr_150px] bg-gray-200 border-b-2 border-gray-400 text-center">
             <button
               onClick={() => handleSort("project")}
