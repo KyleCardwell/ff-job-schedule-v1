@@ -74,7 +74,7 @@ const SectionItemList = ({
         }
       }
       case "type": {
-        return cabinetTypes.find((t) => t.id === item.type)?.name;
+        return cabinetTypes.find((t) => t.cabinet_type_id === item.type)?.cabinet_type_name;
       }
       case "actions":
         return (

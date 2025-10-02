@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
+import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import {
   fetchEstimateById,
@@ -73,6 +74,7 @@ const EstimateLayout = () => {
     dispatch(fetchSheetGoods());
     dispatch(fetchCabinetTypes());
     dispatch(fetchCabinetAnchors())
+    dispatch(fetchTeamCabinetStyles())
   }, []);
 
   useEffect(() => {
@@ -321,7 +323,7 @@ const EstimateLayout = () => {
         open={isReorderModalOpen}
         onClose={() => setIsReorderModalOpen(false)}
         onSave={handleSaveTaskOrder}
-        items={currentEstimate.tasks}
+        items={currentEstimate?.tasks}
         title="Reorder Rooms"
         idKey="est_task_id"
       />

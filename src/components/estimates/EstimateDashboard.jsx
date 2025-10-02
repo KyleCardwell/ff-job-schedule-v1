@@ -3,6 +3,8 @@ import { FiPlusCircle, FiEdit, FiCheckCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
+import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
+import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import { fetchEstimates, clearCurrentEstimate } from "../../redux/actions/estimates";
 import { fetchSheetGoods } from "../../redux/actions/materials";
@@ -16,9 +18,11 @@ const EstimateDashboard = () => {
     const { estimates, loading, error } = useSelector(state => state.estimates);
     
     useEffect(() => {
+        dispatch(fetchTeamCabinetStyles());
         dispatch(fetchCabinetTypes());
         dispatch(fetchEstimates());
         dispatch(fetchSheetGoods());
+        dispatch(fetchCabinetAnchors())
     }, []);
 
     const handleStartNewEstimate = () => {

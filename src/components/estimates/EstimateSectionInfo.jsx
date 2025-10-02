@@ -21,6 +21,8 @@ const EstimateSectionInfo = ({
 
   const materials = useSelector((state) => state.materials);
 
+  const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+
   const getTitle = () => {
     if (!selectedTask) return "Select a Room";
     if (selectedTask.sections?.length <= 1)
@@ -34,7 +36,7 @@ const EstimateSectionInfo = ({
 
   const getStyleName = (id) => {
     return (
-      estimate_data?.styles?.find((s) => s.id === id)?.name ||
+      cabinetStyles.find((s) => s.cabinet_style_id === id)?.cabinet_style_name ||
       NOT_SELECTED
     );
   };
@@ -118,7 +120,7 @@ const EstimateSectionInfo = ({
               <div className="space-y-3">
                 <div className="text-slate-400">Style:</div>
                 <div className="pl-5 mb-3">
-                  {getStyleName(sectionData.style) || NOT_SELECTED}
+                  {getStyleName(section?.cabinet_style_id) || NOT_SELECTED}
                 </div>
                 <div className="text-slate-400">Face Material:</div>
                 <div className="pl-5 mb-3">

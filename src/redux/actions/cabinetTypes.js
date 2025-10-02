@@ -34,38 +34,6 @@ export const fetchCabinetTypes = () => {
   };
 };
 
-// Add a new cabinet type
-// export const addCabinetType = (cabinetTypeData) => {
-//   return async (dispatch, getState) => {
-//     try {
-//       dispatch({ type: cabinetTypes.ADD_CABINET_TYPE_START });
-
-//       const { teamId } = getState().auth;
-//       const { data, error } = await supabase
-//         .from("team_cabinet_types")
-//         .insert([{ ...cabinetTypeData, team_id: teamId }])
-//         .select()
-//         .single();
-
-//       if (error) throw error;
-
-//       dispatch({
-//         type: cabinetTypes.ADD_CABINET_TYPE_SUCCESS,
-//         payload: data,
-//       });
-
-//       return data;
-//     } catch (error) {
-//       console.error("Error adding cabinet type:", error);
-//       dispatch({
-//         type: cabinetTypes.ADD_CABINET_TYPE_ERROR,
-//         payload: error.message,
-//       });
-//       throw error;
-//     }
-//   };
-// };
-
 // Update an existing cabinet type
 export const updateCabinetType = (id, updates) => {
   return async (dispatch) => {

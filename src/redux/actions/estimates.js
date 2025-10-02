@@ -457,13 +457,13 @@ export const addTask = (estimateId, taskName) => {
 
       // Add the new task ID to the order array and update the estimate
       const newTasksOrder = [...(currentEstimate.tasks_order || []), newTask.est_task_id];
-      await updateOrderArray(
-        'estimates',
-        'estimate_id',
-        estimateId,
-        'tasks_order',
-        newTasksOrder
-      );
+      // await updateOrderArray(
+      //   'estimates',
+      //   'estimate_id',
+      //   estimateId,
+      //   'tasks_order',
+      //   newTasksOrder
+      // );
 
       // Fetch the task with sections using task_full_details view
       const { data: taskWithSections, error: fetchError } = await supabase
@@ -668,13 +668,14 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       const currentSections = currentTask?.sections || [];
 
       // Extract boxMaterial and faceMaterial from updates
-      const { boxMaterial, faceMaterial, ...sectionData } = updates;
+      const { boxMaterial, faceMaterial, style, ...sectionData } = updates;
 
       // Prepare the update payload for Supabase
       const updatePayload = {
         // Set box_mat and face_mat separately if provided
         ...(boxMaterial !== undefined && { box_mat: +boxMaterial }),
         ...(faceMaterial !== undefined && { face_mat: +faceMaterial }),
+        ...(style !== undefined && { cabinet_style_id: +style }),
 
         // Merge the rest into section_data
         section_data: {

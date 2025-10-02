@@ -1,9 +1,10 @@
 import PropTypes from "prop-types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import {
+  CAN_HAVE_PULLS,
   FACE_NAMES,
   ITEM_FORM_WIDTHS,
   SPLIT_DIRECTIONS,
@@ -17,21 +18,36 @@ const CabinetItemForm = ({
   item = {},
   onSave,
   onCancel,
-  cabinetStyle,
+  cabinetStyleId,
   onDeleteItem,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
-  const cabinetAnchors = useSelector((state) => state.cabinetAnchors.itemsByType);
+  const cabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors.itemsByType
+  );
+  const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  
+  // Initialize face_config with proper structure for new cabinets
+  const getInitialFaceConfig = () => {
+    if (item.face_config) return item.face_config;
+    
+    // For new cabinets, initialize with null (will be set when type is selected)
+    return null;
+  };
+  
   const [formData, setFormData] = useState({
     type: item.type || "",
     width: item.width || "",
     height: item.height || "",
     depth: item.depth || "",
     quantity: item.quantity || 1,
-    face_config: item.face_config || [],
+    face_config: getInitialFaceConfig(),
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
     finished_interior: item.finished_interior,
+    finished_left: item.finished_left,
+    finished_right: item.finished_right,
+    cabinet_style_override: item.cabinet_style_override,
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -43,19 +59,133 @@ const CabinetItemForm = ({
 
   const [errors, setErrors] = useState({});
 
+  // Sync rootReveals on mount if cabinet_style_override is null
+  useEffect(() => {
+    // Only run if cabinet_style_override is null (using section default)
+    if (
+      (item.cabinet_style_override === null ||
+        item.cabinet_style_override === undefined) &&
+      item.face_config &&
+      item.type &&
+      cabinetStyles.length > 0
+    ) {
+      // Find the style and type config for the section's style
+      const style = cabinetStyles.find(
+        (s) => s.cabinet_style_id === cabinetStyleId
+      );
+      const typeConfig = style?.types?.find(
+        (t) => t.cabinet_type_id === item.type
+      );
+
+      // Update rootReveals to match the section's style config
+      if (typeConfig?.config) {
+        setFormData((prev) => ({
+          ...prev,
+          face_config: {
+            ...prev.face_config,
+            rootReveals: typeConfig.config,
+          },
+        }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
   // Handle regular input changes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
     // For non-dimension fields
     if (!["width", "height", "depth"].includes(name)) {
-      // Handle quantity as numeric
-      if (name === "quantity" || name === "type") {
+      // Handle numeric fields
+      if (
+        name === "quantity" ||
+        name === "type" ||
+        name === "cabinet_style_override"
+      ) {
         const numValue = value === "" ? "" : Number(value);
-        setFormData({
-          ...formData,
-          [name]: numValue,
-        });
+
+        // When cabinet_style_override or type changes, update rootReveals in face_config
+        if (name === "cabinet_style_override" || name === "type") {
+          // Determine which style to use
+          const effectiveStyleId =
+            name === "cabinet_style_override"
+              ? numValue === -1
+                ? cabinetStyleId
+                : numValue
+              : formData.cabinet_style_override === -1 ||
+                !formData.cabinet_style_override
+              ? cabinetStyleId
+              : formData.cabinet_style_override;
+
+          // Determine which type to use
+          const effectiveTypeId = name === "type" ? numValue : formData.type;
+
+          // Find the style and type config
+          const style = cabinetStyles.find(
+            (s) => s.cabinet_style_id === effectiveStyleId
+          );
+          const typeConfig = style?.types?.find(
+            (t) => t.cabinet_type_id === effectiveTypeId
+          );
+
+          // Build the updates object
+          const updates = { [name]: numValue };
+          const inputUpdates = {};
+          
+          // If type is changing, populate default dimensions if empty
+          if (name === "type" && numValue) {
+            const selectedType = cabinetTypes.find(
+              (t) => t.cabinet_type_id === numValue
+            );
+            
+            if (selectedType) {
+              if (!formData.width && selectedType.default_width) {
+                updates.width = selectedType.default_width;
+                inputUpdates.width = String(selectedType.default_width);
+              }
+              if (!formData.height && selectedType.default_height) {
+                updates.height = selectedType.default_height;
+                inputUpdates.height = String(selectedType.default_height);
+              }
+              if (!formData.depth && selectedType.default_depth) {
+                updates.depth = selectedType.default_depth;
+                inputUpdates.depth = String(selectedType.default_depth);
+              }
+            }
+            
+            // Update inputValues if we set any dimension defaults
+            if (Object.keys(inputUpdates).length > 0) {
+              setInputValues((prev) => ({
+                ...prev,
+                ...inputUpdates,
+              }));
+            }
+          }
+
+          // Update face_config rootReveals if config exists
+          // Only update if face_config already has structure (not null/empty)
+          if (typeConfig?.config && formData.face_config && formData.face_config.id) {
+            updates.face_config = {
+              ...formData.face_config,
+              rootReveals: typeConfig.config,
+            };
+          }
+          // For new cabinets (face_config is null), don't set it here
+          // Let CabinetFaceDivider initialize it with proper structure
+          
+          // Single state update with all changes
+          setFormData({
+            ...formData,
+            ...updates,
+          });
+        } else if (name !== "type") {
+          // For other numeric fields (quantity, cabinet_style_override)
+          setFormData({
+            ...formData,
+            [name]: numValue,
+          });
+        }
       } else if (type === "checkbox") {
         setFormData({
           ...formData,
@@ -161,13 +291,29 @@ const CabinetItemForm = ({
       // Calculate face summary and box summary before saving
       const finalFormData = { ...formData };
 
+      // Convert cabinet_style_override to null if default option (-1) is selected
+      if (formData.cabinet_style_override === -1) {
+        finalFormData.cabinet_style_override = null;
+      }
+
       if (formData.face_config) {
+        // Determine effective style ID (use override if set, otherwise section default)
+        const effectiveStyleId =
+          formData.cabinet_style_override &&
+          formData.cabinet_style_override !== -1
+            ? formData.cabinet_style_override
+            : cabinetStyleId;
+
         const boxSummary = calculateBoxSummary(
           formData.width,
           formData.height,
           formData.depth,
           formData.quantity,
-          formData.face_config
+          formData.face_config,
+          effectiveStyleId,
+          formData.type,
+          formData.finished_left,
+          formData.finished_right
         );
 
         finalFormData.face_config = {
@@ -195,27 +341,79 @@ const CabinetItemForm = ({
   };
 
   // Recursive helper to calculate total shelf area from face_config
+  const countFaceHardware = (node) => {
+    let totalHinges = 0;
+    let totalPulls = 0;
+    let totalSlides = 0;
+
+    if (node.type === FACE_NAMES.DOOR) {
+      const usableHeight = Math.max(node.height - 8, 0); // inset 4" top and bottom
+      totalHinges += 2 + Math.floor(usableHeight / 33);
+    }
+    if (node.type === FACE_NAMES.PAIR_DOOR) {
+      const usableHeight = Math.max(node.height - 8, 0); // inset 4" top and bottom
+      totalHinges += 2 * (2 + Math.floor(usableHeight / 33));
+    }
+
+    if (node.type === FACE_NAMES.DRAWER_FRONT) {
+      totalSlides += 1;
+    }
+
+    if (node.rollOutQty > 0) {
+      totalSlides += node.rollOutQty;
+    }
+
+    if (CAN_HAVE_PULLS.includes(node.type)) {
+      totalPulls += 1;
+    }
+
+    if (node.children) {
+      node.children.forEach((child) => {
+        const childResult = countFaceHardware(child);
+        totalHinges += childResult.totalHinges;
+        totalPulls += childResult.totalPulls;
+        totalSlides += childResult.totalSlides;
+      });
+    }
+
+    return { totalHinges, totalPulls, totalSlides };
+  };
+
+  // Recursive helper to calculate total shelf area from face_config
   const calculateShelfArea = (node) => {
     let totalArea = 0;
+    let shelfBandingLength = 0;
+    let shelfCount = 0;
+    let shelfPerimeterLength = 0;
 
     if (node.shelfQty && node.shelfDimensions) {
       const shelfWidth = roundTo16th(node.shelfDimensions.width);
       const shelfHeight = roundTo16th(node.shelfDimensions.height); // User calls it height, but it's depth
       totalArea += node.shelfQty * (shelfWidth * shelfHeight);
+      shelfBandingLength += (node.shelfQty || 0) * shelfWidth;
+      shelfCount += node.shelfQty;
+      shelfPerimeterLength += node.shelfQty * (2 * (shelfWidth + shelfHeight));
     }
 
     if (node.children) {
       node.children.forEach((child) => {
-        totalArea += calculateShelfArea(child);
+        const childResult = calculateShelfArea(child);
+        totalArea += childResult.totalArea;
+        shelfBandingLength += childResult.shelfBandingLength;
+        shelfCount += childResult.shelfCount;
+        shelfPerimeterLength += childResult.shelfPerimeterLength;
       });
     }
 
-    return totalArea;
+    return { totalArea, shelfBandingLength, shelfCount, shelfPerimeterLength };
   };
 
   // Recursive helper to calculate partition area from face_config
-  const calculatePartitionArea = (node, depth) => {
+  const calculatePartitionArea = (node, depth, cabStyleId) => {
     let totalArea = 0;
+    let partitionBandingLength = 0;
+    let partitionCount = 0;
+    let partitionPerimeterLength = 0;
 
     if (node && node.children && node.children.length > 1) {
       // Check for partitions between siblings
@@ -246,17 +444,32 @@ const CabinetItemForm = ({
             );
 
             totalArea += partitionWidth * depth;
+            // Banding partitions is only for cabinet style 13 (European)
+            if (cabStyleId === 13) {
+              partitionBandingLength += partitionWidth;
+            }
+            partitionCount += 1;
+            partitionPerimeterLength += 2 * (partitionWidth + depth);
           }
         }
       }
 
       // Recursively check children for more partitions
       node.children.forEach((child) => {
-        totalArea += calculatePartitionArea(child, depth);
+        const childResult = calculatePartitionArea(child, depth, cabStyleId);
+        totalArea += childResult.totalArea;
+        partitionBandingLength += childResult.partitionBandingLength;
+        partitionCount += childResult.partitionCount;
+        partitionPerimeterLength += childResult.partitionPerimeterLength;
       });
     }
 
-    return totalArea;
+    return {
+      totalArea,
+      partitionBandingLength,
+      partitionCount,
+      partitionPerimeterLength,
+    };
   };
 
   // Calculate box material summary (sides, top, bottom, back)
@@ -265,7 +478,11 @@ const CabinetItemForm = ({
     height,
     depth,
     quantity = 1,
-    faceConfig
+    faceConfig,
+    cabinetStyleId,
+    cabinetTypeId,
+    finishedLeft = false,
+    finishedRight = false
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -278,35 +495,88 @@ const CabinetItemForm = ({
     const topBottomArea = w * d; // One top/bottom panel
     const backArea = w * h; // Back panel
 
+    const sidePerimeterLength = 2 * (2 * (h + d));
+    const topBottomPerimeterLength = 2 * (2 * (w + d));
+    const backPerimeterLength = 2 * (w + h);
+
+    const boxPerimeterLength =
+      sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength;
+    const boxPartsCount = 5;
+
+    let bandingLength = 0;
+    // Banding front edges is only for cabinet style 13 (European)
+    if (cabinetStyleId === 13) {
+      bandingLength = 2 * h + 2 * w;
+    }
+    // Banding bottom edges is only for cabinet type 2 (Upper)
+    if (cabinetTypeId === 2) {
+      bandingLength += 2 * d;
+    }
+
     // Calculate total shelf area from the face config
-    const totalShelfArea = faceConfig ? calculateShelfArea(faceConfig) : 0;
+    const {
+      totalArea: totalShelfArea,
+      shelfBandingLength,
+      shelfCount,
+      shelfPerimeterLength,
+    } = faceConfig
+      ? calculateShelfArea(faceConfig)
+      : {
+          totalArea: 0,
+          shelfBandingLength: 0,
+          shelfCount: 0,
+          shelfPerimeterLength: 0,
+        };
 
     // Calculate total partition area from the face config
-    const totalPartitionArea = faceConfig
-      ? calculatePartitionArea(faceConfig, d)
-      : 0;
+    const {
+      totalArea: totalPartitionArea,
+      partitionBandingLength,
+      partitionCount,
+      partitionPerimeterLength,
+    } = faceConfig
+      ? calculatePartitionArea(faceConfig, d, cabinetStyleId)
+      : {
+          totalArea: 0,
+          partitionBandingLength: 0,
+          partitionCount: 0,
+          partitionPerimeterLength: 0,
+        };
+
+    const boxHardware = countFaceHardware(faceConfig);
+
+    // Calculate finished sides area (to be added to face material calculation)
+    let finishedSidesCount = 0;
+    if (finishedLeft) finishedSidesCount++;
+    if (finishedRight) finishedSidesCount++;
+    const finishedSidesArea = finishedSidesCount * sideArea;
+
+    // Calculate box sides count (exclude finished sides from box material)
+    const boxSidesCount = 2 - finishedSidesCount;
 
     // Total area calculation for a single cabinet
     const singleCabinetArea =
-      2 * sideArea +
+      boxSidesCount * sideArea +
       2 * topBottomArea +
       backArea +
       totalShelfArea +
       totalPartitionArea;
 
     // Total area for all cabinets
-    const totalBoxPartsArea = singleCabinetArea * qty;
+    // const totalBoxPartsArea = singleCabinetArea * qty;
+    const totalBandingLength =
+      bandingLength + shelfBandingLength + partitionBandingLength;
 
     // Count of pieces per cabinet type
     const pieces = {
-      sides: 2 * qty,
+      sides: boxSidesCount * qty,
       topBottom: 2 * qty,
       back: 1 * qty,
     };
 
     // Individual dimensions of each piece with quantity factored in
     const components = [
-      { type: "side", width: d, height: h, area: sideArea, quantity: 2 * qty },
+      { type: "side", width: d, height: h, area: sideArea, quantity: boxSidesCount * qty },
       {
         type: "topBottom",
         width: w,
@@ -317,13 +587,23 @@ const CabinetItemForm = ({
       { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty },
     ];
 
+    const singleBoxPartsCount = boxPartsCount + shelfCount + partitionCount;
+    const singleBoxPerimeterLength =
+      boxPerimeterLength + shelfPerimeterLength + partitionPerimeterLength;
+
     return {
-      totalBoxPartsArea,
+      // totalBoxPartsArea,
       pieces,
       components,
       cabinetCount: qty,
       areaPerCabinet: singleCabinetArea,
       partitionArea: totalPartitionArea, // Add for clarity
+      bandingLength: totalBandingLength,
+      singleBoxPartsCount,
+      singleBoxPerimeterLength,
+      boxHardware,
+      finishedSidesArea: finishedSidesArea, // Area to be calculated with face material
+      finishedSidesCount: finishedSidesCount, // Number of finished sides per cabinet
     };
   };
 
@@ -426,6 +706,7 @@ const CabinetItemForm = ({
   );
 
   const canEditFaces =
+    formData.type &&
     formData.width &&
     formData.height &&
     formData.depth &&
@@ -444,10 +725,10 @@ const CabinetItemForm = ({
 
           <div className="space-y-4">
             {/* Basic Info Section */}
-            <div className="pb-4 border-b border-slate-200">
-              <div className="flex gap-6 items-center justify-between mb-3">
+            <div className="pb-4 border-b border-slate-200 flex flex-col">
+              <div className="flex gap-2 justify-around">
                 {/* Quantity */}
-                <div className="">
+                <div className="mb-3">
                   <label
                     htmlFor="quantity"
                     className="block text-xs font-medium text-slate-700 mb-1"
@@ -471,28 +752,103 @@ const CabinetItemForm = ({
                     </p>
                   )}
                 </div>
+                <div className="flex flex-col gap-2">
+                  {/* Finished Interior */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="finished_interior"
+                      name="finished_interior"
+                      checked={formData.finished_interior}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label
+                      htmlFor="finished_interior"
+                      className="text-xs font-medium text-slate-700"
+                    >
+                      Finished Interior
+                    </label>
+                  </div>
 
-                {/* Finished Interior */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="finished_interior"
-                    name="finished_interior"
-                    checked={formData.finished_interior}
-                    onChange={handleChange}
-                    className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                  />
-                  <label
-                    htmlFor="finished_interior"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Finished Interior
-                  </label>
+                  {/* Finished Left */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="finished_left"
+                      name="finished_left"
+                      checked={formData.finished_left}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label
+                      htmlFor="finished_left"
+                      className="text-xs font-medium text-slate-700"
+                    >
+                      Finished Left
+                    </label>
+                  </div>
+
+                  {/* Finished Right */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      id="finished_right"
+                      name="finished_right"
+                      checked={formData.finished_right}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label
+                      htmlFor="finished_right"
+                      className="text-xs font-medium text-slate-700"
+                    >
+                      Finished Right
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              {/* Cabinet Type */}
+              {/* Cabinet Style */}
               <div>
+                <label
+                  htmlFor="cabinet_style_override"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Cabinet Style
+                </label>
+                <select
+                  id="cabinet_style_override"
+                  name="cabinet_style_override"
+                  value={formData.cabinet_style_override || -1}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border ${
+                    errors.cabinet_style_override
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  } rounded-md text-sm`}
+                >
+                  <option value={-1}>Match Section</option>
+                  {cabinetStyles
+                    .filter((style) => style.is_active)
+                    .map((style) => (
+                      <option
+                        key={style.cabinet_style_id}
+                        value={style.cabinet_style_id}
+                      >
+                        {style.cabinet_style_name}
+                      </option>
+                    ))}
+                </select>
+                {errors.cabinet_style_override && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.cabinet_style_override}
+                  </p>
+                )}
+              </div>
+
+              {/* Cabinet Type */}
+              <div className="mt-2">
                 <label
                   htmlFor="type"
                   className="block text-xs font-medium text-slate-700 mb-1"
@@ -512,8 +868,11 @@ const CabinetItemForm = ({
                   {cabinetTypes
                     .filter((type) => type.is_active)
                     .map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
+                      <option
+                        key={type.cabinet_type_id}
+                        value={type.cabinet_type_id}
+                      >
+                        {type.cabinet_type_name}
                       </option>
                     ))}
                 </select>
@@ -633,16 +992,35 @@ const CabinetItemForm = ({
 
         {/* Right side - Face Divider (More space) */}
         <div className="flex-1 border-l border-slate-200 pl-6">
-          <CabinetFaceDivider
-            cabinetWidth={formData.width || 24} // Default width if empty
-            cabinetHeight={formData.height || 30} // Default height if empty
-            cabinetDepth={formData.depth || 24} // Default depth if empty
-            cabinetStyle={cabinetStyle}
-            faceConfig={formData.face_config}
-            onSave={handleFaceConfigSave}
-            disabled={!canEditFaces}
-            onDimensionChange={handleChange}
-          />
+          {canEditFaces ? (
+            <CabinetFaceDivider
+              cabinetWidth={formData.width}
+              cabinetHeight={formData.height}
+              cabinetDepth={formData.depth}
+              cabinetStyleId={
+                formData.cabinet_style_override && formData.cabinet_style_override !== -1
+                  ? formData.cabinet_style_override
+                  : cabinetStyleId
+              }
+              cabinetTypeId={formData.type}
+              faceConfig={formData.face_config}
+              onSave={handleFaceConfigSave}
+              disabled={false}
+              onDimensionChange={handleChange}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+              <div className="text-center w-[318px]">
+                <p className="mb-2">Please fill in all required fields:</p>
+                <ul className="text-left inline-block">
+                  {!formData.type && <li>• Cabinet Type</li>}
+                  {!formData.width && <li>• Width</li>}
+                  {!formData.height && <li>• Height</li>}
+                  {!formData.depth && <li>• Depth</li>}
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -653,7 +1031,8 @@ CabinetItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  cabinetStyle: PropTypes.string,
+  cabinetStyleId: PropTypes.number,
+  cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
@@ -662,7 +1041,7 @@ const EstimateCabinetManager = ({
   items,
   onUpdateItems,
   onReorderItems,
-  style,
+  cabinetStyleId,
   onDeleteItem,
   cabinetTypes,
 }) => {
@@ -719,7 +1098,7 @@ const EstimateCabinetManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyle: style, onDeleteItem, cabinetTypes }}
+      formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes }}
     />
   );
 };
@@ -728,7 +1107,8 @@ EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
-  style: PropTypes.string,
+  cabinetStyleId: PropTypes.number,
+  cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };

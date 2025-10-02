@@ -11,13 +11,14 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     (state) => state.estimates.currentEstimate
   );
   const materials = useSelector((state) => state.materials);
+  const { styles: cabinetStyles } = useSelector((state) => state.cabinetStyles);
   const estimateData = currentEstimate?.estimate_data;
   const sectionData =
     section?.section_data || currentEstimate?.estimateDefault || {};
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
-  const STYLE_OPTIONS = estimateData?.styles || [];
+  const STYLE_OPTIONS = cabinetStyles || [];
   const FINISH_OPTIONS = estimateData?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
   const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
@@ -28,7 +29,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
 
   const [formData, setFormData] = useState({
-    style: sectionData.style || "",
+    style: section.cabinet_style_id || "",
     boxMaterial: section.box_mat || "",
     faceMaterial: section.face_mat || "",
     finish: sectionData.finish || [],
@@ -252,8 +253,8 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
               >
                 <option value="">Select style</option>
                 {STYLE_OPTIONS.map((style) => (
-                  <option key={style.id} value={style.id}>
-                    {style.name}
+                  <option key={style.cabinet_style_id} value={style.cabinet_style_id}>
+                    {style.cabinet_style_name}
                   </option>
                 ))}
               </select>

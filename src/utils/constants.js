@@ -6,6 +6,7 @@ export const PATHS = {
   MANAGE_HOLIDAYS: "/manage/holidays",
   MANAGE_TEAM: "/manage/team",
   MANAGE_SERVICES: "/manage/services",
+  MANAGE_CABINET_STYLES: "/manage/cabinet-styles",
   MANAGE_CABINET_TYPES: "/manage/cabinet-types",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
@@ -68,6 +69,12 @@ export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [
   FACE_NAMES.DOOR,
   FACE_NAMES.PAIR_DOOR,
   FACE_NAMES.OPEN,
+];
+
+export const CAN_HAVE_PULLS = [
+  FACE_NAMES.DOOR,
+  FACE_NAMES.PAIR_DOOR,
+  FACE_NAMES.DRAWER_FRONT,
 ];
 
 export const DRAWER_BOX_PRICE = 50;
@@ -195,21 +202,4 @@ export const CABINET_ANCHORS = {
       finishHours: 2.4,
     },
   ],
-};
-
-export const FACE_REVEALS = {
-  euro: {
-    top: .125,
-    bottom: .125,
-    left: .0625,
-    right: .0625,
-    reveal: .125,
-  },
-  face_frame: {
-    top: 1.5,
-    bottom: 1.5,
-    left: .75,
-    right: .75,
-    reveal: 1.5,
-  },
 };

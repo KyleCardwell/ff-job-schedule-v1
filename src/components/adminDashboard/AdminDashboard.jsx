@@ -15,6 +15,7 @@ import {
 } from "../../assets/tailwindConstants";
 import useFeatureToggles from '../../hooks/useFeatureToggles.js';
 import { PATHS } from "../../utils/constants";
+import CabinetStyleSettings from "../manageSettings/CabinetStyleSettings.jsx";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
@@ -46,18 +47,8 @@ const AdminDashboard = () => {
       label: "Services",
       path: PATHS.MANAGE_SERVICES,
       component: ServiceSettings,
-      props: { },
-      requiresAdmin: true,
-      maxWidthClass: "max-w-[720px]",
-    },
-    {
-      id: "cabinet-types",
-      label: "Cabinet Types",
-      path: PATHS.MANAGE_CABINET_TYPES,
-      component: CabinetTypeSettings,
       props: {},
       requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
       maxWidthClass: "max-w-[720px]",
     },
     {
@@ -85,6 +76,26 @@ const AdminDashboard = () => {
       component: HolidaySettings,
       props: { workdayHours, dayWidth },
       requiresAdmin: true,
+      maxWidthClass: "max-w-[720px]",
+    },
+    {
+      id: "cabinet-types",
+      label: "Cabinet Types",
+      path: PATHS.MANAGE_CABINET_TYPES,
+      component: CabinetTypeSettings,
+      props: {},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+      maxWidthClass: "max-w-[720px]",
+    },
+    {
+      id: "cabinet-styles",
+      label: "Cabinet Styles",
+      path: PATHS.MANAGE_CABINET_STYLES,
+      component: CabinetStyleSettings,
+      props: {},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
       maxWidthClass: "max-w-[720px]",
     },
     {
@@ -173,7 +184,7 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header with Save/Cancel */}
-        <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
+        <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
           <button
             className={`${headerButtonClass} ${headerButtonColor}`}
             onClick={handleCancel}
