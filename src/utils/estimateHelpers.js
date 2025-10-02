@@ -244,33 +244,34 @@ export const calculateOutsourceBatchCostCNC = (
     };
   }
   
-  // --- Group cabinets by material (box vs face for finished interiors) ---
+  // --- Group cabinets by material (box vs face for finished interiors/sides) ---
   const groupedByMaterial = section.cabinets.reduce((acc, cab) => {
     if (!cab.face_config?.boxSummary) return acc;
     
-      const selectedBoxMaterial = cab.finished_interior
+    const qty = Number(cab.quantity) || 1;
+    const { boxSummary } = cab.face_config;
+    const { areaPerCabinet, singleBoxPerimeterLength, bandingLength, boxHardware, finishedSidesArea } = boxSummary;
+    
+    // --- Process box material (interior) ---
+    const selectedBoxMaterial = cab.finished_interior
       ? faceMaterials.find((mat) => mat.id === section.face_mat)
       : boxMaterials.find((mat) => mat.id === section.box_mat);
     
-    const materialKey = cab.finished_interior ? 'face' : 'box';
-    if (!acc[materialKey]) {
-      acc[materialKey] = {
+    const boxMaterialKey = cab.finished_interior ? 'face' : 'box';
+    if (!acc[boxMaterialKey]) {
+      acc[boxMaterialKey] = {
         material: selectedBoxMaterial,
         cabinets: [],
         totals: { area: 0, perimeter: 0, bandingLength: 0, hinges: 0, slides: 0 }
       };
     }
-    
-    const qty = Number(cab.quantity) || 1;
-    const { boxSummary } = cab.face_config;
-    const { areaPerCabinet, singleBoxPerimeterLength, bandingLength, boxHardware } = boxSummary;
 
-    acc[materialKey].totals.area += areaPerCabinet * qty;
-    acc[materialKey].totals.perimeter += singleBoxPerimeterLength * qty;
-    acc[materialKey].totals.bandingLength += bandingLength * qty;
-    acc[materialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
-    acc[materialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
-    acc[materialKey].cabinets.push(cab);
+    acc[boxMaterialKey].totals.area += areaPerCabinet * qty;
+    acc[boxMaterialKey].totals.perimeter += singleBoxPerimeterLength * qty;
+    acc[boxMaterialKey].totals.bandingLength += bandingLength * qty;
+    acc[boxMaterialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
+    acc[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
+    acc[boxMaterialKey].cabinets.push(cab);
 
     return acc;
   }, {});
@@ -286,7 +287,7 @@ export const calculateOutsourceBatchCostCNC = (
     let adjustedWasteFactor = wasteFactor;
     
     if (sheetsEstimate < 1) {
-      // Very small jobs: 15-20% waste
+      // Very small jobs: 35-40% waste
       adjustedWasteFactor = wasteFactor * 4;
     } else if (sheetsEstimate < 3) {
       // Small jobs: 12-15% waste
@@ -322,9 +323,25 @@ export const calculateOutsourceBatchCostCNC = (
     const totalArea = totals.area;
     const cabinetBreakdown = groupCabinets.map((cab) => {
       const qty = Number(cab.quantity) || 1;
-      const cabArea = cab.face_config.boxSummary.areaPerCabinet * qty;
+      const { boxSummary } = cab.face_config;
+      const cabArea = boxSummary.areaPerCabinet * qty;
+      
       const share = totalArea > 0 ? cabArea / totalArea : 0;
-      const cabCost = totalCost * share;
+      let cabCost = totalCost * share;
+      
+      // Add finished sides cost inline (proportional to actual material usage)
+      const finishedSidesArea = boxSummary.finishedSidesArea || 0;
+      if (finishedSidesArea > 0) {
+        const faceMaterial = faceMaterials.find(mat => mat.id === section.face_mat);
+        if (faceMaterial) {
+          // Calculate cost based on actual material usage with overhead
+          // Add 30% markup for: waste factor, edge banding, handling, and setup
+          const finishedSidesMarkup = 1.50;
+          const baseMaterialCost = (finishedSidesArea * qty / faceMaterial.area) * faceMaterial.sheet_price;
+          const finishedSidesCost = baseMaterialCost * finishedSidesMarkup;
+          cabCost += finishedSidesCost;
+        }
+      }
 
       return {
         id: cab.id || cab.temp_id,
@@ -334,6 +351,9 @@ export const calculateOutsourceBatchCostCNC = (
         costShare: parseFloat(share.toFixed(4)),
         cost: parseFloat(cabCost.toFixed(2)),
         finishedInterior: cab.finished_interior || false,
+        finishedLeft: cab.finished_left || false,
+        finishedRight: cab.finished_right || false,
+        finishedSidesArea: finishedSidesArea > 0 ? parseFloat((finishedSidesArea * qty).toFixed(2)) : 0,
       };
     });
 
@@ -362,10 +382,13 @@ export const calculateOutsourceBatchCostCNC = (
   const combinedTotalArea = materialResults.reduce((sum, result) => sum + result.totalArea, 0);
   const allCabinetBreakdown = materialResults.flatMap(result => result.cabinetBreakdown);
 
+  // Calculate total cost from cabinet breakdown (includes finished sides costs already)
+  const finalTotalCost = allCabinetBreakdown.reduce((sum, cab) => sum + cab.cost, 0);
+
   return {
-    totalCost: parseFloat(combinedTotalCost.toFixed(2)),
+    totalCost: parseFloat(finalTotalCost.toFixed(2)),
     totalArea: parseFloat(combinedTotalArea.toFixed(2)),
-    costPerSqFt: combinedTotalArea > 0 ? parseFloat((combinedTotalCost / (combinedTotalArea / 144)).toFixed(2)) : 0,
+    costPerSqFt: combinedTotalArea > 0 ? parseFloat((finalTotalCost / (combinedTotalArea / 144)).toFixed(2)) : 0,
     materialGroups: materialResults,
     cabinetBreakdown: allCabinetBreakdown,
   };

@@ -323,7 +323,7 @@ const EstimateLayout = () => {
         open={isReorderModalOpen}
         onClose={() => setIsReorderModalOpen(false)}
         onSave={handleSaveTaskOrder}
-        items={currentEstimate.tasks}
+        items={currentEstimate?.tasks}
         title="Reorder Rooms"
         idKey="est_task_id"
       />

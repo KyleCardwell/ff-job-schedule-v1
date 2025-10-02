@@ -36,6 +36,8 @@ const CabinetItemForm = ({
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
     finished_interior: item.finished_interior,
+    finished_left: item.finished_left,
+    finished_right: item.finished_right,
     cabinet_style_override: item.cabinet_style_override,
   });
 
@@ -268,7 +270,9 @@ const CabinetItemForm = ({
           formData.quantity,
           formData.face_config,
           effectiveStyleId,
-          formData.type
+          formData.type,
+          formData.finished_left,
+          formData.finished_right
         );
 
         finalFormData.face_config = {
@@ -435,7 +439,9 @@ const CabinetItemForm = ({
     quantity = 1,
     faceConfig,
     cabinetStyleId,
-    cabinetTypeId
+    cabinetTypeId,
+    finishedLeft = false,
+    finishedRight = false
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -498,9 +504,18 @@ const CabinetItemForm = ({
 
     const boxHardware = countFaceHardware(faceConfig);
 
+    // Calculate finished sides area (to be added to face material calculation)
+    let finishedSidesCount = 0;
+    if (finishedLeft) finishedSidesCount++;
+    if (finishedRight) finishedSidesCount++;
+    const finishedSidesArea = finishedSidesCount * sideArea;
+
+    // Calculate box sides count (exclude finished sides from box material)
+    const boxSidesCount = 2 - finishedSidesCount;
+
     // Total area calculation for a single cabinet
     const singleCabinetArea =
-      2 * sideArea +
+      boxSidesCount * sideArea +
       2 * topBottomArea +
       backArea +
       totalShelfArea +
@@ -513,14 +528,14 @@ const CabinetItemForm = ({
 
     // Count of pieces per cabinet type
     const pieces = {
-      sides: 2 * qty,
+      sides: boxSidesCount * qty,
       topBottom: 2 * qty,
       back: 1 * qty,
     };
 
     // Individual dimensions of each piece with quantity factored in
     const components = [
-      { type: "side", width: d, height: h, area: sideArea, quantity: 2 * qty },
+      { type: "side", width: d, height: h, area: sideArea, quantity: boxSidesCount * qty },
       {
         type: "topBottom",
         width: w,
@@ -546,6 +561,8 @@ const CabinetItemForm = ({
       singleBoxPartsCount,
       singleBoxPerimeterLength,
       boxHardware,
+      finishedSidesArea: finishedSidesArea, // Area to be calculated with face material
+      finishedSidesCount: finishedSidesCount, // Number of finished sides per cabinet
     };
   };
 
@@ -666,10 +683,10 @@ const CabinetItemForm = ({
 
           <div className="space-y-4">
             {/* Basic Info Section */}
-            <div className="pb-4 border-b border-slate-200">
-              <div className="flex gap-6 items-center justify-between mb-3">
+            <div className="pb-4 border-b border-slate-200 flex flex-col">
+              <div className="flex gap-2 justify-around">
                 {/* Quantity */}
-                <div className="">
+                <div className="mb-3">
                   <label
                     htmlFor="quantity"
                     className="block text-xs font-medium text-slate-700 mb-1"
@@ -693,23 +710,60 @@ const CabinetItemForm = ({
                     </p>
                   )}
                 </div>
+                <div className="flex flex-col gap-2">
+                  {/* Finished Interior */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="finished_interior"
+                      name="finished_interior"
+                      checked={formData.finished_interior}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label
+                      htmlFor="finished_interior"
+                      className="text-xs font-medium text-slate-700"
+                    >
+                      Finished Interior
+                    </label>
+                  </div>
 
-                {/* Finished Interior */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="finished_interior"
-                    name="finished_interior"
-                    checked={formData.finished_interior}
-                    onChange={handleChange}
-                    className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                  />
-                  <label
-                    htmlFor="finished_interior"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Finished Interior
-                  </label>
+                  {/* Finished Left */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="finished_left"
+                      name="finished_left"
+                      checked={formData.finished_left}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label
+                      htmlFor="finished_left"
+                      className="text-xs font-medium text-slate-700"
+                    >
+                      Finished Left
+                    </label>
+                  </div>
+
+                  {/* Finished Right */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <input
+                      type="checkbox"
+                      id="finished_right"
+                      name="finished_right"
+                      checked={formData.finished_right}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                    />
+                    <label
+                      htmlFor="finished_right"
+                      className="text-xs font-medium text-slate-700"
+                    >
+                      Finished Right
+                    </label>
+                  </div>
                 </div>
               </div>
 
