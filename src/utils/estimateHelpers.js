@@ -273,6 +273,30 @@ export const calculateOutsourceBatchCostCNC = (
     acc[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
     acc[boxMaterialKey].cabinets.push(cab);
 
+    // --- Process finished sides (if any) - add to face material group ---
+    if (finishedSidesArea && finishedSidesArea > 0) {
+      const faceMaterialKey = 'face';
+      const selectedFaceMaterial = faceMaterials.find((mat) => mat.id === section.face_mat);
+      
+      if (!acc[faceMaterialKey]) {
+        acc[faceMaterialKey] = {
+          material: selectedFaceMaterial,
+          cabinets: [],
+          totals: { area: 0, perimeter: 0, bandingLength: 0, hinges: 0, slides: 0 }
+        };
+      }
+      
+      // Add finished sides area to face material group (same batch as doors/drawer fronts)
+      acc[faceMaterialKey].totals.area += finishedSidesArea * qty;
+      // Note: perimeter, banding, and hardware are already counted in the box material group
+      // Only the area needs to be added here for material cost calculation
+      
+      // Track which cabinet contributed to this group (avoid duplicates)
+      if (!acc[faceMaterialKey].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+        acc[faceMaterialKey].cabinets.push(cab);
+      }
+    }
+
     return acc;
   }, {});
 
@@ -302,7 +326,7 @@ export const calculateOutsourceBatchCostCNC = (
     // Ensure minimum 1 sheet per material group to avoid unrealistic zero-cost scenarios
     const roundedSheets = Math.max(
       Math.ceil(rawSheets / roundingIncrement) * roundingIncrement,
-      1
+      .5
     );
 
     const sheetCost = roundedSheets * material.sheet_price;
@@ -324,24 +348,21 @@ export const calculateOutsourceBatchCostCNC = (
     const cabinetBreakdown = groupCabinets.map((cab) => {
       const qty = Number(cab.quantity) || 1;
       const { boxSummary } = cab.face_config;
-      const cabArea = boxSummary.areaPerCabinet * qty;
+      const finishedSidesArea = boxSummary.finishedSidesArea || 0;
+      
+      // For face material group, cabinet's contribution includes finished sides
+      // For box material group, it's just the box area
+      let cabArea;
+      if (materialKey === 'face') {
+        // This cabinet's contribution to face material includes finished sides
+        cabArea = finishedSidesArea * qty;
+      } else {
+        // For box material, use the box area (already excludes finished sides)
+        cabArea = boxSummary.areaPerCabinet * qty;
+      }
       
       const share = totalArea > 0 ? cabArea / totalArea : 0;
-      let cabCost = totalCost * share;
-      
-      // Add finished sides cost inline (proportional to actual material usage)
-      const finishedSidesArea = boxSummary.finishedSidesArea || 0;
-      if (finishedSidesArea > 0) {
-        const faceMaterial = faceMaterials.find(mat => mat.id === section.face_mat);
-        if (faceMaterial) {
-          // Calculate cost based on actual material usage with overhead
-          // Add 30% markup for: waste factor, edge banding, handling, and setup
-          const finishedSidesMarkup = 1.50;
-          const baseMaterialCost = (finishedSidesArea * qty / faceMaterial.area) * faceMaterial.sheet_price;
-          const finishedSidesCost = baseMaterialCost * finishedSidesMarkup;
-          cabCost += finishedSidesCost;
-        }
-      }
+      const cabCost = totalCost * share;
 
       return {
         id: cab.id || cab.temp_id,
@@ -382,15 +403,33 @@ export const calculateOutsourceBatchCostCNC = (
   const combinedTotalArea = materialResults.reduce((sum, result) => sum + result.totalArea, 0);
   const allCabinetBreakdown = materialResults.flatMap(result => result.cabinetBreakdown);
 
-  // Calculate total cost from cabinet breakdown (includes finished sides costs already)
-  const finalTotalCost = allCabinetBreakdown.reduce((sum, cab) => sum + cab.cost, 0);
+  // Consolidate cabinet breakdown - merge costs for cabinets that appear in multiple material groups
+  const cabinetCostMap = new Map();
+  allCabinetBreakdown.forEach(cabBreakdown => {
+    const cabId = cabBreakdown.id;
+    if (cabinetCostMap.has(cabId)) {
+      // Cabinet already exists, add the cost
+      const existing = cabinetCostMap.get(cabId);
+      existing.cost += cabBreakdown.cost;
+      existing.area += cabBreakdown.area;
+    } else {
+      // New cabinet entry
+      cabinetCostMap.set(cabId, { ...cabBreakdown });
+    }
+  });
+  
+  const consolidatedBreakdown = Array.from(cabinetCostMap.values()).map(cab => ({
+    ...cab,
+    cost: parseFloat(cab.cost.toFixed(2)),
+    area: parseFloat(cab.area.toFixed(2)),
+  }));
 
   return {
-    totalCost: parseFloat(finalTotalCost.toFixed(2)),
+    totalCost: parseFloat(combinedTotalCost.toFixed(2)),
     totalArea: parseFloat(combinedTotalArea.toFixed(2)),
-    costPerSqFt: combinedTotalArea > 0 ? parseFloat((finalTotalCost / (combinedTotalArea / 144)).toFixed(2)) : 0,
+    costPerSqFt: combinedTotalArea > 0 ? parseFloat((combinedTotalCost / (combinedTotalArea / 144)).toFixed(2)) : 0,
     materialGroups: materialResults,
-    cabinetBreakdown: allCabinetBreakdown,
+    cabinetBreakdown: consolidatedBreakdown,
   };
 };
 
