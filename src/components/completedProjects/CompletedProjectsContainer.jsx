@@ -96,58 +96,62 @@ const CompletedProjectsContainer = () => {
   return (
     <div className="flex flex-col h-full pb-6 bg-slate-800">
       {/* Fixed header */}
-      <PdfCompletedListComponent completedProjects={completedProjects} />
-      {/* Sticky Header Container */}
-      <div className="sticky top-0 z-10 bg-slate-800 px-6 pt-6 max-w-[1200px] mx-auto w-full">
+      <div className="px-6 pt-6 max-w-[1200px] mx-auto w-full bg-slate-800">
+        <PdfCompletedListComponent completedProjects={completedProjects} />
         <ProjectSearchFilter onFilterChange={handleFilterChange} />
-        <div className="grid grid-cols-[1fr_1fr_1fr_150px] bg-gray-200 border-b-2 border-gray-400 mt-4 text-center">
-          <button
-            onClick={() => handleSort("project")}
-            className="p-2 font-bold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
-          >
-            Project
-            {sortConfig.key === "project" && (
-              sortConfig.direction === "asc" ? (
-                <FiChevronUp size={16} />
-              ) : (
-                <FiChevronDown size={16} />
-              )
-            )}
-          </button>
-          <button
-            onClick={() => handleSort("completed")}
-            className="p-2 font-bold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
-          >
-            Shop Completed
-            {sortConfig.key === "completed" && (
-              sortConfig.direction === "asc" ? (
-                <FiChevronUp size={16} />
-              ) : (
-                <FiChevronDown size={16} />
-              )
-            )}
-          </button>
-          <button
-            onClick={() => handleSort("costing")}
-            className="p-2 font-bold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
-          >
-            Costing Complete
-            {sortConfig.key === "costing" && (
-              sortConfig.direction === "asc" ? (
-                <FiChevronUp size={16} />
-              ) : (
-                <FiChevronDown size={16} />
-              )
-            )}
-          </button>
-          <span className="p-2 font-bold border-l border-gray-400">
-            Actions
-          </span>
-        </div>
       </div>
 
-      {/* Scrollable content */}
+      {/* Scrollable content with sticky header inside */}
       <div className="flex-1 overflow-y-auto px-6 max-w-[1200px] mx-auto w-full">
+        {/* Sticky table header */}
+        <div className="sticky top-0 z-50 bg-slate-800 pb-0">
+          <div className="grid grid-cols-[1fr_1fr_1fr_150px] bg-gray-200 border-b-2 border-gray-400 text-center">
+            <button
+              onClick={() => handleSort("project")}
+              className="p-2 font-bold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+            >
+              Project
+              {sortConfig.key === "project" && (
+                sortConfig.direction === "asc" ? (
+                  <FiChevronUp size={16} />
+                ) : (
+                  <FiChevronDown size={16} />
+                )
+              )}
+            </button>
+            <button
+              onClick={() => handleSort("completed")}
+              className="p-2 font-bold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+            >
+              Shop Completed
+              {sortConfig.key === "completed" && (
+                sortConfig.direction === "asc" ? (
+                  <FiChevronUp size={16} />
+                ) : (
+                  <FiChevronDown size={16} />
+                )
+              )}
+            </button>
+            <button
+              onClick={() => handleSort("costing")}
+              className="p-2 font-bold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+            >
+              Costing Complete
+              {sortConfig.key === "costing" && (
+                sortConfig.direction === "asc" ? (
+                  <FiChevronUp size={16} />
+                ) : (
+                  <FiChevronDown size={16} />
+                )
+              )}
+            </button>
+            <span className="p-2 font-bold border-l border-gray-400">
+              Actions
+            </span>
+          </div>
+        </div>
+
+        {/* Project cards */}
         {sortedProjects?.map((project, index) => (
           <CompletedProjectCard
             key={project.project_id}
