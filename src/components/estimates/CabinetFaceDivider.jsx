@@ -65,15 +65,6 @@ const CabinetFaceDivider = ({
   // Minimum face dimension (2 inches)
   const minValue = 2;
 
-  // Calculate display scale and offsets
-  const scaleX = fixedDisplayWidth / cabinetWidth;
-  const scaleY = fixedDisplayHeight / cabinetHeight;
-  const scale = Math.min(scaleX, scaleY);
-  const displayWidth = cabinetWidth * scale;
-  const displayHeight = cabinetHeight * scale;
-  const offsetX = (fixedDisplayWidth - displayWidth) / 2;
-  const offsetY = (fixedDisplayHeight - displayHeight) / 2;
-
   // Memoize style and type lookups to prevent infinite loops in useEffect
   const style = useMemo(
     () => cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId),
@@ -106,6 +97,29 @@ const CabinetFaceDivider = ({
   }
   
   const reveals = revealsRef.current;
+
+  // Calculate display scale and offsets accounting for negative reveals (overhangs)
+  // Get the actual bounds including any negative reveals
+  const revealLeft = Math.abs(Math.min(0, reveals.left));
+  const revealRight = Math.abs(Math.min(0, reveals.right));
+  const revealTop = Math.abs(Math.min(0, reveals.top));
+  const revealBottom = Math.abs(Math.min(0, reveals.bottom));
+  
+  // Total display area includes cabinet + any overhangs
+  const totalDisplayWidth = cabinetWidth + revealLeft + revealRight;
+  const totalDisplayHeight = cabinetHeight + revealTop + revealBottom;
+  
+  const scaleX = fixedDisplayWidth / totalDisplayWidth;
+  const scaleY = fixedDisplayHeight / totalDisplayHeight;
+  const scale = Math.min(scaleX, scaleY);
+  const displayWidth = totalDisplayWidth * scale;
+  const displayHeight = totalDisplayHeight * scale;
+  const offsetX = (fixedDisplayWidth - displayWidth) / 2;
+  const offsetY = (fixedDisplayHeight - displayHeight) / 2;
+  
+  // Offset for the cabinet box within the display area (to account for overhangs)
+  const cabinetOffsetX = revealLeft * scale;
+  const cabinetOffsetY = revealTop * scale;
 
   // Function to normalize reveal dimensions in a loaded config
   const normalizeRevealDimensions = (node) => {
@@ -663,21 +677,21 @@ const CabinetFaceDivider = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove(); // Clear the SVG
 
-    // Add a transform group to center the cabinet
+    // Add a transform group to center the cabinet (includes space for overhangs)
     const cabinetGroup = svg
       .append("g")
-      .attr("transform", `translate(${offsetX}, ${offsetY})`);
+      .attr("transform", `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`);
 
     // Create a dedicated group for highlights, added last to be on top
     const highlightGroup = svg
       .append("g")
-      .attr("transform", `translate(${offsetX}, ${offsetY})`);
+      .attr("transform", `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`);
 
-    // Add background
+    // Add background for the cabinet box
     cabinetGroup
       .append("rect")
-      .attr("width", displayWidth)
-      .attr("height", displayHeight)
+      .attr("width", cabinetWidth * scale)
+      .attr("height", cabinetHeight * scale)
       .attr("fill", "#F8FAFC")
       .attr("stroke", "#E2E8F0")
       .attr("stroke-width", 2);
