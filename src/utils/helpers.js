@@ -630,3 +630,7 @@ export const calculateFinancialTotals = (
 export function truncateTrailingZeros(num) {
   return parseFloat(num.toFixed(4)).toString();
 }
+
+export const calculateShelfQty = (height) => {
+  return Math.floor(height / 16);
+};

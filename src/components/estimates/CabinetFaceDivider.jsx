@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { cloneDeep, isEqual } from "lodash";
 import PropTypes from "prop-types";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
@@ -13,7 +13,7 @@ import {
   SPLIT_DIRECTIONS,
 } from "../../utils/constants";
 import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
-import { truncateTrailingZeros } from "../../utils/helpers";
+import { truncateTrailingZeros, calculateShelfQty } from "../../utils/helpers";
 
 const CabinetFaceDivider = ({
   cabinetWidth,
@@ -74,13 +74,23 @@ const CabinetFaceDivider = ({
   const offsetX = (fixedDisplayWidth - displayWidth) / 2;
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
 
-  const style = cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId);
-  const type = style.types.find((type) => type.cabinet_type_id === cabinetTypeId);
+  // Memoize style and type lookups to prevent infinite loops in useEffect
+  const style = useMemo(
+    () => cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId),
+    [cabinetStyles, cabinetStyleId]
+  );
+  
+  const type = useMemo(
+    () => style?.types?.find((type) => type.cabinet_type_id === cabinetTypeId),
+    [style, cabinetTypeId]
+  );
   
   // Use rootReveals from config if available, otherwise fall back to type config
   // Use ref to maintain stable reference and only update when values actually change
   const revealsRef = useRef(null);
-  const currentReveals = config?.rootReveals || type?.config || {
+  
+  // Default reveals if nothing else is available
+  const defaultReveals = {
     top: 0,
     bottom: 0,
     left: 0,
@@ -88,16 +98,14 @@ const CabinetFaceDivider = ({
     reveal: 0,
   };
   
+  const currentReveals = config?.rootReveals || type?.config || defaultReveals;
+  
   // Only update ref if reveals actually changed (deep comparison)
   if (!isEqual(revealsRef.current, currentReveals)) {
     revealsRef.current = currentReveals;
   }
   
   const reveals = revealsRef.current;
-
-  const calculateShelfQty = (height) => {
-    return Math.floor(height / 16);
-  };
 
   // Function to normalize reveal dimensions in a loaded config
   const normalizeRevealDimensions = (node) => {
@@ -181,14 +189,17 @@ const CabinetFaceDivider = ({
         reveal: 0,
       };
       
+      const initialHeight = cabinetHeight - initialReveals.top - initialReveals.bottom;
+      
       setConfig({
         id: FACE_NAMES.ROOT,
         type: FACE_NAMES.DOOR,
         width: cabinetWidth - initialReveals.left - initialReveals.right,
-        height: cabinetHeight - initialReveals.top - initialReveals.bottom,
+        height: initialHeight,
         x: initialReveals.left,
         y: initialReveals.top,
         children: null,
+        shelfQty: calculateShelfQty(initialHeight),
         rootReveals: initialReveals,
       });
     } else if (config && !config.id) {
@@ -207,39 +218,52 @@ const CabinetFaceDivider = ({
         rootReveals: configReveals,
       });
     } else if (config && config.id === FACE_NAMES.ROOT) {
-      // Update root dimensions when cabinet dimensions change
-      // Create a new config object regardless of whether dimensions have changed
-      // to ensure React detects the change and re-renders
-      const updatedConfig = cloneDeep(config);
+      // Get the current reveals from type config
+      const currentReveals = type?.config || {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        reveal: 0,
+      };
+      
+      // Calculate expected dimensions
+      const expectedWidth = cabinetWidth - currentReveals.left - currentReveals.right;
+      const expectedHeight = cabinetHeight - currentReveals.top - currentReveals.bottom;
+      
+      // Only update if dimensions or reveals actually changed
+      const needsUpdate = 
+        config.width !== expectedWidth ||
+        config.height !== expectedHeight ||
+        !config.rootReveals ||
+        !isEqual(config.rootReveals, currentReveals);
+      
+      if (needsUpdate) {
+        const updatedConfig = cloneDeep(config);
 
-      // Ensure rootReveals exists (for backward compatibility with old configs)
-      if (!updatedConfig.rootReveals) {
-        updatedConfig.rootReveals = type?.config || {
-          top: 0,
-          bottom: 0,
-          left: 0,
-          right: 0,
-          reveal: 0,
-        };
+        // Update rootReveals
+        updatedConfig.rootReveals = currentReveals;
+
+        // Normalize reveals before doing anything else
+        normalizeRevealDimensions(updatedConfig);
+
+        // Update root dimensions first so updateChildrenFromParent uses new values
+        updatedConfig.width = expectedWidth;
+        updatedConfig.height = expectedHeight;
+        updatedConfig.x = currentReveals.left;
+        updatedConfig.y = currentReveals.top;
+
+        // Recursively update all children to scale proportionally
+        updateChildrenFromParent(updatedConfig);
+
+        // Force recalculation of layout with new dimensions
+        const layoutConfig = calculateLayout(updatedConfig);
+
+        // Update state with the new configuration
+        setConfig(layoutConfig);
       }
-
-      // Normalize reveals before doing anything else
-      normalizeRevealDimensions(updatedConfig);
-
-      // Update root dimensions first so updateChildrenFromParent uses new values
-      updatedConfig.width = cabinetWidth - reveals.left - reveals.right;
-      updatedConfig.height = cabinetHeight - reveals.top - reveals.bottom;
-
-      // Recursively update all children to scale proportionally
-      updateChildrenFromParent(updatedConfig);
-
-      // Force recalculation of layout with new dimensions
-      const layoutConfig = calculateLayout(updatedConfig);
-
-      // Update state with the new configuration
-      setConfig(layoutConfig);
     }
-  }, [cabinetWidth, cabinetHeight, reveals]);
+  }, [cabinetWidth, cabinetHeight, cabinetTypeId]);
 
   useEffect(() => {
     renderCabinet();

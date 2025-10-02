@@ -26,13 +26,22 @@ const CabinetItemForm = ({
     (state) => state.cabinetAnchors.itemsByType
   );
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  
+  // Initialize face_config with proper structure for new cabinets
+  const getInitialFaceConfig = () => {
+    if (item.face_config) return item.face_config;
+    
+    // For new cabinets, initialize with null (will be set when type is selected)
+    return null;
+  };
+  
   const [formData, setFormData] = useState({
     type: item.type || "",
     width: item.width || "",
     height: item.height || "",
     depth: item.depth || "",
     quantity: item.quantity || 1,
-    face_config: item.face_config || [],
+    face_config: getInitialFaceConfig(),
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
     finished_interior: item.finished_interior,
@@ -97,10 +106,7 @@ const CabinetItemForm = ({
         const numValue = value === "" ? "" : Number(value);
 
         // When cabinet_style_override or type changes, update rootReveals in face_config
-        if (
-          (name === "cabinet_style_override" || name === "type") &&
-          formData.face_config
-        ) {
+        if (name === "cabinet_style_override" || name === "type") {
           // Determine which style to use
           const effectiveStyleId =
             name === "cabinet_style_override"
@@ -123,23 +129,58 @@ const CabinetItemForm = ({
             (t) => t.cabinet_type_id === effectiveTypeId
           );
 
-          // Update face_config with new rootReveals if config exists
-          if (typeConfig?.config) {
-            setFormData({
-              ...formData,
-              [name]: numValue,
-              face_config: {
-                ...formData.face_config,
-                rootReveals: typeConfig.config,
-              },
-            });
-          } else {
-            setFormData({
-              ...formData,
-              [name]: numValue,
-            });
+          // Build the updates object
+          const updates = { [name]: numValue };
+          const inputUpdates = {};
+          
+          // If type is changing, populate default dimensions if empty
+          if (name === "type" && numValue) {
+            const selectedType = cabinetTypes.find(
+              (t) => t.cabinet_type_id === numValue
+            );
+            
+            if (selectedType) {
+              if (!formData.width && selectedType.default_width) {
+                updates.width = selectedType.default_width;
+                inputUpdates.width = String(selectedType.default_width);
+              }
+              if (!formData.height && selectedType.default_height) {
+                updates.height = selectedType.default_height;
+                inputUpdates.height = String(selectedType.default_height);
+              }
+              if (!formData.depth && selectedType.default_depth) {
+                updates.depth = selectedType.default_depth;
+                inputUpdates.depth = String(selectedType.default_depth);
+              }
+            }
+            
+            // Update inputValues if we set any dimension defaults
+            if (Object.keys(inputUpdates).length > 0) {
+              setInputValues((prev) => ({
+                ...prev,
+                ...inputUpdates,
+              }));
+            }
           }
-        } else {
+
+          // Update face_config rootReveals if config exists
+          // Only update if face_config already has structure (not null/empty)
+          if (typeConfig?.config && formData.face_config && formData.face_config.id) {
+            updates.face_config = {
+              ...formData.face_config,
+              rootReveals: typeConfig.config,
+            };
+          }
+          // For new cabinets (face_config is null), don't set it here
+          // Let CabinetFaceDivider initialize it with proper structure
+          
+          // Single state update with all changes
+          setFormData({
+            ...formData,
+            ...updates,
+          });
+        } else if (name !== "type") {
+          // For other numeric fields (quantity, cabinet_style_override)
           setFormData({
             ...formData,
             [name]: numValue,
@@ -665,6 +706,7 @@ const CabinetItemForm = ({
   );
 
   const canEditFaces =
+    formData.type &&
     formData.width &&
     formData.height &&
     formData.depth &&
@@ -950,17 +992,31 @@ const CabinetItemForm = ({
 
         {/* Right side - Face Divider (More space) */}
         <div className="flex-1 border-l border-slate-200 pl-6">
-          <CabinetFaceDivider
-            cabinetWidth={formData.width || 24} // Default width if empty
-            cabinetHeight={formData.height || 30} // Default height if empty
-            cabinetDepth={formData.depth || 24} // Default depth if empty
-            cabinetStyleId={cabinetStyleId}
-            cabinetTypeId={item.type}
-            faceConfig={formData.face_config}
-            onSave={handleFaceConfigSave}
-            disabled={!canEditFaces}
-            onDimensionChange={handleChange}
-          />
+          {canEditFaces ? (
+            <CabinetFaceDivider
+              cabinetWidth={formData.width}
+              cabinetHeight={formData.height}
+              cabinetDepth={formData.depth}
+              cabinetStyleId={cabinetStyleId}
+              cabinetTypeId={formData.type}
+              faceConfig={formData.face_config}
+              onSave={handleFaceConfigSave}
+              disabled={false}
+              onDimensionChange={handleChange}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+              <div className="text-center w-[318px]">
+                <p className="mb-2">Please fill in all required fields:</p>
+                <ul className="text-left inline-block">
+                  {!formData.type && <li>• Cabinet Type</li>}
+                  {!formData.width && <li>• Width</li>}
+                  {!formData.height && <li>• Height</li>}
+                  {!formData.depth && <li>• Depth</li>}
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
