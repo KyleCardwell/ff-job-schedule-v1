@@ -997,7 +997,11 @@ const CabinetItemForm = ({
               cabinetWidth={formData.width}
               cabinetHeight={formData.height}
               cabinetDepth={formData.depth}
-              cabinetStyleId={cabinetStyleId}
+              cabinetStyleId={
+                formData.cabinet_style_override && formData.cabinet_style_override !== -1
+                  ? formData.cabinet_style_override
+                  : cabinetStyleId
+              }
               cabinetTypeId={formData.type}
               faceConfig={formData.face_config}
               onSave={handleFaceConfigSave}
