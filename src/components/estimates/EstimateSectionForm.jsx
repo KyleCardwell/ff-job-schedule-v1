@@ -21,7 +21,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const STYLE_OPTIONS = cabinetStyles || [];
   const FINISH_OPTIONS = estimateData?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
-  const DRAWER_BOX_OPTIONS = estimateData?.drawerBoxTypes || [];
+  const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
   const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
   const DRAWER_SLIDE_OPTIONS = estimateData?.drawerSlideTypes || [];
 
@@ -56,9 +56,14 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Convert to number for fields that should have numerical values
+    const numericFields = ['style', 'boxMaterial', 'faceMaterial', 'drawerBoxes'];
+    const processedValue = numericFields.includes(name) && value !== '' ? +value : value;
+    
     setFormData({
       ...formData,
-      [name]: value,
+      [name]: processedValue,
     });
 
     if (name === "faceMaterial") {
@@ -115,7 +120,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     }
 
     if (!formData.faceMaterial) {
-      newErrors.faceMaterial = "Material is required";
+      newErrors.faceMaterial = "Face material is required";
     }
 
     if (!formData.doorStyle) {
@@ -131,7 +136,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     }
 
     if (!formData.drawerBoxes) {
-      newErrors.drawerBoxes = "Drawer box type is required";
+      newErrors.drawerBoxes = "Drawer box material is required";
     }
 
     if (mustSelectFinish && formData.finish.length === 0) {
@@ -544,7 +549,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 htmlFor="drawerBoxes"
                 className="block text-sm font-medium text-slate-700"
               >
-                Drawer Box Type
+                Drawer Box Material
               </label>
               <select
                 id="drawerBoxes"
@@ -555,7 +560,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   errors.drawerBoxes ? "border-red-500" : ""
                 }`}
               >
-                <option value="">Select drawer box type...</option>
+                <option value="">Select drawer box material...</option>
                 {DRAWER_BOX_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.name}

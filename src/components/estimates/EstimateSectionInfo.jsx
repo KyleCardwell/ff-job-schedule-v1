@@ -95,7 +95,7 @@ const EstimateSectionInfo = ({
 
   const getDrawerBoxName = (id) => {
     return (
-      estimate_data?.drawerBoxTypes?.find((d) => d.id === id)?.name ||
+      materials?.drawerBoxMaterials?.find((d) => d.id === id)?.name ||
       NOT_SELECTED
     );
   };
