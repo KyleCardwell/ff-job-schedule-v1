@@ -160,7 +160,7 @@ const EstimateSectionInfo = ({
                 </div>
                 <div className="text-slate-400">Drawer Box:</div>
                 <div className="pl-5 mb-3">
-                  {getDrawerBoxName(sectionData.drawerBoxes)}
+                  {getDrawerBoxName(section.drawer_box_mat)}
                 </div>
                 <div className="text-slate-400">Drawer Slide:</div>
                 <div className="pl-5 mb-3">

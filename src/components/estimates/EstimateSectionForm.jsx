@@ -44,7 +44,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
     doorHinge: sectionData.doorHinge || "",
     drawerSlide: sectionData.drawerSlide || "",
-    drawerBoxes: sectionData.drawerBoxes || "",
+    drawer_box_mat: section.drawer_box_mat || "",
     notes: sectionData.notes || "",
   });
 
@@ -65,7 +65,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       "style",
       "boxMaterial",
       "faceMaterial",
-      "drawerBoxes",
+      "drawer_box_mat",
     ];
     const processedValue =
       numericFields.includes(name) && value !== "" ? +value : value;
@@ -162,8 +162,8 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       newErrors.drawerSlide = "Drawer slide type is required";
     }
 
-    if (!formData.drawerBoxes) {
-      newErrors.drawerBoxes = "Drawer box material is required";
+    if (!formData.drawer_box_mat) {
+      newErrors.drawer_box_mat = "Drawer box material is required";
     }
 
     if (mustSelectFaceFinish && formData.faceFinish.length === 0) {
@@ -677,18 +677,18 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
               {/* Drawer Box Material */}
               <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
                 <label
-                  htmlFor="drawerBoxes"
+                  htmlFor="drawer_box_mat"
                   className="text-right text-sm font-medium text-slate-700"
                 >
                   Boxes
                 </label>
                 <select
-                  id="drawerBoxes"
-                  name="drawerBoxes"
-                  value={formData.drawerBoxes}
+                  id="drawer_box_mat"
+                  name="drawer_box_mat"
+                  value={formData.drawer_box_mat}
                   onChange={handleChange}
                   className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                    errors.drawerBoxes ? "border-red-500" : ""
+                    errors.drawer_box_mat ? "border-red-500" : ""
                   }`}
                 >
                   <option value="">Select drawer box material...</option>
@@ -698,9 +698,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     </option>
                   ))}
                 </select>
-                {errors.drawerBoxes && (
+                {errors.drawer_box_mat && (
                   <p className="text-xs text-red-500 col-span-2">
-                    {errors.drawerBoxes}
+                    {errors.drawer_box_mat}
                   </p>
                 )}
               </div>

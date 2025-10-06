@@ -3,30 +3,37 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 import { FACE_TYPES } from "../../utils/constants";
-import {
-  roundToHundredth,
-} from "../../utils/estimateHelpers";
+import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
 const EstimateSectionPrice = ({ section }) => {
   // Get materials from Redux store
-  const { boxMaterials, faceMaterials } = useSelector(
+  const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
     (state) => state.materials
   );
 
   // Get employee rates from Redux store
-  const services = useSelector(
-    (state) => state.services?.allServices || []
-  );
+  const services = useSelector((state) => state.services?.allServices || []);
 
   const finishTypes = useSelector(
     (state) => state.estimates?.currentEstimate?.estimate_data?.finishes || []
   );
 
+  const cabinetStyles = useSelector(
+    (state) => state.cabinetStyles?.styles.filter((style) => style.is_active) || []
+  );
+
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(section, boxMaterials, faceMaterials, finishTypes);
-  }, [section, boxMaterials, faceMaterials, finishTypes]);
+    return getSectionCalculations(
+      section,
+      boxMaterials,
+      faceMaterials,
+      drawerBoxMaterials,
+      finishTypes,
+      cabinetStyles
+    );
+  }, [section, boxMaterials, faceMaterials, drawerBoxMaterials, finishTypes, cabinetStyles]);
 
   // Format number as currency
   const formatCurrency = (amount) => {
@@ -43,7 +50,8 @@ const EstimateSectionPrice = ({ section }) => {
 
   // Calculate labor costs based on hours and rates
   const laborCosts = useMemo(() => {
-    const shopRate = services.find((et) => et.service_id === 2)?.hourly_rate || 0;
+    const shopRate =
+      services.find((et) => et.service_id === 2)?.hourly_rate || 0;
     const finishRate =
       services.find((et) => et.service_id === 3)?.hourly_rate || 0;
     const installRate =

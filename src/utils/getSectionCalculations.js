@@ -103,7 +103,7 @@ const calculateFaceTotals = (section, faceMaterials, finishMultiplier) => {
 };
 
 // Calculate drawer box and rollout totals for all cabinets in a section
-const calculateDrawerAndRolloutTotals = (section, cabinetStyles) => {
+const calculateDrawerAndRolloutTotals = (section, drawerBoxMaterials, cabinetStyles) => {
   const totals = {
     drawerBoxCount: 0,
     drawerBoxTotal: 0,
@@ -176,12 +176,13 @@ const calculateDrawerAndRolloutTotals = (section, cabinetStyles) => {
     collectDrawerAndRollouts(cabinet.face_config);
   });
 
+  const drawerBoxMaterial = drawerBoxMaterials?.find((mat) => mat.id === section.drawer_box_mat);
   // Calculate drawer box costs using the new pricing function
   if (allDrawerBoxes.length > 0) {
     const drawerBoxResult = calculateDrawerBoxesPrice({
       boxes: allDrawerBoxes,
-      sheetPrice: 150,
-      sheetSize: { width: 60, height: 60 },
+      sheetPrice: drawerBoxMaterial?.sheet_price,
+      sheetSize: { width: drawerBoxMaterial?.width, height: drawerBoxMaterial?.height },
       baseLaborRate: 21,
       standardBoxArea: 1000,
       wasteFactor: 0.12,
@@ -195,8 +196,8 @@ const calculateDrawerAndRolloutTotals = (section, cabinetStyles) => {
   if (allRollOuts.length > 0) {
     const rollOutResult = calculateDrawerBoxesPrice({
       boxes: allRollOuts,
-      sheetPrice: 150,
-      sheetSize: { width: 60, height: 60 },
+      sheetPrice: drawerBoxMaterial?.sheet_price,
+      sheetSize: { width: drawerBoxMaterial?.width, height: drawerBoxMaterial?.height },
       baseLaborRate: 21,
       standardBoxArea: 1000,
       wasteFactor: 0.12,
@@ -254,7 +255,9 @@ const calculateCabinetTotals = (
   section,
   boxMaterials,
   faceMaterials,
-  finishMultiplier
+  drawerBoxMaterials,
+  finishMultiplier,
+  cabinetStyles
 ) => {
   // Calculate box costs using batch CNC calculation
   const costBatchCNC = calculateOutsourceBatchCostCNC(
@@ -281,7 +284,7 @@ const calculateCabinetTotals = (
   );
 
   // Calculate drawer box and rollout totals
-  const drawerRolloutTotals = calculateDrawerAndRolloutTotals(section);
+  const drawerRolloutTotals = calculateDrawerAndRolloutTotals(section, drawerBoxMaterials, cabinetStyles);
 
   // Calculate cabinet box hours
   const boxHours = calculateCabinetBoxHours(
@@ -336,7 +339,9 @@ export const getSectionCalculations = (
   section,
   boxMaterials,
   faceMaterials,
-  finishTypes
+  drawerBoxMaterials,
+  finishTypes,
+  cabinetStyles
 ) => {
   if (!section) {
     return {
@@ -375,7 +380,9 @@ export const getSectionCalculations = (
     section,
     boxMaterials,
     faceMaterials,
-    finishMultiplier
+    drawerBoxMaterials,
+    finishMultiplier,
+    cabinetStyles
   );
 
   const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
