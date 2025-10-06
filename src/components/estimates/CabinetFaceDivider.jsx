@@ -67,19 +67,20 @@ const CabinetFaceDivider = ({
 
   // Memoize style and type lookups to prevent infinite loops in useEffect
   const style = useMemo(
-    () => cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId),
+    () =>
+      cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId),
     [cabinetStyles, cabinetStyleId]
   );
-  
+
   const type = useMemo(
     () => style?.types?.find((type) => type.cabinet_type_id === cabinetTypeId),
     [style, cabinetTypeId]
   );
-  
+
   // Use rootReveals from config if available, otherwise fall back to type config
   // Use ref to maintain stable reference and only update when values actually change
   const revealsRef = useRef(null);
-  
+
   // Default reveals if nothing else is available
   const defaultReveals = {
     top: 0,
@@ -88,14 +89,14 @@ const CabinetFaceDivider = ({
     right: 0,
     reveal: 0,
   };
-  
+
   const currentReveals = config?.rootReveals || type?.config || defaultReveals;
-  
+
   // Only update ref if reveals actually changed (deep comparison)
   if (!isEqual(revealsRef.current, currentReveals)) {
     revealsRef.current = currentReveals;
   }
-  
+
   const reveals = revealsRef.current;
 
   // Calculate display scale and offsets accounting for negative reveals (overhangs)
@@ -104,11 +105,11 @@ const CabinetFaceDivider = ({
   const revealRight = Math.abs(Math.min(0, reveals.right));
   const revealTop = Math.abs(Math.min(0, reveals.top));
   const revealBottom = Math.abs(Math.min(0, reveals.bottom));
-  
+
   // Total display area includes cabinet + any overhangs
   const totalDisplayWidth = cabinetWidth + revealLeft + revealRight;
   const totalDisplayHeight = cabinetHeight + revealTop + revealBottom;
-  
+
   const scaleX = fixedDisplayWidth / totalDisplayWidth;
   const scaleY = fixedDisplayHeight / totalDisplayHeight;
   const scale = Math.min(scaleX, scaleY);
@@ -116,7 +117,7 @@ const CabinetFaceDivider = ({
   const displayHeight = totalDisplayHeight * scale;
   const offsetX = (fixedDisplayWidth - displayWidth) / 2;
   const offsetY = (fixedDisplayHeight - displayHeight) / 2;
-  
+
   // Offset for the cabinet box within the display area (to account for overhangs)
   const cabinetOffsetX = revealLeft * scale;
   const cabinetOffsetY = revealTop * scale;
@@ -143,22 +144,26 @@ const CabinetFaceDivider = ({
   // Separate useEffect to handle rootReveals changes from parent (faceConfig prop)
   useEffect(() => {
     // Check if the incoming faceConfig has different rootReveals than our local config state
-    if (faceConfig?.rootReveals && config?.id === FACE_NAMES.ROOT && !isEqual(faceConfig.rootReveals, config.rootReveals)) {
+    if (
+      faceConfig?.rootReveals &&
+      config?.id === FACE_NAMES.ROOT &&
+      !isEqual(faceConfig.rootReveals, config.rootReveals)
+    ) {
       // Update the ref to the new reveals
       revealsRef.current = faceConfig.rootReveals;
-      
+
       const updatedConfig = cloneDeep(config);
-      
+
       // Update rootReveals with the new values from parent
       updatedConfig.rootReveals = faceConfig.rootReveals;
-      
+
       // Normalize reveal dimensions with new reveals
       // We need to use the new reveals value directly
       const normalizeWithNewReveals = (node) => {
         if (!node || !node.children) return;
-        
+
         const revealValue = faceConfig.rootReveals.reveal;
-        
+
         node.children.forEach((child) => {
           if (child.type === FACE_NAMES.REVEAL) {
             if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
@@ -171,26 +176,37 @@ const CabinetFaceDivider = ({
           normalizeWithNewReveals(child);
         });
       };
-      
+
       normalizeWithNewReveals(updatedConfig);
-      
+
       // Update root dimensions based on new reveals
-      updatedConfig.width = cabinetWidth - faceConfig.rootReveals.left - faceConfig.rootReveals.right;
-      updatedConfig.height = cabinetHeight - faceConfig.rootReveals.top - faceConfig.rootReveals.bottom;
+      updatedConfig.width =
+        cabinetWidth -
+        faceConfig.rootReveals.left -
+        faceConfig.rootReveals.right;
+      updatedConfig.height =
+        cabinetHeight -
+        faceConfig.rootReveals.top -
+        faceConfig.rootReveals.bottom;
       updatedConfig.x = faceConfig.rootReveals.left;
       updatedConfig.y = faceConfig.rootReveals.top;
-      
+
       // Recursively update all children to scale proportionally
       updateChildrenFromParent(updatedConfig);
-      
+
       // Force recalculation of layout with new dimensions
       const layoutConfig = calculateLayout(updatedConfig);
-      
+
       // Update state with the new configuration
       setConfig(layoutConfig);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faceConfig?.rootReveals, config?.rootReveals, cabinetWidth, cabinetHeight]);
+  }, [
+    faceConfig?.rootReveals,
+    config?.rootReveals,
+    cabinetWidth,
+    cabinetHeight,
+  ]);
 
   useEffect(() => {
     if (!config || (Array.isArray(config) && config.length === 0)) {
@@ -202,9 +218,10 @@ const CabinetFaceDivider = ({
         right: 0,
         reveal: 0,
       };
-      
-      const initialHeight = cabinetHeight - initialReveals.top - initialReveals.bottom;
-      
+
+      const initialHeight =
+        cabinetHeight - initialReveals.top - initialReveals.bottom;
+
       setConfig({
         id: FACE_NAMES.ROOT,
         type: FACE_NAMES.DOOR,
@@ -218,14 +235,15 @@ const CabinetFaceDivider = ({
       });
     } else if (config && !config.id) {
       // Ensure existing config has an id and rootReveals
-      const configReveals = config.rootReveals || type?.config || {
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        reveal: 0,
-      };
-      
+      const configReveals = config.rootReveals ||
+        type?.config || {
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          reveal: 0,
+        };
+
       setConfig({
         ...config,
         id: FACE_NAMES.ROOT,
@@ -240,18 +258,20 @@ const CabinetFaceDivider = ({
         right: 0,
         reveal: 0,
       };
-      
+
       // Calculate expected dimensions
-      const expectedWidth = cabinetWidth - currentReveals.left - currentReveals.right;
-      const expectedHeight = cabinetHeight - currentReveals.top - currentReveals.bottom;
-      
+      const expectedWidth =
+        cabinetWidth - currentReveals.left - currentReveals.right;
+      const expectedHeight =
+        cabinetHeight - currentReveals.top - currentReveals.bottom;
+
       // Only update if dimensions or reveals actually changed
-      const needsUpdate = 
+      const needsUpdate =
         config.width !== expectedWidth ||
         config.height !== expectedHeight ||
         !config.rootReveals ||
         !isEqual(config.rootReveals, currentReveals);
-      
+
       if (needsUpdate) {
         const updatedConfig = cloneDeep(config);
 
@@ -680,12 +700,18 @@ const CabinetFaceDivider = ({
     // Add a transform group to center the cabinet (includes space for overhangs)
     const cabinetGroup = svg
       .append("g")
-      .attr("transform", `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`);
+      .attr(
+        "transform",
+        `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`
+      );
 
     // Create a dedicated group for highlights, added last to be on top
     const highlightGroup = svg
       .append("g")
-      .attr("transform", `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`);
+      .attr(
+        "transform",
+        `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`
+      );
 
     // Add background for the cabinet box
     cabinetGroup
@@ -800,13 +826,16 @@ const CabinetFaceDivider = ({
       node.children = null; // containers only, so reset
 
       // Set default shelf quantity for supported types
-      if (CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType)) {
+      if (
+        CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType) &&
+        newType !== FACE_NAMES.DRAWER_FRONT
+      ) {
         const standardShelfQty = calculateShelfQty(node.height);
-        node.shelfQty = standardShelfQty;
+        node.shelfQty = node.shelfQty || standardShelfQty;
 
         setInputValues((prev) => ({
           ...prev,
-          shelfQty: standardShelfQty,
+          shelfQty: node.shelfQty || standardShelfQty,
         }));
       } else {
         // Reset roll-outs & shelves if unsupported
@@ -843,21 +872,23 @@ const CabinetFaceDivider = ({
           // Calculate rollout dimensions if needed
           if (node.rollOutQty > 0) {
             node.rollOutDimensions = calculateRollOutDimensions(
+              style,
               node.width,
               cabinetDepth,
               node.height,
-              "rollOut",
-              minValue
+              node.type,
+              true // isRollout
             );
           }
 
           if (node.type === FACE_NAMES.DRAWER_FRONT) {
             node.drawerBoxDimensions = calculateRollOutDimensions(
+              style,
               node.width,
               cabinetDepth,
               node.height,
               node.type,
-              minValue
+              false // isRollout
             );
           }
 
@@ -1243,7 +1274,9 @@ const CabinetFaceDivider = ({
       const childType =
         node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type;
 
-      const canHaveShelves = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType);
+      const canHaveShelves =
+        CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType) &&
+        childType !== FACE_NAMES.DRAWER_FRONT;
 
       node.children = [
         {
@@ -1296,7 +1329,9 @@ const CabinetFaceDivider = ({
       const childType =
         node.type === FACE_NAMES.CONTAINER ? FACE_NAMES.DOOR : node.type;
 
-      const canHaveShelves = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType);
+      const canHaveShelves =
+        CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType) &&
+        childType !== FACE_NAMES.DRAWER_FRONT;
 
       node.children = [
         {
@@ -1436,9 +1471,9 @@ const CabinetFaceDivider = ({
           // Update child's id to reflect new position in tree
           lastChild.id = parent.id;
         } else {
-          const canHaveShelves = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(
-            lastChild.type
-          );
+          const canHaveShelves =
+            CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(lastChild.type) &&
+            lastChild.type !== FACE_NAMES.DRAWER_FRONT;
           const newHeight = cabinetHeight - reveals.top - reveals.bottom;
           // Parent is the root, so the last child becomes the new root
           Object.assign(newConfig, {

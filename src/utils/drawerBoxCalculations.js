@@ -17,17 +17,17 @@ export const calculateDrawerBoxesPrice = ({
   sheetPrice,
   sheetSize,
   baseLaborRate = 0,
-  standardBoxArea = 1000,
+  standardBoxArea = 900,
   wasteFactor = 0.1,
   roundingIncrement = 0.2, // Round total sheets to nearest increment
-  isFaceFrame = false,
+  taxRate = 0.1,
 }) => {
-  let totalCost = 0;
-  const boxCosts = [];
+  let boxesCost = 0;
+  //   const boxCosts = [];
 
   const notchCost = 3.5;
-  const heightThreshold = 4.25; // Height threshold for extra charge
-  const heightSurchargePerInch = 1.75; // Extra charge per inch above threshold
+  const heightThreshold = 6; // Height threshold for extra charge
+  const heightSurchargePerInch = 1.35; // Extra charge per inch above threshold
 
   const sheetArea = sheetSize.width * sheetSize.height;
 
@@ -49,7 +49,7 @@ export const calculateDrawerBoxesPrice = ({
   const totalMaterialCost = totalRoundedSheets * sheetPrice;
 
   // Second pass: distribute material cost proportionally by box area
-  boxes.forEach(({ width, height, depth, quantity, rollOut }) => {
+  boxes.forEach(({ width, height, depth, quantity, rollOut, isFaceFrame }) => {
     const boxArea = width * depth + 2 * (height * depth) + 2 * (width * height);
 
     const clipCost = rollOut ? 3.5 : isFaceFrame ? 8 : 3.5;
@@ -79,29 +79,31 @@ export const calculateDrawerBoxesPrice = ({
       heightCharge;
 
     // Add to total cost
-    totalCost += quantity * totalCostPerBox;
+    boxesCost += quantity * totalCostPerBox;
 
     // Store individual box cost details
-    boxCosts.push({
-      width,
-      height,
-      depth,
-      quantity,
-      boxArea,
-      materialCost: materialCostPerBox,
-      laborCost: laborCostPerBox,
-      notchCost,
-      clipCost,
-      scoopCost,
-      heightCharge: heightCharge,
-      costPerBox: totalCostPerBox,
-      totalCost: quantity * totalCostPerBox,
-    });
+    // boxCosts.push({
+    //   width,
+    //   height,
+    //   depth,
+    //   quantity,
+    //   boxArea,
+    //   materialCost: materialCostPerBox,
+    //   laborCost: laborCostPerBox,
+    //   notchCost,
+    //   clipCost,
+    //   scoopCost,
+    //   heightCharge: heightCharge,
+    //   costPerBox: totalCostPerBox,
+    //   totalCost: quantity * totalCostPerBox,
+    // });
   });
+
+  const totalCost = boxesCost * (1 + taxRate);
 
   return {
     totalCost,
-    boxCosts,
+    // boxCosts,
   };
 };
 
@@ -119,9 +121,9 @@ export const calculateDrawerBoxesPrice = ({
 //       depth: 18,
 //     },
 //   ];
-  
+
 //   // const masterBathExpectation = 768;
-  
+
 //   const kitchenIslandDrawers = [
 //     {
 //       quantity: 1,
@@ -154,9 +156,9 @@ export const calculateDrawerBoxesPrice = ({
 //       depth: 22,
 //     },
 //   ];
-  
+
 //   // const kitchenIslandExpectation = 585;
-  
+
 //   const laundryDrawers = [
 //     {
 //       quantity: 1,
@@ -177,7 +179,7 @@ export const calculateDrawerBoxesPrice = ({
 //       depth: 22,
 //     },
 //   ];
-  
+
 //   const kitchenPermDrawers = [
 //     {
 //       quantity: 2,
@@ -218,7 +220,7 @@ export const calculateDrawerBoxesPrice = ({
 //       rollOut: true,
 //     },
 //   ];
-  
+
 //   const westMudRoomDrawers = [
 //     {
 //       quantity: 2,
@@ -247,7 +249,7 @@ export const calculateDrawerBoxesPrice = ({
 //       rollOut: true,
 //     },
 //   ];
-  
+
 //   const westPowderDrawers = [
 //     {
 //       quantity: 1,
@@ -271,10 +273,17 @@ export const calculateDrawerBoxesPrice = ({
 
 // const sheetPrice = 150;
 // const sheetSize = { width: 60, height: 60 };
-// const baseLaborRate = 20;
+// const baseLaborRate = 21;
 // const standardBoxArea = 1000;
-// const wasteFactor = 0.15;
-// const roundingIncrement = 0.25;
+// const wasteFactor = 0.12;
+// const roundingIncrement = .85;
+
+// console.log('sheetPrice', sheetPrice)
+// console.log('sheetSize', sheetSize)
+// console.log('baseLaborRate', baseLaborRate)
+// console.log('standardBoxArea', standardBoxArea)
+// console.log('wasteFactor', wasteFactor)
+// console.log('roundingIncrement', roundingIncrement)
 
 // console.log(
 //   "master bath (768)",
@@ -355,4 +364,3 @@ export const calculateDrawerBoxesPrice = ({
 //     isFaceFrame: true,
 //   }).totalCost.toFixed(2)
 // );
-

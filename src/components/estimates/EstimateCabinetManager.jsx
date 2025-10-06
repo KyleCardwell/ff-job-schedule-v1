@@ -450,6 +450,12 @@ const CabinetItemForm = ({
             }
             partitionCount += 1;
             partitionPerimeterLength += 2 * (partitionWidth + depth);
+
+            // double vertical partitions for cabinet style 14 (Inset Face Frame)
+            if (cabStyleId === 14 && node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
+              partitionCount += 1;
+              totalArea += partitionWidth * depth;
+            }
           }
         }
       }
