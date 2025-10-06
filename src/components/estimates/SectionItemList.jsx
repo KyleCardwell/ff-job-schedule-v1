@@ -74,7 +74,8 @@ const SectionItemList = ({
         }
       }
       case "type": {
-        return cabinetTypes.find((t) => t.cabinet_type_id === item.type)?.cabinet_type_name;
+        return cabinetTypes.find((t) => t.cabinet_type_id === item.type)
+          ?.cabinet_type_name;
       }
       case "actions":
         return (
@@ -243,10 +244,17 @@ const SectionItemList = ({
           open={isReorderModalOpen}
           onClose={() => setIsReorderModalOpen(false)}
           onSave={handleSaveOrder}
-          items={items.map((item) => ({
-            id: item.id,
-            name: item.name || `Item ${item.id}`,
-          }))}
+          items={items.map((item) => {
+            const itemType = cabinetTypes.find(
+              (t) => t.cabinet_type_id === item.type
+            ).cabinet_type_name;
+            return {
+              id: item.id,
+              name:
+                `${item.quantity > 1 ? `(${item.quantity}) ` : ""}${itemType} - ${item.width} x ${item.height} x ${item.depth}` ||
+                `Item ${item.id}`,
+            };
+          })}
           title="Reorder Items"
         />
       )}
