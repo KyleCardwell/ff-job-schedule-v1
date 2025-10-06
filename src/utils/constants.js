@@ -68,6 +68,7 @@ export const FACE_TYPES = [
 export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [
   FACE_NAMES.DOOR,
   FACE_NAMES.PAIR_DOOR,
+  FACE_NAMES.DRAWER_FRONT,
   FACE_NAMES.OPEN,
 ];
 
@@ -77,13 +78,15 @@ export const CAN_HAVE_PULLS = [
   FACE_NAMES.DRAWER_FRONT,
 ];
 
-export const DRAWER_BOX_PRICE = 50;
-export const ROLL_OUT_PRICE = 60;
-
 export const DRAWER_BOX_HEIGHTS = [
-  2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.125, 11.125, 12.125,
+  2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.25, 11.125, 12.125,
   13.125, 14.125, 15.125,
 ];
+
+export const DRAWER_BOX_MOD_BY_ID = {
+  13: {subtractWidth: 1.875},
+  14: {subtractWidth: .5},
+}
 
 export const CABINET_ANCHORS = {
   Base: [

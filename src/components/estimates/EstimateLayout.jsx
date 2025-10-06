@@ -12,7 +12,7 @@ import {
   setCurrentEstimate,
   updateTaskOrder,
 } from "../../redux/actions/estimates";
-import { fetchSheetGoods } from "../../redux/actions/materials.js";
+import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { PATHS } from "../../utils/constants";
 import ReorderModal from "../common/ReorderModal.jsx";
 
@@ -72,6 +72,7 @@ const EstimateLayout = () => {
 
   useEffect(() => {
     dispatch(fetchSheetGoods());
+    dispatch(fetchDrawerBoxMaterials());
     dispatch(fetchCabinetTypes());
     dispatch(fetchCabinetAnchors())
     dispatch(fetchTeamCabinetStyles())

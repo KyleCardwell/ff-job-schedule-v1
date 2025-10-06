@@ -7,7 +7,7 @@ import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import { fetchEstimates, clearCurrentEstimate } from "../../redux/actions/estimates";
-import { fetchSheetGoods } from "../../redux/actions/materials";
+import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials";
 import { ESTIMATE_STATUS, PATHS } from "../../utils/constants";
 
 import EstimateDashboardCard from "./EstimateDashboardCard.jsx";
@@ -22,6 +22,7 @@ const EstimateDashboard = () => {
         dispatch(fetchCabinetTypes());
         dispatch(fetchEstimates());
         dispatch(fetchSheetGoods());
+        dispatch(fetchDrawerBoxMaterials());
         dispatch(fetchCabinetAnchors())
     }, []);
 

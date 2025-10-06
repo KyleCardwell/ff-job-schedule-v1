@@ -1,32 +1,34 @@
 import { supabase } from "../../utils/supabase";
-import { Actions } from "../actions";
+import { materials } from "../actionTypes";
 
 // Action creators
 export const fetchMaterialsStart = () => ({
-  type: Actions.materials.FETCH_MATERIALS_START,
+  type: materials.FETCH_MATERIALS_START,
 });
 
 export const fetchMaterialsError = (error) => ({
-  type: Actions.materials.FETCH_MATERIALS_ERROR,
+  type: materials.FETCH_MATERIALS_ERROR,
   payload: error,
 });
 
-export const fetchSheetGoodsSuccess = (materials) => ({
-  type: Actions.materials.FETCH_SHEET_GOODS_SUCCESS,
-  payload: materials,
+export const fetchSheetGoodsSuccess = (materialList) => ({
+  type: materials.FETCH_SHEET_GOODS_SUCCESS,
+  payload: materialList,
 });
 
 // Async action to fetch sheet goods from Supabase
 export const fetchSheetGoods = () => async (dispatch, getState) => {
   try {
     dispatch(fetchMaterialsStart());
-    
+
     const state = getState();
     const teamId = state.auth.teamId;
 
     const { data, error } = await supabase
       .from("wood_catalog")
-      .select("id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, 5_piece, slab_door, needs_finish")
+      .select(
+        "id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, 5_piece, slab_door, needs_finish"
+      )
       .eq("team_id", teamId)
       .order("name", { ascending: true });
 
@@ -46,12 +48,12 @@ export const addSheetGood = (material) => async (dispatch, getState) => {
   try {
     const state = getState();
     const teamId = state.auth.teamId;
-    
+
     const { data, error } = await supabase
       .from("wood_catalog")
       .insert({
         ...material,
-        team_id: teamId
+        team_id: teamId,
       })
       .select();
 
@@ -98,10 +100,7 @@ export const updateSheetGood = (material) => async (dispatch) => {
 // Function to delete sheet good material
 export const deleteSheetGood = (id) => async (dispatch) => {
   try {
-    const { error } = await supabase
-      .from("wood_catalog")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("wood_catalog").delete().eq("id", id);
 
     if (error) throw error;
 
@@ -110,6 +109,32 @@ export const deleteSheetGood = (id) => async (dispatch) => {
     return { success: true };
   } catch (error) {
     console.error("Error deleting sheet good:", error);
+    dispatch(fetchMaterialsError(error.message));
+    return { success: false, error: error.message };
+  }
+};
+
+// ------------ Drawer Box Materials ------------
+// ----------------------------------------------
+
+export const fetchDrawerBoxMaterials = () => async (dispatch) => {
+  try {
+    const { data, error } = await supabase
+      .from("drawer_wood_catalog")
+      .select(
+        "id, name, width, height, thickness, area, sheet_price, needs_finish"
+      )
+      .order("name", { ascending: true });
+
+    if (error) throw error;
+
+    dispatch({
+      type: materials.FETCH_DRAWER_BOX_MATERIALS_SUCCESS,
+      payload: data,
+    });
+    return data;
+  } catch (error) {
+    console.error("Error fetching drawer box materials:", error);
     dispatch(fetchMaterialsError(error.message));
     return { success: false, error: error.message };
   }
