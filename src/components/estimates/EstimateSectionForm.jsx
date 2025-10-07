@@ -252,7 +252,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
 
     return DOOR_STYLE_OPTIONS.filter((option) => {
       // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
-      if (selectedFaceMaterial["5_piece"] === true) {
+      if (selectedFaceMaterial.five_piece === true) {
         if (option.id === "5_piece_hardwood" || option.id === "slab_hardwood") {
           return true;
         }

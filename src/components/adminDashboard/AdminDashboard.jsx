@@ -1,4 +1,4 @@
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 import { useState, useRef, useMemo } from "react";
 import { useSelector } from "react-redux";
 import {
@@ -13,14 +13,15 @@ import {
   headerButtonClass,
   headerButtonColor,
 } from "../../assets/tailwindConstants";
-import useFeatureToggles from '../../hooks/useFeatureToggles.js';
+import useFeatureToggles from "../../hooks/useFeatureToggles.js";
 import { PATHS } from "../../utils/constants";
 import CabinetStyleSettings from "../manageSettings/CabinetStyleSettings.jsx";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
-import ServiceSettings from '../manageSettings/ServiceSettings.jsx';
+import MaterialsSettings from "../manageSettings/MaterialsSettings.jsx";
+import ServiceSettings from "../manageSettings/ServiceSettings.jsx";
 import TeamSettings from "../manageSettings/TeamSettings.jsx";
 
 // Wrapper component to handle ref forwarding
@@ -61,6 +62,16 @@ const AdminDashboard = () => {
       maxWidthClass: "max-w-[720px]",
     },
     {
+      id: "team",
+      label: "Team",
+      path: PATHS.MANAGE_TEAM,
+      component: TeamSettings,
+      props: {},
+      requiresAdmin: true,
+      requiresPermission: "can_manage_teams",
+      maxWidthClass: "max-w-[1000px]",
+    },
+    {
       id: "chart",
       label: "Chart",
       path: PATHS.MANAGE_CHART,
@@ -99,14 +110,14 @@ const AdminDashboard = () => {
       maxWidthClass: "max-w-[720px]",
     },
     {
-      id: "team",
-      label: "Team",
-      path: PATHS.MANAGE_TEAM,
-      component: TeamSettings,
+      id: "materials",
+      label: "Materials",
+      path: PATHS.MANAGE_MATERIALS,
+      component: MaterialsSettings,
       props: {},
       requiresAdmin: true,
-      requiresPermission: "can_manage_teams",
-      maxWidthClass: "max-w-[1000px]",
+      requiresFeatureToggle: "enable_estimates",
+      maxWidthClass: "max-w-[1200px]",
     },
   ];
 
@@ -114,7 +125,10 @@ const AdminDashboard = () => {
   const tabs = useMemo(() => {
     return allTabs.filter((tab) => {
       // 1. Check for feature toggle first
-      if (tab.requiresFeatureToggle && !featureToggles[tab.requiresFeatureToggle]) {
+      if (
+        tab.requiresFeatureToggle &&
+        !featureToggles[tab.requiresFeatureToggle]
+      ) {
         return false;
       }
 
@@ -124,7 +138,11 @@ const AdminDashboard = () => {
       }
 
       // 3. Check for specific permissions (for non-admins)
-      if (roleId !== 1 && tab.requiresPermission && !permissions.includes(tab.requiresPermission)) {
+      if (
+        roleId !== 1 &&
+        tab.requiresPermission &&
+        !permissions.includes(tab.requiresPermission)
+      ) {
         return false;
       }
 
@@ -239,8 +257,8 @@ SettingsWrapper.propTypes = {
   component: PropTypes.elementType,
   componentRef: PropTypes.oneOfType([
     PropTypes.func,
-    PropTypes.shape({ current: PropTypes.any })
-  ])
+    PropTypes.shape({ current: PropTypes.any }),
+  ]),
 };
 
 export default AdminDashboard;

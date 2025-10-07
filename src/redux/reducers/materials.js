@@ -11,6 +11,7 @@ const initialState = {
 export const materialsReducer = (state = initialState, action) => {
   switch (action.type) {
     case materials.FETCH_MATERIALS_START:
+      case materials.SAVE_MATERIALS_START:
       return {
         ...state,
         loading: true,
@@ -18,6 +19,7 @@ export const materialsReducer = (state = initialState, action) => {
       };
 
     case materials.FETCH_MATERIALS_ERROR:
+    case materials.SAVE_MATERIALS_ERROR:
       return {
         ...state,
         loading: false,

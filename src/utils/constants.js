@@ -8,6 +8,7 @@ export const PATHS = {
   MANAGE_SERVICES: "/manage/services",
   MANAGE_CABINET_STYLES: "/manage/cabinet-styles",
   MANAGE_CABINET_TYPES: "/manage/cabinet-types",
+  MANAGE_MATERIALS: "/manage/materials",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
   SETTINGS: "/settings",
