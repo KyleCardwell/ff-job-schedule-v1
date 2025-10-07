@@ -26,7 +26,9 @@ const MaterialsSettings = forwardRef((props, ref) => {
   const [localSheetGoods, setLocalSheetGoods] = useState([]);
   const [localDrawerBoxMaterials, setLocalDrawerBoxMaterials] = useState([]);
   const [originalSheetGoods, setOriginalSheetGoods] = useState([]);
-  const [originalDrawerBoxMaterials, setOriginalDrawerBoxMaterials] = useState([]);
+  const [originalDrawerBoxMaterials, setOriginalDrawerBoxMaterials] = useState(
+    []
+  );
   const [allSheetGoods, setAllSheetGoods] = useState([]);
 
   useEffect(() => {
@@ -92,6 +94,14 @@ const MaterialsSettings = forwardRef((props, ref) => {
     );
   };
 
+  const handleCancelDeleteSheetGood = (id) => {
+    setLocalSheetGoods((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, markedForDeletion: false } : item
+      )
+    );
+  };
+
   // Drawer Box Materials handlers
   const handleDrawerBoxChange = (id, field, value) => {
     setLocalDrawerBoxMaterials((prev) =>
@@ -116,6 +126,14 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalDrawerBoxMaterials((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, markedForDeletion: true } : item
+      )
+    );
+  };
+
+  const handleCancelDeleteDrawerBox = (id) => {
+    setLocalDrawerBoxMaterials((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, markedForDeletion: false } : item
       )
     );
   };
@@ -199,12 +217,13 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Box",
       width: "60px",
       render: (item, onChange) => (
-          <input
-            type="checkbox"
-            checked={item.box_mat || false}
-            onChange={(e) => onChange("box_mat", e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
+        <input
+          type="checkbox"
+          checked={item.box_mat || false}
+          onChange={(e) => onChange("box_mat", e.target.checked)}
+          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          disabled={item.markedForDeletion}
+        />
       ),
     },
     {
@@ -212,12 +231,13 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Face",
       width: "60px",
       render: (item, onChange) => (
-          <input
-            type="checkbox"
-            checked={item.face_mat || false}
-            onChange={(e) => onChange("face_mat", e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
+        <input
+          type="checkbox"
+          checked={item.face_mat || false}
+          onChange={(e) => onChange("face_mat", e.target.checked)}
+          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          disabled={item.markedForDeletion}
+        />
       ),
     },
     {
@@ -225,12 +245,13 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "5 Piece",
       width: "70px",
       render: (item, onChange) => (
-          <input
-            type="checkbox"
-            checked={item.five_piece || false}
-            onChange={(e) => onChange("five_piece", e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
+        <input
+          type="checkbox"
+          checked={item.five_piece || false}
+          onChange={(e) => onChange("five_piece", e.target.checked)}
+          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          disabled={item.markedForDeletion}
+        />
       ),
     },
     {
@@ -238,12 +259,13 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Slab",
       width: "60px",
       render: (item, onChange) => (
-          <input
-            type="checkbox"
-            checked={item.slab_door || false}
-            onChange={(e) => onChange("slab_door", e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
+        <input
+          type="checkbox"
+          checked={item.slab_door || false}
+          onChange={(e) => onChange("slab_door", e.target.checked)}
+          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          disabled={item.markedForDeletion}
+        />
       ),
     },
     {
@@ -251,12 +273,13 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Finish",
       width: "60px",
       render: (item, onChange) => (
-          <input
-            type="checkbox"
-            checked={item.needs_finish || false}
-            onChange={(e) => onChange("needs_finish", e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
+        <input
+          type="checkbox"
+          checked={item.needs_finish || false}
+          onChange={(e) => onChange("needs_finish", e.target.checked)}
+          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          disabled={item.markedForDeletion}
+        />
       ),
     },
   ];
@@ -304,9 +327,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
     <div className="flex flex-col h-full pb-10">
       <div className="sticky top-0 z-10 bg-slate-800 py-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">
-            Manage Materials
-          </h2>
+          <h2 className="text-lg font-bold text-slate-200">Manage Materials</h2>
         </div>
       </div>
 
@@ -315,24 +336,30 @@ const MaterialsSettings = forwardRef((props, ref) => {
         {error && <div className="p-4 text-red-500">Error: {error}</div>}
         {!loading && !error && (
           <>
-            <SettingsSection title="Sheet Goods" maxWidthClass={props.maxWidthClass}>
+            <SettingsSection
+              title="Sheet Goods"
+              maxWidthClass={props.maxWidthClass}
+            >
               <SettingsList
-                items={localSheetGoods.filter((item) => !item.markedForDeletion)}
+                items={localSheetGoods}
                 columns={sheetGoodsColumns}
                 onDelete={handleDeleteSheetGood}
+                onCancelDelete={handleCancelDeleteSheetGood}
                 onChange={handleSheetGoodChange}
                 onAdd={handleAddSheetGood}
                 addLabel="+ Add Sheet Good"
               />
             </SettingsSection>
 
-            <SettingsSection title="Drawer Box Materials" maxWidthClass={props.maxWidthClass}>
+            <SettingsSection
+              title="Drawer Box Materials"
+              maxWidthClass={props.maxWidthClass}
+            >
               <SettingsList
-                items={localDrawerBoxMaterials.filter(
-                  (item) => !item.markedForDeletion
-                )}
+                items={localDrawerBoxMaterials}
                 columns={drawerBoxColumns}
                 onDelete={handleDeleteDrawerBox}
+                onCancelDelete={handleCancelDeleteDrawerBox}
                 onChange={handleDrawerBoxChange}
                 onAdd={handleAddDrawerBox}
                 addLabel="+ Add Drawer Box Material"

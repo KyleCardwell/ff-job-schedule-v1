@@ -117,7 +117,7 @@ const AdminDashboard = () => {
       props: {},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
-      maxWidthClass: "max-w-[1000px]",
+      maxWidthClass: "max-w-[1200px]",
     },
   ];
 
