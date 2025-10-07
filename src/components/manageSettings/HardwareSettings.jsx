@@ -243,6 +243,9 @@ const HardwareSettings = forwardRef((props, ref) => {
       if (item.price === "" || item.price === null || item.price < 0) {
         itemErrors.price = "Valid price is required (must be >= 0)";
       }
+      if (item.actual_cost === "" || item.actual_cost === null || item.actual_cost < 0) {
+        itemErrors.actual_cost = "Valid actual cost is required (must be >= 0)";
+      }
 
       if (Object.keys(itemErrors).length > 0) {
         newErrors[`hinge-${item.id}`] = itemErrors;
@@ -260,6 +263,9 @@ const HardwareSettings = forwardRef((props, ref) => {
       if (item.price === "" || item.price === null || item.price < 0) {
         itemErrors.price = "Valid price is required (must be >= 0)";
       }
+      if (item.actual_cost === "" || item.actual_cost === null || item.actual_cost < 0) {
+        itemErrors.actual_cost = "Valid actual cost is required (must be >= 0)";
+      }
 
       if (Object.keys(itemErrors).length > 0) {
         newErrors[`pull-${item.id}`] = itemErrors;
@@ -276,6 +282,9 @@ const HardwareSettings = forwardRef((props, ref) => {
       }
       if (item.price === "" || item.price === null || item.price < 0) {
         itemErrors.price = "Valid price is required (must be >= 0)";
+      }
+      if (item.actual_cost === "" || item.actual_cost === null || item.actual_cost < 0) {
+        itemErrors.actual_cost = "Valid actual cost is required (must be >= 0)";
       }
 
       if (Object.keys(itemErrors).length > 0) {
