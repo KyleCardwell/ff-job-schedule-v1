@@ -71,8 +71,8 @@ export const saveSheetGoods =
         if (item.markedForDeletion) return; // Skip marked for deletion
 
         if (item.isNew) {
-          // New item - remove metadata fields
-          const { id, isNew, markedForDeletion, ...itemData } = item;
+          // New item - remove metadata fields and computed fields
+          const { id, isNew, markedForDeletion, area, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
           // Check if changed
@@ -80,7 +80,7 @@ export const saveSheetGoods =
             (orig) => orig.id === item.id
           );
           if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, ...itemData } = item;
+            const { isNew, markedForDeletion, area, ...itemData } = item;
             toUpdate.push(itemData);
           }
         }
@@ -120,8 +120,8 @@ export const saveSheetGoods =
       }
 
       // Refresh data
-      await dispatch(fetchSheetGoods());
-      return { success: true };
+      const result = await dispatch(fetchSheetGoods());
+      return { success: true, data: result?.data };
     } catch (error) {
       console.error("Error saving sheet goods:", error);
       dispatch(fetchMaterialsError(error.message));
@@ -147,7 +147,7 @@ export const fetchDrawerBoxMaterials = () => async (dispatch) => {
       type: materials.FETCH_DRAWER_BOX_MATERIALS_SUCCESS,
       payload: data,
     });
-    return data;
+    return { data, error };
   } catch (error) {
     console.error("Error fetching drawer box materials:", error);
     dispatch(fetchMaterialsError(error.message));
@@ -182,14 +182,14 @@ export const saveDrawerBoxMaterials =
         if (item.markedForDeletion) return;
 
         if (item.isNew) {
-          const { id, isNew, markedForDeletion, ...itemData } = item;
+          const { id, isNew, markedForDeletion, area, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
           const originalItem = originalItems.find(
             (orig) => orig.id === item.id
           );
           if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, ...itemData } = item;
+            const { isNew, markedForDeletion, area, ...itemData } = item;
             toUpdate.push(itemData);
           }
         }
@@ -231,8 +231,8 @@ export const saveDrawerBoxMaterials =
       }
 
       // Refresh data
-      await dispatch(fetchDrawerBoxMaterials());
-      return { success: true };
+      const result = await dispatch(fetchDrawerBoxMaterials());
+      return { success: true, data: result?.data };
     } catch (error) {
       console.error("Error saving drawer box materials:", error);
       dispatch(fetchMaterialsError(error.message));

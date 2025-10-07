@@ -63,7 +63,11 @@ const SettingsList = ({
                           onChange(item.id, col.field, value);
                         }
                       }}
-                      className="w-full bg-slate-600 text-slate-200 px-2 py-1 my-2"
+                      className={`w-full bg-slate-600 text-slate-200 px-2 py-1 my-2 ${
+                        col.hasError && col.hasError(item)
+                          ? "border-2 border-red-500"
+                          : ""
+                      }`}
                       placeholder={col.placeholder}
                       disabled={item.markedForDeletion}
                     />

@@ -32,7 +32,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
   const [originalDrawerBoxMaterials, setOriginalDrawerBoxMaterials] = useState(
     []
   );
-  const [allSheetGoods, setAllSheetGoods] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     dispatch(fetchSheetGoods());
@@ -45,7 +45,6 @@ const MaterialsSettings = forwardRef((props, ref) => {
       try {
         const { data, error } = await dispatch(fetchSheetGoods());
         if (!error && data) {
-          setAllSheetGoods(data);
           setLocalSheetGoods(data);
           setOriginalSheetGoods(JSON.parse(JSON.stringify(data)));
         }
@@ -68,6 +67,21 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalSheetGoods((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
+    
+    // Clear error for this field if it exists
+    setValidationErrors((prev) => {
+      const itemKey = `sheet-${id}`;
+      if (prev[itemKey]) {
+        const { [field]: _, ...remainingErrors } = prev[itemKey];
+        if (Object.keys(remainingErrors).length === 0) {
+          // If no more errors for this item, remove the item key
+          const { [itemKey]: __, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [itemKey]: remainingErrors };
+      }
+      return prev;
+    });
   };
 
   const handleAddSheetGood = () => {
@@ -119,6 +133,21 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalDrawerBoxMaterials((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
+    
+    // Clear error for this field if it exists
+    setValidationErrors((prev) => {
+      const itemKey = `drawer-${id}`;
+      if (prev[itemKey]) {
+        const { [field]: _, ...remainingErrors } = prev[itemKey];
+        if (Object.keys(remainingErrors).length === 0) {
+          // If no more errors for this item, remove the item key
+          const { [itemKey]: __, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [itemKey]: remainingErrors };
+      }
+      return prev;
+    });
   };
 
   const handleAddDrawerBox = () => {
@@ -159,30 +188,124 @@ const MaterialsSettings = forwardRef((props, ref) => {
     );
   };
 
-  const handleSave = async () => {
-    try {
-      // Save sheet goods
-      const sheetGoodsResult = await dispatch(
-        saveSheetGoods(localSheetGoods, originalSheetGoods)
-      );
-      if (!sheetGoodsResult.success) {
-        throw new Error(sheetGoodsResult.error || "Failed to save sheet goods");
+  const validateInputs = () => {
+    const newErrors = {};
+
+    // Validate sheet goods
+    localSheetGoods.forEach((item) => {
+      if (item.markedForDeletion) return; // Skip validation for items marked for deletion
+
+      const itemErrors = {};
+      if (!item.name || item.name.trim() === "") {
+        itemErrors.name = "Name is required";
+      }
+      if (item.width === "" || item.width === null || item.width <= 0) {
+        itemErrors.width = "Valid width is required (must be > 0)";
+      }
+      if (item.height === "" || item.height === null || item.height <= 0) {
+        itemErrors.height = "Valid height is required (must be > 0)";
+      }
+      if (item.thickness === "" || item.thickness === null || item.thickness <= 0) {
+        itemErrors.thickness = "Valid thickness is required (must be > 0)";
+      }
+      if (item.sheet_price === "" || item.sheet_price === null || item.sheet_price <= 0) {
+        itemErrors.sheet_price = "Valid sheet price is required";
+      }
+    //   if (item.bd_ft_price === "" || item.bd_ft_price === null || item.bd_ft_price < 0) {
+    //     itemErrors.bd_ft_price = "Valid board foot price is required";
+    //   }
+
+      if (Object.keys(itemErrors).length > 0) {
+        newErrors[`sheet-${item.id}`] = itemErrors;
+      }
+    });
+
+    // Validate drawer box materials
+    localDrawerBoxMaterials.forEach((item) => {
+      if (item.markedForDeletion) return;
+
+      const itemErrors = {};
+      if (!item.name || item.name.trim() === "") {
+        itemErrors.name = "Name is required";
+      }
+      if (item.width === "" || item.width === null || item.width <= 0) {
+        itemErrors.width = "Valid width is required (must be > 0)";
+      }
+      if (item.height === "" || item.height === null || item.height <= 0) {
+        itemErrors.height = "Valid height is required (must be > 0)";
+      }
+      if (item.thickness === "" || item.thickness === null || item.thickness <= 0) {
+        itemErrors.thickness = "Valid thickness is required (must be > 0)";
+      }
+      if (item.sheet_price === "" || item.sheet_price === null || item.sheet_price < 0) {
+        itemErrors.sheet_price = "Valid sheet price is required";
       }
 
-      // Save drawer box materials
-      const drawerBoxResult = await dispatch(
-        saveDrawerBoxMaterials(
-          localDrawerBoxMaterials,
-          originalDrawerBoxMaterials
-        )
-      );
-      if (!drawerBoxResult.success) {
-        throw new Error(
-          drawerBoxResult.error || "Failed to save drawer box materials"
+      if (Object.keys(itemErrors).length > 0) {
+        newErrors[`drawer-${item.id}`] = itemErrors;
+      }
+    });
+
+    setValidationErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    // Validate inputs first
+    if (!validateInputs()) {
+      console.log("Validation failed");
+      return;
+    }
+
+    try {
+      // Save sheet goods (only if there are changes)
+      let sheetGoodsResult;
+      if (!isEqual(localSheetGoods, originalSheetGoods)) {
+        sheetGoodsResult = await dispatch(
+          saveSheetGoods(localSheetGoods, originalSheetGoods)
         );
+        
+        if (!sheetGoodsResult || !sheetGoodsResult.success) {
+          throw new Error(sheetGoodsResult?.error || "Failed to save sheet goods");
+        }
+      } else {
+        // No changes, use current data
+        sheetGoodsResult = { success: true, data: localSheetGoods };
+      }
+
+      // Save drawer box materials (only if there are changes)
+      let drawerBoxResult;
+      if (!isEqual(localDrawerBoxMaterials, originalDrawerBoxMaterials)) {
+        drawerBoxResult = await dispatch(
+          saveDrawerBoxMaterials(
+            localDrawerBoxMaterials,
+            originalDrawerBoxMaterials
+          )
+        );
+        
+        if (!drawerBoxResult || !drawerBoxResult.success) {
+          throw new Error(
+            drawerBoxResult?.error || "Failed to save drawer box materials"
+          );
+        }
+      } else {
+        // No changes, use current data
+        drawerBoxResult = { success: true, data: localDrawerBoxMaterials };
       }
 
       console.log("Materials saved successfully");
+      
+      // Update local and original state with fresh data
+      if (sheetGoodsResult.data) {
+        setLocalSheetGoods(sheetGoodsResult.data);
+        setOriginalSheetGoods(JSON.parse(JSON.stringify(sheetGoodsResult.data)));
+      }
+      if (drawerBoxResult.data) {
+        setLocalDrawerBoxMaterials(drawerBoxResult.data);
+        setOriginalDrawerBoxMaterials(JSON.parse(JSON.stringify(drawerBoxResult.data)));
+      }
+      
+      setValidationErrors({}); // Clear errors on successful save
     } catch (error) {
       console.error("Error saving materials:", error);
       throw error;
@@ -194,12 +317,18 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalDrawerBoxMaterials(
       JSON.parse(JSON.stringify(originalDrawerBoxMaterials))
     );
+    setValidationErrors({});
   };
 
   useImperativeHandle(ref, () => ({
     handleSave,
     handleCancel,
   }));
+
+  // Helper to get errors for a specific item
+  const getItemErrors = (itemId, prefix) => {
+    return validationErrors[`${prefix}-${itemId}`] || {};
+  };
 
   // Column definitions for Sheet Goods
   const sheetGoodsColumns = [
@@ -209,6 +338,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "240px",
       type: "text",
       placeholder: "Material name",
+      hasError: (item) => !!getItemErrors(item.id, "sheet").name,
     },
     {
       field: "width",
@@ -216,6 +346,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "70px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "sheet").width,
     },
     {
       field: "height",
@@ -223,6 +354,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "70px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "sheet").height,
     },
     {
       field: "thickness",
@@ -230,6 +362,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "80px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "sheet").thickness,
     },
     {
       field: "sheet_price",
@@ -237,6 +370,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "80px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "sheet").sheet_price,
     },
     {
       field: "bd_ft_price",
@@ -244,6 +378,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "80px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "sheet").bd_ft_price,
     },
     {
       field: "box_mat",
@@ -322,9 +457,10 @@ const MaterialsSettings = forwardRef((props, ref) => {
     {
       field: "name",
       label: "Name",
-      width: "240px",
+      width: "200px",
       type: "text",
       placeholder: "Material name",
+      hasError: (item) => !!getItemErrors(item.id, "drawer").name,
     },
     {
       field: "width",
@@ -332,6 +468,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "100px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "drawer").width,
     },
     {
       field: "height",
@@ -339,6 +476,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "100px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "drawer").height,
     },
     {
       field: "thickness",
@@ -346,6 +484,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "100px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "drawer").thickness,
     },
     {
       field: "sheet_price",
@@ -353,6 +492,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       width: "120px",
       type: "number",
       placeholder: "0",
+      hasError: (item) => !!getItemErrors(item.id, "drawer").sheet_price,
     },
   ];
 
@@ -372,6 +512,11 @@ const MaterialsSettings = forwardRef((props, ref) => {
           </div>
         )}
         {error && <div className="p-4 text-red-500">Error: {error}</div>}
+        {Object.keys(validationErrors).length > 0 && (
+          <div className="p-4 mb-4 bg-red-900/50 border border-red-700 rounded-md text-red-400">
+            Please fill out all required fields correctly.
+          </div>
+        )}
         {!loading && !error && (
           <>
             <SettingsSection
