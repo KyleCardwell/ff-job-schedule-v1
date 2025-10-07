@@ -27,7 +27,7 @@ export const fetchSheetGoods = () => async (dispatch, getState) => {
     const { data, error } = await supabase
       .from("wood_catalog")
       .select(
-        "id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, 5_piece, slab_door, needs_finish"
+        "id, name, width, height, thickness, area, sheet_price, bd_ft_price, box_mat, face_mat, five_piece, slab_door, needs_finish"
       )
       .eq("team_id", teamId)
       .order("name", { ascending: true });
@@ -35,7 +35,7 @@ export const fetchSheetGoods = () => async (dispatch, getState) => {
     if (error) throw error;
 
     dispatch(fetchSheetGoodsSuccess(data));
-    return data;
+    return { data, error };
   } catch (error) {
     console.error("Error fetching sheet goods:", error);
     dispatch(fetchMaterialsError(error.message));
