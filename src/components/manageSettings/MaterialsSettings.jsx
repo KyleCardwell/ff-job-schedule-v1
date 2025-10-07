@@ -199,14 +199,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Box",
       width: "60px",
       render: (item, onChange) => (
-        <div className="bg-slate-600 px-2 mb-2 flex items-center justify-center h-[32px]">
           <input
             type="checkbox"
             checked={item.box_mat || false}
             onChange={(e) => onChange("box_mat", e.target.checked)}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-        </div>
       ),
     },
     {
@@ -214,14 +212,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Face",
       width: "60px",
       render: (item, onChange) => (
-        <div className="bg-slate-600 px-2 mb-2 flex items-center justify-center h-[32px]">
           <input
             type="checkbox"
             checked={item.face_mat || false}
             onChange={(e) => onChange("face_mat", e.target.checked)}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-        </div>
       ),
     },
     {
@@ -229,14 +225,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "5 Piece",
       width: "70px",
       render: (item, onChange) => (
-        <div className="bg-slate-600 px-2 mb-2 flex items-center justify-center h-[32px]">
           <input
             type="checkbox"
             checked={item.five_piece || false}
             onChange={(e) => onChange("five_piece", e.target.checked)}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-        </div>
       ),
     },
     {
@@ -244,14 +238,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Slab",
       width: "60px",
       render: (item, onChange) => (
-        <div className="bg-slate-600 px-2 mb-2 flex items-center justify-center h-[32px]">
           <input
             type="checkbox"
             checked={item.slab_door || false}
             onChange={(e) => onChange("slab_door", e.target.checked)}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-        </div>
       ),
     },
     {
@@ -259,14 +251,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       label: "Finish",
       width: "60px",
       render: (item, onChange) => (
-        <div className="bg-slate-600 px-2 mb-2 flex items-center justify-center h-[32px]">
           <input
             type="checkbox"
             checked={item.needs_finish || false}
             onChange={(e) => onChange("needs_finish", e.target.checked)}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-        </div>
       ),
     },
   ];

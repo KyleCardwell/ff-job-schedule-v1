@@ -4,7 +4,7 @@ import React from "react";
 const SettingsList = ({ items, columns, onDelete, onChange, onAdd, addLabel }) => {
   return (
     <div className="flex justify-center">
-      <div className="grid" style={{ gridTemplateColumns: columns.map(col => col.width).join(' ') + ' 40px' }}>
+      <div className="grid justify-items-center gap-y-2" style={{ gridTemplateColumns: columns.map(col => col.width).join(' ') + ' 40px' }}>
         {/* Headers */}
         {columns.map((col, index) => (
           <div key={index} className="text-sm font-semibold text-slate-200 mb-2">
@@ -16,45 +16,49 @@ const SettingsList = ({ items, columns, onDelete, onChange, onAdd, addLabel }) =
         {/* Items */}
         {items.map((item) => (
           <React.Fragment key={item.id}>
-            {columns.map((col, index) => (
-              <div key={index}>
-                {col.render ? (
-                  col.render(item, (field, value) => onChange(item.id, field, value))
-                ) : (
-                  <input
-                    type={col.type || "text"}
-                    value={col.getValue ? col.getValue(item) : (item[col.field] || "")}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (col.setValue) {
-                        const newItem = col.setValue(item, value);
-                        onChange(item.id, col.field, value);
-                      } else {
-                        onChange(item.id, col.field, value);
-                      }
-                    }}
-                    className="w-full bg-slate-600 text-slate-200 px-2 py-1 mb-2"
-                    placeholder={col.placeholder}
-                  />
-                )}
+            <div className="contents group flex items-center">
+              {columns.map((col, index) => (
+                <div key={index} className="bg-slate-600 group-hover:bg-slate-400/50 transition-colors flex items-center justify-center gap-2 w-full">
+                  {col.render ? (
+                    col.render(item, (field, value) => onChange(item.id, field, value))
+                  ) : (
+                    <input
+                      type={col.type || "text"}
+                      value={col.getValue ? col.getValue(item) : (item[col.field] || "")}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (col.setValue) {
+                          const newItem = col.setValue(item, value);
+                          onChange(item.id, col.field, value);
+                        } else {
+                          onChange(item.id, col.field, value);
+                        }
+                      }}
+                      className="w-full bg-slate-600 text-slate-200 px-2 py-1 my-2"
+                      placeholder={col.placeholder}
+                    />
+                  )}
+                </div>
+              ))}
+              <div className="group-hover:bg-slate-400/50 transition-colors flex items-center">
+                <button
+                  onClick={() => onDelete(item.id)}
+                  className="p-2 text-slate-300 hover:text-red-400"
+                >
+                  <svg
+                    className="h-5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
               </div>
-            ))}
-            <button
-              onClick={() => onDelete(item.id)}
-              className="p-2 text-slate-400 hover:text-red-400"
-            >
-              <svg
-                className="h-5"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
+            </div>
           </React.Fragment>
         ))}
       </div>
