@@ -118,7 +118,7 @@ const SettingsList = ({
 SettingsList.propTypes = {
   items: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.string,
+      id: PropTypes.string || PropTypes.number,
     })
   ),
   columns: PropTypes.arrayOf(

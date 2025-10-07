@@ -6,11 +6,14 @@ import React, {
   forwardRef,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { GridLoader } from "react-spinners";
 import { v4 as uuidv4 } from "uuid";
 
 import {
   fetchSheetGoods,
   fetchDrawerBoxMaterials,
+  saveSheetGoods,
+  saveDrawerBoxMaterials,
 } from "../../redux/actions/materials";
 
 import SettingsList from "./SettingsList.jsx";
@@ -87,11 +90,20 @@ const MaterialsSettings = forwardRef((props, ref) => {
   };
 
   const handleDeleteSheetGood = (id) => {
-    setLocalSheetGoods((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, markedForDeletion: true } : item
-      )
-    );
+    setLocalSheetGoods((prev) => {
+      const item = prev.find((item) => item.id === id);
+      if (item?.isNew) {
+        // If new item, remove it completely
+        return prev.filter((item) => item.id !== id);
+      } else {
+        // If existing item, toggle markedForDeletion
+        return prev.map((item) =>
+          item.id === id
+            ? { ...item, markedForDeletion: !item.markedForDeletion }
+            : item
+        );
+      }
+    });
   };
 
   const handleCancelDeleteSheetGood = (id) => {
@@ -123,11 +135,20 @@ const MaterialsSettings = forwardRef((props, ref) => {
   };
 
   const handleDeleteDrawerBox = (id) => {
-    setLocalDrawerBoxMaterials((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, markedForDeletion: true } : item
-      )
-    );
+    setLocalDrawerBoxMaterials((prev) => {
+      const item = prev.find((item) => item.id === id);
+      if (item?.isNew) {
+        // If new item, remove it completely
+        return prev.filter((item) => item.id !== id);
+      } else {
+        // If existing item, toggle markedForDeletion
+        return prev.map((item) =>
+          item.id === id
+            ? { ...item, markedForDeletion: !item.markedForDeletion }
+            : item
+        );
+      }
+    });
   };
 
   const handleCancelDeleteDrawerBox = (id) => {
@@ -140,19 +161,31 @@ const MaterialsSettings = forwardRef((props, ref) => {
 
   const handleSave = async () => {
     try {
-      // TODO: Implement save logic for sheet goods
-      // - Insert new items (isNew === true)
-      // - Update changed items
-      // - Delete marked items (markedForDeletion === true)
+      // Save sheet goods
+      const sheetGoodsResult = await dispatch(
+        saveSheetGoods(localSheetGoods, originalSheetGoods)
+      );
+      if (!sheetGoodsResult.success) {
+        throw new Error(sheetGoodsResult.error || "Failed to save sheet goods");
+      }
 
-      // TODO: Implement save logic for drawer box materials
-      // - Insert new items (isNew === true)
-      // - Update changed items
-      // - Delete marked items (markedForDeletion === true)
+      // Save drawer box materials
+      const drawerBoxResult = await dispatch(
+        saveDrawerBoxMaterials(
+          localDrawerBoxMaterials,
+          originalDrawerBoxMaterials
+        )
+      );
+      if (!drawerBoxResult.success) {
+        throw new Error(
+          drawerBoxResult.error || "Failed to save drawer box materials"
+        );
+      }
 
-      console.log("Save materials - to be implemented");
+      console.log("Materials saved successfully");
     } catch (error) {
       console.error("Error saving materials:", error);
+      throw error;
     }
   };
 
@@ -332,7 +365,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       </div>
 
       <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
-        {loading && <div className="p-4 text-white">Loading...</div>}
+        {loading && (
+          <div className="p-4 text-white">
+            <GridLoader color="maroon" size={15} />
+            <p>Loading...</p>
+          </div>
+        )}
         {error && <div className="p-4 text-red-500">Error: {error}</div>}
         {!loading && !error && (
           <>

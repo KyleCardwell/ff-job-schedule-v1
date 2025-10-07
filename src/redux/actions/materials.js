@@ -1,3 +1,5 @@
+import isEqual from "lodash/isEqual";
+
 import { supabase } from "../../utils/supabase";
 import { materials } from "../actionTypes";
 
@@ -43,76 +45,89 @@ export const fetchSheetGoods = () => async (dispatch, getState) => {
   }
 };
 
-// Function to add new sheet good material
-export const addSheetGood = (material) => async (dispatch, getState) => {
-  try {
-    const state = getState();
-    const teamId = state.auth.teamId;
+// Unified action to save sheet goods (add, update, delete)
+export const saveSheetGoods =
+  (items, originalItems) => async (dispatch, getState) => {
+    dispatch({ type: materials.SAVE_MATERIALS_START });
+    try {
+      const state = getState();
+      const teamId = state.auth.teamId;
 
-    const { data, error } = await supabase
-      .from("wood_catalog")
-      .insert({
-        ...material,
-        team_id: teamId,
-      })
-      .select();
+      // Separate items into add, update, delete
+      const toAdd = [];
+      const toUpdate = [];
+      const toDelete = [];
 
-    if (error) throw error;
+      // Find items to delete (in original but not in current, or marked for deletion)
+      originalItems.forEach((originalItem) => {
+        const currentItem = items.find((item) => item.id === originalItem.id);
+        if (!currentItem || currentItem.markedForDeletion) {
+          toDelete.push(originalItem.id);
+        }
+      });
 
-    // After successful insert, fetch all materials to update state
-    dispatch(fetchSheetGoods());
-    return { success: true, data };
-  } catch (error) {
-    console.error("Error adding sheet good:", error);
-    dispatch(fetchMaterialsError(error.message));
-    return { success: false, error: error.message };
-  }
-};
+      // Find items to add or update
+      items.forEach((item) => {
+        if (item.markedForDeletion) return; // Skip marked for deletion
 
-// Function to update sheet good material
-export const updateSheetGood = (material) => async (dispatch) => {
-  try {
-    const { data, error } = await supabase
-      .from("wood_catalog")
-      .update({
-        material_name: material.material_name,
-        material_description: material.material_description,
-        material_cost: material.material_cost,
-        box_mat: material.box_mat,
-        face_mat: material.face_mat,
-        // Add any other fields that can be updated
-      })
-      .eq("id", material.id)
-      .select();
+        if (item.isNew) {
+          // New item - remove metadata fields
+          const { id, isNew, markedForDeletion, ...itemData } = item;
+          toAdd.push({ ...itemData, team_id: teamId });
+        } else {
+          // Check if changed
+          const originalItem = originalItems.find(
+            (orig) => orig.id === item.id
+          );
+          if (originalItem && !isEqual(originalItem, item)) {
+            const { isNew, markedForDeletion, ...itemData } = item;
+            toUpdate.push(itemData);
+          }
+        }
+      });
 
-    if (error) throw error;
+      // Execute operations
+      const errors = [];
 
-    // After successful update, fetch all materials to update state
-    dispatch(fetchSheetGoods());
-    return { success: true, data };
-  } catch (error) {
-    console.error("Error updating sheet good:", error);
-    dispatch(fetchMaterialsError(error.message));
-    return { success: false, error: error.message };
-  }
-};
+      // Delete
+      for (const id of toDelete) {
+        const { error } = await supabase
+          .from("wood_catalog")
+          .delete()
+          .eq("id", id);
+        if (error) errors.push(`Delete failed: ${error.message}`);
+      }
 
-// Function to delete sheet good material
-export const deleteSheetGood = (id) => async (dispatch) => {
-  try {
-    const { error } = await supabase.from("wood_catalog").delete().eq("id", id);
+      // Add
+      if (toAdd.length > 0) {
+        const { error } = await supabase.from("wood_catalog").insert(toAdd);
+        if (error) errors.push(`Insert failed: ${error.message}`);
+      }
 
-    if (error) throw error;
+      // Update
+      for (const item of toUpdate) {
+        const { id, ...updateData } = item;
+        const { error } = await supabase
+          .from("wood_catalog")
+          .update(updateData)
+          .eq("id", id);
+        if (error)
+          errors.push(`Update failed for ${item.name}: ${error.message}`);
+      }
 
-    // After successful delete, fetch all materials to update state
-    dispatch(fetchSheetGoods());
-    return { success: true };
-  } catch (error) {
-    console.error("Error deleting sheet good:", error);
-    dispatch(fetchMaterialsError(error.message));
-    return { success: false, error: error.message };
-  }
-};
+      if (errors.length > 0) {
+        throw new Error(errors.join("; "));
+      }
+
+      // Refresh data
+      await dispatch(fetchSheetGoods());
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving sheet goods:", error);
+      dispatch(fetchMaterialsError(error.message));
+      return { success: false, error: error.message };
+    }
+  };
 
 // ------------ Drawer Box Materials ------------
 // ----------------------------------------------
@@ -139,3 +154,88 @@ export const fetchDrawerBoxMaterials = () => async (dispatch) => {
     return { success: false, error: error.message };
   }
 };
+
+// Unified action to save drawer box materials (add, update, delete)
+export const saveDrawerBoxMaterials =
+  (items, originalItems) => async (dispatch, getState) => {
+    if (isEqual(items, originalItems)) return;
+    dispatch({ type: materials.SAVE_MATERIALS_START });
+    try {
+      const state = getState();
+      const teamId = state.auth.teamId;
+
+      // Separate items into add, update, delete
+      const toAdd = [];
+      const toUpdate = [];
+      const toDelete = [];
+
+      // Find items to delete
+      originalItems.forEach((originalItem) => {
+        const currentItem = items.find((item) => item.id === originalItem.id);
+        if (!currentItem || currentItem.markedForDeletion) {
+          toDelete.push(originalItem.id);
+        }
+      });
+
+      // Find items to add or update
+      items.forEach((item) => {
+        if (item.markedForDeletion) return;
+
+        if (item.isNew) {
+          const { id, isNew, markedForDeletion, ...itemData } = item;
+          toAdd.push({ ...itemData, team_id: teamId });
+        } else {
+          const originalItem = originalItems.find(
+            (orig) => orig.id === item.id
+          );
+          if (originalItem && !isEqual(originalItem, item)) {
+            const { isNew, markedForDeletion, ...itemData } = item;
+            toUpdate.push(itemData);
+          }
+        }
+      });
+
+      // Execute operations
+      const errors = [];
+
+      // Delete
+      for (const id of toDelete) {
+        const { error } = await supabase
+          .from("drawer_wood_catalog")
+          .delete()
+          .eq("id", id);
+        if (error) errors.push(`Delete failed: ${error.message}`);
+      }
+
+      // Add
+      if (toAdd.length > 0) {
+        const { error } = await supabase
+          .from("drawer_wood_catalog")
+          .insert(toAdd);
+        if (error) errors.push(`Insert failed: ${error.message}`);
+      }
+
+      // Update
+      for (const item of toUpdate) {
+        const { id, ...updateData } = item;
+        const { error } = await supabase
+          .from("drawer_wood_catalog")
+          .update(updateData)
+          .eq("id", id);
+        if (error)
+          errors.push(`Update failed for ${item.name}: ${error.message}`);
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join("; "));
+      }
+
+      // Refresh data
+      await dispatch(fetchDrawerBoxMaterials());
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving drawer box materials:", error);
+      dispatch(fetchMaterialsError(error.message));
+      return { success: false, error: error.message };
+    }
+  };
