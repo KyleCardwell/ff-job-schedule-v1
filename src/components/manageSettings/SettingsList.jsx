@@ -9,6 +9,8 @@ const SettingsList = ({
   onChange,
   onAdd,
   addLabel,
+  inputRefs,
+  itemPrefix,
 }) => {
   return (
     <div className="flex justify-center">
@@ -48,6 +50,11 @@ const SettingsList = ({
                     )
                   ) : (
                     <input
+                      ref={(el) => {
+                        if (inputRefs && itemPrefix) {
+                          inputRefs.current[`${itemPrefix}-${item.id}-${col.field}`] = el;
+                        }
+                      }}
                       type={col.type || "text"}
                       value={
                         col.getValue
@@ -142,6 +149,8 @@ SettingsList.propTypes = {
   onChange: PropTypes.func,
   onAdd: PropTypes.func,
   addLabel: PropTypes.string,
+  inputRefs: PropTypes.object,
+  itemPrefix: PropTypes.string,
 };
 
 export default SettingsList;

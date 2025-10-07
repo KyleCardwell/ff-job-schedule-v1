@@ -81,7 +81,7 @@ export const saveSheetGoods =
           );
           if (originalItem && !isEqual(originalItem, item)) {
             const { isNew, markedForDeletion, area, ...itemData } = item;
-            toUpdate.push(itemData);
+            toUpdate.push({ ...itemData, updated_at: new Date() });
           }
         }
       });
@@ -190,7 +190,7 @@ export const saveDrawerBoxMaterials =
           );
           if (originalItem && !isEqual(originalItem, item)) {
             const { isNew, markedForDeletion, area, ...itemData } = item;
-            toUpdate.push(itemData);
+            toUpdate.push({ ...itemData, updated_at: new Date() });
           }
         }
       });

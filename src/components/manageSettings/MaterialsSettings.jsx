@@ -4,6 +4,7 @@ import React, {
   useState,
   useImperativeHandle,
   forwardRef,
+  useRef,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { GridLoader } from "react-spinners";
@@ -33,6 +34,8 @@ const MaterialsSettings = forwardRef((props, ref) => {
     []
   );
   const [validationErrors, setValidationErrors] = useState({});
+  const [focusItemId, setFocusItemId] = useState(null);
+  const inputRefs = useRef({});
 
   useEffect(() => {
     dispatch(fetchSheetGoods());
@@ -101,6 +104,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       isNew: true,
     };
     setLocalSheetGoods((prev) => [...prev, newItem]);
+    setFocusItemId(`sheet-${newItem.id}-name`);
   };
 
   const handleDeleteSheetGood = (id) => {
@@ -161,6 +165,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
       isNew: true,
     };
     setLocalDrawerBoxMaterials((prev) => [...prev, newItem]);
+    setFocusItemId(`drawer-${newItem.id}-name`);
   };
 
   const handleDeleteDrawerBox = (id) => {
@@ -324,6 +329,14 @@ const MaterialsSettings = forwardRef((props, ref) => {
     handleSave,
     handleCancel,
   }));
+
+  // Focus on newly added item's name input
+  useEffect(() => {
+    if (focusItemId && inputRefs.current[focusItemId]) {
+      inputRefs.current[focusItemId].focus();
+      setFocusItemId(null);
+    }
+  }, [focusItemId, localSheetGoods, localDrawerBoxMaterials]);
 
   // Helper to get errors for a specific item
   const getItemErrors = (itemId, prefix) => {
@@ -531,6 +544,8 @@ const MaterialsSettings = forwardRef((props, ref) => {
                 onChange={handleSheetGoodChange}
                 onAdd={handleAddSheetGood}
                 addLabel="+ Add Sheet Good"
+                inputRefs={inputRefs}
+                itemPrefix="sheet"
               />
             </SettingsSection>
 
@@ -546,6 +561,8 @@ const MaterialsSettings = forwardRef((props, ref) => {
                 onChange={handleDrawerBoxChange}
                 onAdd={handleAddDrawerBox}
                 addLabel="+ Add Drawer Box Material"
+                inputRefs={inputRefs}
+                itemPrefix="drawer"
               />
             </SettingsSection>
           </>
