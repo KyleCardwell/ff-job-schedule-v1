@@ -364,7 +364,11 @@ const CabinetItemForm = ({
     }
 
     if (CAN_HAVE_PULLS.includes(node.type)) {
-      totalPulls += 1;
+      if (node.type === FACE_NAMES.PAIR_DOOR) {
+        totalPulls += 2;
+      } else {
+        totalPulls += 1;
+      }
     }
 
     if (node.children) {
