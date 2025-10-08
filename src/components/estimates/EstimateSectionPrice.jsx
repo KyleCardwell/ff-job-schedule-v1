@@ -20,8 +20,11 @@ const EstimateSectionPrice = ({ section }) => {
   );
 
   const cabinetStyles = useSelector(
-    (state) => state.cabinetStyles?.styles.filter((style) => style.is_active) || []
+    (state) =>
+      state.cabinetStyles?.styles.filter((style) => style.is_active) || []
   );
+
+  const hardware = useSelector((state) => state.hardware);
 
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
@@ -31,9 +34,18 @@ const EstimateSectionPrice = ({ section }) => {
       faceMaterials,
       drawerBoxMaterials,
       finishTypes,
-      cabinetStyles
+      cabinetStyles,
+      hardware
     );
-  }, [section, boxMaterials, faceMaterials, drawerBoxMaterials, finishTypes, cabinetStyles]);
+  }, [
+    section,
+    boxMaterials,
+    faceMaterials,
+    drawerBoxMaterials,
+    finishTypes,
+    cabinetStyles,
+    hardware,
+  ]);
 
   // Format number as currency
   const formatCurrency = (amount) => {
@@ -163,6 +175,35 @@ const EstimateSectionPrice = ({ section }) => {
             </span>
             <span className="text-sm font-medium text-teal-400 text-right">
               {formatCurrency(sectionCalculations.rollOutTotal)}
+            </span>
+          </div>
+         
+          {/* Hardware Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Hinges:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.hingesCount || 0}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.hingesTotal || 0)}
+            </span>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Slides:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.slidesCount || 0}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.slidesTotal || 0)}
+            </span>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Pulls:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.pullsCount || 0}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.pullsTotal || 0)}
             </span>
           </div>
         </div>

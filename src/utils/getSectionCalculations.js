@@ -251,13 +251,58 @@ const calculateCabinetBoxHours = (
   return totals;
 };
 
+// Count and price hardware from cabinet boxHardware
+const countHardware = (section, hardware, faceTotals) => {
+  let totalHinges = 0;
+  let totalPulls = 0;
+  let totalSlides = 0;
+
+  // Sum up hardware from all cabinets
+  section.cabinets?.forEach((cabinet) => {
+    if (cabinet.face_config?.boxSummary?.boxHardware) {
+      const qty = Number(cabinet.quantity) || 1;
+      const { totalHinges: hinges, totalPulls: pulls, totalSlides: slides } = cabinet.face_config.boxSummary.boxHardware;
+      totalHinges += (hinges || 0) * qty;
+      totalPulls += (pulls || 0) * qty;
+      totalSlides += (slides || 0) * qty;
+    }
+  });
+
+  // Get hardware items from section
+  const doorHinge = hardware?.hinges?.find((h) => h.id === section.hinge_id);
+  const doorPull = hardware?.pulls?.find((p) => p.id === section.door_pull_id);
+  const drawerPull = hardware?.pulls?.find((p) => p.id === section.drawer_pull_id);
+  const drawerSlide = hardware?.slides?.find((s) => s.id === section.slide_id);
+
+  // Calculate totals
+  const hingesTotal = totalHinges * (doorHinge?.price || 0);
+  const slidesTotal = totalSlides * (drawerSlide?.price || 0);
+  
+  // Calculate pulls pricing based on face counts
+  const doorCount = faceTotals.faceCounts?.door || 0;
+  const drawerCount = (faceTotals.faceCounts?.drawer_front || 0) + (faceTotals.faceCounts?.false_front || 0);
+  const doorPullsTotal = doorCount * (doorPull?.price || 0);
+  const drawerPullsTotal = drawerCount * (drawerPull?.price || 0);
+  const pullsTotal = doorPullsTotal + drawerPullsTotal;
+
+  return {
+    hingesCount: totalHinges,
+    hingesTotal,
+    pullsCount: totalPulls,
+    pullsTotal,
+    slidesCount: totalSlides,
+    slidesTotal,
+  };
+};
+
 const calculateCabinetTotals = (
   section,
   boxMaterials,
   faceMaterials,
   drawerBoxMaterials,
   finishMultiplier,
-  cabinetStyles
+  cabinetStyles,
+  hardware
 ) => {
   // Calculate box costs using batch CNC calculation
   const costBatchCNC = calculateOutsourceBatchCostCNC(
@@ -306,6 +351,9 @@ const calculateCabinetTotals = (
     0
   );
 
+  // Calculate hardware counts and totals
+  const hardwareTotals = countHardware(section, hardware, faceTotals);
+
   // Combine all totals
   const totals = {
     price: costBatchCNC.totalCost + facePrice,
@@ -320,6 +368,12 @@ const calculateCabinetTotals = (
     drawerBoxTotal: drawerRolloutTotals.drawerBoxTotal,
     rollOutCount: drawerRolloutTotals.rollOutCount,
     rollOutTotal: drawerRolloutTotals.rollOutTotal,
+    hingesCount: hardwareTotals.hingesCount,
+    hingesTotal: hardwareTotals.hingesTotal,
+    pullsCount: hardwareTotals.pullsCount,
+    pullsTotal: hardwareTotals.pullsTotal,
+    slidesCount: hardwareTotals.slidesCount,
+    slidesTotal: hardwareTotals.slidesTotal,
   };
 
   return totals;
@@ -341,7 +395,8 @@ export const getSectionCalculations = (
   faceMaterials,
   drawerBoxMaterials,
   finishTypes,
-  cabinetStyles
+  cabinetStyles,
+  hardware
 ) => {
   if (!section) {
     return {
@@ -357,6 +412,12 @@ export const getSectionCalculations = (
       drawerBoxTotal: 0,
       rollOutCount: 0,
       rollOutTotal: 0,
+      hingesCount: 0,
+      hingesTotal: 0,
+      pullsCount: 0,
+      pullsTotal: 0,
+      slidesCount: 0,
+      slidesTotal: 0,
     };
   }
 
@@ -382,7 +443,8 @@ export const getSectionCalculations = (
     faceMaterials,
     drawerBoxMaterials,
     finishMultiplier,
-    cabinetStyles
+    cabinetStyles,
+    hardware
   );
 
   const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
@@ -393,6 +455,9 @@ export const getSectionCalculations = (
     cabinetTotals.price +
     cabinetTotals.drawerBoxTotal +
     cabinetTotals.rollOutTotal +
+    cabinetTotals.hingesTotal +
+    cabinetTotals.pullsTotal +
+    cabinetTotals.slidesTotal +
     lengthsTotal +
     accessoriesTotal +
     otherTotal;
@@ -415,6 +480,12 @@ export const getSectionCalculations = (
     drawerBoxTotal: cabinetTotals.drawerBoxTotal,
     rollOutCount: cabinetTotals.rollOutCount,
     rollOutTotal: cabinetTotals.rollOutTotal,
+    hingesCount: cabinetTotals.hingesCount,
+    hingesTotal: cabinetTotals.hingesTotal,
+    pullsCount: cabinetTotals.pullsCount,
+    pullsTotal: cabinetTotals.pullsTotal,
+    slidesCount: cabinetTotals.slidesCount,
+    slidesTotal: cabinetTotals.slidesTotal,
   };
 };
 
