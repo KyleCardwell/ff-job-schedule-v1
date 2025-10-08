@@ -25,6 +25,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
   const DOOR_HINGE_OPTIONS = hardware.hinges || [];
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
+  const PULL_OPTIONS = hardware.pulls || [];
 
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
@@ -45,6 +46,8 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
     hinge_id: section.hinge_id || "",
     slide_id: section.slide_id || "",
+    door_pull_id: section.door_pull_id || "",
+    drawer_pull_id: section.drawer_pull_id || "",
     drawer_box_mat: section.drawer_box_mat || "",
     notes: sectionData.notes || "",
   });
@@ -67,6 +70,10 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       "boxMaterial",
       "faceMaterial",
       "drawer_box_mat",
+      "door_pull_id",
+      "drawer_pull_id",
+      "slide_id",
+      "hinge_id",
     ];
     const processedValue =
       numericFields.includes(name) && value !== "" ? +value : value;
@@ -95,7 +102,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     if (updatedErrors[name]) {
       delete updatedErrors[name];
     }
-    
+
     // Clear finish errors when material changes
     if (name === "faceMaterial" && updatedErrors.faceFinish) {
       delete updatedErrors.faceFinish;
@@ -103,7 +110,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     if (name === "boxMaterial" && updatedErrors.boxFinish) {
       delete updatedErrors.boxFinish;
     }
-    
+
     setErrors(updatedErrors);
   };
 
@@ -161,6 +168,14 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     }
     if (!formData.slide_id) {
       newErrors.slide_id = "Drawer slide type is required";
+    }
+
+    if (!formData.door_pull_id) {
+      newErrors.door_pull_id = "Door pull type is required";
+    }
+
+    if (!formData.drawer_pull_id) {
+      newErrors.drawer_pull_id = "Drawer pull type is required";
     }
 
     if (!formData.drawer_box_mat) {
@@ -403,7 +418,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                           disabled={!mustSelectBoxFinish}
                           type="checkbox"
                           checked={formData.boxFinish.includes(option.id)}
-                          onChange={() => handleFinishChange(option.id, "boxFinish")}
+                          onChange={() =>
+                            handleFinishChange(option.id, "boxFinish")
+                          }
                           className="rounded border-slate-300"
                         />
                         <span className="text-slate-600">{option.name}</span>
@@ -479,7 +496,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                           disabled={!mustSelectFaceFinish}
                           type="checkbox"
                           checked={formData.faceFinish.includes(option.id)}
-                          onChange={() => handleFinishChange(option.id, "faceFinish")}
+                          onChange={() =>
+                            handleFinishChange(option.id, "faceFinish")
+                          }
                           className="rounded border-slate-300"
                         />
                         <span className="text-slate-600">{option.name}</span>
@@ -601,6 +620,40 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   )}
                 </div>
               </div>
+              {/* Door  Pulls */}
+              <div className="">
+                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                  <label
+                    htmlFor="door_pull_id"
+                    className="text-right text-sm font-medium text-slate-700"
+                  >
+                    Pulls
+                  </label>
+                  <select
+                    id="door_pull_id"
+                    name="door_pull_id"
+                    value={formData.door_pull_id}
+                    onChange={handleChange}
+                    className={`block w-full h-9 rounded-md text-sm ${
+                      errors.door_pull_id
+                        ? "border-red-500"
+                        : "border-slate-300"
+                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                  >
+                    <option value="">Select pull type...</option>
+                    {PULL_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {`${option.name} - $${option.price}/pull`}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.door_pull_id && (
+                    <p className="text-xs text-red-500 col-span-2">
+                      {errors.door_pull_id}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -704,6 +757,41 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     {errors.drawer_box_mat}
                   </p>
                 )}
+              </div>
+
+              {/* Drawer  Pulls */}
+              <div className="">
+                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                  <label
+                    htmlFor="drawer_pull_id"
+                    className="text-right text-sm font-medium text-slate-700"
+                  >
+                    Pulls
+                  </label>
+                  <select
+                    id="drawer_pull_id"
+                    name="drawer_pull_id"
+                    value={formData.drawer_pull_id}
+                    onChange={handleChange}
+                    className={`block w-full h-9 rounded-md text-sm ${
+                      errors.drawer_pull_id
+                        ? "border-red-500"
+                        : "border-slate-300"
+                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                  >
+                    <option value="">Select pull type...</option>
+                    {PULL_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {`${option.name} - $${option.price}/pull`}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.drawer_pull_id && (
+                    <p className="text-xs text-red-500 col-span-2">
+                      {errors.drawer_pull_id}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Drawer Slides */}

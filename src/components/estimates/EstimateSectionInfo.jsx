@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 
 const EstimateSectionInfo = ({
@@ -18,6 +19,7 @@ const EstimateSectionInfo = ({
 
   const sectionData = section?.section_data || {};
   const NOT_SELECTED = "Not Selected";
+  const NONE = "None";
 
   const { materials, hardware } = useSelector((state) => state);
 
@@ -41,10 +43,28 @@ const EstimateSectionInfo = ({
     );
   };
 
-  const getFinishName = (id) => {
-    return (
-      estimate_data?.finishes?.find((f) => f.id === id)?.name || NOT_SELECTED
-    );
+  const getBoxFinishDisplay = () => {
+    const boxMaterial = materials.boxMaterials.find((mat) => mat.id === section?.box_mat);
+    if (boxMaterial?.needs_finish === false) {
+      return NONE;
+    }
+    return sectionData.boxFinish?.length
+      ? sectionData.boxFinish
+          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+          .join(", ")
+      : NOT_SELECTED;
+  };
+
+  const getFaceFinishDisplay = () => {
+    const faceMaterial = materials.faceMaterials.find((mat) => mat.id === section?.face_mat);
+    if (faceMaterial?.needs_finish === false) {
+      return NONE;
+    }
+    return sectionData.faceFinish?.length
+      ? sectionData.faceFinish
+          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+          .join(", ")
+      : NOT_SELECTED;
   };
 
   const getFaceMaterialName = (id) => {
@@ -72,10 +92,11 @@ const EstimateSectionInfo = ({
   };
 
   const getDoorHingeName = (id) => {
-    return (
-      hardware?.hinges?.find((h) => h.id === id)?.name ||
-      NOT_SELECTED
-    );
+    return hardware?.hinges?.find((h) => h.id === id)?.name || NOT_SELECTED;
+  };
+
+  const getPullName = (id) => {
+    return hardware?.pulls?.find((h) => h.id === id)?.name || NOT_SELECTED;
   };
 
   const getDrawerFrontStyleName = (id) => {
@@ -98,10 +119,7 @@ const EstimateSectionInfo = ({
   };
 
   const getDrawerSlideName = (id) => {
-    return (
-      hardware?.slides?.find((s) => s.id === id)?.name ||
-      NOT_SELECTED
-    );
+    return hardware?.slides?.find((s) => s.id === id)?.name || NOT_SELECTED;
   };
 
   return (
@@ -125,11 +143,7 @@ const EstimateSectionInfo = ({
               </div>
               <div className="text-slate-400">Box Finish:</div>
               <div className="pl-5 mb-3">
-                {sectionData.boxFinish?.length
-                  ? sectionData.boxFinish
-                      .map((f) => getFinishName(f))
-                      .join(", ")
-                  : NOT_SELECTED}
+                {getBoxFinishDisplay()}
               </div>
               <div className="text-slate-400">Face Material:</div>
               <div className="pl-5 mb-3">
@@ -137,11 +151,7 @@ const EstimateSectionInfo = ({
               </div>
               <div className="text-slate-400">Face Finish:</div>
               <div className="pl-5 mb-3">
-                {sectionData.faceFinish?.length
-                  ? sectionData.faceFinish
-                      .map((f) => getFinishName(f))
-                      .join(", ")
-                  : NOT_SELECTED}
+                {getFaceFinishDisplay()}
               </div>
               <div className="text-slate-400">Door Style:</div>
               <div className="pl-5 mb-3">
@@ -151,9 +161,13 @@ const EstimateSectionInfo = ({
                   </div>
                 ))}
               </div>
-              <div className="text-slate-400">Door Hinge:</div>
+              <div className="text-slate-400">Door Hinges:</div>
               <div className="pl-5 mb-3">
                 {getDoorHingeName(section.hinge_id)}
+              </div>
+              <div className="text-slate-400">Door Pulls:</div>
+              <div className="pl-5 mb-3">
+                {getPullName(section.door_pull_id)}
               </div>
               <div className="text-slate-400">Drawer Front Style:</div>
               <div className="pl-5 mb-3">
@@ -165,13 +179,17 @@ const EstimateSectionInfo = ({
                   )
                 )}
               </div>
-              <div className="text-slate-400">Drawer Box:</div>
+              <div className="text-slate-400">Drawer Boxes:</div>
               <div className="pl-5 mb-3">
                 {getDrawerBoxName(section.drawer_box_mat)}
               </div>
-              <div className="text-slate-400">Drawer Slide:</div>
+              <div className="text-slate-400">Drawer Slides:</div>
               <div className="pl-5 mb-3">
                 {getDrawerSlideName(section.slide_id)}
+              </div>
+              <div className="text-slate-400">Drawer Pulls:</div>
+              <div className="pl-5 mb-3">
+                {getPullName(section.drawer_pull_id)}
               </div>
               {sectionData.notes && (
                 <>
