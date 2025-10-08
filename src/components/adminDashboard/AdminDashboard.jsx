@@ -18,6 +18,7 @@ import { PATHS } from "../../utils/constants";
 import CabinetStyleSettings from "../manageSettings/CabinetStyleSettings.jsx";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
+import HardwareSettings from "../manageSettings/HardwareSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
 import MaterialsSettings from "../manageSettings/MaterialsSettings.jsx";
@@ -118,6 +119,16 @@ const AdminDashboard = () => {
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
       maxWidthClass: "max-w-[1200px]",
+    },
+    {
+      id: "hardware",
+      label: "Hardware",
+      path: PATHS.MANAGE_HARDWARE,
+      component: HardwareSettings,
+      props: {},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+      maxWidthClass: "max-w-[720px]",
     },
   ];
 

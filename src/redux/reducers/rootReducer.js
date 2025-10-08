@@ -12,6 +12,7 @@ import { completedProjectsReducer } from "./completedProjects";
 import { estimatesReducer } from "./estimates";
 import { featureTogglesReducer } from "./featureToggles";
 import { financialsDataReducer } from "./financialsData";
+import { hardwareReducer } from "./hardware";
 import { holidaysReducer } from "./holidays";
 import { materialsReducer } from "./materials";
 import { projectsReducer } from "./projects";
@@ -33,6 +34,7 @@ const appReducer = combineReducers({
 	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
 	materials: materialsReducer,
+	hardware: hardwareReducer,
 	services: servicesReducer,
 	cabinetTypes: cabinetTypesReducer,
 	cabinetAnchors: cabinetAnchorsReducer,

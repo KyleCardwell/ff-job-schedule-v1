@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 
 const EstimateSectionInfo = ({
@@ -18,8 +19,9 @@ const EstimateSectionInfo = ({
 
   const sectionData = section?.section_data || {};
   const NOT_SELECTED = "Not Selected";
+  const NONE = "None";
 
-  const materials = useSelector((state) => state.materials);
+  const { materials, hardware } = useSelector((state) => state);
 
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
 
@@ -36,29 +38,44 @@ const EstimateSectionInfo = ({
 
   const getStyleName = (id) => {
     return (
-      cabinetStyles.find((s) => s.cabinet_style_id === id)?.cabinet_style_name ||
-      NOT_SELECTED
+      cabinetStyles.find((s) => s.cabinet_style_id === id)
+        ?.cabinet_style_name || NOT_SELECTED
     );
   };
 
-  const getFinishName = (id) => {
-    return (
-      estimate_data?.finishes?.find((f) => f.id === id)?.name ||
-      NOT_SELECTED
-    );
+  const getBoxFinishDisplay = () => {
+    const boxMaterial = materials.boxMaterials.find((mat) => mat.id === section?.box_mat);
+    if (boxMaterial?.needs_finish === false) {
+      return NONE;
+    }
+    return sectionData.boxFinish?.length
+      ? sectionData.boxFinish
+          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+          .join(", ")
+      : NOT_SELECTED;
+  };
+
+  const getFaceFinishDisplay = () => {
+    const faceMaterial = materials.faceMaterials.find((mat) => mat.id === section?.face_mat);
+    if (faceMaterial?.needs_finish === false) {
+      return NONE;
+    }
+    return sectionData.faceFinish?.length
+      ? sectionData.faceFinish
+          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+          .join(", ")
+      : NOT_SELECTED;
   };
 
   const getFaceMaterialName = (id) => {
     return (
-      materials?.faceMaterials?.find((m) => m.id === id)?.name ||
-      NOT_SELECTED
+      materials?.faceMaterials?.find((m) => m.id === id)?.name || NOT_SELECTED
     );
   };
 
   const getBoxMaterialName = (id) => {
     return (
-      materials?.boxMaterials?.find((m) => m.id === id)?.name ||
-      NOT_SELECTED
+      materials?.boxMaterials?.find((m) => m.id === id)?.name || NOT_SELECTED
     );
   };
 
@@ -75,10 +92,11 @@ const EstimateSectionInfo = ({
   };
 
   const getDoorHingeName = (id) => {
-    return (
-      estimate_data?.doorHingeTypes?.find((h) => h.id === id)?.name ||
-      NOT_SELECTED
-    );
+    return hardware?.hinges?.find((h) => h.id === id)?.name || NOT_SELECTED;
+  };
+
+  const getPullName = (id) => {
+    return hardware?.pulls?.find((h) => h.id === id)?.name || NOT_SELECTED;
   };
 
   const getDrawerFrontStyleName = (id) => {
@@ -101,10 +119,7 @@ const EstimateSectionInfo = ({
   };
 
   const getDrawerSlideName = (id) => {
-    return (
-      estimate_data?.drawerSlideTypes?.find((s) => s.id === id)?.name ||
-      NOT_SELECTED
-    );
+    return hardware?.slides?.find((s) => s.id === id)?.name || NOT_SELECTED;
   };
 
   return (
@@ -115,65 +130,75 @@ const EstimateSectionInfo = ({
 
       {selectedTask && (
         <>
-          <div className="flex-1 overflow-y-auto p-4 text-left">
-            <div className="bg-slate-700 rounded-lg p-4 text-slate-200">
-              <div className="space-y-3">
-                <div className="text-slate-400">Style:</div>
-                <div className="pl-5 mb-3">
-                  {getStyleName(section?.cabinet_style_id) || NOT_SELECTED}
-                </div>
-                <div className="text-slate-400">Face Material:</div>
-                <div className="pl-5 mb-3">
-                  {getFaceMaterialName(section?.face_mat)}
-                </div>
-                <div className="text-slate-400">Box Material:</div>
-                <div className="pl-5 mb-3">
-                  {getBoxMaterialName(section?.box_mat)}
-                </div>
-                <div className="text-slate-400">Finish:</div>
-                <div className="pl-5 mb-3">
-                  {sectionData.finish?.length
-                    ? sectionData.finish.map((f) => getFinishName(f)).join(", ")
-                    : NOT_SELECTED}
-                </div>
-                <div className="text-slate-400">Door Style:</div>
-                <div className="pl-5 mb-3">
-                  {getDoorStyleName(sectionData.doorStyle).map((line, i) => (
+          <div className="flex-1 overflow-y-auto p-4 text-left text-slate-200">
+            {/* <div className="bg-slate-700 rounded-lg p-4 text-slate-200"> */}
+            <div className="space-y-2.5">
+              <div className="text-slate-400">Style:</div>
+              <div className="pl-5 mb-3">
+                {getStyleName(section?.cabinet_style_id) || NOT_SELECTED}
+              </div>
+              <div className="text-slate-400">Box Material:</div>
+              <div className="pl-5 mb-3">
+                {getBoxMaterialName(section?.box_mat)}
+              </div>
+              <div className="text-slate-400">Box Finish:</div>
+              <div className="pl-5 mb-3">
+                {getBoxFinishDisplay()}
+              </div>
+              <div className="text-slate-400">Face Material:</div>
+              <div className="pl-5 mb-3">
+                {getFaceMaterialName(section?.face_mat)}
+              </div>
+              <div className="text-slate-400">Face Finish:</div>
+              <div className="pl-5 mb-3">
+                {getFaceFinishDisplay()}
+              </div>
+              <div className="text-slate-400">Door Style:</div>
+              <div className="pl-5 mb-3">
+                {getDoorStyleName(sectionData.doorStyle).map((line, i) => (
+                  <div key={i} className="">
+                    {line}
+                  </div>
+                ))}
+              </div>
+              <div className="text-slate-400">Door Hinges:</div>
+              <div className="pl-5 mb-3">
+                {getDoorHingeName(section.hinge_id)}
+              </div>
+              <div className="text-slate-400">Door Pulls:</div>
+              <div className="pl-5 mb-3">
+                {getPullName(section.door_pull_id)}
+              </div>
+              <div className="text-slate-400">Drawer Front Style:</div>
+              <div className="pl-5 mb-3">
+                {getDrawerFrontStyleName(sectionData.drawerFrontStyle).map(
+                  (line, i) => (
                     <div key={i} className="">
                       {line}
                     </div>
-                  ))}
-                </div>
-                <div className="text-slate-400">Door Hinge:</div>
-                <div className="pl-5 mb-3">
-                  {getDoorHingeName(sectionData.doorHinge)}
-                </div>
-                <div className="text-slate-400">Drawer Style:</div>
-                <div className="pl-5 mb-3">
-                  {getDrawerFrontStyleName(sectionData.drawerFrontStyle).map(
-                    (line, i) => (
-                      <div key={i} className="">
-                        {line}
-                      </div>
-                    )
-                  )}
-                </div>
-                <div className="text-slate-400">Drawer Box:</div>
-                <div className="pl-5 mb-3">
-                  {getDrawerBoxName(section.drawer_box_mat)}
-                </div>
-                <div className="text-slate-400">Drawer Slide:</div>
-                <div className="pl-5 mb-3">
-                  {getDrawerSlideName(sectionData.drawerSlide)}
-                </div>
-                {sectionData.notes && (
-                  <>
-                    <div className="text-slate-400">Notes:</div>
-                    <div className="pl-5 mb-3 text-sm">{sectionData.notes}</div>
-                  </>
+                  )
                 )}
               </div>
+              <div className="text-slate-400">Drawer Boxes:</div>
+              <div className="pl-5 mb-3">
+                {getDrawerBoxName(section.drawer_box_mat)}
+              </div>
+              <div className="text-slate-400">Drawer Slides:</div>
+              <div className="pl-5 mb-3">
+                {getDrawerSlideName(section.slide_id)}
+              </div>
+              <div className="text-slate-400">Drawer Pulls:</div>
+              <div className="pl-5 mb-3">
+                {getPullName(section.drawer_pull_id)}
+              </div>
+              {sectionData.notes && (
+                <>
+                  <div className="text-slate-400">Notes:</div>
+                  <div className="pl-5 mb-3 text-sm">{sectionData.notes}</div>
+                </>
+              )}
             </div>
+            {/* </div> */}
           </div>
 
           <div className="flex flex-col">

@@ -11,6 +11,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     (state) => state.estimates.currentEstimate
   );
   const materials = useSelector((state) => state.materials);
+  const hardware = useSelector((state) => state.hardware);
   const { styles: cabinetStyles } = useSelector((state) => state.cabinetStyles);
   const estimateData = currentEstimate?.estimate_data;
   const sectionData =
@@ -22,8 +23,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const FINISH_OPTIONS = estimateData?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
   const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
-  const DOOR_HINGE_OPTIONS = estimateData?.doorHingeTypes || [];
-  const DRAWER_SLIDE_OPTIONS = estimateData?.drawerSlideTypes || [];
+  const DOOR_HINGE_OPTIONS = hardware.hinges || [];
+  const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
+  const PULL_OPTIONS = hardware.pulls || [];
 
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
@@ -42,8 +44,10 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     doorOutsideMolding: sectionData.doorOutsideMolding || false,
     drawerInsideMolding: sectionData.drawerInsideMolding || false,
     drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
-    doorHinge: sectionData.doorHinge || "",
-    drawerSlide: sectionData.drawerSlide || "",
+    hinge_id: section.hinge_id || "",
+    slide_id: section.slide_id || "",
+    door_pull_id: section.door_pull_id || "",
+    drawer_pull_id: section.drawer_pull_id || "",
     drawer_box_mat: section.drawer_box_mat || "",
     notes: sectionData.notes || "",
   });
@@ -66,6 +70,10 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       "boxMaterial",
       "faceMaterial",
       "drawer_box_mat",
+      "door_pull_id",
+      "drawer_pull_id",
+      "slide_id",
+      "hinge_id",
     ];
     const processedValue =
       numericFields.includes(name) && value !== "" ? +value : value;
@@ -94,7 +102,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     if (updatedErrors[name]) {
       delete updatedErrors[name];
     }
-    
+
     // Clear finish errors when material changes
     if (name === "faceMaterial" && updatedErrors.faceFinish) {
       delete updatedErrors.faceFinish;
@@ -102,7 +110,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     if (name === "boxMaterial" && updatedErrors.boxFinish) {
       delete updatedErrors.boxFinish;
     }
-    
+
     setErrors(updatedErrors);
   };
 
@@ -151,15 +159,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       newErrors.doorStyle = "Door style is required";
     }
 
-    if (!formData.doorHinge) {
-      newErrors.doorHinge = "Door hinge type is required";
+    if (!formData.hinge_id) {
+      newErrors.hinge_id = "Door hinge type is required";
     }
 
     if (!formData.drawerFrontStyle) {
       newErrors.drawerFrontStyle = "Drawer front style is required";
     }
-    if (!formData.drawerSlide) {
-      newErrors.drawerSlide = "Drawer slide type is required";
+    if (!formData.slide_id) {
+      newErrors.slide_id = "Drawer slide type is required";
+    }
+
+    if (!formData.door_pull_id) {
+      newErrors.door_pull_id = "Door pull type is required";
+    }
+
+    if (!formData.drawer_pull_id) {
+      newErrors.drawer_pull_id = "Drawer pull type is required";
     }
 
     if (!formData.drawer_box_mat) {
@@ -402,7 +418,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                           disabled={!mustSelectBoxFinish}
                           type="checkbox"
                           checked={formData.boxFinish.includes(option.id)}
-                          onChange={() => handleFinishChange(option.id, "boxFinish")}
+                          onChange={() =>
+                            handleFinishChange(option.id, "boxFinish")
+                          }
                           className="rounded border-slate-300"
                         />
                         <span className="text-slate-600">{option.name}</span>
@@ -478,7 +496,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                           disabled={!mustSelectFaceFinish}
                           type="checkbox"
                           checked={formData.faceFinish.includes(option.id)}
-                          onChange={() => handleFinishChange(option.id, "faceFinish")}
+                          onChange={() =>
+                            handleFinishChange(option.id, "faceFinish")
+                          }
                           className="rounded border-slate-300"
                         />
                         <span className="text-slate-600">{option.name}</span>
@@ -572,18 +592,18 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
               <div className="">
                 <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
                   <label
-                    htmlFor="doorHinge"
+                    htmlFor="hinge_id"
                     className="text-right text-sm font-medium text-slate-700"
                   >
                     Hinges
                   </label>
                   <select
-                    id="doorHinge"
-                    name="doorHinge"
-                    value={formData.doorHinge}
+                    id="hinge_id"
+                    name="hinge_id"
+                    value={formData.hinge_id}
                     onChange={handleChange}
                     className={`block w-full h-9 rounded-md text-sm ${
-                      errors.doorHinge ? "border-red-500" : "border-slate-300"
+                      errors.hinge_id ? "border-red-500" : "border-slate-300"
                     } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                   >
                     <option value="">Select hinge type...</option>
@@ -593,9 +613,43 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                       </option>
                     ))}
                   </select>
-                  {errors.doorHinge && (
+                  {errors.hinge_id && (
                     <p className="text-xs text-red-500 col-span-2">
-                      {errors.doorHinge}
+                      {errors.hinge_id}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {/* Door  Pulls */}
+              <div className="">
+                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                  <label
+                    htmlFor="door_pull_id"
+                    className="text-right text-sm font-medium text-slate-700"
+                  >
+                    Pulls
+                  </label>
+                  <select
+                    id="door_pull_id"
+                    name="door_pull_id"
+                    value={formData.door_pull_id}
+                    onChange={handleChange}
+                    className={`block w-full h-9 rounded-md text-sm ${
+                      errors.door_pull_id
+                        ? "border-red-500"
+                        : "border-slate-300"
+                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                  >
+                    <option value="">Select pull type...</option>
+                    {PULL_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {`${option.name} - $${option.price}/pull`}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.door_pull_id && (
+                    <p className="text-xs text-red-500 col-span-2">
+                      {errors.door_pull_id}
                     </p>
                   )}
                 </div>
@@ -705,21 +759,56 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 )}
               </div>
 
+              {/* Drawer  Pulls */}
+              <div className="">
+                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                  <label
+                    htmlFor="drawer_pull_id"
+                    className="text-right text-sm font-medium text-slate-700"
+                  >
+                    Pulls
+                  </label>
+                  <select
+                    id="drawer_pull_id"
+                    name="drawer_pull_id"
+                    value={formData.drawer_pull_id}
+                    onChange={handleChange}
+                    className={`block w-full h-9 rounded-md text-sm ${
+                      errors.drawer_pull_id
+                        ? "border-red-500"
+                        : "border-slate-300"
+                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                  >
+                    <option value="">Select pull type...</option>
+                    {PULL_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {`${option.name} - $${option.price}/pull`}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.drawer_pull_id && (
+                    <p className="text-xs text-red-500 col-span-2">
+                      {errors.drawer_pull_id}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {/* Drawer Slides */}
               <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
                 <label
-                  htmlFor="drawerSlide"
+                  htmlFor="slide_id"
                   className="text-sm font-medium text-slate-700 text-right"
                 >
                   Slides
                 </label>
                 <select
-                  id="drawerSlide"
-                  name="drawerSlide"
-                  value={formData.drawerSlide}
+                  id="slide_id"
+                  name="slide_id"
+                  value={formData.slide_id}
                   onChange={handleChange}
                   className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                    errors.drawerSlide ? "border-red-500" : ""
+                    errors.slide_id ? "border-red-500" : ""
                   }`}
                 >
                   <option value="">Select drawer slide type...</option>
@@ -729,9 +818,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     </option>
                   ))}
                 </select>
-                {errors.drawerSlide && (
+                {errors.slide_id && (
                   <p className="text-xs text-red-500 col-span-2">
-                    {errors.drawerSlide}
+                    {errors.slide_id}
                   </p>
                 )}
               </div>
