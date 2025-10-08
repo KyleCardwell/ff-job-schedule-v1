@@ -226,7 +226,7 @@ export const fetchEstimateById = (estimateId) => {
         tasks_order: data.tasks_order,
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
-          sections: (task.sections || []),
+          sections: task.sections || [],
         })),
         estimateDefault: data.estimates_default,
       };
@@ -456,7 +456,10 @@ export const addTask = (estimateId, taskName) => {
       if (insertError) throw insertError;
 
       // Add the new task ID to the order array and update the estimate
-      const newTasksOrder = [...(currentEstimate.tasks_order || []), newTask.est_task_id];
+      const newTasksOrder = [
+        ...(currentEstimate.tasks_order || []),
+        newTask.est_task_id,
+      ];
       // await updateOrderArray(
       //   'estimates',
       //   'estimate_id',
@@ -577,12 +580,14 @@ export const deleteTask = (estimateId, taskId) => {
 
       // Remove the task ID from the order array in the estimate
       const { currentEstimate } = getState().estimates;
-      const newTasksOrder = currentEstimate.tasks_order.filter(id => id !== taskId);
+      const newTasksOrder = currentEstimate.tasks_order.filter(
+        (id) => id !== taskId
+      );
       await updateOrderArray(
-        'estimates',
-        'estimate_id',
+        "estimates",
+        "estimate_id",
         currentEstimate.estimate_id,
-        'tasks_order',
+        "tasks_order",
         newTasksOrder
       );
 
@@ -668,14 +673,28 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       const currentSections = currentTask?.sections || [];
 
       // Extract boxMaterial and faceMaterial from updates
-      const { boxMaterial, faceMaterial, drawer_box_mat, style, ...sectionData } = updates;
+      const {
+        boxMaterial,
+        faceMaterial,
+        drawer_box_mat,
+        style,
+        hinge_id,
+        slide_id,
+        pull_id,
+        ...sectionData
+      } = updates;
 
       // Prepare the update payload for Supabase
       const updatePayload = {
         // Set box_mat and face_mat separately if provided
         ...(boxMaterial !== undefined && { box_mat: +boxMaterial }),
         ...(faceMaterial !== undefined && { face_mat: +faceMaterial }),
-        ...(drawer_box_mat !== undefined && { drawer_box_mat: +drawer_box_mat }),
+        ...(drawer_box_mat !== undefined && {
+          drawer_box_mat: +drawer_box_mat,
+        }),
+        ...(hinge_id !== undefined && { hinge_id: +hinge_id }),
+        ...(slide_id !== undefined && { slide_id: +slide_id }),
+        ...(pull_id !== undefined && { pull_id: +pull_id }),
         ...(style !== undefined && { cabinet_style_id: +style }),
 
         // Merge the rest into section_data
@@ -743,8 +762,9 @@ export const deleteSection = (estimateId, taskId, sectionId) => {
       // Update just the current task with the section removed
       const updatedTask = {
         ...currentTask,
-        sections: currentSections
-          .filter((section) => section.est_section_id !== sectionId),
+        sections: currentSections.filter(
+          (section) => section.est_section_id !== sectionId
+        ),
       };
 
       dispatch({
@@ -942,11 +962,11 @@ export const updateTaskOrder = (estimateId, orderedTaskIds) => {
     dispatch({ type: Actions.estimates.UPDATE_TASK_ORDER_START });
     try {
       await updateOrderArray(
-        'estimates',      // The table name
-        'estimate_id',    // The column to match for the row ID
-        estimateId,       // The ID of the estimate to update
-        'tasks_order',    // The column containing the order array
-        orderedTaskIds    // The new array of ordered task IDs
+        "estimates", // The table name
+        "estimate_id", // The column to match for the row ID
+        estimateId, // The ID of the estimate to update
+        "tasks_order", // The column containing the order array
+        orderedTaskIds // The new array of ordered task IDs
       );
       dispatch({
         type: Actions.estimates.UPDATE_TASK_ORDER_SUCCESS,
