@@ -48,6 +48,7 @@ const CabinetItemForm = ({
     finished_left: item.finished_left,
     finished_right: item.finished_right,
     cabinet_style_override: item.cabinet_style_override,
+    corner_45: item.corner_45 || false,
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -868,12 +869,12 @@ const CabinetItemForm = ({
     <div className="bg-white border border-slate-200 rounded-md p-4">
       <div className="flex gap-6">
         {/* Left side - Form (Narrower) */}
-        <div className="w-64">
+        <div className="w-64 flex flex-col">
           <h4 className="text-sm font-medium text-slate-700 mb-4">
             Cabinet Details
           </h4>
 
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 flex flex-col">
             {/* Basic Info Section */}
             <div className="pb-4 border-b border-slate-200 flex flex-col">
               <div className="flex gap-2 justify-around">
@@ -1030,21 +1031,39 @@ const CabinetItemForm = ({
                   <p className="text-red-500 text-xs mt-1">{errors.type}</p>
                 )}
               </div>
+              
+              {/* Corner 45 Checkbox */}
+              <div className="flex items-center gap-2 mt-4">
+                <input
+                  type="checkbox"
+                  id="corner_45"
+                  name="corner_45"
+                  checked={formData.corner_45}
+                  onChange={handleChange}
+                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                />
+                <label
+                  htmlFor="corner_45"
+                  className="text-xs font-medium text-slate-700"
+                >
+                  Corner 45°
+                </label>
+              </div>
             </div>
 
             {/* Dimensions Section */}
-            <div className="pb-4">
+            <div className="pb-4 flex-1">
               <h5 className="text-xs font-medium text-slate-600 mb-3 uppercase tracking-wide">
                 Dimensions (inches)
               </h5>
 
               {/* Width */}
-              <div className="mb-3">
+              <div className="mb-3 grid grid-cols-[1fr_2fr]">
                 <label
                   htmlFor="width"
-                  className="block text-xs font-medium text-slate-700 mb-1"
+                  className="block text-xs font-medium text-slate-700 my-auto"
                 >
-                  Width <span className="text-red-500">*</span>
+                  {formData.corner_45 ? "Face Width" : "Width"} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -1061,15 +1080,15 @@ const CabinetItemForm = ({
                   } rounded-md text-sm`}
                 />
                 {errors.width && (
-                  <p className="text-red-500 text-xs mt-1">{errors.width}</p>
+                  <p className="text-red-500 text-xs mt-1 col-span-2">{errors.width}</p>
                 )}
               </div>
 
               {/* Height */}
-              <div className="mb-3">
+              <div className="mb-3 grid grid-cols-[1fr_2fr]">
                 <label
                   htmlFor="height"
-                  className="block text-xs font-medium text-slate-700 mb-1"
+                  className="block text-xs font-medium text-slate-700 my-auto"
                 >
                   Height <span className="text-red-500">*</span>
                 </label>
@@ -1088,17 +1107,17 @@ const CabinetItemForm = ({
                   } rounded-md text-sm`}
                 />
                 {errors.height && (
-                  <p className="text-red-500 text-xs mt-1">{errors.height}</p>
+                  <p className="text-red-500 text-xs mt-1 col-span-2">{errors.height}</p>
                 )}
               </div>
 
               {/* Depth */}
-              <div>
+              <div className="mb-3 grid grid-cols-[1fr_2fr]">
                 <label
                   htmlFor="depth"
-                  className="block text-xs font-medium text-slate-700 mb-1"
+                  className="block text-xs font-medium text-slate-700 my-auto"
                 >
-                  Depth <span className="text-red-500">*</span>
+                  {formData.corner_45 ? "Side Depth" : "Depth"} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -1115,7 +1134,7 @@ const CabinetItemForm = ({
                   } rounded-md text-sm`}
                 />
                 {errors.depth && (
-                  <p className="text-red-500 text-xs mt-1">{errors.depth}</p>
+                  <p className="text-red-500 text-xs mt-1 col-span-2">{errors.depth}</p>
                 )}
               </div>
             </div>
