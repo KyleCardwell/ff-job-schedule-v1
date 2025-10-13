@@ -389,6 +389,9 @@ const CabinetItemForm = ({
     let shelfBandingLength = 0;
     let shelfCount = 0;
     let shelfPerimeterLength = 0;
+    let shelfDrillHoles = 0;
+
+    const shelfHoleSpacing = 1.25;
 
     if (node.shelfQty && node.shelfDimensions) {
       const shelfWidth = roundTo16th(node.shelfDimensions.width);
@@ -397,6 +400,7 @@ const CabinetItemForm = ({
       shelfBandingLength += (node.shelfQty || 0) * shelfWidth;
       shelfCount += node.shelfQty;
       shelfPerimeterLength += node.shelfQty * (2 * (shelfWidth + shelfHeight));
+      shelfDrillHoles += Math.ceil(((node.height - 4)/shelfHoleSpacing)) * 4;
     }
 
     if (node.children) {
@@ -406,10 +410,11 @@ const CabinetItemForm = ({
         shelfBandingLength += childResult.shelfBandingLength;
         shelfCount += childResult.shelfCount;
         shelfPerimeterLength += childResult.shelfPerimeterLength;
+        shelfDrillHoles += childResult.shelfDrillHoles;
       });
     }
 
-    return { totalArea, shelfBandingLength, shelfCount, shelfPerimeterLength };
+    return { totalArea, shelfBandingLength, shelfCount, shelfPerimeterLength, shelfDrillHoles };
   };
 
   // Recursive helper to calculate partition area from face_config
@@ -529,6 +534,7 @@ const CabinetItemForm = ({
       shelfBandingLength,
       shelfCount,
       shelfPerimeterLength,
+      shelfDrillHoles,
     } = faceConfig
       ? calculateShelfArea(faceConfig)
       : {
@@ -536,6 +542,7 @@ const CabinetItemForm = ({
           shelfBandingLength: 0,
           shelfCount: 0,
           shelfPerimeterLength: 0,
+          shelfDrillHoles: 0,
         };
 
     // Calculate total partition area from the face config
@@ -614,6 +621,7 @@ const CabinetItemForm = ({
       boxHardware,
       finishedSidesArea: finishedSidesArea, // Area to be calculated with face material
       finishedSidesCount: finishedSidesCount, // Number of finished sides per cabinet
+      shelfDrillHoles,
     };
   };
 

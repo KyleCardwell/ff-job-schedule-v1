@@ -177,31 +177,36 @@ const calculateDrawerAndRolloutTotals = (section, drawerBoxMaterials, cabinetSty
   });
 
   const drawerBoxMaterial = drawerBoxMaterials?.find((mat) => mat.id === section.drawer_box_mat);
+  
   // Calculate drawer box costs using the new pricing function
   if (allDrawerBoxes.length > 0) {
     const drawerBoxResult = calculateDrawerBoxesPrice({
       boxes: allDrawerBoxes,
-      sheetPrice: drawerBoxMaterial?.sheet_price,
-      sheetSize: { width: drawerBoxMaterial?.width, height: drawerBoxMaterial?.height },
-      baseLaborRate: 21,
-      standardBoxArea: 1000,
-      wasteFactor: 0.12,
-      roundingIncrement: 0.85,
+      sheetPrice: drawerBoxMaterial?.sheet_price || 150,
+      sheetSize: { 
+        width: drawerBoxMaterial?.width || 60, 
+        height: drawerBoxMaterial?.height || 60 
+      },
+      baseLaborRate: 18,
+      wasteFactor: 0.05,
+      roundingIncrement: 0.5,
       taxRate: 0.1,
     });
     totals.drawerBoxTotal = drawerBoxResult.totalCost;
   }
 
-  // Calculate rollout costs using the new pricing function
+  // Calculate rollout costs separately (they have rollOut: true flag for scoop cost)
   if (allRollOuts.length > 0) {
     const rollOutResult = calculateDrawerBoxesPrice({
       boxes: allRollOuts,
-      sheetPrice: drawerBoxMaterial?.sheet_price,
-      sheetSize: { width: drawerBoxMaterial?.width, height: drawerBoxMaterial?.height },
-      baseLaborRate: 21,
-      standardBoxArea: 1000,
-      wasteFactor: 0.12,
-      roundingIncrement: 0.85,
+      sheetPrice: drawerBoxMaterial?.sheet_price || 150,
+      sheetSize: { 
+        width: drawerBoxMaterial?.width || 60, 
+        height: drawerBoxMaterial?.height || 60 
+      },
+      baseLaborRate: 18,
+      wasteFactor: 0.05,
+      roundingIncrement: 0.5,
       taxRate: 0.1,
     });
     totals.rollOutTotal = rollOutResult.totalCost;
@@ -312,7 +317,8 @@ const calculateCabinetTotals = (
     1.5, //cut price per foot
     0.85, //drill cost per hinge bore
     1.15, //drill cost per slide
-    0.1, //rounding increment
+    0.08, //drill cost per shelf hole
+    0.2, //rounding increment
     0.25, //edge band price per foot
     0.1, //tax rate
     12, //setup cost per sheet
