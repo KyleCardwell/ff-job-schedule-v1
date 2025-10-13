@@ -825,6 +825,11 @@ const CabinetFaceDivider = ({
       node.type = newType;
       node.children = null; // containers only, so reset
 
+      // Clear drawer box dimensions if changing away from drawer_front
+      if (newType !== FACE_NAMES.DRAWER_FRONT) {
+        delete node.drawerBoxDimensions;
+      }
+
       // Set default shelf quantity for supported types
       if (
         CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType) &&
@@ -841,6 +846,7 @@ const CabinetFaceDivider = ({
         // Reset roll-outs & shelves if unsupported
         node.rollOutQty = 0;
         node.shelfQty = 0;
+        delete node.rollOutDimensions;
 
         setInputValues((prev) => ({
           ...prev,

@@ -218,13 +218,15 @@ export const getCabinetHours = (
 //   };
 // };
 
+
 export const calculateOutsourceBatchCostCNC = (
   section,
   boxMaterials,
   faceMaterials,
-  cutPricePerFoot,
-  drillCostPerHingeBore = 1,
-  drillCostPerSlide = 1,
+  cutPricePerFoot = 1.5,
+  drillCostPerHingeBore = 0.85,
+  drillCostPerSlide = 1.15,
+  drillCostPerShelfHole = .08,
   roundingIncrement = 0.2,
   edgeBandPricePerFoot = 0.15,
   taxRate = 0.1,
@@ -260,6 +262,7 @@ export const calculateOutsourceBatchCostCNC = (
       bandingLength,
       boxHardware,
       finishedSidesArea,
+      shelfDrillHoles,
     } = boxSummary;
 
     // --- Process box material (interior) ---
@@ -278,6 +281,7 @@ export const calculateOutsourceBatchCostCNC = (
           bandingLength: 0,
           hinges: 0,
           slides: 0,
+          shelfDrillHoles: 0,
         },
       };
     }
@@ -287,6 +291,7 @@ export const calculateOutsourceBatchCostCNC = (
     acc[boxMaterialKey].totals.bandingLength += bandingLength * qty;
     acc[boxMaterialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
     acc[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
+    acc[boxMaterialKey].totals.shelfDrillHoles += (shelfDrillHoles || 0) * qty;
     acc[boxMaterialKey].cabinets.push(cab);
 
     // --- Process finished sides (if any) - add to face material group ---
@@ -306,6 +311,7 @@ export const calculateOutsourceBatchCostCNC = (
             bandingLength: 0,
             hinges: 0,
             slides: 0,
+            shelfDrillHoles: 0,   
           },
         };
       }
@@ -366,6 +372,7 @@ export const calculateOutsourceBatchCostCNC = (
       const hingeBoreCost = totals.hinges * drillCostPerHingeBore;
       // totals.slides counts one slide pair, so multiply by to include each slide
       const slideCost = 2 * totals.slides * drillCostPerSlide;
+      const shelfDrillHoleCost = totals.shelfDrillHoles * drillCostPerShelfHole;
 
       const totalCostBeforeTax =
         sheetCost +
@@ -373,7 +380,8 @@ export const calculateOutsourceBatchCostCNC = (
         cutCost +
         bandingCost +
         hingeBoreCost +
-        slideCost;
+        slideCost +
+        shelfDrillHoleCost;
 
       const totalCost = totalCostBeforeTax * (1 + taxRate);
 

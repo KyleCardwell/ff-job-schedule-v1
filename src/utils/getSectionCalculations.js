@@ -317,6 +317,7 @@ const calculateCabinetTotals = (
     1.5, //cut price per foot
     0.85, //drill cost per hinge bore
     1.15, //drill cost per slide
+    0.08, //drill cost per shelf hole
     0.2, //rounding increment
     0.25, //edge band price per foot
     0.1, //tax rate
