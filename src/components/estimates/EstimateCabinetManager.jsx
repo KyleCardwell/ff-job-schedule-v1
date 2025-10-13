@@ -591,27 +591,158 @@ const CabinetItemForm = ({
       back: 1 * qty,
     };
 
-    // Individual dimensions of each piece with quantity factored in
-    const components = [
-      { type: "side", width: d, height: h, area: sideArea, quantity: boxSidesCount * qty },
-      {
-        type: "topBottom",
-        width: w,
-        height: d,
-        area: topBottomArea,
-        quantity: 2 * qty,
-      },
-      { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty },
-    ];
+    // // Individual dimensions of each piece with quantity factored in
+    // const components = [
+    //   { type: "side", width: d, height: h, area: sideArea, quantity: boxSidesCount * qty },
+    //   {
+    //     type: "topBottom",
+    //     width: w,
+    //     height: d,
+    //     area: topBottomArea,
+    //     quantity: 2 * qty,
+    //   },
+    //   { type: "back", width: w, height: h, area: backArea, quantity: 1 * qty },
+    // ];
 
     const singleBoxPartsCount = boxPartsCount + shelfCount + partitionCount;
     const singleBoxPerimeterLength =
       boxPerimeterLength + shelfPerimeterLength + partitionPerimeterLength;
 
+    // Build boxPartsList for packing algorithm
+    const boxPartsList = [];
+    
+    // Add box sides (excluding finished sides)
+    if (boxSidesCount > 0) {
+      boxPartsList.push({
+        type: "side",
+        width: roundTo16th(d),
+        height: roundTo16th(h),
+        area: roundTo16th(sideArea),
+        quantity: boxSidesCount,
+      });
+    }
+    
+    // Add finished sides (will be packed with face material)
+    if (finishedSidesCount > 0) {
+      boxPartsList.push({
+        type: "finishedSide",
+        width: roundTo16th(d),
+        height: roundTo16th(h),
+        area: roundTo16th(sideArea),
+        quantity: finishedSidesCount,
+      });
+    }
+    
+    // Add top and bottom
+    boxPartsList.push({
+      type: "topBottom",
+      width: roundTo16th(w),
+      height: roundTo16th(d),
+      area: roundTo16th(topBottomArea),
+      quantity: 2,
+    });
+    
+    // Add back
+    boxPartsList.push({
+      type: "back",
+      width: roundTo16th(w),
+      height: roundTo16th(h),
+      area: roundTo16th(backArea),
+      quantity: 1,
+    });
+    
+    // Add shelves from face config
+    if (faceConfig) {
+      const collectShelves = (node) => {
+        const shelves = [];
+        
+        if (node.shelfQty && node.shelfDimensions) {
+          const shelfWidth = roundTo16th(node.shelfDimensions.width);
+          const shelfDepth = roundTo16th(node.shelfDimensions.height); // User calls it height, but it's depth
+          const shelfArea = roundTo16th(shelfWidth * shelfDepth);
+          
+          shelves.push({
+            type: "shelf",
+            width: shelfWidth,
+            height: shelfDepth,
+            area: shelfArea,
+            quantity: node.shelfQty,
+          });
+        }
+        
+        if (node.children) {
+          node.children.forEach((child) => {
+            shelves.push(...collectShelves(child));
+          });
+        }
+        
+        return shelves;
+      };
+      
+      const shelves = collectShelves(faceConfig);
+      boxPartsList.push(...shelves);
+    }
+    
+    // Add partitions from face config
+    if (faceConfig) {
+      const collectPartitions = (node) => {
+        const partitions = [];
+        
+        if (node && node.children && node.children.length > 1) {
+          for (let i = 0; i < node.children.length; i++) {
+            const currentChild = node.children[i];
+            
+            if (currentChild.type === FACE_NAMES.REVEAL) {
+              const prevSibling = node.children[i - 1];
+              const nextSibling = node.children[i + 1];
+              
+              if (prevSibling && nextSibling) {
+                // Skip partitions between stacked drawer fronts
+                if (
+                  node.splitDirection === SPLIT_DIRECTIONS.VERTICAL &&
+                  (prevSibling.type === FACE_NAMES.DRAWER_FRONT ||
+                    prevSibling.type === FACE_NAMES.FALSE_FRONT)
+                ) {
+                  continue;
+                }
+                
+                const partitionWidth = roundTo16th(
+                  node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
+                    ? currentChild.height
+                    : currentChild.width
+                );
+                const partitionArea = roundTo16th(partitionWidth * d);
+                
+                // Count double partitions for Inset Face Frame style
+                const partitionQty = (cabinetStyleId === 14 && node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) ? 2 : 1;
+                
+                partitions.push({
+                  type: "partition",
+                  width: roundTo16th(d),
+                  height: partitionWidth,
+                  area: partitionArea,
+                  quantity: partitionQty,
+                });
+              }
+            }
+          }
+          
+          node.children.forEach((child) => {
+            partitions.push(...collectPartitions(child));
+          });
+        }
+        
+        return partitions;
+      };
+      
+      const partitions = collectPartitions(faceConfig);
+      boxPartsList.push(...partitions);
+    }
+
     return {
       // totalBoxPartsArea,
       pieces,
-      components,
+      // components,
       cabinetCount: qty,
       areaPerCabinet: singleCabinetArea,
       partitionArea: totalPartitionArea, // Add for clarity
@@ -622,6 +753,7 @@ const CabinetItemForm = ({
       finishedSidesArea: finishedSidesArea, // Area to be calculated with face material
       finishedSidesCount: finishedSidesCount, // Number of finished sides per cabinet
       shelfDrillHoles,
+      boxPartsList, // New: List of all individual parts for packing algorithm
     };
   };
 
