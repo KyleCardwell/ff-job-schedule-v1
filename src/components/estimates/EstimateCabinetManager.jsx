@@ -314,7 +314,8 @@ const CabinetItemForm = ({
           effectiveStyleId,
           formData.type,
           formData.finished_left,
-          formData.finished_right
+          formData.finished_right,
+          formData.corner_45
         );
 
         finalFormData.face_config = {
@@ -498,7 +499,8 @@ const CabinetItemForm = ({
     cabinetStyleId,
     cabinetTypeId,
     finishedLeft = false,
-    finishedRight = false
+    finishedRight = false,
+    isCorner45 = false
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -506,18 +508,58 @@ const CabinetItemForm = ({
     const d = roundTo16th(Number(depth));
     const qty = Number(quantity);
 
-    // Calculate areas for each component (for a single cabinet)
-    const sideArea = h * d; // One side panel
-    const topBottomArea = w * d; // One top/bottom panel
-    const backArea = w * h; // Back panel
+    let sideArea, topBottomArea, backArea;
+    let sidePerimeterLength, topBottomPerimeterLength, backPerimeterLength;
+    let boxPerimeterLength, boxPartsCount;
 
-    const sidePerimeterLength = 2 * (2 * (h + d));
-    const topBottomPerimeterLength = 2 * (2 * (w + d));
-    const backPerimeterLength = 2 * (w + h);
+    if (isCorner45) {
+      // Corner 45° cabinet geometry
+      // w = diagonal face width (where doors go)
+      // d = depth of each side
+      // h = height
 
-    const boxPerimeterLength =
-      sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength;
-    const boxPartsCount = 5;
+      const sideCutout = w / Math.sqrt(2);  
+      
+      // Calculate back width using your equation: depth + width/√2
+      const backWidth = Math.ceil(roundTo16th(d + sideCutout));
+      
+      // Top/Bottom area calculation
+      const triangleCutout = roundTo16th(0.5 * sideCutout * sideCutout);
+      topBottomArea = roundTo16th(backWidth * backWidth - triangleCutout);
+      
+      // Each side panel: height × depth
+      sideArea = roundTo16th(h * d);
+      
+      // Each back panel: height × backWidth
+      backArea = roundTo16th(h * backWidth);
+      
+      // Perimeter calculations for corner 45
+      sidePerimeterLength = roundTo16th(2 * 2 * (h + d));
+      
+      const topBottomPerimeter = roundTo16th(w + d + d + backWidth + backWidth);
+      topBottomPerimeterLength = roundTo16th(2 * topBottomPerimeter);
+      
+      backPerimeterLength = roundTo16th(2 * 2 * (h + backWidth));
+      
+      boxPerimeterLength = roundTo16th(
+        sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength
+      );
+      
+      boxPartsCount = 6; // 2 sides, 2 tops/bottoms, 2 backs
+    } else {
+      // Standard rectangular cabinet
+      sideArea = h * d;
+      topBottomArea = w * d;
+      backArea = w * h;
+
+      sidePerimeterLength = 2 * (2 * (h + d));
+      topBottomPerimeterLength = 2 * (2 * (w + d));
+      backPerimeterLength = 2 * (w + h);
+
+      boxPerimeterLength =
+        sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength;
+      boxPartsCount = 5;
+    }
 
     let bandingLength = 0;
     // Banding front edges is only for cabinet style 13 (European)
@@ -573,12 +615,24 @@ const CabinetItemForm = ({
     const boxSidesCount = 2 - finishedSidesCount;
 
     // Total area calculation for a single cabinet
-    const singleCabinetArea =
-      boxSidesCount * sideArea +
-      2 * topBottomArea +
-      backArea +
-      totalShelfArea +
-      totalPartitionArea;
+    let singleCabinetArea;
+    if (isCorner45) {
+      // Corner 45 has: 2 sides, 2 top/bottoms, 2 backs
+      singleCabinetArea =
+        boxSidesCount * sideArea +
+        2 * topBottomArea +
+        2 * backArea + // Two back panels for corner 45
+        totalShelfArea +
+        totalPartitionArea;
+    } else {
+      // Standard cabinet has: 2 sides, 2 top/bottoms, 1 back
+      singleCabinetArea =
+        boxSidesCount * sideArea +
+        2 * topBottomArea +
+        backArea +
+        totalShelfArea +
+        totalPartitionArea;
+    }
 
     // Total area for all cabinets
     // const totalBoxPartsArea = singleCabinetArea * qty;
@@ -586,11 +640,17 @@ const CabinetItemForm = ({
       bandingLength + shelfBandingLength + partitionBandingLength;
 
     // Count of pieces per cabinet type
-    const pieces = {
-      sides: boxSidesCount * qty,
-      topBottom: 2 * qty,
-      back: 1 * qty,
-    };
+    const pieces = isCorner45
+      ? {
+          sides: boxSidesCount * qty,
+          topBottom: 2 * qty,
+          back: 2 * qty, // Two backs for corner 45
+        }
+      : {
+          sides: boxSidesCount * qty,
+          topBottom: 2 * qty,
+          back: 1 * qty,
+        };
 
     // // Individual dimensions of each piece with quantity factored in
     // const components = [
@@ -635,22 +695,51 @@ const CabinetItemForm = ({
     }
     
     // Add top and bottom
-    boxPartsList.push({
-      type: "topBottom",
-      width: roundTo16th(w),
-      height: roundTo16th(d),
-      area: roundTo16th(topBottomArea),
-      quantity: 2,
-    });
+    if (isCorner45) {
+
+       const sideCutout = w / Math.sqrt(2);  
+      
+      // Calculate back width using your equation: depth + width/√2
+      const backWidth = Math.ceil(roundTo16th(d + sideCutout));
+      
+      boxPartsList.push({
+        type: "topBottom",
+        width: roundTo16th(backWidth),
+        height: roundTo16th(backWidth),
+        area: roundTo16th(topBottomArea),
+        quantity: 2,
+        isCorner45: true,
+      });
+    } else {
+      boxPartsList.push({
+        type: "topBottom",
+        width: roundTo16th(w),
+        height: roundTo16th(d),
+        area: roundTo16th(topBottomArea),
+        quantity: 2,
+      });
+    }
     
-    // Add back
-    boxPartsList.push({
-      type: "back",
-      width: roundTo16th(w),
-      height: roundTo16th(h),
-      area: roundTo16th(backArea),
-      quantity: 1,
-    });
+    // Add back(s)
+    if (isCorner45) {
+      // Corner 45 has two back panels
+      const backWidth = Math.ceil(d + (w / Math.sqrt(2)));
+      boxPartsList.push({
+        type: "back",
+        width: roundTo16th(backWidth),
+        height: roundTo16th(h),
+        area: roundTo16th(backArea),
+        quantity: 2, // Two backs for corner 45
+      });
+    } else {
+      boxPartsList.push({
+        type: "back",
+        width: roundTo16th(w),
+        height: roundTo16th(h),
+        area: roundTo16th(backArea),
+        quantity: 1,
+      });
+    }
     
     // Add shelves from face config
     if (faceConfig) {
