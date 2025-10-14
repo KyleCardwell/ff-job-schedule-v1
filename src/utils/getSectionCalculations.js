@@ -8,7 +8,6 @@ import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
   calculate5PieceDoorHours,
   calculate5PieceHardwoodFacePrice,
-  calculateOutsourceBatchCostCNC,
   calculateBoxSheetsCNC,
   calculateSlabDoorHours,
   calculateSlabHardwoodFacePrice,
@@ -329,21 +328,6 @@ const calculateCabinetTotals = (
   cabinetStyles,
   hardware
 ) => {
-  // Calculate box costs using batch CNC calculation
-  const costBatchCNC = calculateOutsourceBatchCostCNC(
-    section,
-    boxMaterials,
-    faceMaterials,
-    1.5, //cut price per foot
-    0.85, //drill cost per hinge bore
-    1.15, //drill cost per slide
-    0.08, //drill cost per shelf hole
-    0.2, //rounding increment
-    0.25, //edge band price per foot
-    0.1, //tax rate
-    12, //setup cost per sheet
-    0.1 //waste factor (10% for cuts, defects, layout inefficiency)
-  );
 
   const cabinetCost = calculateBoxSheetsCNC(
     section,
@@ -361,8 +345,6 @@ const calculateCabinetTotals = (
     }
   );
 
-  console.log("costBatchCNC", costBatchCNC);
-  console.log("cabinetCost", cabinetCost);
   // Calculate face totals (counts, prices, and hours)
   const faceTotals = calculateFaceTotals(
     section,
