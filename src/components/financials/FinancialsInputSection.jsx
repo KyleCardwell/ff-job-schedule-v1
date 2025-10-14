@@ -43,11 +43,12 @@ const FinancialsInputSection = ({
     }
   }, [data, inputRows, isHoursSection]);
 
-  // Initialize inputValues for existing rows to display their costs
+  // Initialize inputValues for existing rows to display their costs and tax rates
   useEffect(() => {
     if (!isHoursSection && localInputRows.length > 0) {
       const initialInputValues = localInputRows.reduce((acc, row) => {
         acc[`${row.id}-cost`] = row.cost?.toString() || "";
+        acc[`${row.id}-tax`] = row.taxRate?.toString() || "";
         return acc;
       }, {});
       setInputValues(initialInputValues);
@@ -248,14 +249,26 @@ const FinancialsInputSection = ({
       id: uuidv4(),
       invoice: "",
       cost: "",
+      taxRate: "",
     };
     const updatedRows = [...localInputRows, newRow];
     handleUpdateRows(updatedRows);
-    setInputValues((prev) => ({ ...prev, [`${newRow.id}-cost`]: "" }));
+    setInputValues((prev) => ({ 
+      ...prev, 
+      [`${newRow.id}-cost`]: "",
+      [`${newRow.id}-tax`]: ""
+    }));
+    // Calculate actual_cost as sum of totals (cost + tax)
+    const actual_cost = updatedRows.reduce((sum, row) => {
+      const cost = row.cost || 0;
+      const taxRate = row.taxRate || 0;
+      const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+      return sum + total;
+    }, 0);
     // Update parent with complete section data
     onUpdate({
       estimate,
-      actual_cost: updatedRows.reduce((sum, row) => sum + (row.cost || 0), 0),
+      actual_cost,
       inputRows: updatedRows,
     });
   };
@@ -275,6 +288,15 @@ const FinancialsInputSection = ({
       return;
     }
 
+    if (field === "tax") {
+      // For tax field, just update the string value in state
+      setInputValues((prev) => ({
+        ...prev,
+        [`${rowId}-tax`]: value,
+      }));
+      return;
+    }
+
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
         return {
@@ -285,9 +307,16 @@ const FinancialsInputSection = ({
       return row;
     });
     handleUpdateRows(updatedRows);
+    // Calculate actual_cost as sum of totals (cost + tax)
+    const actual_cost = updatedRows.reduce((sum, row) => {
+      const cost = row.cost || 0;
+      const taxRate = row.taxRate || 0;
+      const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+      return sum + total;
+    }, 0);
     onUpdate({
       estimate,
-      actual_cost: updatedRows.reduce((sum, row) => sum + (row.cost || 0), 0),
+      actual_cost,
       inputRows: updatedRows,
     });
   };
@@ -328,9 +357,66 @@ const FinancialsInputSection = ({
     }));
 
     handleUpdateRows(updatedRows);
+    // Calculate actual_cost as sum of totals (cost + tax)
+    const actual_cost = updatedRows.reduce((sum, row) => {
+      const cost = row.cost || 0;
+      const taxRate = row.taxRate || 0;
+      const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+      return sum + total;
+    }, 0);
     onUpdate({
       estimate,
-      actual_cost: updatedRows.reduce((sum, row) => sum + (row.cost || 0), 0),
+      actual_cost,
+      inputRows: updatedRows,
+    });
+  };
+
+  const handleTaxBlur = (rowId, value) => {
+    let numValue;
+
+    if (value.trim() === "") {
+      numValue = ""; // preserve empty
+    } else {
+      // First try to evaluate as a math expression
+      const evaluatedValue = safeEvaluate(value);
+
+      if (evaluatedValue !== null) {
+        numValue = formatNumberValue(evaluatedValue);
+      } else {
+        // Fall back to regular parsing if evaluation fails
+        const parsed = parseFloat(value);
+        numValue = !isNaN(parsed) ? formatNumberValue(parsed) : "";
+      }
+    }
+
+    // Update the model with the numeric value
+    const updatedRows = localInputRows.map((row) => {
+      if (row.id === rowId) {
+        return {
+          ...row,
+          taxRate: numValue === "" ? null : numValue, // store null for empty
+        };
+      }
+      return row;
+    });
+
+    // Update the input value to show the calculated result
+    setInputValues((prev) => ({
+      ...prev,
+      [`${rowId}-tax`]: numValue === "" ? "" : numValue.toString(),
+    }));
+
+    handleUpdateRows(updatedRows);
+    // Calculate actual_cost as sum of totals (cost + tax)
+    const actual_cost = updatedRows.reduce((sum, row) => {
+      const cost = row.cost || 0;
+      const taxRate = row.taxRate || 0;
+      const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+      return sum + total;
+    }, 0);
+    onUpdate({
+      estimate,
+      actual_cost,
       inputRows: updatedRows,
     });
   };
@@ -363,10 +449,19 @@ const FinancialsInputSection = ({
       setInputValues((prev) => {
         const newValues = { ...prev };
         delete newValues[`${rowId}-cost`];
+        delete newValues[`${rowId}-tax`];
         return newValues;
       });
 
-      onUpdate({ inputRows: updatedRows });
+      // Calculate actual_cost as sum of totals (cost + tax)
+      const actual_cost = updatedRows.reduce((sum, row) => {
+        const cost = row.cost || 0;
+        const taxRate = row.taxRate || 0;
+        const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+        return sum + total;
+      }, 0);
+
+      onUpdate({ inputRows: updatedRows, actual_cost });
     }
   };
 
@@ -389,8 +484,12 @@ const FinancialsInputSection = ({
         );
       }, 0);
     } else {
+      // Calculate sum of totals (cost + tax) instead of just cost
       return (localInputRows || []).reduce((sum, row) => {
-        return sum + (row?.cost || 0);
+        const cost = row?.cost || 0;
+        const taxRate = row?.taxRate || 0;
+        const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+        return sum + total;
       }, 0);
     }
   }, [localInputRows, localData, isHoursSection]);
@@ -604,38 +703,64 @@ const FinancialsInputSection = ({
             ) : (
               <>
                 {localInputRows.length > 0 && (
-                  <div className="grid grid-cols-[1fr,1fr,36px] gap-4 font-medium text-sm text-gray-600 text-left mb-1">
+                  <div className="grid grid-cols-[3fr_3fr_2fr_2fr_36px] gap-4 font-medium text-sm text-gray-600 text-left mb-1">
                     <span>Invoice</span>
                     <span>Cost</span>
-                    <span></span>
+                    <span>Tax</span>
+                    <span className="pr-3 text-right">Total</span>
+                    <span> </span>
                   </div>
                 )}
                 <div className="space-y-2">
                   {localInputRows.map((row) => (
                     <div
                       key={row.id}
-                      className="grid grid-cols-[1fr,1fr,36px] gap-4 items-center"
+                      className="grid grid-cols-[3fr_3fr_2fr_2fr_36px] gap-4 items-center"
                     >
                       <input
                         ref={(el) => (inputRefs.current[row.id] = el)}
                         type="text"
+                        name="invoice"
                         value={row.invoice || ""}
                         onChange={(e) =>
                           handleInputChange(row.id, "invoice", e.target.value)
                         }
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Invoice"
                       />
                       <input
                         type="text"
+                        name="cost"
                         value={inputValues[`${row.id}-cost`] ?? ""}
                         onChange={(e) =>
                           handleInputChange(row.id, "cost", e.target.value)
                         }
                         onBlur={(e) => handleCostBlur(row.id, e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Cost"
                       />
+                      <input
+                        type="text"
+                        name="tax"
+                        value={inputValues[`${row.id}-tax`] ?? ""}
+                        onChange={(e) =>
+                          handleInputChange(row.id, "tax", e.target.value)
+                        }
+                        onBlur={(e) => handleTaxBlur(row.id, e.target.value)}
+                        className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Tax Rate %"
+                      />
+                      <div className="px-3 py-2 text-right font-medium">
+                        {(() => {
+                          const cost = row.cost || 0;
+                          const taxRate = row.taxRate || 0;
+                          const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+                          return `$${total.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`;
+                        })()}
+                      </div>
                       <button
                         onClick={() => handleDeleteRow(row.id)}
                         className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
