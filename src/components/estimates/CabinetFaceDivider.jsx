@@ -101,10 +101,30 @@ const CabinetFaceDivider = ({
 
   // Calculate display scale and offsets accounting for negative reveals (overhangs)
   // Get the actual bounds including any negative reveals
-  const revealLeft = Math.abs(Math.min(0, reveals.left));
-  const revealRight = Math.abs(Math.min(0, reveals.right));
-  const revealTop = Math.abs(Math.min(0, reveals.top));
-  const revealBottom = Math.abs(Math.min(0, reveals.bottom));
+  let revealLeft = Math.abs(Math.min(0, reveals.left));
+  let revealRight = Math.abs(Math.min(0, reveals.right));
+  let revealTop = Math.abs(Math.min(0, reveals.top));
+  let revealBottom = Math.abs(Math.min(0, reveals.bottom));
+
+  // For non-Euro cabinets (cabinetStyleId !== 13), add root reveal overhangs
+  if (cabinetStyleId !== 13 && reveals) {
+    // Left overhang: reveal width minus the overlap (reveals.left)
+    if (reveals.left && reveals.reveal) {
+      revealLeft = Math.max(revealLeft, reveals.reveal - reveals.left);
+    }
+    // Right overhang: reveal width minus the overlap (reveals.right)
+    if (reveals.right && reveals.reveal) {
+      revealRight = Math.max(revealRight, reveals.reveal - reveals.right);
+    }
+    // Top overhang (if any)
+    if (reveals.top && reveals.reveal) {
+      revealTop = Math.max(revealTop, reveals.reveal - reveals.top);
+    }
+    // Bottom overhang (if any)
+    if (reveals.bottom && reveals.reveal) {
+      revealBottom = Math.max(revealBottom, reveals.reveal - reveals.bottom);
+    }
+  }
 
   // Total display area includes cabinet + any overhangs
   const totalDisplayWidth = cabinetWidth + revealLeft + revealRight;
@@ -713,6 +733,7 @@ const CabinetFaceDivider = ({
         `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`
       );
 
+    const strokeWidth = cabinetStyleId === 13 ? 0 : 2;
     // Add background for the cabinet box
     cabinetGroup
       .append("rect")
@@ -720,7 +741,134 @@ const CabinetFaceDivider = ({
       .attr("height", cabinetHeight * scale)
       .attr("fill", "#F8FAFC")
       .attr("stroke", "#E2E8F0")
-      .attr("stroke-width", 2);
+      .attr("stroke-width", strokeWidth);
+
+    // Add root reveals if cabinetStyleId !== 13
+    if (cabinetStyleId !== 13 && reveals) {
+      const revealColor = FACE_TYPES.find((t) => t.value === FACE_NAMES.REVEAL)?.color || "#6B7280";
+      
+      // Left reveal - full cabinet height, overhangs on left side
+      if (reveals.left) {
+        const leftRevealNode = {
+          id: 'root-reveal-left',
+          type: FACE_NAMES.REVEAL,
+          width: reveals.reveal,
+          height: cabinetHeight,
+          x: reveals.left - reveals.reveal,
+          y: 0,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", -reveals.left * scale)
+          .attr("y", 0)
+          .attr("width", reveals.reveal * scale)
+          .attr("height", cabinetHeight * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, leftRevealNode);
+          });
+      }
+
+      // Right reveal - full cabinet height, overhangs on right side
+      if (reveals.right) {
+        const rightRevealNode = {
+          id: 'root-reveal-right',
+          type: FACE_NAMES.REVEAL,
+          width: reveals.reveal,
+          height: cabinetHeight,
+          x: cabinetWidth - reveals.right,
+          y: 0,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", (cabinetWidth - reveals.right) * scale)
+          .attr("y", 0)
+          .attr("width", reveals.reveal * scale)
+          .attr("height", cabinetHeight * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, rightRevealNode);
+          });
+      }
+
+      // Top reveal - width is cabinet width minus left and right reveals
+      if (reveals.top) {
+        const topWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const topX = reveals.left || 0;
+        
+        const topRevealNode = {
+          id: 'root-reveal-top',
+          type: FACE_NAMES.REVEAL,
+          width: topWidth,
+          height: reveals.top,
+          x: topX,
+          y: 0,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", topX * scale)
+          .attr("y", 0)
+          .attr("width", topWidth * scale)
+          .attr("height", reveals.top * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, topRevealNode);
+          });
+      }
+
+      // Bottom reveal - width is cabinet width minus left and right reveals
+      if (reveals.bottom) {
+        const bottomWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const bottomX = reveals.left || 0;
+        
+        const bottomRevealNode = {
+          id: 'root-reveal-bottom',
+          type: FACE_NAMES.REVEAL,
+          width: bottomWidth,
+          height: reveals.bottom,
+          x: bottomX,
+          y: cabinetHeight - reveals.bottom,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", bottomX * scale)
+          .attr("y", (cabinetHeight - reveals.bottom) * scale)
+          .attr("width", bottomWidth * scale)
+          .attr("height", reveals.bottom * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, bottomRevealNode);
+          });
+      }
+    }
 
     // Render the tree
     renderNode(layoutConfig);
