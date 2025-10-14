@@ -1,9 +1,14 @@
-import { DRAWER_BOX_HEIGHTS, FACE_NAMES, FACE_TYPES, DRAWER_BOX_MOD_BY_ID } from "./constants";
+import {
+  DRAWER_BOX_HEIGHTS,
+  FACE_NAMES,
+  FACE_TYPES,
+  DRAWER_BOX_MOD_BY_ID,
+} from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
   calculate5PieceDoorHours,
   calculate5PieceHardwoodFacePrice,
-  calculateOutsourceBatchCostCNC,
+  calculateBoxSheetsCNC,
   calculateSlabDoorHours,
   calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
@@ -103,7 +108,11 @@ const calculateFaceTotals = (section, faceMaterials, finishMultiplier) => {
 };
 
 // Calculate drawer box and rollout totals for all cabinets in a section
-const calculateDrawerAndRolloutTotals = (section, drawerBoxMaterials, cabinetStyles) => {
+const calculateDrawerAndRolloutTotals = (
+  section,
+  drawerBoxMaterials,
+  cabinetStyles
+) => {
   const totals = {
     drawerBoxCount: 0,
     drawerBoxTotal: 0,
@@ -176,16 +185,18 @@ const calculateDrawerAndRolloutTotals = (section, drawerBoxMaterials, cabinetSty
     collectDrawerAndRollouts(cabinet.face_config);
   });
 
-  const drawerBoxMaterial = drawerBoxMaterials?.find((mat) => mat.id === section.drawer_box_mat);
-  
+  const drawerBoxMaterial = drawerBoxMaterials?.find(
+    (mat) => mat.id === section.drawer_box_mat
+  );
+
   // Calculate drawer box costs using the new pricing function
   if (allDrawerBoxes.length > 0) {
     const drawerBoxResult = calculateDrawerBoxesPrice({
       boxes: allDrawerBoxes,
       sheetPrice: drawerBoxMaterial?.sheet_price || 150,
-      sheetSize: { 
-        width: drawerBoxMaterial?.width || 60, 
-        height: drawerBoxMaterial?.height || 60 
+      sheetSize: {
+        width: drawerBoxMaterial?.width || 60,
+        height: drawerBoxMaterial?.height || 60,
       },
       baseLaborRate: 18,
       wasteFactor: 0.05,
@@ -200,9 +211,9 @@ const calculateDrawerAndRolloutTotals = (section, drawerBoxMaterials, cabinetSty
     const rollOutResult = calculateDrawerBoxesPrice({
       boxes: allRollOuts,
       sheetPrice: drawerBoxMaterial?.sheet_price || 150,
-      sheetSize: { 
-        width: drawerBoxMaterial?.width || 60, 
-        height: drawerBoxMaterial?.height || 60 
+      sheetSize: {
+        width: drawerBoxMaterial?.width || 60,
+        height: drawerBoxMaterial?.height || 60,
       },
       baseLaborRate: 18,
       wasteFactor: 0.05,
@@ -266,7 +277,11 @@ const countHardware = (section, hardware, faceTotals) => {
   section.cabinets?.forEach((cabinet) => {
     if (cabinet.face_config?.boxSummary?.boxHardware) {
       const qty = Number(cabinet.quantity) || 1;
-      const { totalHinges: hinges, totalPulls: pulls, totalSlides: slides } = cabinet.face_config.boxSummary.boxHardware;
+      const {
+        totalHinges: hinges,
+        totalPulls: pulls,
+        totalSlides: slides,
+      } = cabinet.face_config.boxSummary.boxHardware;
       totalHinges += (hinges || 0) * qty;
       totalPulls += (pulls || 0) * qty;
       totalSlides += (slides || 0) * qty;
@@ -276,16 +291,20 @@ const countHardware = (section, hardware, faceTotals) => {
   // Get hardware items from section
   const doorHinge = hardware?.hinges?.find((h) => h.id === section.hinge_id);
   const doorPull = hardware?.pulls?.find((p) => p.id === section.door_pull_id);
-  const drawerPull = hardware?.pulls?.find((p) => p.id === section.drawer_pull_id);
+  const drawerPull = hardware?.pulls?.find(
+    (p) => p.id === section.drawer_pull_id
+  );
   const drawerSlide = hardware?.slides?.find((s) => s.id === section.slide_id);
 
   // Calculate totals
   const hingesTotal = totalHinges * (doorHinge?.price || 0);
   const slidesTotal = totalSlides * (drawerSlide?.price || 0);
-  
+
   // Calculate pulls pricing based on face counts
   const doorCount = faceTotals.faceCounts?.door || 0;
-  const drawerCount = (faceTotals.faceCounts?.drawer_front || 0) + (faceTotals.faceCounts?.false_front || 0);
+  const drawerCount =
+    (faceTotals.faceCounts?.drawer_front || 0) +
+    (faceTotals.faceCounts?.false_front || 0);
   const doorPullsTotal = doorCount * (doorPull?.price || 0);
   const drawerPullsTotal = drawerCount * (drawerPull?.price || 0);
   const pullsTotal = doorPullsTotal + drawerPullsTotal;
@@ -309,23 +328,22 @@ const calculateCabinetTotals = (
   cabinetStyles,
   hardware
 ) => {
-  // Calculate box costs using batch CNC calculation
-  const costBatchCNC = calculateOutsourceBatchCostCNC(
+
+  const cabinetCost = calculateBoxSheetsCNC(
     section,
     boxMaterials,
     faceMaterials,
-    1.5, //cut price per foot
-    0.85, //drill cost per hinge bore
-    1.15, //drill cost per slide
-    0.08, //drill cost per shelf hole
-    0.2, //rounding increment
-    0.25, //edge band price per foot
-    0.1, //tax rate
-    12, //setup cost per sheet
-    0.1 //waste factor (10% for cuts, defects, layout inefficiency)
+    {
+      cutPricePerFoot: 1.5,
+      drillCostPerHingeBore: 0.85,
+      drillCostPerSlide: 1.25,
+      drillCostPerShelfHole: 0.08,
+      edgeBandPricePerFoot: 0.20,
+      taxRate: 0.1,
+      setupCostPerSheet: 15,
+      kerfWidth: 0.25, // Saw blade kerf width in inches
+    }
   );
-
-  console.log("costBatchCNC", costBatchCNC);
 
   // Calculate face totals (counts, prices, and hours)
   const faceTotals = calculateFaceTotals(
@@ -335,7 +353,11 @@ const calculateCabinetTotals = (
   );
 
   // Calculate drawer box and rollout totals
-  const drawerRolloutTotals = calculateDrawerAndRolloutTotals(section, drawerBoxMaterials, cabinetStyles);
+  const drawerRolloutTotals = calculateDrawerAndRolloutTotals(
+    section,
+    drawerBoxMaterials,
+    cabinetStyles
+  );
 
   // Calculate cabinet box hours
   const boxHours = calculateCabinetBoxHours(
@@ -362,8 +384,8 @@ const calculateCabinetTotals = (
 
   // Combine all totals
   const totals = {
-    price: costBatchCNC.totalCost + facePrice,
-    boxPrice: costBatchCNC.totalCost,
+    price: cabinetCost.totalCost + facePrice,
+    boxPrice: cabinetCost.totalCost,
     boxCount,
     shopHours: boxHours.shopHours + faceTotals.shopHours,
     finishHours: boxHours.finishHours + faceTotals.finishHours,
@@ -520,12 +542,12 @@ export const calculateRollOutDimensions = (
   let subtractWidth =
     DRAWER_BOX_MOD_BY_ID[style.cabinet_style_id]?.subtractWidth || 0;
 
-    if (type === FACE_NAMES.DOOR) {
-      subtractWidth += 1.25;
-    }
-    if (type === FACE_NAMES.PAIR_DOOR) {
-      subtractWidth += 2.5;
-    }
+  if (type === FACE_NAMES.DOOR) {
+    subtractWidth += 1.25;
+  }
+  if (type === FACE_NAMES.PAIR_DOOR) {
+    subtractWidth += 2.5;
+  }
 
   // Width is face width minus 2 inches
   const width = Math.max(faceWidth - subtractWidth, 5);

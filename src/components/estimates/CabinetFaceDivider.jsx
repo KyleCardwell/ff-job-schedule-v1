@@ -900,8 +900,8 @@ const CabinetFaceDivider = ({
 
           if (node.shelfQty > 0) {
             node.shelfDimensions = {
-              width: node.width,
-              height: cabinetDepth,
+              width: cabinetDepth,
+              height: node.width,
             };
           }
 

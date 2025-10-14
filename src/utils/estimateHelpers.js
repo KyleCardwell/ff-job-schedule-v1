@@ -1,3 +1,5 @@
+import { MaxRectsPacker } from 'maxrects-packer';
+
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
 export const calculateBoardFeetFor5PieceDoor = (
@@ -115,384 +117,6 @@ export const getCabinetHours = (
   });
 
   return hoursByService;
-};
-
-// // Helper function to calculate box material price
-// export const calculateBoxPrice = (cabinet, selectedMaterial) => (section) => {
-//   if (
-//     !cabinet.face_config?.boxSummary ||
-//     !section.box_mat ||
-//     !selectedMaterial
-//   ) {
-//     return 0;
-//   }
-
-//   // Calculate price based on area and material price
-//   const pricePerSquareInch =
-//     selectedMaterial.sheet_price / selectedMaterial.area;
-//   return roundToHundredth(
-//     pricePerSquareInch * cabinet.face_config.boxSummary.areaPerCabinet
-//   );
-// };
-
-// export const calculateOutsourceCabinetCost = (
-//   cabinet,
-//   material,
-//   laborPricePerSheet,
-//   roundingIncrement = 0.2,
-//   edgeBandPricePerFoot = .15,
-//   taxRate = 0.10
-// ) => {
-//   // const sheetSqft = (material.width * material.height) / 144;
-
-//   const area = cabinet.face_config.boxSummary.areaPerCabinet;
-
-//   // const sqft = area / 144;
-//   const rawSheets = roundToHundredth(area / material.area);
-//   const roundedSheets =
-//     roundToHundredth(Math.ceil(rawSheets / roundingIncrement) * roundingIncrement);
-
-//   const sheetCost = roundedSheets * ((material.sheet_price * 1.5) + laborPricePerSheet);
-
-//   const bandingCost = (cabinet.face_config.boxSummary.bandingLength / 12) * (0 + edgeBandPricePerFoot);
-
-//   // ----- TOTAL COST -----
-//   const totalCost = (sheetCost + bandingCost) * (1 + taxRate);
-
-//   return {
-//     // sqft,
-//     rawSheets,
-//     roundedSheets,
-//     sheetCost: parseFloat(sheetCost.toFixed(2)),
-//     bandingLength: cabinet.face_config.boxSummary.bandingLength / 12,
-//     bandingCost: parseFloat(bandingCost.toFixed(2)),
-//     totalCost: parseFloat(totalCost.toFixed(2)),
-//   };
-// };
-
-// export const calculateOutsourceCabinetCostCNC = (
-//   cabinet,
-//   material,
-//   setupCost = 5,
-//   cutPricePerFoot,
-//   drillCostPerHingeBore = 1,
-//   drillCostPerSlide = 1,
-//   roundingIncrement = 0.2,
-//   edgeBandPricePerFoot = .15,
-//   taxRate = 0.10
-// ) => {
-//   // const sheetSqft = (material.width * material.height) / 144;
-
-//   const area = cabinet.face_config.boxSummary.areaPerCabinet;
-//   const perimeter = cabinet.face_config.boxSummary.singleBoxPerimeterLength;
-//   const parts = cabinet.face_config.boxSummary.singleBoxPartsCount;
-//   const { totalHinges, totalSlides } = cabinet.face_config.boxSummary?.boxHardware || {};
-
-//   // const sqft = area / 144;
-//   const rawSheets = roundToHundredth(area / material.area);
-//   const roundedSheets =
-//     roundToHundredth(Math.ceil(rawSheets / roundingIncrement) * roundingIncrement);
-
-//   const sheetCost = roundedSheets * (material.sheet_price * 1);
-
-//   const bandingCost = (cabinet.face_config.boxSummary.bandingLength / 12) * (0 + edgeBandPricePerFoot);
-
-//   const cutCost = (perimeter / 12) * cutPricePerFoot;
-
-//   // drill 2 holes per part on average
-//   const hingeBoreCost = totalHinges * drillCostPerHingeBore;
-
-//   const slideCost = (2 * totalSlides) * drillCostPerSlide;
-
-//   // ----- TOTAL COST -----
-//   const totalCost = (sheetCost + bandingCost + cutCost + hingeBoreCost + slideCost + setupCost) * (1 + taxRate);
-
-//   return {
-//     // sqft,
-//     rawSheets,
-//     roundedSheets,
-//     sheetCost: parseFloat(sheetCost.toFixed(2)),
-//     bandingLength: cabinet.face_config.boxSummary.bandingLength / 12,
-//     bandingCost: parseFloat(bandingCost.toFixed(2)),
-//     totalCost: parseFloat(totalCost.toFixed(2)),
-//   };
-// };
-
-
-export const calculateOutsourceBatchCostCNC = (
-  section,
-  boxMaterials,
-  faceMaterials,
-  cutPricePerFoot = 1.5,
-  drillCostPerHingeBore = 0.85,
-  drillCostPerSlide = 1.15,
-  drillCostPerShelfHole = .08,
-  roundingIncrement = 0.2,
-  edgeBandPricePerFoot = 0.15,
-  taxRate = 0.1,
-  setupCostPerSheet = 5,
-  wasteFactor = 0.1 // 10% waste factor for cuts, defects, and layout inefficiency
-) => {
-  if (
-    !section ||
-    !section.cabinets ||
-    section.cabinets.length === 0 ||
-    !boxMaterials ||
-    !faceMaterials
-  ) {
-    return {
-      sheetCount: 0,
-      totalArea: 0,
-      totalCost: 0,
-      totalCostBeforeTax: 0,
-      costPerSqFt: 0,
-      cabinetBreakdown: [],
-    };
-  }
-
-  // --- Group cabinets by material (box vs face for finished interiors/sides) ---
-  const groupedByMaterial = section.cabinets.reduce((acc, cab) => {
-    if (!cab.face_config?.boxSummary) return acc;
-
-    const qty = Number(cab.quantity) || 1;
-    const { boxSummary } = cab.face_config;
-    const {
-      areaPerCabinet,
-      singleBoxPerimeterLength,
-      bandingLength,
-      boxHardware,
-      finishedSidesArea,
-      shelfDrillHoles,
-    } = boxSummary;
-
-    // --- Process box material (interior) ---
-    const selectedBoxMaterial = cab.finished_interior
-      ? faceMaterials.find((mat) => mat.id === section.face_mat)
-      : boxMaterials.find((mat) => mat.id === section.box_mat);
-
-    const boxMaterialKey = cab.finished_interior ? "face" : "box";
-    if (!acc[boxMaterialKey]) {
-      acc[boxMaterialKey] = {
-        material: selectedBoxMaterial,
-        cabinets: [],
-        totals: {
-          area: 0,
-          perimeter: 0,
-          bandingLength: 0,
-          hinges: 0,
-          slides: 0,
-          shelfDrillHoles: 0,
-        },
-      };
-    }
-
-    acc[boxMaterialKey].totals.area += areaPerCabinet * qty;
-    acc[boxMaterialKey].totals.perimeter += singleBoxPerimeterLength * qty;
-    acc[boxMaterialKey].totals.bandingLength += bandingLength * qty;
-    acc[boxMaterialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
-    acc[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
-    acc[boxMaterialKey].totals.shelfDrillHoles += (shelfDrillHoles || 0) * qty;
-    acc[boxMaterialKey].cabinets.push(cab);
-
-    // --- Process finished sides (if any) - add to face material group ---
-    if (finishedSidesArea && finishedSidesArea > 0) {
-      const faceMaterialKey = "face";
-      const selectedFaceMaterial = faceMaterials.find(
-        (mat) => mat.id === section.face_mat
-      );
-
-      if (!acc[faceMaterialKey]) {
-        acc[faceMaterialKey] = {
-          material: selectedFaceMaterial,
-          cabinets: [],
-          totals: {
-            area: 0,
-            perimeter: 0,
-            bandingLength: 0,
-            hinges: 0,
-            slides: 0,
-            shelfDrillHoles: 0,   
-          },
-        };
-      }
-
-      // Add finished sides area to face material group (same batch as doors/drawer fronts)
-      acc[faceMaterialKey].totals.area += finishedSidesArea * qty;
-      // Note: perimeter, banding, and hardware are already counted in the box material group
-      // Only the area needs to be added here for material cost calculation
-
-      // Track which cabinet contributed to this group (avoid duplicates)
-      if (
-        !acc[faceMaterialKey].cabinets.find(
-          (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
-        )
-      ) {
-        acc[faceMaterialKey].cabinets.push(cab);
-      }
-    }
-
-    return acc;
-  }, {});
-
-  // --- Calculate costs for each material group ---
-  const materialResults = Object.entries(groupedByMaterial).map(
-    ([materialKey, group]) => {
-      const { material, totals, cabinets: groupCabinets } = group;
-
-      // --- Core cost calculations ---
-      // Dynamic waste factor: higher for small jobs, lower for large jobs
-      // Small jobs have more setup cuts and less efficient layouts
-      const sheetsEstimate = totals.area / material.area;
-      let adjustedWasteFactor = wasteFactor;
-
-      if (sheetsEstimate < 1) {
-        // Very small jobs: 35-40% waste
-        adjustedWasteFactor = wasteFactor * 4;
-      } else if (sheetsEstimate < 3) {
-        // Small jobs: 12-15% waste
-        adjustedWasteFactor = wasteFactor * 1.5;
-      } else if (sheetsEstimate > 10) {
-        // Large jobs: 5-7% waste (better utilization)
-        adjustedWasteFactor = wasteFactor;
-      }
-
-      const areaWithWaste = totals.area * (1 + adjustedWasteFactor);
-      const rawSheets = areaWithWaste / material.area;
-      // Ensure minimum 1 sheet per material group to avoid unrealistic zero-cost scenarios
-      const roundedSheets = Math.max(
-        Math.ceil(rawSheets / roundingIncrement) * roundingIncrement,
-        0.5
-      );
-
-      const sheetCost = roundedSheets * material.sheet_price;
-      // Setup cost per whole sheet (can't have fractional sheet setups)
-      const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
-      const cutCost = (totals.perimeter / 12) * cutPricePerFoot;
-      const bandingCost = (totals.bandingLength / 12) * edgeBandPricePerFoot;
-      const hingeBoreCost = totals.hinges * drillCostPerHingeBore;
-      // totals.slides counts one slide pair, so multiply by to include each slide
-      const slideCost = 2 * totals.slides * drillCostPerSlide;
-      const shelfDrillHoleCost = totals.shelfDrillHoles * drillCostPerShelfHole;
-
-      const totalCostBeforeTax =
-        sheetCost +
-        setupCost +
-        cutCost +
-        bandingCost +
-        hingeBoreCost +
-        slideCost +
-        shelfDrillHoleCost;
-
-      const totalCost = totalCostBeforeTax * (1 + taxRate);
-
-      // --- Distribute cost proportionally by cabinet area ---
-      const totalArea = totals.area;
-      const cabinetBreakdown = groupCabinets.map((cab) => {
-        const qty = Number(cab.quantity) || 1;
-        const { boxSummary } = cab.face_config;
-        const finishedSidesArea = boxSummary.finishedSidesArea || 0;
-
-        // For face material group, cabinet's contribution includes finished sides
-        // For box material group, it's just the box area
-        let cabArea;
-        if (materialKey === "face") {
-          // This cabinet's contribution to face material includes finished sides
-          cabArea = finishedSidesArea * qty;
-        } else {
-          // For box material, use the box area (already excludes finished sides)
-          cabArea = boxSummary.areaPerCabinet * qty;
-        }
-
-        const share = totalArea > 0 ? cabArea / totalArea : 0;
-        const cabCost = totalCost * share;
-
-        return {
-          id: cab.id || cab.temp_id,
-          type: cab.type,
-          quantity: qty,
-          area: parseFloat(cabArea.toFixed(2)),
-          costShare: parseFloat(share.toFixed(4)),
-          cost: parseFloat(cabCost.toFixed(2)),
-          finishedInterior: cab.finished_interior || false,
-          finishedLeft: cab.finished_left || false,
-          finishedRight: cab.finished_right || false,
-          finishedSidesArea:
-            finishedSidesArea > 0
-              ? parseFloat((finishedSidesArea * qty).toFixed(2))
-              : 0,
-        };
-      });
-
-      return {
-        materialType: materialKey,
-        material: material.name || "Unknown",
-        sheetCount: parseFloat(roundedSheets.toFixed(2)),
-        totalArea: parseFloat(totals.area.toFixed(2)),
-        totalCost: parseFloat(totalCost.toFixed(2)),
-        totalCostBeforeTax: parseFloat(totalCostBeforeTax.toFixed(2)),
-        costPerSqFt:
-          totals.area > 0
-            ? parseFloat((totalCost / (totals.area / 144)).toFixed(2))
-            : 0,
-        breakdown: {
-          sheetCost: parseFloat(sheetCost.toFixed(2)),
-          setupCost: parseFloat(setupCost.toFixed(2)),
-          cutCost: parseFloat(cutCost.toFixed(2)),
-          bandingCost: parseFloat(bandingCost.toFixed(2)),
-          hingeBoreCost: parseFloat(hingeBoreCost.toFixed(2)),
-          slideCost: parseFloat(slideCost.toFixed(2)),
-        },
-        cabinetBreakdown,
-      };
-    }
-  );
-
-  // --- Combine results ---
-  const combinedTotalCost = materialResults.reduce(
-    (sum, result) => sum + result.totalCost,
-    0
-  );
-  const combinedTotalArea = materialResults.reduce(
-    (sum, result) => sum + result.totalArea,
-    0
-  );
-  const allCabinetBreakdown = materialResults.flatMap(
-    (result) => result.cabinetBreakdown
-  );
-
-  // Consolidate cabinet breakdown - merge costs for cabinets that appear in multiple material groups
-  const cabinetCostMap = new Map();
-  allCabinetBreakdown.forEach((cabBreakdown) => {
-    const cabId = cabBreakdown.id;
-    if (cabinetCostMap.has(cabId)) {
-      // Cabinet already exists, add the cost
-      const existing = cabinetCostMap.get(cabId);
-      existing.cost += cabBreakdown.cost;
-      existing.area += cabBreakdown.area;
-    } else {
-      // New cabinet entry
-      cabinetCostMap.set(cabId, { ...cabBreakdown });
-    }
-  });
-
-  const consolidatedBreakdown = Array.from(cabinetCostMap.values()).map(
-    (cab) => ({
-      ...cab,
-      cost: parseFloat(cab.cost.toFixed(2)),
-      area: parseFloat(cab.area.toFixed(2)),
-    })
-  );
-
-  return {
-    totalCost: parseFloat(combinedTotalCost.toFixed(2)),
-    totalArea: parseFloat(combinedTotalArea.toFixed(2)),
-    costPerSqFt:
-      combinedTotalArea > 0
-        ? parseFloat((combinedTotalCost / (combinedTotalArea / 144)).toFixed(2))
-        : 0,
-    materialGroups: materialResults,
-    cabinetBreakdown: consolidatedBreakdown,
-  };
 };
 
 export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
@@ -750,5 +374,373 @@ export const calculateSlabDoorHours = (width, height) => {
       slabDoorHourAnchors.finish,
       area
     ),
+  };
+};
+
+/**
+ * Calculate box sheet costs using maxrects-packer for optimal sheet layout
+ * @param {Object} section - The section containing cabinets
+ * @param {Array} boxMaterials - Available box materials
+ * @param {Array} faceMaterials - Available face materials
+ * @param {Object} options - Pricing and configuration options
+ * @returns {Object} Cost breakdown with packing efficiency data
+ */
+export const calculateBoxSheetsCNC = (
+  section,
+  boxMaterials,
+  faceMaterials,
+  {
+    cutPricePerFoot = 1.5,
+    drillCostPerHingeBore = 0.85,
+    drillCostPerSlide = 1.15,
+    drillCostPerShelfHole = 0.08,
+    edgeBandPricePerFoot = 0.15,
+    taxRate = 0.1,
+    setupCostPerSheet = 5,
+    kerfWidth = 0.125, // Saw blade kerf width in inches
+  } = {}
+) => {
+  
+  if (
+    !section ||
+    !section.cabinets ||
+    section.cabinets.length === 0 ||
+    !boxMaterials ||
+    !faceMaterials
+  ) {
+    return {
+      sheetCount: 0,
+      totalArea: 0,
+      totalCost: 0,
+      totalCostBeforeTax: 0,
+      costPerSqFt: 0,
+      packingEfficiency: 0,
+      cabinetBreakdown: [],
+    };
+  }
+
+  // Group cabinets by material and collect all parts
+  const materialGroups = {};
+  
+  section.cabinets.forEach((cab) => {
+    if (!cab.face_config?.boxSummary?.boxPartsList) return;
+
+    const qty = Number(cab.quantity) || 1;
+    const { boxSummary } = cab.face_config;
+    const {
+      boxPartsList,
+      bandingLength,
+      boxHardware,
+      shelfDrillHoles,
+    } = boxSummary;
+
+    // Determine material for box parts
+    const selectedBoxMaterial = cab.finished_interior
+      ? faceMaterials.find((mat) => mat.id === section.face_mat)
+      : boxMaterials.find((mat) => mat.id === section.box_mat);
+
+    const boxMaterialKey = cab.finished_interior ? "face" : "box";
+    
+    if (!materialGroups[boxMaterialKey]) {
+      materialGroups[boxMaterialKey] = {
+        material: selectedBoxMaterial,
+        parts: [],
+        totals: {
+          bandingLength: 0,
+          hinges: 0,
+          slides: 0,
+          shelfDrillHoles: 0,
+        },
+        cabinets: [],
+      };
+    }
+
+    // Add parts from this cabinet (multiplied by quantity)
+    // Separate oversized parts and finished parts into their own groups
+    boxPartsList.forEach((part) => {
+      // Determine base material key based on finish boolean
+      const baseMaterialKey = part.finish ? "face" : boxMaterialKey;
+      
+      // Get the appropriate material for this part
+      const partMaterial = part.finish 
+        ? faceMaterials.find((mat) => mat.id === section.face_mat)
+        : selectedBoxMaterial;
+      
+      // Check if part is oversized (exceeds standard sheet dimensions)
+      const partStandardWidth = partMaterial?.width || 49;
+      const partStandardHeight = partMaterial?.height || 97;
+      const isOversized = part.width > partStandardWidth || part.height > partStandardHeight;
+      
+      // Determine the appropriate material key
+      const materialKey = isOversized ? `${baseMaterialKey}-oversize` : baseMaterialKey;
+      
+      // Initialize material group if needed (for face material or oversized)
+      if (!materialGroups[materialKey]) {
+        if (isOversized) {
+          // Initialize oversized group
+          materialGroups[materialKey] = {
+            material: {
+              ...partMaterial,
+              width: Math.max(part.width, partStandardWidth),
+              height: Math.max(part.height, partStandardHeight),
+              isOversized: true,
+            },
+            parts: [],
+            totals: {
+              bandingLength: 0,
+              hinges: 0,
+              slides: 0,
+              shelfDrillHoles: 0,
+            },
+            cabinets: [],
+          };
+        } else if (part.finish) {
+          // Initialize face material group
+          materialGroups[materialKey] = {
+            material: partMaterial,
+            parts: [],
+            totals: {
+              bandingLength: 0,
+              hinges: 0,
+              slides: 0,
+              shelfDrillHoles: 0,
+            },
+            cabinets: [],
+          };
+        }
+      }
+      
+      // Add parts (multiplied by quantity)
+      for (let i = 0; i < part.quantity * qty; i++) {
+        materialGroups[materialKey].parts.push({
+          width: part.width,
+          height: part.height,
+          area: part.area,
+          type: part.type,
+          cabinetId: cab.id || cab.temp_id,
+        });
+        
+        // Update oversized sheet dimensions to accommodate all oversized parts
+        if (isOversized) {
+          materialGroups[materialKey].material.width = Math.max(
+            materialGroups[materialKey].material.width,
+            part.width
+          );
+          materialGroups[materialKey].material.height = Math.max(
+            materialGroups[materialKey].material.height,
+            part.height
+          );
+        }
+      }
+    });
+
+    // Accumulate totals (only to regular group, not oversized)
+    // Oversized groups are just for accurate sheet pricing/counts
+    materialGroups[boxMaterialKey].totals.bandingLength += bandingLength * qty;
+    materialGroups[boxMaterialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
+    materialGroups[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
+    materialGroups[boxMaterialKey].totals.shelfDrillHoles += (shelfDrillHoles || 0) * qty;
+    
+    // Add cabinet to all material groups it uses
+    materialGroups[boxMaterialKey].cabinets.push(cab);
+    
+    // Add cabinet to oversized box group if it exists
+    if (materialGroups[`${boxMaterialKey}-oversize`] && !materialGroups[`${boxMaterialKey}-oversize`].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+      materialGroups[`${boxMaterialKey}-oversize`].cabinets.push(cab);
+    }
+    
+    // Add cabinet to face material groups if they exist (for finished parts)
+    if (materialGroups["face"] && !materialGroups["face"].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+      materialGroups["face"].cabinets.push(cab);
+    }
+    if (materialGroups["face-oversize"] && !materialGroups["face-oversize"].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+      materialGroups["face-oversize"].cabinets.push(cab);
+    }
+  });
+
+  // Process each material group with packing algorithm
+  const materialResults = Object.entries(materialGroups).map(
+    ([materialKey, group]) => {
+      const { material, parts, totals } = group;
+
+      // Use maxrects-packer to pack parts onto sheets
+      const sheetWidth = material.width || 48;
+      const sheetHeight = material.height || 96;
+      const sheetArea = sheetWidth * sheetHeight;
+      
+      // Calculate oversized sheet pricing if this is an oversized material group
+      let effectiveSheetPrice = material.sheet_price;
+      if (material.isOversized) {
+        // Find the base material to get standard pricing
+        const baseMaterialKey = materialKey.replace('-oversize', '');
+        const baseMaterial = baseMaterialKey === 'face' 
+          ? faceMaterials.find((mat) => mat.id === section.face_mat)
+          : boxMaterials.find((mat) => mat.id === section.box_mat);
+        
+        if (baseMaterial) {
+          const standardSheetWidth = baseMaterial.width || 49;
+          const standardSheetHeight = baseMaterial.height || 97;
+          const standardSheetArea = standardSheetWidth * standardSheetHeight;
+          
+          // Calculate oversized sheet price based on area ratio
+          // Price per square inch from standard sheet
+          const pricePerSqInch = baseMaterial.sheet_price / standardSheetArea;
+
+          const oversizeHeight = Math.max(sheetHeight, 120);
+          const oversizeSheetArea = oversizeHeight * standardSheetWidth;
+          
+          // Apply oversized sheet price with area-based calculation
+          effectiveSheetPrice = oversizeSheetArea * pricePerSqInch;
+          
+          // Add a premium for oversized sheets (e.g., 15% surcharge for special handling)
+          const oversizePremium = 1.5;
+          effectiveSheetPrice *= oversizePremium;
+        }
+      }
+
+      // Calculate total area of all parts
+      const totalPartsArea = parts.reduce((sum, part) => sum + part.area, 0);
+      
+      // Prepare parts for packing (add kerf spacing to each part)
+      const packerParts = parts.map((part, index) => ({
+        width: part.width + kerfWidth,
+        height: part.height + kerfWidth,
+        data: {
+          originalWidth: part.width,
+          originalHeight: part.height,
+          area: part.area,
+          type: part.type,
+          cabinetId: part.cabinetId,
+          index,
+        },
+      }));
+
+      // Initialize packer with sheet dimensions (add kerf to account for parts having kerf added)
+      // Options: smart (default), square, or maxarea
+      const packer = new MaxRectsPacker(
+        sheetWidth + kerfWidth,
+        sheetHeight + kerfWidth,
+        0, // padding (we're handling kerf manually)
+        {
+          smart: true,
+          pot: false, // power of two sizing
+          square: false,
+          allowRotation: false, // Allow parts to be rotated for better fit
+        }
+      );
+
+      // Add all parts to packer
+      packer.addArray(packerParts);
+
+      // Get the number of bins (sheets) used
+      const sheetsUsed = packer.bins.length;
+      const roundedSheets = Math.max(sheetsUsed, 0.5);
+
+      // Calculate actual packing efficiency
+      const totalSheetArea = sheetsUsed * sheetArea;
+      const packingEfficiency = totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
+
+      // Calculate actual kerf waste based on packed parts
+      let totalKerfWaste = 0;
+      packer.bins.forEach((bin) => {
+        bin.rects.forEach((rect) => {
+          // Kerf waste is the difference between packed size and original size
+          const kerfArea = (rect.width * rect.height) - rect.data.area;
+          totalKerfWaste += kerfArea;
+        });
+      });
+
+      // Calculate costs
+      const sheetCost = roundedSheets * effectiveSheetPrice;
+      const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
+      
+      // Calculate total perimeter for cutting cost
+      const totalPerimeter = parts.reduce((sum, part) => {
+        return sum + 2 * (part.width + part.height);
+      }, 0);
+      const cutCost = (totalPerimeter / 12) * cutPricePerFoot;
+      
+      const bandingCost = (totals.bandingLength / 12) * edgeBandPricePerFoot;
+      const hingeBoreCost = totals.hinges * drillCostPerHingeBore;
+      const slideCost = 2 * totals.slides * drillCostPerSlide;
+      const shelfDrillHoleCost = totals.shelfDrillHoles * drillCostPerShelfHole;
+
+      const totalCostBeforeTax =
+        sheetCost +
+        setupCost +
+        cutCost +
+        bandingCost +
+        hingeBoreCost +
+        slideCost +
+        shelfDrillHoleCost;
+
+      const totalCost = totalCostBeforeTax * (1 + taxRate);
+
+      return {
+        materialType: materialKey,
+        material: material.name || "Unknown",
+        isOversized: material.isOversized || false,
+        sheetCount: parseFloat(roundedSheets.toFixed(2)),
+        totalArea: parseFloat(totalPartsArea.toFixed(2)),
+        totalCost: parseFloat(totalCost.toFixed(2)),
+        totalCostBeforeTax: parseFloat(totalCostBeforeTax.toFixed(2)),
+        costPerSqFt:
+          totalPartsArea > 0
+            ? parseFloat((totalCost / (totalPartsArea / 144)).toFixed(2))
+            : 0,
+        packingEfficiency: parseFloat((packingEfficiency * 100).toFixed(1)),
+        kerfWaste: parseFloat(totalKerfWaste.toFixed(2)),
+        partCount: parts.length,
+        sheetDimensions: {
+          width: sheetWidth,
+          height: sheetHeight,
+        },
+        packingDetails: packer.bins.map((bin, index) => ({
+          sheetNumber: index + 1,
+          partsCount: bin.rects.length,
+          efficiency: parseFloat(
+            ((bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) / sheetArea) * 100).toFixed(1)
+          ),
+          // Optional: include layout data for visualization
+          layout: bin.rects.map((rect) => ({
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            rotated: rect.rot || false,
+            type: rect.data.type,
+          })),
+        })),
+        breakdown: {
+          sheetCost: parseFloat(sheetCost.toFixed(2)),
+          setupCost: parseFloat(setupCost.toFixed(2)),
+          cutCost: parseFloat(cutCost.toFixed(2)),
+          bandingCost: parseFloat(bandingCost.toFixed(2)),
+          hingeBoreCost: parseFloat(hingeBoreCost.toFixed(2)),
+          slideCost: parseFloat(slideCost.toFixed(2)),
+          shelfDrillHoleCost: parseFloat(shelfDrillHoleCost.toFixed(2)),
+        },
+      };
+    }
+  );
+
+  // Combine results
+  const combinedTotalCost = materialResults.reduce(
+    (sum, result) => sum + result.totalCost,
+    0
+  );
+  const combinedTotalArea = materialResults.reduce(
+    (sum, result) => sum + result.totalArea,
+    0
+  );
+
+  return {
+    totalCost: parseFloat(combinedTotalCost.toFixed(2)),
+    totalArea: parseFloat(combinedTotalArea.toFixed(2)),
+    costPerSqFt:
+      combinedTotalArea > 0
+        ? parseFloat((combinedTotalCost / (combinedTotalArea / 144)).toFixed(2))
+        : 0,
+    materialGroups: materialResults,
   };
 };
