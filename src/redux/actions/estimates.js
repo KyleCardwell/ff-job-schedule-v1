@@ -680,7 +680,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         style,
         hinge_id,
         slide_id,
-        pull_id,
+        door_pull_id,
+        drawer_pull_id,
         ...sectionData
       } = updates;
 
@@ -694,9 +695,10 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         }),
         ...(hinge_id !== undefined && { hinge_id: +hinge_id }),
         ...(slide_id !== undefined && { slide_id: +slide_id }),
-        ...(pull_id !== undefined && { pull_id: +pull_id }),
+        ...(door_pull_id !== undefined && { door_pull_id: +door_pull_id }),
+        ...(drawer_pull_id !== undefined && { drawer_pull_id: +drawer_pull_id }),
         ...(style !== undefined && { cabinet_style_id: +style }),
-
+        
         // Merge the rest into section_data
         section_data: {
           ...currentSections.find((s) => s.est_section_id === sectionId)
