@@ -305,13 +305,18 @@ const CabinetItemForm = ({
         finalFormData.cabinet_style_override = null;
       }
 
+      // Determine effective style ID (use override if set, otherwise section default)
+      const effectiveStyleId =
+        formData.cabinet_style_override &&
+        formData.cabinet_style_override !== -1
+          ? formData.cabinet_style_override
+          : cabinetStyleId;
+
+      // Save the style ID this cabinet was configured with
+      // This allows accurate error detection when section style changes
+      finalFormData.saved_style_id = effectiveStyleId;
+
       if (formData.face_config) {
-        // Determine effective style ID (use override if set, otherwise section default)
-        const effectiveStyleId =
-          formData.cabinet_style_override &&
-          formData.cabinet_style_override !== -1
-            ? formData.cabinet_style_override
-            : cabinetStyleId;
 
         const boxSummary = calculateBoxSummary(
           formData.width,

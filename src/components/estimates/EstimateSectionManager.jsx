@@ -25,7 +25,6 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     accessories: section?.accessories || [],
     other: section?.other || [],
     style: section?.cabinet_style_id || 13,
-    cabinet_style_updated_at: section?.cabinet_style_updated_at || null,
   });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -54,7 +53,6 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         accessories: section?.accessories || [],
         other: section?.other || [],
         style: section?.cabinet_style_id || 13,
-        cabinet_style_updated_at: section?.cabinet_style_updated_at || null,
       });
     }
   }, [
@@ -64,7 +62,6 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     section?.accessories,
     section?.other,
     section?.cabinet_style_id,
-    section?.cabinet_style_updated_at,
   ]);
 
   // Close all accordions when taskId changes
@@ -182,15 +179,21 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
       // If not found in Redux, it's new (shouldn't happen but handle it)
       if (!reduxItem) return true;
       
+      // Strip errorState (UI-only property) before comparing
+      const { errorState: _, ...itemWithoutErrorState } = updatedItem;
+      
       // Compare the items - if they're different, include in changedItems
-      return !isEqual(updatedItem, reduxItem);
+      return !isEqual(itemWithoutErrorState, reduxItem);
     });
 
-    // Update changed items with current timestamp
-    const changedItemsWithTimestamp = changedItems.map((item) => ({
-      ...item,
-      updated_at: currentTimestamp,
-    }));
+    // Update changed items with current timestamp and strip errorState (UI-only)
+    const changedItemsWithTimestamp = changedItems.map((item) => {
+      const { errorState, ...itemWithoutErrorState } = item;
+      return {
+        ...itemWithoutErrorState,
+        updated_at: currentTimestamp,
+      };
+    });
 
     // Update local state with all items, but with updated timestamps for changed items
     const itemsWithUpdatedTimestamps = updatedItems.map((item) => {
@@ -226,24 +229,27 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
-  // Add errorState flag to cabinet items based on style change timestamp
+  // Add errorState flag to cabinet items based on saved_style_id comparison
   const cabinetsWithErrorState = useMemo(() => {
-    if (!sectionData.cabinets || !sectionData.cabinet_style_updated_at) {
-      return sectionData.cabinets || [];
+    if (!sectionData.cabinets) {
+      return [];
     }
 
     return sectionData.cabinets.map((item) => {
+      // Cabinet needs update if:
+      // 1. It has no override (uses section default)
+      // 2. The saved style doesn't match current section style
       const needsUpdate =
-        item.updated_at &&
         item.cabinet_style_override === null &&
-        new Date(item.updated_at) < new Date(sectionData.cabinet_style_updated_at);
+        item.saved_style_id != null &&
+        item.saved_style_id !== sectionData.style;
 
       return {
         ...item,
         errorState: needsUpdate,
       };
     });
-  }, [sectionData.cabinets, sectionData.cabinet_style_updated_at]);
+  }, [sectionData.cabinets, sectionData.style]);
 
   // TODO: Add similar processing for other section types when error state logic is implemented
   // const lengthsWithErrorState = useMemo(() => { ... }, [sectionData.lengths, ...]);
