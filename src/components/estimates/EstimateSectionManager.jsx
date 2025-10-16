@@ -24,7 +24,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     lengths: section?.lengths || [],
     accessories: section?.accessories || [],
     other: section?.other || [],
-    style: section?.section_data?.style || "euro",
+    style: section?.cabinet_style_id || 13,
+    cabinet_style_updated_at: section?.cabinet_style_updated_at || null,
   });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -48,14 +49,23 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   useEffect(() => {
     if (section) {
       setSectionData({
-        cabinets: section.cabinets || [],
-        lengths: section.lengths || [],
-        accessories: section.accessories || [],
-        other: section.other || [],
-        style: section?.section_data?.style || 'euro',
+        cabinets: section?.cabinets || [],
+        lengths: section?.lengths || [],
+        accessories: section?.accessories || [],
+        other: section?.other || [],
+        style: section?.cabinet_style_id || 13,
+        cabinet_style_updated_at: section?.cabinet_style_updated_at || null,
       });
     }
-  }, [section]);
+  }, [
+    section,
+    section?.cabinets,
+    section?.lengths,
+    section?.accessories,
+    section?.other,
+    section?.cabinet_style_id,
+    section?.cabinet_style_updated_at,
+  ]);
 
   // Close all accordions when taskId changes
   useEffect(() => {
@@ -159,13 +169,46 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   };
 
   const handleUpdateItems = (type, updatedItems) => {
-    // Update local state immediately (optimistic update)
-    setSectionData((prev) => ({
-      ...prev,
-      [type]: updatedItems,
+    // Only save items that have actually changed
+    const reduxItems = section?.[type] || [];
+    const currentTimestamp = new Date().toISOString();
+    const changedItems = updatedItems.filter((updatedItem) => {
+      // New items (no id) should always be saved
+      if (!updatedItem.id) return true;
+      
+      // Find the corresponding item in Redux state
+      const reduxItem = reduxItems.find((ri) => ri.id === updatedItem.id);
+      
+      // If not found in Redux, it's new (shouldn't happen but handle it)
+      if (!reduxItem) return true;
+      
+      // Compare the items - if they're different, include in changedItems
+      return !isEqual(updatedItem, reduxItem);
+    });
+
+    // Update changed items with current timestamp
+    const changedItemsWithTimestamp = changedItems.map((item) => ({
+      ...item,
+      updated_at: currentTimestamp,
     }));
 
-    saveImmediately(type, updatedItems, []);
+    // Update local state with all items, but with updated timestamps for changed items
+    const itemsWithUpdatedTimestamps = updatedItems.map((item) => {
+      const isChanged = changedItems.some((ci) => 
+        (item.id && ci.id === item.id) || (item.temp_id && ci.temp_id === item.temp_id)
+      );
+      return isChanged ? { ...item, updated_at: currentTimestamp } : item;
+    });
+
+    setSectionData((prev) => ({
+      ...prev,
+      [type]: itemsWithUpdatedTimestamps,
+    }));
+
+    // Only save if there are actually changed items
+    if (changedItemsWithTimestamp.length > 0) {
+      saveImmediately(type, changedItemsWithTimestamp, []);
+    }
   };
 
   const handleReorderItems = (type, orderedIds) => {
@@ -193,7 +236,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
           onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.CABINETS.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)}
-          cabinetStyleId={section.cabinet_style_id}
+          cabinetStyleId={sectionData.style}
+          cabinetStyleUpdatedAt={sectionData.cabinet_style_updated_at}
           cabinetTypes={cabinetTypes}
         />
       ),

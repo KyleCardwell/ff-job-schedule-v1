@@ -52,6 +52,7 @@ const CabinetItemForm = ({
     finished_bottom: item.finished_bottom,
     cabinet_style_override: item.cabinet_style_override,
     corner_45: item.corner_45 || false,
+    updated_at: item.updated_at,
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -1498,6 +1499,7 @@ const EstimateCabinetManager = ({
   onUpdateItems,
   onReorderItems,
   cabinetStyleId,
+  cabinetStyleUpdatedAt,
   onDeleteItem,
   cabinetTypes,
 }) => {
@@ -1544,9 +1546,23 @@ const EstimateCabinetManager = ({
     onReorderItems(reorderedItems);
   };
 
+  // Mark items that need updating based on style change timestamp
+  const itemsWithErrorState = items.map((item) => {
+    const needsUpdate =
+      cabinetStyleUpdatedAt &&
+      item.updated_at &&
+      item.cabinet_style_override ===  null &&
+      new Date(item.updated_at) < new Date(cabinetStyleUpdatedAt);
+    
+    return {
+      ...item,
+      errorState: needsUpdate,
+    };
+  });
+
   return (
     <SectionItemList
-      items={items}
+      items={itemsWithErrorState}
       columns={columns}
       addButtonText="Add Cabinet Item"
       emptyStateText="No cabinet items added yet. Click the button below to add one."
@@ -1564,6 +1580,7 @@ EstimateCabinetManager.propTypes = {
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
   cabinetStyleId: PropTypes.number,
+  cabinetStyleUpdatedAt: PropTypes.string,
   cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
