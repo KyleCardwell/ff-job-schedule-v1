@@ -143,10 +143,10 @@ const CabinetFaceDivider = ({
   const cabinetOffsetY = revealTop * scale;
 
   // Function to normalize reveal dimensions in a loaded config
-  const normalizeRevealDimensions = (node) => {
+  const normalizeRevealDimensions = (node, revealsToUse = reveals) => {
     if (!node || !node.children) return;
 
-    const revealValue = reveals.reveal;
+    const revealValue = revealsToUse.reveal;
 
     node.children.forEach((child) => {
       if (child.type === FACE_NAMES.REVEAL) {
@@ -157,7 +157,7 @@ const CabinetFaceDivider = ({
         }
       }
       // Recurse for nested containers
-      normalizeRevealDimensions(child);
+      normalizeRevealDimensions(child, revealsToUse);
     });
   };
 
@@ -177,7 +177,19 @@ const CabinetFaceDivider = ({
       // Update rootReveals with the new values from parent
       updatedConfig.rootReveals = faceConfig.rootReveals;
 
-      // Normalize reveal dimensions with new reveals
+      // Update root dimensions based on new reveals FIRST
+      updatedConfig.width =
+        cabinetWidth -
+        faceConfig.rootReveals.left -
+        faceConfig.rootReveals.right;
+      updatedConfig.height =
+        cabinetHeight -
+        faceConfig.rootReveals.top -
+        faceConfig.rootReveals.bottom;
+      updatedConfig.x = faceConfig.rootReveals.left;
+      updatedConfig.y = faceConfig.rootReveals.top;
+
+      // Normalize reveal dimensions with new reveals throughout the entire tree
       // We need to use the new reveals value directly
       const normalizeWithNewReveals = (node) => {
         if (!node || !node.children) return;
@@ -197,24 +209,14 @@ const CabinetFaceDivider = ({
         });
       };
 
+      // Normalize all reveals first
       normalizeWithNewReveals(updatedConfig);
 
-      // Update root dimensions based on new reveals
-      updatedConfig.width =
-        cabinetWidth -
-        faceConfig.rootReveals.left -
-        faceConfig.rootReveals.right;
-      updatedConfig.height =
-        cabinetHeight -
-        faceConfig.rootReveals.top -
-        faceConfig.rootReveals.bottom;
-      updatedConfig.x = faceConfig.rootReveals.left;
-      updatedConfig.y = faceConfig.rootReveals.top;
-
-      // Recursively update all children to scale proportionally
+      // THEN recursively update all children to scale proportionally
+      // This ensures the scaling calculations use the correct reveal sizes
       updateChildrenFromParent(updatedConfig);
 
-      // Force recalculation of layout with new dimensions
+      // Force recalculation of layout with new dimensions and positions
       const layoutConfig = calculateLayout(updatedConfig);
 
       // Update state with the new configuration
@@ -298,8 +300,8 @@ const CabinetFaceDivider = ({
         // Update rootReveals
         updatedConfig.rootReveals = currentReveals;
 
-        // Normalize reveals before doing anything else
-        normalizeRevealDimensions(updatedConfig);
+        // Normalize reveals before doing anything else - pass currentReveals explicitly
+        normalizeRevealDimensions(updatedConfig, currentReveals);
 
         // Update root dimensions first so updateChildrenFromParent uses new values
         updatedConfig.width = expectedWidth;
