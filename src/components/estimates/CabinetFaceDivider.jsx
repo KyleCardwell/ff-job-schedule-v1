@@ -120,9 +120,15 @@ const CabinetFaceDivider = ({
     if (reveals.top && reveals.reveal) {
       revealTop = Math.max(revealTop, reveals.reveal - reveals.top);
     }
-    // Bottom overhang (if any)
+    // Bottom overhang - for upper cabinets (type 2), bottom reveal overhangs
     if (reveals.bottom && reveals.reveal) {
-      revealBottom = Math.max(revealBottom, reveals.reveal - reveals.bottom);
+      if (cabinetTypeId === 2) {
+        // Upper cabinets: bottom reveal is full reveal height, overhangs below
+        revealBottom = Math.max(revealBottom, reveals.reveal - reveals.bottom);
+      } else {
+        // Other cabinets: standard behavior
+        revealBottom = Math.max(revealBottom, reveals.reveal - reveals.bottom);
+      }
     }
   }
 
@@ -749,13 +755,19 @@ const CabinetFaceDivider = ({
     if (cabinetStyleId !== 13 && reveals) {
       const revealColor = FACE_TYPES.find((t) => t.value === FACE_NAMES.REVEAL)?.color || "#6B7280";
       
+      // For upper cabinets (type 2), bottom reveal overhangs
+      const isUpperCabinet = cabinetTypeId === 2;
+      const bottomOverhang = isUpperCabinet && reveals.bottom ? reveals.reveal - reveals.bottom : 0;
+      
       // Left reveal - full cabinet height, overhangs on left side
+      // For upper cabinets, extends to include bottom overhang
       if (reveals.left) {
+        const leftRevealHeight = cabinetHeight + bottomOverhang;
         const leftRevealNode = {
           id: 'root-reveal-left',
           type: FACE_NAMES.REVEAL,
           width: reveals.reveal,
-          height: cabinetHeight,
+          height: leftRevealHeight,
           x: reveals.left - reveals.reveal,
           y: 0,
         };
@@ -765,7 +777,7 @@ const CabinetFaceDivider = ({
           .attr("x", -reveals.left * scale)
           .attr("y", 0)
           .attr("width", reveals.reveal * scale)
-          .attr("height", cabinetHeight * scale)
+          .attr("height", leftRevealHeight * scale)
           .attr("fill", "#E5E7EB")
           .attr("fill-opacity", 0.3)
           .attr("stroke", revealColor)
@@ -779,12 +791,14 @@ const CabinetFaceDivider = ({
       }
 
       // Right reveal - full cabinet height, overhangs on right side
+      // For upper cabinets, extends to include bottom overhang
       if (reveals.right) {
+        const rightRevealHeight = cabinetHeight + bottomOverhang;
         const rightRevealNode = {
           id: 'root-reveal-right',
           type: FACE_NAMES.REVEAL,
           width: reveals.reveal,
-          height: cabinetHeight,
+          height: rightRevealHeight,
           x: cabinetWidth - reveals.right,
           y: 0,
         };
@@ -794,7 +808,7 @@ const CabinetFaceDivider = ({
           .attr("x", (cabinetWidth - reveals.right) * scale)
           .attr("y", 0)
           .attr("width", reveals.reveal * scale)
-          .attr("height", cabinetHeight * scale)
+          .attr("height", rightRevealHeight * scale)
           .attr("fill", "#E5E7EB")
           .attr("fill-opacity", 0.3)
           .attr("stroke", revealColor)
@@ -840,25 +854,28 @@ const CabinetFaceDivider = ({
       }
 
       // Bottom reveal - width is cabinet width minus left and right reveals
+      // For upper cabinets (type 2), bottom reveal overhangs below the cabinet
       if (reveals.bottom) {
         const bottomWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         const bottomX = reveals.left || 0;
+        const bottomHeight = isUpperCabinet ? reveals.reveal : reveals.bottom;
+        const bottomY = isUpperCabinet ? cabinetHeight - reveals.bottom : cabinetHeight - reveals.bottom;
         
         const bottomRevealNode = {
           id: 'root-reveal-bottom',
           type: FACE_NAMES.REVEAL,
           width: bottomWidth,
-          height: reveals.bottom,
+          height: bottomHeight,
           x: bottomX,
-          y: cabinetHeight - reveals.bottom,
+          y: bottomY,
         };
         
         cabinetGroup
           .append("rect")
           .attr("x", bottomX * scale)
-          .attr("y", (cabinetHeight - reveals.bottom) * scale)
+          .attr("y", bottomY * scale)
           .attr("width", bottomWidth * scale)
-          .attr("height", reveals.bottom * scale)
+          .attr("height", bottomHeight * scale)
           .attr("fill", "#E5E7EB")
           .attr("fill-opacity", 0.3)
           .attr("stroke", revealColor)
