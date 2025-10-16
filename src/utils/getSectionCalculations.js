@@ -12,6 +12,7 @@ import {
   calculateSlabDoorHours,
   calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
+  roundToHundredth,
 } from "./estimateHelpers";
 
 // Calculate face counts and prices for all cabinets in a section
@@ -302,8 +303,9 @@ const calculateFaceFramePrices = (section, faceMaterials, finishMultiplier) => {
 
       if (selectedFaceMaterial?.bd_ft_price) {
         const boardFeet = (length * width * selectedFaceMaterial.thickness) / 144;
-        totals.boardFeet += boardFeet * quantity;
-        totals.woodTotal += boardFeet * selectedFaceMaterial.bd_ft_price * quantity;
+        const boardFeetWithWaste = boardFeet * 1.25;
+        totals.boardFeet += boardFeetWithWaste * quantity;
+        totals.woodTotal += boardFeetWithWaste * selectedFaceMaterial.bd_ft_price * quantity;
       }
 
       // Convert minutes to hours
@@ -504,6 +506,7 @@ const calculateCabinetTotals = (
     slidesCount: hardwareTotals.slidesCount,
     slidesTotal: hardwareTotals.slidesTotal,
     woodTotal: faceFramePrices.woodTotal,
+    woodCount: faceFramePrices.boardFeet,
   };
 
   return totals;
@@ -549,6 +552,7 @@ export const getSectionCalculations = (
       slidesCount: 0,
       slidesTotal: 0,
       woodTotal: 0,
+      woodCount: 0,
     };
   }
 
@@ -619,6 +623,7 @@ export const getSectionCalculations = (
     slidesCount: cabinetTotals.slidesCount,
     slidesTotal: cabinetTotals.slidesTotal,
     woodTotal: cabinetTotals.woodTotal,
+    woodCount: roundToHundredth(cabinetTotals.woodCount),
   };
 };
 
