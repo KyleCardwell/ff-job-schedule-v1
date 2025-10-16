@@ -1,5 +1,6 @@
+import { isEqual } from "lodash";
 import PropTypes from "prop-types";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -31,6 +32,11 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
   const [selectedBoxMaterial, setSelectedBoxMaterial] = useState(null);
+  
+  // Store original section data for comparison
+  const originalSectionRef = useRef({
+    style: section.cabinet_style_id || "",
+  });
 
   const [formData, setFormData] = useState({
     style: section.cabinet_style_id || "",
@@ -201,12 +207,25 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       try {
         if (section?.est_section_id) {
           // Update existing section
+          // Check if style has changed
+          const styleChanged = !isEqual(
+            formData.style,
+            originalSectionRef.current.style
+          );
+          
+          // Prepare update payload
+          const updatePayload = {
+            ...formData,
+            // Add cabinet_style_updated_at if style changed
+            ...(styleChanged && { cabinet_style_updated_at: new Date().toISOString() }),
+          };
+          
           await dispatch(
             updateSection(
               currentEstimate.estimate_id,
               taskId,
               section.est_section_id,
-              formData
+              updatePayload
             )
           );
         } else {
