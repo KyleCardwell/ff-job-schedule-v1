@@ -67,6 +67,15 @@ export const FACE_TYPES = [
   { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
 ];
 
+export const CAN_BE_BEADED = [
+  FACE_NAMES.DOOR,
+  FACE_NAMES.PAIR_DOOR,
+  FACE_NAMES.DRAWER_FRONT,
+  FACE_NAMES.FALSE_FRONT,
+  FACE_NAMES.PANEL,
+  FACE_NAMES.OPEN,
+];
+
 export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [
   FACE_NAMES.DOOR,
   FACE_NAMES.PAIR_DOOR,
@@ -81,11 +90,11 @@ export const CAN_HAVE_PULLS = [
 ];
 
 export const DRAWER_BOX_HEIGHTS = [
-  2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.25, 11.125, 12.125,
-  13.125, 14.125, 15.125,
+  2.25, 3.25, 4.25, 5.25, 6.25, 7.25, 8.25, 9.25, 10.25, 11.125, 12.125, 13.125,
+  14.125, 15.125,
 ];
 
 export const DRAWER_BOX_MOD_BY_ID = {
-  13: {subtractWidth: 1.875},
-  14: {subtractWidth: .5},
-}
+  13: { subtractWidth: 1.875 },
+  14: { subtractWidth: 0.5 },
+};

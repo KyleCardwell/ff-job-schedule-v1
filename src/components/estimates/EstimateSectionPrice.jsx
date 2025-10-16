@@ -206,6 +206,15 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.pullsTotal || 0)}
             </span>
           </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Wood:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {/* {sectionCalculations.woodTotal || 0} */}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.woodTotal || 0)}
+            </span>
+          </div>
         </div>
 
         {/* Labor Hours - Title */}

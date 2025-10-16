@@ -698,6 +698,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(door_pull_id !== undefined && { door_pull_id: +door_pull_id }),
         ...(drawer_pull_id !== undefined && { drawer_pull_id: +drawer_pull_id }),
         ...(style !== undefined && { cabinet_style_id: +style }),
+        updated_at: new Date(),
         
         // Merge the rest into section_data
         section_data: {
