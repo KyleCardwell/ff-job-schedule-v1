@@ -123,7 +123,7 @@ const EstimateSectionInfo = ({
   };
 
   return (
-    <div className="w-80 flex-none bg-slate-800 border-r border-slate-700 flex flex-col">
+    <div className="w-72 flex-none bg-slate-800 border-r border-slate-700 flex flex-col">
       <div className="flex items-center justify-between py-4 px-6 border-b border-slate-700">
         <h2 className="text-lg font-semibold text-slate-200">{getTitle()}</h2>
       </div>
