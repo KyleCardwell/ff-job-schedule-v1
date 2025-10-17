@@ -12,6 +12,7 @@ import {
   calculateSlabDoorHours,
   calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
+  roundToHundredth,
 } from "./estimateHelpers";
 
 // Calculate face counts and prices for all cabinets in a section
@@ -226,6 +227,96 @@ const calculateDrawerAndRolloutTotals = (
   return totals;
 };
 
+const tapeTimeMinutes = ({
+  beadLengthIn = 0,
+  openingsCount = 0,
+  overheadPerOpeningMin = 2,
+  perInchRate = null,
+  minMinutes = 8
+}) => {
+  // Reference: one 22.5" x 29" opening = 20 min
+  const refPerimeter = 103; // 22.5 + 29 repeated twice
+  const refMinutes = 20;
+
+  // Compute per-inch rate if not provided
+  if (perInchRate === null) {
+    perInchRate = (refMinutes - overheadPerOpeningMin) / refPerimeter;
+  }
+
+  let minutes = openingsCount * overheadPerOpeningMin + beadLengthIn * perInchRate;
+
+  // Apply floor
+  minutes = Math.max(minutes, minMinutes);
+
+  return minutes;
+}
+
+const calculateFaceFramePrices = (section, faceMaterials, finishMultiplier) => {
+  const totals = {
+    shopHours: 0,
+    finishHours: 0,
+    installHours: 0,
+    woodTotal: 0,
+    boardFeet: 0,
+  };
+
+  if (!section.cabinets || !Array.isArray(section.cabinets)) {
+    return totals;
+  }
+
+  const selectedFaceMaterial = faceMaterials.find(
+    (mat) => mat.id === section.face_mat
+  );
+
+  section.cabinets.forEach((cabinet) => {
+    if (!cabinet.cabinetHours) return;
+    if (cabinet.cabinet_style_override === 13) return;
+    if (!cabinet.cabinet_tyle_override && section.cabinet_style_id === 13) return;
+
+    const quantity = Number(cabinet.quantity) || 1;
+    const { frameParts, openingsCount } = cabinet.face_config?.boxSummary || {};
+
+    const tapeTime = tapeTimeMinutes({
+      beadLengthIn: frameParts?.beadLength || 0,
+      openingsCount: (openingsCount || 1),
+      overheadPerOpeningMin: 2,
+      perInchRate: null,
+      minMinutes: 8
+    });
+    const tapeTimeHours = tapeTime / 60 * quantity;
+
+    totals.finishHours = tapeTimeHours;
+
+    if (!frameParts?.framePieces) return;
+
+    frameParts.framePieces.forEach((piece) => {
+      const length = piece.length || 0;
+      const width = piece.width || 0;
+      let shopTimeMinutes = 15; // Base time for pieces up to 36"
+
+      // Linear interpolation: 15 min at 36", 25 min at 96"
+      if (length > 36) {
+        const extraLength = Math.min(length - 36, 60); // Cap at 96" (60" extra)
+        const timeIncrease = (extraLength / 60) * 10; // 10 minutes increase over 60"
+        shopTimeMinutes = 15 + timeIncrease;
+      }
+
+      if (selectedFaceMaterial?.bd_ft_price) {
+        const boardFeet = (length * width * selectedFaceMaterial.thickness) / 144;
+        const boardFeetWithWaste = boardFeet * 1.25;
+        totals.boardFeet += boardFeetWithWaste * quantity;
+        totals.woodTotal += boardFeetWithWaste * selectedFaceMaterial.bd_ft_price * quantity;
+      }
+
+      // Convert minutes to hours
+      const shopTimeHours = shopTimeMinutes / 60;
+      totals.shopHours += shopTimeHours * quantity;
+    });
+  });
+
+  return totals;
+};
+
 // Calculate cabinet box hours for all cabinets in a section
 const calculateCabinetBoxHours = (
   section,
@@ -328,7 +419,6 @@ const calculateCabinetTotals = (
   cabinetStyles,
   hardware
 ) => {
-
   const cabinetCost = calculateBoxSheetsCNC(
     section,
     boxMaterials,
@@ -338,7 +428,7 @@ const calculateCabinetTotals = (
       drillCostPerHingeBore: 0.85,
       drillCostPerSlide: 1.25,
       drillCostPerShelfHole: 0.08,
-      edgeBandPricePerFoot: 0.20,
+      edgeBandPricePerFoot: 0.2,
       taxRate: 0.1,
       setupCostPerSheet: 15,
       kerfWidth: 0.25, // Saw blade kerf width in inches
@@ -367,6 +457,12 @@ const calculateCabinetTotals = (
     finishMultiplier
   );
 
+  const faceFramePrices = calculateFaceFramePrices(
+    section,
+    faceMaterials,
+    finishMultiplier
+  );
+
   // Count total boxes
   const boxCount =
     section.cabinets?.reduce((count, cabinet) => {
@@ -387,9 +483,16 @@ const calculateCabinetTotals = (
     price: cabinetCost.totalCost + facePrice,
     boxPrice: cabinetCost.totalCost,
     boxCount,
-    shopHours: boxHours.shopHours + faceTotals.shopHours,
-    finishHours: boxHours.finishHours + faceTotals.finishHours,
-    installHours: boxHours.installHours + faceTotals.installHours,
+    shopHours:
+      boxHours.shopHours + faceTotals.shopHours + faceFramePrices.shopHours,
+    finishHours:
+      boxHours.finishHours +
+      faceTotals.finishHours +
+      faceFramePrices.finishHours,
+    installHours:
+      boxHours.installHours +
+      faceTotals.installHours +
+      faceFramePrices.installHours,
     faceCounts: faceTotals.faceCounts,
     facePrices: faceTotals.facePrices,
     drawerBoxCount: drawerRolloutTotals.drawerBoxCount,
@@ -402,6 +505,8 @@ const calculateCabinetTotals = (
     pullsTotal: hardwareTotals.pullsTotal,
     slidesCount: hardwareTotals.slidesCount,
     slidesTotal: hardwareTotals.slidesTotal,
+    woodTotal: faceFramePrices.woodTotal,
+    woodCount: faceFramePrices.boardFeet,
   };
 
   return totals;
@@ -446,6 +551,8 @@ export const getSectionCalculations = (
       pullsTotal: 0,
       slidesCount: 0,
       slidesTotal: 0,
+      woodTotal: 0,
+      woodCount: 0,
     };
   }
 
@@ -488,6 +595,7 @@ export const getSectionCalculations = (
     cabinetTotals.slidesTotal +
     lengthsTotal +
     accessoriesTotal +
+    cabinetTotals.woodTotal +
     otherTotal;
 
   let installHours = cabinetTotals.installHours;
@@ -514,6 +622,8 @@ export const getSectionCalculations = (
     pullsTotal: cabinetTotals.pullsTotal,
     slidesCount: cabinetTotals.slidesCount,
     slidesTotal: cabinetTotals.slidesTotal,
+    woodTotal: cabinetTotals.woodTotal,
+    woodCount: roundToHundredth(cabinetTotals.woodCount),
   };
 };
 

@@ -101,10 +101,36 @@ const CabinetFaceDivider = ({
 
   // Calculate display scale and offsets accounting for negative reveals (overhangs)
   // Get the actual bounds including any negative reveals
-  const revealLeft = Math.abs(Math.min(0, reveals.left));
-  const revealRight = Math.abs(Math.min(0, reveals.right));
-  const revealTop = Math.abs(Math.min(0, reveals.top));
-  const revealBottom = Math.abs(Math.min(0, reveals.bottom));
+  let revealLeft = Math.abs(Math.min(0, reveals.left));
+  let revealRight = Math.abs(Math.min(0, reveals.right));
+  let revealTop = Math.abs(Math.min(0, reveals.top));
+  let revealBottom = Math.abs(Math.min(0, reveals.bottom));
+
+  // For non-Euro cabinets (cabinetStyleId !== 13), add root reveal overhangs
+  if (cabinetStyleId !== 13 && reveals) {
+    // Left overhang: reveal width minus the overlap (reveals.left)
+    if (reveals.left && reveals.reveal) {
+      revealLeft = Math.max(revealLeft, reveals.reveal - reveals.left);
+    }
+    // Right overhang: reveal width minus the overlap (reveals.right)
+    if (reveals.right && reveals.reveal) {
+      revealRight = Math.max(revealRight, reveals.reveal - reveals.right);
+    }
+    // Top overhang (if any)
+    if (reveals.top && reveals.reveal) {
+      revealTop = Math.max(revealTop, reveals.reveal - reveals.top);
+    }
+    // Bottom overhang - for upper cabinets (type 2), bottom reveal overhangs
+    if (reveals.bottom && reveals.reveal) {
+      if (cabinetTypeId === 2) {
+        // Upper cabinets: bottom reveal is full reveal height, overhangs below
+        revealBottom = Math.max(revealBottom, reveals.reveal - reveals.bottom);
+      } else {
+        // Other cabinets: standard behavior
+        revealBottom = Math.max(revealBottom, reveals.reveal - reveals.bottom);
+      }
+    }
+  }
 
   // Total display area includes cabinet + any overhangs
   const totalDisplayWidth = cabinetWidth + revealLeft + revealRight;
@@ -123,10 +149,10 @@ const CabinetFaceDivider = ({
   const cabinetOffsetY = revealTop * scale;
 
   // Function to normalize reveal dimensions in a loaded config
-  const normalizeRevealDimensions = (node) => {
+  const normalizeRevealDimensions = (node, revealsToUse = reveals) => {
     if (!node || !node.children) return;
 
-    const revealValue = reveals.reveal;
+    const revealValue = revealsToUse.reveal;
 
     node.children.forEach((child) => {
       if (child.type === FACE_NAMES.REVEAL) {
@@ -137,7 +163,7 @@ const CabinetFaceDivider = ({
         }
       }
       // Recurse for nested containers
-      normalizeRevealDimensions(child);
+      normalizeRevealDimensions(child, revealsToUse);
     });
   };
 
@@ -157,7 +183,19 @@ const CabinetFaceDivider = ({
       // Update rootReveals with the new values from parent
       updatedConfig.rootReveals = faceConfig.rootReveals;
 
-      // Normalize reveal dimensions with new reveals
+      // Update root dimensions based on new reveals FIRST
+      updatedConfig.width =
+        cabinetWidth -
+        faceConfig.rootReveals.left -
+        faceConfig.rootReveals.right;
+      updatedConfig.height =
+        cabinetHeight -
+        faceConfig.rootReveals.top -
+        faceConfig.rootReveals.bottom;
+      updatedConfig.x = faceConfig.rootReveals.left;
+      updatedConfig.y = faceConfig.rootReveals.top;
+
+      // Normalize reveal dimensions with new reveals throughout the entire tree
       // We need to use the new reveals value directly
       const normalizeWithNewReveals = (node) => {
         if (!node || !node.children) return;
@@ -177,24 +215,14 @@ const CabinetFaceDivider = ({
         });
       };
 
+      // Normalize all reveals first
       normalizeWithNewReveals(updatedConfig);
 
-      // Update root dimensions based on new reveals
-      updatedConfig.width =
-        cabinetWidth -
-        faceConfig.rootReveals.left -
-        faceConfig.rootReveals.right;
-      updatedConfig.height =
-        cabinetHeight -
-        faceConfig.rootReveals.top -
-        faceConfig.rootReveals.bottom;
-      updatedConfig.x = faceConfig.rootReveals.left;
-      updatedConfig.y = faceConfig.rootReveals.top;
-
-      // Recursively update all children to scale proportionally
+      // THEN recursively update all children to scale proportionally
+      // This ensures the scaling calculations use the correct reveal sizes
       updateChildrenFromParent(updatedConfig);
 
-      // Force recalculation of layout with new dimensions
+      // Force recalculation of layout with new dimensions and positions
       const layoutConfig = calculateLayout(updatedConfig);
 
       // Update state with the new configuration
@@ -278,8 +306,8 @@ const CabinetFaceDivider = ({
         // Update rootReveals
         updatedConfig.rootReveals = currentReveals;
 
-        // Normalize reveals before doing anything else
-        normalizeRevealDimensions(updatedConfig);
+        // Normalize reveals before doing anything else - pass currentReveals explicitly
+        normalizeRevealDimensions(updatedConfig, currentReveals);
 
         // Update root dimensions first so updateChildrenFromParent uses new values
         updatedConfig.width = expectedWidth;
@@ -713,6 +741,7 @@ const CabinetFaceDivider = ({
         `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`
       );
 
+    const strokeWidth = cabinetStyleId === 13 ? 0 : 2;
     // Add background for the cabinet box
     cabinetGroup
       .append("rect")
@@ -720,7 +749,145 @@ const CabinetFaceDivider = ({
       .attr("height", cabinetHeight * scale)
       .attr("fill", "#F8FAFC")
       .attr("stroke", "#E2E8F0")
-      .attr("stroke-width", 2);
+      .attr("stroke-width", strokeWidth);
+
+    // Add root reveals if cabinetStyleId !== 13
+    if (cabinetStyleId !== 13 && reveals) {
+      const revealColor = FACE_TYPES.find((t) => t.value === FACE_NAMES.REVEAL)?.color || "#6B7280";
+      
+      // For upper cabinets (type 2), bottom reveal overhangs
+      const isUpperCabinet = cabinetTypeId === 2;
+      const bottomOverhang = isUpperCabinet && reveals.bottom ? reveals.reveal - reveals.bottom : 0;
+      
+      // Left reveal - full cabinet height, overhangs on left side
+      // For upper cabinets, extends to include bottom overhang
+      if (reveals.left) {
+        const leftRevealHeight = cabinetHeight + bottomOverhang;
+        const leftRevealNode = {
+          id: 'root-reveal-left',
+          type: FACE_NAMES.REVEAL,
+          width: reveals.reveal,
+          height: leftRevealHeight,
+          x: reveals.left - reveals.reveal,
+          y: 0,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", -reveals.left * scale)
+          .attr("y", 0)
+          .attr("width", reveals.reveal * scale)
+          .attr("height", leftRevealHeight * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, leftRevealNode);
+          });
+      }
+
+      // Right reveal - full cabinet height, overhangs on right side
+      // For upper cabinets, extends to include bottom overhang
+      if (reveals.right) {
+        const rightRevealHeight = cabinetHeight + bottomOverhang;
+        const rightRevealNode = {
+          id: 'root-reveal-right',
+          type: FACE_NAMES.REVEAL,
+          width: reveals.reveal,
+          height: rightRevealHeight,
+          x: cabinetWidth - reveals.right,
+          y: 0,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", (cabinetWidth - reveals.right) * scale)
+          .attr("y", 0)
+          .attr("width", reveals.reveal * scale)
+          .attr("height", rightRevealHeight * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, rightRevealNode);
+          });
+      }
+
+      // Top reveal - width is cabinet width minus left and right reveals
+      if (reveals.top) {
+        const topWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const topX = reveals.left || 0;
+        
+        const topRevealNode = {
+          id: 'root-reveal-top',
+          type: FACE_NAMES.REVEAL,
+          width: topWidth,
+          height: reveals.top,
+          x: topX,
+          y: 0,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", topX * scale)
+          .attr("y", 0)
+          .attr("width", topWidth * scale)
+          .attr("height", reveals.top * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, topRevealNode);
+          });
+      }
+
+      // Bottom reveal - width is cabinet width minus left and right reveals
+      // For upper cabinets (type 2), bottom reveal overhangs below the cabinet
+      if (reveals.bottom) {
+        const bottomWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const bottomX = reveals.left || 0;
+        const bottomHeight = isUpperCabinet ? reveals.reveal : reveals.bottom;
+        const bottomY = isUpperCabinet ? cabinetHeight - reveals.bottom : cabinetHeight - reveals.bottom;
+        
+        const bottomRevealNode = {
+          id: 'root-reveal-bottom',
+          type: FACE_NAMES.REVEAL,
+          width: bottomWidth,
+          height: bottomHeight,
+          x: bottomX,
+          y: bottomY,
+        };
+        
+        cabinetGroup
+          .append("rect")
+          .attr("x", bottomX * scale)
+          .attr("y", bottomY * scale)
+          .attr("width", bottomWidth * scale)
+          .attr("height", bottomHeight * scale)
+          .attr("fill", "#E5E7EB")
+          .attr("fill-opacity", 0.3)
+          .attr("stroke", revealColor)
+          .attr("stroke-width", 2)
+          .attr("cursor", "pointer")
+          .style("pointer-events", "all")
+          .on("click", (event) => {
+            event.stopPropagation();
+            handleNodeClick(event, bottomRevealNode);
+          });
+      }
+    }
 
     // Render the tree
     renderNode(layoutConfig);

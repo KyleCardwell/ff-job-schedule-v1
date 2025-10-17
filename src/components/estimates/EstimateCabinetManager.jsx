@@ -8,6 +8,7 @@ import {
   FACE_NAMES,
   ITEM_FORM_WIDTHS,
   SPLIT_DIRECTIONS,
+  CAN_BE_BEADED,
 } from "../../utils/constants.js";
 import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
@@ -51,6 +52,7 @@ const CabinetItemForm = ({
     finished_bottom: item.finished_bottom,
     cabinet_style_override: item.cabinet_style_override,
     corner_45: item.corner_45 || false,
+    updated_at: item.updated_at,
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -303,13 +305,18 @@ const CabinetItemForm = ({
         finalFormData.cabinet_style_override = null;
       }
 
+      // Determine effective style ID (use override if set, otherwise section default)
+      const effectiveStyleId =
+        formData.cabinet_style_override &&
+        formData.cabinet_style_override !== -1
+          ? formData.cabinet_style_override
+          : cabinetStyleId;
+
+      // Save the style ID this cabinet was configured with
+      // This allows accurate error detection when section style changes
+      finalFormData.saved_style_id = effectiveStyleId;
+
       if (formData.face_config) {
-        // Determine effective style ID (use override if set, otherwise section default)
-        const effectiveStyleId =
-          formData.cabinet_style_override &&
-          formData.cabinet_style_override !== -1
-            ? formData.cabinet_style_override
-            : cabinetStyleId;
 
         const boxSummary = calculateBoxSummary(
           formData.width,
@@ -507,6 +514,108 @@ const CabinetItemForm = ({
     };
   };
 
+  // Recursive helper to calculate face frame parts from face_config
+  const calculateFaceFrames = (node, cabinetWidth, cabinetHeight, isRoot = false) => {
+    let totalBoardFeet = 0;
+    let holeCount = 0;
+    let beadLength = 0;
+    let framePieces = [];
+
+    // At root level only, count the reveals as frame parts
+    if (isRoot && node.rootReveals) {
+      const reveals = node.rootReveals;
+      
+      // Left frame part
+      if (reveals.left && reveals.reveal) {
+        // Width: reveals.reveal, Height: cabinetHeight
+        const partLength = cabinetHeight;
+        framePieces.push({
+          type: "left",
+          length: partLength,
+          width: reveals.reveal,
+        });
+      }
+      
+      // Right frame part
+      if (reveals.right && reveals.reveal) {
+        // Width: reveals.reveal, Height: cabinetHeight
+        const partLength = cabinetHeight;
+        framePieces.push({
+          type: "right",
+          length: partLength,
+          width: reveals.reveal,
+        });
+      }
+      
+      // Top frame part
+      if (reveals.top && reveals.reveal) {
+        // Width: reveals.reveal, Height: cabinetWidth - reveals.left - reveals.right
+        const partLength = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        holeCount += 2;
+        framePieces.push({
+          type: "top",
+          length: partLength,
+          width: reveals.reveal,
+        });
+      }
+      
+      // Bottom frame part
+      if (reveals.bottom && reveals.reveal) {
+        // Width: reveals.reveal, Height: cabinetWidth - reveals.left - reveals.right
+        const partLength = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        holeCount += 2;
+        framePieces.push({
+          type: "bottom",
+          length: partLength,
+          width: reveals.reveal,
+        });
+      }
+    }
+
+    if (node.children) {
+      node.children.forEach((child) => {
+        if (CAN_BE_BEADED.includes(child.type)) {
+          beadLength += 2 *child.width + 2 * child.height;
+        }
+      });
+      const frame = node.children[1];
+      holeCount += 2;
+      if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
+        framePieces.push({
+          type: SPLIT_DIRECTIONS.VERTICAL,
+          length: frame.height,
+          width: frame.width,
+        });
+        
+      } else {
+        framePieces.push({
+          type: SPLIT_DIRECTIONS.HORIZONTAL,
+          length: frame.width,
+          width: frame.height,
+        });
+      }
+      
+    }
+
+    // Recursively process children
+    if (node.children) {
+      node.children.forEach((child) => {
+        const childResult = calculateFaceFrames(child, cabinetWidth, cabinetHeight, false);
+        totalBoardFeet += childResult.totalBoardFeet;
+        holeCount += childResult.holeCount;
+        beadLength += childResult.beadLength;
+        framePieces.push(...childResult.framePieces);
+      });
+    }
+
+    return {
+      totalBoardFeet,
+      holeCount,
+      beadLength,
+      framePieces,
+    };
+  };
+
   // Calculate box material summary (sides, top, bottom, back)
   const calculateBoxSummary = (
     width,
@@ -532,6 +641,7 @@ const CabinetItemForm = ({
     let sideArea, topBottomArea, backArea;
     let sidePerimeterLength, topBottomPerimeterLength, backPerimeterLength;
     let boxPerimeterLength, boxPartsCount;
+    let openingsCount = 1;
 
     if (isCorner45) {
       // Corner 45° cabinet geometry
@@ -625,6 +735,12 @@ const CabinetItemForm = ({
         };
 
     const boxHardware = countFaceHardware(faceConfig);
+
+    let frameParts = {}
+    
+    if (cabinetStyleId !== 13) {
+      frameParts = calculateFaceFrames(faceConfig, width, height, true);
+    }
 
     // All parts will have finish boolean - no need to calculate counts
 
@@ -807,6 +923,7 @@ const CabinetItemForm = ({
     if (faceConfig) {
       const collectPartitions = (node) => {
         const partitions = [];
+        let localOpeningsCount = 0;
 
         if (node && node.children && node.children.length > 1) {
           for (let i = 0; i < node.children.length; i++) {
@@ -835,10 +952,12 @@ const CabinetItemForm = ({
 
                 // Count double partitions for Inset Face Frame style
                 const partitionQty =
-                  cabinetStyleId === 14 &&
+                  cabinetStyleId !== 13 &&
                   node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
                     ? 2
                     : 1;
+
+                localOpeningsCount++;
 
                 partitions.push({
                   type: "partition",
@@ -853,14 +972,17 @@ const CabinetItemForm = ({
           }
 
           node.children.forEach((child) => {
-            partitions.push(...collectPartitions(child));
+            const childResult = collectPartitions(child);
+            partitions.push(...childResult.partitions);
+            localOpeningsCount += childResult.openingsCount;
           });
         }
 
-        return partitions;
+        return { partitions, openingsCount: localOpeningsCount };
       };
 
-      const partitions = collectPartitions(faceConfig);
+      const { partitions, openingsCount: partitionOpeningsCount } = collectPartitions(faceConfig);
+      openingsCount += partitionOpeningsCount;
       boxPartsList.push(...partitions);
     }
 
@@ -875,6 +997,8 @@ const CabinetItemForm = ({
       boxHardware,
       shelfDrillHoles,
       boxPartsList, // List of all individual parts with finish boolean
+      frameParts,
+      openingsCount,
     };
   };
 
@@ -1426,6 +1550,7 @@ const EstimateCabinetManager = ({
     onReorderItems(reorderedItems);
   };
 
+  // Items already have errorState added by EstimateSectionManager
   return (
     <SectionItemList
       items={items}

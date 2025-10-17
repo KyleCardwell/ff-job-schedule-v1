@@ -31,6 +31,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
   const [selectedBoxMaterial, setSelectedBoxMaterial] = useState(null);
+  
 
   const [formData, setFormData] = useState({
     style: section.cabinet_style_id || "",

@@ -531,7 +531,12 @@ export const calculateFinancialTotals = (
       } else {
         // For non-hours sections, calculate actual from input rows
         const actualTotal = (section.inputRows || []).reduce(
-          (sum, row) => sum + (row.cost || 0),
+          (sum, row) => {
+            const cost = row.cost || 0;
+            const taxRate = row.taxRate || 0;
+            const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
+            return sum + total;
+          },
           0
         );
 

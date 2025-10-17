@@ -1,7 +1,7 @@
 import { isEqual } from "lodash";
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
-import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { useState, useEffect, useMemo } from "react";
+import { FiChevronDown, FiChevronRight, FiAlertCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 // import { useDebouncedCallback } from "../../hooks/useDebounce";
@@ -24,7 +24,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     lengths: section?.lengths || [],
     accessories: section?.accessories || [],
     other: section?.other || [],
-    style: section?.section_data?.style || "euro",
+    style: section?.cabinet_style_id || 13,
   });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -48,14 +48,21 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   useEffect(() => {
     if (section) {
       setSectionData({
-        cabinets: section.cabinets || [],
-        lengths: section.lengths || [],
-        accessories: section.accessories || [],
-        other: section.other || [],
-        style: section?.section_data?.style || 'euro',
+        cabinets: section?.cabinets || [],
+        lengths: section?.lengths || [],
+        accessories: section?.accessories || [],
+        other: section?.other || [],
+        style: section?.cabinet_style_id || 13,
       });
     }
-  }, [section]);
+  }, [
+    section,
+    section?.cabinets,
+    section?.lengths,
+    section?.accessories,
+    section?.other,
+    section?.cabinet_style_id,
+  ]);
 
   // Close all accordions when taskId changes
   useEffect(() => {
@@ -159,13 +166,52 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   };
 
   const handleUpdateItems = (type, updatedItems) => {
-    // Update local state immediately (optimistic update)
+    // Only save items that have actually changed
+    const reduxItems = section?.[type] || [];
+    const currentTimestamp = new Date().toISOString();
+    const changedItems = updatedItems.filter((updatedItem) => {
+      // New items (no id) should always be saved
+      if (!updatedItem.id) return true;
+      
+      // Find the corresponding item in Redux state
+      const reduxItem = reduxItems.find((ri) => ri.id === updatedItem.id);
+      
+      // If not found in Redux, it's new (shouldn't happen but handle it)
+      if (!reduxItem) return true;
+      
+      // Strip errorState (UI-only property) before comparing
+      const { errorState: _, ...itemWithoutErrorState } = updatedItem;
+      
+      // Compare the items - if they're different, include in changedItems
+      return !isEqual(itemWithoutErrorState, reduxItem);
+    });
+
+    // Update changed items with current timestamp and strip errorState (UI-only)
+    const changedItemsWithTimestamp = changedItems.map((item) => {
+      const { errorState, ...itemWithoutErrorState } = item;
+      return {
+        ...itemWithoutErrorState,
+        updated_at: currentTimestamp,
+      };
+    });
+
+    // Update local state with all items, but with updated timestamps for changed items
+    const itemsWithUpdatedTimestamps = updatedItems.map((item) => {
+      const isChanged = changedItems.some((ci) => 
+        (item.id && ci.id === item.id) || (item.temp_id && ci.temp_id === item.temp_id)
+      );
+      return isChanged ? { ...item, updated_at: currentTimestamp } : item;
+    });
+
     setSectionData((prev) => ({
       ...prev,
-      [type]: updatedItems,
+      [type]: itemsWithUpdatedTimestamps,
     }));
 
-    saveImmediately(type, updatedItems, []);
+    // Only save if there are actually changed items
+    if (changedItemsWithTimestamp.length > 0) {
+      saveImmediately(type, changedItemsWithTimestamp, []);
+    }
   };
 
   const handleReorderItems = (type, orderedIds) => {
@@ -183,17 +229,57 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
+  // Add errorState flag to cabinet items based on saved_style_id comparison
+  const cabinetsWithErrorState = useMemo(() => {
+    if (!sectionData.cabinets) {
+      return [];
+    }
+
+    return sectionData.cabinets.map((item) => {
+      // Cabinet needs update if:
+      // 1. It has no override (uses section default)
+      // 2. The saved style doesn't match current section style
+      const needsUpdate =
+        item.cabinet_style_override === null &&
+        item.saved_style_id != null &&
+        item.saved_style_id !== sectionData.style;
+
+      return {
+        ...item,
+        errorState: needsUpdate,
+      };
+    });
+  }, [sectionData.cabinets, sectionData.style]);
+
+  // TODO: Add similar processing for other section types when error state logic is implemented
+  // const lengthsWithErrorState = useMemo(() => { ... }, [sectionData.lengths, ...]);
+  // const accessoriesWithErrorState = useMemo(() => { ... }, [sectionData.accessories, ...]);
+  // const otherWithErrorState = useMemo(() => { ... }, [sectionData.other, ...]);
+
+  // Check if each section type has items in error state
+  const getSectionErrorState = useMemo(() => {
+    return {
+      // Check cabinets for error state
+      cabinets: cabinetsWithErrorState.some((item) => item.errorState),
+      
+      // Placeholder for other section types (to be implemented later)
+      lengths: false,
+      accessories: false,
+      other: false,
+    };
+  }, [cabinetsWithErrorState]);
+
   const sections = [
     {
       type: SECTION_TYPES.CABINETS.type,
       title: SECTION_TYPES.CABINETS.title,
       component: (
         <EstimateCabinetManager
-          items={sectionData.cabinets}
+          items={cabinetsWithErrorState}
           onUpdateItems={(items) => handleUpdateItems(SECTION_TYPES.CABINETS.type, items)}
           onDeleteItem={(item) => handleDeleteRequest(SECTION_TYPES.CABINETS.type, item)}
           onReorderItems={(orderedIds) => handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)}
-          cabinetStyleId={section.cabinet_style_id}
+          cabinetStyleId={sectionData.style}
           cabinetTypes={cabinetTypes}
         />
       ),
@@ -248,10 +334,19 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
             className={`
               w-full px-4 py-3 text-left flex items-center justify-between
               ${openSectionType === type ? "bg-slate-100 rounded-t" : "bg-white rounded"}
+              ${getSectionErrorState[type] ? "border-4 border-red-500 rounded-lg" : ""}
               hover:bg-slate-200 transition-colors
             `}
           >
-            <span className="text-sm font-medium text-slate-700">{title}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-700">{title}</span>
+              {getSectionErrorState[type] && (
+                <span className="flex items-center gap-1 text-sm text-red-600 font-medium">
+                  <FiAlertCircle size={14} />
+                  Needs Attention
+                </span>
+              )}
+            </div>
             <span className="text-slate-400">
               {openSectionType === type ? (
                 <FiChevronDown size={20} />

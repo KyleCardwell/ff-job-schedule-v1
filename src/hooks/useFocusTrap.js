@@ -17,6 +17,13 @@ export const useFocusTrap = (ref, isActive) => {
 
       // Focus the first element when the trap becomes active
       firstFocusableElement.current.focus();
+      
+      // If the first element is an input, select its text for easy editing
+      if (firstFocusableElement.current.tagName === 'INPUT' && 
+          (firstFocusableElement.current.type === 'text' || 
+           firstFocusableElement.current.type === 'number')) {
+        firstFocusableElement.current.select();
+      }
 
       const handleKeyDown = (e) => {
         if (e.key !== 'Tab') return;
