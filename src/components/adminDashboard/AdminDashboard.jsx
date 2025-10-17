@@ -22,6 +22,7 @@ import HardwareSettings from "../manageSettings/HardwareSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
 import MaterialsSettings from "../manageSettings/MaterialsSettings.jsx";
+import PartsListSettings from "../manageSettings/PartsListSettings.jsx";
 import ServiceSettings from "../manageSettings/ServiceSettings.jsx";
 import TeamSettings from "../manageSettings/TeamSettings.jsx";
 
@@ -109,6 +110,16 @@ const AdminDashboard = () => {
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
       maxWidthClass: "max-w-[720px]",
+    },
+    {
+      id: "parts-list",
+      label: "Parts List",
+      path: PATHS.MANAGE_PARTS_LIST,
+      component: PartsListSettings,
+      props: {},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+      maxWidthClass: "max-w-[1200px]",
     },
     {
       id: "materials",
