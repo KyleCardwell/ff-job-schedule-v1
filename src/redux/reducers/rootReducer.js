@@ -15,6 +15,8 @@ import { financialsDataReducer } from "./financialsData";
 import { hardwareReducer } from "./hardware";
 import { holidaysReducer } from "./holidays";
 import { materialsReducer } from "./materials";
+import partsListReducer from "./partsList";
+import partsListAnchorsReducer from "./partsListAnchors";
 import { projectsReducer } from "./projects";
 import servicesReducer from "./services";
 import { taskDataReducer } from "./taskData";
@@ -39,6 +41,8 @@ const appReducer = combineReducers({
 	cabinetTypes: cabinetTypesReducer,
 	cabinetAnchors: cabinetAnchorsReducer,
 	cabinetStyles: cabinetStylesReducer,
+	partsList: partsListReducer,
+	partsListAnchors: partsListAnchorsReducer,
 });
 
 // Root reducer that handles resetting state
