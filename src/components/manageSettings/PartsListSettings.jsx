@@ -112,8 +112,8 @@ const PartsListSettings = forwardRef((props, ref) => {
       services:
         anchor.services?.map((s) => ({
           ...s,
-          hours:
-            s.hours === "" || s.hours === null ? 0 : parseFloat(s.hours) || 0,
+          minutes:
+            s.minutes === "" || s.minutes === null ? 0 : parseInt(s.minutes) || 0,
         })) || [],
     };
   };
@@ -187,7 +187,7 @@ const PartsListSettings = forwardRef((props, ref) => {
       <div className="sticky top-0 z-10 bg-slate-800 py-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold text-slate-200">
-            Manage Parts List Anchors - Time (hours)
+            Manage Parts List Anchors - Time (minutes)
           </h2>
         </div>
       </div>

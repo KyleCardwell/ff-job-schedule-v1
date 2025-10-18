@@ -23,7 +23,7 @@ const AnchorRow = ({
     let updatedAnchor;
     if (serviceId) {
       const updatedServices = anchor.services.map((s) =>
-        s.team_service_id === serviceId ? { ...s, hours: value } : s
+        s.team_service_id === serviceId ? { ...s, minutes: value } : s
       );
       updatedAnchor = { ...anchor, services: updatedServices };
     } else {
@@ -58,8 +58,8 @@ const AnchorRow = ({
         </div>
         <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40">
           {anchor.cabinet_style_id 
-            ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'Any'
-            : 'Any'}
+            ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'All'
+            : 'All'}
         </div>
         {Array.isArray(services) &&
           services.map((s) => (
@@ -69,7 +69,7 @@ const AnchorRow = ({
             >
               {anchor.services.find(
                 (ans) => ans.team_service_id === s.team_service_id
-              )?.hours || 0}
+              )?.minutes || 0}
             </div>
           ))}
         <div className="px-4 py-2 text-right bg-red-900/30 hover:bg-red-900/40 rounded-r-md">
@@ -130,7 +130,7 @@ const AnchorRow = ({
             onChange={handleInputChange}
             className="w-full p-1 rounded-md bg-slate-600 text-white"
           >
-            <option value="">Any Style</option>
+            <option value="">All Styles</option>
             {cabinetStyles.map(style => (
               <option key={style.cabinet_style_id} value={style.cabinet_style_id}>
                 {style.cabinet_style_name}
@@ -146,7 +146,7 @@ const AnchorRow = ({
                 value={
                   anchor.services.find(
                     (ans) => ans.team_service_id === s.team_service_id
-                  )?.hours || ""
+                  )?.minutes || ""
                 }
                 onChange={(e) => handleInputChange(e, s.team_service_id)}
                 className="w-full p-1 rounded-md"
@@ -177,8 +177,8 @@ const AnchorRow = ({
       <div className="px-4 py-2 flex items-center">{anchor.depth}</div>
       <div className="px-4 py-2 flex items-center">
         {anchor.cabinet_style_id 
-          ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'Any'
-          : 'Any'}
+          ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'All'
+          : 'All'}
       </div>
       {Array.isArray(services) &&
         services.map((s) => (
@@ -188,7 +188,7 @@ const AnchorRow = ({
           >
             {anchor.services.find(
               (ans) => ans.team_service_id === s.team_service_id
-            )?.hours || 0}
+            )?.minutes || 0}
           </div>
         ))}
       <div className="px-4 py-2 text-right rounded-r-md">
@@ -230,15 +230,15 @@ const PartsListAnchorsTable = ({
     (state) => state.services?.allServices.filter((s) => s.is_active) || []
   );
   const cabinetStyles = useSelector(
-    (state) => state.cabinetStyles?.teamCabinetStyles || []
-  );
+    (state) => state.cabinetStyles?.styles || []
+  ).filter((s) => s.is_active);
   const gridCols = `repeat(${4 + services.length}, minmax(0, 1fr)) 100px`;
 
   const handleAddNew = (currentServices) => {
     const initialServices = currentServices.map((s) => ({
       id: s.id,
       team_service_id: s.team_service_id,
-      hours: "",
+      minutes: "",
     }));
     const newAnchor = {
       id: uuidv4(),

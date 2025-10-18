@@ -36,15 +36,28 @@ export const savePartsListAnchors = (newAnchors, updatedAnchors, deletedIds) => 
       // 2. Updates
       if (updatedAnchors && updatedAnchors.length > 0) {
         const updatePromises = updatedAnchors.map(anchor => {
-          const { id, cabinet_style_id, width, height, depth, services } = anchor;
+          const parsedAnchor = {
+            ...anchor,
+            width: anchor.width || 0,
+            height: anchor.height || 0,
+            depth: anchor.depth || 0,
+            cabinet_style_id: anchor.cabinet_style_id || null,
+            services:
+              anchor.services?.map((s) => ({
+                ...s,
+                minutes:
+                  s.minutes === "" || s.minutes === null ? 0 : parseInt(s.minutes) || 0,
+              })) || [],
+          };
+
           return supabase.rpc('update_parts_list_anchor_with_services', {
-            p_anchor_id: id,
+            p_anchor_id: parsedAnchor.id,
             p_team_id: teamId,
-            p_width: width,
-            p_height: height,
-            p_depth: depth,
-            p_cabinet_style_id: cabinet_style_id || null,
-            p_services: services,
+            p_width: parsedAnchor.width,
+            p_height: parsedAnchor.height,
+            p_depth: parsedAnchor.depth,
+            p_cabinet_style_id: parsedAnchor.cabinet_style_id,
+            p_services: parsedAnchor.services,
           });
         });
 
