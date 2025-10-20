@@ -71,6 +71,26 @@ const PartsListSettings = forwardRef((props, ref) => {
     let hasAnchorErrors = false;
 
     Object.entries(localAnchors).forEach(([partsListId, anchors]) => {
+      // Count valid anchors (not marked for deletion and not empty)
+      const validAnchors = anchors.filter(
+        (anchor) =>
+          !anchor.markedForDeletion &&
+          (anchor.width !== "" ||
+            anchor.height !== "" ||
+            anchor.depth !== "" ||
+            anchor.cabinet_style_id !== null)
+      );
+
+      // Check if there's exactly 1 anchor - must have at least 2 for interpolation
+      if (validAnchors.length === 1) {
+        if (!newAnchorErrors[partsListId]) newAnchorErrors[partsListId] = {};
+        newAnchorErrors[partsListId]["_general"] = {
+          message:
+            "Must have at least 2 anchors (a min and a larger one). Add another anchor or remove this one.",
+        };
+        hasAnchorErrors = true;
+      }
+
       anchors.forEach((anchor) => {
         if (anchor.markedForDeletion) return;
 
@@ -203,7 +223,7 @@ const PartsListSettings = forwardRef((props, ref) => {
         {!loading && !error && (
           <>
             {partsList
-              .sort((a, b) => a.name.localeCompare(b.name))
+              // .sort((a, b) => a.name.localeCompare(b.name))
               .map((part) => (
                 <SettingsSection key={part.id} title={part.name}>
                   <PartsListAnchorsTable

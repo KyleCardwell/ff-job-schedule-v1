@@ -297,6 +297,13 @@ const PartsListAnchorsTable = ({
 
   return (
     <>
+      {/* General error message for minimum anchor count */}
+      {errors && errors["_general"] && (
+        <div className="mb-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+          {errors["_general"].message}
+        </div>
+      )}
+      
       <div className="overflow-x-auto">
         <div 
           className="grid border-b-2 border-slate-600 mb-2" 

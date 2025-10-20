@@ -14,6 +14,8 @@ import {
 } from "../../redux/actions/estimates";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
+import { fetchPartsList } from "../../redux/actions/partsList.js";
+import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
 import { PATHS } from "../../utils/constants";
 import ReorderModal from "../common/ReorderModal.jsx";
 
@@ -80,6 +82,8 @@ const EstimateLayout = () => {
     dispatch(fetchCabinetTypes());
     dispatch(fetchCabinetAnchors())
     dispatch(fetchTeamCabinetStyles())
+    dispatch(fetchPartsList())
+    dispatch(fetchPartsListAnchors())
   }, []);
 
   useEffect(() => {

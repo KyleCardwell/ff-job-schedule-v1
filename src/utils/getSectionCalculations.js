@@ -8,6 +8,7 @@ import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
   calculate5PieceDoorHours,
   calculate5PieceHardwoodFacePrice,
+  calculateBoxPartsTime,
   calculateBoxSheetsCNC,
   calculateSlabDoorHours,
   calculateSlabHardwoodFacePrice,
@@ -417,7 +418,8 @@ const calculateCabinetTotals = (
   drawerBoxMaterials,
   finishMultiplier,
   cabinetStyles,
-  hardware
+  hardware,
+  partsListAnchors
 ) => {
   const cabinetCost = calculateBoxSheetsCNC(
     section,
@@ -449,13 +451,16 @@ const calculateCabinetTotals = (
     cabinetStyles
   );
 
-  // Calculate cabinet box hours
+  // Calculate cabinet box hours using new parts-based system
   const boxHours = calculateCabinetBoxHours(
-    section,
-    boxMaterials,
-    faceMaterials,
-    finishMultiplier
-  );
+        section,
+        boxMaterials,
+        faceMaterials,
+        finishMultiplier
+      );
+
+  const boxMinutes = calculateBoxPartsTime(section, partsListAnchors)
+  console.log('boxMinutes', boxMinutes)
 
   const faceFramePrices = calculateFaceFramePrices(
     section,
@@ -480,9 +485,9 @@ const calculateCabinetTotals = (
 
   // Combine all totals
   const totals = {
-    price: cabinetCost.totalCost + facePrice,
+    price: cabinetCost.totalCost + facePrice + faceFramePrices.totalCost,
     boxPrice: cabinetCost.totalCost,
-    boxCount,
+    boxCount: boxCount,
     shopHours:
       boxHours.shopHours + faceTotals.shopHours + faceFramePrices.shopHours,
     finishHours:
@@ -507,6 +512,7 @@ const calculateCabinetTotals = (
     slidesTotal: hardwareTotals.slidesTotal,
     woodTotal: faceFramePrices.woodTotal,
     woodCount: faceFramePrices.boardFeet,
+    hoursByService: boxHours.hoursByService || {}, // Detailed service breakdown from new system
   };
 
   return totals;
@@ -529,7 +535,8 @@ export const getSectionCalculations = (
   drawerBoxMaterials,
   finishTypes,
   cabinetStyles,
-  hardware
+  hardware,
+  partsListAnchors = null
 ) => {
   if (!section) {
     return {
@@ -579,7 +586,8 @@ export const getSectionCalculations = (
     drawerBoxMaterials,
     finishMultiplier,
     cabinetStyles,
-    hardware
+    hardware,
+    partsListAnchors
   );
 
   const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
@@ -587,7 +595,7 @@ export const getSectionCalculations = (
   const otherTotal = calculateSimpleItemsTotal(section.other);
 
   const totalPrice =
-    cabinetTotals.price +
+    cabinetTotals.boxPrice +
     cabinetTotals.drawerBoxTotal +
     cabinetTotals.rollOutTotal +
     cabinetTotals.hingesTotal +

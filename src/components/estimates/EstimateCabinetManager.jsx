@@ -337,6 +337,7 @@ const CabinetItemForm = ({
 
       if (formData.face_config) {
         const boxSummary = calculateBoxSummary(
+          formData.item_type,
           formData.width,
           formData.height,
           formData.depth,
@@ -645,7 +646,9 @@ const CabinetItemForm = ({
   };
 
   // Calculate box material summary (sides, top, bottom, back)
+  // Now type-aware to handle different item types
   const calculateBoxSummary = (
+    itemType = "cabinet",
     width,
     height,
     depth,
@@ -666,6 +669,85 @@ const CabinetItemForm = ({
     const d = roundTo16th(Number(depth));
     const qty = Number(quantity);
 
+    // Handle item types that don't need box material
+    // door_front, drawer_front, end_panel - no box parts, just faces
+    if (
+      itemType === "door_front" ||
+      itemType === "drawer_front" ||
+      itemType === "end_panel"
+    ) {
+      let frameParts = {};
+      if (cabinetStyleId !== 13 && itemType === "end_panel") {
+        frameParts = calculateFaceFrames(faceConfig, width, height, true);
+      }
+      return {
+        pieces: { sides: 0, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: 0,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 0,
+        singleBoxPerimeterLength: 0,
+        boxHardware: { hingeCount: 0, drawerSlideCount: 0, pullCount: 0 },
+        shelfDrillHoles: 0,
+        boxPartsList: [],
+        frameParts: frameParts,
+        openingsCount: 0,
+      };
+    }
+
+    // Handle filler - just one side panel (depth × height)
+    if (itemType === "filler") {
+      const sideArea = roundTo16th(h * d);
+      const boxPartsList = [
+        {
+          type: "side",
+          side: "left",
+          width: roundTo16th(d),
+          height: roundTo16th(h),
+          area: sideArea,
+          quantity: 1,
+          finish: finishedLeft || finishedInterior,
+        },
+      ];
+
+      return {
+        pieces: { sides: 1 * qty, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: sideArea,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 1,
+        singleBoxPerimeterLength: roundTo16th(2 * (h + d)),
+        boxHardware: { hingeCount: 0, drawerSlideCount: 0, pullCount: 0 },
+        shelfDrillHoles: 0,
+        boxPartsList,
+        frameParts: {},
+        openingsCount: 0,
+      };
+    }
+
+    // Handle drawer_box and rollout - minimal data, counted separately
+    if (itemType === "drawer_box" || itemType === "rollout") {
+      const boxHardware = countFaceHardware(faceConfig);
+
+      return {
+        pieces: { sides: 0, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: 0,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 0,
+        singleBoxPerimeterLength: 0,
+        boxHardware, // Will have slide count for drawers/rollouts
+        shelfDrillHoles: 0,
+        boxPartsList: [],
+        frameParts: {},
+        openingsCount: 0,
+      };
+    }
+
+    // Full cabinet - continue with existing complex logic
     let sideArea, topBottomArea, backArea;
     let sidePerimeterLength, topBottomPerimeterLength, backPerimeterLength;
     let boxPerimeterLength, boxPartsCount;

@@ -26,6 +26,10 @@ const EstimateSectionPrice = ({ section }) => {
 
   const hardware = useSelector((state) => state.hardware);
 
+  const partsListAnchors = useSelector(
+    (state) => state.partsListAnchors?.itemsByPartsList || []
+  );
+
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
     return getSectionCalculations(
@@ -35,7 +39,8 @@ const EstimateSectionPrice = ({ section }) => {
       drawerBoxMaterials,
       finishTypes,
       cabinetStyles,
-      hardware
+      hardware,
+      partsListAnchors
     );
   }, [
     section,
@@ -45,6 +50,7 @@ const EstimateSectionPrice = ({ section }) => {
     finishTypes,
     cabinetStyles,
     hardware,
+    partsListAnchors
   ]);
 
   // Format number as currency

@@ -93,7 +93,7 @@ const AdminDashboard = () => {
     },
     {
       id: "cabinet-types",
-      label: "Cabinet Types",
+      label: "Cabinet Default Dimensions",
       path: PATHS.MANAGE_CABINET_TYPES,
       component: CabinetTypeSettings,
       props: {},
@@ -103,7 +103,7 @@ const AdminDashboard = () => {
     },
     {
       id: "cabinet-styles",
-      label: "Cabinet Styles",
+      label: "Cabinet Style Reveals",
       path: PATHS.MANAGE_CABINET_STYLES,
       component: CabinetStyleSettings,
       props: {},
@@ -113,7 +113,7 @@ const AdminDashboard = () => {
     },
     {
       id: "parts-list",
-      label: "Parts List",
+      label: "Parts Time",
       path: PATHS.MANAGE_PARTS_LIST,
       component: PartsListSettings,
       props: {},

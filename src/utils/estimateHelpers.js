@@ -1,6 +1,225 @@
-import { MaxRectsPacker } from 'maxrects-packer';
+import { MaxRectsPacker } from "maxrects-packer";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
+
+/**
+ * Map box part types to parts_list IDs based on type and finish status
+ * These IDs are fixed and consistent across all teams
+ */
+const PARTS_LIST_MAPPING = {
+  side_unfinished: 1,
+  side_finished: 6,
+  topBottom_unfinished: 2,
+  topBottom_finished: 7,
+  back_unfinished: 3,
+  back_finished: 8,
+  partition_unfinished: 4,
+  partition_finished: 9,
+  shelf_unfinished: 5,
+  shelf_finished: 10,
+};
+
+/**
+ * Get parts_list_id for a box part based on its type and finish status
+ */
+const getPartsListId = (partType, isFinished) => {
+  const key = `${partType}_${isFinished ? "finished" : "unfinished"}`;
+  return PARTS_LIST_MAPPING[key];
+};
+
+/**
+ * Generic interpolation function for calculating time based on area
+ * @param {Array} anchors - Array of anchor objects with dimensions and services
+ * @param {number} targetArea - The area to interpolate for (width × height)
+ * @param {number} teamServiceId - The service ID to get time for
+ * @returns {number} - Interpolated time in minutes
+ */
+export const interpolateTimeByArea = (anchors, targetArea, teamServiceId) => {
+  if (!anchors || anchors.length === 0) {
+    return 0;
+  }
+
+  // Build array of {area, minutes} for this service, filtering out missing services
+  const dataPoints = anchors
+    .map((anchor) => {
+      const service = anchor.services.find(
+        (s) => s.team_service_id === teamServiceId
+      );
+      if (!service) return null;
+
+      const area = anchor.width * anchor.height;
+      return {
+        area,
+        minutes: service.minutes || 0,
+      };
+    })
+    .filter(Boolean);
+
+  if (dataPoints.length === 0) {
+    return 0;
+  }
+
+  // Sort by area for interpolation
+  dataPoints.sort((a, b) => a.area - b.area);
+
+  // If only one data point, return its value
+  if (dataPoints.length === 1) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is below minimum, return minimum value
+  if (targetArea <= dataPoints[0].area) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is above maximum, return maximum value
+  // if (targetArea >= dataPoints[dataPoints.length - 1].area) {
+  //   return dataPoints[dataPoints.length - 1].minutes;
+  // }
+
+  // Find the two points to interpolate between
+  for (let i = 0; i < dataPoints.length - 1; i++) {
+    const lower = dataPoints[i];
+    const upper = dataPoints[i + 1];
+
+    if (targetArea >= lower.area && targetArea <= upper.area) {
+      // Avoid division by zero
+      if (upper.area - lower.area === 0) {
+        return lower.minutes;
+      }
+
+      // Linear interpolation: minutes = m1 + (m2 - m1) * (area - a1) / (a2 - a1)
+      const ratio = (targetArea - lower.area) / (upper.area - lower.area);
+      const interpolatedMinutes =
+        lower.minutes + ratio * (upper.minutes - lower.minutes);
+
+      return roundToHundredth(interpolatedMinutes);
+    }
+  }
+
+  // Fallback (shouldn't reach here with proper sorting)
+  return dataPoints[dataPoints.length - 1].minutes;
+};
+
+/**
+ * Calculate total hours by service for a list of box parts (single cabinet)
+ * @param {Array} boxPartsList - Array of box part objects from calculateBoxSummary
+ * @param {Object} partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @returns {Object} - { serviceId: hours }
+ */
+const calculatePartsTimeForCabinet = (boxPartsList, partsListAnchors) => {
+  if (!boxPartsList || boxPartsList.length === 0 || !partsListAnchors) {
+    return {};
+  }
+
+  // Collect all unique service IDs across all parts
+  const allServiceIds = new Set();
+  Object.values(partsListAnchors).forEach((anchors) => {
+    anchors.forEach((anchor) => {
+      anchor.services.forEach((service) => {
+        allServiceIds.add(service.team_service_id);
+      });
+    });
+  });
+
+  const hoursByService = {};
+
+  // Initialize all services to 0
+  allServiceIds.forEach((serviceId) => {
+    hoursByService[serviceId] = 0;
+  });
+
+  // Process each part
+  boxPartsList.forEach((part) => {
+    const partsListId = getPartsListId(part.type, part.finish);
+
+    if (!partsListId) {
+      return;
+    }
+
+    const anchors = partsListAnchors[partsListId];
+
+    if (!anchors || anchors.length === 0) {
+      // No anchors for this part type - skip it
+      return;
+    }
+
+    const area = part.width * part.height;
+    const quantity = part.quantity || 1;
+
+    // Calculate time for each service
+    allServiceIds.forEach((serviceId) => {
+      const minutesEach = interpolateTimeByArea(anchors, area, serviceId);
+      const totalMinutes = minutesEach * quantity;
+      hoursByService[serviceId] += totalMinutes;
+    });
+  });
+
+  // Convert minutes to hours for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      hoursByService[serviceId] / 60
+    );
+  });
+
+  return hoursByService;
+};
+
+/**
+ * Calculate total hours by service for all cabinets in a section
+ * This replaces the old getCabinetHours function
+ * @param {Object} section - Section object with cabinets array
+ * @param {Object} partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @returns {Object} - { shopHours, finishHours, installHours, hoursByService }
+ */
+export const calculateBoxPartsTime = (section, partsListAnchors) => {
+  const totals = {
+    shopHours: 0,
+    finishHours: 0,
+    installHours: 0,
+    hoursByService: {}, // Detailed breakdown by service
+  };
+
+  if (!section.cabinets || !Array.isArray(section.cabinets)) {
+    return totals;
+  }
+
+  if (!partsListAnchors) {
+    return totals;
+  }
+
+  section.cabinets.forEach((cabinet) => {
+    if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
+
+    const quantity = Number(cabinet.quantity) || 1;
+    const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
+
+    // Calculate hours for this cabinet's parts
+    const cabinetHours = calculatePartsTimeForCabinet(
+      boxPartsList,
+      partsListAnchors
+    );
+
+    // Aggregate by service
+    Object.entries(cabinetHours).forEach(([serviceId, hours]) => {
+      if (!totals.hoursByService[serviceId]) {
+        totals.hoursByService[serviceId] = 0;
+      }
+      totals.hoursByService[serviceId] += hours * quantity;
+    });
+
+    // For backward compatibility, also aggregate into shop/finish/install
+    // You'll need to map service IDs to these categories based on your service types
+    // For now, adding all to shopHours as placeholder
+    const totalHoursForCabinet = Object.values(cabinetHours).reduce(
+      (sum, h) => sum + h,
+      0
+    );
+    totals.shopHours += totalHoursForCabinet * quantity;
+  });
+
+  return totals;
+};
 
 export const calculateBoardFeetFor5PieceDoor = (
   doorWidth,
@@ -400,7 +619,6 @@ export const calculateBoxSheetsCNC = (
     kerfWidth = 0.125, // Saw blade kerf width in inches
   } = {}
 ) => {
-  
   if (
     !section ||
     !section.cabinets ||
@@ -421,18 +639,14 @@ export const calculateBoxSheetsCNC = (
 
   // Group cabinets by material and collect all parts
   const materialGroups = {};
-  
+
   section.cabinets.forEach((cab) => {
     if (!cab.face_config?.boxSummary?.boxPartsList) return;
 
     const qty = Number(cab.quantity) || 1;
     const { boxSummary } = cab.face_config;
-    const {
-      boxPartsList,
-      bandingLength,
-      boxHardware,
-      shelfDrillHoles,
-    } = boxSummary;
+    const { boxPartsList, bandingLength, boxHardware, shelfDrillHoles } =
+      boxSummary;
 
     // Determine material for box parts
     const selectedBoxMaterial = cab.finished_interior
@@ -440,7 +654,7 @@ export const calculateBoxSheetsCNC = (
       : boxMaterials.find((mat) => mat.id === section.box_mat);
 
     const boxMaterialKey = cab.finished_interior ? "face" : "box";
-    
+
     if (!materialGroups[boxMaterialKey]) {
       materialGroups[boxMaterialKey] = {
         material: selectedBoxMaterial,
@@ -460,20 +674,23 @@ export const calculateBoxSheetsCNC = (
     boxPartsList.forEach((part) => {
       // Determine base material key based on finish boolean
       const baseMaterialKey = part.finish ? "face" : boxMaterialKey;
-      
+
       // Get the appropriate material for this part
-      const partMaterial = part.finish 
+      const partMaterial = part.finish
         ? faceMaterials.find((mat) => mat.id === section.face_mat)
         : selectedBoxMaterial;
-      
+
       // Check if part is oversized (exceeds standard sheet dimensions)
       const partStandardWidth = partMaterial?.width || 49;
       const partStandardHeight = partMaterial?.height || 97;
-      const isOversized = part.width > partStandardWidth || part.height > partStandardHeight;
-      
+      const isOversized =
+        part.width > partStandardWidth || part.height > partStandardHeight;
+
       // Determine the appropriate material key
-      const materialKey = isOversized ? `${baseMaterialKey}-oversize` : baseMaterialKey;
-      
+      const materialKey = isOversized
+        ? `${baseMaterialKey}-oversize`
+        : baseMaterialKey;
+
       // Initialize material group if needed (for face material or oversized)
       if (!materialGroups[materialKey]) {
         if (isOversized) {
@@ -509,7 +726,7 @@ export const calculateBoxSheetsCNC = (
           };
         }
       }
-      
+
       // Add parts (multiplied by quantity)
       for (let i = 0; i < part.quantity * qty; i++) {
         materialGroups[materialKey].parts.push({
@@ -519,7 +736,7 @@ export const calculateBoxSheetsCNC = (
           type: part.type,
           cabinetId: cab.id || cab.temp_id,
         });
-        
+
         // Update oversized sheet dimensions to accommodate all oversized parts
         if (isOversized) {
           materialGroups[materialKey].material.width = Math.max(
@@ -537,23 +754,41 @@ export const calculateBoxSheetsCNC = (
     // Accumulate totals (only to regular group, not oversized)
     // Oversized groups are just for accurate sheet pricing/counts
     materialGroups[boxMaterialKey].totals.bandingLength += bandingLength * qty;
-    materialGroups[boxMaterialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
-    materialGroups[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
-    materialGroups[boxMaterialKey].totals.shelfDrillHoles += (shelfDrillHoles || 0) * qty;
-    
+    materialGroups[boxMaterialKey].totals.hinges +=
+      (boxHardware?.totalHinges || 0) * qty;
+    materialGroups[boxMaterialKey].totals.slides +=
+      (boxHardware?.totalSlides || 0) * qty;
+    materialGroups[boxMaterialKey].totals.shelfDrillHoles +=
+      (shelfDrillHoles || 0) * qty;
+
     // Add cabinet to all material groups it uses
     materialGroups[boxMaterialKey].cabinets.push(cab);
-    
+
     // Add cabinet to oversized box group if it exists
-    if (materialGroups[`${boxMaterialKey}-oversize`] && !materialGroups[`${boxMaterialKey}-oversize`].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+    if (
+      materialGroups[`${boxMaterialKey}-oversize`] &&
+      !materialGroups[`${boxMaterialKey}-oversize`].cabinets.find(
+        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
+      )
+    ) {
       materialGroups[`${boxMaterialKey}-oversize`].cabinets.push(cab);
     }
-    
+
     // Add cabinet to face material groups if they exist (for finished parts)
-    if (materialGroups["face"] && !materialGroups["face"].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+    if (
+      materialGroups["face"] &&
+      !materialGroups["face"].cabinets.find(
+        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
+      )
+    ) {
       materialGroups["face"].cabinets.push(cab);
     }
-    if (materialGroups["face-oversize"] && !materialGroups["face-oversize"].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+    if (
+      materialGroups["face-oversize"] &&
+      !materialGroups["face-oversize"].cabinets.find(
+        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
+      )
+    ) {
       materialGroups["face-oversize"].cabinets.push(cab);
     }
   });
@@ -567,31 +802,32 @@ export const calculateBoxSheetsCNC = (
       const sheetWidth = material.width || 48;
       const sheetHeight = material.height || 96;
       const sheetArea = sheetWidth * sheetHeight;
-      
+
       // Calculate oversized sheet pricing if this is an oversized material group
       let effectiveSheetPrice = material.sheet_price;
       if (material.isOversized) {
         // Find the base material to get standard pricing
-        const baseMaterialKey = materialKey.replace('-oversize', '');
-        const baseMaterial = baseMaterialKey === 'face' 
-          ? faceMaterials.find((mat) => mat.id === section.face_mat)
-          : boxMaterials.find((mat) => mat.id === section.box_mat);
-        
+        const baseMaterialKey = materialKey.replace("-oversize", "");
+        const baseMaterial =
+          baseMaterialKey === "face"
+            ? faceMaterials.find((mat) => mat.id === section.face_mat)
+            : boxMaterials.find((mat) => mat.id === section.box_mat);
+
         if (baseMaterial) {
           const standardSheetWidth = baseMaterial.width || 49;
           const standardSheetHeight = baseMaterial.height || 97;
           const standardSheetArea = standardSheetWidth * standardSheetHeight;
-          
+
           // Calculate oversized sheet price based on area ratio
           // Price per square inch from standard sheet
           const pricePerSqInch = baseMaterial.sheet_price / standardSheetArea;
 
           const oversizeHeight = Math.max(sheetHeight, 120);
           const oversizeSheetArea = oversizeHeight * standardSheetWidth;
-          
+
           // Apply oversized sheet price with area-based calculation
           effectiveSheetPrice = oversizeSheetArea * pricePerSqInch;
-          
+
           // Add a premium for oversized sheets (e.g., 15% surcharge for special handling)
           const oversizePremium = 1.5;
           effectiveSheetPrice *= oversizePremium;
@@ -600,7 +836,7 @@ export const calculateBoxSheetsCNC = (
 
       // Calculate total area of all parts
       const totalPartsArea = parts.reduce((sum, part) => sum + part.area, 0);
-      
+
       // Prepare parts for packing (add kerf spacing to each part)
       const packerParts = parts.map((part, index) => ({
         width: part.width + kerfWidth,
@@ -638,14 +874,15 @@ export const calculateBoxSheetsCNC = (
 
       // Calculate actual packing efficiency
       const totalSheetArea = sheetsUsed * sheetArea;
-      const packingEfficiency = totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
+      const packingEfficiency =
+        totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
 
       // Calculate actual kerf waste based on packed parts
       let totalKerfWaste = 0;
       packer.bins.forEach((bin) => {
         bin.rects.forEach((rect) => {
           // Kerf waste is the difference between packed size and original size
-          const kerfArea = (rect.width * rect.height) - rect.data.area;
+          const kerfArea = rect.width * rect.height - rect.data.area;
           totalKerfWaste += kerfArea;
         });
       });
@@ -653,13 +890,13 @@ export const calculateBoxSheetsCNC = (
       // Calculate costs
       const sheetCost = roundedSheets * effectiveSheetPrice;
       const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
-      
+
       // Calculate total perimeter for cutting cost
       const totalPerimeter = parts.reduce((sum, part) => {
         return sum + 2 * (part.width + part.height);
       }, 0);
       const cutCost = (totalPerimeter / 12) * cutPricePerFoot;
-      
+
       const bandingCost = (totals.bandingLength / 12) * edgeBandPricePerFoot;
       const hingeBoreCost = totals.hinges * drillCostPerHingeBore;
       const slideCost = 2 * totals.slides * drillCostPerSlide;
@@ -699,7 +936,11 @@ export const calculateBoxSheetsCNC = (
           sheetNumber: index + 1,
           partsCount: bin.rects.length,
           efficiency: parseFloat(
-            ((bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) / sheetArea) * 100).toFixed(1)
+            (
+              (bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) /
+                sheetArea) *
+              100
+            ).toFixed(1)
           ),
           // Optional: include layout data for visualization
           layout: bin.rects.map((rect) => ({
