@@ -82,8 +82,8 @@ const ScrollableIndex = ({
   if (!items || items.length === 0) return null;
 
   return (
-    <div className={`w-56 flex-none ${className}`}>
-      <div className="sticky top-20 bg-slate-700 rounded-lg p-3 shadow-lg max-h-[calc(100vh-200px)] overflow-y-auto">
+    <div className={`w-64 flex-none ${className}`}>
+      <div className="sticky top-8 p-3 max-h-[calc(100vh-200px)] overflow-y-auto border-r border-slate-200">
         <h3 className="text-xs font-semibold text-slate-300 uppercase mb-3 px-2">
           {title}
         </h3>

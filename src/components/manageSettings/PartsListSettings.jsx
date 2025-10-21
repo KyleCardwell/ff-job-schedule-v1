@@ -20,8 +20,13 @@ import PartsListAnchorsTable from "./PartsListAnchorsTable.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const PartsListSettings = forwardRef((props, ref) => {
+  const { maxWidthClass } = props;
   const dispatch = useDispatch();
-  const { items: partsList, loading, error } = useSelector((state) => state.partsList);
+  const {
+    items: partsList,
+    loading,
+    error,
+  } = useSelector((state) => state.partsList);
   const { itemsByPartsList: anchorsByPartsList } = useSelector(
     (state) => state.partsListAnchors
   ) || { itemsByPartsList: {} };
@@ -32,7 +37,7 @@ const PartsListSettings = forwardRef((props, ref) => {
   const [originalAnchors, setOriginalAnchors] = useState({});
   const [anchorErrors, setAnchorErrors] = useState({});
   const [highlightedPartId, setHighlightedPartId] = useState(null);
-  
+
   // Refs for scrolling to sections
   const sectionRefs = useRef({});
   const scrollContainerRef = useRef(null);
@@ -52,10 +57,10 @@ const PartsListSettings = forwardRef((props, ref) => {
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current);
     }
-    
+
     // Set highlighted part
     setHighlightedPartId(partId);
-    
+
     // Clear highlight after 2 seconds
     highlightTimeoutRef.current = setTimeout(() => {
       setHighlightedPartId(null);
@@ -166,7 +171,9 @@ const PartsListSettings = forwardRef((props, ref) => {
         anchor.services?.map((s) => ({
           ...s,
           minutes:
-            s.minutes === "" || s.minutes === null ? 0 : parseInt(s.minutes) || 0,
+            s.minutes === "" || s.minutes === null
+              ? 0
+              : parseInt(s.minutes) || 0,
         })) || [],
     };
   };
@@ -236,60 +243,8 @@ const PartsListSettings = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className="flex flex-col h-full pb-10 relative">
-      
-      <div className="sticky top-0 z-10 bg-slate-800 py-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">
-            Manage Parts List Anchors - Time (minutes)
-          </h2>
-        </div>
-      </div>
-
-      <div className="flex flex-1 gap-4">
-        {/* Main Content */}
-        <div 
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)] pr-4"
-        >
-          {loading && <div className="p-4 text-white">Loading...</div>}
-          {error && <div className="p-4 text-red-500">Error: {error}</div>}
-          {Object.keys(anchorErrors).length > 0 && (
-            <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
-              Please fill out all required fields.
-            </div>
-          )}
-          {!loading && !error && (
-            <>
-              {partsList
-                // .sort((a, b) => a.name.localeCompare(b.name))
-                .map((part) => (
-                  <div
-                    key={part.id}
-                    ref={(el) => (sectionRefs.current[part.id] = el)}
-                    data-section-id={part.id}
-                    className={`transition-all duration-500 ${
-                      highlightedPartId === part.id
-                        ? 'ring-2 ring-teal-400 rounded-lg bg-teal-900/20'
-                        : ''
-                    }`}
-                  >
-                    <SettingsSection title={part.name}>
-                      <PartsListAnchorsTable
-                        partsListId={part.id}
-                        anchors={localAnchors[part.id] || []}
-                        errors={anchorErrors[part.id] || {}}
-                        onAnchorsChange={(anchors) =>
-                          handleAnchorChange(part.id, anchors)
-                        }
-                      />
-                    </SettingsSection>
-                  </div>
-                ))}
-            </>
-          )}
-        </div>
-
+    <div className="flex h-full pb-10 relative">
+      <div className="flex">
         {/* Right Side Index Navigation */}
         {!loading && !error && partsList.length > 0 && (
           <ScrollableIndex
@@ -304,6 +259,61 @@ const PartsListSettings = forwardRef((props, ref) => {
             onItemClick={handleIndexItemClick}
           />
         )}
+      </div>
+
+      <div className="flex-1 flex flex-col items-center">
+        <div className={`flex-1 ${maxWidthClass}`}>
+          <div className={`flex sticky top-0 z-10 bg-slate-800 py-4`}>
+            <h2 className="align-self-start text-lg font-bold text-slate-200">
+              Manage Parts List Anchors - Time (minutes)
+            </h2>
+          </div>
+
+          <div className={`flex flex-1 gap-4`}>
+            {/* Main Content */}
+            <div
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)] pr-4 -ml-2 pl-2"
+            >
+              {loading && <div className="p-4 text-white">Loading...</div>}
+              {error && <div className="p-4 text-red-500">Error: {error}</div>}
+              {Object.keys(anchorErrors).length > 0 && (
+                <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
+                  Please fill out all required fields.
+                </div>
+              )}
+              {!loading && !error && (
+                <>
+                  {partsList
+                    // .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((part) => (
+                      <div
+                        key={part.id}
+                        ref={(el) => (sectionRefs.current[part.id] = el)}
+                        data-section-id={part.id}
+                        className={`transition-all duration-500 p-0.5 my-1 ${
+                          highlightedPartId === part.id
+                            ? "ring-2 ring-teal-400 rounded-lg bg-teal-900/20"
+                            : ""
+                        }`}
+                      >
+                        <SettingsSection title={part.name}>
+                          <PartsListAnchorsTable
+                            partsListId={part.id}
+                            anchors={localAnchors[part.id] || []}
+                            errors={anchorErrors[part.id] || {}}
+                            onAnchorsChange={(anchors) =>
+                              handleAnchorChange(part.id, anchors)
+                            }
+                          />
+                        </SettingsSection>
+                      </div>
+                    ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ import EmployeeSettingsCard from "./EmployeeSettingsCard.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const EmployeeSettings = forwardRef((props, ref) => {
-  const { visible } = props;
+  const { visible, maxWidthClass } = props;
 
   const { chartStartDate, dayWidth } = useSelector((state) => state.chartData);
 
@@ -344,7 +344,8 @@ const EmployeeSettings = forwardRef((props, ref) => {
               existingEmployee.time_off,
               localEmployee.time_off
             ) ||
-            existingEmployee.team_service_id !== localEmployee.team_service_id ||
+            existingEmployee.team_service_id !==
+              localEmployee.team_service_id ||
             existingEmployee.employee_rate !== localEmployee.employee_rate ||
             existingEmployee.can_schedule !== localEmployee.can_schedule;
 
@@ -510,84 +511,96 @@ const EmployeeSettings = forwardRef((props, ref) => {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Fixed header */}
-      <div className="sticky top-0 z-10 bg-slate-800 py-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">Manage Employees</h2>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={showRates}
-                onChange={setShowRates}
-                className={`${
-                  showRates ? "bg-blue-600" : "bg-slate-600"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
-              >
-                <span
+    <div className="flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        {/* Fixed header */}
+        <div className="sticky top-0 z-10 bg-slate-800 py-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-200">
+              Manage Employees
+            </h2>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={showRates}
+                  onChange={setShowRates}
                   className={`${
-                    showRates ? "translate-x-6" : "translate-x-1"
-                  } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                />
-              </Switch>
-              <span className="text-sm text-slate-200">Show Hourly Rates</span>
+                    showRates ? "bg-blue-600" : "bg-slate-600"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+                >
+                  <span
+                    className={`${
+                      showRates ? "translate-x-6" : "translate-x-1"
+                    } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                  />
+                </Switch>
+                <span className="text-sm text-slate-200">
+                  Show Hourly Rates
+                </span>
+              </div>
+              <button
+                onClick={handleAddEmployee}
+                className="px-2 py-2 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
+              >
+                Add Employee
+              </button>
             </div>
-            <button
-              onClick={handleAddEmployee}
-              className="px-2 py-2 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
-            >
-              Add Employee
-            </button>
           </div>
         </div>
-      </div>
 
-      {/* Scrollable content area */}
-      <div
-        className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]"
-        ref={scrollableRef}
-      >
-        <SettingsSection key="employees" title="" error={saveError}>
-          {localEmployees.map((employee, index) => (
-            <EmployeeSettingsCard
-              key={employee.employee_id || `employee-${index}`}
-              employee={employee}
-              services={services}
-              onNameChange={(value) =>
-                handleNameChange(employee.employee_id, value)
-              }
-              onColorChange={(value) =>
-                handleColorChange(employee.employee_id, value)
-              }
-              onCanScheduleChange={(value) =>
-                handleCanScheduleChange(employee.employee_id, value)
-              }
-              onServiceChange={(value) =>
-                handleServiceChange(employee.employee_id, value)
-              }
-              onEmployeeRateChange={(value) =>
-                handleEmployeeRateChange(employee.employee_id, value)
-              }
-              onAddTimeOff={() => handleAddTimeOff(employee.employee_id)}
-              onTimeOffChange={(index, field, value) =>
-                handleTimeOffChange(employee.employee_id, index, field, value)
-              }
-              onRemoveTimeOff={(index) =>
-                handleRemoveTimeOff(employee.employee_id, index)
-              }
-              onDelete={() => handleMarkForDeletion(employee.employee_id)}
-              onMarkForDeletion={() =>
-                handleMarkForDeletion(employee.employee_id)
-              }
-              showRates={showRates}
-              errors={errors[employee.employee_id] || {}}
-              timeOffVisible={timeOffVisibility[employee.employee_id] || false}
-              onToggleTimeOff={() => handleToggleTimeOff(employee.employee_id)}
-              defaultEmployee={index === 0}
-              inputRef={(el) => (inputRefs.current[employee.employee_id] = el)}
-            />
-          ))}
-        </SettingsSection>
+        {/* Scrollable content area */}
+        <div
+          className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]"
+          ref={scrollableRef}
+        >
+          <SettingsSection key="employees" title="" error={saveError}>
+            {localEmployees.map((employee, index) => (
+              <EmployeeSettingsCard
+                key={employee.employee_id || `employee-${index}`}
+                employee={employee}
+                services={services}
+                onNameChange={(value) =>
+                  handleNameChange(employee.employee_id, value)
+                }
+                onColorChange={(value) =>
+                  handleColorChange(employee.employee_id, value)
+                }
+                onCanScheduleChange={(value) =>
+                  handleCanScheduleChange(employee.employee_id, value)
+                }
+                onServiceChange={(value) =>
+                  handleServiceChange(employee.employee_id, value)
+                }
+                onEmployeeRateChange={(value) =>
+                  handleEmployeeRateChange(employee.employee_id, value)
+                }
+                onAddTimeOff={() => handleAddTimeOff(employee.employee_id)}
+                onTimeOffChange={(index, field, value) =>
+                  handleTimeOffChange(employee.employee_id, index, field, value)
+                }
+                onRemoveTimeOff={(index) =>
+                  handleRemoveTimeOff(employee.employee_id, index)
+                }
+                onDelete={() => handleMarkForDeletion(employee.employee_id)}
+                onMarkForDeletion={() =>
+                  handleMarkForDeletion(employee.employee_id)
+                }
+                showRates={showRates}
+                errors={errors[employee.employee_id] || {}}
+                timeOffVisible={
+                  timeOffVisibility[employee.employee_id] || false
+                }
+                onToggleTimeOff={() =>
+                  handleToggleTimeOff(employee.employee_id)
+                }
+                defaultEmployee={index === 0}
+                inputRef={(el) =>
+                  (inputRefs.current[employee.employee_id] = el)
+                }
+              />
+            ))}
+          </SettingsSection>
+        </div>
       </div>
       {schedulingError && (
         <ErrorModal

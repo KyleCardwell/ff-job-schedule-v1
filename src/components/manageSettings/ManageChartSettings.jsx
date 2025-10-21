@@ -11,7 +11,7 @@ import SettingsSection from "./SettingsSection.jsx";
 
 const ManageChartSettings = forwardRef((props, ref) => {
   const dispatch = useDispatch();
-  const { onDatabaseError } = props;
+  const { onDatabaseError, maxWidthClass } = props;
 
   const chartConfig = useSelector((state) => state.chartConfig);
   const [settings, setSettings] = useState({});
@@ -21,7 +21,8 @@ const ManageChartSettings = forwardRef((props, ref) => {
 
   const validateSettings = () => {
     const newErrors = {};
-    const { nextTaskNumber, minTaskNumber, maxTaskNumber, workdayHours } = settings;
+    const { nextTaskNumber, minTaskNumber, maxTaskNumber, workdayHours } =
+      settings;
 
     if (!workdayHours || workdayHours < 1 || workdayHours > 24) {
       newErrors.workdayHours = "Workday hours must be between 1 and 24";
@@ -178,7 +179,7 @@ const ManageChartSettings = forwardRef((props, ref) => {
       company_name: chartConfig.company_name,
       workdayHours: chartConfig.workday_hours || 8,
     });
-    
+
     setEstimateSections(
       (chartConfig.estimate_sections || []).map((section) => {
         if (typeof section === "string") {
@@ -190,90 +191,98 @@ const ManageChartSettings = forwardRef((props, ref) => {
   }, [chartConfig]);
 
   return (
-    <div className="mt-6">
-      <SettingsSection 
-        title="Company Name" 
-        error={errors.company_name}
-      >
-        <SettingsItem
-          type="text"
-          label="Company Name"
-          value={settings.company_name || ""}
-          name="company_name"
-          onChange={handleInputChange}
-        />
-      </SettingsSection>
+    <div className="mt-4 flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        <SettingsSection title="Company Name" error={errors.company_name}>
+          <SettingsItem
+            type="text"
+            label="Company Name"
+            value={settings.company_name || ""}
+            name="company_name"
+            onChange={handleInputChange}
+          />
+        </SettingsSection>
 
-      <SettingsSection 
-        title="Workday Hours" 
-        error={errors.workdayHours}
-      >
-        <SettingsItem
-          type="number"
-          label="Hours per workday"
-          value={String(settings.workdayHours || "")}
-          name="workdayHours"
-          onChange={handleInputChange}
-          min="1"
-          max="24"
-        />
-      </SettingsSection>
+        <SettingsSection title="Workday Hours" error={errors.workdayHours}>
+          <SettingsItem
+            type="number"
+            label="Hours per workday"
+            value={String(settings.workdayHours || "")}
+            name="workdayHours"
+            onChange={handleInputChange}
+            min="1"
+            max="24"
+          />
+        </SettingsSection>
 
-      <SettingsSection 
-        title="Task Numbers" 
-        error={[
-          errors.nextTaskNumber,
-          errors.minTaskNumber,
-          errors.maxTaskNumber
-        ].filter(Boolean).join(". ")}
-      >
-        <SettingsItem
-          type="text"
-          label="Next Task Number"
-          value={String(settings.nextTaskNumber || "")}
-          name="nextTaskNumber"
-          onChange={handleInputChange}
-        />
-        <SettingsItem
-          type="text"
-          label="Min Task Number"
-          value={String(settings.minTaskNumber || "")}
-          name="minTaskNumber"
-          onChange={handleInputChange}
-        />
-        <SettingsItem
-          type="text"
-          label="Max Task Number"
-          value={String(settings.maxTaskNumber || "")}
-          name="maxTaskNumber"
-          onChange={handleInputChange}
-        />
-      </SettingsSection>
+        <SettingsSection
+          title="Task Numbers"
+          error={[
+            errors.nextTaskNumber,
+            errors.minTaskNumber,
+            errors.maxTaskNumber,
+          ]
+            .filter(Boolean)
+            .join(". ")}
+        >
+          <SettingsItem
+            type="text"
+            label="Next Task Number"
+            value={String(settings.nextTaskNumber || "")}
+            name="nextTaskNumber"
+            onChange={handleInputChange}
+          />
+          <SettingsItem
+            type="text"
+            label="Min Task Number"
+            value={String(settings.minTaskNumber || "")}
+            name="minTaskNumber"
+            onChange={handleInputChange}
+          />
+          <SettingsItem
+            type="text"
+            label="Max Task Number"
+            value={String(settings.maxTaskNumber || "")}
+            name="maxTaskNumber"
+            onChange={handleInputChange}
+          />
+        </SettingsSection>
 
-      <SettingsSection title="Estimate Sections" error={errors.estimateSections}>
-        <SettingsList
-          items={estimateSections}
-          columns={[
-            { field: 'name', label: 'Section Name', width: '320px', placeholder: 'Enter section name' }
-          ]}
-          onDelete={handleRemoveEstimateSection}
-          onChange={(id, field, value) => handleEstimateSectionChange(id, value)}
-          onAdd={handleAddEstimateSection}
-          addLabel="Add Estimate Section"
-        />
-      </SettingsSection>
-      {errors.save && (
-        <div className="text-red-500 text-sm mt-2">{errors.save}</div>
-      )}
+        <SettingsSection
+          title="Estimate Sections"
+          error={errors.estimateSections}
+        >
+          <SettingsList
+            items={estimateSections}
+            columns={[
+              {
+                field: "name",
+                label: "Section Name",
+                width: "320px",
+                placeholder: "Enter section name",
+              },
+            ]}
+            onDelete={handleRemoveEstimateSection}
+            onChange={(id, field, value) =>
+              handleEstimateSectionChange(id, value)
+            }
+            onAdd={handleAddEstimateSection}
+            addLabel="Add Estimate Section"
+          />
+        </SettingsSection>
+        {errors.save && (
+          <div className="text-red-500 text-sm mt-2">{errors.save}</div>
+        )}
+      </div>
     </div>
   );
 });
 
-ManageChartSettings.displayName = 'ManageChartSettings';
+ManageChartSettings.displayName = "ManageChartSettings";
 
 ManageChartSettings.propTypes = {
   visible: PropTypes.bool,
   onDatabaseError: PropTypes.func,
-}
+};
 
 export default ManageChartSettings;

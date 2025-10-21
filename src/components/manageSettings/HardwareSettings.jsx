@@ -23,6 +23,7 @@ import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const HardwareSettings = forwardRef((props, ref) => {
+  const { maxWidthClass } = props;
   const dispatch = useDispatch();
   const { hinges, pulls, slides, loading, error } = useSelector(
     (state) => state.hardware
@@ -66,7 +67,7 @@ const HardwareSettings = forwardRef((props, ref) => {
     setLocalHinges((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
-    
+
     // Clear error for this field if it exists
     setValidationErrors((prev) => {
       const itemKey = `hinge-${id}`;
@@ -122,7 +123,7 @@ const HardwareSettings = forwardRef((props, ref) => {
     setLocalPulls((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
-    
+
     // Clear error for this field if it exists
     setValidationErrors((prev) => {
       const itemKey = `pull-${id}`;
@@ -178,7 +179,7 @@ const HardwareSettings = forwardRef((props, ref) => {
     setLocalSlides((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
-    
+
     // Clear error for this field if it exists
     setValidationErrors((prev) => {
       const itemKey = `slide-${id}`;
@@ -243,7 +244,11 @@ const HardwareSettings = forwardRef((props, ref) => {
       if (item.price === "" || item.price === null || item.price < 0) {
         itemErrors.price = "Valid price is required (must be >= 0)";
       }
-      if (item.actual_cost === "" || item.actual_cost === null || item.actual_cost < 0) {
+      if (
+        item.actual_cost === "" ||
+        item.actual_cost === null ||
+        item.actual_cost < 0
+      ) {
         itemErrors.actual_cost = "Valid actual cost is required (must be >= 0)";
       }
 
@@ -263,7 +268,11 @@ const HardwareSettings = forwardRef((props, ref) => {
       if (item.price === "" || item.price === null || item.price < 0) {
         itemErrors.price = "Valid price is required (must be >= 0)";
       }
-      if (item.actual_cost === "" || item.actual_cost === null || item.actual_cost < 0) {
+      if (
+        item.actual_cost === "" ||
+        item.actual_cost === null ||
+        item.actual_cost < 0
+      ) {
         itemErrors.actual_cost = "Valid actual cost is required (must be >= 0)";
       }
 
@@ -283,7 +292,11 @@ const HardwareSettings = forwardRef((props, ref) => {
       if (item.price === "" || item.price === null || item.price < 0) {
         itemErrors.price = "Valid price is required (must be >= 0)";
       }
-      if (item.actual_cost === "" || item.actual_cost === null || item.actual_cost < 0) {
+      if (
+        item.actual_cost === "" ||
+        item.actual_cost === null ||
+        item.actual_cost < 0
+      ) {
         itemErrors.actual_cost = "Valid actual cost is required (must be >= 0)";
       }
 
@@ -307,10 +320,8 @@ const HardwareSettings = forwardRef((props, ref) => {
       // Save hinges (only if there are changes)
       let hingesResult;
       if (!isEqual(localHinges, originalHinges)) {
-        hingesResult = await dispatch(
-          saveHinges(localHinges, originalHinges)
-        );
-        
+        hingesResult = await dispatch(saveHinges(localHinges, originalHinges));
+
         if (!hingesResult || !hingesResult.success) {
           throw new Error(hingesResult?.error || "Failed to save hinges");
         }
@@ -321,10 +332,8 @@ const HardwareSettings = forwardRef((props, ref) => {
       // Save pulls (only if there are changes)
       let pullsResult;
       if (!isEqual(localPulls, originalPulls)) {
-        pullsResult = await dispatch(
-          savePulls(localPulls, originalPulls)
-        );
-        
+        pullsResult = await dispatch(savePulls(localPulls, originalPulls));
+
         if (!pullsResult || !pullsResult.success) {
           throw new Error(pullsResult?.error || "Failed to save pulls");
         }
@@ -335,10 +344,8 @@ const HardwareSettings = forwardRef((props, ref) => {
       // Save slides (only if there are changes)
       let slidesResult;
       if (!isEqual(localSlides, originalSlides)) {
-        slidesResult = await dispatch(
-          saveSlides(localSlides, originalSlides)
-        );
-        
+        slidesResult = await dispatch(saveSlides(localSlides, originalSlides));
+
         if (!slidesResult || !slidesResult.success) {
           throw new Error(slidesResult?.error || "Failed to save slides");
         }
@@ -347,7 +354,7 @@ const HardwareSettings = forwardRef((props, ref) => {
       }
 
       console.log("Hardware saved successfully");
-      
+
       // Update local and original state with fresh data
       if (hingesResult.data) {
         setLocalHinges(hingesResult.data);
@@ -361,7 +368,7 @@ const HardwareSettings = forwardRef((props, ref) => {
         setLocalSlides(slidesResult.data);
         setOriginalSlides(JSON.parse(JSON.stringify(slidesResult.data)));
       }
-      
+
       setValidationErrors({});
     } catch (error) {
       console.error("Error saving hardware:", error);
@@ -479,80 +486,75 @@ const HardwareSettings = forwardRef((props, ref) => {
   ];
 
   return (
-    <div className="flex flex-col h-full pb-10">
-      <div className="sticky top-0 z-10 bg-slate-800 py-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">Manage Hardware</h2>
+    <div className="mt-6 flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        <div className="sticky top-0 z-10 bg-slate-800 py-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-200">
+              Manage Hardware
+            </h2>
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
-        {loading && (
-          <div className="p-4 text-white">
-            <GridLoader color="maroon" size={15} />
-            <p>Loading...</p>
-          </div>
-        )}
-        {error && <div className="p-4 text-red-500">Error: {error}</div>}
-        {Object.keys(validationErrors).length > 0 && (
-          <div className="p-4 mb-4 bg-red-900/50 border border-red-700 rounded-md text-red-400">
-            Please fill out all required fields correctly.
-          </div>
-        )}
-        {!loading && !error && (
-          <>
-            <SettingsSection
-              title="Hinges"
-              maxWidthClass={props.maxWidthClass}
-            >
-              <SettingsList
-                items={localHinges}
-                columns={hingesColumns}
-                onDelete={handleDeleteHinge}
-                onCancelDelete={handleCancelDeleteHinge}
-                onChange={handleHingeChange}
-                onAdd={handleAddHinge}
-                addLabel="+ Add Hinge"
-                inputRefs={inputRefs}
-                itemPrefix="hinge"
-              />
-            </SettingsSection>
+        <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
+          {loading && (
+            <div className="p-4 text-white">
+              <GridLoader color="maroon" size={15} />
+              <p>Loading...</p>
+            </div>
+          )}
+          {error && <div className="p-4 text-red-500">Error: {error}</div>}
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="p-4 mb-4 bg-red-900/50 border border-red-700 rounded-md text-red-400">
+              Please fill out all required fields correctly.
+            </div>
+          )}
+          {!loading && !error && (
+            <>
+              <SettingsSection title="Hinges" maxWidthClass={maxWidthClass}>
+                <SettingsList
+                  items={localHinges}
+                  columns={hingesColumns}
+                  onDelete={handleDeleteHinge}
+                  onCancelDelete={handleCancelDeleteHinge}
+                  onChange={handleHingeChange}
+                  onAdd={handleAddHinge}
+                  addLabel="+ Add Hinge"
+                  inputRefs={inputRefs}
+                  itemPrefix="hinge"
+                />
+              </SettingsSection>
 
-            <SettingsSection
-              title="Pulls"
-              maxWidthClass={props.maxWidthClass}
-            >
-              <SettingsList
-                items={localPulls}
-                columns={pullsColumns}
-                onDelete={handleDeletePull}
-                onCancelDelete={handleCancelDeletePull}
-                onChange={handlePullChange}
-                onAdd={handleAddPull}
-                addLabel="+ Add Pull"
-                inputRefs={inputRefs}
-                itemPrefix="pull"
-              />
-            </SettingsSection>
+              <SettingsSection title="Pulls" maxWidthClass={maxWidthClass}>
+                <SettingsList
+                  items={localPulls}
+                  columns={pullsColumns}
+                  onDelete={handleDeletePull}
+                  onCancelDelete={handleCancelDeletePull}
+                  onChange={handlePullChange}
+                  onAdd={handleAddPull}
+                  addLabel="+ Add Pull"
+                  inputRefs={inputRefs}
+                  itemPrefix="pull"
+                />
+              </SettingsSection>
 
-            <SettingsSection
-              title="Slides"
-              maxWidthClass={props.maxWidthClass}
-            >
-              <SettingsList
-                items={localSlides}
-                columns={slidesColumns}
-                onDelete={handleDeleteSlide}
-                onCancelDelete={handleCancelDeleteSlide}
-                onChange={handleSlideChange}
-                onAdd={handleAddSlide}
-                addLabel="+ Add Slide"
-                inputRefs={inputRefs}
-                itemPrefix="slide"
-              />
-            </SettingsSection>
-          </>
-        )}
+              <SettingsSection title="Slides" maxWidthClass={maxWidthClass}>
+                <SettingsList
+                  items={localSlides}
+                  columns={slidesColumns}
+                  onDelete={handleDeleteSlide}
+                  onCancelDelete={handleCancelDeleteSlide}
+                  onChange={handleSlideChange}
+                  onAdd={handleAddSlide}
+                  addLabel="+ Add Slide"
+                  inputRefs={inputRefs}
+                  itemPrefix="slide"
+                />
+              </SettingsSection>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
