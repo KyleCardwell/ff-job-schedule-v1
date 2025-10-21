@@ -295,6 +295,41 @@ const PartsListAnchorsTable = ({
     onAnchorsChange(updatedAnchors);
   };
 
+  // Group anchors by cabinet_style_id
+  const groupedAnchors = () => {
+    if (!anchors || anchors.length === 0) return [];
+
+    // Group by cabinet_style_id (null means "All Styles")
+    const groups = {};
+    anchors.forEach((anchor) => {
+      const styleId = anchor.cabinet_style_id || 'all';
+      if (!groups[styleId]) {
+        groups[styleId] = [];
+      }
+      groups[styleId].push(anchor);
+    });
+
+    // Convert to array and sort: "All Styles" first, then by style name
+    return Object.entries(groups)
+      .sort(([styleIdA], [styleIdB]) => {
+        if (styleIdA === 'all') return -1;
+        if (styleIdB === 'all') return 1;
+        const styleA = cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleIdA));
+        const styleB = cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleIdB));
+        return (styleA?.cabinet_style_name || '').localeCompare(styleB?.cabinet_style_name || '');
+      })
+      .map(([styleId, items]) => ({
+        styleId,
+        styleName: styleId === 'all' 
+          ? 'All Styles' 
+          : cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleId))?.cabinet_style_name || 'Unknown',
+        items
+      }));
+  };
+
+  const anchorGroups = groupedAnchors();
+  const hasMultipleGroups = anchorGroups.length > 1;
+
   return (
     <>
       {/* General error message for minimum anchor count */}
@@ -335,20 +370,27 @@ const PartsListAnchorsTable = ({
           </div>
         </div>
 
-        {anchors.map((anchor) => (
-          <AnchorRow
-            key={anchor.id}
-            anchor={anchor}
-            services={services}
-            cabinetStyles={cabinetStyles}
-            onDelete={handleMarkForDeletion}
-            onUndo={handleUndoDelete}
-            isNew={anchor.isNew}
-            onCancelNew={handleCancelNew}
-            onChange={handleRowChange}
-            errors={errors[anchor.id]}
-            gridCols={gridCols}
-          />
+        {anchorGroups.map((group, groupIndex) => (
+          <React.Fragment key={group.styleId}>
+            {hasMultipleGroups && groupIndex > 0 && (
+              <div className="col-span-full my-4 border-t-2 border-slate-600" />
+            )}
+            {group.items.map((anchor) => (
+              <AnchorRow
+                key={anchor.id}
+                anchor={anchor}
+                services={services}
+                cabinetStyles={cabinetStyles}
+                onDelete={handleMarkForDeletion}
+                onUndo={handleUndoDelete}
+                isNew={anchor.isNew}
+                onCancelNew={handleCancelNew}
+                onChange={handleRowChange}
+                errors={errors[anchor.id]}
+                gridCols={gridCols}
+              />
+            ))}
+          </React.Fragment>
         ))}
       </div>
       <button

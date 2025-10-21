@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 /**
  * Reusable scrollable index navigation component with automatic section highlighting
  * 
- * @param {Object[]} items - Array of items to display in the index
- * @param {string} items[].id - Unique identifier for each item
- * @param {string} items[].label - Display text for each item
+ * @param {Object[]} items - Array of items to display in the index (legacy, flat list)
+ * @param {Object[]} groups - Array of grouped items with headers
+ * @param {string} groups[].label - Group header label
+ * @param {Object[]} groups[].items - Array of items in the group
  * @param {string} title - Title displayed at the top of the index
  * @param {Object} scrollContainerRef - Ref to the scrollable container element
  * @param {Object} sectionRefs - Ref object containing refs to all section elements
@@ -16,6 +17,7 @@ import { useEffect, useState } from "react";
  */
 const ScrollableIndex = ({
   items = [],
+  groups = [],
   title = "Navigation",
   scrollContainerRef,
   sectionRefs,
@@ -59,7 +61,7 @@ const ScrollableIndex = ({
     });
 
     return () => observer.disconnect();
-  }, [items, scrollContainerRef, sectionRefs]);
+  }, [items, groups, scrollContainerRef, sectionRefs]);
 
   const scrollToSection = (itemId) => {
     const element = sectionRefs.current?.[itemId];
@@ -79,7 +81,11 @@ const ScrollableIndex = ({
     }
   };
 
-  if (!items || items.length === 0) return null;
+  // Determine which mode to use
+  const hasGroups = groups && groups.length > 0;
+  const hasItems = items && items.length > 0;
+  
+  if (!hasGroups && !hasItems) return null;
 
   return (
     <div className={`w-64 flex-none ${className}`}>
@@ -88,22 +94,52 @@ const ScrollableIndex = ({
           {title}
         </h3>
         <nav className="space-y-1">
-          {items.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => scrollToSection(item.id)}
-              className={`
-                w-full text-left px-3 py-2 rounded text-sm transition-all
-                ${
-                  activeItemId === item.id
-                    ? "bg-teal-600 text-white font-medium shadow-md"
-                    : "text-slate-300 hover:bg-slate-600 hover:text-white"
-                }
-              `}
-            >
-              {item.label}
-            </button>
-          ))}
+          {hasGroups ? (
+            // Render grouped items with headers
+            groups.map((group) => (
+              <div key={group.label} className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2 px-2">
+                  {group.label}
+                </h4>
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => scrollToSection(item.id)}
+                      className={`
+                        w-full text-left px-3 py-2 rounded text-sm transition-all
+                        ${
+                          activeItemId === item.id
+                            ? "bg-teal-600 text-white font-medium shadow-md"
+                            : "text-slate-300 hover:bg-slate-600 hover:text-white"
+                        }
+                      `}
+                    >
+                      {item.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            // Render flat list (backward compatibility)
+            items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className={`
+                  w-full text-left px-3 py-2 rounded text-sm transition-all
+                  ${
+                    activeItemId === item.id
+                      ? "bg-teal-600 text-white font-medium shadow-md"
+                      : "text-slate-300 hover:bg-slate-600 hover:text-white"
+                  }
+                `}
+              >
+                {item.label}
+              </button>
+            ))
+          )}
         </nav>
       </div>
     </div>
@@ -116,7 +152,18 @@ ScrollableIndex.propTypes = {
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       label: PropTypes.string.isRequired,
     })
-  ).isRequired,
+  ),
+  groups: PropTypes.arrayOf(
+    PropTypes.shape({
+      label: PropTypes.string.isRequired,
+      items: PropTypes.arrayOf(
+        PropTypes.shape({
+          id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+          name: PropTypes.string.isRequired,
+        })
+      ).isRequired,
+    })
+  ),
   title: PropTypes.string,
   scrollContainerRef: PropTypes.object.isRequired,
   sectionRefs: PropTypes.object.isRequired,

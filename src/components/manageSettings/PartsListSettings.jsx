@@ -242,20 +242,41 @@ const PartsListSettings = forwardRef((props, ref) => {
     handleCancel,
   }));
 
+  // Group and sort parts list by needs_finish
+  const groupedPartsList = () => {
+    if (!partsList || partsList.length === 0) return [];
+
+    const unfinished = partsList
+      .filter((part) => part.needs_finish === false)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const finished = partsList
+      .filter((part) => part.needs_finish === true)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const groups = [];
+    if (unfinished.length > 0) {
+      groups.push({ type: 'group', label: 'Unfinished Parts', items: unfinished });
+    }
+    if (finished.length > 0) {
+      groups.push({ type: 'group', label: 'Finished Parts', items: finished });
+    }
+    return groups;
+  };
+
+  const groupedParts = groupedPartsList();
+
   return (
     <div className="flex h-full pb-10 relative">
       <div className="flex">
         {/* Right Side Index Navigation */}
         {!loading && !error && partsList.length > 0 && (
           <ScrollableIndex
-            items={partsList.map((part) => ({
-              id: part.id,
-              label: part.name,
-            }))}
+            groups={groupedParts}
             title="Parts List"
             scrollContainerRef={scrollContainerRef}
             sectionRefs={sectionRefs}
-            scrollOffset={80}
+            scrollOffset={120}
             onItemClick={handleIndexItemClick}
           />
         )}
@@ -284,31 +305,36 @@ const PartsListSettings = forwardRef((props, ref) => {
               )}
               {!loading && !error && (
                 <>
-                  {partsList
-                    // .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((part) => (
-                      <div
-                        key={part.id}
-                        ref={(el) => (sectionRefs.current[part.id] = el)}
-                        data-section-id={part.id}
-                        className={`transition-all duration-500 p-0.5 my-1 ${
-                          highlightedPartId === part.id
-                            ? "ring-2 ring-teal-400 rounded-lg bg-teal-900/20"
-                            : ""
-                        }`}
-                      >
-                        <SettingsSection title={part.name}>
-                          <PartsListAnchorsTable
-                            partsListId={part.id}
-                            anchors={localAnchors[part.id] || []}
-                            errors={anchorErrors[part.id] || {}}
-                            onAnchorsChange={(anchors) =>
-                              handleAnchorChange(part.id, anchors)
-                            }
-                          />
-                        </SettingsSection>
-                      </div>
-                    ))}
+                  {groupedParts.map((group) => (
+                    <div key={group.label}>
+                      <h3 className="text-xl font-bold text-slate-100 mt-6 mb-4 pb-2 border-b border-slate-600 sticky top-0 z-10 bg-slate-800">
+                        {group.label}
+                      </h3>
+                      {group.items.map((part) => (
+                        <div
+                          key={part.id}
+                          ref={(el) => (sectionRefs.current[part.id] = el)}
+                          data-section-id={part.id}
+                          className={`transition-all duration-500 p-0.5 my-1 ${
+                            highlightedPartId === part.id
+                              ? "ring-2 ring-teal-400 rounded-lg bg-teal-900/20"
+                              : ""
+                          }`}
+                        >
+                          <SettingsSection title={part.name}>
+                            <PartsListAnchorsTable
+                              partsListId={part.id}
+                              anchors={localAnchors[part.id] || []}
+                              errors={anchorErrors[part.id] || {}}
+                              onAnchorsChange={(anchors) =>
+                                handleAnchorChange(part.id, anchors)
+                              }
+                            />
+                          </SettingsSection>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </>
               )}
             </div>
