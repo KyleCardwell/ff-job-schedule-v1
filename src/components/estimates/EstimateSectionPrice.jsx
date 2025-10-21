@@ -40,7 +40,10 @@ const EstimateSectionPrice = ({ section }) => {
       finishTypes,
       cabinetStyles,
       hardware,
-      partsListAnchors
+      {
+        partsListAnchors,
+        globalServices: services,
+      }
     );
   }, [
     section,
@@ -50,7 +53,8 @@ const EstimateSectionPrice = ({ section }) => {
     finishTypes,
     cabinetStyles,
     hardware,
-    partsListAnchors
+    partsListAnchors,
+    services,
   ]);
 
   // Format number as currency
@@ -66,31 +70,31 @@ const EstimateSectionPrice = ({ section }) => {
     return roundToHundredth(parseFloat(hours || 0));
   };
 
-  // Calculate labor costs based on hours and rates
+  // Calculate labor costs by service ID
   const laborCosts = useMemo(() => {
-    const shopRate =
-      services.find((et) => et.service_id === 2)?.hourly_rate || 0;
-    const finishRate =
-      services.find((et) => et.service_id === 3)?.hourly_rate || 0;
-    const installRate =
-      services.find((et) => et.service_id === 4)?.hourly_rate || 0;
+    const hoursByService = sectionCalculations.hoursByService || {};
+    let totalLaborCost = 0;
+    const costsByService = {};
 
-    const shopCost = sectionCalculations.shopHours * shopRate;
-    const finishCost = sectionCalculations.finishHours * finishRate;
-    const installCost = sectionCalculations.installHours * installRate;
+    Object.entries(hoursByService).forEach(([serviceId, hours]) => {
+      const service = services.find((s) => s.service_id === parseInt(serviceId));
+      if (service) {
+        const cost = hours * (service.hourly_rate || 0);
+        costsByService[serviceId] = {
+          hours,
+          rate: service.hourly_rate || 0,
+          cost,
+          name: service.service_name,
+        };
+        totalLaborCost += cost;
+      }
+    });
 
     return {
-      shopCost,
-      finishCost,
-      installCost,
-      totalLaborCost: shopCost + finishCost + installCost,
+      costsByService,
+      totalLaborCost,
     };
-  }, [
-    sectionCalculations.shopHours,
-    sectionCalculations.finishHours,
-    sectionCalculations.installHours,
-    services,
-  ]);
+  }, [sectionCalculations.hoursByService, services]);
 
   return (
     <div className="h-full flex flex-col border-l border-slate-700 p-4 w-80">
@@ -241,38 +245,25 @@ const EstimateSectionPrice = ({ section }) => {
             </div>
           </div>
 
-          {/* Shop Hours */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Shop:</span>
-            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-              {formatHours(sectionCalculations.shopHours)}
-            </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
-              {formatCurrency(laborCosts.shopCost)}
-            </span>
-          </div>
-
-          {/* Finish Hours */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Finish:</span>
-            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-              {formatHours(sectionCalculations.finishHours)}
-            </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
-              {formatCurrency(laborCosts.finishCost)}
-            </span>
-          </div>
-
-          {/* Install Hours */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Install:</span>
-            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-              {formatHours(sectionCalculations.installHours)}
-            </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
-              {formatCurrency(laborCosts.installCost)}
-            </span>
-          </div>
+          {/* Dynamic Service Hours */}
+          {Object.entries(laborCosts.costsByService).map(
+            ([serviceType, data]) => (
+              <div
+                key={serviceType}
+                className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700"
+              >
+                <span className="text-sm text-slate-300 text-left capitalize">
+                  {data.name}:
+                </span>
+                <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                  {formatHours(data.hours)}
+                </span>
+                <span className="text-sm font-medium text-teal-400 text-right">
+                  {formatCurrency(data.cost)}
+                </span>
+              </div>
+            )
+          )}
 
           {/* Total Labor Cost */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 mt-2 pt-2 border-t border-gray-600">

@@ -169,14 +169,14 @@ const calculatePartsTimeForCabinet = (boxPartsList, partsListAnchors) => {
  * Calculate total hours by service for all cabinets in a section
  * This replaces the old getCabinetHours function
  * @param {Object} section - Section object with cabinets array
- * @param {Object} partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
- * @returns {Object} - { shopHours, finishHours, installHours, hoursByService }
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { hoursByService }
  */
-export const calculateBoxPartsTime = (section, partsListAnchors) => {
+export const calculateBoxPartsTime = (section, context = {}) => {
+  const { partsListAnchors, globalServices } = context;
   const totals = {
-    shopHours: 0,
-    finishHours: 0,
-    installHours: 0,
     hoursByService: {}, // Detailed breakdown by service
   };
 
@@ -202,20 +202,12 @@ export const calculateBoxPartsTime = (section, partsListAnchors) => {
 
     // Aggregate by service
     Object.entries(cabinetHours).forEach(([serviceId, hours]) => {
-      if (!totals.hoursByService[serviceId]) {
-        totals.hoursByService[serviceId] = 0;
+      const service = globalServices.find((s) => s.team_service_id === parseInt(serviceId));
+      if (!totals.hoursByService[service.service_id]) {
+        totals.hoursByService[service.service_id] = 0;
       }
-      totals.hoursByService[serviceId] += hours * quantity;
+      totals.hoursByService[service.service_id] += hours * quantity;
     });
-
-    // For backward compatibility, also aggregate into shop/finish/install
-    // You'll need to map service IDs to these categories based on your service types
-    // For now, adding all to shopHours as placeholder
-    const totalHoursForCabinet = Object.values(cabinetHours).reduce(
-      (sum, h) => sum + h,
-      0
-    );
-    totals.shopHours += totalHoursForCabinet * quantity;
   });
 
   return totals;
@@ -300,43 +292,43 @@ const interpolateRate = (anchors, targetWidth, team_service_id) => {
   return rates[rates.length - 1].rate;
 };
 
-export const getCabinetHours = (
-  width,
-  height,
-  depth,
-  finishedInterior = false,
-  anchors
-) => {
-  if (!anchors || anchors.length === 0) {
-    return {};
-  }
+// export const getCabinetHours = (
+//   width,
+//   height,
+//   depth,
+//   finishedInterior = false,
+//   anchors
+// ) => {
+//   if (!anchors || anchors.length === 0) {
+//     return {};
+//   }
 
-  const volume = width * height * depth;
+//   const volume = width * height * depth;
 
-  // Get all unique team_service_ids from the anchors
-  const serviceIds = [
-    ...new Set(
-      anchors.flatMap((a) => a.services.map((s) => s.team_service_id))
-    ),
-  ];
+//   // Get all unique team_service_ids from the anchors
+//   const serviceIds = [
+//     ...new Set(
+//       anchors.flatMap((a) => a.services.map((s) => s.team_service_id))
+//     ),
+//   ];
 
-  const hoursByService = {};
+//   const hoursByService = {};
 
-  serviceIds.forEach((serviceId) => {
-    const rate = interpolateRate(anchors, width, serviceId);
-    let hours = volume * rate;
+//   serviceIds.forEach((serviceId) => {
+//     const rate = interpolateRate(anchors, width, serviceId);
+//     let hours = volume * rate;
 
-    // Optional scaling for big/heavy cases (can be customized if needed)
-    if (height > 80) {
-      // This logic might need to be service-specific in the future
-      hours *= 1.15;
-    }
+//     // Optional scaling for big/heavy cases (can be customized if needed)
+//     if (height > 80) {
+//       // This logic might need to be service-specific in the future
+//       hours *= 1.15;
+//     }
 
-    hoursByService[serviceId] = roundToHundredth(hours);
-  });
+//     hoursByService[serviceId] = roundToHundredth(hours);
+//   });
 
-  return hoursByService;
-};
+//   return hoursByService;
+// };
 
 export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
   if (!faceData || !selectedMaterial) {
@@ -509,31 +501,34 @@ const calculateInterpolated5PieceDoorHours = (
 };
 
 /**
- * Calculates the shop, install, and finish hours for a door of a given size.
+ * Calculate hours for a 5-piece door based on board feet.
+ * Returns hours by service ID (2=shop, 3=finish, 4=install)
  * @param {number} width - The width of the door.
  * @param {number} height - The height of the door.
  * @param {number} thickness - The thickness of the material.
- * @returns {Object} - An object containing shopHours, installHours, and finishHours.
+ * @returns {Object} - { hoursByService: { 2: hours, 3: hours, 4: hours } }
  */
 export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
   const boardFeet = calculateBoardFeetFor5PieceDoor(width, height, thickness);
 
   return {
-    shopHours: calculateInterpolated5PieceDoorHours(
-      doorHourAnchors.shop,
-      boardFeet,
-      "shop"
-    ),
-    installHours: calculateInterpolated5PieceDoorHours(
-      doorHourAnchors.install,
-      boardFeet,
-      "install"
-    ),
-    finishHours: calculateInterpolated5PieceDoorHours(
-      doorHourAnchors.finish,
-      boardFeet,
-      "finish"
-    ),
+    hoursByService: {
+      2: calculateInterpolated5PieceDoorHours(
+        doorHourAnchors.shop,
+        boardFeet,
+        "shop"
+      ), // Shop
+      4: calculateInterpolated5PieceDoorHours(
+        doorHourAnchors.install,
+        boardFeet,
+        "install"
+      ), // Install
+      3: calculateInterpolated5PieceDoorHours(
+        doorHourAnchors.finish,
+        boardFeet,
+        "finish"
+      ), // Finish
+    },
   };
 };
 
@@ -581,18 +576,17 @@ const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
 export const calculateSlabDoorHours = (width, height) => {
   const area = width * height;
   return {
-    shopHours: calculateInterpolatedSlabDoorHours(
-      slabDoorHourAnchors.shop,
-      area
-    ),
-    installHours: calculateInterpolatedSlabDoorHours(
-      slabDoorHourAnchors.install,
-      area
-    ),
-    finishHours: calculateInterpolatedSlabDoorHours(
-      slabDoorHourAnchors.finish,
-      area
-    ),
+    hoursByService: {
+      2: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area), // Shop
+      4: calculateInterpolatedSlabDoorHours(
+        slabDoorHourAnchors.install,
+        area
+      ), // Install
+      3: calculateInterpolatedSlabDoorHours(
+        slabDoorHourAnchors.finish,
+        area
+      ), // Finish
+    },
   };
 };
 

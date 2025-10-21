@@ -21,9 +21,7 @@ const calculateFaceTotals = (section, faceMaterials, finishMultiplier) => {
   const totals = {
     faceCounts: {},
     facePrices: {},
-    shopHours: 0,
-    finishHours: 0,
-    installHours: 0,
+    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
   };
 
   FACE_TYPES.forEach((type) => {
@@ -72,11 +70,19 @@ const calculateFaceTotals = (section, faceMaterials, finishMultiplier) => {
             } else if (styleToUse === "slab_sheet") {
               faceHours = calculateSlabDoorHours(face.width, face.height);
             }
-            totals.shopHours += (faceHours.shopHours || 0) * quantity;
-            totals.installHours += (faceHours.installHours || 0) * quantity;
-            if (selectedFaceMaterial.needs_finish) {
-              totals.finishHours +=
-                (faceHours.finishHours || 0) * quantity * finishMultiplier;
+            
+            // Aggregate hours by service ID
+            if (faceHours.hoursByService) {
+              Object.entries(faceHours.hoursByService).forEach(([serviceId, hours]) => {
+                if (!totals.hoursByService[serviceId]) {
+                  totals.hoursByService[serviceId] = 0;
+                }
+                // Apply finish multiplier for service ID 3 (finish) if material needs finish
+                const multiplier = (serviceId === '3' && selectedFaceMaterial.needs_finish) 
+                  ? quantity * finishMultiplier 
+                  : quantity;
+                totals.hoursByService[serviceId] += (hours || 0) * multiplier;
+              });
             }
           });
         }
@@ -254,9 +260,7 @@ const tapeTimeMinutes = ({
 
 const calculateFaceFramePrices = (section, faceMaterials, finishMultiplier) => {
   const totals = {
-    shopHours: 0,
-    finishHours: 0,
-    installHours: 0,
+    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish
     woodTotal: 0,
     boardFeet: 0,
   };
@@ -270,7 +274,7 @@ const calculateFaceFramePrices = (section, faceMaterials, finishMultiplier) => {
   );
 
   section.cabinets.forEach((cabinet) => {
-    if (!cabinet.cabinetHours) return;
+    // if (!cabinet.cabinetHours) return;
     if (cabinet.cabinet_style_override === 13) return;
     if (!cabinet.cabinet_tyle_override && section.cabinet_style_id === 13) return;
 
@@ -286,7 +290,11 @@ const calculateFaceFramePrices = (section, faceMaterials, finishMultiplier) => {
     });
     const tapeTimeHours = tapeTime / 60 * quantity;
 
-    totals.finishHours = tapeTimeHours;
+    // Aggregate finish hours (service ID 3)
+    if (!totals.hoursByService[3]) {
+      totals.hoursByService[3] = 0;
+    }
+    totals.hoursByService[3] += tapeTimeHours;
 
     if (!frameParts?.framePieces) return;
 
@@ -309,9 +317,12 @@ const calculateFaceFramePrices = (section, faceMaterials, finishMultiplier) => {
         totals.woodTotal += boardFeetWithWaste * selectedFaceMaterial.bd_ft_price * quantity;
       }
 
-      // Convert minutes to hours
+      // Convert minutes to hours and aggregate (service ID 2 = shop)
       const shopTimeHours = shopTimeMinutes / 60;
-      totals.shopHours += shopTimeHours * quantity;
+      if (!totals.hoursByService[2]) {
+        totals.hoursByService[2] = 0;
+      }
+      totals.hoursByService[2] += shopTimeHours * quantity;
     });
   });
 
@@ -326,9 +337,7 @@ const calculateCabinetBoxHours = (
   finishMultiplier
 ) => {
   const totals = {
-    shopHours: 0,
-    finishHours: 0,
-    installHours: 0,
+    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
   };
 
   if (!section.cabinets || !Array.isArray(section.cabinets)) {
@@ -339,21 +348,30 @@ const calculateCabinetBoxHours = (
     if (!cabinet.cabinetHours) return;
 
     const quantity = Number(cabinet.quantity) || 1;
+    const selectedBoxMaterial = cabinet.finished_interior
+      ? faceMaterials.find((mat) => mat.id === section.face_mat)
+      : boxMaterials.find((mat) => mat.id === section.box_mat);
 
-    totals.shopHours += (cabinet.cabinetHours.shopHours || 0) * quantity;
-    totals.installHours += (cabinet.cabinetHours.installHours || 0) * quantity;
+    // Map service types to service IDs: shop=2, finish=3, install=4
+    const serviceMap = [
+      { id: 2, field: 'shopHours' },
+      { id: 4, field: 'installHours' },
+      { id: 3, field: 'finishHours' },
+    ];
 
-    // Add finish hours if finished interior
-    if (cabinet.finished_interior) {
-      const selectedBoxMaterial = cabinet.finished_interior
-        ? faceMaterials.find((mat) => mat.id === section.face_mat)
-        : boxMaterials.find((mat) => mat.id === section.box_mat);
-
-      if (selectedBoxMaterial?.needs_finish) {
-        totals.finishHours +=
-          (cabinet.cabinetHours.finishHours || 0) * quantity * finishMultiplier;
+    serviceMap.forEach(({ id, field }) => {
+      const hours = cabinet.cabinetHours[field] || 0;
+      if (!totals.hoursByService[id]) {
+        totals.hoursByService[id] = 0;
       }
-    }
+      
+      // Apply finish multiplier for finish hours (ID 3) only if material needs finish
+      const multiplier = (id === 3 && cabinet.finished_interior && selectedBoxMaterial?.needs_finish)
+        ? quantity * finishMultiplier
+        : quantity;
+      
+      totals.hoursByService[id] += hours * multiplier;
+    });
   });
 
   return totals;
@@ -419,8 +437,9 @@ const calculateCabinetTotals = (
   finishMultiplier,
   cabinetStyles,
   hardware,
-  partsListAnchors
+  context
 ) => {
+
   const cabinetCost = calculateBoxSheetsCNC(
     section,
     boxMaterials,
@@ -452,15 +471,15 @@ const calculateCabinetTotals = (
   );
 
   // Calculate cabinet box hours using new parts-based system
-  const boxHours = calculateCabinetBoxHours(
-        section,
-        boxMaterials,
-        faceMaterials,
-        finishMultiplier
-      );
+  // const boxHours = calculateCabinetBoxHours(
+  //       section,
+  //       boxMaterials,
+  //       faceMaterials,
+  //       finishMultiplier
+  //     );
 
-  const boxMinutes = calculateBoxPartsTime(section, partsListAnchors)
-  console.log('boxMinutes', boxMinutes)
+  const boxHours = calculateBoxPartsTime(section, context)
+  // console.log('boxMinutes', boxMinutes)
 
   const faceFramePrices = calculateFaceFramePrices(
     section,
@@ -483,21 +502,25 @@ const calculateCabinetTotals = (
   // Calculate hardware counts and totals
   const hardwareTotals = countHardware(section, hardware, faceTotals);
 
+  // Merge hoursByService from all sources
+  const mergedHoursByService = {};
+  [boxHours, faceTotals, faceFramePrices].forEach((source) => {
+    if (source?.hoursByService) {
+      Object.entries(source.hoursByService).forEach(([serviceType, hours]) => {
+        if (!mergedHoursByService[serviceType]) {
+          mergedHoursByService[serviceType] = 0;
+        }
+        mergedHoursByService[serviceType] += hours || 0;
+      });
+    }
+  });
+
   // Combine all totals
   const totals = {
     price: cabinetCost.totalCost + facePrice + faceFramePrices.totalCost,
     boxPrice: cabinetCost.totalCost,
     boxCount: boxCount,
-    shopHours:
-      boxHours.shopHours + faceTotals.shopHours + faceFramePrices.shopHours,
-    finishHours:
-      boxHours.finishHours +
-      faceTotals.finishHours +
-      faceFramePrices.finishHours,
-    installHours:
-      boxHours.installHours +
-      faceTotals.installHours +
-      faceFramePrices.installHours,
+    hoursByService: mergedHoursByService,
     faceCounts: faceTotals.faceCounts,
     facePrices: faceTotals.facePrices,
     drawerBoxCount: drawerRolloutTotals.drawerBoxCount,
@@ -512,7 +535,6 @@ const calculateCabinetTotals = (
     slidesTotal: hardwareTotals.slidesTotal,
     woodTotal: faceFramePrices.woodTotal,
     woodCount: faceFramePrices.boardFeet,
-    hoursByService: boxHours.hoursByService || {}, // Detailed service breakdown from new system
   };
 
   return totals;
@@ -528,6 +550,19 @@ const calculateSimpleItemsTotal = (items) => {
   }, 0);
 };
 
+/**
+ * Calculate section totals with all materials, hardware, and labor
+ * @param {Object} section - The section to calculate
+ * @param {Array} boxMaterials - Available box materials
+ * @param {Array} faceMaterials - Available face materials
+ * @param {Array} drawerBoxMaterials - Available drawer box materials
+ * @param {Array} finishTypes - Available finish types
+ * @param {Array} cabinetStyles - Available cabinet styles
+ * @param {Object} hardware - Hardware data (hinges, pulls, slides)
+ * @param {Object} context - Calculation context with global data
+ * @param {Object} context.partsListAnchors - Parts list anchors by parts_list_id
+ * @param {Array} context.globalServices - Global services array
+ */
 export const getSectionCalculations = (
   section,
   boxMaterials,
@@ -536,7 +571,7 @@ export const getSectionCalculations = (
   finishTypes,
   cabinetStyles,
   hardware,
-  partsListAnchors = null
+  context = {}
 ) => {
   if (!section) {
     return {
@@ -545,9 +580,7 @@ export const getSectionCalculations = (
       facePrices: {},
       boxTotal: 0,
       boxCount: 0,
-      shopHours: 0,
-      finishHours: 0,
-      installHours: 0,
+      hoursByService: {},
       drawerBoxCount: 0,
       drawerBoxTotal: 0,
       rollOutCount: 0,
@@ -587,7 +620,7 @@ export const getSectionCalculations = (
     finishMultiplier,
     cabinetStyles,
     hardware,
-    partsListAnchors
+    context
   );
 
   const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
@@ -606,9 +639,10 @@ export const getSectionCalculations = (
     cabinetTotals.woodTotal +
     otherTotal;
 
-  let installHours = cabinetTotals.installHours;
-  if (installHours > 0) {
-    installHours += 1; // Add 1 hour for setup and cleanup
+  // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
+  const finalHoursByService = { ...cabinetTotals.hoursByService };
+  if (finalHoursByService[4] && finalHoursByService[4] > 0) {
+    finalHoursByService[4] += 1;
   }
 
   return {
@@ -617,9 +651,7 @@ export const getSectionCalculations = (
     facePrices: cabinetTotals.facePrices,
     boxTotal: cabinetTotals.boxPrice,
     boxCount: cabinetTotals.boxCount,
-    shopHours: cabinetTotals.shopHours,
-    finishHours: cabinetTotals.finishHours,
-    installHours,
+    hoursByService: finalHoursByService,
     drawerBoxCount: cabinetTotals.drawerBoxCount,
     drawerBoxTotal: cabinetTotals.drawerBoxTotal,
     rollOutCount: cabinetTotals.rollOutCount,

@@ -11,7 +11,7 @@ import {
   SPLIT_DIRECTIONS,
   CAN_BE_BEADED,
 } from "../../utils/constants.js";
-import { getCabinetHours } from "../../utils/estimateHelpers.js";
+// import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
@@ -359,13 +359,13 @@ const CabinetItemForm = ({
           boxSummary: boxSummary,
         };
 
-        finalFormData.cabinetHours = getCabinetHours(
-          formData.width,
-          formData.height,
-          formData.depth,
-          formData.finished_interior,
-          cabinetAnchors[formData.type]
-        );
+        // finalFormData.cabinetHours = getCabinetHours(
+        //   formData.width,
+        //   formData.height,
+        //   formData.depth,
+        //   formData.finished_interior,
+        //   cabinetAnchors[formData.type]
+        // );
       }
 
       onSave(finalFormData);
