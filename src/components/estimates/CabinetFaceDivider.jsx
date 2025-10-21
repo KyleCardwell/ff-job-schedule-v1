@@ -1515,19 +1515,10 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
-      // Determine divider type and width based on item type
-      let dividerType, dividerWidth;
-      
-      if (usesReveals) {
-        // Standard cabinets and end panels use reveals
-        const reveals = faceConfig.rootReveals;
-        dividerType = FACE_NAMES.REVEAL;
-        dividerWidth = reveals.reveal;
-      } else {
-        // Door/drawer fronts use mid-stiles instead
-        dividerType = FACE_NAMES.MID_STILE;
-        dividerWidth = 2; // Default width for mid-stile
-      }
+      // Use reveals for dividers
+      const reveals = faceConfig.rootReveals;
+      const dividerType = FACE_NAMES.REVEAL;
+      const dividerWidth = reveals.reveal;
       
       const childWidth = (node.width - dividerWidth) / 2;
 
@@ -1584,19 +1575,10 @@ const CabinetFaceDivider = ({
     const newConfig = cloneDeep(config);
     const node = findNode(newConfig, selectedNode.id);
     if (node) {
-      // Determine divider type and height based on item type
-      let dividerType, dividerHeight;
-      
-      if (usesReveals) {
-        // Standard cabinets and end panels use reveals
-        const reveals = faceConfig.rootReveals;
-        dividerType = FACE_NAMES.REVEAL;
-        dividerHeight = reveals.reveal;
-      } else {
-        // Door/drawer fronts use mid-rails instead
-        dividerType = FACE_NAMES.MID_RAIL;
-        dividerHeight = 2; // Default height for mid-rail
-      }
+      // Use reveals for dividers
+      const reveals = faceConfig.rootReveals;
+      const dividerType = FACE_NAMES.REVEAL;
+      const dividerHeight = reveals.reveal;
       
       const childHeight = (node.height - dividerHeight) / 2;
 

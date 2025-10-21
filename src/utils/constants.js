@@ -54,8 +54,6 @@ export const FACE_NAMES = {
   OPEN: "open",
   CONTAINER: "container",
   REVEAL: "reveal",
-  MID_STILE: "mid_stile",
-  MID_RAIL: "mid_rail",
   ROOT: "root",
 };
 
@@ -69,22 +67,16 @@ export const FACE_TYPES = [
   { value: FACE_NAMES.OPEN, label: "Open", color: "#F59E0B" },
   { value: FACE_NAMES.CONTAINER, label: "Container", color: "#E5E7EB" },
   { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
-  { value: FACE_NAMES.MID_STILE, label: "Mid-Stile", color: "#94A3B8" },
-  { value: FACE_NAMES.MID_RAIL, label: "Mid-Rail", color: "#64748B" },
 ];
 
 // Face types for door/drawer fronts and end panels (no reveals for door/drawer fronts)
 export const PANEL_FACE_TYPES = [
   { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
-  // { value: FACE_NAMES.MID_STILE, label: "Mid-Stile", color: "#94A3B8" },
-  // { value: FACE_NAMES.MID_RAIL, label: "Mid-Rail", color: "#64748B" },
 ];
 
 // Face types for end panels (includes reveals)
 export const END_PANEL_FACE_TYPES = [
   { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
-  // { value: FACE_NAMES.MID_STILE, label: "Mid-Stile", color: "#94A3B8" },
-  // { value: FACE_NAMES.MID_RAIL, label: "Mid-Rail", color: "#64748B" },
   { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
 ];
 
