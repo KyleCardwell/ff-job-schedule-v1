@@ -4,6 +4,7 @@ import {
   useState,
   useImperativeHandle,
   forwardRef,
+  useRef,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -13,6 +14,7 @@ import {
   fetchPartsListAnchors,
   savePartsListAnchors,
 } from "../../redux/actions/partsListAnchors";
+import ScrollableIndex from "../common/ScrollableIndex.jsx";
 
 import PartsListAnchorsTable from "./PartsListAnchorsTable.jsx";
 import SettingsSection from "./SettingsSection.jsx";
@@ -29,6 +31,12 @@ const PartsListSettings = forwardRef((props, ref) => {
   const [localAnchors, setLocalAnchors] = useState({});
   const [originalAnchors, setOriginalAnchors] = useState({});
   const [anchorErrors, setAnchorErrors] = useState({});
+  const [highlightedPartId, setHighlightedPartId] = useState(null);
+  
+  // Refs for scrolling to sections
+  const sectionRefs = useRef({});
+  const scrollContainerRef = useRef(null);
+  const highlightTimeoutRef = useRef(null);
 
   useEffect(() => {
     dispatch(fetchPartsList());
@@ -37,6 +45,31 @@ const PartsListSettings = forwardRef((props, ref) => {
       dispatch(fetchPartsListAnchors());
     }
   }, [dispatch, teamId]);
+
+  // Handle highlight effect when clicking on index items
+  const handleIndexItemClick = (partId) => {
+    // Clear any existing timeout
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    
+    // Set highlighted part
+    setHighlightedPartId(partId);
+    
+    // Clear highlight after 2 seconds
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedPartId(null);
+    }, 2000);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Process anchors by parts list - they're already grouped by parts_list_id in the new structure
@@ -203,7 +236,8 @@ const PartsListSettings = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className="flex flex-col h-full pb-10">
+    <div className="flex flex-col h-full pb-10 relative">
+      
       <div className="sticky top-0 z-10 bg-slate-800 py-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold text-slate-200">
@@ -212,31 +246,63 @@ const PartsListSettings = forwardRef((props, ref) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
-        {loading && <div className="p-4 text-white">Loading...</div>}
-        {error && <div className="p-4 text-red-500">Error: {error}</div>}
-        {Object.keys(anchorErrors).length > 0 && (
-          <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
-            Please fill out all required fields.
-          </div>
-        )}
-        {!loading && !error && (
-          <>
-            {partsList
-              // .sort((a, b) => a.name.localeCompare(b.name))
-              .map((part) => (
-                <SettingsSection key={part.id} title={part.name}>
-                  <PartsListAnchorsTable
-                    partsListId={part.id}
-                    anchors={localAnchors[part.id] || []}
-                    errors={anchorErrors[part.id] || {}}
-                    onAnchorsChange={(anchors) =>
-                      handleAnchorChange(part.id, anchors)
-                    }
-                  />
-                </SettingsSection>
-              ))}
-          </>
+      <div className="flex flex-1 gap-4">
+        {/* Main Content */}
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)] pr-4"
+        >
+          {loading && <div className="p-4 text-white">Loading...</div>}
+          {error && <div className="p-4 text-red-500">Error: {error}</div>}
+          {Object.keys(anchorErrors).length > 0 && (
+            <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
+              Please fill out all required fields.
+            </div>
+          )}
+          {!loading && !error && (
+            <>
+              {partsList
+                // .sort((a, b) => a.name.localeCompare(b.name))
+                .map((part) => (
+                  <div
+                    key={part.id}
+                    ref={(el) => (sectionRefs.current[part.id] = el)}
+                    data-section-id={part.id}
+                    className={`transition-all duration-500 ${
+                      highlightedPartId === part.id
+                        ? 'ring-2 ring-teal-400 rounded-lg bg-teal-900/20'
+                        : ''
+                    }`}
+                  >
+                    <SettingsSection title={part.name}>
+                      <PartsListAnchorsTable
+                        partsListId={part.id}
+                        anchors={localAnchors[part.id] || []}
+                        errors={anchorErrors[part.id] || {}}
+                        onAnchorsChange={(anchors) =>
+                          handleAnchorChange(part.id, anchors)
+                        }
+                      />
+                    </SettingsSection>
+                  </div>
+                ))}
+            </>
+          )}
+        </div>
+
+        {/* Right Side Index Navigation */}
+        {!loading && !error && partsList.length > 0 && (
+          <ScrollableIndex
+            items={partsList.map((part) => ({
+              id: part.id,
+              label: part.name,
+            }))}
+            title="Parts List"
+            scrollContainerRef={scrollContainerRef}
+            sectionRefs={sectionRefs}
+            scrollOffset={80}
+            onItemClick={handleIndexItemClick}
+          />
         )}
       </div>
     </div>
