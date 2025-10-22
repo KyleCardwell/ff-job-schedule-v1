@@ -3,6 +3,7 @@ import {
   FACE_NAMES,
   FACE_TYPES,
   DRAWER_BOX_MOD_BY_ID,
+  CABINET_TYPES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
@@ -42,7 +43,7 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
 
   section.cabinets.forEach((cabinet) => {
     if (!cabinet.face_config?.faceSummary) return;
-    if (![1, 2, 3].includes(cabinet.type)) return;
+    if (!CABINET_TYPES.includes(cabinet.type)) return;
 
     const quantity = Number(cabinet.quantity) || 1;
 
@@ -471,10 +472,24 @@ const calculateCabinetTotals = (section, finishMultiplier, context) => {
   );
 
   // Count total boxes
-  const boxCount =
-    section.cabinets?.reduce((count, cabinet) => {
-      return count + (Number(cabinet.quantity) || 1);
-    }, 0) || 0;
+  const { boxCount, fillerCount } = section.cabinets?.reduce(
+    (count, cabinet) => {
+      // cabinet boxes
+      if (CABINET_TYPES.includes(cabinet.type))
+        return {
+          boxCount: count.boxCount + (Number(cabinet.quantity) || 1),
+          fillerCount: count.fillerCount,
+        };
+      // Fillers
+      if (cabinet.type === 5)
+        return {
+          boxCount: count.boxCount,
+          fillerCount: count.fillerCount + (Number(cabinet.quantity) || 1),
+        };
+      return count;
+    },
+    { boxCount: 0, fillerCount: 0 }
+  ) || { boxCount: 0, fillerCount: 0 };
 
   // Calculate total face price
   const facePrice = Object.values(faceTotals.facePrices).reduce(
@@ -518,6 +533,7 @@ const calculateCabinetTotals = (section, finishMultiplier, context) => {
     slidesTotal: hardwareTotals.slidesTotal,
     woodTotal: faceFramePrices.woodTotal + fillerMaterials.woodTotal,
     woodCount: faceFramePrices.boardFeet + fillerMaterials.boardFeet,
+    fillerCount: fillerCount,
   };
 
   return totals;
@@ -567,6 +583,7 @@ export const getSectionCalculations = (section, context = {}) => {
       slidesTotal: 0,
       woodTotal: 0,
       woodCount: 0,
+      fillerCount: 0,
     };
   }
 
@@ -633,6 +650,7 @@ export const getSectionCalculations = (section, context = {}) => {
     slidesTotal: cabinetTotals.slidesTotal,
     woodTotal: cabinetTotals.woodTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
+    fillerCount: cabinetTotals.fillerCount,
   };
 };
 

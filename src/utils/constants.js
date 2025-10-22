@@ -124,3 +124,6 @@ export const DRAWER_BOX_MOD_BY_ID = {
   13: { subtractWidth: 1.875 },
   14: { subtractWidth: 0.5 },
 };
+
+// database cabinet types
+export const CABINET_TYPES = [1, 2, 3]

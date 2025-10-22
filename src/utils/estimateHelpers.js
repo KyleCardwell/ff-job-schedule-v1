@@ -1,5 +1,7 @@
 import { MaxRectsPacker } from "maxrects-packer";
 
+import { CABINET_TYPES } from "./constants";
+
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
 /**
@@ -639,6 +641,8 @@ export const calculateBoxSheetsCNC = (
 
   section.cabinets.forEach((cab) => {
     if (!cab.face_config?.boxSummary?.boxPartsList) return;
+    // Only process cabinet boxes
+    if (!CABINET_TYPES.includes(cab.type)) return;
 
     const qty = Number(cab.quantity) || 1;
     const { boxSummary } = cab.face_config;
