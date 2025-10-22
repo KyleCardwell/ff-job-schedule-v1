@@ -10,6 +10,7 @@ import {
   ITEM_FORM_WIDTHS,
   SPLIT_DIRECTIONS,
   CAN_BE_BEADED,
+  ITEM_TYPES,
 } from "../../utils/constants.js";
 // import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
@@ -60,6 +61,7 @@ const CabinetItemForm = ({
     finished_right: item.finished_right,
     finished_top: item.finished_top,
     finished_bottom: item.finished_bottom,
+    finished_back: item.finished_back,
     cabinet_style_override: item.cabinet_style_override,
     corner_45: item.corner_45 || false,
     updated_at: item.updated_at,
@@ -335,9 +337,13 @@ const CabinetItemForm = ({
       // This allows accurate error detection when section style changes
       finalFormData.saved_style_id = effectiveStyleId;
 
+      const itemType = cabinetTypes.find(
+        (t) => t.cabinet_type_id === formData.type
+      );
+
       if (formData.face_config) {
         const boxSummary = calculateBoxSummary(
-          formData.item_type,
+          itemType.item_type,
           formData.width,
           formData.height,
           formData.depth,
@@ -350,6 +356,7 @@ const CabinetItemForm = ({
           formData.finished_top,
           formData.finished_bottom,
           formData.finished_interior,
+          formData.finished_back,
           formData.corner_45
         );
 
@@ -696,29 +703,40 @@ const CabinetItemForm = ({
       };
     }
 
-    // Handle filler - just one side panel (depth × height)
-    if (itemType === "filler") {
+    // Handle filler - L-shape (itemType === 5)
+    if (itemType === ITEM_TYPES.FILLER.type) {
       const sideArea = roundTo16th(h * d);
+      const facearea = roundTo16th(w * h);
       const boxPartsList = [
         {
-          type: "side",
-          side: "left",
-          width: roundTo16th(d),
+          type: ITEM_TYPES.FILLER.type,
+          // side: "left",
+          width: roundTo16th(w),
           height: roundTo16th(h),
-          area: sideArea,
+          depth: roundTo16th(d),
+          area: sideArea + facearea,
           quantity: 1,
-          finish: finishedLeft || finishedInterior,
+          finish: true,
         },
+        // {
+        //   type: ITEM_TYPES.FILLER.type,
+        //   // side: "right",
+        //   width: roundTo16th(w),
+        //   height: roundTo16th(h),
+        //   area: facearea,
+        //   quantity: 1,
+        //   finish: true,
+        // },
       ];
 
       return {
         pieces: { sides: 1 * qty, topBottom: 0, back: 0 },
         cabinetCount: qty,
-        areaPerCabinet: sideArea,
+        areaPerCabinet: sideArea + facearea,
         partitionArea: 0,
         bandingLength: 0,
         singleBoxPartsCount: 1,
-        singleBoxPerimeterLength: roundTo16th(2 * (h + d)),
+        singleBoxPerimeterLength: 0,
         boxHardware: { hingeCount: 0, drawerSlideCount: 0, pullCount: 0 },
         shelfDrillHoles: 0,
         boxPartsList,
@@ -1399,6 +1417,26 @@ const CabinetItemForm = ({
                           className="text-xs font-medium text-slate-700"
                         >
                           Bottom
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Finished Back */}
+                    {itemTypeConfig.features.finishedBack && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="finished_back"
+                          name="finished_back"
+                          checked={formData.finished_back}
+                          onChange={handleChange}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <label
+                          htmlFor="finished_back"
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          Back
                         </label>
                       </div>
                     )}

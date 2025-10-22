@@ -32,19 +32,23 @@ const EstimateSectionPrice = ({ section }) => {
 
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(
-      section,
+    return getSectionCalculations(section, {
+      // Materials
       boxMaterials,
       faceMaterials,
       drawerBoxMaterials,
-      finishTypes,
+      
+      // Styles & Configuration
       cabinetStyles,
+      finishTypes,
+      
+      // Hardware
       hardware,
-      {
-        partsListAnchors,
-        globalServices: services,
-      }
-    );
+      
+      // Services & Anchors
+      partsListAnchors,
+      globalServices: services,
+    });
   }, [
     section,
     boxMaterials,

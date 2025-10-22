@@ -33,6 +33,14 @@ export const SECTION_TYPES = {
   OTHER: { type: "other", title: "Other" },
 };
 
+export const ITEM_TYPES = {
+  CABINET: { type: "cabinet", title: "Cabinet" },
+  DOOR_FRONT: { type: "door_front", title: "Door Front" },
+  DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
+  END_PANEL: { type: "end_panel", title: "End Panel" },
+  FILLER: { type: "filler", title: "Filler" },
+};
+
 export const ITEM_FORM_WIDTHS = {
   QUANTITY: "36px",
   DEFAULT: "1fr",

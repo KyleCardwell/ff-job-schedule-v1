@@ -17,6 +17,7 @@ const PARTS_LIST_MAPPING = {
   partition_finished: 9,
   shelf_unfinished: 5,
   shelf_finished: 10,
+  filler_finished: 11,
 };
 
 /**
@@ -153,6 +154,7 @@ const calculatePartsTimeForCabinet = (boxPartsList, partsListAnchors) => {
       const totalMinutes = minutesEach * quantity;
       hoursByService[serviceId] += totalMinutes;
     });
+    console.log(part.type, hoursByService)
   });
 
   // Convert minutes to hours for final output
@@ -161,6 +163,7 @@ const calculatePartsTimeForCabinet = (boxPartsList, partsListAnchors) => {
       hoursByService[serviceId] / 60
     );
   });
+
 
   return hoursByService;
 };
