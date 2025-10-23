@@ -21,6 +21,7 @@ import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const MaterialsSettings = forwardRef((props, ref) => {
+  const { maxWidthClass } = props;
   const dispatch = useDispatch();
   const { drawerBoxMaterials, loading, error } = useSelector(
     (state) => state.materials
@@ -70,7 +71,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalSheetGoods((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
-    
+
     // Clear error for this field if it exists
     setValidationErrors((prev) => {
       const itemKey = `sheet-${id}`;
@@ -137,7 +138,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalDrawerBoxMaterials((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
-    
+
     // Clear error for this field if it exists
     setValidationErrors((prev) => {
       const itemKey = `drawer-${id}`;
@@ -210,15 +211,23 @@ const MaterialsSettings = forwardRef((props, ref) => {
       if (item.height === "" || item.height === null || item.height <= 0) {
         itemErrors.height = "Valid height is required (must be > 0)";
       }
-      if (item.thickness === "" || item.thickness === null || item.thickness <= 0) {
+      if (
+        item.thickness === "" ||
+        item.thickness === null ||
+        item.thickness <= 0
+      ) {
         itemErrors.thickness = "Valid thickness is required (must be > 0)";
       }
-      if (item.sheet_price === "" || item.sheet_price === null || item.sheet_price <= 0) {
+      if (
+        item.sheet_price === "" ||
+        item.sheet_price === null ||
+        item.sheet_price <= 0
+      ) {
         itemErrors.sheet_price = "Valid sheet price is required";
       }
-    //   if (item.bd_ft_price === "" || item.bd_ft_price === null || item.bd_ft_price < 0) {
-    //     itemErrors.bd_ft_price = "Valid board foot price is required";
-    //   }
+      //   if (item.bd_ft_price === "" || item.bd_ft_price === null || item.bd_ft_price < 0) {
+      //     itemErrors.bd_ft_price = "Valid board foot price is required";
+      //   }
 
       if (Object.keys(itemErrors).length > 0) {
         newErrors[`sheet-${item.id}`] = itemErrors;
@@ -239,10 +248,18 @@ const MaterialsSettings = forwardRef((props, ref) => {
       if (item.height === "" || item.height === null || item.height <= 0) {
         itemErrors.height = "Valid height is required (must be > 0)";
       }
-      if (item.thickness === "" || item.thickness === null || item.thickness <= 0) {
+      if (
+        item.thickness === "" ||
+        item.thickness === null ||
+        item.thickness <= 0
+      ) {
         itemErrors.thickness = "Valid thickness is required (must be > 0)";
       }
-      if (item.sheet_price === "" || item.sheet_price === null || item.sheet_price < 0) {
+      if (
+        item.sheet_price === "" ||
+        item.sheet_price === null ||
+        item.sheet_price < 0
+      ) {
         itemErrors.sheet_price = "Valid sheet price is required";
       }
 
@@ -269,9 +286,11 @@ const MaterialsSettings = forwardRef((props, ref) => {
         sheetGoodsResult = await dispatch(
           saveSheetGoods(localSheetGoods, originalSheetGoods)
         );
-        
+
         if (!sheetGoodsResult || !sheetGoodsResult.success) {
-          throw new Error(sheetGoodsResult?.error || "Failed to save sheet goods");
+          throw new Error(
+            sheetGoodsResult?.error || "Failed to save sheet goods"
+          );
         }
       } else {
         // No changes, use current data
@@ -287,7 +306,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
             originalDrawerBoxMaterials
           )
         );
-        
+
         if (!drawerBoxResult || !drawerBoxResult.success) {
           throw new Error(
             drawerBoxResult?.error || "Failed to save drawer box materials"
@@ -299,17 +318,21 @@ const MaterialsSettings = forwardRef((props, ref) => {
       }
 
       console.log("Materials saved successfully");
-      
+
       // Update local and original state with fresh data
       if (sheetGoodsResult.data) {
         setLocalSheetGoods(sheetGoodsResult.data);
-        setOriginalSheetGoods(JSON.parse(JSON.stringify(sheetGoodsResult.data)));
+        setOriginalSheetGoods(
+          JSON.parse(JSON.stringify(sheetGoodsResult.data))
+        );
       }
       if (drawerBoxResult.data) {
         setLocalDrawerBoxMaterials(drawerBoxResult.data);
-        setOriginalDrawerBoxMaterials(JSON.parse(JSON.stringify(drawerBoxResult.data)));
+        setOriginalDrawerBoxMaterials(
+          JSON.parse(JSON.stringify(drawerBoxResult.data))
+        );
       }
-      
+
       setValidationErrors({}); // Clear errors on successful save
     } catch (error) {
       console.error("Error saving materials:", error);
@@ -510,63 +533,67 @@ const MaterialsSettings = forwardRef((props, ref) => {
   ];
 
   return (
-    <div className="flex flex-col h-full pb-10">
-      <div className="sticky top-0 z-10 bg-slate-800 py-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">Manage Materials</h2>
+    <div className="flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        <div className="sticky top-0 z-10 bg-slate-800 py-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-200">
+              Manage Materials
+            </h2>
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
-        {loading && (
-          <div className="p-4 text-white">
-            <GridLoader color="maroon" size={15} />
-            <p>Loading...</p>
-          </div>
-        )}
-        {error && <div className="p-4 text-red-500">Error: {error}</div>}
-        {Object.keys(validationErrors).length > 0 && (
-          <div className="p-4 mb-4 bg-red-900/50 border border-red-700 rounded-md text-red-400">
-            Please fill out all required fields correctly.
-          </div>
-        )}
-        {!loading && !error && (
-          <>
-            <SettingsSection
-              title="Sheet Goods"
-              maxWidthClass={props.maxWidthClass}
-            >
-              <SettingsList
-                items={localSheetGoods}
-                columns={sheetGoodsColumns}
-                onDelete={handleDeleteSheetGood}
-                onCancelDelete={handleCancelDeleteSheetGood}
-                onChange={handleSheetGoodChange}
-                onAdd={handleAddSheetGood}
-                addLabel="+ Add Sheet Good"
-                inputRefs={inputRefs}
-                itemPrefix="sheet"
-              />
-            </SettingsSection>
+        <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
+          {loading && (
+            <div className="p-4 text-white">
+              <GridLoader color="maroon" size={15} />
+              <p>Loading...</p>
+            </div>
+          )}
+          {error && <div className="p-4 text-red-500">Error: {error}</div>}
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="p-4 mb-4 bg-red-900/50 border border-red-700 rounded-md text-red-400">
+              Please fill out all required fields correctly.
+            </div>
+          )}
+          {!loading && !error && (
+            <>
+              <SettingsSection
+                title="Sheet Goods"
+                maxWidthClass={maxWidthClass}
+              >
+                <SettingsList
+                  items={localSheetGoods}
+                  columns={sheetGoodsColumns}
+                  onDelete={handleDeleteSheetGood}
+                  onCancelDelete={handleCancelDeleteSheetGood}
+                  onChange={handleSheetGoodChange}
+                  onAdd={handleAddSheetGood}
+                  addLabel="+ Add Sheet Good"
+                  inputRefs={inputRefs}
+                  itemPrefix="sheet"
+                />
+              </SettingsSection>
 
-            <SettingsSection
-              title="Drawer Box Materials"
-              maxWidthClass={props.maxWidthClass}
-            >
-              <SettingsList
-                items={localDrawerBoxMaterials}
-                columns={drawerBoxColumns}
-                onDelete={handleDeleteDrawerBox}
-                onCancelDelete={handleCancelDeleteDrawerBox}
-                onChange={handleDrawerBoxChange}
-                onAdd={handleAddDrawerBox}
-                addLabel="+ Add Drawer Box Material"
-                inputRefs={inputRefs}
-                itemPrefix="drawer"
-              />
-            </SettingsSection>
-          </>
-        )}
+              <SettingsSection
+                title="Drawer Box Materials"
+                maxWidthClass={maxWidthClass}
+              >
+                <SettingsList
+                  items={localDrawerBoxMaterials}
+                  columns={drawerBoxColumns}
+                  onDelete={handleDeleteDrawerBox}
+                  onCancelDelete={handleCancelDeleteDrawerBox}
+                  onChange={handleDrawerBoxChange}
+                  onAdd={handleAddDrawerBox}
+                  addLabel="+ Add Drawer Box Material"
+                  inputRefs={inputRefs}
+                  itemPrefix="drawer"
+                />
+              </SettingsSection>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

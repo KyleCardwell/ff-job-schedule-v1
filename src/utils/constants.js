@@ -33,6 +33,14 @@ export const SECTION_TYPES = {
   OTHER: { type: "other", title: "Other" },
 };
 
+export const ITEM_TYPES = {
+  CABINET: { type: "cabinet", title: "Cabinet" },
+  DOOR_FRONT: { type: "door_front", title: "Door Front" },
+  DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
+  END_PANEL: { type: "end_panel", title: "End Panel" },
+  FILLER: { type: "filler", title: "Filler" },
+};
+
 export const ITEM_FORM_WIDTHS = {
   QUANTITY: "36px",
   DEFAULT: "1fr",
@@ -57,6 +65,7 @@ export const FACE_NAMES = {
   ROOT: "root",
 };
 
+// Default face types for standard cabinets
 export const FACE_TYPES = [
   { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
   { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
@@ -66,6 +75,22 @@ export const FACE_TYPES = [
   { value: FACE_NAMES.OPEN, label: "Open", color: "#F59E0B" },
   { value: FACE_NAMES.CONTAINER, label: "Container", color: "#E5E7EB" },
   { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
+];
+
+// Face types for door/drawer fronts and end panels (no reveals for door/drawer fronts)
+export const PANEL_FACE_TYPES = [
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+];
+
+// Face types for end panels (includes reveals)
+export const END_PANEL_FACE_TYPES = [
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+  { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
+];
+
+// Face types for fillers (just panel, not divisible)
+export const FILLER_FACE_TYPES = [
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
 ];
 
 export const CAN_BE_BEADED = [
@@ -99,3 +124,6 @@ export const DRAWER_BOX_MOD_BY_ID = {
   13: { subtractWidth: 1.875 },
   14: { subtractWidth: 0.5 },
 };
+
+// database cabinet types
+export const CABINET_TYPES = [1, 2, 3]
