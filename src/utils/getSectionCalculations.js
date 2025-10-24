@@ -43,7 +43,7 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
 
   section.cabinets.forEach((cabinet) => {
     if (!cabinet.face_config?.faceSummary) return;
-    if (!CABINET_TYPES.includes(cabinet.type)) return;
+    // if (!CABINET_TYPES.includes(cabinet.type)) return;
 
     const quantity = Number(cabinet.quantity) || 1;
 
@@ -52,7 +52,7 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
         if (["open", "container", "reveal"].includes(faceType)) return;
 
         const styleToUse =
-          faceType === "drawer_front" || faceType === "false_front"
+          faceType === FACE_NAMES.drawer_front || faceType === FACE_NAMES.false_front
             ? section.section_data.drawerFrontStyle
             : section.section_data.doorStyle;
 
@@ -455,13 +455,14 @@ const calculateCabinetTotals = (section, finishMultiplier, context) => {
     }
   );
 
+  const boxHours = calculateBoxPartsTime(section, context);
+
   // Calculate face totals (counts, prices, and hours)
   const faceTotals = calculateFaceTotals(section, finishMultiplier, context);
 
   // Calculate drawer box and rollout totals
   const drawerRolloutTotals = calculateDrawerAndRolloutTotals(section, context);
 
-  const boxHours = calculateBoxPartsTime(section, context);
 
   const fillerMaterials = calculateFillerMaterials(section, context);
 

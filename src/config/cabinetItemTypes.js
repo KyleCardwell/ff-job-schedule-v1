@@ -8,12 +8,14 @@ import {
   PANEL_FACE_TYPES,
   END_PANEL_FACE_TYPES,
   FILLER_FACE_TYPES,
+  FACE_NAMES,
 } from '../utils/constants';
 
 export const CABINET_ITEM_TYPES = {
   cabinet: {
     label: 'Cabinet',
     faceTypesArray: FACE_TYPES, // Use actual face type objects
+    defaultFaceType: FACE_NAMES.DOOR,
     usesReveals: true,
     usesRootReveals: true,
     allowsSplitting: true,
@@ -39,6 +41,7 @@ export const CABINET_ITEM_TYPES = {
   door_front: {
     label: 'Door Front',
     faceTypesArray: PANEL_FACE_TYPES,
+    defaultFaceType: FACE_NAMES.DOOR,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: true,
@@ -64,6 +67,7 @@ export const CABINET_ITEM_TYPES = {
   drawer_front: {
     label: 'Drawer Front',
     faceTypesArray: PANEL_FACE_TYPES,
+    defaultFaceType: FACE_NAMES.drawer_front,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: true,
@@ -90,6 +94,7 @@ export const CABINET_ITEM_TYPES = {
   filler: {
     label: 'Filler',
     faceTypesArray: FILLER_FACE_TYPES,
+    defaultFaceType: FACE_NAMES.PANEL,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: false,
@@ -115,6 +120,7 @@ export const CABINET_ITEM_TYPES = {
   end_panel: {
     label: 'End Panel',
     faceTypesArray: END_PANEL_FACE_TYPES,
+    defaultFaceType: FACE_NAMES.PANEL,
     // Conditional: use reveals if style is NOT 13 (face frame logic)
     usesReveals: (styleId) => styleId !== 13,
     usesRootReveals: (styleId) => styleId !== 13,
@@ -141,6 +147,7 @@ export const CABINET_ITEM_TYPES = {
   drawer_box: {
     label: 'Drawer Box',
     faceTypesArray: [], // Not divisible
+    defaultFaceType: FACE_NAMES.drawer_front,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: false,
@@ -166,6 +173,7 @@ export const CABINET_ITEM_TYPES = {
   rollout: {
     label: 'Rollout',
     faceTypesArray: [], // Not divisible
+    defaultFaceType: FACE_NAMES.rollout,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: false,

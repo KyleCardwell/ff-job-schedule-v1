@@ -710,23 +710,22 @@ const CabinetItemForm = ({
       const boxPartsList = [
         {
           type: ITEM_TYPES.FILLER.type,
-          // side: "left",
+          side: "face",
           width: roundTo16th(w),
           height: roundTo16th(h),
-          depth: roundTo16th(d),
-          area: sideArea + facearea,
+          area: facearea,
           quantity: 1,
           finish: true,
         },
-        // {
-        //   type: ITEM_TYPES.FILLER.type,
-        //   // side: "right",
-        //   width: roundTo16th(w),
-        //   height: roundTo16th(h),
-        //   area: facearea,
-        //   quantity: 1,
-        //   finish: true,
-        // },
+        {
+          type: ITEM_TYPES.FILLER.type,
+          side: "return", 
+          width: roundTo16th(d),
+          height: roundTo16th(h),
+          area: sideArea,
+          quantity: 1,
+          finish: true,
+        },
       ];
 
       return {

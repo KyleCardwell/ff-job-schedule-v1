@@ -640,21 +640,22 @@ export const calculateBoxSheetsCNC = (
   const materialGroups = {};
 
   section.cabinets.forEach((cab) => {
-    if (!cab.face_config?.boxSummary?.boxPartsList) return;
-    // Only process cabinet boxes
-    if (!CABINET_TYPES.includes(cab.type)) return;
-
-    const qty = Number(cab.quantity) || 1;
-    const { boxSummary } = cab.face_config;
-    const { boxPartsList, bandingLength, boxHardware, shelfDrillHoles } =
-      boxSummary;
-
     // Determine material for box parts
     const selectedBoxMaterial = cab.finished_interior
       ? faceMaterials.find((mat) => mat.id === section.face_mat)
       : boxMaterials.find((mat) => mat.id === section.box_mat);
 
     const boxMaterialKey = cab.finished_interior ? "face" : "box";
+
+    if (!cab.face_config?.boxSummary?.boxPartsList) return;
+    // Only process cabinet boxes
+    if (![...CABINET_TYPES].includes(cab.type)) return;
+
+    const qty = Number(cab.quantity) || 1;
+    const { boxSummary } = cab.face_config;
+    const { boxPartsList, bandingLength, boxHardware, shelfDrillHoles } =
+      boxSummary;
+
 
     if (!materialGroups[boxMaterialKey]) {
       materialGroups[boxMaterialKey] = {
