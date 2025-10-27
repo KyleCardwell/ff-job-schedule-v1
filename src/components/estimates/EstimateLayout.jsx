@@ -12,6 +12,7 @@ import {
   setCurrentEstimate,
   updateTaskOrder,
 } from "../../redux/actions/estimates";
+import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
@@ -84,6 +85,7 @@ const EstimateLayout = () => {
     dispatch(fetchTeamCabinetStyles())
     dispatch(fetchPartsList())
     dispatch(fetchPartsListAnchors())
+    dispatch(fetchFinishes())
   }, []);
 
   useEffect(() => {

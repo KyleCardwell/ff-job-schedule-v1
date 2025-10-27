@@ -18,6 +18,7 @@ import { PATHS } from "../../utils/constants";
 import CabinetStyleSettings from "../manageSettings/CabinetStyleSettings.jsx";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
+import FinishSettings from "../manageSettings/FinishSettings.jsx";
 import HardwareSettings from "../manageSettings/HardwareSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
@@ -119,6 +120,15 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_MATERIALS,
       component: MaterialsSettings,
       props: {maxWidthClass: "max-w-[1200px]"},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+    },
+    {
+      id: "finishes",
+      label: "Finishes",
+      path: PATHS.MANAGE_FINISHES,
+      component: FinishSettings,
+      props: {maxWidthClass: "max-w-[720px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },

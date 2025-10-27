@@ -16,11 +16,12 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const estimateData = currentEstimate?.estimate_data;
   const sectionData =
     section?.section_data || currentEstimate?.estimateDefault || {};
+  const finishes = useSelector((state) => state.finishes);
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = cabinetStyles || [];
-  const FINISH_OPTIONS = estimateData?.finishes || [];
+  const FINISH_OPTIONS = finishes?.finishes || [];
   const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
   const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
   const DOOR_HINGE_OPTIONS = hardware.hinges || [];

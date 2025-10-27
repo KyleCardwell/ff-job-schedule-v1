@@ -30,6 +30,39 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.partsListAnchors?.itemsByPartsList || []
   );
 
+  let faceFinishMultiplier = 1;
+  let boxFinishMultiplier = 1;
+
+  const selectedFaceMaterialForFinish = faceMaterials?.find(
+    (mat) => mat.id === section.face_mat
+  );
+  if (
+    selectedFaceMaterialForFinish?.needs_finish &&
+    section.section_data.finish?.length > 0
+  ) {
+    section.section_data.finish.forEach((finishId) => {
+      const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+      if (finishObj?.adjust) {
+        faceFinishMultiplier *= finishObj.adjust;
+      }
+    });
+  }
+
+  const selectedBoxMaterialForFinish = boxMaterials?.find(
+    (mat) => mat.id === section.box_mat
+  );
+  if (
+    selectedBoxMaterialForFinish?.needs_finish &&
+    section.section_data.finish?.length > 0
+  ) {
+    section.section_data.finish.forEach((finishId) => {
+      const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+      if (finishObj?.adjust) {
+        boxFinishMultiplier *= finishObj.adjust;
+      }
+    });
+  }
+
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
     return getSectionCalculations(section, {
@@ -37,17 +70,21 @@ const EstimateSectionPrice = ({ section }) => {
       boxMaterials,
       faceMaterials,
       drawerBoxMaterials,
-      
+
       // Styles & Configuration
       cabinetStyles,
       finishTypes,
-      
+
       // Hardware
       hardware,
-      
+
       // Services & Anchors
       partsListAnchors,
       globalServices: services,
+
+      // Finish Multipliers
+      faceFinishMultiplier,
+      boxFinishMultiplier,
     });
   }, [
     section,
@@ -59,6 +96,8 @@ const EstimateSectionPrice = ({ section }) => {
     hardware,
     partsListAnchors,
     services,
+    faceFinishMultiplier,
+    boxFinishMultiplier,
   ]);
 
   // Format number as currency
@@ -81,7 +120,9 @@ const EstimateSectionPrice = ({ section }) => {
     const costsByService = {};
 
     Object.entries(hoursByService).forEach(([serviceId, hours]) => {
-      const service = services.find((s) => s.service_id === parseInt(serviceId));
+      const service = services.find(
+        (s) => s.service_id === parseInt(serviceId)
+      );
       if (service) {
         const cost = hours * (service.hourly_rate || 0);
         costsByService[serviceId] = {
@@ -191,7 +232,7 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.rollOutTotal)}
             </span>
           </div>
-         
+
           {/* Hardware Information */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
             <span className="text-sm text-slate-300 text-left">Hinges:</span>

@@ -10,6 +10,7 @@ export const PATHS = {
   MANAGE_CABINET_TYPES: "/manage/cabinet-types",
   MANAGE_PARTS_LIST: "/manage/parts-list",
   MANAGE_MATERIALS: "/manage/materials",
+  MANAGE_FINISHES: "/manage/finishes",
   MANAGE_HARDWARE: "/manage/hardware",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",

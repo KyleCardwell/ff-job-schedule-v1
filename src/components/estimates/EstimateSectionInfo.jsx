@@ -21,7 +21,7 @@ const EstimateSectionInfo = ({
   const NOT_SELECTED = "Not Selected";
   const NONE = "None";
 
-  const { materials, hardware } = useSelector((state) => state);
+  const { materials, hardware, finishes } = useSelector((state) => state);
 
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
 
@@ -50,7 +50,7 @@ const EstimateSectionInfo = ({
     }
     return sectionData.boxFinish?.length
       ? sectionData.boxFinish
-          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+          .map((f) => finishes?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
           .join(", ")
       : NOT_SELECTED;
   };
@@ -62,7 +62,7 @@ const EstimateSectionInfo = ({
     }
     return sectionData.faceFinish?.length
       ? sectionData.faceFinish
-          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+          .map((f) => finishes?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
           .join(", ")
       : NOT_SELECTED;
   };
