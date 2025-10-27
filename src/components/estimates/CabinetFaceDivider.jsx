@@ -358,18 +358,23 @@ const CabinetFaceDivider = ({
       const expectedHeight =
         cabinetHeight - currentReveals.top - currentReveals.bottom;
 
-      // Only update if dimensions or reveals actually changed
+      // Only update if dimensions, reveals, or face type changed
       const needsUpdate =
         config.width !== expectedWidth ||
         config.height !== expectedHeight ||
         !config.rootReveals ||
-        !isEqual(config.rootReveals, currentReveals);
+        !isEqual(config.rootReveals, currentReveals) ||
+        config.type !== itemConfig.defaultFaceType;
 
       if (needsUpdate) {
         const updatedConfig = cloneDeep(config);
 
         // Update rootReveals
         updatedConfig.rootReveals = currentReveals;
+
+        // Update root face type to match the item type's default
+        // This ensures the correct face type when cabinet type changes
+        updatedConfig.type = itemConfig.defaultFaceType;
 
         // Normalize reveals before doing anything else - pass currentReveals explicitly
         normalizeRevealDimensions(updatedConfig, currentReveals);
@@ -1684,7 +1689,7 @@ const CabinetFaceDivider = ({
     if (!parent) {
       // Cannot delete the root, but can reset it
       Object.assign(newConfig, {
-        type: FACE_NAMES.DOOR,
+        type: itemConfig.defaultFaceType,
         children: null,
         splitDirection: null,
         // Keep original dimensions
@@ -1775,7 +1780,7 @@ const CabinetFaceDivider = ({
 
     const resetConfig = {
       id: FACE_NAMES.ROOT,
-      type: FACE_NAMES.DOOR,
+      type: itemConfig.defaultFaceType,
       width: cabinetWidth - reveals.left - reveals.right,
       height: cabinetHeight - reveals.top - reveals.bottom,
       x: reveals.left,
