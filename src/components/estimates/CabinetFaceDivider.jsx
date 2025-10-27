@@ -83,6 +83,7 @@ const CabinetFaceDivider = ({
   const dragHappened = useRef(false); // Ref to track if a drag occurred
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
+  const previousCabinetTypeIdRef = useRef(cabinetTypeId); // Track previous cabinet type
   // State for temporary input values
   const [inputValues, setInputValues] = useState({
     rollOutQty: "",
@@ -275,6 +276,47 @@ const CabinetFaceDivider = ({
   ]);
 
   useEffect(() => {
+    // Check if cabinet type has actually changed
+    const cabinetTypeChanged = previousCabinetTypeIdRef.current !== cabinetTypeId;
+    
+    if (cabinetTypeChanged) {
+      // Cabinet type changed - reset to default config with no children
+      const initialReveals = usesRootReveals
+        ? (type?.config || {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            reveal: 0,
+          })
+        : {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            reveal: 0,
+          };
+
+      const initialHeight =
+        cabinetHeight - initialReveals.top - initialReveals.bottom;
+
+      setConfig({
+        id: FACE_NAMES.ROOT,
+        type: itemConfig.defaultFaceType,
+        width: cabinetWidth - initialReveals.left - initialReveals.right,
+        height: initialHeight,
+        x: initialReveals.left,
+        y: initialReveals.top,
+        children: null,
+        shelfQty: calculateShelfQty(initialHeight),
+        rootReveals: initialReveals,
+      });
+      
+      // Update the ref to the new type
+      previousCabinetTypeIdRef.current = cabinetTypeId;
+      return;
+    }
+    
     if (!config || (Array.isArray(config) && config.length === 0)) {
       // Initialize with a single root node for new cabinets or empty configs
       // If !usesRootReveals, all reveals should be 0
@@ -299,7 +341,7 @@ const CabinetFaceDivider = ({
 
       setConfig({
         id: FACE_NAMES.ROOT,
-        type: FACE_NAMES.DOOR,
+        type: itemConfig.defaultFaceType,
         width: cabinetWidth - initialReveals.left - initialReveals.right,
         height: initialHeight,
         x: initialReveals.left,
@@ -358,13 +400,12 @@ const CabinetFaceDivider = ({
       const expectedHeight =
         cabinetHeight - currentReveals.top - currentReveals.bottom;
 
-      // Only update if dimensions, reveals, or face type changed
+      // Only update if dimensions or reveals changed (NOT face type)
       const needsUpdate =
         config.width !== expectedWidth ||
         config.height !== expectedHeight ||
         !config.rootReveals ||
-        !isEqual(config.rootReveals, currentReveals) ||
-        config.type !== itemConfig.defaultFaceType;
+        !isEqual(config.rootReveals, currentReveals);
 
       if (needsUpdate) {
         const updatedConfig = cloneDeep(config);
@@ -372,9 +413,8 @@ const CabinetFaceDivider = ({
         // Update rootReveals
         updatedConfig.rootReveals = currentReveals;
 
-        // Update root face type to match the item type's default
-        // This ensures the correct face type when cabinet type changes
-        updatedConfig.type = itemConfig.defaultFaceType;
+        // DO NOT update root face type - preserve the saved type
+        // Only cabinet type changes should reset the face type
 
         // Normalize reveals before doing anything else - pass currentReveals explicitly
         normalizeRevealDimensions(updatedConfig, currentReveals);

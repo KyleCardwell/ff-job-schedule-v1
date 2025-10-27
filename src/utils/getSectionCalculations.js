@@ -371,6 +371,8 @@ const calculateFillerMaterials = (section, context) => {
   const { selectedFaceMaterial } = context;
   if (!selectedFaceMaterial) return totals;
 
+  const { material } = selectedFaceMaterial;
+
   fillers.forEach((filler) => {
     const { width, height, depth, quantity = 1 } = filler;
 
@@ -378,18 +380,18 @@ const calculateFillerMaterials = (section, context) => {
     const returnArea = depth * height;
     const wasteFactor = 1.25;
 
-    if (selectedFaceMaterial?.bd_ft_price) {
+    if (material?.bd_ft_price) {
       const boardFeet =
-        ((faceArea + returnArea) * selectedFaceMaterial.thickness) / 144;
+        ((faceArea + returnArea) * material.thickness) / 144;
       const boardFeetWithWaste = boardFeet * wasteFactor;
       totals.boardFeet += boardFeetWithWaste * quantity;
       totals.woodTotal +=
-        boardFeetWithWaste * selectedFaceMaterial.bd_ft_price * quantity;
+        boardFeetWithWaste * material.bd_ft_price * quantity;
     } else {
       const totalArea = (faceArea + returnArea) * wasteFactor;
-      const sheetArea = totalArea / selectedFaceMaterial.area;
+      const sheetArea = totalArea / material.area;
       totals.woodTotal +=
-        sheetArea * selectedFaceMaterial.sheet_price * quantity;
+        sheetArea * material.sheet_price * quantity;
     }
   });
 
