@@ -37,9 +37,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [formData, setFormData] = useState({
     style: section.cabinet_style_id || "",
     boxMaterial: section.box_mat || "",
-    boxFinish: sectionData.boxFinish || [],
+    boxFinish: section.box_finish || [],
     faceMaterial: section.face_mat || "",
-    faceFinish: sectionData.faceFinish || [],
+    faceFinish: section.face_finish || [],
     doorStyle: sectionData.doorStyle || "",
     drawerFrontStyle: sectionData.drawerFrontStyle || "",
     doorInsideMolding: sectionData.doorInsideMolding || false,

@@ -18,7 +18,7 @@ import {
 } from "./estimateHelpers";
 
 // Calculate face counts and prices for all cabinets in a section
-const calculateFaceTotals = (section, finishMultiplier, context) => {
+const calculateFaceTotals = (section, context) => {
   const totals = {
     faceCounts: {},
     facePrices: {},
@@ -35,9 +35,7 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
     return totals;
   }
 
-  const selectedFaceMaterial = context.faceMaterials?.find(
-    (mat) => mat.id === section.face_mat
-  );
+  const { selectedFaceMaterial } = context;
 
   if (!selectedFaceMaterial) return totals;
 
@@ -54,13 +52,13 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
         if (["open", "container", "reveal"].includes(faceType)) return;
 
         const styleToUse =
-          faceType === FACE_NAMES.drawer_front || faceType === FACE_NAMES.false_front
+          faceType === FACE_NAMES.drawer_front ||
+          faceType === FACE_NAMES.false_front
             ? section.section_data.drawerFrontStyle
             : section.section_data.doorStyle;
 
         // Calculate hours for each face
         if (faceData.faces && Array.isArray(faceData.faces)) {
-
           faceData.faces.forEach((face) => {
             let faceHours = {};
             if (
@@ -83,11 +81,22 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
                   if (!totals.hoursByService[serviceId]) {
                     totals.hoursByService[serviceId] = 0;
                   }
-                  // Apply finish multiplier for service ID 3 (finish) if material needs finish
-                  const multiplier =
-                    serviceId === "3" && selectedFaceMaterial.needs_finish
-                      ? quantity * finishMultiplier
-                      : quantity;
+                  // Apply multipliers based on service ID
+                  let multiplier = quantity;
+                  if (
+                    serviceId === "2" &&
+                    selectedFaceMaterial.material?.needs_finish
+                  ) {
+                    // Shop multiplier for service ID 2
+                    multiplier = quantity * selectedFaceMaterial.shopMultiplier;
+                  } else if (
+                    serviceId === "3" &&
+                    selectedFaceMaterial.material?.needs_finish
+                  ) {
+                    // Finish multiplier for service ID 3
+                    multiplier =
+                      quantity * selectedFaceMaterial.finishMultiplier;
+                  }
                   totals.hoursByService[serviceId] += (hours || 0) * multiplier;
                 }
               );
@@ -100,17 +109,17 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
         if (styleToUse === "slab_sheet") {
           typeTotalPrice = calculateSlabSheetFacePrice(
             faceData,
-            selectedFaceMaterial
+            selectedFaceMaterial.material
           );
         } else if (styleToUse === "5_piece_hardwood") {
           typeTotalPrice = calculate5PieceHardwoodFacePrice(
             faceData,
-            selectedFaceMaterial
+            selectedFaceMaterial.material
           );
         } else if (styleToUse === "slab_hardwood") {
           typeTotalPrice = calculateSlabHardwoodFacePrice(
             faceData,
-            selectedFaceMaterial
+            selectedFaceMaterial.material
           );
         }
 
@@ -263,23 +272,21 @@ const tapeTimeMinutes = ({
   return minutes;
 };
 
-const calculateFaceFramePrices = (section, finishMultiplier, context) => {
+const calculateFaceFramePrices = (section, context) => {
   const totals = {
-    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish
+    hoursByService: {}, // 2=shop, 3=finish
     woodTotal: 0,
     boardFeet: 0,
   };
 
-  if (!section.cabinets || !Array.isArray(section.cabinets)) {
-    return totals;
-  }
+  if (!section.cabinets || !Array.isArray(section.cabinets)) return totals;
 
-  const selectedFaceMaterial = context.faceMaterials?.find(
-    (mat) => mat.id === section.face_mat
-  );
+  const { selectedFaceMaterial } = context;
+  if (!selectedFaceMaterial) return totals;
+
+  let totalTapeHours = 0; // 👈 track tape time separately
 
   section.cabinets.forEach((cabinet) => {
-    // if (!cabinet.cabinetHours) return;
     if (cabinet.cabinet_style_override === 13) return;
     if (!cabinet.cabinet_tyle_override && section.cabinet_style_id === 13)
       return;
@@ -294,25 +301,20 @@ const calculateFaceFramePrices = (section, finishMultiplier, context) => {
       perInchRate: null,
       minMinutes: 8,
     });
-    const tapeTimeHours = (tapeTime / 60) * quantity;
 
-    // Aggregate finish hours (service ID 3)
-    if (!totals.hoursByService[3]) {
-      totals.hoursByService[3] = 0;
-    }
-    totals.hoursByService[3] += tapeTimeHours;
+    const tapeTimeHours = (tapeTime / 60) * quantity;
+    totalTapeHours += tapeTimeHours; // 👈 accumulate separately
 
     if (!frameParts?.framePieces) return;
 
     frameParts.framePieces.forEach((piece) => {
       const length = piece.length || 0;
       const width = piece.width || 0;
-      let shopTimeMinutes = 15; // Base time for pieces up to 36"
 
-      // Linear interpolation: 15 min at 36", 25 min at 96"
+      let shopTimeMinutes = 15;
       if (length > 36) {
-        const extraLength = Math.min(length - 36, 60); // Cap at 96" (60" extra)
-        const timeIncrease = (extraLength / 60) * 10; // 10 minutes increase over 60"
+        const extraLength = Math.min(length - 36, 60);
+        const timeIncrease = (extraLength / 60) * 10;
         shopTimeMinutes = 15 + timeIncrease;
       }
 
@@ -325,14 +327,26 @@ const calculateFaceFramePrices = (section, finishMultiplier, context) => {
           boardFeetWithWaste * selectedFaceMaterial.bd_ft_price * quantity;
       }
 
-      // Convert minutes to hours and aggregate (service ID 2 = shop)
       const shopTimeHours = shopTimeMinutes / 60;
-      if (!totals.hoursByService[2]) {
-        totals.hoursByService[2] = 0;
-      }
-      totals.hoursByService[2] += shopTimeHours * quantity;
+      if (!totals.hoursByService[2]) totals.hoursByService[2] = 0;
+
+      const shopMultiplier = selectedFaceMaterial.material?.needs_finish
+        ? selectedFaceMaterial.shopMultiplier
+        : 1;
+
+      totals.hoursByService[2] += shopTimeHours * quantity * shopMultiplier;
     });
   });
+
+  // Apply finish multiplier *only* to finish work, not tape time
+  if (selectedFaceMaterial.material?.needs_finish) {
+    const totalFinishHours = totals.hoursByService[3] || 0;
+    const finishOnlyHours = Math.max(totalFinishHours - totalTapeHours, 0); // ✅ never negative
+    const adjustedFinishHours =
+      finishOnlyHours * selectedFaceMaterial.finishMultiplier;
+
+    totals.hoursByService[3] = adjustedFinishHours + totalTapeHours;
+  }
 
   return totals;
 };
@@ -354,9 +368,8 @@ const calculateFillerMaterials = (section, context) => {
 
   if (fillers.length === 0) return totals;
 
-  const selectedFaceMaterial = context.faceMaterials?.find(
-    (mat) => mat.id === section.face_mat
-  );
+  const { selectedFaceMaterial } = context;
+  if (!selectedFaceMaterial) return totals;
 
   fillers.forEach((filler) => {
     const { width, height, depth, quantity = 1 } = filler;
@@ -441,11 +454,10 @@ const countHardware = (section, faceTotals, context) => {
   };
 };
 
-const calculateCabinetTotals = (section, finishMultiplier, context) => {
+const calculateCabinetTotals = (section, context) => {
   const cabinetCost = calculateBoxSheetsCNC(
     section,
-    context.boxMaterials,
-    context.faceMaterials,
+    context,
     {
       cutPricePerFoot: 1.5,
       drillCostPerHingeBore: 0.85,
@@ -461,19 +473,14 @@ const calculateCabinetTotals = (section, finishMultiplier, context) => {
   const boxHours = calculateBoxPartsTime(section, context);
 
   // Calculate face totals (counts, prices, and hours)
-  const faceTotals = calculateFaceTotals(section, finishMultiplier, context);
+  const faceTotals = calculateFaceTotals(section, context);
 
   // Calculate drawer box and rollout totals
   const drawerRolloutTotals = calculateDrawerAndRolloutTotals(section, context);
 
-
   const fillerMaterials = calculateFillerMaterials(section, context);
 
-  const faceFramePrices = calculateFaceFramePrices(
-    section,
-    finishMultiplier,
-    context
-  );
+  const faceFramePrices = calculateFaceFramePrices(section, context);
 
   // Count total boxes
   const { boxCount, fillerCount } = section.cabinets?.reduce(
@@ -591,27 +598,7 @@ export const getSectionCalculations = (section, context = {}) => {
     };
   }
 
-  let finishMultiplier = 1;
-  const selectedMaterialForFinish = context.faceMaterials?.find(
-    (mat) => mat.id === section.face_mat
-  );
-  if (
-    selectedMaterialForFinish?.needs_finish &&
-    section.section_data.finish?.length > 0
-  ) {
-    section.section_data.finish.forEach((finishId) => {
-      const finishObj = context.finishTypes?.find((ft) => ft.id === finishId);
-      if (finishObj?.adjust) {
-        finishMultiplier *= finishObj.adjust;
-      }
-    });
-  }
-
-  const cabinetTotals = calculateCabinetTotals(
-    section,
-    finishMultiplier,
-    context
-  );
+  const cabinetTotals = calculateCabinetTotals(section, context);
 
   const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
   const accessoriesTotal = calculateSimpleItemsTotal(section.accessories);

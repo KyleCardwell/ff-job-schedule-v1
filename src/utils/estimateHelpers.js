@@ -180,7 +180,7 @@ const calculatePartsTimeForCabinet = (boxPartsList, partsListAnchors) => {
  * @returns {Object} - { hoursByService }
  */
 export const calculateBoxPartsTime = (section, context = {}) => {
-  const { partsListAnchors, globalServices } = context;
+  const { partsListAnchors, globalServices, selectedBoxMaterial } = context;
   const totals = {
     hoursByService: {}, // Detailed breakdown by service
   };
@@ -211,7 +211,24 @@ export const calculateBoxPartsTime = (section, context = {}) => {
       if (!totals.hoursByService[service.service_id]) {
         totals.hoursByService[service.service_id] = 0;
       }
-      totals.hoursByService[service.service_id] += hours * quantity;
+
+      // Apply multipliers based on service ID
+      let multiplier = quantity;
+      if (
+        service.service_id === 2 &&
+        selectedBoxMaterial?.material?.needs_finish
+      ) {
+        // Shop multiplier for service ID 2
+        multiplier = quantity * selectedBoxMaterial.shopMultiplier;
+      } else if (
+        service.service_id === 3 &&
+        selectedBoxMaterial?.material?.needs_finish
+      ) {
+        // Finish multiplier for service ID 3
+        multiplier = quantity * selectedBoxMaterial.finishMultiplier;
+      }
+
+      totals.hoursByService[service.service_id] += hours * multiplier;
     });
   });
 
@@ -605,8 +622,7 @@ export const calculateSlabDoorHours = (width, height) => {
  */
 export const calculateBoxSheetsCNC = (
   section,
-  boxMaterials,
-  faceMaterials,
+  context,
   {
     cutPricePerFoot = 1.5,
     drillCostPerHingeBore = 0.85,
@@ -622,8 +638,8 @@ export const calculateBoxSheetsCNC = (
     !section ||
     !section.cabinets ||
     section.cabinets.length === 0 ||
-    !boxMaterials ||
-    !faceMaterials
+    !context.selectedBoxMaterial ||
+    !context.selectedFaceMaterial
   ) {
     return {
       sheetCount: 0,
@@ -636,14 +652,17 @@ export const calculateBoxSheetsCNC = (
     };
   }
 
+  const selectedBoxMaterial = context.selectedBoxMaterial.material;
+  const selectedFaceMaterial = context.selectedFaceMaterial.material;
+
   // Group cabinets by material and collect all parts
   const materialGroups = {};
 
   section.cabinets.forEach((cab) => {
     // Determine material for box parts
-    const selectedBoxMaterial = cab.finished_interior
-      ? faceMaterials.find((mat) => mat.id === section.face_mat)
-      : boxMaterials.find((mat) => mat.id === section.box_mat);
+    const boxMaterial = cab.finished_interior
+      ? selectedFaceMaterial
+      : selectedBoxMaterial;
 
     const boxMaterialKey = cab.finished_interior ? "face" : "box";
 
@@ -659,7 +678,7 @@ export const calculateBoxSheetsCNC = (
 
     if (!materialGroups[boxMaterialKey]) {
       materialGroups[boxMaterialKey] = {
-        material: selectedBoxMaterial,
+        material: boxMaterial,
         parts: [],
         totals: {
           bandingLength: 0,
@@ -679,7 +698,7 @@ export const calculateBoxSheetsCNC = (
 
       // Get the appropriate material for this part
       const partMaterial = part.finish
-        ? faceMaterials.find((mat) => mat.id === section.face_mat)
+        ? selectedFaceMaterial
         : selectedBoxMaterial;
 
       // Check if part is oversized (exceeds standard sheet dimensions)
@@ -812,8 +831,8 @@ export const calculateBoxSheetsCNC = (
         const baseMaterialKey = materialKey.replace("-oversize", "");
         const baseMaterial =
           baseMaterialKey === "face"
-            ? faceMaterials.find((mat) => mat.id === section.face_mat)
-            : boxMaterials.find((mat) => mat.id === section.box_mat);
+            ? selectedFaceMaterial
+            : selectedBoxMaterial;
 
         if (baseMaterial) {
           const standardSheetWidth = baseMaterial.width || 49;

@@ -15,9 +15,7 @@ const EstimateSectionPrice = ({ section }) => {
   // Get employee rates from Redux store
   const services = useSelector((state) => state.services?.allServices || []);
 
-  const finishTypes = useSelector(
-    (state) => state.estimates?.currentEstimate?.estimate_data?.finishes || []
-  );
+  const finishTypes = useSelector((state) => state.finishes?.finishes || []);
 
   const cabinetStyles = useSelector(
     (state) =>
@@ -30,38 +28,53 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.partsListAnchors?.itemsByPartsList || []
   );
 
-  let faceFinishMultiplier = 1;
-  let boxFinishMultiplier = 1;
+  const selectedFaceMaterial = useMemo(() => {
+    let finishMultiplier = 0;
+    let shopMultiplier = 1;
+    const material = faceMaterials?.find((mat) => mat.id === section.face_mat);
+    if (material?.needs_finish) {
+      finishMultiplier = 1;
+    }
+    if (
+      material?.needs_finish &&
+      section.face_finish?.length > 0
+    ) {
+      section.face_finish.forEach((finishId) => {
+        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+        if (finishObj?.finish_markup) {
+          finishMultiplier += finishObj.finish_markup/100;
+        }
+        if (finishObj?.shop_markup) {
+          shopMultiplier += finishObj.shop_markup/100;
+        }
+      });
+    }
+    return { material, finishMultiplier, shopMultiplier };
+  }, [faceMaterials, section.face_mat, finishTypes, section.face_finish]);
 
-  const selectedFaceMaterialForFinish = faceMaterials?.find(
-    (mat) => mat.id === section.face_mat
-  );
-  if (
-    selectedFaceMaterialForFinish?.needs_finish &&
-    section.section_data.finish?.length > 0
-  ) {
-    section.section_data.finish.forEach((finishId) => {
-      const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-      if (finishObj?.adjust) {
-        faceFinishMultiplier *= finishObj.adjust;
-      }
-    });
-  }
-
-  const selectedBoxMaterialForFinish = boxMaterials?.find(
-    (mat) => mat.id === section.box_mat
-  );
-  if (
-    selectedBoxMaterialForFinish?.needs_finish &&
-    section.section_data.finish?.length > 0
-  ) {
-    section.section_data.finish.forEach((finishId) => {
-      const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-      if (finishObj?.adjust) {
-        boxFinishMultiplier *= finishObj.adjust;
-      }
-    });
-  }
+  const selectedBoxMaterial = useMemo(() => {
+    let finishMultiplier = 0;
+    let shopMultiplier = 1;
+    const material = boxMaterials?.find((mat) => mat.id === section.box_mat);
+    if (material?.needs_finish) {
+      finishMultiplier = 1;
+    }
+    if (
+      material?.needs_finish &&
+      section.box_finish?.length > 0
+    ) {
+      section.box_finish.forEach((finishId) => {
+        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+        if (finishObj?.finish_markup) {
+          finishMultiplier += finishObj.finish_markup/100;
+        }
+        if (finishObj?.shop_markup) {
+          shopMultiplier += finishObj.shop_markup/100;
+        }
+      });
+    }
+    return { material, finishMultiplier, shopMultiplier };
+  }, [boxMaterials, section.box_mat, finishTypes, section.box_finish]);
 
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
@@ -70,6 +83,8 @@ const EstimateSectionPrice = ({ section }) => {
       boxMaterials,
       faceMaterials,
       drawerBoxMaterials,
+      selectedFaceMaterial,
+      selectedBoxMaterial,
 
       // Styles & Configuration
       cabinetStyles,
@@ -82,22 +97,19 @@ const EstimateSectionPrice = ({ section }) => {
       partsListAnchors,
       globalServices: services,
 
-      // Finish Multipliers
-      faceFinishMultiplier,
-      boxFinishMultiplier,
     });
   }, [
     section,
     boxMaterials,
     faceMaterials,
+    selectedFaceMaterial,
+    selectedBoxMaterial,
     drawerBoxMaterials,
     finishTypes,
     cabinetStyles,
     hardware,
     partsListAnchors,
     services,
-    faceFinishMultiplier,
-    boxFinishMultiplier,
   ]);
 
   // Format number as currency

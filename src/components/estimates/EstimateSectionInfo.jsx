@@ -48,8 +48,8 @@ const EstimateSectionInfo = ({
     if (boxMaterial?.needs_finish === false) {
       return NONE;
     }
-    return sectionData.boxFinish?.length
-      ? sectionData.boxFinish
+    return section.box_finish?.length
+      ? section.box_finish
           .map((f) => finishes?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
           .join(", ")
       : NOT_SELECTED;
@@ -60,8 +60,8 @@ const EstimateSectionInfo = ({
     if (faceMaterial?.needs_finish === false) {
       return NONE;
     }
-    return sectionData.faceFinish?.length
-      ? sectionData.faceFinish
+    return section.face_finish?.length
+      ? section.face_finish
           .map((f) => finishes?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
           .join(", ")
       : NOT_SELECTED;
