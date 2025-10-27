@@ -159,50 +159,52 @@ const CabinetItemForm = ({
           const updates = { [name]: numValue };
           const inputUpdates = {};
 
-          // If type is changing, populate default dimensions if empty
+          // If type is changing, always set dimensions to defaults and reset face_config
           if (name === "type" && numValue) {
             const selectedType = cabinetTypes.find(
               (t) => t.cabinet_type_id === numValue
             );
 
             if (selectedType) {
-              if (!formData.width && selectedType.default_width) {
+              // Always set dimensions to defaults when type changes
+              if (selectedType.default_width) {
                 updates.width = selectedType.default_width;
                 inputUpdates.width = String(selectedType.default_width);
               }
-              if (!formData.height && selectedType.default_height) {
+              if (selectedType.default_height) {
                 updates.height = selectedType.default_height;
                 inputUpdates.height = String(selectedType.default_height);
               }
-              if (!formData.depth && selectedType.default_depth) {
+              if (selectedType.default_depth) {
                 updates.depth = selectedType.default_depth;
                 inputUpdates.depth = String(selectedType.default_depth);
               }
+
+              // Reset face_config to null when type changes
+              // CabinetFaceDivider will reinitialize it with the correct defaultFaceType
+              updates.face_config = null;
             }
 
-            // Update inputValues if we set any dimension defaults
+            // Update inputValues with dimension defaults
             if (Object.keys(inputUpdates).length > 0) {
               setInputValues((prev) => ({
                 ...prev,
                 ...inputUpdates,
               }));
             }
+          } else if (name === "cabinet_style_override") {
+            // For style changes only, update rootReveals if config exists
+            if (
+              typeConfig?.config &&
+              formData.face_config &&
+              formData.face_config.id
+            ) {
+              updates.face_config = {
+                ...formData.face_config,
+                rootReveals: typeConfig.config,
+              };
+            }
           }
-
-          // Update face_config rootReveals if config exists
-          // Only update if face_config already has structure (not null/empty)
-          if (
-            typeConfig?.config &&
-            formData.face_config &&
-            formData.face_config.id
-          ) {
-            updates.face_config = {
-              ...formData.face_config,
-              rootReveals: typeConfig.config,
-            };
-          }
-          // For new cabinets (face_config is null), don't set it here
-          // Let CabinetFaceDivider initialize it with proper structure
 
           // Single state update with all changes
           setFormData({
