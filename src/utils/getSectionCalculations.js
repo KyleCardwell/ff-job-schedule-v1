@@ -43,6 +43,8 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
 
   section.cabinets.forEach((cabinet) => {
     if (!cabinet.face_config?.faceSummary) return;
+    // Don't calculate hours for fillers (type === 5, done separately)
+    if (cabinet.type === 5) return;
     // if (!CABINET_TYPES.includes(cabinet.type)) return;
 
     const quantity = Number(cabinet.quantity) || 1;
@@ -58,6 +60,7 @@ const calculateFaceTotals = (section, finishMultiplier, context) => {
 
         // Calculate hours for each face
         if (faceData.faces && Array.isArray(faceData.faces)) {
+
           faceData.faces.forEach((face) => {
             let faceHours = {};
             if (
@@ -372,7 +375,7 @@ const calculateFillerMaterials = (section, context) => {
     } else {
       const totalArea = (faceArea + returnArea) * wasteFactor;
       const sheetArea = totalArea / selectedFaceMaterial.area;
-      totals.woodtotal +=
+      totals.woodTotal +=
         sheetArea * selectedFaceMaterial.sheet_price * quantity;
     }
   });
