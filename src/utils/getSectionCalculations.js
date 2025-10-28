@@ -472,6 +472,7 @@ const calculateCabinetTotals = (section, context) => {
     }
   );
 
+  // Calculate box parts time, 
   const boxHours = calculateBoxPartsTime(section, context);
 
   // Calculate face totals (counts, prices, and hours)

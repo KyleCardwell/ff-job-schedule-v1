@@ -146,7 +146,7 @@ const CabinetFaceDivider = ({
   let revealBottom = Math.abs(Math.min(0, reveals.bottom));
 
   // For non-Euro cabinets (cabinetStyleId !== 13), add root reveal overhangs
-  if (cabinetStyleId !== 13 && reveals) {
+  if (cabinetStyleId !== 13 && cabinetTypeId !== 10 && reveals) {
     // Left overhang: reveal width minus the overlap (reveals.left)
     if (reveals.left && reveals.reveal) {
       revealLeft = Math.max(revealLeft, reveals.reveal - reveals.left);
@@ -300,6 +300,8 @@ const CabinetFaceDivider = ({
       const initialHeight =
         cabinetHeight - initialReveals.top - initialReveals.bottom;
 
+      const needsShelves = itemConfig.features.shelves
+
       setConfig({
         id: FACE_NAMES.ROOT,
         type: itemConfig.defaultFaceType,
@@ -308,7 +310,7 @@ const CabinetFaceDivider = ({
         x: initialReveals.left,
         y: initialReveals.top,
         children: null,
-        shelfQty: calculateShelfQty(initialHeight),
+        shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
       });
       
@@ -882,10 +884,12 @@ const CabinetFaceDivider = ({
           x: reveals.left - reveals.reveal,
           y: 0,
         };
+
+        const xVal = cabinetTypeId === 10 ? 0 : -reveals.left;
         
         cabinetGroup
           .append("rect")
-          .attr("x", -reveals.left * scale)
+          .attr("x", xVal * scale)
           .attr("y", 0)
           .attr("width", reveals.reveal * scale)
           .attr("height", leftRevealHeight * scale)

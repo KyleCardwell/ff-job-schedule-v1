@@ -367,14 +367,6 @@ const CabinetItemForm = ({
           faceSummary: calculateFaceSummary(formData.face_config),
           boxSummary: boxSummary,
         };
-
-        // finalFormData.cabinetHours = getCabinetHours(
-        //   formData.width,
-        //   formData.height,
-        //   formData.depth,
-        //   formData.finished_interior,
-        //   cabinetAnchors[formData.type]
-        // );
       }
 
       onSave(finalFormData);

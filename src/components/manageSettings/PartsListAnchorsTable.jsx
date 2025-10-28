@@ -58,7 +58,7 @@ const AnchorRow = ({
         </div>
         <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40">
           {anchor.cabinet_style_id 
-            ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'All'
+            ? cabinetStyles.find(s => s.cabinet_style_id == parseInt(anchor.cabinet_style_id))?.cabinet_style_name || 'All'
             : 'All'}
         </div>
         {Array.isArray(services) &&
@@ -177,7 +177,7 @@ const AnchorRow = ({
       <div className="px-4 py-2 flex items-center">{anchor.depth}</div>
       <div className="px-4 py-2 flex items-center">
         {anchor.cabinet_style_id 
-          ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'All'
+          ? cabinetStyles.find(s => s.cabinet_style_id === parseInt(anchor.cabinet_style_id))?.cabinet_style_name || 'All'
           : 'All'}
       </div>
       {Array.isArray(services) &&
