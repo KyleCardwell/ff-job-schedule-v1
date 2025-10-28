@@ -38,15 +38,26 @@ const getPartsListId = (partType, isFinished) => {
  * @param {Array} anchors - Array of anchor objects with dimensions and services
  * @param {number} targetArea - The area to interpolate for (width × height)
  * @param {number} teamServiceId - The service ID to get time for
+ * @param {number} cabinetStyleId - Optional cabinet style ID for filtering (null = applies to all)
  * @returns {number} - Interpolated time in minutes
  */
-export const interpolateTimeByArea = (anchors, targetArea, teamServiceId) => {
+export const interpolateTimeByArea = (anchors, targetArea, teamServiceId, cabinetStyleId = null) => {
   if (!anchors || anchors.length === 0) {
     return 0;
   }
 
+  // Filter anchors by cabinet_style_id
+  // Include anchors where cabinet_style_id is null (applies to all) OR matches the target style
+  const filteredAnchors = anchors.filter((anchor) => {
+    return anchor.cabinet_style_id === null || anchor.cabinet_style_id == cabinetStyleId;
+  });
+
+  if (filteredAnchors.length === 0) {
+    return 0;
+  }
+
   // Build array of {area, minutes} for this service, filtering out missing services
-  const dataPoints = anchors
+  const dataPoints = filteredAnchors
     .map((anchor) => {
       const service = anchor.services.find(
         (s) => s.team_service_id === teamServiceId
@@ -164,7 +175,8 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
 
     // Calculate time for each service
     allServiceIds.forEach((teamServiceId) => {
-      const minutesEach = interpolateTimeByArea(anchors, area, teamServiceId);
+      // Box parts don't have style-specific anchors, pass null for cabinetStyleId
+      const minutesEach = interpolateTimeByArea(anchors, area, teamServiceId, null);
       let totalMinutes = minutesEach * quantity;
 
       // Apply multipliers based on service and material
@@ -250,13 +262,14 @@ export const calculateBoxPartsTime = (section, context = {}) => {
  * Calculate total hours by service for door/drawer faces using parts list anchors
  * @param {Array} faces - Array of face objects with width, height, and area
  * @param {string} doorStyle - The door style (slab_sheet, slab_hardwood, 5_piece_hardwood)
+ * @param {number} cabinetStyleId - Cabinet style ID for filtering style-specific anchors
  * @param {Object} context - Calculation context
  * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
  * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
  * @param {Array} context.globalServices - Global services array
  * @returns {Object} - { serviceId: hours }
  */
-const calculateDoorPartsTime = (faces, doorStyle, context = {}) => {
+export const calculateDoorPartsTime = (faces, doorStyle, cabinetStyleId, context = {}) => {
   const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
   
   if (!faces || faces.length === 0 || !partsListAnchors || !doorStyle) {
@@ -307,7 +320,7 @@ const calculateDoorPartsTime = (faces, doorStyle, context = {}) => {
 
     // Calculate time for each service
     allServiceIds.forEach((teamServiceId) => {
-      const minutesEach = interpolateTimeByArea(anchors, area, teamServiceId);
+      const minutesEach = interpolateTimeByArea(anchors, area, teamServiceId, cabinetStyleId);
       let totalMinutes = minutesEach;
 
       // Apply multipliers based on service and material

@@ -9,6 +9,8 @@ import {
   END_PANEL_FACE_TYPES,
   FILLER_FACE_TYPES,
   FACE_NAMES,
+  DOOR_FRONT_FACE_TYPES,
+  DRAWER_FRONT_FACE_TYPES,
 } from '../utils/constants';
 
 export const CABINET_ITEM_TYPES = {
@@ -40,13 +42,13 @@ export const CABINET_ITEM_TYPES = {
 
   door_front: {
     label: 'Door Front',
-    faceTypesArray: PANEL_FACE_TYPES,
+    faceTypesArray: DOOR_FRONT_FACE_TYPES,
     defaultFaceType: FACE_NAMES.DOOR,
     usesReveals: false,
     usesRootReveals: false,
-    allowsSplitting: true,
+    allowsSplitting: false,
     requiresStyleReveals: false,
-    isDivisible: true,
+    isDivisible: false,
     features: {
       sides: false,
       top: false,
@@ -66,13 +68,13 @@ export const CABINET_ITEM_TYPES = {
 
   drawer_front: {
     label: 'Drawer Front',
-    faceTypesArray: PANEL_FACE_TYPES,
+    faceTypesArray: DRAWER_FRONT_FACE_TYPES,
     defaultFaceType: FACE_NAMES.drawer_front,
     usesReveals: false,
     usesRootReveals: false,
-    allowsSplitting: true,
+    allowsSplitting: false,
     requiresStyleReveals: false,
-    isDivisible: true,
+    isDivisible: false,
     features: {
       sides: false,
       top: false,

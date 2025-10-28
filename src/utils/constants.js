@@ -83,6 +83,16 @@ export const PANEL_FACE_TYPES = [
   { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
 ];
 
+// Face types for drawer fronts (includes reveals)
+export const DRAWER_FRONT_FACE_TYPES = [
+  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
+];
+
+export const DOOR_FRONT_FACE_TYPES = [
+  { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
+  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
+];
+
 // Face types for end panels (includes reveals)
 export const END_PANEL_FACE_TYPES = [
   { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },

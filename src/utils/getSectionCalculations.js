@@ -7,11 +7,10 @@ import {
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
-  calculate5PieceDoorHours,
   calculate5PieceHardwoodFacePrice,
   calculateBoxPartsTime,
   calculateBoxSheetsCNC,
-  calculateSlabDoorHours,
+  calculateDoorPartsTime,
   calculateSlabHardwoodFacePrice,
   calculateSlabSheetFacePrice,
   roundToHundredth,
@@ -47,6 +46,9 @@ const calculateFaceTotals = (section, context) => {
 
     const quantity = Number(cabinet.quantity) || 1;
 
+    // Determine the cabinet style ID (override or section default)
+    const cabinetStyleId = cabinet.cabinet_style_override || section.cabinet_style_id;
+
     Object.entries(cabinet.face_config.faceSummary).forEach(
       ([faceType, faceData]) => {
         if (["open", "container", "reveal"].includes(faceType)) return;
@@ -57,51 +59,31 @@ const calculateFaceTotals = (section, context) => {
             ? section.section_data.drawerFrontStyle
             : section.section_data.doorStyle;
 
-        // Calculate hours for each face
+        // Calculate hours using parts list anchors
         if (faceData.faces && Array.isArray(faceData.faces)) {
-          faceData.faces.forEach((face) => {
-            let faceHours = {};
-            if (
-              styleToUse === "5_piece_hardwood" ||
-              styleToUse === "slab_hardwood"
-            ) {
-              faceHours = calculate5PieceDoorHours(
-                face.width,
-                face.height,
-                selectedFaceMaterial.thickness
-              );
-            } else if (styleToUse === "slab_sheet") {
-              faceHours = calculateSlabDoorHours(face.width, face.height);
-            }
+          const faceHours = calculateDoorPartsTime(
+            faceData.faces,
+            styleToUse,
+            cabinetStyleId,
+            context
+          );
 
-            // Aggregate hours by service ID
-            if (faceHours.hoursByService) {
-              Object.entries(faceHours.hoursByService).forEach(
-                ([serviceId, hours]) => {
-                  if (!totals.hoursByService[serviceId]) {
-                    totals.hoursByService[serviceId] = 0;
-                  }
-                  // Apply multipliers based on service ID
-                  let multiplier = quantity;
-                  if (
-                    serviceId === "2" &&
-                    selectedFaceMaterial.material?.needs_finish
-                  ) {
-                    // Shop multiplier for service ID 2
-                    multiplier = quantity * selectedFaceMaterial.shopMultiplier;
-                  } else if (
-                    serviceId === "3" &&
-                    selectedFaceMaterial.material?.needs_finish
-                  ) {
-                    // Finish multiplier for service ID 3
-                    multiplier =
-                      quantity * selectedFaceMaterial.finishMultiplier;
-                  }
-                  totals.hoursByService[serviceId] += (hours || 0) * multiplier;
-                }
+          // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
+          if (faceHours) {
+            Object.entries(faceHours).forEach(([teamServiceId, hours]) => {
+              const service = context.globalServices?.find(
+                (s) => s.team_service_id === parseInt(teamServiceId)
               );
-            }
-          });
+              if (!service) return;
+
+              const serviceId = service.service_id;
+              if (!totals.hoursByService[serviceId]) {
+                totals.hoursByService[serviceId] = 0;
+              }
+              // Multiply by cabinet quantity (multipliers already applied per-face)
+              totals.hoursByService[serviceId] += (hours || 0) * quantity;
+            });
+          }
         }
 
         // Calculate price for this face type
@@ -607,8 +589,15 @@ export const getSectionCalculations = (section, context = {}) => {
   const accessoriesTotal = calculateSimpleItemsTotal(section.accessories);
   const otherTotal = calculateSimpleItemsTotal(section.other);
 
+  // Calculate total face price from facePrices object
+  const totalFacePrice = Object.values(cabinetTotals.facePrices || {}).reduce(
+    (sum, price) => sum + price,
+    0
+  );
+
   const totalPrice =
     cabinetTotals.boxPrice +
+    totalFacePrice +
     cabinetTotals.drawerBoxTotal +
     cabinetTotals.rollOutTotal +
     cabinetTotals.hingesTotal +

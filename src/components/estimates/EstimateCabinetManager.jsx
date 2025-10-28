@@ -681,6 +681,9 @@ const CabinetItemForm = ({
       if (cabinetStyleId !== 13 && itemType === "end_panel") {
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
       }
+
+      const hardware = countFaceHardware(faceConfig);
+      
       return {
         pieces: { sides: 0, topBottom: 0, back: 0 },
         cabinetCount: qty,
@@ -689,7 +692,7 @@ const CabinetItemForm = ({
         bandingLength: 0,
         singleBoxPartsCount: 0,
         singleBoxPerimeterLength: 0,
-        boxHardware: { hingeCount: 0, drawerSlideCount: 0, pullCount: 0 },
+        boxHardware: hardware,
         shelfDrillHoles: 0,
         boxPartsList: [],
         frameParts: frameParts,
