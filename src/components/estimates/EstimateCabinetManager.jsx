@@ -364,7 +364,13 @@ const CabinetItemForm = ({
 
         finalFormData.face_config = {
           ...formData.face_config,
-          faceSummary: calculateFaceSummary(formData.face_config),
+          faceSummary: calculateFaceSummary(
+            formData.face_config,
+            itemType.item_type,
+            formData.width,
+            formData.height,
+            formData.depth
+          ),
           boxSummary: boxSummary,
         };
       }
@@ -1128,8 +1134,51 @@ const CabinetItemForm = ({
   };
 
   // Calculate face type summary
-  const calculateFaceSummary = (node) => {
+  const calculateFaceSummary = (node, itemType, width, height, depth) => {
     const summary = {};
+
+    // // Handle filler parts (type 5) - create two panels
+    // if (itemType === ITEM_TYPES.FILLER.type) {
+    //   const faceType = FACE_NAMES.PANEL;
+      
+    //   if (!summary[faceType]) {
+    //     summary[faceType] = {
+    //       count: 0,
+    //       totalArea: 0,
+    //       faces: [],
+    //     };
+    //   }
+
+    //   // Panel 1: Face panel (width x height)
+    //   const faceWidth = roundTo16th(width);
+    //   const faceHeight = roundTo16th(height);
+    //   const faceArea = roundTo16th(faceWidth * faceHeight);
+
+    //   summary[faceType].count += 1;
+    //   summary[faceType].totalArea += faceArea;
+    //   summary[faceType].faces.push({
+    //     id: 'filler-face',
+    //     width: Math.max(faceWidth + depth + 2, 7),
+    //     height: faceHeight,
+    //     area: faceArea,
+    //   });
+
+    //   // Panel 2: Return panel (depth x height)
+    //   const returnWidth = roundTo16th(depth);
+    //   const returnHeight = roundTo16th(height);
+    //   const returnArea = roundTo16th(returnWidth * returnHeight);
+
+    //   summary[faceType].count += 1;
+    //   summary[faceType].totalArea += returnArea;
+    //   summary[faceType].faces.push({
+    //     id: 'filler-return',
+    //     width: returnWidth,
+    //     height: returnHeight,
+    //     area: returnArea,
+    //   });
+
+    //   return summary;
+    // }
 
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)

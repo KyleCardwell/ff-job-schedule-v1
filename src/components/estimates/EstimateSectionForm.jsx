@@ -4,6 +4,7 @@ import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { addSection, updateSection } from "../../redux/actions/estimates";
+import { FACE_STYLES } from "../../utils/constants";
 
 const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const dispatch = useDispatch();
@@ -271,14 +272,14 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     return DOOR_STYLE_OPTIONS.filter((option) => {
       // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
       if (selectedFaceMaterial.five_piece === true) {
-        if (option.id === "5_piece_hardwood" || option.id === "slab_hardwood") {
+        if (option.id === FACE_STYLES.FIVE_PIECE_HARDWOOD || option.id === FACE_STYLES.SLAB_HARDWOOD) {
           return true;
         }
       }
 
       // If material supports slab doors, include slab_sheet
       if (selectedFaceMaterial.slab_door === true) {
-        if (option.id === "slab_sheet") {
+        if (option.id === FACE_STYLES.SLAB_SHEET) {
           return true;
         }
       }

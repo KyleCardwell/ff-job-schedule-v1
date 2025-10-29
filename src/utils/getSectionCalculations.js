@@ -4,19 +4,19 @@ import {
   FACE_TYPES,
   DRAWER_BOX_MOD_BY_ID,
   CABINET_TYPES,
+  FACE_STYLES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
-  calculate5PieceHardwoodFacePrice,
   calculateBoxPartsTime,
   calculateBoxSheetsCNC,
   calculateDoorPartsTime,
-  calculateSlabHardwoodFacePrice,
-  calculateSlabSheetFacePrice,
+  calculateSlabSheetFacePriceBulk,
   roundToHundredth,
 } from "./estimateHelpers";
 
 // Calculate face counts and prices for all cabinets in a section
+// Aggregates faces across all cabinets by style for efficient bulk calculation
 const calculateFaceTotals = (section, context) => {
   const totals = {
     faceCounts: {},
@@ -38,19 +38,73 @@ const calculateFaceTotals = (section, context) => {
 
   if (!selectedFaceMaterial) return totals;
 
+  // Aggregate faces by style across all cabinets
+  // Structure: { doorStyle: { slab_sheet: [faces...], 5_piece_hardwood: [faces...] } }
+  const facesByStyle = {};
+  const allFacesForHours = []; // For hour calculation
+
   section.cabinets.forEach((cabinet) => {
-    if (!cabinet.face_config?.faceSummary) return;
-    // Don't calculate hours for fillers (type === 5, done separately)
-    if (cabinet.type === 5) return;
-    // if (!CABINET_TYPES.includes(cabinet.type)) return;
-
     const quantity = Number(cabinet.quantity) || 1;
-
-    // Determine the cabinet style ID (override or section default)
     const cabinetStyleId = cabinet.cabinet_style_override || section.cabinet_style_id;
+
+    // Handle fillers (type 5) separately using boxPartsList
+    if (cabinet.type === 5) {
+      // Only include fillers if door style is slab_sheet
+      if (section.section_data.doorStyle !== FACE_STYLES.SLAB_SHEET) return;
+      
+      if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
+
+      const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
+      
+      // Sum the widths of all parts to create a single panel
+      let totalWidth = 0;
+      let panelHeight = 0;
+      
+      boxPartsList.forEach((part) => {
+        totalWidth += part.width || 0;
+        // Use the first part's height (they should all be the same)
+        if (panelHeight === 0) {
+          panelHeight = part.height || 0;
+        }
+      });
+
+      if (totalWidth > 0 && panelHeight > 0) {
+        const faceType = FACE_NAMES.PANEL;
+        const styleToUse = section.section_data.doorStyle;
+
+        // Initialize style category if needed
+        if (!facesByStyle[styleToUse]) {
+          facesByStyle[styleToUse] = [];
+        }
+
+        // Add the single combined panel (multiplied by cabinet quantity)
+        for (let i = 0; i < quantity; i++) {
+          facesByStyle[styleToUse].push({
+            width: totalWidth,
+            height: panelHeight,
+            area: totalWidth * panelHeight,
+            faceType,
+            cabinetId: cabinet.id || cabinet.temp_id,
+          });
+        }
+
+        // Update face counts
+        if (!totals.faceCounts[faceType]) {
+          totals.faceCounts[faceType] = 0;
+        }
+        totals.faceCounts[faceType] += quantity;
+      }
+
+      // Skip the rest of the processing for fillers (no faceSummary processing, no hours)
+      return;
+    }
+
+    // Regular cabinets - process faceSummary
+    if (!cabinet.face_config?.faceSummary) return;
 
     Object.entries(cabinet.face_config.faceSummary).forEach(
       ([faceType, faceData]) => {
+        // Exclude open, container, and reveal types
         if (["open", "container", "reveal"].includes(faceType)) return;
 
         const styleToUse =
@@ -59,56 +113,152 @@ const calculateFaceTotals = (section, context) => {
             ? section.section_data.drawerFrontStyle
             : section.section_data.doorStyle;
 
-        // Calculate hours using parts list anchors
+        // Initialize style category if needed
+        if (!facesByStyle[styleToUse]) {
+          facesByStyle[styleToUse] = [];
+        }
+
+        // Add each face to the aggregated list (multiplied by cabinet quantity)
         if (faceData.faces && Array.isArray(faceData.faces)) {
-          const faceHours = calculateDoorPartsTime(
-            faceData.faces,
+          faceData.faces.forEach((face) => {
+            // Add face multiple times based on cabinet quantity
+            for (let i = 0; i < quantity; i++) {
+              facesByStyle[styleToUse].push({
+                ...face,
+                faceType,
+                cabinetId: cabinet.id || cabinet.temp_id,
+              });
+            }
+          });
+
+          // Collect faces for hour calculation with cabinet style ID
+          allFacesForHours.push({
+            faces: faceData.faces,
             styleToUse,
             cabinetStyleId,
-            context
-          );
-
-          // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
-          if (faceHours) {
-            Object.entries(faceHours).forEach(([teamServiceId, hours]) => {
-              const service = context.globalServices?.find(
-                (s) => s.team_service_id === parseInt(teamServiceId)
-              );
-              if (!service) return;
-
-              const serviceId = service.service_id;
-              if (!totals.hoursByService[serviceId]) {
-                totals.hoursByService[serviceId] = 0;
-              }
-              // Multiply by cabinet quantity (multipliers already applied per-face)
-              totals.hoursByService[serviceId] += (hours || 0) * quantity;
-            });
-          }
+            quantity,
+          });
         }
 
-        // Calculate price for this face type
-        let typeTotalPrice = 0;
-        if (styleToUse === "slab_sheet") {
-          typeTotalPrice = calculateSlabSheetFacePrice(
-            faceData,
-            selectedFaceMaterial.material
-          );
-        } else if (styleToUse === "5_piece_hardwood") {
-          typeTotalPrice = calculate5PieceHardwoodFacePrice(
-            faceData,
-            selectedFaceMaterial.material
-          );
-        } else if (styleToUse === "slab_hardwood") {
-          typeTotalPrice = calculateSlabHardwoodFacePrice(
-            faceData,
-            selectedFaceMaterial.material
-          );
-        }
-
-        totals.facePrices[faceType] += typeTotalPrice * quantity;
+        // Update face counts
         totals.faceCounts[faceType] += (faceData.count || 0) * quantity;
       }
     );
+  });
+
+  // Calculate hours using parts list anchors (same as before)
+  allFacesForHours.forEach(({ faces, styleToUse, cabinetStyleId, quantity }) => {
+    const faceHours = calculateDoorPartsTime(
+      faces,
+      styleToUse,
+      cabinetStyleId,
+      context
+    );
+
+    // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
+    if (faceHours) {
+      Object.entries(faceHours).forEach(([teamServiceId, hours]) => {
+        const service = context.globalServices?.find(
+          (s) => s.team_service_id === parseInt(teamServiceId)
+        );
+        if (!service) return;
+
+        const serviceId = service.service_id;
+        if (!totals.hoursByService[serviceId]) {
+          totals.hoursByService[serviceId] = 0;
+        }
+        // Multiply by cabinet quantity (multipliers already applied per-face)
+        totals.hoursByService[serviceId] += (hours || 0) * quantity;
+      });
+    }
+  });
+
+  // Calculate prices by style using bulk functions
+  Object.entries(facesByStyle).forEach(([styleToUse, faces]) => {
+    if (faces.length === 0) return;
+
+    if (styleToUse === "slab_sheet") {
+      // Use bulk function with MaxRectsPacker for optimal sheet layout
+      // This includes banding on all 4 sides, sheet handling, and setup costs
+      const result = calculateSlabSheetFacePriceBulk(
+        faces,
+        selectedFaceMaterial.material
+      );
+      const styleTotalPrice = result.totalCost;
+      
+      // Calculate total area and area by face type
+      const totalArea = faces.reduce((sum, face) => sum + face.area, 0);
+      const areaByFaceType = {};
+      
+      faces.forEach((face) => {
+        const faceType = face.faceType;
+        if (!areaByFaceType[faceType]) {
+          areaByFaceType[faceType] = 0;
+        }
+        areaByFaceType[faceType] += face.area;
+      });
+      
+      // Distribute price proportionally based on area used by each face type
+      Object.entries(areaByFaceType).forEach(([faceType, area]) => {
+        if (!totals.facePrices[faceType]) {
+          totals.facePrices[faceType] = 0;
+        }
+        const proportion = totalArea > 0 ? area / totalArea : 0;
+        totals.facePrices[faceType] += styleTotalPrice * proportion;
+      });
+    } else if (styleToUse === FACE_STYLES.FIVE_PIECE_HARDWOOD) {
+      // For 5-piece hardwood, calculate individual prices and aggregate by face type
+      // Each door has a specific price based on its size and board feet
+      const calculate5PieceDoorPrice = (face) => {
+        const width = parseFloat(face.width);
+        const height = parseFloat(face.height);
+        const pricePerBoardFoot = selectedFaceMaterial.material.bd_ft_price;
+        
+        // Use the same pricing logic as the bulk function
+        const baseWidth = 23;
+        const baseHeight = 31;
+        const baseArea = baseWidth * baseHeight;
+        const doorArea = width * height;
+        
+        const basePrice = 30 * Math.pow(pricePerBoardFoot, 0.65);
+        const oversizeRate = 0.065 * Math.pow(pricePerBoardFoot / 3.05, 0.95) * 1.15;
+        const extra = doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
+        const setupFee = 10 + pricePerBoardFoot * 1.5;
+        
+        const taxRate = 8;
+        const deliveryFee = 2;
+        const creditCardFee = 3;
+        const markup = 1 + (taxRate / 100) + (deliveryFee / 100) + (creditCardFee / 100);
+        
+        return (basePrice + extra + setupFee) * markup;
+      };
+      
+      faces.forEach((face) => {
+        const faceType = face.faceType;
+        if (!totals.facePrices[faceType]) {
+          totals.facePrices[faceType] = 0;
+        }
+        totals.facePrices[faceType] += calculate5PieceDoorPrice(face);
+      });
+    } else if (styleToUse === "slab_hardwood") {
+      // For slab hardwood, calculate individual prices based on board feet
+      faces.forEach((face) => {
+        const width = parseFloat(face.width);
+        const height = parseFloat(face.height);
+        const thickness = selectedFaceMaterial.material.thickness || 0.75;
+        const pricePerBoardFoot = selectedFaceMaterial.material.bd_ft_price;
+        
+        // Calculate board feet: (width * height * thickness) / 144
+        const boardFeet = (width * height * thickness) / 144;
+        const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
+        
+        const faceType = face.faceType;
+        if (!totals.facePrices[faceType]) {
+          totals.facePrices[faceType] = 0;
+        }
+        totals.facePrices[faceType] += facePrice;
+      });
+    }
   });
 
   return totals;
@@ -342,6 +492,8 @@ const calculateFillerMaterials = (section, context) => {
   if (!section.cabinets || !Array.isArray(section.cabinets)) {
     return totals;
   }
+
+  if (section.section_data.doorStyle === FACE_STYLES.SLAB_SHEET) return totals;
 
   const fillers = section.cabinets.filter((cabinet) => {
     // Only include filler parts (type 5)

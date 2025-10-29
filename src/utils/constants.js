@@ -138,3 +138,9 @@ export const DRAWER_BOX_MOD_BY_ID = {
 
 // database cabinet types
 export const CABINET_TYPES = [1, 2, 3]
+
+export const FACE_STYLES = {
+  FIVE_PIECE_HARDWOOD: "5_piece_hardwood",
+  SLAB_HARDWOOD: "slab_hardwood",
+  SLAB_SHEET: "slab_sheet",
+}
