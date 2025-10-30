@@ -2,6 +2,7 @@ import { combineReducers } from "redux";
 
 import authReducer from "../authSlice";
 
+import { accessoriesReducer } from "./accessoriesReducer";
 import { builders } from "./builders"; // Adjust the import path
 import cabinetAnchorsReducer from "./cabinetAnchors";
 import cabinetStylesReducer from "./cabinetStyles";
@@ -45,6 +46,7 @@ const appReducer = combineReducers({
 	cabinetStyles: cabinetStylesReducer,
 	partsList: partsListReducer,
 	partsListAnchors: partsListAnchorsReducer,
+	accessories: accessoriesReducer,
 });
 
 // Root reducer that handles resetting state

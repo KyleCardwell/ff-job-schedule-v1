@@ -12,6 +12,7 @@ export const PATHS = {
   MANAGE_MATERIALS: "/manage/materials",
   MANAGE_FINISHES: "/manage/finishes",
   MANAGE_HARDWARE: "/manage/hardware",
+  MANAGE_ACCESSORIES: "/manage/accessories",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
   SETTINGS: "/settings",
@@ -111,6 +112,18 @@ export const CAN_BE_BEADED = [
   FACE_NAMES.FALSE_FRONT,
   FACE_NAMES.PANEL,
   FACE_NAMES.OPEN,
+];
+
+// Accessory application contexts (maps to face types that can have accessories)
+export const ACCESSORY_APPLIES_TO_OPTIONS = [
+  { value: FACE_NAMES.DOOR, label: "Door" },
+  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door" },
+  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front" },
+  { value: FACE_NAMES.FALSE_FRONT, label: "False Front" },
+  { value: FACE_NAMES.PANEL, label: "Panel" },
+  { value: FACE_NAMES.OPEN, label: "Opening" },
+  // { value: "cabinet", label: "Cabinet (Box)" },
+  // { value: "standalone", label: "Standalone" },
 ];
 
 export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [

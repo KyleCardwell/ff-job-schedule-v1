@@ -4,3 +4,4 @@ export * from "./cabinetStyles";
 export * from "./materials";
 export * from "./hardware";
 export * from "./finishes";
+export * from "./accessories";

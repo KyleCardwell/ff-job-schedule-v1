@@ -15,6 +15,7 @@ import {
 } from "../../assets/tailwindConstants";
 import useFeatureToggles from "../../hooks/useFeatureToggles.js";
 import { PATHS } from "../../utils/constants";
+import AccessoriesSettings from "../manageSettings/AccessoriesSettings.jsx";
 import CabinetStyleSettings from "../manageSettings/CabinetStyleSettings.jsx";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
@@ -138,6 +139,15 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_HARDWARE,
       component: HardwareSettings,
       props: {maxWidthClass: "max-w-[720px]"},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+    },
+    {
+      id: "accessories",
+      label: "Accessories",
+      path: PATHS.MANAGE_ACCESSORIES,
+      component: AccessoriesSettings,
+      props: {maxWidthClass: "max-w-[1000px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },
