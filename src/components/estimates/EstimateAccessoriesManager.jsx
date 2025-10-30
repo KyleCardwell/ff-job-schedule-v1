@@ -5,29 +5,23 @@ import { useDispatch, useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import { fetchAccessoriesCatalog } from "../../redux/actions/accessories";
-import {
-  calculateAccessoryQuantity,
-  calculateAccessoryPrice,
-  filterAccessoriesByContext,
-  getUnitLabel,
-} from "../../utils/accessoryCalculations";
+import { getUnitLabel } from "../../utils/accessoryCalculations";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
 import SectionItemList from "./SectionItemList.jsx";
 
 const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const dispatch = useDispatch();
-  const { catalog, loading } = useSelector((state) => state.accessories);
+  const { catalog, glass, insert, hardware, rod, organizer, other, loading } =
+    useSelector((state) => state.accessories);
 
+  const [selectedType, setSelectedType] = useState("");
   const [formData, setFormData] = useState({
     accessory_catalog_id: item.accessory_catalog_id || "",
     quantity: item.quantity || 1,
-    calculated_quantity: item.calculated_quantity || null,
-    price: item.price || 0,
     width: item.width || null,
     height: item.height || null,
     depth: item.depth || null,
-    notes: item.notes || "",
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });
@@ -38,50 +32,51 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     dispatch(fetchAccessoriesCatalog());
   }, [dispatch]);
 
-  // Auto-calculate when accessory or dimensions change
+  // Set initial type if editing existing item
   useEffect(() => {
-    if (formData.accessory_catalog_id && catalog.length > 0) {
-      const selectedAccessory = catalog.find(
-        (acc) => acc.id === formData.accessory_catalog_id
+    if (item.accessory_catalog_id && catalog.length > 0) {
+      const accessory = catalog.find(
+        (acc) => acc.id === item.accessory_catalog_id
       );
-
-      if (selectedAccessory) {
-        const dimensions = {
-          width: formData.width,
-          height: formData.height,
-          depth: formData.depth,
-        };
-
-        const calculatedQty = calculateAccessoryQuantity(
-          selectedAccessory,
-          dimensions,
-          formData.quantity
-        );
-
-        const calculatedPrice = calculateAccessoryPrice(
-          selectedAccessory,
-          calculatedQty
-        );
-
-        setFormData((prev) => ({
-          ...prev,
-          calculated_quantity: calculatedQty,
-          price: calculatedPrice,
-        }));
+      if (accessory) {
+        setSelectedType(accessory.type);
       }
     }
-  }, [
-    formData.accessory_catalog_id,
-    formData.width,
-    formData.height,
-    formData.depth,
-    formData.quantity,
-    catalog,
-  ]);
+  }, [item.accessory_catalog_id, catalog]);
+
 
   const selectedAccessory = catalog.find(
     (acc) => acc.id === formData.accessory_catalog_id
   );
+
+  // Get accessories by selected type
+  const getAccessoriesByType = () => {
+    if (!selectedType) return [];
+
+    const typeMap = {
+      glass,
+      insert,
+      hardware,
+      rod,
+      organizer,
+      other,
+    };
+
+    // Return all accessories of the selected type (no filtering by context)
+    return typeMap[selectedType] || [];
+  };
+
+  const filteredAccessories = getAccessoriesByType();
+
+  const handleTypeChange = (e) => {
+    const newType = e.target.value;
+    setSelectedType(newType);
+    // Reset accessory selection when type changes
+    setFormData({
+      ...formData,
+      accessory_catalog_id: "",
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -134,195 +129,149 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     }
   };
 
-  // Get standalone accessories
-  const standaloneAccessories = filterAccessoriesByContext(
-    catalog,
-    "standalone"
-  );
-
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
       <h4 className="text-sm font-medium text-slate-700 mb-3">
         Accessory Item
       </h4>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col space-y-3">
         <div className="space-y-3">
-          {/* Accessory Selector */}
-          <div>
-            <label
-              htmlFor="accessory_catalog_id"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Accessory Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="accessory_catalog_id"
-              name="accessory_catalog_id"
-              value={formData.accessory_catalog_id}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border ${
-                errors.accessory_catalog_id
-                  ? "border-red-500"
-                  : "border-slate-300"
-              } rounded-md text-sm`}
-              disabled={loading}
-            >
-              <option value="">Select accessory...</option>
-              {standaloneAccessories.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name} ({getUnitLabel(acc.calculation_type)})
+          <div className="flex space-x-3">
+            {/* Type Selector */}
+            <div className="flex-1">
+              <label
+                htmlFor="accessory_type"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Accessory Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="accessory_type"
+                name="accessory_type"
+                value={selectedType}
+                onChange={handleTypeChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                disabled={loading}
+              >
+                <option value="">Select type...</option>
+                <option value="glass">Glass</option>
+                <option value="insert">Inserts</option>
+                <option value="hardware">Hardware</option>
+                <option value="rod">Rods</option>
+                <option value="organizer">Organizers</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label
+                htmlFor="accessory_catalog_id"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Accessory Item <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="accessory_catalog_id"
+                name="accessory_catalog_id"
+                value={formData.accessory_catalog_id}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.accessory_catalog_id
+                    ? "border-red-500"
+                    : "border-slate-300"
+                } rounded-md text-sm`}
+                disabled={
+                  loading || filteredAccessories.length === 0 || !selectedType
+                }
+              >
+                <option value="">
+                  {filteredAccessories.length === 0
+                    ? "First select a type"
+                    : "Select accessory..."}
                 </option>
-              ))}
-            </select>
-            {errors.accessory_catalog_id && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.accessory_catalog_id}
-              </p>
-            )}
-          </div>
-
-          {/* Show accessory details */}
-          {selectedAccessory && (
-            <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-              <p>
-                <strong>Type:</strong> {selectedAccessory.type}
-              </p>
-              <p>
-                <strong>Calculation:</strong>{" "}
-                {selectedAccessory.calculation_type}
-              </p>
-              {selectedAccessory.default_price_per_unit && (
-                <p>
-                  <strong>Price:</strong> $
-                  {selectedAccessory.default_price_per_unit}/
-                  {getUnitLabel(selectedAccessory.calculation_type)}
-                </p>
-              )}
-              {selectedAccessory.description && (
-                <p className="mt-1">{selectedAccessory.description}</p>
-              )}
-            </div>
-          )}
-
-          {/* Quantity Input */}
-          <div>
-            <label
-              htmlFor="quantity"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              {selectedAccessory?.calculation_type === "unit"
-                ? "Quantity"
-                : "Base Quantity"}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="quantity"
-              name="quantity"
-              value={formData.quantity}
-              onChange={handleChange}
-              min="0"
-              step="0.01"
-              className={`w-full px-3 py-2 border ${
-                errors.quantity ? "border-red-500" : "border-slate-300"
-              } rounded-md text-sm`}
-              readOnly={
-                selectedAccessory?.calculation_type !== "unit" &&
-                !selectedAccessory?.width &&
-                !selectedAccessory?.height
-              }
-            />
-            {errors.quantity && (
-              <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-            )}
-          </div>
-
-          {/* Dimension inputs for area/length/perimeter calculations */}
-          {selectedAccessory &&
-            selectedAccessory.calculation_type !== "unit" && (
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Width (in)
-                  </label>
-                  <input
-                    type="number"
-                    name="width"
-                    value={formData.width || ""}
-                    onChange={handleChange}
-                    step="0.0625"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Height (in)
-                  </label>
-                  <input
-                    type="number"
-                    name="height"
-                    value={formData.height || ""}
-                    onChange={handleChange}
-                    step="0.0625"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Depth (in)
-                  </label>
-                  <input
-                    type="number"
-                    name="depth"
-                    value={formData.depth || ""}
-                    onChange={handleChange}
-                    step="0.0625"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            )}
-
-          {/* Calculated Quantity Display */}
-          {selectedAccessory && formData.calculated_quantity !== null && (
-            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm">
-              <p>
-                <strong>Calculated:</strong> {formData.calculated_quantity}{" "}
-                {getUnitLabel(selectedAccessory.calculation_type)}
-              </p>
-              {formData.price > 0 && (
-                <p>
-                  <strong>Price:</strong> ${formData.price.toFixed(2)}
+                {filteredAccessories.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} ({getUnitLabel(acc.calculation_type)})
+                  </option>
+                ))}
+              </select>
+              {errors.accessory_catalog_id && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.accessory_catalog_id}
                 </p>
               )}
             </div>
-          )}
-
-          {/* Notes */}
-          <div>
-            <label
-              htmlFor="notes"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-              placeholder="Optional notes..."
-            />
           </div>
+
+          {/* Dimensions Grid - Always visible */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Width (in)
+              </label>
+              <input
+                type="number"
+                name="width"
+                value={formData.width || ""}
+                onChange={handleChange}
+                step="0.0625"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Height (in)
+              </label>
+              <input
+                type="number"
+                name="height"
+                value={formData.height || ""}
+                onChange={handleChange}
+                step="0.0625"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Depth (in)
+              </label>
+              <input
+                type="number"
+                name="depth"
+                value={formData.depth || ""}
+                onChange={handleChange}
+                step="0.0625"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleChange}
+                min="0"
+                step="1"
+                className={`w-full px-3 py-2 border ${
+                  errors.quantity ? "border-red-500" : "border-slate-300"
+                } rounded-md text-sm`}
+              />
+              {errors.quantity && (
+                <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+              )}
+            </div>
+          </div>
+
         </div>
         {/* Form Actions */}
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end space-x-2 mt-4">
           <button
             type="button"
             onClick={onCancel}
@@ -352,7 +301,12 @@ AccessoryItemForm.propTypes = {
   onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateAccessoriesManager = ({ items, onUpdateItems, onReorderItems, onDeleteItem }) => {
+const EstimateAccessoriesManager = ({
+  items,
+  onUpdateItems,
+  onReorderItems,
+  onDeleteItem,
+}) => {
   const { catalog } = useSelector((state) => state.accessories);
 
   const getAccessoryName = (accessoryCatalogId) => {
@@ -360,7 +314,29 @@ const EstimateAccessoriesManager = ({ items, onUpdateItems, onReorderItems, onDe
     return accessory ? accessory.name : "Unknown";
   };
 
+  const getAccessoryType = (accessoryCatalogId) => {
+    const accessory = catalog.find((acc) => acc.id === accessoryCatalogId);
+    if (!accessory) return "Unknown";
+
+    const typeLabels = {
+      glass: "Glass",
+      insert: "Insert",
+      hardware: "Hardware",
+      rod: "Rod",
+      organizer: "Organizer",
+      other: "Other",
+    };
+
+    return typeLabels[accessory.type] || accessory.type;
+  };
+
   const columns = [
+    {
+      key: "type",
+      label: "Type",
+      width: "100px",
+      render: (item) => getAccessoryType(item.accessory_catalog_id),
+    },
     {
       key: "accessory",
       label: "Accessory",
@@ -368,24 +344,28 @@ const EstimateAccessoriesManager = ({ items, onUpdateItems, onReorderItems, onDe
       render: (item) => getAccessoryName(item.accessory_catalog_id),
     },
     {
-      key: "calculated_quantity",
+      key: "quantity",
       label: "Qty",
       width: ITEM_FORM_WIDTHS.QUANTITY,
-      render: (item) => {
-        const accessory = catalog.find(
-          (acc) => acc.id === item.accessory_catalog_id
-        );
-        const qty = item.calculated_quantity || item.quantity;
-        return accessory
-          ? `${qty} ${getUnitLabel(accessory.calculation_type)}`
-          : qty;
-      },
+      render: (item) => item.quantity || 0,
     },
     {
-      key: "price",
-      label: "Price",
-      width: ITEM_FORM_WIDTHS.QUANTITY,
-      render: (item) => (item.price ? `$${item.price.toFixed(2)}` : "-"),
+      key: "width",
+      label: "W",
+      width: "60px",
+      render: (item) => (item.width ? item.width : "-"),
+    },
+    {
+      key: "height",
+      label: "H",
+      width: "60px",
+      render: (item) => (item.height ? item.height : "-"),
+    },
+    {
+      key: "depth",
+      label: "D",
+      width: "60px",
+      render: (item) => (item.depth ? item.depth : "-"),
     },
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
