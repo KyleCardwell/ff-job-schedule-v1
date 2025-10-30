@@ -13,8 +13,8 @@ const EstimateSectionInfo = ({
     ? selectedTask?.sections?.find(
         (s) => s.est_section_id === selectedSectionId
       )
-    : selectedTask?.sections?.length === 1
-    ? selectedTask.sections[0]
+    : selectedTask?.sections?.length > 0
+    ? selectedTask.sections[selectedTask.sections.length - 1]
     : null;
 
   const sectionData = section?.section_data || {};

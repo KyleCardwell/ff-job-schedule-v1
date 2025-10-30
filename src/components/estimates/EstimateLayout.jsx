@@ -261,6 +261,14 @@ const EstimateLayout = () => {
               ? {
                   face_mat: templateSection.face_mat,
                   box_mat: templateSection.box_mat,
+                  box_finish: templateSection.box_finish,
+                  face_finish: templateSection.face_finish,
+                  cabinet_style_id: templateSection.cabinet_style_id,
+                  hinge_id: templateSection.hinge_id,
+                  slide_id: templateSection.slide_id,
+                  door_pull_id: templateSection.door_pull_id,
+                  drawer_pull_id: templateSection.drawer_pull_id,
+                  drawer_box_mat: templateSection.drawer_box_mat,
                   section_data: {
                     ...templateSection.section_data,
                   },
