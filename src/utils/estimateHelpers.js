@@ -1,6 +1,6 @@
 import { MaxRectsPacker } from "maxrects-packer";
 
-import { CABINET_TYPES, FACE_STYLES } from "./constants";
+import { CABINET_TYPES, FACE_STYLE_VALUES } from "./constants";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
@@ -310,12 +310,12 @@ export const calculateDoorPartsTime = (
 
   // Determine which parts_list_id to use based on door style
   let partsListId;
-  if (doorStyle === FACE_STYLES.FIVE_PIECE_HARDWOOD) {
+  if (doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD) {
     // 5-piece doors always need finish
     partsListId = PARTS_LIST_MAPPING["5_piece_door_finished"];
   } else if (
-    doorStyle === FACE_STYLES.SLAB_SHEET ||
-    doorStyle === FACE_STYLES.SLAB_HARDWOOD
+    doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+    doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD
   ) {
     // Slab doors may or may not need finish based on material
     const needsFinish = selectedFaceMaterial?.material?.needs_finish;
@@ -366,7 +366,7 @@ export const calculateDoorPartsTime = (
       // Apply multipliers based on service and material
       // For 5-piece doors, ALWAYS apply finish multipliers
       const shouldApplyMultipliers =
-        doorStyle === FACE_STYLES.FIVE_PIECE_HARDWOOD ||
+        doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
         selectedFaceMaterial?.material?.needs_finish;
 
       if (shouldApplyMultipliers && globalServices) {

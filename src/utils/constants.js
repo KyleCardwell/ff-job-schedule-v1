@@ -139,8 +139,16 @@ export const DRAWER_BOX_MOD_BY_ID = {
 // database cabinet types
 export const CABINET_TYPES = [1, 2, 3]
 
-export const FACE_STYLES = {
+// Face style string constants for comparisons (maintainable single source of truth)
+export const FACE_STYLE_VALUES = {
   FIVE_PIECE_HARDWOOD: "5_piece_hardwood",
   SLAB_HARDWOOD: "slab_hardwood",
   SLAB_SHEET: "slab_sheet",
-}
+};
+
+// Face styles array (works for both UI dropdowns and database)
+export const FACE_STYLES = [
+  { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD, label: "5-Piece Hardwood", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD },
+  { id: FACE_STYLE_VALUES.SLAB_HARDWOOD, label: "Slab Hardwood", value: FACE_STYLE_VALUES.SLAB_HARDWOOD },
+  { id: FACE_STYLE_VALUES.SLAB_SHEET, label: "Slab Sheet", value: FACE_STYLE_VALUES.SLAB_SHEET },
+];

@@ -4,7 +4,7 @@ import {
   FACE_TYPES,
   DRAWER_BOX_MOD_BY_ID,
   CABINET_TYPES,
-  FACE_STYLES,
+  FACE_STYLE_VALUES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
@@ -50,7 +50,7 @@ const calculateFaceTotals = (section, context) => {
     // Handle fillers (type 5) separately using boxPartsList
     if (cabinet.type === 5) {
       // Only include fillers if door style is slab_sheet
-      if (section.section_data.doorStyle !== FACE_STYLES.SLAB_SHEET) return;
+      if (section.section_data.doorStyle !== FACE_STYLE_VALUES.SLAB_SHEET) return;
       
       if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
 
@@ -206,7 +206,7 @@ const calculateFaceTotals = (section, context) => {
         const proportion = totalArea > 0 ? area / totalArea : 0;
         totals.facePrices[faceType] += styleTotalPrice * proportion;
       });
-    } else if (styleToUse === FACE_STYLES.FIVE_PIECE_HARDWOOD) {
+    } else if (styleToUse === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD) {
       // For 5-piece hardwood, calculate individual prices and aggregate by face type
       // Each door has a specific price based on its size and board feet
       const calculate5PieceDoorPrice = (face) => {
@@ -493,7 +493,7 @@ const calculateFillerMaterials = (section, context) => {
     return totals;
   }
 
-  if (section.section_data.doorStyle === FACE_STYLES.SLAB_SHEET) return totals;
+  if (section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET) return totals;
 
   const fillers = section.cabinets.filter((cabinet) => {
     // Only include filler parts (type 5)
