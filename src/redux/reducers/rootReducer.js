@@ -2,6 +2,7 @@ import { combineReducers } from "redux";
 
 import authReducer from "../authSlice";
 
+import { accessoriesReducer } from "./accessoriesReducer";
 import { builders } from "./builders"; // Adjust the import path
 import cabinetAnchorsReducer from "./cabinetAnchors";
 import cabinetStylesReducer from "./cabinetStyles";
@@ -12,6 +13,7 @@ import { completedProjectsReducer } from "./completedProjects";
 import { estimatesReducer } from "./estimates";
 import { featureTogglesReducer } from "./featureToggles";
 import { financialsDataReducer } from "./financialsData";
+import { finishesReducer } from "./finishes";
 import { hardwareReducer } from "./hardware";
 import { holidaysReducer } from "./holidays";
 import { materialsReducer } from "./materials";
@@ -36,6 +38,7 @@ const appReducer = combineReducers({
 	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
 	materials: materialsReducer,
+	finishes: finishesReducer,
 	hardware: hardwareReducer,
 	services: servicesReducer,
 	cabinetTypes: cabinetTypesReducer,
@@ -43,6 +46,7 @@ const appReducer = combineReducers({
 	cabinetStyles: cabinetStylesReducer,
 	partsList: partsListReducer,
 	partsListAnchors: partsListAnchorsReducer,
+	accessories: accessoriesReducer,
 });
 
 // Root reducer that handles resetting state

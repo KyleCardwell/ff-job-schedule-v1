@@ -3,14 +3,16 @@ import { useState, useCallback, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
+import { getItemTypeConfig } from "../../config/cabinetItemTypes";
 import {
   CAN_HAVE_PULLS,
   FACE_NAMES,
   ITEM_FORM_WIDTHS,
   SPLIT_DIRECTIONS,
   CAN_BE_BEADED,
+  ITEM_TYPES,
 } from "../../utils/constants.js";
-import { getCabinetHours } from "../../utils/estimateHelpers.js";
+// import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
@@ -27,6 +29,15 @@ const CabinetItemForm = ({
     (state) => state.cabinetAnchors.itemsByType
   );
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+
+  // Get current item type configuration from cabinetTypeId
+  const currentCabinetType = cabinetTypes.find(
+    (t) => t.cabinet_type_id === item.type
+  );
+  const itemType = currentCabinetType?.item_type || "cabinet";
+  const [itemTypeConfig, setItemTypeConfig] = useState(
+    getItemTypeConfig(itemType)
+  );
 
   // Initialize face_config with proper structure for new cabinets
   const getInitialFaceConfig = () => {
@@ -50,6 +61,7 @@ const CabinetItemForm = ({
     finished_right: item.finished_right,
     finished_top: item.finished_top,
     finished_bottom: item.finished_bottom,
+    finished_back: item.finished_back,
     cabinet_style_override: item.cabinet_style_override,
     corner_45: item.corner_45 || false,
     updated_at: item.updated_at,
@@ -96,6 +108,15 @@ const CabinetItemForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
+  // Update item type config when cabinet type changes
+  useEffect(() => {
+    const selectedType = cabinetTypes.find(
+      (t) => t.cabinet_type_id === formData.type
+    );
+    const derivedItemType = selectedType?.item_type || "cabinet";
+    setItemTypeConfig(getItemTypeConfig(derivedItemType));
+  }, [formData.type, cabinetTypes]);
+
   // Handle regular input changes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -138,50 +159,52 @@ const CabinetItemForm = ({
           const updates = { [name]: numValue };
           const inputUpdates = {};
 
-          // If type is changing, populate default dimensions if empty
+          // If type is changing, always set dimensions to defaults and reset face_config
           if (name === "type" && numValue) {
             const selectedType = cabinetTypes.find(
               (t) => t.cabinet_type_id === numValue
             );
 
             if (selectedType) {
-              if (!formData.width && selectedType.default_width) {
+              // Always set dimensions to defaults when type changes
+              if (selectedType.default_width) {
                 updates.width = selectedType.default_width;
                 inputUpdates.width = String(selectedType.default_width);
               }
-              if (!formData.height && selectedType.default_height) {
+              if (selectedType.default_height) {
                 updates.height = selectedType.default_height;
                 inputUpdates.height = String(selectedType.default_height);
               }
-              if (!formData.depth && selectedType.default_depth) {
+              if (selectedType.default_depth) {
                 updates.depth = selectedType.default_depth;
                 inputUpdates.depth = String(selectedType.default_depth);
               }
+
+              // Reset face_config to null when type changes
+              // CabinetFaceDivider will reinitialize it with the correct defaultFaceType
+              updates.face_config = null;
             }
 
-            // Update inputValues if we set any dimension defaults
+            // Update inputValues with dimension defaults
             if (Object.keys(inputUpdates).length > 0) {
               setInputValues((prev) => ({
                 ...prev,
                 ...inputUpdates,
               }));
             }
+          } else if (name === "cabinet_style_override") {
+            // For style changes only, update rootReveals if config exists
+            if (
+              typeConfig?.config &&
+              formData.face_config &&
+              formData.face_config.id
+            ) {
+              updates.face_config = {
+                ...formData.face_config,
+                rootReveals: typeConfig.config,
+              };
+            }
           }
-
-          // Update face_config rootReveals if config exists
-          // Only update if face_config already has structure (not null/empty)
-          if (
-            typeConfig?.config &&
-            formData.face_config &&
-            formData.face_config.id
-          ) {
-            updates.face_config = {
-              ...formData.face_config,
-              rootReveals: typeConfig.config,
-            };
-          }
-          // For new cabinets (face_config is null), don't set it here
-          // Let CabinetFaceDivider initialize it with proper structure
 
           // Single state update with all changes
           setFormData({
@@ -316,9 +339,13 @@ const CabinetItemForm = ({
       // This allows accurate error detection when section style changes
       finalFormData.saved_style_id = effectiveStyleId;
 
-      if (formData.face_config) {
+      const itemType = cabinetTypes.find(
+        (t) => t.cabinet_type_id === formData.type
+      );
 
+      if (formData.face_config) {
         const boxSummary = calculateBoxSummary(
+          itemType.item_type,
           formData.width,
           formData.height,
           formData.depth,
@@ -331,22 +358,21 @@ const CabinetItemForm = ({
           formData.finished_top,
           formData.finished_bottom,
           formData.finished_interior,
+          formData.finished_back,
           formData.corner_45
         );
 
         finalFormData.face_config = {
           ...formData.face_config,
-          faceSummary: calculateFaceSummary(formData.face_config),
+          faceSummary: calculateFaceSummary(
+            formData.face_config,
+            itemType.item_type,
+            formData.width,
+            formData.height,
+            formData.depth
+          ),
           boxSummary: boxSummary,
         };
-
-        finalFormData.cabinetHours = getCabinetHours(
-          formData.width,
-          formData.height,
-          formData.depth,
-          formData.finished_interior,
-          cabinetAnchors[formData.type]
-        );
       }
 
       onSave(finalFormData);
@@ -515,7 +541,12 @@ const CabinetItemForm = ({
   };
 
   // Recursive helper to calculate face frame parts from face_config
-  const calculateFaceFrames = (node, cabinetWidth, cabinetHeight, isRoot = false) => {
+  const calculateFaceFrames = (
+    node,
+    cabinetWidth,
+    cabinetHeight,
+    isRoot = false
+  ) => {
     let totalBoardFeet = 0;
     let holeCount = 0;
     let beadLength = 0;
@@ -524,7 +555,7 @@ const CabinetItemForm = ({
     // At root level only, count the reveals as frame parts
     if (isRoot && node.rootReveals) {
       const reveals = node.rootReveals;
-      
+
       // Left frame part
       if (reveals.left && reveals.reveal) {
         // Width: reveals.reveal, Height: cabinetHeight
@@ -535,7 +566,7 @@ const CabinetItemForm = ({
           width: reveals.reveal,
         });
       }
-      
+
       // Right frame part
       if (reveals.right && reveals.reveal) {
         // Width: reveals.reveal, Height: cabinetHeight
@@ -546,11 +577,12 @@ const CabinetItemForm = ({
           width: reveals.reveal,
         });
       }
-      
+
       // Top frame part
       if (reveals.top && reveals.reveal) {
         // Width: reveals.reveal, Height: cabinetWidth - reveals.left - reveals.right
-        const partLength = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const partLength =
+          cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         holeCount += 2;
         framePieces.push({
           type: "top",
@@ -558,11 +590,12 @@ const CabinetItemForm = ({
           width: reveals.reveal,
         });
       }
-      
+
       // Bottom frame part
       if (reveals.bottom && reveals.reveal) {
         // Width: reveals.reveal, Height: cabinetWidth - reveals.left - reveals.right
-        const partLength = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const partLength =
+          cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         holeCount += 2;
         framePieces.push({
           type: "bottom",
@@ -575,7 +608,7 @@ const CabinetItemForm = ({
     if (node.children) {
       node.children.forEach((child) => {
         if (CAN_BE_BEADED.includes(child.type)) {
-          beadLength += 2 *child.width + 2 * child.height;
+          beadLength += 2 * child.width + 2 * child.height;
         }
       });
       const frame = node.children[1];
@@ -586,7 +619,6 @@ const CabinetItemForm = ({
           length: frame.height,
           width: frame.width,
         });
-        
       } else {
         framePieces.push({
           type: SPLIT_DIRECTIONS.HORIZONTAL,
@@ -594,13 +626,17 @@ const CabinetItemForm = ({
           width: frame.height,
         });
       }
-      
     }
 
     // Recursively process children
     if (node.children) {
       node.children.forEach((child) => {
-        const childResult = calculateFaceFrames(child, cabinetWidth, cabinetHeight, false);
+        const childResult = calculateFaceFrames(
+          child,
+          cabinetWidth,
+          cabinetHeight,
+          false
+        );
         totalBoardFeet += childResult.totalBoardFeet;
         holeCount += childResult.holeCount;
         beadLength += childResult.beadLength;
@@ -617,7 +653,9 @@ const CabinetItemForm = ({
   };
 
   // Calculate box material summary (sides, top, bottom, back)
+  // Now type-aware to handle different item types
   const calculateBoxSummary = (
+    itemType = "cabinet",
     width,
     height,
     depth,
@@ -638,6 +676,98 @@ const CabinetItemForm = ({
     const d = roundTo16th(Number(depth));
     const qty = Number(quantity);
 
+    // Handle item types that don't need box material
+    // door_front, drawer_front, end_panel - no box parts, just faces
+    if (
+      itemType === "door_front" ||
+      itemType === "drawer_front" ||
+      itemType === "end_panel"
+    ) {
+      let frameParts = {};
+      if (cabinetStyleId !== 13 && itemType === "end_panel") {
+        frameParts = calculateFaceFrames(faceConfig, width, height, true);
+      }
+
+      const hardware = countFaceHardware(faceConfig);
+      
+      return {
+        pieces: { sides: 0, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: 0,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 0,
+        singleBoxPerimeterLength: 0,
+        boxHardware: hardware,
+        shelfDrillHoles: 0,
+        boxPartsList: [],
+        frameParts: frameParts,
+        openingsCount: 0,
+      };
+    }
+
+    // Handle filler - L-shape (itemType === 5)
+    if (itemType === ITEM_TYPES.FILLER.type) {
+      const sideArea = roundTo16th(h * d);
+      const facearea = roundTo16th(w * h);
+      const boxPartsList = [
+        {
+          type: ITEM_TYPES.FILLER.type,
+          side: "face",
+          width: roundTo16th(w),
+          height: roundTo16th(h),
+          area: facearea,
+          quantity: 1,
+          finish: true,
+        },
+        {
+          type: ITEM_TYPES.FILLER.type,
+          side: "return", 
+          width: roundTo16th(d),
+          height: roundTo16th(h),
+          area: sideArea,
+          quantity: 1,
+          finish: true,
+        },
+      ];
+
+      return {
+        pieces: { sides: 1 * qty, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: sideArea + facearea,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 1,
+        singleBoxPerimeterLength: 0,
+        boxHardware: { hingeCount: 0, drawerSlideCount: 0, pullCount: 0 },
+        shelfDrillHoles: 0,
+        boxPartsList,
+        frameParts: {},
+        openingsCount: 0,
+      };
+    }
+
+    // Handle drawer_box and rollout - minimal data, counted separately
+    if (itemType === "drawer_box" || itemType === "rollout") {
+      const boxHardware = countFaceHardware(faceConfig);
+
+      return {
+        pieces: { sides: 0, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: 0,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 0,
+        singleBoxPerimeterLength: 0,
+        boxHardware, // Will have slide count for drawers/rollouts
+        shelfDrillHoles: 0,
+        boxPartsList: [],
+        frameParts: {},
+        openingsCount: 0,
+      };
+    }
+
+    // Full cabinet - continue with existing complex logic
     let sideArea, topBottomArea, backArea;
     let sidePerimeterLength, topBottomPerimeterLength, backPerimeterLength;
     let boxPerimeterLength, boxPartsCount;
@@ -736,8 +866,8 @@ const CabinetItemForm = ({
 
     const boxHardware = countFaceHardware(faceConfig);
 
-    let frameParts = {}
-    
+    let frameParts = {};
+
     if (cabinetStyleId !== 13) {
       frameParts = calculateFaceFrames(faceConfig, width, height, true);
     }
@@ -981,7 +1111,8 @@ const CabinetItemForm = ({
         return { partitions, openingsCount: localOpeningsCount };
       };
 
-      const { partitions, openingsCount: partitionOpeningsCount } = collectPartitions(faceConfig);
+      const { partitions, openingsCount: partitionOpeningsCount } =
+        collectPartitions(faceConfig);
       openingsCount += partitionOpeningsCount;
       boxPartsList.push(...partitions);
     }
@@ -1003,8 +1134,51 @@ const CabinetItemForm = ({
   };
 
   // Calculate face type summary
-  const calculateFaceSummary = (node) => {
+  const calculateFaceSummary = (node, itemType, width, height, depth) => {
     const summary = {};
+
+    // // Handle filler parts (type 5) - create two panels
+    // if (itemType === ITEM_TYPES.FILLER.type) {
+    //   const faceType = FACE_NAMES.PANEL;
+      
+    //   if (!summary[faceType]) {
+    //     summary[faceType] = {
+    //       count: 0,
+    //       totalArea: 0,
+    //       faces: [],
+    //     };
+    //   }
+
+    //   // Panel 1: Face panel (width x height)
+    //   const faceWidth = roundTo16th(width);
+    //   const faceHeight = roundTo16th(height);
+    //   const faceArea = roundTo16th(faceWidth * faceHeight);
+
+    //   summary[faceType].count += 1;
+    //   summary[faceType].totalArea += faceArea;
+    //   summary[faceType].faces.push({
+    //     id: 'filler-face',
+    //     width: Math.max(faceWidth + depth + 2, 7),
+    //     height: faceHeight,
+    //     area: faceArea,
+    //   });
+
+    //   // Panel 2: Return panel (depth x height)
+    //   const returnWidth = roundTo16th(depth);
+    //   const returnHeight = roundTo16th(height);
+    //   const returnArea = roundTo16th(returnWidth * returnHeight);
+
+    //   summary[faceType].count += 1;
+    //   summary[faceType].totalArea += returnArea;
+    //   summary[faceType].faces.push({
+    //     id: 'filler-return',
+    //     width: returnWidth,
+    //     height: returnHeight,
+    //     area: returnArea,
+    //   });
+
+    //   return summary;
+    // }
 
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)
@@ -1121,136 +1295,47 @@ const CabinetItemForm = ({
           <div className="space-y-4 flex-1 flex flex-col">
             {/* Basic Info Section */}
             <div className="pb-4 border-b border-slate-200 flex flex-col">
-              <div className="flex flex-col gap-4 justify-around mb-4">
-                <div className="flex gap-2 justify-around">
-                  {/* Quantity */}
-                  <div className="">
-                    <label
-                      htmlFor="quantity"
-                      className="block text-xs font-medium text-slate-700 mb-1"
-                    >
-                      Quantity <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      id="quantity"
-                      name="quantity"
-                      value={formData.quantity}
-                      onChange={handleChange}
-                      min="1"
-                      className={`w-full px-3 py-2 border ${
-                        errors.quantity ? "border-red-500" : "border-slate-300"
-                      } rounded-md text-sm max-w-[72px]`}
-                    />
-                    {errors.quantity && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.quantity}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Finished Interior */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="finished_interior"
-                      name="finished_interior"
-                      checked={formData.finished_interior}
-                      onChange={handleChange}
-                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                    />
-                    <label
-                      htmlFor="finished_interior"
-                      className="text-xs font-medium text-slate-700"
-                    >
-                      Finished Interior
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-between">
-                  {/* Finished Left */}
-                  <div className="w-full text-xs font-medium text-slate-700 text-left">
-                    Finish:
-                  </div>
-                  {/* Finished Top */}
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      id="finished_top"
-                      name="finished_top"
-                      checked={formData.finished_top}
-                      onChange={handleChange}
-                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                    />
-                    <label
-                      htmlFor="finished_top"
-                      className="text-xs font-medium text-slate-700"
-                    >
-                      Top
-                    </label>
-                  </div>
-
-                  {/* Finished Bottom */}
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      id="finished_bottom"
-                      name="finished_bottom"
-                      checked={formData.finished_bottom}
-                      onChange={handleChange}
-                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                    />
-                    <label
-                      htmlFor="finished_bottom"
-                      className="text-xs font-medium text-slate-700"
-                    >
-                      Bottom
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      id="finished_left"
-                      name="finished_left"
-                      checked={formData.finished_left}
-                      onChange={handleChange}
-                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                    />
-                    <label
-                      htmlFor="finished_left"
-                      className="text-xs font-medium text-slate-700"
-                    >
-                      Left
-                    </label>
-                  </div>
-
-                  {/* Finished Right */}
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      id="finished_right"
-                      name="finished_right"
-                      checked={formData.finished_right}
-                      onChange={handleChange}
-                      className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                    />
-                    <label
-                      htmlFor="finished_right"
-                      className="text-xs font-medium text-slate-700"
-                    >
-                      Right
-                    </label>
-                  </div>
-                </div>
+              {/* Cabinet Type */}
+              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center mb-2">
+                <label
+                  htmlFor="type"
+                  className="block text-xs font-medium text-slate-700 mb-1"
+                >
+                  Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type || ""}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border ${
+                    errors.type ? "border-red-500" : "border-slate-300"
+                  } rounded-md text-sm`}
+                >
+                  <option value="">Select Type</option>
+                  {cabinetTypes
+                    .filter((type) => type.is_active)
+                    .map((type) => (
+                      <option
+                        key={type.cabinet_type_id}
+                        value={type.cabinet_type_id}
+                      >
+                        {type.cabinet_type_name}
+                      </option>
+                    ))}
+                </select>
+                {errors.type && (
+                  <p className="text-red-500 text-xs mt-1">{errors.type}</p>
+                )}
               </div>
 
               {/* Cabinet Style */}
-              <div>
+              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center mb-2">
                 <label
                   htmlFor="cabinet_style_override"
                   className="block text-xs font-medium text-slate-700 mb-1"
                 >
-                  Cabinet Style
+                  Style
                 </label>
                 <select
                   id="cabinet_style_override"
@@ -1282,57 +1367,187 @@ const CabinetItemForm = ({
                 )}
               </div>
 
-              {/* Cabinet Type */}
-              <div className="mt-2">
-                <label
-                  htmlFor="type"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Cabinet Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="type"
-                  name="type"
-                  value={formData.type || ""}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border ${
-                    errors.type ? "border-red-500" : "border-slate-300"
-                  } rounded-md text-sm`}
-                >
-                  <option value="">Select Cabinet Type</option>
-                  {cabinetTypes
-                    .filter((type) => type.is_active)
-                    .map((type) => (
-                      <option
-                        key={type.cabinet_type_id}
-                        value={type.cabinet_type_id}
+              <div className="flex flex-col gap-4 justify-around mb-4">
+                <div className="flex gap-2 justify-around">
+                  {/* Quantity */}
+                  <div className="">
+                    <label
+                      htmlFor="quantity"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Quantity <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="quantity"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={handleChange}
+                      min="1"
+                      className={`w-full px-3 py-2 border ${
+                        errors.quantity ? "border-red-500" : "border-slate-300"
+                      } rounded-md text-sm max-w-[72px]`}
+                    />
+                    {errors.quantity && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.quantity}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Finished Interior - Only for cabinets */}
+                  {itemTypeConfig.features.finishedInterior && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="finished_interior"
+                        name="finished_interior"
+                        checked={formData.finished_interior}
+                        onChange={handleChange}
+                        className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                      />
+                      <label
+                        htmlFor="finished_interior"
+                        className="text-xs font-medium text-slate-700"
                       >
-                        {type.cabinet_type_name}
-                      </option>
-                    ))}
-                </select>
-                {errors.type && (
-                  <p className="text-red-500 text-xs mt-1">{errors.type}</p>
+                        Finished Interior
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* Finish options - Conditionally show based on item type */}
+                {(itemTypeConfig.features.finishedTop ||
+                  itemTypeConfig.features.finishedBottom ||
+                  itemTypeConfig.features.finishedLeft ||
+                  itemTypeConfig.features.finishedRight) && (
+                  <div className="flex flex-wrap gap-2 justify-between">
+                    <div className="w-full text-xs font-medium text-slate-700 text-left">
+                      Finish:
+                    </div>
+
+                    {/* Finished Top */}
+                    {itemTypeConfig.features.finishedTop && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="finished_top"
+                          name="finished_top"
+                          checked={formData.finished_top}
+                          onChange={handleChange}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <label
+                          htmlFor="finished_top"
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          Top
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Finished Bottom */}
+                    {itemTypeConfig.features.finishedBottom && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="finished_bottom"
+                          name="finished_bottom"
+                          checked={formData.finished_bottom}
+                          onChange={handleChange}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <label
+                          htmlFor="finished_bottom"
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          Bottom
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Finished Back */}
+                    {itemTypeConfig.features.finishedBack && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="finished_back"
+                          name="finished_back"
+                          checked={formData.finished_back}
+                          onChange={handleChange}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <label
+                          htmlFor="finished_back"
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          Back
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Finished Left */}
+                    {itemTypeConfig.features.finishedLeft && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="finished_left"
+                          name="finished_left"
+                          checked={formData.finished_left}
+                          onChange={handleChange}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <label
+                          htmlFor="finished_left"
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          Left
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Finished Right */}
+                    {itemTypeConfig.features.finishedRight && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="finished_right"
+                          name="finished_right"
+                          checked={formData.finished_right}
+                          onChange={handleChange}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <label
+                          htmlFor="finished_right"
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          Right
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
               {/* Corner 45 Checkbox */}
-              <div className="flex items-center gap-2 mt-4">
-                <input
-                  type="checkbox"
-                  id="corner_45"
-                  name="corner_45"
-                  checked={formData.corner_45}
-                  onChange={handleChange}
-                  className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                />
-                <label
-                  htmlFor="corner_45"
-                  className="text-xs font-medium text-slate-700"
-                >
-                  Corner 45°
-                </label>
-              </div>
+              {itemTypeConfig.features.corner45 && (
+                <div className="flex items-center gap-2 mt-4">
+                  <input
+                    type="checkbox"
+                    id="corner_45"
+                    name="corner_45"
+                    checked={formData.corner_45}
+                    onChange={handleChange}
+                    className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                  />
+                  <label
+                    htmlFor="corner_45"
+                    className="text-xs font-medium text-slate-700"
+                  >
+                    Corner 45°
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Dimensions Section */}

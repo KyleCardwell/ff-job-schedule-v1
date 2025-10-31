@@ -682,6 +682,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         slide_id,
         door_pull_id,
         drawer_pull_id,
+        faceFinish,
+        boxFinish,
         ...sectionData
       } = updates;
 
@@ -698,6 +700,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(door_pull_id !== undefined && { door_pull_id: +door_pull_id }),
         ...(drawer_pull_id !== undefined && { drawer_pull_id: +drawer_pull_id }),
         ...(style !== undefined && { cabinet_style_id: +style }),
+        ...(faceFinish !== undefined && { face_finish: faceFinish }),
+        ...(boxFinish !== undefined && { box_finish: boxFinish }),
         updated_at: new Date(),
         
         // Merge the rest into section_data

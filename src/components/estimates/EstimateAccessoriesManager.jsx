@@ -1,29 +1,89 @@
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiSave, FiX } from "react-icons/fi";
+import { useDispatch, useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
+import { fetchAccessoriesCatalog } from "../../redux/actions/accessories";
+import { getUnitLabel } from "../../utils/accessoryCalculations";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
 import SectionItemList from "./SectionItemList.jsx";
 
 const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
+  const dispatch = useDispatch();
+  const { catalog, glass, insert, hardware, rod, organizer, other, loading } =
+    useSelector((state) => state.accessories);
+
+  const [selectedType, setSelectedType] = useState("");
   const [formData, setFormData] = useState({
-    name: item.name || "",
+    accessory_catalog_id: item.accessory_catalog_id || "",
     quantity: item.quantity || 1,
-    // notes: item.notes || "",
+    width: item.width || null,
+    height: item.height || null,
+    depth: item.depth || null,
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });
 
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    dispatch(fetchAccessoriesCatalog());
+  }, [dispatch]);
+
+  // Set initial type if editing existing item
+  useEffect(() => {
+    if (item.accessory_catalog_id && catalog.length > 0) {
+      const accessory = catalog.find(
+        (acc) => acc.id === item.accessory_catalog_id
+      );
+      if (accessory) {
+        setSelectedType(accessory.type);
+      }
+    }
+  }, [item.accessory_catalog_id, catalog]);
+
+
+  const selectedAccessory = catalog.find(
+    (acc) => acc.id === formData.accessory_catalog_id
+  );
+
+  // Get accessories by selected type
+  const getAccessoriesByType = () => {
+    if (!selectedType) return [];
+
+    const typeMap = {
+      glass,
+      insert,
+      hardware,
+      rod,
+      organizer,
+      other,
+    };
+
+    // Return all accessories of the selected type (no filtering by context)
+    return typeMap[selectedType] || [];
+  };
+
+  const filteredAccessories = getAccessoriesByType();
+
+  const handleTypeChange = (e) => {
+    const newType = e.target.value;
+    setSelectedType(newType);
+    // Reset accessory selection when type changes
+    setFormData({
+      ...formData,
+      accessory_catalog_id: "",
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     // Handle numeric inputs
-    if (["quantity"].includes(name)) {
-      const numValue = value === "" ? "" : Number(value);
+    if (["quantity", "width", "height", "depth"].includes(name)) {
+      const numValue = value === "" ? null : Number(value);
       setFormData({
         ...formData,
         [name]: numValue,
@@ -47,12 +107,12 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+    if (!formData.accessory_catalog_id) {
+      newErrors.accessory_catalog_id = "Accessory type is required";
     }
 
-    if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = "Quantity must be at least 1";
+    if (!formData.quantity || formData.quantity < 0) {
+      newErrors.quantity = "Quantity must be at least 0";
     }
 
     setErrors(newErrors);
@@ -75,76 +135,143 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
         Accessory Item
       </h4>
 
-      <div className="flex flex-col">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Quantity */}
-          <div className="mb-3">
-            <label
-              htmlFor="quantity"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Quantity <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="quantity"
-              name="quantity"
-              value={formData.quantity}
-              onChange={handleChange}
-              min="1"
-              className={`w-full px-3 py-2 border ${
-                errors.quantity ? "border-red-500" : "border-slate-300"
-              } rounded-md text-sm`}
-            />
-            {errors.quantity && (
-              <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-            )}
-          </div>
-          {/* Name */}
-          <div className="mb-3">
-            <label
-              htmlFor="name"
-              className="block text-xs font-medium text-slate-700 mb-1"
-            >
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className={`w-full px-3 py-2 border ${
-                errors.name ? "border-red-500" : "border-slate-300"
-              } rounded-md text-sm`}
-              placeholder="Hinges, Pulls, etc."
-            />
-            {errors.name && (
-              <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-            )}
+      <div className="flex flex-col space-y-3">
+        <div className="space-y-3">
+          <div className="flex space-x-3">
+            {/* Type Selector */}
+            <div className="flex-1">
+              <label
+                htmlFor="accessory_type"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Accessory Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="accessory_type"
+                name="accessory_type"
+                value={selectedType}
+                onChange={handleTypeChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                disabled={loading}
+              >
+                <option value="">Select type...</option>
+                <option value="glass">Glass</option>
+                <option value="insert">Inserts</option>
+                <option value="hardware">Hardware</option>
+                <option value="rod">Rods</option>
+                <option value="organizer">Organizers</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <label
+                htmlFor="accessory_catalog_id"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Accessory Item <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="accessory_catalog_id"
+                name="accessory_catalog_id"
+                value={formData.accessory_catalog_id}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.accessory_catalog_id
+                    ? "border-red-500"
+                    : "border-slate-300"
+                } rounded-md text-sm`}
+                disabled={
+                  loading || filteredAccessories.length === 0 || !selectedType
+                }
+              >
+                <option value="">
+                  {filteredAccessories.length === 0
+                    ? "First select a type"
+                    : "Select accessory..."}
+                </option>
+                {filteredAccessories.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} ({getUnitLabel(acc.calculation_type)})
+                  </option>
+                ))}
+              </select>
+              {errors.accessory_catalog_id && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.accessory_catalog_id}
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Notes
-        <div className="mb-4">
-          <label
-            htmlFor="notes"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Notes
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            rows={2}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-            placeholder="Optional notes about this accessory..."
-          />
-        </div> */}
+          {/* Dimensions Grid - Always visible */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Width (in)
+              </label>
+              <input
+                type="number"
+                name="width"
+                value={formData.width || ""}
+                onChange={handleChange}
+                step="0.0625"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Height (in)
+              </label>
+              <input
+                type="number"
+                name="height"
+                value={formData.height || ""}
+                onChange={handleChange}
+                step="0.0625"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Depth (in)
+              </label>
+              <input
+                type="number"
+                name="depth"
+                value={formData.depth || ""}
+                onChange={handleChange}
+                step="0.0625"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                placeholder=""
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleChange}
+                min="0"
+                step="1"
+                className={`w-full px-3 py-2 border ${
+                  errors.quantity ? "border-red-500" : "border-slate-300"
+                } rounded-md text-sm`}
+              />
+              {errors.quantity && (
+                <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+              )}
+            </div>
+          </div>
+
         </div>
         {/* Form Actions */}
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end space-x-2 mt-4">
           <button
             type="button"
             onClick={onCancel}
@@ -174,11 +301,72 @@ AccessoryItemForm.propTypes = {
   onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateAccessoriesManager = ({ items, onUpdateItems, onReorderItems, onDeleteItem }) => {
+const EstimateAccessoriesManager = ({
+  items,
+  onUpdateItems,
+  onReorderItems,
+  onDeleteItem,
+}) => {
+  const { catalog } = useSelector((state) => state.accessories);
+
+  const getAccessoryName = (accessoryCatalogId) => {
+    const accessory = catalog.find((acc) => acc.id === accessoryCatalogId);
+    return accessory ? accessory.name : "Unknown";
+  };
+
+  const getAccessoryType = (accessoryCatalogId) => {
+    const accessory = catalog.find((acc) => acc.id === accessoryCatalogId);
+    if (!accessory) return "Unknown";
+
+    const typeLabels = {
+      glass: "Glass",
+      insert: "Insert",
+      hardware: "Hardware",
+      rod: "Rod",
+      organizer: "Organizer",
+      other: "Other",
+    };
+
+    return typeLabels[accessory.type] || accessory.type;
+  };
+
   const columns = [
-    { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
-    { key: "name", label: "Accessory", width: ITEM_FORM_WIDTHS.DEFAULT },
-    // { key: "notes", label: "Notes", width: "1fr" },
+    {
+      key: "type",
+      label: "Type",
+      width: "100px",
+      render: (item) => getAccessoryType(item.accessory_catalog_id),
+    },
+    {
+      key: "accessory",
+      label: "Accessory",
+      width: ITEM_FORM_WIDTHS.DEFAULT,
+      render: (item) => getAccessoryName(item.accessory_catalog_id),
+    },
+    {
+      key: "quantity",
+      label: "Qty",
+      width: ITEM_FORM_WIDTHS.QUANTITY,
+      render: (item) => item.quantity || 0,
+    },
+    {
+      key: "width",
+      label: "W",
+      width: "60px",
+      render: (item) => (item.width ? item.width : "-"),
+    },
+    {
+      key: "height",
+      label: "H",
+      width: "60px",
+      render: (item) => (item.height ? item.height : "-"),
+    },
+    {
+      key: "depth",
+      label: "D",
+      width: "60px",
+      render: (item) => (item.depth ? item.depth : "-"),
+    },
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 

@@ -10,7 +10,7 @@ export const fetchPartsList = () => {
       const { data, error } = await supabase
         .from("parts_list")
         .select("*")
-        .order("name", { ascending: true });
+        // .order("name", { ascending: true });
 
       if (error) throw error;
 

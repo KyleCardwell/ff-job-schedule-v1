@@ -4,6 +4,7 @@ import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { addSection, updateSection } from "../../redux/actions/estimates";
+import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
 
 const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const dispatch = useDispatch();
@@ -16,12 +17,13 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const estimateData = currentEstimate?.estimate_data;
   const sectionData =
     section?.section_data || currentEstimate?.estimateDefault || {};
+  const finishes = useSelector((state) => state.finishes);
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = cabinetStyles || [];
-  const FINISH_OPTIONS = estimateData?.finishes || [];
-  const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
+  const FINISH_OPTIONS = finishes?.finishes || [];
+  const DOOR_STYLE_OPTIONS = FACE_STYLES || [];
   const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
   const DOOR_HINGE_OPTIONS = hardware.hinges || [];
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
@@ -36,9 +38,9 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [formData, setFormData] = useState({
     style: section.cabinet_style_id || "",
     boxMaterial: section.box_mat || "",
-    boxFinish: sectionData.boxFinish || [],
+    boxFinish: section.box_finish || [],
     faceMaterial: section.face_mat || "",
-    faceFinish: sectionData.faceFinish || [],
+    faceFinish: section.face_finish || [],
     doorStyle: sectionData.doorStyle || "",
     drawerFrontStyle: sectionData.drawerFrontStyle || "",
     doorInsideMolding: sectionData.doorInsideMolding || false,
@@ -270,14 +272,14 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     return DOOR_STYLE_OPTIONS.filter((option) => {
       // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
       if (selectedFaceMaterial.five_piece === true) {
-        if (option.id === "5_piece_hardwood" || option.id === "slab_hardwood") {
+        if (option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD || option.id === FACE_STYLE_VALUES.SLAB_HARDWOOD) {
           return true;
         }
       }
 
       // If material supports slab doors, include slab_sheet
       if (selectedFaceMaterial.slab_door === true) {
-        if (option.id === "slab_sheet") {
+        if (option.id === FACE_STYLE_VALUES.SLAB_SHEET) {
           return true;
         }
       }
@@ -542,7 +544,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   <option value="">Select door style...</option>
                   {filteredDoorStyleOptions.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {`${option.name}`}
+                      {`${option.label}`}
                     </option>
                   ))}
                 </select>
@@ -681,7 +683,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   <option value="">Select drawer front style...</option>
                   {filteredDoorStyleOptions.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {option.name}
+                      {option.label}
                     </option>
                   ))}
                 </select>

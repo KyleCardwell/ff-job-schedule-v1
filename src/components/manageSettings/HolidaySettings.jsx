@@ -1,10 +1,5 @@
 import Holidays from "date-holidays";
-import {
-  useState,
-  useEffect,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,6 +11,7 @@ import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const HolidaySettings = forwardRef((props, ref) => {
+  const { maxWidthClass } = props;
   const dispatch = useDispatch();
 
   const { chartStartDate, dayWidth } = useSelector((state) => state.chartData);
@@ -121,7 +117,9 @@ const HolidaySettings = forwardRef((props, ref) => {
     }
 
     try {
-      const { holidayMap: newHolidayMap } = await dispatch(saveHolidays(localStandardHolidays, localCustomHolidays));
+      const { holidayMap: newHolidayMap } = await dispatch(
+        saveHolidays(localStandardHolidays, localCustomHolidays)
+      );
 
       // Update tasks with new holiday configuration
       if (employees.length > 0) {
@@ -130,7 +128,7 @@ const HolidaySettings = forwardRef((props, ref) => {
             employees,
             [], // no builders to delete
             workdayHours,
-            newHolidayMap, 
+            newHolidayMap,
             dayWidth,
             chartStartDate,
             employees[0].employee_id
@@ -158,90 +156,92 @@ const HolidaySettings = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className="space-y-6 mt-6">
-      <SettingsSection title="Standard Holidays" error={saveError}>
-        <div className="flex gap-2 mb-4">
-          <select
-            value={selectedHoliday}
-            onChange={(e) => setSelectedHoliday(e.target.value)}
-            className="flex-1 bg-slate-600 text-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Select a holiday</option>
-            {availableHolidays.map((holiday) => (
-              <option key={holiday} value={holiday}>
-                {holiday}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleAddHoliday}
-            disabled={!selectedHoliday}
-            className="px-3 py-1 text-sm bg-blue-500 text-slate-200 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Add
-          </button>
-        </div>
-        <div className="space-y-2">
-          {localStandardHolidays.map((holiday) => (
-            <div
-              key={holiday.name}
-              className="grid"
-              style={{ gridTemplateColumns: "1fr 40px" }}
+    <div className="mt-6 flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        <SettingsSection title="Standard Holidays" error={saveError}>
+          <div className="flex gap-2 mb-4">
+            <select
+              value={selectedHoliday}
+              onChange={(e) => setSelectedHoliday(e.target.value)}
+              className="flex-1 bg-slate-600 text-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <div className="bg-slate-600 p-2 rounded text-sm text-slate-200">
-                {holiday.name}
-              </div>
-              <button
-                onClick={() => handleRemoveStandardHoliday(holiday.name)}
-                className="p-2 text-slate-400 hover:text-red-400"
+              <option value="">Select a holiday</option>
+              {availableHolidays.map((holiday) => (
+                <option key={holiday} value={holiday}>
+                  {holiday}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleAddHoliday}
+              disabled={!selectedHoliday}
+              className="px-3 py-1 text-sm bg-blue-500 text-slate-200 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add
+            </button>
+          </div>
+          <div className="space-y-2">
+            {localStandardHolidays.map((holiday) => (
+              <div
+                key={holiday.name}
+                className="grid"
+                style={{ gridTemplateColumns: "1fr 40px" }}
               >
-                <svg
-                  className="h-5"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                <div className="bg-slate-600 p-2 rounded text-sm text-slate-200">
+                  {holiday.name}
+                </div>
+                <button
+                  onClick={() => handleRemoveStandardHoliday(holiday.name)}
+                  className="p-2 text-slate-400 hover:text-red-400"
                 >
-                  <path d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
-      </SettingsSection>
+                  <svg
+                    className="h-5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </SettingsSection>
 
-      <SettingsSection title="Custom Holidays" error={customHolidayError}>
-        <SettingsList
-          items={localCustomHolidays}
-          columns={[
-            {
-              field: "name",
-              label: "",
-              width: "320px",
-              type: "date",
-              getValue: (item) => formatDateForInput(item.name),
-              setValue: (item, value) => ({
-                ...item,
-                name: formatDateForInput(new Date(value)),
-              }),
-            },
-          ]}
-          onDelete={handleRemoveCustomDate}
-          onChange={(id, field, value) => {
-            const newHolidays = localCustomHolidays.map((h) =>
-              h.id === id
-                ? { ...h, name: formatDateForInput(new Date(value)) }
-                : h
-            );
-            setLocalCustomHolidays(newHolidays);
-            validateCustomHolidays(newHolidays);
-          }}
-          onAdd={handleAddCustomDate}
-          addLabel="Add Custom Date"
-        />
-      </SettingsSection>
+        <SettingsSection title="Custom Holidays" error={customHolidayError}>
+          <SettingsList
+            items={localCustomHolidays}
+            columns={[
+              {
+                field: "name",
+                label: "",
+                width: "320px",
+                type: "date",
+                getValue: (item) => formatDateForInput(item.name),
+                setValue: (item, value) => ({
+                  ...item,
+                  name: formatDateForInput(new Date(value)),
+                }),
+              },
+            ]}
+            onDelete={handleRemoveCustomDate}
+            onChange={(id, field, value) => {
+              const newHolidays = localCustomHolidays.map((h) =>
+                h.id === id
+                  ? { ...h, name: formatDateForInput(new Date(value)) }
+                  : h
+              );
+              setLocalCustomHolidays(newHolidays);
+              validateCustomHolidays(newHolidays);
+            }}
+            onAdd={handleAddCustomDate}
+            addLabel="Add Custom Date"
+          />
+        </SettingsSection>
+      </div>
     </div>
   );
 });

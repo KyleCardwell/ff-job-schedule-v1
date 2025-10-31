@@ -58,7 +58,7 @@ const AnchorRow = ({
         </div>
         <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40">
           {anchor.cabinet_style_id 
-            ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'All'
+            ? cabinetStyles.find(s => s.cabinet_style_id == parseInt(anchor.cabinet_style_id))?.cabinet_style_name || 'All'
             : 'All'}
         </div>
         {Array.isArray(services) &&
@@ -177,7 +177,7 @@ const AnchorRow = ({
       <div className="px-4 py-2 flex items-center">{anchor.depth}</div>
       <div className="px-4 py-2 flex items-center">
         {anchor.cabinet_style_id 
-          ? cabinetStyles.find(s => s.cabinet_style_id === anchor.cabinet_style_id)?.cabinet_style_name || 'All'
+          ? cabinetStyles.find(s => s.cabinet_style_id === parseInt(anchor.cabinet_style_id))?.cabinet_style_name || 'All'
           : 'All'}
       </div>
       {Array.isArray(services) &&
@@ -295,8 +295,50 @@ const PartsListAnchorsTable = ({
     onAnchorsChange(updatedAnchors);
   };
 
+  // Group anchors by cabinet_style_id
+  const groupedAnchors = () => {
+    if (!anchors || anchors.length === 0) return [];
+
+    // Group by cabinet_style_id (null means "All Styles")
+    const groups = {};
+    anchors.forEach((anchor) => {
+      const styleId = anchor.cabinet_style_id || 'all';
+      if (!groups[styleId]) {
+        groups[styleId] = [];
+      }
+      groups[styleId].push(anchor);
+    });
+
+    // Convert to array and sort: "All Styles" first, then by style name
+    return Object.entries(groups)
+      .sort(([styleIdA], [styleIdB]) => {
+        if (styleIdA === 'all') return -1;
+        if (styleIdB === 'all') return 1;
+        const styleA = cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleIdA));
+        const styleB = cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleIdB));
+        return (styleA?.cabinet_style_name || '').localeCompare(styleB?.cabinet_style_name || '');
+      })
+      .map(([styleId, items]) => ({
+        styleId,
+        styleName: styleId === 'all' 
+          ? 'All Styles' 
+          : cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleId))?.cabinet_style_name || 'Unknown',
+        items
+      }));
+  };
+
+  const anchorGroups = groupedAnchors();
+  const hasMultipleGroups = anchorGroups.length > 1;
+
   return (
     <>
+      {/* General error message for minimum anchor count */}
+      {errors && errors["_general"] && (
+        <div className="mb-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+          {errors["_general"].message}
+        </div>
+      )}
+      
       <div className="overflow-x-auto">
         <div 
           className="grid border-b-2 border-slate-600 mb-2" 
@@ -328,20 +370,27 @@ const PartsListAnchorsTable = ({
           </div>
         </div>
 
-        {anchors.map((anchor) => (
-          <AnchorRow
-            key={anchor.id}
-            anchor={anchor}
-            services={services}
-            cabinetStyles={cabinetStyles}
-            onDelete={handleMarkForDeletion}
-            onUndo={handleUndoDelete}
-            isNew={anchor.isNew}
-            onCancelNew={handleCancelNew}
-            onChange={handleRowChange}
-            errors={errors[anchor.id]}
-            gridCols={gridCols}
-          />
+        {anchorGroups.map((group, groupIndex) => (
+          <React.Fragment key={group.styleId}>
+            {hasMultipleGroups && groupIndex > 0 && (
+              <div className="col-span-full my-4 border-t-2 border-slate-600" />
+            )}
+            {group.items.map((anchor) => (
+              <AnchorRow
+                key={anchor.id}
+                anchor={anchor}
+                services={services}
+                cabinetStyles={cabinetStyles}
+                onDelete={handleMarkForDeletion}
+                onUndo={handleUndoDelete}
+                isNew={anchor.isNew}
+                onCancelNew={handleCancelNew}
+                onChange={handleRowChange}
+                errors={errors[anchor.id]}
+                gridCols={gridCols}
+              />
+            ))}
+          </React.Fragment>
         ))}
       </div>
       <button

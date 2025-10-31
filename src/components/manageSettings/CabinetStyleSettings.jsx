@@ -16,6 +16,7 @@ import CabinetStyleCard from "./CabinetStyleCard.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const CabinetStyleSettings = forwardRef((props, ref) => {
+  const { maxWidthClass } = props;
   const dispatch = useDispatch();
   const { styles: groupedStyles, loading } = useSelector(
     (state) => state.cabinetStyles
@@ -137,16 +138,18 @@ const CabinetStyleSettings = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className="flex flex-col gap-4 mt-4">
-      {localStyles.map((group) => (
-        <SettingsSection
-          key={group.cabinet_style_id}
-          title={group.cabinet_style_name}
-          loading={loading}
-        >
-          <CabinetStyleCard styleGroup={group} onChange={handleStyleChange} />
-        </SettingsSection>
-      ))}
+    <div className="mt-6 flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        {localStyles.map((group) => (
+          <SettingsSection
+            key={group.cabinet_style_id}
+            title={group.cabinet_style_name}
+            loading={loading}
+          >
+            <CabinetStyleCard styleGroup={group} onChange={handleStyleChange} />
+          </SettingsSection>
+        ))}
+      </div>
     </div>
   );
 });

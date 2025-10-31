@@ -1,6 +1,405 @@
-import { MaxRectsPacker } from 'maxrects-packer';
+import { MaxRectsPacker } from "maxrects-packer";
+
+import { CABINET_TYPES, FACE_STYLE_VALUES } from "./constants";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
+
+/**
+ * Map box part types to parts_list IDs based on type and finish status
+ * These IDs are fixed and consistent across all teams
+ */
+const PARTS_LIST_MAPPING = {
+  side_unfinished: 1,
+  side_finished: 6,
+  topBottom_unfinished: 2,
+  topBottom_finished: 7,
+  back_unfinished: 3,
+  back_finished: 8,
+  partition_unfinished: 4,
+  partition_finished: 9,
+  shelf_unfinished: 5,
+  shelf_finished: 10,
+  filler_finished: 11,
+  slab_door_unfinished: 12,
+  slab_door_finished: 13,
+  "5_piece_door_finished": 14, // 5-piece doors always need finish
+};
+
+/**
+ * Get parts_list_id for a box part based on its type and finish status
+ */
+const getPartsListId = (partType, isFinished) => {
+  const key = `${partType}_${isFinished ? "finished" : "unfinished"}`;
+  return PARTS_LIST_MAPPING[key];
+};
+
+/**
+ * Generic interpolation function for calculating time based on area
+ * @param {Array} anchors - Array of anchor objects with dimensions and services
+ * @param {number} targetArea - The area to interpolate for (width × height)
+ * @param {number} teamServiceId - The service ID to get time for
+ * @param {number} cabinetStyleId - Optional cabinet style ID for filtering (null = applies to all)
+ * @returns {number} - Interpolated time in minutes
+ */
+export const interpolateTimeByArea = (
+  anchors,
+  targetArea,
+  teamServiceId,
+  cabinetStyleId = null
+) => {
+  if (!anchors || anchors.length === 0) {
+    return 0;
+  }
+
+  // Filter anchors by cabinet_style_id
+  // Include anchors where cabinet_style_id is null (applies to all) OR matches the target style
+  const filteredAnchors = anchors.filter((anchor) => {
+    return (
+      anchor.cabinet_style_id === null ||
+      anchor.cabinet_style_id == cabinetStyleId
+    );
+  });
+
+  if (filteredAnchors.length === 0) {
+    return 0;
+  }
+
+  // Build array of {area, minutes} for this service, filtering out missing services
+  const dataPoints = filteredAnchors
+    .map((anchor) => {
+      const service = anchor.services.find(
+        (s) => s.team_service_id === teamServiceId
+      );
+      if (!service) return null;
+
+      const area = anchor.width * anchor.height;
+      return {
+        area,
+        minutes: service.minutes || 0,
+      };
+    })
+    .filter(Boolean);
+
+  if (dataPoints.length === 0) {
+    return 0;
+  }
+
+  // Sort by area for interpolation
+  dataPoints.sort((a, b) => a.area - b.area);
+
+  // If only one data point, return its value
+  if (dataPoints.length === 1) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is below minimum, return minimum value
+  if (targetArea <= dataPoints[0].area) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is above maximum, return maximum value
+  // if (targetArea >= dataPoints[dataPoints.length - 1].area) {
+  //   return dataPoints[dataPoints.length - 1].minutes;
+  // }
+
+  // Find the two points to interpolate between
+  for (let i = 0; i < dataPoints.length - 1; i++) {
+    const lower = dataPoints[i];
+    const upper = dataPoints[i + 1];
+
+    if (targetArea >= lower.area && targetArea <= upper.area) {
+      // Avoid division by zero
+      if (upper.area - lower.area === 0) {
+        return lower.minutes;
+      }
+
+      // Linear interpolation: minutes = m1 + (m2 - m1) * (area - a1) / (a2 - a1)
+      const ratio = (targetArea - lower.area) / (upper.area - lower.area);
+      const interpolatedMinutes =
+        lower.minutes + ratio * (upper.minutes - lower.minutes);
+
+      return roundToHundredth(interpolatedMinutes);
+    }
+  }
+
+  // Fallback (shouldn't reach here with proper sorting)
+  return dataPoints[dataPoints.length - 1].minutes;
+};
+
+/**
+ * Calculate total hours by service for a list of box parts (single cabinet)
+ * @param {Array} boxPartsList - Array of box part objects from calculateBoxSummary
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Object} context.selectedBoxMaterial - Selected box material with multipliers
+ * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { serviceId: hours }
+ */
+const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
+  const {
+    partsListAnchors,
+    selectedBoxMaterial,
+    selectedFaceMaterial,
+    globalServices,
+  } = context;
+
+  if (!boxPartsList || boxPartsList.length === 0 || !partsListAnchors) {
+    return {};
+  }
+
+  // Collect all unique service IDs across all parts
+  const allServiceIds = new Set();
+  Object.values(partsListAnchors).forEach((anchors) => {
+    anchors.forEach((anchor) => {
+      anchor.services.forEach((service) => {
+        allServiceIds.add(service.team_service_id);
+      });
+    });
+  });
+
+  const hoursByService = {};
+
+  // Initialize all services to 0
+  allServiceIds.forEach((serviceId) => {
+    hoursByService[serviceId] = 0;
+  });
+
+  // Process each part
+  boxPartsList.forEach((part) => {
+    const partsListId = getPartsListId(part.type, part.finish);
+
+    if (!partsListId) {
+      return;
+    }
+
+    const anchors = partsListAnchors[partsListId];
+
+    if (!anchors || anchors.length === 0) {
+      // No anchors for this part type - skip it
+      return;
+    }
+
+    const area = part.width * part.height;
+    const quantity = part.quantity || 1;
+
+    // Determine which material this part uses based on finish boolean
+    const partMaterial = part.finish
+      ? selectedFaceMaterial
+      : selectedBoxMaterial;
+
+    // Calculate time for each service
+    allServiceIds.forEach((teamServiceId) => {
+      // Box parts don't have style-specific anchors, pass null for cabinetStyleId
+      const minutesEach = interpolateTimeByArea(
+        anchors,
+        area,
+        teamServiceId,
+        null
+      );
+      let totalMinutes = minutesEach * quantity;
+
+      // Apply multipliers based on service and material
+      if (partMaterial?.material?.needs_finish && globalServices) {
+        const service = globalServices.find(
+          (s) => s.team_service_id === parseInt(teamServiceId)
+        );
+        if (service) {
+          if (service.service_id === 2 && partMaterial.shopMultiplier) {
+            // Shop multiplier for service ID 2
+            totalMinutes *= partMaterial.shopMultiplier;
+          } else if (
+            service.service_id === 3 &&
+            partMaterial.finishMultiplier
+          ) {
+            // Finish multiplier for service ID 3
+            totalMinutes *= partMaterial.finishMultiplier;
+          }
+        }
+      }
+
+      hoursByService[teamServiceId] += totalMinutes;
+    });
+  });
+
+  // Convert minutes to hours for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      hoursByService[serviceId] / 60
+    );
+  });
+
+  return hoursByService;
+};
+
+/**
+ * Calculate total hours by service for all cabinets in a section
+ * This replaces the old getCabinetHours function
+ * @param {Object} section - Section object with cabinets array
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Object} context.selectedBoxMaterial - Selected box material with multipliers
+ * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { hoursByService }
+ */
+export const calculateBoxPartsTime = (section, context = {}) => {
+  const { partsListAnchors, globalServices } = context;
+  const totals = {
+    hoursByService: {}, // Detailed breakdown by service
+  };
+
+  if (!section.cabinets || !Array.isArray(section.cabinets)) {
+    return totals;
+  }
+
+  if (!partsListAnchors) {
+    return totals;
+  }
+
+  section.cabinets.forEach((cabinet) => {
+    if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
+
+    const quantity = Number(cabinet.quantity) || 1;
+    const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
+
+    // Calculate hours for this cabinet's parts (multipliers applied per-part)
+    const cabinetHours = calculatePartsTimeForCabinet(boxPartsList, context);
+
+    // Aggregate by service and multiply by cabinet quantity
+    Object.entries(cabinetHours).forEach(([teamServiceId, hours]) => {
+      const service = globalServices.find(
+        (s) => s.team_service_id === parseInt(teamServiceId)
+      );
+      if (!service) return;
+
+      if (!totals.hoursByService[service.service_id]) {
+        totals.hoursByService[service.service_id] = 0;
+      }
+
+      // Only multiply by cabinet quantity here - multipliers already applied per-part
+      totals.hoursByService[service.service_id] += hours * quantity;
+    });
+  });
+
+  return totals;
+};
+
+/**
+ * Calculate total hours by service for door/drawer faces using parts list anchors
+ * @param {Array} faces - Array of face objects with width, height, and area
+ * @param {string} doorStyle - The door style (slab_sheet, slab_hardwood, 5_piece_hardwood)
+ * @param {number} cabinetStyleId - Cabinet style ID for filtering style-specific anchors
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { serviceId: hours }
+ */
+export const calculateDoorPartsTime = (
+  faces,
+  doorStyle,
+  cabinetStyleId,
+  context = {}
+) => {
+  const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
+
+  if (!faces || faces.length === 0 || !partsListAnchors || !doorStyle) {
+    return {};
+  }
+
+  // Determine which parts_list_id to use based on door style
+  let partsListId;
+  if (doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD) {
+    // 5-piece doors always need finish
+    partsListId = PARTS_LIST_MAPPING["5_piece_door_finished"];
+  } else if (
+    doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+    doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD
+  ) {
+    // Slab doors may or may not need finish based on material
+    const needsFinish = selectedFaceMaterial?.material?.needs_finish;
+    partsListId = needsFinish
+      ? PARTS_LIST_MAPPING.slab_door_finished
+      : PARTS_LIST_MAPPING.slab_door_unfinished;
+  } else {
+    // Unknown style, skip
+    return {};
+  }
+
+  const anchors = partsListAnchors[partsListId];
+
+  if (!anchors || anchors.length === 0) {
+    // No anchors for this door type - skip it
+    return {};
+  }
+
+  // Collect all unique service IDs from anchors
+  const allServiceIds = new Set();
+  anchors.forEach((anchor) => {
+    anchor.services.forEach((service) => {
+      allServiceIds.add(service.team_service_id);
+    });
+  });
+
+  const hoursByService = {};
+
+  // Initialize all services to 0
+  allServiceIds.forEach((serviceId) => {
+    hoursByService[serviceId] = 0;
+  });
+
+  // Process each face
+  faces.forEach((face) => {
+    const area = face.width * face.height;
+
+    // Calculate time for each service
+    allServiceIds.forEach((teamServiceId) => {
+      const minutesEach = interpolateTimeByArea(
+        anchors,
+        area,
+        teamServiceId,
+        cabinetStyleId
+      );
+      let totalMinutes = minutesEach;
+
+      // Apply multipliers based on service and material
+      // For 5-piece doors, ALWAYS apply finish multipliers
+      const shouldApplyMultipliers =
+        doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+        selectedFaceMaterial?.material?.needs_finish;
+
+      if (shouldApplyMultipliers && globalServices) {
+        const service = globalServices.find(
+          (s) => s.team_service_id === parseInt(teamServiceId)
+        );
+        if (service) {
+          if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+            // Shop multiplier for service ID 2
+            totalMinutes *= selectedFaceMaterial.shopMultiplier;
+          } else if (
+            service.service_id === 3 &&
+            selectedFaceMaterial.finishMultiplier
+          ) {
+            // Finish multiplier for service ID 3
+            totalMinutes *= selectedFaceMaterial.finishMultiplier;
+          }
+        }
+      }
+
+      hoursByService[teamServiceId] += totalMinutes;
+    });
+  });
+
+  // Convert minutes to hours for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      hoursByService[serviceId] / 60
+    );
+  });
+
+  return hoursByService;
+};
 
 export const calculateBoardFeetFor5PieceDoor = (
   doorWidth,
@@ -8,7 +407,8 @@ export const calculateBoardFeetFor5PieceDoor = (
   thickness = 0.75,
   stileWidth = 3,
   railWidth = 3,
-  panelThickness = 0.5
+  panelThickness = 0.5,
+  panelOverlap = 0.5
 ) => {
   // --- Stiles (2 vertical) ---
   const stileVolume = 2 * thickness * stileWidth * doorHeight;
@@ -18,8 +418,8 @@ export const calculateBoardFeetFor5PieceDoor = (
   const railVolume = 2 * thickness * railWidth * railLength;
 
   // --- Panel (center) ---
-  const panelHeight = doorHeight - 2 * railWidth;
-  const panelWidth = doorWidth - 2 * stileWidth;
+  const panelHeight = doorHeight - 2 * railWidth + panelOverlap * 2;
+  const panelWidth = doorWidth - 2 * stileWidth + panelOverlap * 2;
   const panelVolume = panelThickness * panelWidth * panelHeight;
 
   // Total volume in cubic inches
@@ -81,44 +481,196 @@ const interpolateRate = (anchors, targetWidth, team_service_id) => {
   return rates[rates.length - 1].rate;
 };
 
-export const getCabinetHours = (
-  width,
-  height,
-  depth,
-  finishedInterior = false,
-  anchors
+// export const getCabinetHours = (
+//   width,
+//   height,
+//   depth,
+//   finishedInterior = false,
+//   anchors
+// ) => {
+//   if (!anchors || anchors.length === 0) {
+//     return {};
+//   }
+
+//   const volume = width * height * depth;
+
+//   // Get all unique team_service_ids from the anchors
+//   const serviceIds = [
+//     ...new Set(
+//       anchors.flatMap((a) => a.services.map((s) => s.team_service_id))
+//     ),
+//   ];
+
+//   const hoursByService = {};
+
+//   serviceIds.forEach((serviceId) => {
+//     const rate = interpolateRate(anchors, width, serviceId);
+//     let hours = volume * rate;
+
+//     // Optional scaling for big/heavy cases (can be customized if needed)
+//     if (height > 80) {
+//       // This logic might need to be service-specific in the future
+//       hours *= 1.15;
+//     }
+
+//     hoursByService[serviceId] = roundToHundredth(hours);
+//   });
+
+//   return hoursByService;
+// };
+
+/**
+ * Calculate slab sheet face price using MaxRectsPacker for optimal sheet layout
+ * This is the preferred method for aggregated faces across multiple cabinets
+ * @param {Array} faces - Array of face objects with width, height, area, and cabinetId
+ * @param {Object} selectedMaterial - Material object with sheet dimensions and pricing
+ * @param {Object} options - Pricing options (cutPricePerFoot, edgeBandPricePerFoot, etc.)
+ * @returns {Object} Cost breakdown with packing efficiency data
+ */
+export const calculateSlabSheetFacePriceBulk = (
+  faces,
+  selectedMaterial,
+  {
+    cutPricePerFoot = 1.5,
+    edgeBandPricePerFoot = 0.5,
+    taxRate = 0.1,
+    setupCostPerSheet = 15,
+    kerfWidth = 0.25,
+  } = {}
 ) => {
-  if (!anchors || anchors.length === 0) {
-    return {};
+  if (!faces || faces.length === 0 || !selectedMaterial) {
+    return {
+      sheetCount: 0,
+      totalArea: 0,
+      totalCost: 0,
+      totalCostBeforeTax: 0,
+      packingEfficiency: 0,
+      bandingLength: 0,
+    };
   }
 
-  const volume = width * height * depth;
+  const sheetWidth = selectedMaterial.width || 48;
+  const sheetHeight = selectedMaterial.height || 96;
+  const sheetArea = sheetWidth * sheetHeight;
+  const sheetPrice = selectedMaterial.sheet_price || 0;
 
-  // Get all unique team_service_ids from the anchors
-  const serviceIds = [
-    ...new Set(
-      anchors.flatMap((a) => a.services.map((s) => s.team_service_id))
-    ),
-  ];
+  // Calculate total area of all faces
+  const totalPartsArea = faces.reduce((sum, face) => sum + face.area, 0);
 
-  const hoursByService = {};
+  // Calculate total banding length (all 4 sides of each face)
+  const totalBandingLength = faces.reduce((sum, face) => {
+    return sum + 2 * (face.width + face.height);
+  }, 0);
 
-  serviceIds.forEach((serviceId) => {
-    const rate = interpolateRate(anchors, width, serviceId);
-    let hours = volume * rate;
+  // Prepare faces for packing (add kerf spacing to each face)
+  const packerParts = faces.map((face, index) => ({
+    width: face.width + kerfWidth,
+    height: face.height + kerfWidth,
+    data: {
+      originalWidth: face.width,
+      originalHeight: face.height,
+      area: face.area,
+      cabinetId: face.cabinetId,
+      faceType: face.faceType,
+      index,
+    },
+  }));
 
-    // Optional scaling for big/heavy cases (can be customized if needed)
-    if (height > 80) {
-      // This logic might need to be service-specific in the future
-      hours *= 1.15;
+  // Initialize packer with sheet dimensions
+  const packer = new MaxRectsPacker(
+    sheetWidth + kerfWidth,
+    sheetHeight + kerfWidth,
+    0,
+    {
+      smart: true,
+      pot: false,
+      square: false,
+      allowRotation: false,
     }
+  );
 
-    hoursByService[serviceId] = roundToHundredth(hours);
+  // Add all faces to packer
+  packer.addArray(packerParts);
+
+  // Get the number of bins (sheets) used
+  const sheetsUsed = packer.bins.length;
+  const roundedSheets = Math.max(sheetsUsed, 0.5);
+
+  // Calculate actual packing efficiency
+  const totalSheetArea = sheetsUsed * sheetArea;
+  const packingEfficiency =
+    totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
+
+  // Calculate actual kerf waste based on packed parts
+  let totalKerfWaste = 0;
+  packer.bins.forEach((bin) => {
+    bin.rects.forEach((rect) => {
+      const kerfArea = rect.width * rect.height - rect.data.area;
+      totalKerfWaste += kerfArea;
+    });
   });
 
-  return hoursByService;
+  // Calculate costs
+  const sheetCost = roundedSheets * sheetPrice;
+  const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
+
+  // Calculate total perimeter for cutting cost
+  const totalPerimeter = faces.reduce((sum, face) => {
+    return sum + 2 * (face.width + face.height);
+  }, 0);
+  const cutCost = (totalPerimeter / 12) * cutPricePerFoot;
+
+  // Calculate banding cost (all 4 sides of each face)
+  const bandingCost = (totalBandingLength / 12) * edgeBandPricePerFoot;
+
+  const totalCostBeforeTax = sheetCost + setupCost + cutCost + bandingCost;
+  const totalCost = totalCostBeforeTax * (1 + taxRate);
+
+  return {
+    sheetCount: parseFloat(roundedSheets.toFixed(2)),
+    totalArea: parseFloat(totalPartsArea.toFixed(2)),
+    totalCost: parseFloat(totalCost.toFixed(2)),
+    totalCostBeforeTax: parseFloat(totalCostBeforeTax.toFixed(2)),
+    packingEfficiency: parseFloat((packingEfficiency * 100).toFixed(1)),
+    kerfWaste: parseFloat(totalKerfWaste.toFixed(2)),
+    partCount: faces.length,
+    bandingLength: parseFloat(totalBandingLength.toFixed(2)),
+    sheetDimensions: {
+      width: sheetWidth,
+      height: sheetHeight,
+    },
+    packingDetails: packer.bins.map((bin, index) => ({
+      sheetNumber: index + 1,
+      partsCount: bin.rects.length,
+      efficiency: parseFloat(
+        (
+          (bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) /
+            sheetArea) *
+          100
+        ).toFixed(1)
+      ),
+      layout: bin.rects.map((rect) => ({
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        rotated: rect.rot || false,
+        faceType: rect.data.faceType,
+      })),
+    })),
+    breakdown: {
+      sheetCost: parseFloat(sheetCost.toFixed(2)),
+      setupCost: parseFloat(setupCost.toFixed(2)),
+      cutCost: parseFloat(cutCost.toFixed(2)),
+      bandingCost: parseFloat(bandingCost.toFixed(2)),
+    },
+  };
 };
 
+/**
+ * Legacy function - kept for backwards compatibility
+ * Consider using calculateSlabSheetFacePriceBulk for better efficiency
+ */
 export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
   if (!faceData || !selectedMaterial) {
     return 0;
@@ -143,7 +695,75 @@ export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
   return totalPrice;
 };
 
-// Helper function to calculate 5-piece hardwood face price for a specific face type
+export const calculate5PieceDoorPrice = (door, bdFtPrice) => {
+  const { width, height } = door;
+  const baseWidth = 23;
+  const baseHeight = 31;
+  const baseArea = baseWidth * baseHeight;
+  const doorArea = width * height;
+
+  // --- 1. Base price (power-law fit) ---
+  const basePrice = 30 * Math.pow(bdFtPrice, 0.65);
+
+  // --- 2. Oversize rate (dynamic) ---
+  const oversizeRate = 0.065 * Math.pow(bdFtPrice / 3.05, 0.95) * 1.15;
+  const extra = doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
+
+  // --- 3. Setup fee & shop multiplier ---
+  const setupFee = 10 + bdFtPrice * 1.5; // small per-door prep cost
+  // const shopMultiplier = 1 + bdFtPrice / 120; // small multiplier for more expensive wood
+
+  const taxRate = 8;
+  const deliveryFee = 2;
+  const creditCardFee = 3;
+  const markup = 1 + taxRate / 100 + deliveryFee / 100 + creditCardFee / 100;
+
+  const price = (basePrice + extra + setupFee) * markup;
+
+  return Math.round(price * 100) / 100;
+};
+
+/**
+ * Calculate 5-piece hardwood face price for an aggregated list of faces
+ * This accepts a flat array of face objects from multiple cabinets
+ * @param {Array} faces - Array of face objects with width and height
+ * @param {Object} selectedMaterial - Material object with bd_ft_price and thickness
+ * @returns {number} Total price for all faces
+ */
+export const calculate5PieceHardwoodFacePriceBulk = (
+  faces,
+  selectedMaterial
+) => {
+  if (!faces || faces.length === 0 || !selectedMaterial) {
+    return 0;
+  }
+
+  // For 5-piece hardwood doors, we use price per board foot
+  const pricePerBoardFoot = selectedMaterial.bd_ft_price;
+  let totalPrice = 0;
+
+  // Calculate price for each individual face
+  faces.forEach((face) => {
+    const width = parseFloat(face.width);
+    const height = parseFloat(face.height);
+
+    totalPrice += calculate5PieceDoorPrice(
+      {
+        width,
+        height,
+        thickness: selectedMaterial.thickness || 0.75,
+      },
+      pricePerBoardFoot
+    );
+  });
+
+  return totalPrice;
+};
+
+/**
+ * Legacy function - kept for backwards compatibility
+ * Consider using calculate5PieceHardwoodFacePriceBulk for better efficiency
+ */
 export const calculate5PieceHardwoodFacePrice = (
   faceData,
   selectedMaterial
@@ -161,15 +781,47 @@ export const calculate5PieceHardwoodFacePrice = (
     const width = parseFloat(face.width);
     const height = parseFloat(face.height);
 
-    // Calculate board feet for this specific door/drawer/face
-    const boardFeet = parseFloat(
-      calculateBoardFeetFor5PieceDoor(
+    // // Calculate price for this face
+    // const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
+    totalPrice += calculate5PieceDoorPrice(
+      {
         width,
         height,
-        selectedMaterial.thickness || 0.75,
-        3, // Default stile width of 3"
-        3, // Default rail width of 3"
-        0.5 // Default panel thickness of 1/2"
+        thickness: selectedMaterial.thickness || 0.75,
+      },
+      pricePerBoardFoot
+    );
+  });
+
+  return totalPrice;
+};
+
+/**
+ * Calculate slab hardwood face price for an aggregated list of faces
+ * @param {Array} faces - Array of face objects with width and height
+ * @param {Object} selectedMaterial - Material object with bd_ft_price and thickness
+ * @returns {number} Total price for all faces
+ */
+export const calculateSlabHardwoodFacePriceBulk = (faces, selectedMaterial) => {
+  if (!faces || faces.length === 0 || !selectedMaterial) {
+    return 0;
+  }
+
+  // For slab hardwood, we use price per board foot
+  const pricePerBoardFoot = selectedMaterial.bd_ft_price;
+  let totalPrice = 0;
+
+  // Calculate board feet and price for each individual face
+  faces.forEach((face) => {
+    const width = parseFloat(face.width);
+    const height = parseFloat(face.height);
+
+    // Calculate board feet for this specific door/drawer/face
+    const boardFeet = parseFloat(
+      calculateBoardFeetForSlabHardwoodDoor(
+        width,
+        height,
+        selectedMaterial.thickness || 0.75
       )
     );
 
@@ -181,7 +833,10 @@ export const calculate5PieceHardwoodFacePrice = (
   return totalPrice;
 };
 
-// Helper function to calculate slab hardwood face price for a specific face type
+/**
+ * Legacy function - kept for backwards compatibility
+ * Consider using calculateSlabHardwoodFacePriceBulk for better efficiency
+ */
 export const calculateSlabHardwoodFacePrice = (faceData, selectedMaterial) => {
   if (!faceData || !selectedMaterial) {
     return 0;
@@ -290,31 +945,34 @@ const calculateInterpolated5PieceDoorHours = (
 };
 
 /**
- * Calculates the shop, install, and finish hours for a door of a given size.
+ * Calculate hours for a 5-piece door based on board feet.
+ * Returns hours by service ID (2=shop, 3=finish, 4=install)
  * @param {number} width - The width of the door.
  * @param {number} height - The height of the door.
  * @param {number} thickness - The thickness of the material.
- * @returns {Object} - An object containing shopHours, installHours, and finishHours.
+ * @returns {Object} - { hoursByService: { 2: hours, 3: hours, 4: hours } }
  */
 export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
   const boardFeet = calculateBoardFeetFor5PieceDoor(width, height, thickness);
 
   return {
-    shopHours: calculateInterpolated5PieceDoorHours(
-      doorHourAnchors.shop,
-      boardFeet,
-      "shop"
-    ),
-    installHours: calculateInterpolated5PieceDoorHours(
-      doorHourAnchors.install,
-      boardFeet,
-      "install"
-    ),
-    finishHours: calculateInterpolated5PieceDoorHours(
-      doorHourAnchors.finish,
-      boardFeet,
-      "finish"
-    ),
+    hoursByService: {
+      2: calculateInterpolated5PieceDoorHours(
+        doorHourAnchors.shop,
+        boardFeet,
+        "shop"
+      ), // Shop
+      4: calculateInterpolated5PieceDoorHours(
+        doorHourAnchors.install,
+        boardFeet,
+        "install"
+      ), // Install
+      3: calculateInterpolated5PieceDoorHours(
+        doorHourAnchors.finish,
+        boardFeet,
+        "finish"
+      ), // Finish
+    },
   };
 };
 
@@ -362,18 +1020,11 @@ const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
 export const calculateSlabDoorHours = (width, height) => {
   const area = width * height;
   return {
-    shopHours: calculateInterpolatedSlabDoorHours(
-      slabDoorHourAnchors.shop,
-      area
-    ),
-    installHours: calculateInterpolatedSlabDoorHours(
-      slabDoorHourAnchors.install,
-      area
-    ),
-    finishHours: calculateInterpolatedSlabDoorHours(
-      slabDoorHourAnchors.finish,
-      area
-    ),
+    hoursByService: {
+      2: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area), // Shop
+      4: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area), // Install
+      3: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area), // Finish
+    },
   };
 };
 
@@ -387,8 +1038,7 @@ export const calculateSlabDoorHours = (width, height) => {
  */
 export const calculateBoxSheetsCNC = (
   section,
-  boxMaterials,
-  faceMaterials,
+  context,
   {
     cutPricePerFoot = 1.5,
     drillCostPerHingeBore = 0.85,
@@ -400,13 +1050,12 @@ export const calculateBoxSheetsCNC = (
     kerfWidth = 0.125, // Saw blade kerf width in inches
   } = {}
 ) => {
-  
   if (
     !section ||
     !section.cabinets ||
     section.cabinets.length === 0 ||
-    !boxMaterials ||
-    !faceMaterials
+    !context.selectedBoxMaterial ||
+    !context.selectedFaceMaterial
   ) {
     return {
       sheetCount: 0,
@@ -419,31 +1068,32 @@ export const calculateBoxSheetsCNC = (
     };
   }
 
+  const selectedBoxMaterial = context.selectedBoxMaterial.material;
+  const selectedFaceMaterial = context.selectedFaceMaterial.material;
+
   // Group cabinets by material and collect all parts
   const materialGroups = {};
-  
+
   section.cabinets.forEach((cab) => {
+    // Determine material for box parts
+    const boxMaterial = cab.finished_interior
+      ? selectedFaceMaterial
+      : selectedBoxMaterial;
+
+    const boxMaterialKey = cab.finished_interior ? "face" : "box";
+
     if (!cab.face_config?.boxSummary?.boxPartsList) return;
+    // Only process cabinet boxes
+    if (![...CABINET_TYPES].includes(cab.type)) return;
 
     const qty = Number(cab.quantity) || 1;
     const { boxSummary } = cab.face_config;
-    const {
-      boxPartsList,
-      bandingLength,
-      boxHardware,
-      shelfDrillHoles,
-    } = boxSummary;
+    const { boxPartsList, bandingLength, boxHardware, shelfDrillHoles } =
+      boxSummary;
 
-    // Determine material for box parts
-    const selectedBoxMaterial = cab.finished_interior
-      ? faceMaterials.find((mat) => mat.id === section.face_mat)
-      : boxMaterials.find((mat) => mat.id === section.box_mat);
-
-    const boxMaterialKey = cab.finished_interior ? "face" : "box";
-    
     if (!materialGroups[boxMaterialKey]) {
       materialGroups[boxMaterialKey] = {
-        material: selectedBoxMaterial,
+        material: boxMaterial,
         parts: [],
         totals: {
           bandingLength: 0,
@@ -460,20 +1110,23 @@ export const calculateBoxSheetsCNC = (
     boxPartsList.forEach((part) => {
       // Determine base material key based on finish boolean
       const baseMaterialKey = part.finish ? "face" : boxMaterialKey;
-      
+
       // Get the appropriate material for this part
-      const partMaterial = part.finish 
-        ? faceMaterials.find((mat) => mat.id === section.face_mat)
+      const partMaterial = part.finish
+        ? selectedFaceMaterial
         : selectedBoxMaterial;
-      
+
       // Check if part is oversized (exceeds standard sheet dimensions)
       const partStandardWidth = partMaterial?.width || 49;
       const partStandardHeight = partMaterial?.height || 97;
-      const isOversized = part.width > partStandardWidth || part.height > partStandardHeight;
-      
+      const isOversized =
+        part.width > partStandardWidth || part.height > partStandardHeight;
+
       // Determine the appropriate material key
-      const materialKey = isOversized ? `${baseMaterialKey}-oversize` : baseMaterialKey;
-      
+      const materialKey = isOversized
+        ? `${baseMaterialKey}-oversize`
+        : baseMaterialKey;
+
       // Initialize material group if needed (for face material or oversized)
       if (!materialGroups[materialKey]) {
         if (isOversized) {
@@ -509,7 +1162,7 @@ export const calculateBoxSheetsCNC = (
           };
         }
       }
-      
+
       // Add parts (multiplied by quantity)
       for (let i = 0; i < part.quantity * qty; i++) {
         materialGroups[materialKey].parts.push({
@@ -519,7 +1172,7 @@ export const calculateBoxSheetsCNC = (
           type: part.type,
           cabinetId: cab.id || cab.temp_id,
         });
-        
+
         // Update oversized sheet dimensions to accommodate all oversized parts
         if (isOversized) {
           materialGroups[materialKey].material.width = Math.max(
@@ -537,23 +1190,41 @@ export const calculateBoxSheetsCNC = (
     // Accumulate totals (only to regular group, not oversized)
     // Oversized groups are just for accurate sheet pricing/counts
     materialGroups[boxMaterialKey].totals.bandingLength += bandingLength * qty;
-    materialGroups[boxMaterialKey].totals.hinges += (boxHardware?.totalHinges || 0) * qty;
-    materialGroups[boxMaterialKey].totals.slides += (boxHardware?.totalSlides || 0) * qty;
-    materialGroups[boxMaterialKey].totals.shelfDrillHoles += (shelfDrillHoles || 0) * qty;
-    
+    materialGroups[boxMaterialKey].totals.hinges +=
+      (boxHardware?.totalHinges || 0) * qty;
+    materialGroups[boxMaterialKey].totals.slides +=
+      (boxHardware?.totalSlides || 0) * qty;
+    materialGroups[boxMaterialKey].totals.shelfDrillHoles +=
+      (shelfDrillHoles || 0) * qty;
+
     // Add cabinet to all material groups it uses
     materialGroups[boxMaterialKey].cabinets.push(cab);
-    
+
     // Add cabinet to oversized box group if it exists
-    if (materialGroups[`${boxMaterialKey}-oversize`] && !materialGroups[`${boxMaterialKey}-oversize`].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+    if (
+      materialGroups[`${boxMaterialKey}-oversize`] &&
+      !materialGroups[`${boxMaterialKey}-oversize`].cabinets.find(
+        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
+      )
+    ) {
       materialGroups[`${boxMaterialKey}-oversize`].cabinets.push(cab);
     }
-    
+
     // Add cabinet to face material groups if they exist (for finished parts)
-    if (materialGroups["face"] && !materialGroups["face"].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+    if (
+      materialGroups["face"] &&
+      !materialGroups["face"].cabinets.find(
+        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
+      )
+    ) {
       materialGroups["face"].cabinets.push(cab);
     }
-    if (materialGroups["face-oversize"] && !materialGroups["face-oversize"].cabinets.find(c => (c.id || c.temp_id) === (cab.id || cab.temp_id))) {
+    if (
+      materialGroups["face-oversize"] &&
+      !materialGroups["face-oversize"].cabinets.find(
+        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id)
+      )
+    ) {
       materialGroups["face-oversize"].cabinets.push(cab);
     }
   });
@@ -567,31 +1238,32 @@ export const calculateBoxSheetsCNC = (
       const sheetWidth = material.width || 48;
       const sheetHeight = material.height || 96;
       const sheetArea = sheetWidth * sheetHeight;
-      
+
       // Calculate oversized sheet pricing if this is an oversized material group
       let effectiveSheetPrice = material.sheet_price;
       if (material.isOversized) {
         // Find the base material to get standard pricing
-        const baseMaterialKey = materialKey.replace('-oversize', '');
-        const baseMaterial = baseMaterialKey === 'face' 
-          ? faceMaterials.find((mat) => mat.id === section.face_mat)
-          : boxMaterials.find((mat) => mat.id === section.box_mat);
-        
+        const baseMaterialKey = materialKey.replace("-oversize", "");
+        const baseMaterial =
+          baseMaterialKey === "face"
+            ? selectedFaceMaterial
+            : selectedBoxMaterial;
+
         if (baseMaterial) {
           const standardSheetWidth = baseMaterial.width || 49;
           const standardSheetHeight = baseMaterial.height || 97;
           const standardSheetArea = standardSheetWidth * standardSheetHeight;
-          
+
           // Calculate oversized sheet price based on area ratio
           // Price per square inch from standard sheet
           const pricePerSqInch = baseMaterial.sheet_price / standardSheetArea;
 
           const oversizeHeight = Math.max(sheetHeight, 120);
           const oversizeSheetArea = oversizeHeight * standardSheetWidth;
-          
+
           // Apply oversized sheet price with area-based calculation
           effectiveSheetPrice = oversizeSheetArea * pricePerSqInch;
-          
+
           // Add a premium for oversized sheets (e.g., 15% surcharge for special handling)
           const oversizePremium = 1.5;
           effectiveSheetPrice *= oversizePremium;
@@ -600,7 +1272,7 @@ export const calculateBoxSheetsCNC = (
 
       // Calculate total area of all parts
       const totalPartsArea = parts.reduce((sum, part) => sum + part.area, 0);
-      
+
       // Prepare parts for packing (add kerf spacing to each part)
       const packerParts = parts.map((part, index) => ({
         width: part.width + kerfWidth,
@@ -638,14 +1310,15 @@ export const calculateBoxSheetsCNC = (
 
       // Calculate actual packing efficiency
       const totalSheetArea = sheetsUsed * sheetArea;
-      const packingEfficiency = totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
+      const packingEfficiency =
+        totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
 
       // Calculate actual kerf waste based on packed parts
       let totalKerfWaste = 0;
       packer.bins.forEach((bin) => {
         bin.rects.forEach((rect) => {
           // Kerf waste is the difference between packed size and original size
-          const kerfArea = (rect.width * rect.height) - rect.data.area;
+          const kerfArea = rect.width * rect.height - rect.data.area;
           totalKerfWaste += kerfArea;
         });
       });
@@ -653,13 +1326,13 @@ export const calculateBoxSheetsCNC = (
       // Calculate costs
       const sheetCost = roundedSheets * effectiveSheetPrice;
       const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
-      
+
       // Calculate total perimeter for cutting cost
       const totalPerimeter = parts.reduce((sum, part) => {
         return sum + 2 * (part.width + part.height);
       }, 0);
       const cutCost = (totalPerimeter / 12) * cutPricePerFoot;
-      
+
       const bandingCost = (totals.bandingLength / 12) * edgeBandPricePerFoot;
       const hingeBoreCost = totals.hinges * drillCostPerHingeBore;
       const slideCost = 2 * totals.slides * drillCostPerSlide;
@@ -699,7 +1372,11 @@ export const calculateBoxSheetsCNC = (
           sheetNumber: index + 1,
           partsCount: bin.rects.length,
           efficiency: parseFloat(
-            ((bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) / sheetArea) * 100).toFixed(1)
+            (
+              (bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) /
+                sheetArea) *
+              100
+            ).toFixed(1)
           ),
           // Optional: include layout data for visualization
           layout: bin.rects.map((rect) => ({

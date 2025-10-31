@@ -17,6 +17,7 @@ const SectionItemList = ({
   ItemForm,
   hideAddButton = false,
   formProps = {},
+  getReorderItemName,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const [showNewItem, setShowNewItem] = useState(false);
@@ -64,62 +65,63 @@ const SectionItemList = ({
     }
   };
 
-  const handleKeys = (item, index, key, col) => {
-    switch (key) {
-      case "interior": {
-        if (item.finished_interior) {
-          return "F";
-        } else {
-          return "U";
-        }
-      }
-      case "type": {
-        return cabinetTypes.find((t) => t.cabinet_type_id === item.type)
-          ?.cabinet_type_name;
-      }
-      case "actions":
-        return (
-          <div key={col.key} className="flex justify-center space-x-2">
-            <button
-              onClick={() => {
-                if (!isFormActive) {
-                  setShowNewItem(false);
-                  setEditingIndex(index);
-                }
-              }}
-              disabled={isFormActive}
-              className={`p-1.5 ${
-                isFormActive
-                  ? "text-slate-600 cursor-not-allowed"
-                  : "text-slate-400 hover:text-blue-500"
-              } transition-colors`}
-            >
-              <FiEdit2 size={16} />
-            </button>
-            <button
-              onClick={() => {
-                if (!isFormActive) {
-                  handleDeleteItem(index);
-                }
-              }}
-              disabled={isFormActive}
-              className={`p-1.5 ${
-                isFormActive
-                  ? "text-slate-600 cursor-not-allowed"
-                  : "text-slate-400 hover:text-red-500"
-              } transition-colors`}
-            >
-              <FiTrash2 size={16} />
-            </button>
-          </div>
-        );
-      default:
-        return (
-          <div key={col.key} className="text-sm">
-            {item[col.key]}
-          </div>
-        );
+  const renderCellContent = (item, index, col) => {
+    // If column has a custom render function, use it
+    if (col.render) {
+      return col.render(item, index);
     }
+
+    // Handle actions column (standard for all item types)
+    if (col.key === "actions") {
+      return (
+        <div className="flex justify-center space-x-2">
+          <button
+            onClick={() => {
+              if (!isFormActive) {
+                setShowNewItem(false);
+                setEditingIndex(index);
+              }
+            }}
+            disabled={isFormActive}
+            className={`p-1.5 ${
+              isFormActive
+                ? "text-slate-600 cursor-not-allowed"
+                : "text-slate-400 hover:text-blue-500"
+            } transition-colors`}
+          >
+            <FiEdit2 size={16} />
+          </button>
+          <button
+            onClick={() => {
+              if (!isFormActive) {
+                handleDeleteItem(index);
+              }
+            }}
+            disabled={isFormActive}
+            className={`p-1.5 ${
+              isFormActive
+                ? "text-slate-600 cursor-not-allowed"
+                : "text-slate-400 hover:text-red-500"
+            } transition-colors`}
+          >
+            <FiTrash2 size={16} />
+          </button>
+        </div>
+      );
+    }
+
+    // Cabinet-specific rendering (for backward compatibility)
+    if (col.key === "interior") {
+      return item.finished_interior ? "F" : "U";
+    }
+    
+    if (col.key === "type") {
+      return cabinetTypes.find((t) => t.cabinet_type_id === item.type)
+        ?.cabinet_type_name;
+    }
+
+    // Default: just display the item property
+    return item[col.key];
   };
 
   return (
@@ -179,7 +181,7 @@ const SectionItemList = ({
               {columns.map((col) => {
                 return (
                   <div key={col.key} className="text-sm">
-                    {handleKeys(item, index, col.key, col)}
+                    {renderCellContent(item, index, col)}
                   </div>
                 );
               })}
@@ -249,14 +251,22 @@ const SectionItemList = ({
           onClose={() => setIsReorderModalOpen(false)}
           onSave={handleSaveOrder}
           items={items.map((item) => {
-            const itemType = cabinetTypes.find(
-              (t) => t.cabinet_type_id === item.type
-            ).cabinet_type_name;
+            // Use custom name function if provided, otherwise fall back to cabinet logic
+            let name;
+            if (getReorderItemName) {
+              name = getReorderItemName(item);
+            } else {
+              // Default cabinet-specific logic for backward compatibility
+              const itemType = cabinetTypes.find(
+                (t) => t.cabinet_type_id === item.type
+              )?.cabinet_type_name;
+              name = itemType
+                ? `${item.quantity > 1 ? `(${item.quantity}) ` : ""}${itemType} - ${item.width} x ${item.height} x ${item.depth}`
+                : `Item ${item.id}`;
+            }
             return {
               id: item.id,
-              name:
-                `${item.quantity > 1 ? `(${item.quantity}) ` : ""}${itemType} - ${item.width} x ${item.height} x ${item.depth}` ||
-                `Item ${item.id}`,
+              name,
             };
           })}
           title="Reorder Items"
@@ -283,6 +293,7 @@ SectionItemList.propTypes = {
   ItemForm: PropTypes.elementType.isRequired,
   hideAddButton: PropTypes.bool,
   formProps: PropTypes.object,
+  getReorderItemName: PropTypes.func,
 };
 
 export default SectionItemList;

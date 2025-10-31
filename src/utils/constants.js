@@ -10,7 +10,9 @@ export const PATHS = {
   MANAGE_CABINET_TYPES: "/manage/cabinet-types",
   MANAGE_PARTS_LIST: "/manage/parts-list",
   MANAGE_MATERIALS: "/manage/materials",
+  MANAGE_FINISHES: "/manage/finishes",
   MANAGE_HARDWARE: "/manage/hardware",
+  MANAGE_ACCESSORIES: "/manage/accessories",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
   SETTINGS: "/settings",
@@ -31,6 +33,14 @@ export const SECTION_TYPES = {
   LENGTHS: { type: "lengths", title: "Lengths" },
   ACCESSORIES: { type: "accessories", title: "Accessories" },
   OTHER: { type: "other", title: "Other" },
+};
+
+export const ITEM_TYPES = {
+  CABINET: { type: "cabinet", title: "Cabinet" },
+  DOOR_FRONT: { type: "door_front", title: "Door Front" },
+  DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
+  END_PANEL: { type: "end_panel", title: "End Panel" },
+  FILLER: { type: "filler", title: "Filler" },
 };
 
 export const ITEM_FORM_WIDTHS = {
@@ -57,6 +67,7 @@ export const FACE_NAMES = {
   ROOT: "root",
 };
 
+// Default face types for standard cabinets
 export const FACE_TYPES = [
   { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
   { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
@@ -68,6 +79,32 @@ export const FACE_TYPES = [
   { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
 ];
 
+// Face types for door/drawer fronts and end panels (no reveals for door/drawer fronts)
+export const PANEL_FACE_TYPES = [
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+];
+
+// Face types for drawer fronts (includes reveals)
+export const DRAWER_FRONT_FACE_TYPES = [
+  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
+];
+
+export const DOOR_FRONT_FACE_TYPES = [
+  { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
+  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
+];
+
+// Face types for end panels (includes reveals)
+export const END_PANEL_FACE_TYPES = [
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+  { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
+];
+
+// Face types for fillers (just panel, not divisible)
+export const FILLER_FACE_TYPES = [
+  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+];
+
 export const CAN_BE_BEADED = [
   FACE_NAMES.DOOR,
   FACE_NAMES.PAIR_DOOR,
@@ -75,6 +112,18 @@ export const CAN_BE_BEADED = [
   FACE_NAMES.FALSE_FRONT,
   FACE_NAMES.PANEL,
   FACE_NAMES.OPEN,
+];
+
+// Accessory application contexts (maps to face types that can have accessories)
+export const ACCESSORY_APPLIES_TO_OPTIONS = [
+  { value: FACE_NAMES.DOOR, label: "Door" },
+  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door" },
+  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front" },
+  { value: FACE_NAMES.FALSE_FRONT, label: "False Front" },
+  { value: FACE_NAMES.PANEL, label: "Panel" },
+  { value: FACE_NAMES.OPEN, label: "Opening" },
+  // { value: "cabinet", label: "Cabinet (Box)" },
+  // { value: "standalone", label: "Standalone" },
 ];
 
 export const CAN_HAVE_ROLL_OUTS_OR_SHELVES = [
@@ -99,3 +148,20 @@ export const DRAWER_BOX_MOD_BY_ID = {
   13: { subtractWidth: 1.875 },
   14: { subtractWidth: 0.5 },
 };
+
+// database cabinet types
+export const CABINET_TYPES = [1, 2, 3]
+
+// Face style string constants for comparisons (maintainable single source of truth)
+export const FACE_STYLE_VALUES = {
+  FIVE_PIECE_HARDWOOD: "5_piece_hardwood",
+  SLAB_HARDWOOD: "slab_hardwood",
+  SLAB_SHEET: "slab_sheet",
+};
+
+// Face styles array (works for both UI dropdowns and database)
+export const FACE_STYLES = [
+  { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD, label: "5-Piece Hardwood", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD },
+  { id: FACE_STYLE_VALUES.SLAB_HARDWOOD, label: "Slab Hardwood", value: FACE_STYLE_VALUES.SLAB_HARDWOOD },
+  { id: FACE_STYLE_VALUES.SLAB_SHEET, label: "Slab Sheet", value: FACE_STYLE_VALUES.SLAB_SHEET },
+];
