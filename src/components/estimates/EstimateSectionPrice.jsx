@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
-import { FACE_TYPES } from "../../utils/constants";
+import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
@@ -22,7 +22,7 @@ const EstimateSectionPrice = ({ section }) => {
       state.cabinetStyles?.styles.filter((style) => style.is_active) || []
   );
 
-  const hardware = useSelector((state) => state.hardware);
+  const { hardware, accessories } = useSelector((state) => state);
 
   const partsListAnchors = useSelector(
     (state) => state.partsListAnchors?.itemsByPartsList || []
@@ -35,17 +35,14 @@ const EstimateSectionPrice = ({ section }) => {
     if (material?.needs_finish) {
       finishMultiplier = 1;
     }
-    if (
-      material?.needs_finish &&
-      section.face_finish?.length > 0
-    ) {
+    if (material?.needs_finish && section.face_finish?.length > 0) {
       section.face_finish.forEach((finishId) => {
         const finishObj = finishTypes?.find((ft) => ft.id === finishId);
         if (finishObj?.finish_markup) {
-          finishMultiplier += finishObj.finish_markup/100;
+          finishMultiplier += finishObj.finish_markup / 100;
         }
         if (finishObj?.shop_markup) {
-          shopMultiplier += finishObj.shop_markup/100;
+          shopMultiplier += finishObj.shop_markup / 100;
         }
       });
     }
@@ -59,17 +56,14 @@ const EstimateSectionPrice = ({ section }) => {
     if (material?.needs_finish) {
       finishMultiplier = 1;
     }
-    if (
-      material?.needs_finish &&
-      section.box_finish?.length > 0
-    ) {
+    if (material?.needs_finish && section.box_finish?.length > 0) {
       section.box_finish.forEach((finishId) => {
         const finishObj = finishTypes?.find((ft) => ft.id === finishId);
         if (finishObj?.finish_markup) {
-          finishMultiplier += finishObj.finish_markup/100;
+          finishMultiplier += finishObj.finish_markup / 100;
         }
         if (finishObj?.shop_markup) {
-          shopMultiplier += finishObj.shop_markup/100;
+          shopMultiplier += finishObj.shop_markup / 100;
         }
       });
     }
@@ -93,10 +87,12 @@ const EstimateSectionPrice = ({ section }) => {
       // Hardware
       hardware,
 
+      // Accessories
+      accessories,
+
       // Services & Anchors
       partsListAnchors,
       globalServices: services,
-
     });
   }, [
     section,
@@ -108,6 +104,7 @@ const EstimateSectionPrice = ({ section }) => {
     finishTypes,
     cabinetStyles,
     hardware,
+    accessories,
     partsListAnchors,
     services,
   ]);
@@ -203,7 +200,14 @@ const EstimateSectionPrice = ({ section }) => {
           {/* Face Types - Filter out "open", "container", "pair_door" */}
           {Object.entries(sectionCalculations.faceCounts)
             .filter(
-              ([type]) => !["open", "container", "pair_door"].includes(type)
+              ([type]) =>
+                ![
+                  "open",
+                  "container",
+                  "pair_door",
+                  "glassPanels",
+                  "glassShelfFaces",
+                ].includes(type)
             )
             .map(([type, count]) => (
               <div
@@ -288,7 +292,16 @@ const EstimateSectionPrice = ({ section }) => {
               {sectionCalculations.fillerCount || 0}
             </span>
             <span className="text-sm font-medium text-teal-400 text-right">
-              {/* {formatCurrency(sectionCalculations.fillerTotal || 0)} */}
+              {section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ? "(Panel)": ""}
+            </span>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+            <span className="text-sm text-slate-300 text-left">Glass (sqft):</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {roundToHundredth(sectionCalculations.glassCount || 0)}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.glassTotal || 0)}
             </span>
           </div>
         </div>

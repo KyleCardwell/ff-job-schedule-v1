@@ -16,6 +16,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_NAMES,
+  ITEM_TYPES,
   SPLIT_DIRECTIONS,
 } from "../../utils/constants";
 import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
@@ -38,18 +39,16 @@ const CabinetFaceDivider = ({
 
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
+  const accessories = useSelector((state) => state.accessories);
 
   // Derive itemType from cabinetTypeId by looking it up in cabinetTypes
   const itemType = useMemo(() => {
     const type = cabinetTypes.find((t) => t.cabinet_type_id === cabinetTypeId);
-    return type?.item_type || 'cabinet';
+    return type?.item_type || "cabinet";
   }, [cabinetTypes, cabinetTypeId]);
 
   // Get item type configuration
-  const itemConfig = useMemo(
-    () => getItemTypeConfig(itemType),
-    [itemType]
-  );
+  const itemConfig = useMemo(() => getItemTypeConfig(itemType), [itemType]);
 
   // Get available face types for this item type
   const availableFaceTypes = useMemo(
@@ -88,6 +87,8 @@ const CabinetFaceDivider = ({
   const [inputValues, setInputValues] = useState({
     rollOutQty: "",
     shelfQty: "",
+    glassPanel: "",
+    glassShelves: "",
   });
 
   // Apply focus trap to popups
@@ -128,7 +129,7 @@ const CabinetFaceDivider = ({
 
   // If !usesRootReveals, always use zero reveals, otherwise use config or type reveals
   const currentReveals = usesRootReveals
-    ? (config?.rootReveals || type?.config || defaultReveals)
+    ? config?.rootReveals || type?.config || defaultReveals
     : defaultReveals;
 
   // Only update ref if reveals actually changed (deep comparison)
@@ -277,18 +278,19 @@ const CabinetFaceDivider = ({
 
   useEffect(() => {
     // Check if cabinet type has actually changed
-    const cabinetTypeChanged = previousCabinetTypeIdRef.current !== cabinetTypeId;
-    
+    const cabinetTypeChanged =
+      previousCabinetTypeIdRef.current !== cabinetTypeId;
+
     if (cabinetTypeChanged) {
       // Cabinet type changed - reset to default config with no children
       const initialReveals = usesRootReveals
-        ? (type?.config || {
+        ? type?.config || {
             top: 0,
             bottom: 0,
             left: 0,
             right: 0,
             reveal: 0,
-          })
+          }
         : {
             top: 0,
             bottom: 0,
@@ -300,7 +302,7 @@ const CabinetFaceDivider = ({
       const initialHeight =
         cabinetHeight - initialReveals.top - initialReveals.bottom;
 
-      const needsShelves = itemConfig.features.shelves
+      const needsShelves = itemConfig.features.shelves;
 
       setConfig({
         id: FACE_NAMES.ROOT,
@@ -313,23 +315,23 @@ const CabinetFaceDivider = ({
         shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
       });
-      
+
       // Update the ref to the new type
       previousCabinetTypeIdRef.current = cabinetTypeId;
       return;
     }
-    
+
     if (!config || (Array.isArray(config) && config.length === 0)) {
       // Initialize with a single root node for new cabinets or empty configs
       // If !usesRootReveals, all reveals should be 0
       const initialReveals = usesRootReveals
-        ? (type?.config || {
+        ? type?.config || {
             top: 0,
             bottom: 0,
             left: 0,
             right: 0,
             reveal: 0,
-          })
+          }
         : {
             top: 0,
             bottom: 0,
@@ -355,15 +357,16 @@ const CabinetFaceDivider = ({
     } else if (config && !config.id) {
       // Ensure existing config has an id and rootReveals
       // If !usesRootReveals, all reveals should be 0
-      const configReveals = config.rootReveals ||
+      const configReveals =
+        config.rootReveals ||
         (usesRootReveals
-          ? (type?.config || {
+          ? type?.config || {
               top: 0,
               bottom: 0,
               left: 0,
               right: 0,
               reveal: 0,
-            })
+            }
           : {
               top: 0,
               bottom: 0,
@@ -381,13 +384,13 @@ const CabinetFaceDivider = ({
       // Get the current reveals from type config
       // If !usesRootReveals, all reveals should be 0
       const currentReveals = usesRootReveals
-        ? (type?.config || {
+        ? type?.config || {
             top: 0,
             bottom: 0,
             left: 0,
             right: 0,
             reveal: 0,
-          })
+          }
         : {
             top: 0,
             bottom: 0,
@@ -866,18 +869,21 @@ const CabinetFaceDivider = ({
 
     // Add root reveals if item type supports them
     if (usesRootReveals && cabinetStyleId !== 13 && reveals) {
-      const revealColor = availableFaceTypes.find((t) => t.value === FACE_NAMES.REVEAL)?.color || "#6B7280";
-      
+      const revealColor =
+        availableFaceTypes.find((t) => t.value === FACE_NAMES.REVEAL)?.color ||
+        "#6B7280";
+
       // For upper cabinets (type 2), bottom reveal overhangs
       const isUpperCabinet = cabinetTypeId === 2;
-      const bottomOverhang = isUpperCabinet && reveals.bottom ? reveals.reveal - reveals.bottom : 0;
-      
+      const bottomOverhang =
+        isUpperCabinet && reveals.bottom ? reveals.reveal - reveals.bottom : 0;
+
       // Left reveal - full cabinet height, overhangs on left side
       // For upper cabinets, extends to include bottom overhang
       if (reveals.left) {
         const leftRevealHeight = cabinetHeight + bottomOverhang;
         const leftRevealNode = {
-          id: 'root-reveal-left',
+          id: "root-reveal-left",
           type: FACE_NAMES.REVEAL,
           width: reveals.reveal,
           height: leftRevealHeight,
@@ -886,7 +892,7 @@ const CabinetFaceDivider = ({
         };
 
         const xVal = cabinetTypeId === 10 ? 0 : -reveals.left;
-        
+
         cabinetGroup
           .append("rect")
           .attr("x", xVal * scale)
@@ -910,14 +916,14 @@ const CabinetFaceDivider = ({
       if (reveals.right) {
         const rightRevealHeight = cabinetHeight + bottomOverhang;
         const rightRevealNode = {
-          id: 'root-reveal-right',
+          id: "root-reveal-right",
           type: FACE_NAMES.REVEAL,
           width: reveals.reveal,
           height: rightRevealHeight,
           x: cabinetWidth - reveals.right,
           y: 0,
         };
-        
+
         cabinetGroup
           .append("rect")
           .attr("x", (cabinetWidth - reveals.right) * scale)
@@ -938,18 +944,19 @@ const CabinetFaceDivider = ({
 
       // Top reveal - width is cabinet width minus left and right reveals
       if (reveals.top) {
-        const topWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const topWidth =
+          cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         const topX = reveals.left || 0;
-        
+
         const topRevealNode = {
-          id: 'root-reveal-top',
+          id: "root-reveal-top",
           type: FACE_NAMES.REVEAL,
           width: topWidth,
           height: reveals.top,
           x: topX,
           y: 0,
         };
-        
+
         cabinetGroup
           .append("rect")
           .attr("x", topX * scale)
@@ -971,20 +978,23 @@ const CabinetFaceDivider = ({
       // Bottom reveal - width is cabinet width minus left and right reveals
       // For upper cabinets (type 2), bottom reveal overhangs below the cabinet
       if (reveals.bottom) {
-        const bottomWidth = cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
+        const bottomWidth =
+          cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         const bottomX = reveals.left || 0;
         const bottomHeight = isUpperCabinet ? reveals.reveal : reveals.bottom;
-        const bottomY = isUpperCabinet ? cabinetHeight - reveals.bottom : cabinetHeight - reveals.bottom;
-        
+        const bottomY = isUpperCabinet
+          ? cabinetHeight - reveals.bottom
+          : cabinetHeight - reveals.bottom;
+
         const bottomRevealNode = {
-          id: 'root-reveal-bottom',
+          id: "root-reveal-bottom",
           type: FACE_NAMES.REVEAL,
           width: bottomWidth,
           height: bottomHeight,
           x: bottomX,
           y: bottomY,
         };
-        
+
         cabinetGroup
           .append("rect")
           .attr("x", bottomX * scale)
@@ -1093,15 +1103,72 @@ const CabinetFaceDivider = ({
   // Check if rollouts should be shown for this face type and item type
   const supportsRollouts = (nodeType) => {
     const faceTypeSupports = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(nodeType);
-    const itemTypeAllows = hasFeature(itemType, 'rollouts');
+    const itemTypeAllows = hasFeature(itemType, "rollouts");
     return faceTypeSupports && itemTypeAllows;
   };
 
   // Check if shelves should be shown for this face type and item type
   const supportsShelves = (nodeType) => {
     const faceTypeSupports = CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(nodeType);
-    const itemTypeAllows = hasFeature(itemType, 'shelves');
+    const itemTypeAllows = hasFeature(itemType, "shelves");
     return faceTypeSupports && itemTypeAllows;
+  };
+
+  const supportsGlassPanel = itemType !== ITEM_TYPES.FILLER.type;
+
+  const glassPanelOptions = (nodeType) => {
+    const glassOptions = accessories.glass.filter((glass) =>
+      glass.applies_to.includes(nodeType)
+    );
+    return glassOptions;
+  };
+
+  // Handle glass panel change
+  const handleGlassPanelChange = (e) => {
+    const glassPanelId = e.target.value;
+
+    // Update input value state
+    setInputValues({ ...inputValues, glassPanel: glassPanelId });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // Store the glass panel ID on the node
+      node.glassPanel = glassPanelId || null;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        glassPanel: glassPanelId || null,
+      });
+    }
+  };
+
+  // Handle glass shelves change
+  const handleGlassShelvesChange = (e) => {
+    const glassShelvesId = e.target.value;
+
+    // Update input value state
+    setInputValues({ ...inputValues, glassShelves: glassShelvesId });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // Store the glass shelves ID on the node
+      node.glassShelves = glassShelvesId || null;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        glassShelves: glassShelvesId || null,
+      });
+    }
   };
 
   // Handle type change
@@ -1553,6 +1620,8 @@ const CabinetFaceDivider = ({
         node.shelfQty > 0
           ? truncateTrailingZeros(node.shelfQty)
           : node.shelfQty || "",
+      glassPanel: node.glassPanel || "",
+      glassShelves: node.glassShelves || "",
     });
 
     setShowTypeSelector(true);
@@ -1568,17 +1637,20 @@ const CabinetFaceDivider = ({
       const reveals = faceConfig.rootReveals;
       const dividerType = FACE_NAMES.REVEAL;
       const dividerWidth = reveals.reveal;
-      
+
       const childWidth = (node.width - dividerWidth) / 2;
 
       const childType =
-        node.type === FACE_NAMES.CONTAINER 
-          ? (usesReveals ? FACE_NAMES.DOOR : FACE_NAMES.PANEL) 
+        node.type === FACE_NAMES.CONTAINER
+          ? usesReveals
+            ? FACE_NAMES.DOOR
+            : FACE_NAMES.PANEL
           : node.type;
 
       const canHaveShelves =
         CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType) &&
-        childType !== FACE_NAMES.DRAWER_FRONT;
+        childType !== FACE_NAMES.DRAWER_FRONT &&
+        itemType !== ITEM_TYPES.FILLER.type;
 
       node.children = [
         {
@@ -1628,12 +1700,14 @@ const CabinetFaceDivider = ({
       const reveals = faceConfig.rootReveals;
       const dividerType = FACE_NAMES.REVEAL;
       const dividerHeight = reveals.reveal;
-      
+
       const childHeight = (node.height - dividerHeight) / 2;
 
       const childType =
-        node.type === FACE_NAMES.CONTAINER 
-          ? (usesReveals ? FACE_NAMES.DOOR : FACE_NAMES.PANEL) 
+        node.type === FACE_NAMES.CONTAINER
+          ? usesReveals
+            ? FACE_NAMES.DOOR
+            : FACE_NAMES.PANEL
           : node.type;
 
       const canHaveShelves =
@@ -1981,7 +2055,9 @@ const CabinetFaceDivider = ({
                   selectedHandle.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
                     ? "width"
                     : "height";
-                const faceType = availableFaceTypes.find((t) => t.value === child.type);
+                const faceType = availableFaceTypes.find(
+                  (t) => t.value === child.type
+                );
                 const isReveal = child.type === FACE_NAMES.REVEAL;
 
                 return (
@@ -2027,154 +2103,210 @@ const CabinetFaceDivider = ({
           {showTypeSelector && selectedNode && !disabled && (
             <div
               ref={typeSelectorPopupRef}
-              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10"
+              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10 flex space-x-2"
               style={{
                 left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
                 top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
               }}
             >
-              {/* Dimensions for leaf nodes */}
-              {!selectedNode.children && (
-                <div className="mb-3">
-                  <div className="text-xs font-medium text-slate-700 mb-2">
-                    Dimensions:
-                  </div>
-                  <div className="flex space-x-2 items-center">
-                    <div className="flex items-center space-x-1">
-                      <label className="text-xs text-slate-600">W:</label>
-                      <span className="w-20 px-1 py-0.5 text-xs font-semibold text-slate-800">
-                        {truncateTrailingZeros(selectedNode.width)}&quot;
-                      </span>
+              <div>
+                {/* Dimensions for leaf nodes */}
+                {!selectedNode.children && (
+                  <div className="mb-3">
+                    <div className="text-xs font-medium text-slate-700 mb-2">
+                      Dimensions:
                     </div>
-                    <span className="text-xs text-slate-400">×</span>
-                    <div className="flex items-center space-x-1">
-                      <label className="text-xs text-slate-600">H:</label>
-                      <span className="w-20 px-1 py-0.5 text-xs font-semibold text-slate-800">
-                        {truncateTrailingZeros(selectedNode.height)}&quot;
-                      </span>
+                    <div className="flex space-x-2 items-center">
+                      <div className="flex items-center space-x-1">
+                        <label className="text-xs text-slate-600">W:</label>
+                        <span className="w-20 px-1 py-0.5 text-xs font-semibold text-slate-800">
+                          {truncateTrailingZeros(selectedNode.width)}&quot;
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">×</span>
+                      <div className="flex items-center space-x-1">
+                        <label className="text-xs text-slate-600">H:</label>
+                        <span className="w-20 px-1 py-0.5 text-xs font-semibold text-slate-800">
+                          {truncateTrailingZeros(selectedNode.height)}&quot;
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Roll-Out and Shelf Quantity Inputs */}
-                  {(supportsRollouts(selectedNode.type) || supportsShelves(selectedNode.type)) && (
-                    <div className="mt-2 flex justify-between">
-                      {supportsRollouts(selectedNode.type) && (
-                        <div className="flex flex-col items-center space-x-1">
+                    {/* Roll-Out and Shelf Quantity Inputs */}
+                    {(supportsRollouts(selectedNode.type) ||
+                      supportsShelves(selectedNode.type)) && (
+                      <div className="mt-2 flex justify-between">
+                        {supportsRollouts(selectedNode.type) && (
+                          <div className="flex flex-col items-center space-x-1">
+                            <label className="text-xs text-slate-600">
+                              Roll-Outs:
+                            </label>
+                            <input
+                              type="number"
+                              name="rollOutQty"
+                              value={inputValues.rollOutQty}
+                              onChange={(e) =>
+                                handleRoShQtyChange(e, "rollOutQty")
+                              }
+                              className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              step="1"
+                            />
+                          </div>
+                        )}
+                        {supportsShelves(selectedNode.type) && (
+                          <div className="flex flex-col items-center space-x-1">
+                            <label className="text-xs text-slate-600">
+                              Shelves:
+                            </label>
+                            <input
+                              type="number"
+                              name="shelfQty"
+                              value={inputValues.shelfQty}
+                              onChange={(e) =>
+                                handleRoShQtyChange(e, "shelfQty")
+                              }
+                              className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              step="1"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-2 flex space-x-4">
+                      {supportsGlassPanel && glassPanelOptions(selectedNode.type).length > 0 && (
+                        <div className="flex-1 flex flex-col items-center space-x-1">
                           <label className="text-xs text-slate-600">
-                            Roll-Outs:
+                            Glass Panel:
                           </label>
-                          <input
-                            type="number"
-                            name="rollOutQty"
-                            value={inputValues.rollOutQty}
-                            onChange={(e) => handleRoShQtyChange(e, "rollOutQty")}
-                            className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                            step="1"
-                          />
+                          <select
+                            name="glassPanel"
+                            value={inputValues.glassPanel}
+                            onChange={(e) => handleGlassPanelChange(e)}
+                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          >
+                            <option value="">None</option>
+                            {glassPanelOptions(selectedNode.type).map(
+                              (glass) => (
+                                <option key={glass.id} value={glass.id}>
+                                  {glass.name}
+                                </option>
+                              )
+                            )}
+                          </select>
                         </div>
                       )}
-                      {supportsShelves(selectedNode.type) && (
-                        <div className="flex flex-col items-center space-x-1">
+                      {supportsShelves(selectedNode.type) && accessories.glass.length > 0 && (
+                        <div className="flex-1 flex flex-col items-center space-x-1">
                           <label className="text-xs text-slate-600">
                             Shelves:
                           </label>
-                          <input
-                            type="number"
-                            name="shelfQty"
-                            value={inputValues.shelfQty}
-                            onChange={(e) => handleRoShQtyChange(e, "shelfQty")}
-                            className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                            step="1"
-                          />
+                          <select
+                            name="glassShelves"
+                            value={inputValues.glassShelves}
+                            onChange={(e) => handleGlassShelvesChange(e)}
+                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          >
+                            <option value="">Box Material</option>
+                            {accessories.glass.map((glass) => (
+                              <option key={glass.id} value={glass.id}>
+                                {glass.name}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
-              {selectedNode.type === FACE_NAMES.CONTAINER && (
-                <div className="border-t border-slate-200 mt-3 pt-3">
-                  <div className="text-xs font-medium text-slate-700 mb-2">
-                    Container Actions:
-                  </div>
-                  <div className="grid grid-cols-1 gap-1">
-                    <button
-                      onClick={handleSplitHorizontal}
-                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                    >
-                      Split Horizontal
-                    </button>
-                    <button
-                      onClick={handleSplitVertical}
-                      className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                    >
-                      Split Vertical
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedNode.type !== FACE_NAMES.REVEAL && (
-                <>
-                  <div className="text-xs font-medium text-slate-700 mb-2">
-                    Change Type:
-                  </div>
-                  <div className="grid grid-cols-1 gap-1 mb-3">
-                    {availableFaceTypes.filter(
-                      (type) =>
-                        type.value !== FACE_NAMES.CONTAINER &&
-                        type.value !== FACE_NAMES.REVEAL
-                    ).map((type) => (
-                      <button
-                        key={type.value}
-                        onClick={() => handleTypeChange(type.value)}
-                        className={`px-2 py-1 text-xs rounded flex items-center ${
-                          selectedNode.type === type.value
-                            ? "bg-blue-100 text-blue-700"
-                            : "hover:bg-slate-100"
-                        }`}
-                      >
-                        <div
-                          className="w-3 h-3 rounded mr-2"
-                          style={{ backgroundColor: type.color }}
-                        />
-                        {type.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="border-t border-slate-200 pt-2">
+                {selectedNode.type === FACE_NAMES.CONTAINER && (
+                  <div className="border-t border-slate-200 mt-3 pt-3">
                     <div className="text-xs font-medium text-slate-700 mb-2">
-                      Actions:
+                      Container Actions:
                     </div>
-                    <div className="flex-1 flex flex-col space-y-1">
-                      {itemConfig.allowsSplitting && (
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={handleSplitHorizontal}
-                            className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                          >
-                            Split Horizontal
-                          </button>
-                          <button
-                            onClick={handleSplitVertical}
-                            className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
-                          >
-                            Split Vertical
-                          </button>
-                        </div>
-                      )}
+                    <div className="grid grid-cols-1 gap-1">
                       <button
-                        onClick={handleDeleteNode}
-                        className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                        onClick={handleSplitHorizontal}
+                        className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
                       >
-                        Delete
+                        Split Horizontal
+                      </button>
+                      <button
+                        onClick={handleSplitVertical}
+                        className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                      >
+                        Split Vertical
                       </button>
                     </div>
                   </div>
-                </>
-              )}
+                )}
+
+                {selectedNode.type !== FACE_NAMES.REVEAL && (
+                  <>
+                    <div className="text-xs font-medium text-slate-700 mb-2">
+                      Change Type:
+                    </div>
+                    <div className="grid grid-cols-1 gap-1 mb-3">
+                      {availableFaceTypes
+                        .filter(
+                          (type) =>
+                            type.value !== FACE_NAMES.CONTAINER &&
+                            type.value !== FACE_NAMES.REVEAL
+                        )
+                        .map((type) => (
+                          <button
+                            key={type.value}
+                            onClick={() => handleTypeChange(type.value)}
+                            className={`px-2 py-1 text-xs rounded flex items-center ${
+                              selectedNode.type === type.value
+                                ? "bg-blue-100 text-blue-700"
+                                : "hover:bg-slate-100"
+                            }`}
+                          >
+                            <div
+                              className="w-3 h-3 rounded mr-2"
+                              style={{ backgroundColor: type.color }}
+                            />
+                            {type.label}
+                          </button>
+                        ))}
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-2">
+                      <div className="text-xs font-medium text-slate-700 mb-2">
+                        Actions:
+                      </div>
+                      <div className="flex-1 flex flex-col space-y-1">
+                        {itemConfig.allowsSplitting && (
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={handleSplitHorizontal}
+                              className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                            >
+                              Split Horizontal
+                            </button>
+                            <button
+                              onClick={handleSplitVertical}
+                              className="flex-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded"
+                            >
+                              Split Vertical
+                            </button>
+                          </div>
+                        )}
+                        <button
+                          onClick={handleDeleteNode}
+                          className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="border-l border-slate-200 pl-2">
+                accessories
+              </div>  
             </div>
           )}
         </div>

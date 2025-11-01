@@ -22,6 +22,8 @@ const calculateFaceTotals = (section, context) => {
     faceCounts: {},
     facePrices: {},
     hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
+    glassTotal: 0,
+    glassCount: 0,
   };
 
   FACE_TYPES.forEach((type) => {
@@ -45,21 +47,23 @@ const calculateFaceTotals = (section, context) => {
 
   section.cabinets.forEach((cabinet) => {
     const quantity = Number(cabinet.quantity) || 1;
-    const cabinetStyleId = cabinet.cabinet_style_override || section.cabinet_style_id;
+    const cabinetStyleId =
+      cabinet.cabinet_style_override || section.cabinet_style_id;
 
     // Handle fillers (type 5) separately using boxPartsList
     if (cabinet.type === 5) {
       // Only include fillers if door style is slab_sheet
-      if (section.section_data.doorStyle !== FACE_STYLE_VALUES.SLAB_SHEET) return;
-      
+      if (section.section_data.doorStyle !== FACE_STYLE_VALUES.SLAB_SHEET)
+        return;
+
       if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
 
       const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
-      
+
       // Sum the widths of all parts to create a single panel
       let totalWidth = 0;
       let panelHeight = 0;
-      
+
       boxPartsList.forEach((part) => {
         totalWidth += part.width || 0;
         // Use the first part's height (they should all be the same)
@@ -140,6 +144,19 @@ const calculateFaceTotals = (section, context) => {
           });
         }
 
+        if (faceData.glass) {
+          const { glass } = context?.accessories || {};
+
+          faceData.glass.forEach((piece) => {
+            const sqft = (piece.width * piece.height) / 144;
+            const price = glass.find(
+              (g) => g.id === piece.accessoryCatalogId
+            ).default_price_per_unit;
+            totals.glassCount += roundToHundredth((sqft || 0) * piece.quantity);
+            totals.glassTotal += (sqft * price || 0) * piece.quantity;
+          });
+        }
+
         // Update face counts
         totals.faceCounts[faceType] += (faceData.count || 0) * quantity;
       }
@@ -147,31 +164,33 @@ const calculateFaceTotals = (section, context) => {
   });
 
   // Calculate hours using parts list anchors (same as before)
-  allFacesForHours.forEach(({ faces, styleToUse, cabinetStyleId, quantity }) => {
-    const faceHours = calculateDoorPartsTime(
-      faces,
-      styleToUse,
-      cabinetStyleId,
-      context
-    );
+  allFacesForHours.forEach(
+    ({ faces, styleToUse, cabinetStyleId, quantity }) => {
+      const faceHours = calculateDoorPartsTime(
+        faces,
+        styleToUse,
+        cabinetStyleId,
+        context
+      );
 
-    // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
-    if (faceHours) {
-      Object.entries(faceHours).forEach(([teamServiceId, hours]) => {
-        const service = context.globalServices?.find(
-          (s) => s.team_service_id === parseInt(teamServiceId)
-        );
-        if (!service) return;
+      // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
+      if (faceHours) {
+        Object.entries(faceHours).forEach(([teamServiceId, hours]) => {
+          const service = context.globalServices?.find(
+            (s) => s.team_service_id === parseInt(teamServiceId)
+          );
+          if (!service) return;
 
-        const serviceId = service.service_id;
-        if (!totals.hoursByService[serviceId]) {
-          totals.hoursByService[serviceId] = 0;
-        }
-        // Multiply by cabinet quantity (multipliers already applied per-face)
-        totals.hoursByService[serviceId] += (hours || 0) * quantity;
-      });
+          const serviceId = service.service_id;
+          if (!totals.hoursByService[serviceId]) {
+            totals.hoursByService[serviceId] = 0;
+          }
+          // Multiply by cabinet quantity (multipliers already applied per-face)
+          totals.hoursByService[serviceId] += (hours || 0) * quantity;
+        });
+      }
     }
-  });
+  );
 
   // Calculate prices by style using bulk functions
   Object.entries(facesByStyle).forEach(([styleToUse, faces]) => {
@@ -185,11 +204,11 @@ const calculateFaceTotals = (section, context) => {
         selectedFaceMaterial.material
       );
       const styleTotalPrice = result.totalCost;
-      
+
       // Calculate total area and area by face type
       const totalArea = faces.reduce((sum, face) => sum + face.area, 0);
       const areaByFaceType = {};
-      
+
       faces.forEach((face) => {
         const faceType = face.faceType;
         if (!areaByFaceType[faceType]) {
@@ -197,7 +216,7 @@ const calculateFaceTotals = (section, context) => {
         }
         areaByFaceType[faceType] += face.area;
       });
-      
+
       // Distribute price proportionally based on area used by each face type
       Object.entries(areaByFaceType).forEach(([faceType, area]) => {
         if (!totals.facePrices[faceType]) {
@@ -213,26 +232,29 @@ const calculateFaceTotals = (section, context) => {
         const width = parseFloat(face.width);
         const height = parseFloat(face.height);
         const pricePerBoardFoot = selectedFaceMaterial.material.bd_ft_price;
-        
+
         // Use the same pricing logic as the bulk function
         const baseWidth = 23;
         const baseHeight = 31;
         const baseArea = baseWidth * baseHeight;
         const doorArea = width * height;
-        
+
         const basePrice = 30 * Math.pow(pricePerBoardFoot, 0.65);
-        const oversizeRate = 0.065 * Math.pow(pricePerBoardFoot / 3.05, 0.95) * 1.15;
-        const extra = doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
+        const oversizeRate =
+          0.065 * Math.pow(pricePerBoardFoot / 3.05, 0.95) * 1.15;
+        const extra =
+          doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
         const setupFee = 10 + pricePerBoardFoot * 1.5;
-        
+
         const taxRate = 8;
         const deliveryFee = 2;
         const creditCardFee = 3;
-        const markup = 1 + (taxRate / 100) + (deliveryFee / 100) + (creditCardFee / 100);
-        
+        const markup =
+          1 + taxRate / 100 + deliveryFee / 100 + creditCardFee / 100;
+
         return (basePrice + extra + setupFee) * markup;
       };
-      
+
       faces.forEach((face) => {
         const faceType = face.faceType;
         if (!totals.facePrices[faceType]) {
@@ -247,11 +269,11 @@ const calculateFaceTotals = (section, context) => {
         const height = parseFloat(face.height);
         const thickness = selectedFaceMaterial.material.thickness || 0.75;
         const pricePerBoardFoot = selectedFaceMaterial.material.bd_ft_price;
-        
+
         // Calculate board feet: (width * height * thickness) / 144
         const boardFeet = (width * height * thickness) / 144;
         const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
-        
+
         const faceType = face.faceType;
         if (!totals.facePrices[faceType]) {
           totals.facePrices[faceType] = 0;
@@ -493,7 +515,8 @@ const calculateFillerMaterials = (section, context) => {
     return totals;
   }
 
-  if (section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET) return totals;
+  if (section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET)
+    return totals;
 
   const fillers = section.cabinets.filter((cabinet) => {
     // Only include filler parts (type 5)
@@ -515,17 +538,14 @@ const calculateFillerMaterials = (section, context) => {
     const wasteFactor = 1.25;
 
     if (material?.bd_ft_price) {
-      const boardFeet =
-        ((faceArea + returnArea) * material.thickness) / 144;
+      const boardFeet = ((faceArea + returnArea) * material.thickness) / 144;
       const boardFeetWithWaste = boardFeet * wasteFactor;
       totals.boardFeet += boardFeetWithWaste * quantity;
-      totals.woodTotal +=
-        boardFeetWithWaste * material.bd_ft_price * quantity;
+      totals.woodTotal += boardFeetWithWaste * material.bd_ft_price * quantity;
     } else {
       const totalArea = (faceArea + returnArea) * wasteFactor;
       const sheetArea = totalArea / material.area;
-      totals.woodTotal +=
-        sheetArea * material.sheet_price * quantity;
+      totals.woodTotal += sheetArea * material.sheet_price * quantity;
     }
   });
 
@@ -591,22 +611,18 @@ const countHardware = (section, faceTotals, context) => {
 };
 
 const calculateCabinetTotals = (section, context) => {
-  const cabinetCost = calculateBoxSheetsCNC(
-    section,
-    context,
-    {
-      cutPricePerFoot: 1.5,
-      drillCostPerHingeBore: 0.85,
-      drillCostPerSlide: 1.25,
-      drillCostPerShelfHole: 0.08,
-      edgeBandPricePerFoot: 0.2,
-      taxRate: 0.1,
-      setupCostPerSheet: 15,
-      kerfWidth: 0.25, // Saw blade kerf width in inches
-    }
-  );
+  const cabinetCost = calculateBoxSheetsCNC(section, context, {
+    cutPricePerFoot: 1.5,
+    drillCostPerHingeBore: 0.85,
+    drillCostPerSlide: 1.25,
+    drillCostPerShelfHole: 0.08,
+    edgeBandPricePerFoot: 0.2,
+    taxRate: 0.1,
+    setupCostPerSheet: 15,
+    kerfWidth: 0.25, // Saw blade kerf width in inches
+  });
 
-  // Calculate box parts time, 
+  // Calculate box parts time,
   const boxHours = calculateBoxPartsTime(section, context);
 
   // Calculate face totals (counts, prices, and hours)
@@ -640,10 +656,10 @@ const calculateCabinetTotals = (section, context) => {
   ) || { boxCount: 0, fillerCount: 0 };
 
   // Calculate total face price
-  const facePrice = Object.values(faceTotals.facePrices).reduce(
-    (sum, price) => sum + price,
-    0
-  );
+  // const facePrice = Object.values(faceTotals.facePrices).reduce(
+  //   (sum, price) => sum + price,
+  //   0
+  // );
 
   // Calculate hardware counts and totals
   const hardwareTotals = countHardware(section, faceTotals, context);
@@ -663,7 +679,11 @@ const calculateCabinetTotals = (section, context) => {
 
   // Combine all totals
   const totals = {
-    price: cabinetCost.totalCost + facePrice + faceFramePrices.totalCost,
+    // price:
+    //   cabinetCost.totalCost +
+    //   facePrice +
+    //   faceTotals.glassPrice +
+    //   faceFramePrices.totalCost,
     boxPrice: cabinetCost.totalCost,
     boxCount: boxCount,
     hoursByService: mergedHoursByService,
@@ -682,6 +702,8 @@ const calculateCabinetTotals = (section, context) => {
     woodTotal: faceFramePrices.woodTotal + fillerMaterials.woodTotal,
     woodCount: faceFramePrices.boardFeet + fillerMaterials.boardFeet,
     fillerCount: fillerCount,
+    glassCount: faceTotals.glassCount,
+    glassTotal: faceTotals.glassTotal,
   };
 
   return totals;
@@ -732,6 +754,8 @@ export const getSectionCalculations = (section, context = {}) => {
       woodTotal: 0,
       woodCount: 0,
       fillerCount: 0,
+      glassCount: 0,
+      glassTotal: 0,
     };
   }
 
@@ -748,16 +772,17 @@ export const getSectionCalculations = (section, context = {}) => {
   );
 
   const totalPrice =
+  totalFacePrice +
     cabinetTotals.boxPrice +
-    totalFacePrice +
     cabinetTotals.drawerBoxTotal +
     cabinetTotals.rollOutTotal +
     cabinetTotals.hingesTotal +
     cabinetTotals.pullsTotal +
     cabinetTotals.slidesTotal +
+    cabinetTotals.woodTotal +
+    cabinetTotals.glassTotal +
     lengthsTotal +
     accessoriesTotal +
-    cabinetTotals.woodTotal +
     otherTotal;
 
   // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
@@ -786,6 +811,8 @@ export const getSectionCalculations = (section, context = {}) => {
     woodTotal: cabinetTotals.woodTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
     fillerCount: cabinetTotals.fillerCount,
+    glassCount: cabinetTotals.glassCount,
+    glassTotal: cabinetTotals.glassTotal,
   };
 };
 

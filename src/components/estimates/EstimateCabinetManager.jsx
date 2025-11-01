@@ -689,7 +689,7 @@ const CabinetItemForm = ({
       }
 
       const hardware = countFaceHardware(faceConfig);
-      
+
       return {
         pieces: { sides: 0, topBottom: 0, back: 0 },
         cabinetCount: qty,
@@ -722,7 +722,7 @@ const CabinetItemForm = ({
         },
         {
           type: ITEM_TYPES.FILLER.type,
-          side: "return", 
+          side: "return",
           width: roundTo16th(d),
           height: roundTo16th(h),
           area: sideArea,
@@ -1019,6 +1019,9 @@ const CabinetItemForm = ({
     // Add shelves from face config
     if (faceConfig) {
       const collectShelves = (node) => {
+        if (node.glassShelves) {
+          return [];
+        }
         const shelves = [];
 
         if (node.shelfQty && node.shelfDimensions) {
@@ -1140,7 +1143,7 @@ const CabinetItemForm = ({
     // // Handle filler parts (type 5) - create two panels
     // if (itemType === ITEM_TYPES.FILLER.type) {
     //   const faceType = FACE_NAMES.PANEL;
-      
+
     //   if (!summary[faceType]) {
     //     summary[faceType] = {
     //       count: 0,
@@ -1194,6 +1197,7 @@ const CabinetItemForm = ({
               count: 0,
               totalArea: 0,
               faces: [],
+              glass: [],
             };
           }
 
@@ -1221,6 +1225,20 @@ const CabinetItemForm = ({
             height: doorHeight,
             area: doorArea,
           });
+
+          if (node.glassPanel) {
+            const glassWidth = roundTo16th(doorWidth - 5);
+            const glassHeight = roundTo16th(doorHeight - 5);
+            const glassArea = roundTo16th(glassWidth * glassHeight);
+            summary[faceType].glass.push({
+              id: `${node.id}`,
+              accessoryCatalogId: +node.glassPanel,
+              width: glassWidth,
+              height: glassHeight,
+              area: glassArea,
+              quantity: 2,
+            });
+          }
         } else {
           // Handle all other face types normally
           if (!summary[faceType]) {
@@ -1228,6 +1246,7 @@ const CabinetItemForm = ({
               count: 0,
               totalArea: 0,
               faces: [],
+              glass: [],
             };
           }
 
@@ -1249,6 +1268,32 @@ const CabinetItemForm = ({
             width: width,
             height: height,
             area: area,
+            shelfQty: node.glassShelves ? 0 : node.shelfQty || 0,
+            rollOutQty: node.rollOutQty || 0,
+          });
+
+          if (node.glassPanel) {
+            const glassWidth = roundTo16th(width - 5);
+            const glassHeight = roundTo16th(height - 5);
+            const glassArea = roundTo16th(glassWidth * glassHeight);
+            summary[faceType].glass.push({
+              id: `${node.id}`,
+              accessoryCatalogId: +node.glassPanel,
+              width: glassWidth,
+              height: glassHeight,
+              area: glassArea,
+              quantity: 1,
+            });
+          }
+        }
+        // Track faces with glass shelves for separate material calculation
+        if (node.glassShelves && node.shelfQty > 0) {
+          summary[faceType].glass.push({
+            id: node.id,
+            accessoryCatalogId: +node.glassShelves,
+            quantity: node.shelfQty,
+            width: depth, //cabinet depth
+            height: width, //cabinet width
           });
         }
       } else {
@@ -1258,7 +1303,11 @@ const CabinetItemForm = ({
     };
 
     processNode(node);
-    return summary;
+
+    // Include glass data in the summary
+    return {
+      ...summary,
+    };
   };
 
   const handleFaceConfigSave = useCallback(
