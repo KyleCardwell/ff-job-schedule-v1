@@ -1,6 +1,6 @@
 import { MaxRectsPacker } from "maxrects-packer";
 
-import { CABINET_TYPES, FACE_STYLE_VALUES } from "./constants";
+import { CABINET_TYPES, FACE_NAMES, FACE_STYLE_VALUES, FACE_TYPES } from "./constants";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
@@ -1420,4 +1420,127 @@ export const calculateBoxSheetsCNC = (
         : 0,
     materialGroups: materialResults,
   };
+};
+
+/**
+ * Generate a human-readable text summary of a cabinet's face configuration
+ * @param {Object} faceConfig - The face_config object from a cabinet
+ * @returns {string} - Text summary like "4 doors (2 glass panels), 5 shelves (2 glass)"
+ */
+export const generateCabinetSummary = (faceConfig) => {
+  if (!faceConfig) return "";
+
+  const parts = [];
+
+  // Helper to recursively collect all nodes
+  const collectNodes = (node, collection = []) => {
+    if (!node) return collection;
+    
+    collection.push(node);
+    
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach(child => collectNodes(child, collection));
+    }
+    
+    return collection;
+  };
+
+  const allNodes = collectNodes(faceConfig);
+
+  // Count doors and glass panels
+  const doorNodes = allNodes.filter(node => 
+    node.type === "door" || node.type === "pair_door"
+  );
+  
+  let totalDoors = 0;
+  let glassDoorsCount = 0;
+  
+  doorNodes.forEach(node => {
+    if (node.type === "pair_door") {
+      totalDoors += 2; // Pair door counts as 2 doors
+    } else {
+      totalDoors += 1;
+    }
+    
+    // Check if this door has glass panels
+    if (node.glassPanel) {
+      if (node.type === "pair_door") {
+        glassDoorsCount += 2; // Both doors in pair have glass
+      } else {
+        glassDoorsCount += 1;
+      }
+    }
+  });
+
+  if (totalDoors > 0) {
+    if (glassDoorsCount > 0) {
+      parts.push(`${totalDoors} door${totalDoors !== 1 ? 's' : ''} (${glassDoorsCount} glass panel${glassDoorsCount !== 1 ? 's' : ''})`);
+    } else {
+      parts.push(`${totalDoors} door${totalDoors !== 1 ? 's' : ''}`);
+    }
+  }
+
+  // Count drawer fronts
+  const drawerNodes = allNodes.filter(node => node.type === FACE_NAMES.DRAWER_FRONT);
+  if (drawerNodes.length > 0) {
+    parts.push(`${drawerNodes.length} drawer${drawerNodes.length !== 1 ? 's' : ''}`);
+  }
+
+  // Count false fronts
+  const falseFrontNodes = allNodes.filter(node => node.type === FACE_NAMES.FALSE_FRONT);
+  if (falseFrontNodes.length > 0) {
+    parts.push(`${falseFrontNodes.length} false front${falseFrontNodes.length !== 1 ? 's' : ''}`);
+  }
+
+  // Count open faces
+  const openNodes = allNodes.filter(node => node.type === FACE_NAMES.OPEN);
+  if (openNodes.length > 0) {
+    parts.push(`${openNodes.length} opening${openNodes.length !== 1 ? 's' : ''}`);
+  }
+
+  // Count panels
+  const panelNodes = allNodes.filter(node => node.type === FACE_NAMES.PANEL);
+  if (panelNodes.length > 0) {
+    parts.push(`${panelNodes.length} panel${panelNodes.length !== 1 ? 's' : ''}`);
+  }
+
+  // Count shelves and glass shelves
+  let totalShelves = 0;
+  let glassShelves = 0;
+
+  allNodes.forEach(node => {
+    const shelfQty = parseInt(node.shelfQty, 10) || 0;
+    if (shelfQty > 0) {
+      totalShelves += shelfQty;
+      
+      // Check if this node has glass shelves
+      if (node.glassShelves) {
+        const glassShelfQty = parseInt(node.shelfQty, 10) || 0;
+        glassShelves += glassShelfQty;
+      }
+    }
+  });
+
+  if (totalShelves > 0) {
+    if (glassShelves > 0) {
+      parts.push(`${totalShelves} shel${totalShelves !== 1 ? 'ves' : 'f'} (${glassShelves} glass)`);
+    } else {
+      parts.push(`${totalShelves} shel${totalShelves !== 1 ? 'ves' : 'f'}`);
+    }
+  }
+
+  // Count rollouts
+  let totalRollouts = 0;
+  allNodes.forEach(node => {
+    const rollOutQty = parseInt(node.rollOutQty, 10) || 0;
+    if (rollOutQty > 0) {
+      totalRollouts += rollOutQty;
+    }
+  });
+
+  if (totalRollouts > 0) {
+    parts.push(`${totalRollouts} rollout${totalRollouts !== 1 ? 's' : ''}`);
+  }
+
+  return parts.join(", ");
 };

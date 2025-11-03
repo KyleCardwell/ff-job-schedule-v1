@@ -4,6 +4,8 @@ import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useSelector } from "react-redux";
 
+import { ITEM_TYPES } from "../../utils/constants.js";
+import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 const SectionItemList = ({
@@ -18,6 +20,7 @@ const SectionItemList = ({
   hideAddButton = false,
   formProps = {},
   getReorderItemName,
+  listType,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const [showNewItem, setShowNewItem] = useState(false);
@@ -63,6 +66,12 @@ const SectionItemList = ({
     } catch (error) {
       console.error("Error saving order:", error);
     }
+  };
+
+  const generateTextSummary = (item) => {
+    if (!item.face_config) return null;
+    const summary = generateCabinetSummary(item.face_config);
+    return summary ? <span className="text-slate-400">{summary}</span> : null;
   };
 
   const renderCellContent = (item, index, col) => {
@@ -114,7 +123,7 @@ const SectionItemList = ({
     if (col.key === "interior") {
       return item.finished_interior ? "F" : "U";
     }
-    
+
     if (col.key === "type") {
       return cabinetTypes.find((t) => t.cabinet_type_id === item.type)
         ?.cabinet_type_name;
@@ -141,17 +150,6 @@ const SectionItemList = ({
             {col.label}
           </div>
         ))}
-        {/* {onReorder && items.length > 1 && (
-          <div className="flex justify-end">
-            <button
-              onClick={() => setIsReorderModalOpen(true)}
-              className="text-slate-500 hover:text-blue-500"
-              aria-label="Reorder items"
-            >
-              <LuArrowDownUp size={16} />
-            </button>
-          </div>
-        )} */}
       </div>
 
       {/* Items List */}
@@ -169,22 +167,37 @@ const SectionItemList = ({
           ) : (
             <div
               key={index}
-              className={`grid gap-4 items-center py-1 px-3 border-b transition-colors ${
+              className={`border-b transition-colors ${
                 item.errorState
                   ? "bg-red-700 text-white border-red-500 hover:bg-red-600"
                   : "bg-slate-700 text-white border-slate-600 hover:bg-slate-600 hover:text-slate-200"
               }`}
-              style={{
-                gridTemplateColumns: columns.map((c) => c.width).join(" "),
-              }}
             >
-              {columns.map((col) => {
-                return (
-                  <div key={col.key} className="text-sm">
-                    {renderCellContent(item, index, col)}
-                  </div>
-                );
-              })}
+              <div
+                className={`grid gap-4 items-center py-1 px-3`}
+                style={{
+                  gridTemplateColumns: columns.map((c) => c.width).join(" "),
+                }}
+              >
+                {columns.map((col) => {
+                  return (
+                    <div key={col.key} className="text-sm">
+                      {renderCellContent(item, index, col)}
+                    </div>
+                  );
+                })}
+              </div>
+              {listType === ITEM_TYPES.CABINET.type && item.type !== 5 && (
+                <div
+                  className={`grid gap-4 px-3 text-sm text-left`}
+                  style={{
+                    gridTemplateColumns: columns[0].width + " " + "1fr",
+                  }}
+                >
+                  <span></span>
+                  {generateTextSummary(item)}
+                </div>
+              )}
             </div>
           )
         )}
@@ -261,7 +274,9 @@ const SectionItemList = ({
                 (t) => t.cabinet_type_id === item.type
               )?.cabinet_type_name;
               name = itemType
-                ? `${item.quantity > 1 ? `(${item.quantity}) ` : ""}${itemType} - ${item.width} x ${item.height} x ${item.depth}`
+                ? `${
+                    item.quantity > 1 ? `(${item.quantity}) ` : ""
+                  }${itemType} - ${item.width} x ${item.height} x ${item.depth}`
                 : `Item ${item.id}`;
             }
             return {
@@ -294,6 +309,7 @@ SectionItemList.propTypes = {
   hideAddButton: PropTypes.bool,
   formProps: PropTypes.object,
   getReorderItemName: PropTypes.func,
+  listType: PropTypes.string,
 };
 
 export default SectionItemList;
