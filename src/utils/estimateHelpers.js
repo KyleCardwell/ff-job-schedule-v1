@@ -1,6 +1,11 @@
 import { MaxRectsPacker } from "maxrects-packer";
 
-import { CABINET_TYPES, FACE_NAMES, FACE_STYLE_VALUES, FACE_TYPES } from "./constants";
+import {
+  CABINET_TYPES,
+  FACE_NAMES,
+  FACE_STYLE_VALUES,
+  FACE_TYPES,
+} from "./constants";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
@@ -29,8 +34,39 @@ const PARTS_LIST_MAPPING = {
  * Get parts_list_id for a box part based on its type and finish status
  */
 const getPartsListId = (partType, isFinished) => {
-  const key = `${partType}_${isFinished ? "finished" : "unfinished"}`;
-  return PARTS_LIST_MAPPING[key];
+  const primaryKey = `${partType}_${isFinished ? "finished" : "unfinished"}`;
+  const fallbackKey = `${partType}_finished`;
+
+  return (
+    PARTS_LIST_MAPPING[primaryKey] ?? PARTS_LIST_MAPPING[fallbackKey] ?? null
+  );
+};
+
+const getPartAnchors = (
+  part,
+  partNeedsFinish,
+  partsListAnchors
+) => {
+  // Determine base keys
+  const primaryKey = `${part.type}_${
+    partNeedsFinish ? "finished" : "unfinished"
+  }`;
+  const fallbackKey = `${part.type}_finished`;
+
+  // Lookup parts list IDs
+  const primaryId = PARTS_LIST_MAPPING[primaryKey];
+  const fallbackId = PARTS_LIST_MAPPING[fallbackKey];
+
+  // Try primary anchors first
+  let anchors = partsListAnchors[primaryId];
+
+  // If no anchors for primary, try fallback (_finished)
+  if (!anchors && fallbackId) {
+    anchors = partsListAnchors[fallbackId];
+  }
+
+  // Return anchors if found, or null if nothing
+  return anchors || null;
 };
 
 /**
@@ -167,13 +203,26 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
 
   // Process each part
   boxPartsList.forEach((part) => {
-    const partsListId = getPartsListId(part.type, part.finish);
+    // Determine which material this part uses based on finish boolean
+    // - part.finish === true: use selectedFaceMaterial
+    // - part.finish === false/null: use selectedBoxMaterial
+    const partMaterial = part.finish
+      ? selectedFaceMaterial
+      : selectedBoxMaterial;
 
-    if (!partsListId) {
-      return;
-    }
+    // Determine if THIS specific part needs finish based on the selected material
+    // This is independent of which material was selected
+    const partNeedsFinish = partMaterial?.material?.needs_finish === true;
 
-    const anchors = partsListAnchors[partsListId];
+    // const partsListId = getPartsListId(part.type, partNeedsFinish);
+
+    // if (!partsListId) {
+    //   return;
+    // }
+
+    // const anchors = partsListAnchors[partsListId];
+
+    const anchors = getPartAnchors(part, partNeedsFinish, partsListAnchors);
 
     if (!anchors || anchors.length === 0) {
       // No anchors for this part type - skip it
@@ -182,11 +231,6 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
 
     const area = part.width * part.height;
     const quantity = part.quantity || 1;
-
-    // Determine which material this part uses based on finish boolean
-    const partMaterial = part.finish
-      ? selectedFaceMaterial
-      : selectedBoxMaterial;
 
     // Calculate time for each service
     allServiceIds.forEach((teamServiceId) => {
@@ -199,20 +243,27 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
       );
       let totalMinutes = minutesEach * quantity;
 
-      // Apply multipliers based on service and material
-      if (partMaterial?.material?.needs_finish && globalServices) {
+      // Apply multipliers and filter services based on whether this part needs finish
+      if (globalServices) {
         const service = globalServices.find(
           (s) => s.team_service_id === parseInt(teamServiceId)
         );
         if (service) {
+          // Skip finish service entirely if this part doesn't need finish
+          if (service.service_id === 3 && !partNeedsFinish) {
+            return; // Don't add any hours for finish service
+          }
+
+          // Shop multiplier for service ID 2
           if (service.service_id === 2 && partMaterial.shopMultiplier) {
-            // Shop multiplier for service ID 2
             totalMinutes *= partMaterial.shopMultiplier;
-          } else if (
+          }
+          // Finish multiplier for service ID 3
+          if (
+            partNeedsFinish &&
             service.service_id === 3 &&
             partMaterial.finishMultiplier
           ) {
-            // Finish multiplier for service ID 3
             totalMinutes *= partMaterial.finishMultiplier;
           }
         }
@@ -1435,33 +1486,33 @@ export const generateCabinetSummary = (faceConfig) => {
   // Helper to recursively collect all nodes
   const collectNodes = (node, collection = []) => {
     if (!node) return collection;
-    
+
     collection.push(node);
-    
+
     if (node.children && Array.isArray(node.children)) {
-      node.children.forEach(child => collectNodes(child, collection));
+      node.children.forEach((child) => collectNodes(child, collection));
     }
-    
+
     return collection;
   };
 
   const allNodes = collectNodes(faceConfig);
 
   // Count doors and glass panels
-  const doorNodes = allNodes.filter(node => 
-    node.type === "door" || node.type === "pair_door"
+  const doorNodes = allNodes.filter(
+    (node) => node.type === "door" || node.type === "pair_door"
   );
-  
+
   let totalDoors = 0;
   let glassDoorsCount = 0;
-  
-  doorNodes.forEach(node => {
+
+  doorNodes.forEach((node) => {
     if (node.type === "pair_door") {
       totalDoors += 2; // Pair door counts as 2 doors
     } else {
       totalDoors += 1;
     }
-    
+
     // Check if this door has glass panels
     if (node.glassPanel) {
       if (node.type === "pair_door") {
@@ -1474,45 +1525,63 @@ export const generateCabinetSummary = (faceConfig) => {
 
   if (totalDoors > 0) {
     if (glassDoorsCount > 0) {
-      parts.push(`${totalDoors} door${totalDoors !== 1 ? 's' : ''} (${glassDoorsCount} glass panel${glassDoorsCount !== 1 ? 's' : ''})`);
+      parts.push(
+        `${totalDoors} door${
+          totalDoors !== 1 ? "s" : ""
+        } (${glassDoorsCount} glass panel${glassDoorsCount !== 1 ? "s" : ""})`
+      );
     } else {
-      parts.push(`${totalDoors} door${totalDoors !== 1 ? 's' : ''}`);
+      parts.push(`${totalDoors} door${totalDoors !== 1 ? "s" : ""}`);
     }
   }
 
   // Count drawer fronts
-  const drawerNodes = allNodes.filter(node => node.type === FACE_NAMES.DRAWER_FRONT);
+  const drawerNodes = allNodes.filter(
+    (node) => node.type === FACE_NAMES.DRAWER_FRONT
+  );
   if (drawerNodes.length > 0) {
-    parts.push(`${drawerNodes.length} drawer${drawerNodes.length !== 1 ? 's' : ''}`);
+    parts.push(
+      `${drawerNodes.length} drawer${drawerNodes.length !== 1 ? "s" : ""}`
+    );
   }
 
   // Count false fronts
-  const falseFrontNodes = allNodes.filter(node => node.type === FACE_NAMES.FALSE_FRONT);
+  const falseFrontNodes = allNodes.filter(
+    (node) => node.type === FACE_NAMES.FALSE_FRONT
+  );
   if (falseFrontNodes.length > 0) {
-    parts.push(`${falseFrontNodes.length} false front${falseFrontNodes.length !== 1 ? 's' : ''}`);
+    parts.push(
+      `${falseFrontNodes.length} false front${
+        falseFrontNodes.length !== 1 ? "s" : ""
+      }`
+    );
   }
 
   // Count open faces
-  const openNodes = allNodes.filter(node => node.type === FACE_NAMES.OPEN);
+  const openNodes = allNodes.filter((node) => node.type === FACE_NAMES.OPEN);
   if (openNodes.length > 0) {
-    parts.push(`${openNodes.length} opening${openNodes.length !== 1 ? 's' : ''}`);
+    parts.push(
+      `${openNodes.length} opening${openNodes.length !== 1 ? "s" : ""}`
+    );
   }
 
   // Count panels
-  const panelNodes = allNodes.filter(node => node.type === FACE_NAMES.PANEL);
+  const panelNodes = allNodes.filter((node) => node.type === FACE_NAMES.PANEL);
   if (panelNodes.length > 0) {
-    parts.push(`${panelNodes.length} panel${panelNodes.length !== 1 ? 's' : ''}`);
+    parts.push(
+      `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`
+    );
   }
 
   // Count shelves and glass shelves
   let totalShelves = 0;
   let glassShelves = 0;
 
-  allNodes.forEach(node => {
+  allNodes.forEach((node) => {
     const shelfQty = parseInt(node.shelfQty, 10) || 0;
     if (shelfQty > 0) {
       totalShelves += shelfQty;
-      
+
       // Check if this node has glass shelves
       if (node.glassShelves) {
         const glassShelfQty = parseInt(node.shelfQty, 10) || 0;
@@ -1523,15 +1592,19 @@ export const generateCabinetSummary = (faceConfig) => {
 
   if (totalShelves > 0) {
     if (glassShelves > 0) {
-      parts.push(`${totalShelves} shel${totalShelves !== 1 ? 'ves' : 'f'} (${glassShelves} glass)`);
+      parts.push(
+        `${totalShelves} shel${
+          totalShelves !== 1 ? "ves" : "f"
+        } (${glassShelves} glass)`
+      );
     } else {
-      parts.push(`${totalShelves} shel${totalShelves !== 1 ? 'ves' : 'f'}`);
+      parts.push(`${totalShelves} shel${totalShelves !== 1 ? "ves" : "f"}`);
     }
   }
 
   // Count rollouts
   let totalRollouts = 0;
-  allNodes.forEach(node => {
+  allNodes.forEach((node) => {
     const rollOutQty = parseInt(node.rollOutQty, 10) || 0;
     if (rollOutQty > 0) {
       totalRollouts += rollOutQty;
@@ -1539,7 +1612,7 @@ export const generateCabinetSummary = (faceConfig) => {
   });
 
   if (totalRollouts > 0) {
-    parts.push(`${totalRollouts} rollout${totalRollouts !== 1 ? 's' : ''}`);
+    parts.push(`${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`);
   }
 
   return parts.join(", ");

@@ -5,6 +5,8 @@ import {
   DRAWER_BOX_MOD_BY_ID,
   CABINET_TYPES,
   FACE_STYLE_VALUES,
+  ACCESSORY_UNITS,
+  ITEM_TYPES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
@@ -448,16 +450,22 @@ const calculateFaceFramePrices = (section, context) => {
     const quantity = Number(cabinet.quantity) || 1;
     const { frameParts, openingsCount } = cabinet.face_config?.boxSummary || {};
 
-    const tapeTime = tapeTimeMinutes({
-      beadLengthIn: frameParts?.beadLength || 0,
-      openingsCount: openingsCount || 1,
-      overheadPerOpeningMin: 2,
-      perInchRate: null,
-      minMinutes: 8,
-    });
+    const cabType = context.cabinetTypes?.find(
+      (ct) => ct.cabinet_type_id === cabinet.type
+    );
 
-    const tapeTimeHours = (tapeTime / 60) * quantity;
-    totalTapeHours += tapeTimeHours; // 👈 accumulate separately
+    if (cabType.item_type === ITEM_TYPES.CABINET.type) {
+      const tapeTime = tapeTimeMinutes({
+        beadLengthIn: frameParts?.beadLength || 0,
+        openingsCount: openingsCount || 1,
+        overheadPerOpeningMin: 2,
+        perInchRate: null,
+        minMinutes: 8,
+      });
+
+      const tapeTimeHours = (tapeTime / 60) * quantity;
+      totalTapeHours += tapeTimeHours; // 👈 accumulate separately
+    }
 
     if (!frameParts?.framePieces) return;
 
@@ -472,13 +480,15 @@ const calculateFaceFramePrices = (section, context) => {
         shopTimeMinutes = 15 + timeIncrease;
       }
 
-      if (selectedFaceMaterial?.bd_ft_price) {
+      if (selectedFaceMaterial?.material?.bd_ft_price) {
         const boardFeet =
-          (length * width * selectedFaceMaterial.thickness) / 144;
+          (length * width * selectedFaceMaterial.material.thickness) / 144;
         const boardFeetWithWaste = boardFeet * 1.25;
         totals.boardFeet += boardFeetWithWaste * quantity;
         totals.woodTotal +=
-          boardFeetWithWaste * selectedFaceMaterial.bd_ft_price * quantity;
+          boardFeetWithWaste *
+          selectedFaceMaterial.material.bd_ft_price *
+          quantity;
       }
 
       const shopTimeHours = shopTimeMinutes / 60;
@@ -664,11 +674,27 @@ const calculateCabinetTotals = (section, context) => {
   // Calculate hardware counts and totals
   const hardwareTotals = countHardware(section, faceTotals, context);
 
-  // Merge hoursByService from all sources
+  // Initialize all services from globalServices with 0 hours
+  // This ensures all services show up in the UI, even if they have 0 hours
   const mergedHoursByService = {};
+  if (context.globalServices && Array.isArray(context.globalServices)) {
+    context.globalServices.forEach((service) => {
+      if (service.service_id && service.is_active) {
+        mergedHoursByService[service.service_id] = 0;
+      }
+    });
+  }
+
+  // Merge hoursByService from all sources
   [boxHours, faceTotals, faceFramePrices].forEach((source) => {
     if (source?.hoursByService) {
       Object.entries(source.hoursByService).forEach(([serviceType, hours]) => {
+        // Only include hours for active services
+        const service = context.globalServices?.find(
+          (s) => s.service_id === parseInt(serviceType)
+        );
+        if (!service || !service.is_active) return;
+
         if (!mergedHoursByService[serviceType]) {
           mergedHoursByService[serviceType] = 0;
         }
@@ -709,7 +735,7 @@ const calculateCabinetTotals = (section, context) => {
   return totals;
 };
 
-const calculateSimpleItemsTotal = (items) => {
+const calculateSimpleItemsTotal = (items, context) => {
   if (!items || !Array.isArray(items)) return 0;
   return items.reduce((total, item) => {
     if (!item) return total;
@@ -717,6 +743,44 @@ const calculateSimpleItemsTotal = (items) => {
     const price = Number(item.price) || 0;
     return total + price * quantity;
   }, 0);
+};
+
+const calculateAccessoriesTotal = (items, context) => {
+  const totals = {
+    glass: { count: 0, total: 0 },
+    insert: { count: 0, total: 0 },
+    hardware: { count: 0, total: 0 },
+    rod: { count: 0, total: 0 },
+    organizer: { count: 0, total: 0 },
+    other: { count: 0, total: 0 },
+  };
+  const { accessories } = context;
+
+  if (!accessories) return totals;
+
+  if (!items || !Array.isArray(items)) return totals;
+
+  items.forEach((item) => {
+    const type = accessories.catalog.find(
+      (acc) => acc.id === item.accessory_catalog_id
+    );
+    if (!type) return;
+    let price = 0;
+    let unit = 0;
+    if (type.calculation_type === ACCESSORY_UNITS.AREA) {
+      const area = (item.width * item.height) / 144;
+      price = area * type.default_price_per_unit;
+      unit = area;
+    } else {
+      price = type.default_price_per_unit;
+      unit = 1;
+    }
+    totals[type.type].count += item.quantity * unit || 0;
+    totals[type.type].total += price * (item.quantity || 0);
+    // return total + price * quantity;
+  });
+
+  return totals;
 };
 
 /**
@@ -761,9 +825,12 @@ export const getSectionCalculations = (section, context = {}) => {
 
   const cabinetTotals = calculateCabinetTotals(section, context);
 
-  const lengthsTotal = calculateSimpleItemsTotal(section.lengths);
-  const accessoriesTotal = calculateSimpleItemsTotal(section.accessories);
-  const otherTotal = calculateSimpleItemsTotal(section.other);
+  const lengthsTotal = calculateSimpleItemsTotal(section.lengths, context);
+  const accessoriesTotal = calculateAccessoriesTotal(
+    section.accessories,
+    context
+  );
+  const otherTotal = calculateSimpleItemsTotal(section.other, context);
 
   // Calculate total face price from facePrices object
   const totalFacePrice = Object.values(cabinetTotals.facePrices || {}).reduce(
@@ -771,8 +838,13 @@ export const getSectionCalculations = (section, context = {}) => {
     0
   );
 
+  const glassTotal =
+    (cabinetTotals.glassTotal || 0) + (accessoriesTotal.glass.total || 0);
+  const glassCount =
+    (cabinetTotals.glassCount || 0) + (accessoriesTotal.glass.count || 0);
+
   const totalPrice =
-  totalFacePrice +
+    totalFacePrice +
     cabinetTotals.boxPrice +
     cabinetTotals.drawerBoxTotal +
     cabinetTotals.rollOutTotal +
@@ -780,9 +852,8 @@ export const getSectionCalculations = (section, context = {}) => {
     cabinetTotals.pullsTotal +
     cabinetTotals.slidesTotal +
     cabinetTotals.woodTotal +
-    cabinetTotals.glassTotal +
+    glassTotal +
     lengthsTotal +
-    accessoriesTotal +
     otherTotal;
 
   // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
@@ -811,8 +882,8 @@ export const getSectionCalculations = (section, context = {}) => {
     woodTotal: cabinetTotals.woodTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
     fillerCount: cabinetTotals.fillerCount,
-    glassCount: cabinetTotals.glassCount,
-    glassTotal: cabinetTotals.glassTotal,
+    glassCount,
+    glassTotal,
   };
 };
 

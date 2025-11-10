@@ -14,7 +14,7 @@ import {
   fetchAccessoriesCatalog,
   saveAccessoriesCatalog,
 } from "../../redux/actions/accessories";
-import { ACCESSORY_APPLIES_TO_OPTIONS } from "../../utils/constants";
+import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS } from "../../utils/constants";
 
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
@@ -241,10 +241,10 @@ const AccessoriesSettings = forwardRef((props, ref) => {
           } rounded text-sm text-white w-full`}
           disabled={item.markedForDeletion}
         >
-          <option value="area">Area (sq ft)</option>
-          <option value="length">Length (ft)</option>
-          <option value="perimeter">Perimeter (ft)</option>
-          <option value="unit">Unit Count</option>
+          <option value={ACCESSORY_UNITS.AREA}>Area (sq ft)</option>
+          <option value={ACCESSORY_UNITS.LENGTH}>Length (ft)</option>
+          <option value={ACCESSORY_UNITS.PERIMETER}>Perimeter (ft)</option>
+          <option value={ACCESSORY_UNITS.UNIT}>Unit Count</option>
         </select>
       ),
     },

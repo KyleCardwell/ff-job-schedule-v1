@@ -113,7 +113,7 @@ const CabinetItemForm = ({
     const selectedType = cabinetTypes.find(
       (t) => t.cabinet_type_id === formData.type
     );
-    const derivedItemType = selectedType?.item_type || "cabinet";
+    const derivedItemType = selectedType?.item_type || ITEM_TYPES.CABINET.type;
     setItemTypeConfig(getItemTypeConfig(derivedItemType));
   }, [formData.type, cabinetTypes]);
 
@@ -681,10 +681,14 @@ const CabinetItemForm = ({
     if (
       itemType === "door_front" ||
       itemType === "drawer_front" ||
-      itemType === "end_panel"
+      itemType === "end_panel" ||
+      itemType === "appliance_panel"
     ) {
       let frameParts = {};
-      if (cabinetStyleId !== 13 && itemType === "end_panel") {
+      if (
+        cabinetStyleId !== 13 &&
+        (itemType === "end_panel" || itemType === "appliance_panel")
+      ) {
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
       }
 
@@ -1139,49 +1143,6 @@ const CabinetItemForm = ({
   // Calculate face type summary
   const calculateFaceSummary = (node, itemType, width, height, depth) => {
     const summary = {};
-
-    // // Handle filler parts (type 5) - create two panels
-    // if (itemType === ITEM_TYPES.FILLER.type) {
-    //   const faceType = FACE_NAMES.PANEL;
-
-    //   if (!summary[faceType]) {
-    //     summary[faceType] = {
-    //       count: 0,
-    //       totalArea: 0,
-    //       faces: [],
-    //     };
-    //   }
-
-    //   // Panel 1: Face panel (width x height)
-    //   const faceWidth = roundTo16th(width);
-    //   const faceHeight = roundTo16th(height);
-    //   const faceArea = roundTo16th(faceWidth * faceHeight);
-
-    //   summary[faceType].count += 1;
-    //   summary[faceType].totalArea += faceArea;
-    //   summary[faceType].faces.push({
-    //     id: 'filler-face',
-    //     width: Math.max(faceWidth + depth + 2, 7),
-    //     height: faceHeight,
-    //     area: faceArea,
-    //   });
-
-    //   // Panel 2: Return panel (depth x height)
-    //   const returnWidth = roundTo16th(depth);
-    //   const returnHeight = roundTo16th(height);
-    //   const returnArea = roundTo16th(returnWidth * returnHeight);
-
-    //   summary[faceType].count += 1;
-    //   summary[faceType].totalArea += returnArea;
-    //   summary[faceType].faces.push({
-    //     id: 'filler-return',
-    //     width: returnWidth,
-    //     height: returnHeight,
-    //     area: returnArea,
-    //   });
-
-    //   return summary;
-    // }
 
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)
@@ -1826,6 +1787,7 @@ const EstimateCabinetManager = ({
       onReorder={handleReorderItems}
       ItemForm={CabinetItemForm}
       formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes }}
+      listType={ITEM_TYPES.CABINET.type}
     />
   );
 };

@@ -111,7 +111,7 @@ const AdminDashboard = () => {
       label: "Parts Time",
       path: PATHS.MANAGE_PARTS_LIST,
       component: PartsListSettings,
-      props: {maxWidthClass: "max-w-[900px]"},
+      props: {maxWidthClass: "max-w-[1000px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },

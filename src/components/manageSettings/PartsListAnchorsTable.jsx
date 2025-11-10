@@ -13,7 +13,7 @@ const AnchorRow = ({
   onCancelNew,
   onChange,
   errors = {},
-  gridCols
+  gridCols,
 }) => {
   const [isEditing, setIsEditing] = useState(isNew);
 
@@ -57,9 +57,11 @@ const AnchorRow = ({
           {anchor.depth}
         </div>
         <div className="px-4 py-2 text-red-200 bg-red-900/30 hover:bg-red-900/40">
-          {anchor.cabinet_style_id 
-            ? cabinetStyles.find(s => s.cabinet_style_id == parseInt(anchor.cabinet_style_id))?.cabinet_style_name || 'All'
-            : 'All'}
+          {anchor.cabinet_style_id
+            ? cabinetStyles.find(
+                (s) => s.cabinet_style_id == parseInt(anchor.cabinet_style_id)
+              )?.cabinet_style_name || "All"
+            : "All"}
         </div>
         {Array.isArray(services) &&
           services.map((s) => (
@@ -126,13 +128,16 @@ const AnchorRow = ({
         <div className="p-2">
           <select
             name="cabinet_style_id"
-            value={anchor.cabinet_style_id || ''}
+            value={anchor.cabinet_style_id || ""}
             onChange={handleInputChange}
             className="w-full p-1 rounded-md bg-slate-600 text-white"
           >
             <option value="">All Styles</option>
-            {cabinetStyles.map(style => (
-              <option key={style.cabinet_style_id} value={style.cabinet_style_id}>
+            {cabinetStyles.map((style) => (
+              <option
+                key={style.cabinet_style_id}
+                value={style.cabinet_style_id}
+              >
                 {style.cabinet_style_name}
               </option>
             ))}
@@ -176,16 +181,15 @@ const AnchorRow = ({
       <div className="px-4 py-2 flex items-center">{anchor.height}</div>
       <div className="px-4 py-2 flex items-center">{anchor.depth}</div>
       <div className="px-4 py-2 flex items-center">
-        {anchor.cabinet_style_id 
-          ? cabinetStyles.find(s => s.cabinet_style_id === parseInt(anchor.cabinet_style_id))?.cabinet_style_name || 'All'
-          : 'All'}
+        {anchor.cabinet_style_id
+          ? cabinetStyles.find(
+              (s) => s.cabinet_style_id === parseInt(anchor.cabinet_style_id)
+            )?.cabinet_style_name || "All"
+          : "All"}
       </div>
       {Array.isArray(services) &&
         services.map((s) => (
-          <div
-            key={s.team_service_id}
-            className="px-4 py-2 flex items-center"
-          >
+          <div key={s.team_service_id} className="px-4 py-2 flex items-center">
             {anchor.services.find(
               (ans) => ans.team_service_id === s.team_service_id
             )?.minutes || 0}
@@ -232,7 +236,11 @@ const PartsListAnchorsTable = ({
   const cabinetStyles = useSelector(
     (state) => state.cabinetStyles?.styles || []
   ).filter((s) => s.is_active);
-  const gridCols = `repeat(${4 + services.length}, minmax(0, 1fr)) 100px`;
+  const totalCols = 4 + services.length;
+  const gridCols = `${"repeat(3, 1fr)"} 2fr repeat(${Math.max(
+    totalCols - 4,
+    0
+  )}, minmax(0, 1fr)) 100px`;
 
   const handleAddNew = (currentServices) => {
     const initialServices = currentServices.map((s) => ({
@@ -269,11 +277,11 @@ const PartsListAnchorsTable = ({
 
   const handleMarkForDeletion = (idToDelete) => {
     // Find the anchor to check if it's new
-    const anchorToDelete = anchors.find(a => a.id === idToDelete);
-    
+    const anchorToDelete = anchors.find((a) => a.id === idToDelete);
+
     if (anchorToDelete && anchorToDelete.isNew) {
       // If it's a new anchor, remove it directly
-      onAnchorsChange(anchors.filter(a => a.id !== idToDelete));
+      onAnchorsChange(anchors.filter((a) => a.id !== idToDelete));
     } else {
       // Otherwise, mark it for deletion
       const updatedAnchors = anchors.map((a) =>
@@ -302,7 +310,7 @@ const PartsListAnchorsTable = ({
     // Group by cabinet_style_id (null means "All Styles")
     const groups = {};
     anchors.forEach((anchor) => {
-      const styleId = anchor.cabinet_style_id || 'all';
+      const styleId = anchor.cabinet_style_id || "all";
       if (!groups[styleId]) {
         groups[styleId] = [];
       }
@@ -312,18 +320,27 @@ const PartsListAnchorsTable = ({
     // Convert to array and sort: "All Styles" first, then by style name
     return Object.entries(groups)
       .sort(([styleIdA], [styleIdB]) => {
-        if (styleIdA === 'all') return -1;
-        if (styleIdB === 'all') return 1;
-        const styleA = cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleIdA));
-        const styleB = cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleIdB));
-        return (styleA?.cabinet_style_name || '').localeCompare(styleB?.cabinet_style_name || '');
+        if (styleIdA === "all") return -1;
+        if (styleIdB === "all") return 1;
+        const styleA = cabinetStyles.find(
+          (s) => s.cabinet_style_id === parseInt(styleIdA)
+        );
+        const styleB = cabinetStyles.find(
+          (s) => s.cabinet_style_id === parseInt(styleIdB)
+        );
+        return (styleA?.cabinet_style_name || "").localeCompare(
+          styleB?.cabinet_style_name || ""
+        );
       })
       .map(([styleId, items]) => ({
         styleId,
-        styleName: styleId === 'all' 
-          ? 'All Styles' 
-          : cabinetStyles.find(s => s.cabinet_style_id === parseInt(styleId))?.cabinet_style_name || 'Unknown',
-        items
+        styleName:
+          styleId === "all"
+            ? "All Styles"
+            : cabinetStyles.find(
+                (s) => s.cabinet_style_id === parseInt(styleId)
+              )?.cabinet_style_name || "Unknown",
+        items,
       }));
   };
 
@@ -338,10 +355,10 @@ const PartsListAnchorsTable = ({
           {errors["_general"].message}
         </div>
       )}
-      
+
       <div className="overflow-x-auto">
-        <div 
-          className="grid border-b-2 border-slate-600 mb-2" 
+        <div
+          className="grid border-b-2 border-slate-600 mb-2"
           style={{ gridTemplateColumns: gridCols }}
         >
           <div className="px-4 py-2 flex items-center text-xs text-slate-400 uppercase font-semibold bg-slate-700">

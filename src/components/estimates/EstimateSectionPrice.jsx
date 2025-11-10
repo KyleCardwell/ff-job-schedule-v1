@@ -22,6 +22,10 @@ const EstimateSectionPrice = ({ section }) => {
       state.cabinetStyles?.styles.filter((style) => style.is_active) || []
   );
 
+  const cabinetTypes = useSelector(
+    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []
+  );
+
   const { hardware, accessories } = useSelector((state) => state);
 
   const partsListAnchors = useSelector(
@@ -83,6 +87,7 @@ const EstimateSectionPrice = ({ section }) => {
       // Styles & Configuration
       cabinetStyles,
       finishTypes,
+      cabinetTypes,
 
       // Hardware
       hardware,
@@ -103,6 +108,7 @@ const EstimateSectionPrice = ({ section }) => {
     drawerBoxMaterials,
     finishTypes,
     cabinetStyles,
+    cabinetTypes,
     hardware,
     accessories,
     partsListAnchors,

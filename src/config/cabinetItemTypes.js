@@ -146,6 +146,33 @@ export const CABINET_ITEM_TYPES = {
     },
   },
 
+  appliance_panel: {
+    label: 'Appliance Panel',
+    faceTypesArray: END_PANEL_FACE_TYPES,
+    defaultFaceType: FACE_NAMES.PANEL,
+    // Conditional: use reveals if style is NOT 13 (face frame logic)
+    usesReveals: (styleId) => styleId !== 13,
+    usesRootReveals: (styleId) => styleId !== 13,
+    allowsSplitting: true,
+    requiresStyleReveals: true, // Need style to determine reveal usage
+    isDivisible: true,
+    features: {
+      sides: false,
+      top: false,
+      bottom: false,
+      back: false,
+      shelves: false,
+      rollouts: false,
+      finishedTop: false,
+      finishedBottom: false,
+      finishedLeft: false,
+      finishedRight: false,
+      finishedInterior: false,
+      finishedBack: false,
+      corner45: false,
+    },
+  },
+
   drawer_box: {
     label: 'Drawer Box',
     faceTypesArray: [], // Not divisible

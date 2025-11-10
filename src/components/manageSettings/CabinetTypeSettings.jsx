@@ -210,6 +210,7 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
           cabinet_type_name,
           created_at,
           team_id,
+          item_type,
           ...data
         } = type;
         dispatch(updateCabinetType(team_cabinet_type_id, data));

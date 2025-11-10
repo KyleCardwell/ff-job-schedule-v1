@@ -1,3 +1,5 @@
+import { ACCESSORY_TYPES, ACCESSORY_UNITS } from "./constants";
+
 /**
  * Get the display unit label based on calculation type
  * @param {string} calculationType - The calculation type
@@ -5,12 +7,12 @@
  */
 export const getUnitLabel = (calculationType) => {
   switch (calculationType) {
-    case "area":
+    case ACCESSORY_UNITS.AREA:
       return "sq ft";
-    case "length":
-    case "perimeter":
+    case ACCESSORY_UNITS.LENGTH:
+    case ACCESSORY_UNITS.PERIMETER:
       return "ft";
-    case "unit":
+    case ACCESSORY_UNITS.UNIT:
     default:
       return "unit";
   }
@@ -31,7 +33,7 @@ export const calculateAccessoryQuantity = (
   const { calculation_type } = accessory;
 
   switch (calculation_type) {
-    case "area": {
+    case ACCESSORY_UNITS.AREA: {
       // Calculate square footage
       if (!dimensions?.width || !dimensions?.height) {
         return userQuantity;
@@ -41,7 +43,7 @@ export const calculateAccessoryQuantity = (
       return parseFloat(sqFeet.toFixed(2));
     }
 
-    case "length": {
+    case ACCESSORY_UNITS.LENGTH: {
       // Linear measurement (typically width for rods)
       if (!dimensions?.width) {
         return userQuantity;
@@ -50,7 +52,7 @@ export const calculateAccessoryQuantity = (
       return parseFloat(feet.toFixed(2));
     }
 
-    case "perimeter": {
+    case ACCESSORY_UNITS.PERIMETER: {
       // Perimeter calculation (for frame molding, edge banding)
       if (!dimensions?.width || !dimensions?.height) {
         return userQuantity;
@@ -60,7 +62,7 @@ export const calculateAccessoryQuantity = (
       return parseFloat(perimeterFeet.toFixed(2));
     }
 
-    case "unit":
+    case ACCESSORY_UNITS.UNIT:
     default: {
       // Simple count (inserts, trash cans, organizers)
       return userQuantity;
@@ -123,7 +125,7 @@ export const getAccessoryDimensions = (accessory, sourceDimensions) => {
   }
 
   // For glass, typically matches face dimensions
-  if (type === "glass" && calculation_type === "area") {
+  if (type === ACCESSORY_TYPES.GLASS && calculation_type === ACCESSORY_UNITS.AREA) {
     return {
       width: sourceDimensions?.width,
       height: sourceDimensions?.height,
@@ -131,7 +133,7 @@ export const getAccessoryDimensions = (accessory, sourceDimensions) => {
   }
 
   // For rods, typically uses opening width
-  if (type === "rod" && calculation_type === "length") {
+  if (type === ACCESSORY_TYPES.ROD && calculation_type === ACCESSORY_UNITS.LENGTH) {
     return {
       width: sourceDimensions?.width,
     };

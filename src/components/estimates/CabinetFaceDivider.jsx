@@ -44,7 +44,7 @@ const CabinetFaceDivider = ({
   // Derive itemType from cabinetTypeId by looking it up in cabinetTypes
   const itemType = useMemo(() => {
     const type = cabinetTypes.find((t) => t.cabinet_type_id === cabinetTypeId);
-    return type?.item_type || "cabinet";
+    return type?.item_type || ITEM_TYPES.CABINET.type;
   }, [cabinetTypes, cabinetTypeId]);
 
   // Get item type configuration

@@ -37,10 +37,11 @@ export const SECTION_TYPES = {
 
 export const ITEM_TYPES = {
   CABINET: { type: "cabinet", title: "Cabinet" },
+  FILLER: { type: "filler", title: "Filler" },
+  END_PANEL: { type: "end_panel", title: "End Panel" },
+  APPLIANCE_PANEL: { type: "appliance_panel", title: "Appliance Panel" },
   DOOR_FRONT: { type: "door_front", title: "Door Front" },
   DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
-  END_PANEL: { type: "end_panel", title: "End Panel" },
-  FILLER: { type: "filler", title: "Filler" },
 };
 
 export const ITEM_FORM_WIDTHS = {
@@ -165,3 +166,21 @@ export const FACE_STYLES = [
   { id: FACE_STYLE_VALUES.SLAB_HARDWOOD, label: "Slab Hardwood", value: FACE_STYLE_VALUES.SLAB_HARDWOOD },
   { id: FACE_STYLE_VALUES.SLAB_SHEET, label: "Slab Sheet", value: FACE_STYLE_VALUES.SLAB_SHEET },
 ];
+
+export const ACCESSORY_TYPES = {
+  GLASS: "glass",
+  INSERT: "insert",
+  HARDWARE: "hardware",
+  ROD: "rod",
+  ORGANIZER: "organizer",
+  OTHER: "other",
+};
+
+export const ACCESSORY_UNITS = {
+  AREA: "area",
+  LENGTH: "length",
+  PERIMETER: "perimeter",
+  UNIT: "unit",
+};
+
+  
