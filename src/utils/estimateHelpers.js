@@ -5,30 +5,10 @@ import {
   FACE_NAMES,
   FACE_STYLE_VALUES,
   FACE_TYPES,
+  PARTS_LIST_MAPPING,
 } from "./constants";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
-
-/**
- * Map box part types to parts_list IDs based on type and finish status
- * These IDs are fixed and consistent across all teams
- */
-const PARTS_LIST_MAPPING = {
-  side_unfinished: 1,
-  side_finished: 6,
-  topBottom_unfinished: 2,
-  topBottom_finished: 7,
-  back_unfinished: 3,
-  back_finished: 8,
-  partition_unfinished: 4,
-  partition_finished: 9,
-  shelf_unfinished: 5,
-  shelf_finished: 10,
-  filler_finished: 11,
-  slab_door_unfinished: 12,
-  slab_door_finished: 13,
-  "5_piece_door_finished": 14, // 5-piece doors always need finish
-};
 
 /**
  * Get parts_list_id for a box part based on its type and finish status
@@ -42,11 +22,7 @@ const getPartsListId = (partType, isFinished) => {
   );
 };
 
-const getPartAnchors = (
-  part,
-  partNeedsFinish,
-  partsListAnchors
-) => {
+const getPartAnchors = (part, partNeedsFinish, partsListAnchors) => {
   // Determine base keys
   const primaryKey = `${part.type}_${
     partNeedsFinish ? "finished" : "unfinished"
@@ -214,14 +190,6 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
     // This is independent of which material was selected
     const partNeedsFinish = partMaterial?.material?.needs_finish === true;
 
-    // const partsListId = getPartsListId(part.type, partNeedsFinish);
-
-    // if (!partsListId) {
-    //   return;
-    // }
-
-    // const anchors = partsListAnchors[partsListId];
-
     const anchors = getPartAnchors(part, partNeedsFinish, partsListAnchors);
 
     if (!anchors || anchors.length === 0) {
@@ -351,6 +319,8 @@ export const calculateDoorPartsTime = (
   faces,
   doorStyle,
   cabinetStyleId,
+  reeded,
+  cabinetTypeId,
   context = {}
 ) => {
   const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
@@ -379,6 +349,7 @@ export const calculateDoorPartsTime = (
   }
 
   const anchors = partsListAnchors[partsListId];
+  const reededAnchors = partsListAnchors[15];
 
   if (!anchors || anchors.length === 0) {
     // No anchors for this door type - skip it
@@ -392,6 +363,15 @@ export const calculateDoorPartsTime = (
       allServiceIds.add(service.team_service_id);
     });
   });
+
+  // If reeded, also collect service IDs from reeded anchors
+  if (reeded && reededAnchors && reededAnchors.length > 0) {
+    reededAnchors.forEach((anchor) => {
+      anchor.services.forEach((service) => {
+        allServiceIds.add(service.team_service_id);
+      });
+    });
+  }
 
   const hoursByService = {};
 
@@ -412,6 +392,7 @@ export const calculateDoorPartsTime = (
         teamServiceId,
         cabinetStyleId
       );
+
       let totalMinutes = minutesEach;
 
       // Apply multipliers based on service and material
@@ -438,7 +419,18 @@ export const calculateDoorPartsTime = (
         }
       }
 
-      hoursByService[teamServiceId] += totalMinutes;
+      let reededMinutes = 0;
+
+      if (reeded && reededAnchors && reededAnchors.length > 0) {
+        reededMinutes = interpolateTimeByArea(
+          reededAnchors,
+          area,
+          teamServiceId,
+          cabinetStyleId
+        );
+      }
+
+      hoursByService[teamServiceId] += totalMinutes + reededMinutes;
     });
   });
 

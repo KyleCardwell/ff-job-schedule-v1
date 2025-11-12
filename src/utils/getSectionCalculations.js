@@ -137,12 +137,22 @@ const calculateFaceTotals = (section, context) => {
             }
           });
 
+          let reeded = false;
+
+          if (faceType === FACE_NAMES.DRAWER_FRONT || faceType === FACE_NAMES.FALSE_FRONT) {
+            reeded = section.section_data.drawerReededPanel;
+          } else if (faceType === FACE_NAMES.DOOR || faceType === FACE_NAMES.PAIR_DOOR || faceType === FACE_NAMES.PANEL) {
+            reeded = section.section_data.doorReededPanel;
+          }
+
           // Collect faces for hour calculation with cabinet style ID
           allFacesForHours.push({
             faces: faceData.faces,
             styleToUse,
             cabinetStyleId,
+            reeded,
             quantity,
+            cabinetTypeId: cabinet.type
           });
         }
 
@@ -167,11 +177,13 @@ const calculateFaceTotals = (section, context) => {
 
   // Calculate hours using parts list anchors (same as before)
   allFacesForHours.forEach(
-    ({ faces, styleToUse, cabinetStyleId, quantity }) => {
+    ({ faces, styleToUse, cabinetStyleId, reeded, quantity, cabinetTypeId }) => {
       const faceHours = calculateDoorPartsTime(
         faces,
         styleToUse,
         cabinetStyleId,
+        reeded,
+        cabinetTypeId,
         context
       );
 
@@ -565,7 +577,9 @@ const calculateFillerMaterials = (section, context) => {
 // Count and price hardware from cabinet boxHardware
 const countHardware = (section, faceTotals, context) => {
   let totalHinges = 0;
-  let totalPulls = 0;
+  let totalDoorPulls = 0;
+  let totalDrawerPulls = 0;
+  let totalAppliancePulls = 0;
   let totalSlides = 0;
 
   // Sum up hardware from all cabinets
@@ -574,11 +588,15 @@ const countHardware = (section, faceTotals, context) => {
       const qty = Number(cabinet.quantity) || 1;
       const {
         totalHinges: hinges,
-        totalPulls: pulls,
+        totalDoorPulls: doorPulls,
+        totalDrawerPulls: drawerPulls,
+        totalAppliancePulls: appliancePulls,
         totalSlides: slides,
       } = cabinet.face_config.boxSummary.boxHardware;
       totalHinges += (hinges || 0) * qty;
-      totalPulls += (pulls || 0) * qty;
+      totalDoorPulls += (doorPulls || 0) * qty;
+      totalDrawerPulls += (drawerPulls || 0) * qty;
+      totalAppliancePulls += (appliancePulls || 0) * qty;
       totalSlides += (slides || 0) * qty;
     }
   });
@@ -601,20 +619,16 @@ const countHardware = (section, faceTotals, context) => {
   const hingesTotal = totalHinges * (doorHinge?.price || 0);
   const slidesTotal = totalSlides * (drawerSlide?.price || 0);
 
-  // Calculate pulls pricing based on face counts
-  const doorCount = faceTotals.faceCounts?.door || 0;
-  const drawerCount =
-    (faceTotals.faceCounts?.drawer_front || 0) +
-    (faceTotals.faceCounts?.false_front || 0);
-  const doorPullsTotal = doorCount * (doorPull?.price || 0);
-  const drawerPullsTotal = drawerCount * (drawerPull?.price || 0);
-  const pullsTotal = doorPullsTotal + drawerPullsTotal;
+  const doorPullsPrice = totalDoorPulls * (doorPull?.price || 0);
+  const appliancePullsPrice = totalAppliancePulls * (doorPull?.price || 0);
+  const drawerPullsPrice = totalDrawerPulls * (drawerPull?.price || 0);
+  const pullsTotalPrice = doorPullsPrice + appliancePullsPrice + drawerPullsPrice;
 
   return {
     hingesCount: totalHinges,
     hingesTotal,
-    pullsCount: totalPulls,
-    pullsTotal,
+    pullsCount: totalDoorPulls + totalDrawerPulls + totalAppliancePulls,
+    pullsTotal: pullsTotalPrice,
     slidesCount: totalSlides,
     slidesTotal,
   };

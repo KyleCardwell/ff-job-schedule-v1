@@ -33,7 +33,6 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
   const [selectedBoxMaterial, setSelectedBoxMaterial] = useState(null);
-  
 
   const [formData, setFormData] = useState({
     style: section.cabinet_style_id || "",
@@ -47,6 +46,8 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     doorOutsideMolding: sectionData.doorOutsideMolding || false,
     drawerInsideMolding: sectionData.drawerInsideMolding || false,
     drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
+    doorReededPanel: sectionData.doorReededPanel || false,
+    drawerReededPanel: sectionData.drawerReededPanel || false,
     hinge_id: section.hinge_id || "",
     slide_id: section.slide_id || "",
     door_pull_id: section.door_pull_id || "",
@@ -272,14 +273,21 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     return DOOR_STYLE_OPTIONS.filter((option) => {
       // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
       if (selectedFaceMaterial.five_piece === true) {
-        if (option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD || option.id === FACE_STYLE_VALUES.SLAB_HARDWOOD) {
+        if (
+          option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+          option.id === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+          option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED
+        ) {
           return true;
         }
       }
 
       // If material supports slab doors, include slab_sheet
       if (selectedFaceMaterial.slab_door === true) {
-        if (option.id === FACE_STYLE_VALUES.SLAB_SHEET) {
+        if (
+          option.id === FACE_STYLE_VALUES.SLAB_SHEET ||
+          option.id === FACE_STYLE_VALUES.SLAB_SHEET_REEDED
+        ) {
           return true;
         }
       }
@@ -555,7 +563,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 )}
               </div>
               {/* Door Moldings */}
-              <div className="flex gap-8 items-center justify-center">
+              <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
                 <label className="flex items-center space-x-2 text-sm">
                   <input
                     type="checkbox"
@@ -572,6 +580,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     className="rounded border-slate-300"
                   />
                   <span>Inside Molding</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="doorReededPanel"
+                    checked={formData.doorReededPanel}
+                    onChange={(e) =>
+                      handleChange({
+                        target: {
+                          name: "doorReededPanel",
+                          value: e.target.checked,
+                        },
+                      })
+                    }
+                    className="rounded border-slate-300"
+                  />
+                  <span>Reeded Panel</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm">
                   <input
@@ -694,7 +719,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 )}
               </div>
               {/* Drawer Front Moldings */}
-              <div className="flex gap-8 items-center justify-center">
+              <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
                 <label className="flex items-center space-x-2 text-sm">
                   <input
                     type="checkbox"
@@ -711,6 +736,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     className="rounded border-slate-300"
                   />
                   <span>Inside Molding</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="drawerReededPanel"
+                    checked={formData.drawerReededPanel}
+                    onChange={(e) =>
+                      handleChange({
+                        target: {
+                          name: "drawerReededPanel",
+                          value: e.target.checked,
+                        },
+                      })
+                    }
+                    className="rounded border-slate-300"
+                  />
+                  <span>Reeded Panel</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm">
                   <input

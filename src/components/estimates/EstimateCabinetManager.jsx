@@ -385,9 +385,11 @@ const CabinetItemForm = ({
   };
 
   // Recursive helper to calculate total shelf area from face_config
-  const countFaceHardware = (node) => {
+  const countFaceHardware = (node, itemType = null) => {
     let totalHinges = 0;
-    let totalPulls = 0;
+    let totalDoorPulls = 0;
+    let totalDrawerPulls = 0;
+    let totalAppliancePulls = 0;
     let totalSlides = 0;
 
     if (node.type === FACE_NAMES.DOOR) {
@@ -407,24 +409,37 @@ const CabinetItemForm = ({
       totalSlides += node.rollOutQty;
     }
 
-    if (CAN_HAVE_PULLS.includes(node.type)) {
-      if (node.type === FACE_NAMES.PAIR_DOOR) {
-        totalPulls += 2;
-      } else {
-        totalPulls += 1;
-      }
+    if (
+      node.type === FACE_NAMES.DRAWER_FRONT ||
+      node.type === FACE_NAMES.FALSE_FRONT
+    ) {
+      totalDrawerPulls += 1;
+    } else if (node.type === FACE_NAMES.PAIR_DOOR) {
+      totalDoorPulls += 2;
+    } else if (node.type === FACE_NAMES.DOOR) {
+      totalDoorPulls += 1;
+    } else if (itemType === ITEM_TYPES.APPLIANCE_PANEL.type) {
+      totalAppliancePulls += 1;
     }
 
     if (node.children) {
       node.children.forEach((child) => {
-        const childResult = countFaceHardware(child);
+        const childResult = countFaceHardware(child, itemType);
         totalHinges += childResult.totalHinges;
-        totalPulls += childResult.totalPulls;
+        totalDoorPulls += childResult.totalDoorPulls;
+        totalDrawerPulls += childResult.totalDrawerPulls;
+        totalAppliancePulls += childResult.totalAppliancePulls;
         totalSlides += childResult.totalSlides;
       });
     }
 
-    return { totalHinges, totalPulls, totalSlides };
+    return {
+      totalHinges,
+      totalDoorPulls,
+      totalDrawerPulls,
+      totalAppliancePulls,
+      totalSlides,
+    };
   };
 
   // Recursive helper to calculate total shelf area from face_config
@@ -692,7 +707,7 @@ const CabinetItemForm = ({
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
       }
 
-      const hardware = countFaceHardware(faceConfig);
+      const hardware = countFaceHardware(faceConfig, itemType);
 
       return {
         pieces: { sides: 0, topBottom: 0, back: 0 },
@@ -753,7 +768,7 @@ const CabinetItemForm = ({
 
     // Handle drawer_box and rollout - minimal data, counted separately
     if (itemType === "drawer_box" || itemType === "rollout") {
-      const boxHardware = countFaceHardware(faceConfig);
+      const boxHardware = countFaceHardware(faceConfig, itemType);
 
       return {
         pieces: { sides: 0, topBottom: 0, back: 0 },
@@ -868,7 +883,7 @@ const CabinetItemForm = ({
           partitionPerimeterLength: 0,
         };
 
-    const boxHardware = countFaceHardware(faceConfig);
+    const boxHardware = countFaceHardware(faceConfig, itemType);
 
     let frameParts = {};
 

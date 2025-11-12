@@ -87,6 +87,7 @@ const EstimateSectionInfo = ({
 
     if (sectionData.doorInsideMolding) result.push("Inside Molding");
     if (sectionData.doorOutsideMolding) result.push("Outside Molding");
+    if (sectionData.doorReededPanel) result.push("Reeded Panel");
 
     return result;
   };
@@ -107,6 +108,7 @@ const EstimateSectionInfo = ({
 
     if (sectionData.drawerInsideMolding) result.push("Inside Molding");
     if (sectionData.drawerOutsideMolding) result.push("Outside Molding");
+    if (sectionData.drawerReededPanel) result.push("Reeded Panel");
 
     return result;
   };

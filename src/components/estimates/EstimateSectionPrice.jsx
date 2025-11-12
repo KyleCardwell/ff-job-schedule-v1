@@ -298,7 +298,7 @@ const EstimateSectionPrice = ({ section }) => {
               {sectionCalculations.fillerCount || 0}
             </span>
             <span className="text-sm font-medium text-teal-400 text-right">
-              {section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ? "(Panel)": ""}
+              {sectionCalculations.fillerCount && section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ? "(Panel)": ""}
             </span>
           </div>
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">

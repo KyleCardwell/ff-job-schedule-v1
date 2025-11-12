@@ -156,15 +156,19 @@ export const CABINET_TYPES = [1, 2, 3]
 // Face style string constants for comparisons (maintainable single source of truth)
 export const FACE_STYLE_VALUES = {
   FIVE_PIECE_HARDWOOD: "5_piece_hardwood",
+  FIVE_PIECE_HARDWOOD_REEDED: "5_piece_hardwood_reeded",
   SLAB_HARDWOOD: "slab_hardwood",
   SLAB_SHEET: "slab_sheet",
+  SLAB_SHEET_REEDED: "slab_sheet_reeded"
 };
 
 // Face styles array (works for both UI dropdowns and database)
 export const FACE_STYLES = [
   { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD, label: "5-Piece Hardwood", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD },
+  { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED, label: "5-Piece Hardwood Reeded", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED },
   { id: FACE_STYLE_VALUES.SLAB_HARDWOOD, label: "Slab Hardwood", value: FACE_STYLE_VALUES.SLAB_HARDWOOD },
   { id: FACE_STYLE_VALUES.SLAB_SHEET, label: "Slab Sheet", value: FACE_STYLE_VALUES.SLAB_SHEET },
+  { id: FACE_STYLE_VALUES.SLAB_SHEET_REEDED, label: "Slab Sheet Reeded", value: FACE_STYLE_VALUES.SLAB_SHEET_REEDED }
 ];
 
 export const ACCESSORY_TYPES = {
@@ -183,4 +187,27 @@ export const ACCESSORY_UNITS = {
   UNIT: "unit",
 };
 
+/**
+ * Map box part types to parts_list IDs based on type and finish status
+ * These IDs are fixed and consistent across all teams
+ */
+export const PARTS_LIST_MAPPING = {
+  side_unfinished: 1,
+  side_finished: 6,
+  topBottom_unfinished: 2,
+  topBottom_finished: 7,
+  back_unfinished: 3,
+  back_finished: 8,
+  partition_unfinished: 4,
+  partition_finished: 9,
+  shelf_unfinished: 5,
+  shelf_finished: 10,
+  filler_finished: 11,
+  slab_door_unfinished: 12,
+  slab_door_finished: 13,
+  "5_piece_door_finished": 14, // 5-piece doors always need finish
+  "reeded_panel_finished": 15,
+  "end_panel_finished": 17,
+  "appliance_panel_finished": 18,
+};
   
