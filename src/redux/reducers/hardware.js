@@ -1,9 +1,9 @@
 import { hardware } from "../actionTypes";
 
 const initialState = {
-  hinges: [],
-  pulls: [],
-  slides: [],
+  hinges: [], // Each item has embedded services array
+  pulls: [], // Each item has embedded services array
+  slides: [], // Each item has embedded services array
   loading: false,
   error: null,
 };

@@ -138,7 +138,7 @@ const AdminDashboard = () => {
       label: "Hardware",
       path: PATHS.MANAGE_HARDWARE,
       component: HardwareSettings,
-      props: {maxWidthClass: "max-w-[720px]"},
+      props: {maxWidthClass: "max-w-[1080px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },
