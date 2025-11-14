@@ -615,7 +615,7 @@ const countHardware = (section, faceTotals, context) => {
     (s) => s.id === section.slide_id
   );
 
-  // Calculate totals
+  // Calculate price totals
   const hingesTotal = totalHinges * (doorHinge?.price || 0);
   const slidesTotal = totalSlides * (drawerSlide?.price || 0);
 
@@ -624,6 +624,70 @@ const countHardware = (section, faceTotals, context) => {
   const drawerPullsPrice = totalDrawerPulls * (drawerPull?.price || 0);
   const pullsTotalPrice = doorPullsPrice + appliancePullsPrice + drawerPullsPrice;
 
+  // Calculate service hours for hardware
+  const hoursByService = {};
+
+  // Process hinges services
+  if (doorHinge && totalHinges > 0) {
+    (doorHinge.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        if (!hoursByService[serviceId]) {
+          hoursByService[serviceId] = 0;
+        }
+        // time_per_unit is in minutes, convert to hours
+        const hoursPerUnit = service.time_per_unit / 60;
+        hoursByService[serviceId] += hoursPerUnit * totalHinges;
+      }
+    });
+  }
+
+  // Process door pulls services
+  if (doorPull && (totalDoorPulls > 0 || totalAppliancePulls > 0)) {
+    const totalDoorAndAppliancePulls = totalDoorPulls + totalAppliancePulls;
+    (doorPull.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        if (!hoursByService[serviceId]) {
+          hoursByService[serviceId] = 0;
+        }
+        // time_per_unit is in minutes, convert to hours
+        const hoursPerUnit = service.time_per_unit / 60;
+        hoursByService[serviceId] += hoursPerUnit * totalDoorAndAppliancePulls;
+      }
+    });
+  }
+
+  // Process drawer pulls services
+  if (drawerPull && totalDrawerPulls > 0) {
+    (drawerPull.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        if (!hoursByService[serviceId]) {
+          hoursByService[serviceId] = 0;
+        }
+        // time_per_unit is in minutes, convert to hours
+        const hoursPerUnit = service.time_per_unit / 60;
+        hoursByService[serviceId] += hoursPerUnit * totalDrawerPulls;
+      }
+    });
+  }
+
+  // Process slides services
+  if (drawerSlide && totalSlides > 0) {
+    (drawerSlide.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        if (!hoursByService[serviceId]) {
+          hoursByService[serviceId] = 0;
+        }
+        // time_per_unit is in minutes, convert to hours
+        const hoursPerUnit = service.time_per_unit / 60;
+        hoursByService[serviceId] += hoursPerUnit * totalSlides;
+      }
+    });
+  }
+
   return {
     hingesCount: totalHinges,
     hingesTotal,
@@ -631,6 +695,7 @@ const countHardware = (section, faceTotals, context) => {
     pullsTotal: pullsTotalPrice,
     slidesCount: totalSlides,
     slidesTotal,
+    hoursByService,
   };
 };
 
@@ -700,7 +765,7 @@ const calculateCabinetTotals = (section, context) => {
   }
 
   // Merge hoursByService from all sources
-  [boxHours, faceTotals, faceFramePrices].forEach((source) => {
+  [boxHours, faceTotals, faceFramePrices, hardwareTotals].forEach((source) => {
     if (source?.hoursByService) {
       Object.entries(source.hoursByService).forEach(([serviceType, hours]) => {
         // Only include hours for active services
