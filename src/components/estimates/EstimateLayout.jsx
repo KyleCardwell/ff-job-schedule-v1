@@ -295,7 +295,7 @@ const EstimateLayout = () => {
             <EstimateProjectForm estimate={currentEstimate} />
           </div>
         ) : showSectionForm ? (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <EstimateSectionForm
               taskId={selectedTaskId}
               section={

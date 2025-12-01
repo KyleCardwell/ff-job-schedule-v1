@@ -54,6 +54,10 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     drawer_pull_id: section.drawer_pull_id || "",
     drawer_box_mat: section.drawer_box_mat || "",
     notes: sectionData.notes || "",
+    quantity: section.quantity ?? 1,
+    profit: section.profit ?? "",
+    commission: section.commission ?? "",
+    discount: section.discount ?? "",
   });
 
   const [errors, setErrors] = useState({});
@@ -79,8 +83,18 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       "slide_id",
       "hinge_id",
     ];
-    const processedValue =
-      numericFields.includes(name) && value !== "" ? +value : value;
+    
+    // Handle adjustment fields - convert to number but allow empty string to become null
+    const adjustmentFields = ["quantity", "profit", "commission", "discount"];
+    
+    let processedValue = value;
+    if (numericFields.includes(name) && value !== "") {
+      processedValue = +value;
+    } else if (adjustmentFields.includes(name)) {
+      // For adjustment fields: empty string stays as empty string in state,
+      // will be converted to null or number on submit
+      processedValue = value;
+    }
 
     setFormData({
       ...formData,
@@ -203,6 +217,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
 
     if (validateForm()) {
       try {
+        // Process adjustment fields before sending
+        const processedData = { ...formData };
+        
+        // Convert quantity to number (ensure it's at least 1)
+        processedData.quantity = processedData.quantity === "" || !processedData.quantity 
+          ? 1 
+          : Number(processedData.quantity);
+        
+        // Convert other adjustment fields: empty string -> null, otherwise -> number
+        ["profit", "commission", "discount"].forEach(field => {
+          if (processedData[field] === "" || processedData[field] == null) {
+            processedData[field] = null;
+          } else {
+            processedData[field] = Number(processedData[field]);
+          }
+        });
+        
         if (section?.est_section_id) {
           // Update existing section
           await dispatch(
@@ -210,13 +241,13 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
               currentEstimate.estimate_id,
               taskId,
               section.est_section_id,
-              formData
+              processedData
             )
           );
         } else {
           // Create new section
           const newSection = await dispatch(
-            addSection(currentEstimate.estimate_id, taskId, formData)
+            addSection(currentEstimate.estimate_id, taskId, processedData)
           );
           onSave?.(newSection.est_section_id);
         }
@@ -332,542 +363,644 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Cabinet Style Section */}
-        <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
-          <h3 className="text-md font-medium text-slate-700">Cabinet Style</h3>
-          <div className="border rounded-lg border-slate-400 p-3">
-            <div className="grid grid-cols-2 gap-2 items-center">
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                <label
-                  htmlFor="style"
-                  className="text-right text-sm font-medium text-slate-700"
-                >
-                  Style
-                </label>
-                <select
-                  id="style"
-                  name="style"
-                  value={formData.style}
-                  onChange={handleChange}
-                  className={`block w-full rounded-md text-sm h-9 ${
-                    errors.style ? "border-red-500" : "border-slate-300"
-                  } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                >
-                  <option value="">Select style...</option>
-                  {STYLE_OPTIONS.map((style) => (
-                    <option
-                      key={style.cabinet_style_id}
-                      value={style.cabinet_style_id}
+        <div className="grid grid-cols-[4fr_1fr] gap-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+              <h3 className="text-md font-medium text-slate-700">
+                Cabinet Style
+              </h3>
+              <div className="border rounded-lg border-slate-400 p-3">
+                <div className="grid grid-cols-2 gap-2 items-center">
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="style"
+                      className="text-right text-sm font-medium text-slate-700"
                     >
-                      {style.cabinet_style_name}
-                    </option>
-                  ))}
-                </select>
-                {errors.style && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.style}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cabinet Box Material Section (with Finish)*/}
-        <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
-          <h3 className="text-md font-medium text-slate-700">Cabinet Box</h3>
-          <div className="border rounded-lg border-slate-400 p-3">
-            <div className="grid grid-cols-2 gap-2 items-center">
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                <label
-                  htmlFor="boxMaterial"
-                  className="text-right text-sm font-medium text-slate-700"
-                >
-                  Material
-                </label>
-                <select
-                  id="boxMaterial"
-                  name="boxMaterial"
-                  value={formData.boxMaterial}
-                  onChange={handleChange}
-                  className={`block w-full rounded-md text-sm h-9 ${
-                    errors.boxMaterial ? "border-red-500" : "border-slate-300"
-                  } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                >
-                  <option value="">Select interior material...</option>
-                  {BOX_MATERIAL_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {`${option.name} - $${option.sheet_price}/sheet`}
-                    </option>
-                  ))}
-                </select>
-                {errors.boxMaterial && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.boxMaterial}
-                  </p>
-                )}
-              </div>
-              <div>
-                {!mustSelectBoxFinish && (
-                  <p className="text-xs text-teal-700 col-span-2">
-                    The selected box material does not require finish.
-                  </p>
-                )}
-              </div>
-              {/* Box Finish Options */}
-              <div className="col-span-2">
-                <div className="grid grid-cols-[1fr_7fr] gap-2 items-center">
-                  <label className="text-right text-sm font-medium text-slate-700 mb-2">
-                    Finish
-                  </label>
-                  <div className="grid grid-cols-4 gap-2 text-sm pl-2">
-                    {FINISH_OPTIONS.map((option) => (
-                      <label
-                        key={option.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <input
-                          disabled={!mustSelectBoxFinish}
-                          type="checkbox"
-                          checked={formData.boxFinish.includes(option.id)}
-                          onChange={() =>
-                            handleFinishChange(option.id, "boxFinish")
-                          }
-                          className="rounded border-slate-300"
-                        />
-                        <span className="text-slate-600">{option.name}</span>
-                      </label>
-                    ))}
+                      Style
+                    </label>
+                    <select
+                      id="style"
+                      name="style"
+                      value={formData.style}
+                      onChange={handleChange}
+                      className={`block w-full rounded-md text-sm h-9 ${
+                        errors.style ? "border-red-500" : "border-slate-300"
+                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                    >
+                      <option value="">Select style...</option>
+                      {STYLE_OPTIONS.map((style) => (
+                        <option
+                          key={style.cabinet_style_id}
+                          value={style.cabinet_style_id}
+                        >
+                          {style.cabinet_style_name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.style && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.style}
+                      </p>
+                    )}
                   </div>
-                  {errors.boxFinish && (
-                    <p className="text-xs text-red-500 col-span-2">
-                      {errors.boxFinish}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Cabinet Face Material Section (with Finish) */}
-        <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
-          <h3 className="text-md font-medium text-slate-700">Cabinet Face</h3>
-          <div className="border rounded-lg border-slate-400 p-3">
-            <div className="grid grid-cols-2 gap-2 items-center">
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                <label
-                  htmlFor="faceMaterial"
-                  className="text-right text-sm font-medium text-slate-700"
-                >
-                  Material
-                </label>
-                <select
-                  id="faceMaterial"
-                  name="faceMaterial"
-                  value={formData.faceMaterial}
-                  onChange={handleChange}
-                  className={`block w-full rounded-md text-sm h-9 ${
-                    errors.faceMaterial ? "border-red-500" : "border-slate-300"
-                  } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                >
-                  <option value="">Select face material...</option>
-                  {FACE_MATERIAL_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {`${option.name} - $${option.sheet_price}/sheet`}
-                    </option>
-                  ))}
-                </select>
-                {errors.faceMaterial && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.faceMaterial}
-                  </p>
-                )}
-              </div>
-              <div>
-                {!mustSelectFaceFinish && (
-                  <p className="text-xs text-teal-700 col-span-2">
-                    The selected face material does not require finish.
-                  </p>
-                )}
-              </div>
-              {/* Finish Options */}
-
-              <div className="col-span-2">
-                <div className="grid grid-cols-[1fr_7fr] gap-2 items-center">
-                  <label className="text-right text-sm font-medium text-slate-700 mb-2">
-                    Finish
-                  </label>
-                  <div className="grid grid-cols-4 gap-2 text-sm pl-2">
-                    {FINISH_OPTIONS.map((option) => (
-                      <label
-                        key={option.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <input
-                          disabled={!mustSelectFaceFinish}
-                          type="checkbox"
-                          checked={formData.faceFinish.includes(option.id)}
-                          onChange={() =>
-                            handleFinishChange(option.id, "faceFinish")
-                          }
-                          className="rounded border-slate-300"
-                        />
-                        <span className="text-slate-600">{option.name}</span>
-                      </label>
-                    ))}
+            {/* Cabinet Box Material Section (with Finish)*/}
+            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+              <h3 className="text-md font-medium text-slate-700">
+                Cabinet Box
+              </h3>
+              <div className="border rounded-lg border-slate-400 p-3">
+                <div className="grid grid-cols-2 gap-2 items-center">
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="boxMaterial"
+                      className="text-right text-sm font-medium text-slate-700"
+                    >
+                      Material
+                    </label>
+                    <select
+                      id="boxMaterial"
+                      name="boxMaterial"
+                      value={formData.boxMaterial}
+                      onChange={handleChange}
+                      className={`block w-full rounded-md text-sm h-9 ${
+                        errors.boxMaterial
+                          ? "border-red-500"
+                          : "border-slate-300"
+                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                    >
+                      <option value="">Select interior material...</option>
+                      {BOX_MATERIAL_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {`${option.name} - $${option.sheet_price}/sheet`}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.boxMaterial && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.boxMaterial}
+                      </p>
+                    )}
                   </div>
-                  {errors.faceFinish && (
-                    <p className="text-xs text-red-500 col-span-2">
-                      {errors.faceFinish}
-                    </p>
-                  )}
+                  <div>
+                    {!mustSelectBoxFinish && (
+                      <p className="text-xs text-teal-700 col-span-2">
+                        The selected box material does not require finish.
+                      </p>
+                    )}
+                  </div>
+                  {/* Box Finish Options */}
+                  <div className="col-span-2">
+                    <div className="grid grid-cols-[1fr_7fr] gap-2 items-center">
+                      <label className="text-right text-sm font-medium text-slate-700 mb-2">
+                        Finish
+                      </label>
+                      <div className="grid grid-cols-4 gap-2 text-sm pl-2">
+                        {FINISH_OPTIONS.map((option) => (
+                          <label
+                            key={option.id}
+                            className="flex items-center space-x-2"
+                          >
+                            <input
+                              disabled={!mustSelectBoxFinish}
+                              type="checkbox"
+                              checked={formData.boxFinish.includes(option.id)}
+                              onChange={() =>
+                                handleFinishChange(option.id, "boxFinish")
+                              }
+                              className="rounded border-slate-300"
+                            />
+                            <span className="text-slate-600">
+                              {option.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {errors.boxFinish && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.boxFinish}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cabinet Face Material Section (with Finish) */}
+            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+              <h3 className="text-md font-medium text-slate-700">
+                Cabinet Face
+              </h3>
+              <div className="border rounded-lg border-slate-400 p-3">
+                <div className="grid grid-cols-2 gap-2 items-center">
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="faceMaterial"
+                      className="text-right text-sm font-medium text-slate-700"
+                    >
+                      Material
+                    </label>
+                    <select
+                      id="faceMaterial"
+                      name="faceMaterial"
+                      value={formData.faceMaterial}
+                      onChange={handleChange}
+                      className={`block w-full rounded-md text-sm h-9 ${
+                        errors.faceMaterial
+                          ? "border-red-500"
+                          : "border-slate-300"
+                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                    >
+                      <option value="">Select face material...</option>
+                      {FACE_MATERIAL_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {`${option.name} - $${option.sheet_price}/sheet`}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.faceMaterial && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.faceMaterial}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    {!mustSelectFaceFinish && (
+                      <p className="text-xs text-teal-700 col-span-2">
+                        The selected face material does not require finish.
+                      </p>
+                    )}
+                  </div>
+                  {/* Finish Options */}
+
+                  <div className="col-span-2">
+                    <div className="grid grid-cols-[1fr_7fr] gap-2 items-center">
+                      <label className="text-right text-sm font-medium text-slate-700 mb-2">
+                        Finish
+                      </label>
+                      <div className="grid grid-cols-4 gap-2 text-sm pl-2">
+                        {FINISH_OPTIONS.map((option) => (
+                          <label
+                            key={option.id}
+                            className="flex items-center space-x-2"
+                          >
+                            <input
+                              disabled={!mustSelectFaceFinish}
+                              type="checkbox"
+                              checked={formData.faceFinish.includes(option.id)}
+                              onChange={() =>
+                                handleFinishChange(option.id, "faceFinish")
+                              }
+                              className="rounded border-slate-300"
+                            />
+                            <span className="text-slate-600">
+                              {option.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {errors.faceFinish && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.faceFinish}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Door Style Section */}
+            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+              <h3 className="text-md font-medium text-slate-700">Doors</h3>
+              <div className="border rounded-lg border-slate-400 p-3">
+                {/* <h3 className="text-sm font-medium text-slate-700 mb-2">Doors</h3> */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="doorStyle"
+                      className="text-right text-sm font-medium text-slate-700"
+                    >
+                      Style
+                    </label>
+                    <select
+                      id="doorStyle"
+                      name="doorStyle"
+                      value={formData.doorStyle}
+                      onChange={handleChange}
+                      className={`block w-full rounded-md text-sm h-9 ${
+                        errors.doorStyle ? "border-red-500" : "border-slate-300"
+                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                    >
+                      <option value="">Select door style...</option>
+                      {filteredDoorStyleOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {`${option.label}`}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.doorStyle && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.doorStyle}
+                      </p>
+                    )}
+                  </div>
+                  {/* Door Moldings */}
+                  <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="doorInsideMolding"
+                        checked={formData.doorInsideMolding}
+                        onChange={(e) =>
+                          handleChange({
+                            target: {
+                              name: "doorInsideMolding",
+                              value: e.target.checked,
+                            },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      <span>Inside Molding</span>
+                    </label>
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="doorReededPanel"
+                        checked={formData.doorReededPanel}
+                        onChange={(e) =>
+                          handleChange({
+                            target: {
+                              name: "doorReededPanel",
+                              value: e.target.checked,
+                            },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      <span>Reeded Panel</span>
+                    </label>
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="doorOutsideMolding"
+                        checked={formData.doorOutsideMolding}
+                        onChange={(e) =>
+                          handleChange({
+                            target: {
+                              name: "doorOutsideMolding",
+                              value: e.target.checked,
+                            },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      <span>Outside Molding</span>
+                    </label>
+                  </div>
+                  {/* Door Hinges */}
+                  <div className="">
+                    <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                      <label
+                        htmlFor="hinge_id"
+                        className="text-right text-sm font-medium text-slate-700"
+                      >
+                        Hinges
+                      </label>
+                      <select
+                        id="hinge_id"
+                        name="hinge_id"
+                        value={formData.hinge_id}
+                        onChange={handleChange}
+                        className={`block w-full h-9 rounded-md text-sm ${
+                          errors.hinge_id
+                            ? "border-red-500"
+                            : "border-slate-300"
+                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                      >
+                        <option value="">Select hinge type...</option>
+                        {DOOR_HINGE_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {`${option.name} - $${option.price}/pair`}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.hinge_id && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.hinge_id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Door  Pulls */}
+                  <div className="">
+                    <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                      <label
+                        htmlFor="door_pull_id"
+                        className="text-right text-sm font-medium text-slate-700"
+                      >
+                        Pulls
+                      </label>
+                      <select
+                        id="door_pull_id"
+                        name="door_pull_id"
+                        value={formData.door_pull_id}
+                        onChange={handleChange}
+                        className={`block w-full h-9 rounded-md text-sm ${
+                          errors.door_pull_id
+                            ? "border-red-500"
+                            : "border-slate-300"
+                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                      >
+                        <option value="">Select pull type...</option>
+                        {PULL_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {`${option.name} - $${option.price}/pull`}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.door_pull_id && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.door_pull_id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Front Style Section */}
+            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+              <h3 className="text-md font-medium text-slate-700">
+                Drawer Fronts
+              </h3>
+              <div className="border rounded-lg border-slate-400 p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="drawerFrontStyle"
+                      className="text-right text-sm font-medium text-slate-700"
+                    >
+                      Style
+                    </label>
+                    <select
+                      id="drawerFrontStyle"
+                      name="drawerFrontStyle"
+                      value={formData.drawerFrontStyle}
+                      onChange={handleChange}
+                      className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Select drawer front style...</option>
+                      {filteredDoorStyleOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.drawerFrontStyle && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.drawerFrontStyle}
+                      </p>
+                    )}
+                  </div>
+                  {/* Drawer Front Moldings */}
+                  <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="drawerInsideMolding"
+                        checked={formData.drawerInsideMolding}
+                        onChange={(e) =>
+                          handleChange({
+                            target: {
+                              name: "drawerInsideMolding",
+                              value: e.target.checked,
+                            },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      <span>Inside Molding</span>
+                    </label>
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="drawerReededPanel"
+                        checked={formData.drawerReededPanel}
+                        onChange={(e) =>
+                          handleChange({
+                            target: {
+                              name: "drawerReededPanel",
+                              value: e.target.checked,
+                            },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      <span>Reeded Panel</span>
+                    </label>
+                    <label className="flex items-center space-x-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="drawerOutsideMolding"
+                        checked={formData.drawerOutsideMolding}
+                        onChange={(e) =>
+                          handleChange({
+                            target: {
+                              name: "drawerOutsideMolding",
+                              value: e.target.checked,
+                            },
+                          })
+                        }
+                        className="rounded border-slate-300"
+                      />
+                      <span>Outside Molding</span>
+                    </label>
+                  </div>
+
+                  {/* Drawer Box Material */}
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="drawer_box_mat"
+                      className="text-right text-sm font-medium text-slate-700"
+                    >
+                      Boxes
+                    </label>
+                    <select
+                      id="drawer_box_mat"
+                      name="drawer_box_mat"
+                      value={formData.drawer_box_mat}
+                      onChange={handleChange}
+                      className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                        errors.drawer_box_mat ? "border-red-500" : ""
+                      }`}
+                    >
+                      <option value="">Select drawer box material...</option>
+                      {DRAWER_BOX_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.drawer_box_mat && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.drawer_box_mat}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Drawer  Pulls */}
+                  <div className="">
+                    <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                      <label
+                        htmlFor="drawer_pull_id"
+                        className="text-right text-sm font-medium text-slate-700"
+                      >
+                        Pulls
+                      </label>
+                      <select
+                        id="drawer_pull_id"
+                        name="drawer_pull_id"
+                        value={formData.drawer_pull_id}
+                        onChange={handleChange}
+                        className={`block w-full h-9 rounded-md text-sm ${
+                          errors.drawer_pull_id
+                            ? "border-red-500"
+                            : "border-slate-300"
+                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                      >
+                        <option value="">Select pull type...</option>
+                        {PULL_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {`${option.name} - $${option.price}/pull`}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.drawer_pull_id && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.drawer_pull_id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Drawer Slides */}
+                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    <label
+                      htmlFor="slide_id"
+                      className="text-sm font-medium text-slate-700 text-right"
+                    >
+                      Slides
+                    </label>
+                    <select
+                      id="slide_id"
+                      name="slide_id"
+                      value={formData.slide_id}
+                      onChange={handleChange}
+                      className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                        errors.slide_id ? "border-red-500" : ""
+                      }`}
+                    >
+                      <option value="">Select drawer slide type...</option>
+                      {DRAWER_SLIDE_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {`${option.name} - $${option.price}/pair`}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.slide_id && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.slide_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Door Style Section */}
-        <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
-          <h3 className="text-md font-medium text-slate-700">Doors</h3>
-          <div className="border rounded-lg border-slate-400 p-3">
-            {/* <h3 className="text-sm font-medium text-slate-700 mb-2">Doors</h3> */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+          <div className="border rounded-lg border-slate-400 p-3 w-full h-full">
+            <h3 className="text-md font-medium text-slate-700 mb-3">Adjustments</h3>
+            <div className="space-y-3">
+              {/* Quantity */}
+              <div className="flex flex-col gap-2 items-center">
                 <label
-                  htmlFor="doorStyle"
+                  htmlFor="quantity"
                   className="text-right text-sm font-medium text-slate-700"
                 >
-                  Style
+                  Quantity
                 </label>
-                <select
-                  id="doorStyle"
-                  name="doorStyle"
-                  value={formData.doorStyle}
+                <input
+                  type="text"
+                  id="quantity"
+                  name="quantity"
+                  value={formData.quantity}
                   onChange={handleChange}
-                  className={`block w-full rounded-md text-sm h-9 ${
-                    errors.doorStyle ? "border-red-500" : "border-slate-300"
-                  } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                >
-                  <option value="">Select door style...</option>
-                  {filteredDoorStyleOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {`${option.label}`}
-                    </option>
-                  ))}
-                </select>
-                {errors.doorStyle && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.doorStyle}
-                  </p>
-                )}
+                  placeholder="1"
+                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                />
               </div>
-              {/* Door Moldings */}
-              <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
-                <label className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="doorInsideMolding"
-                    checked={formData.doorInsideMolding}
-                    onChange={(e) =>
-                      handleChange({
-                        target: {
-                          name: "doorInsideMolding",
-                          value: e.target.checked,
-                        },
-                      })
-                    }
-                    className="rounded border-slate-300"
-                  />
-                  <span>Inside Molding</span>
-                </label>
-                <label className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="doorReededPanel"
-                    checked={formData.doorReededPanel}
-                    onChange={(e) =>
-                      handleChange({
-                        target: {
-                          name: "doorReededPanel",
-                          value: e.target.checked,
-                        },
-                      })
-                    }
-                    className="rounded border-slate-300"
-                  />
-                  <span>Reeded Panel</span>
-                </label>
-                <label className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="doorOutsideMolding"
-                    checked={formData.doorOutsideMolding}
-                    onChange={(e) =>
-                      handleChange({
-                        target: {
-                          name: "doorOutsideMolding",
-                          value: e.target.checked,
-                        },
-                      })
-                    }
-                    className="rounded border-slate-300"
-                  />
-                  <span>Outside Molding</span>
-                </label>
-              </div>
-              {/* Door Hinges */}
-              <div className="">
-                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                  <label
-                    htmlFor="hinge_id"
-                    className="text-right text-sm font-medium text-slate-700"
-                  >
-                    Hinges
-                  </label>
-                  <select
-                    id="hinge_id"
-                    name="hinge_id"
-                    value={formData.hinge_id}
-                    onChange={handleChange}
-                    className={`block w-full h-9 rounded-md text-sm ${
-                      errors.hinge_id ? "border-red-500" : "border-slate-300"
-                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                  >
-                    <option value="">Select hinge type...</option>
-                    {DOOR_HINGE_OPTIONS.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {`${option.name} - $${option.price}/pair`}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.hinge_id && (
-                    <p className="text-xs text-red-500 col-span-2">
-                      {errors.hinge_id}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {/* Door  Pulls */}
-              <div className="">
-                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                  <label
-                    htmlFor="door_pull_id"
-                    className="text-right text-sm font-medium text-slate-700"
-                  >
-                    Pulls
-                  </label>
-                  <select
-                    id="door_pull_id"
-                    name="door_pull_id"
-                    value={formData.door_pull_id}
-                    onChange={handleChange}
-                    className={`block w-full h-9 rounded-md text-sm ${
-                      errors.door_pull_id
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                  >
-                    <option value="">Select pull type...</option>
-                    {PULL_OPTIONS.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {`${option.name} - $${option.price}/pull`}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.door_pull_id && (
-                    <p className="text-xs text-red-500 col-span-2">
-                      {errors.door_pull_id}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Drawer Front Style Section */}
-        <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
-          <h3 className="text-md font-medium text-slate-700">Drawer Fronts</h3>
-          <div className="border rounded-lg border-slate-400 p-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+              
+              {/* Profit */}
+              <div className="flex flex-col gap-2 items-center">
                 <label
-                  htmlFor="drawerFrontStyle"
+                  htmlFor="profit"
                   className="text-right text-sm font-medium text-slate-700"
                 >
-                  Style
+                  Profit
                 </label>
-                <select
-                  id="drawerFrontStyle"
-                  name="drawerFrontStyle"
-                  value={formData.drawerFrontStyle}
+                <input
+                  type="text"
+                  id="profit"
+                  name="profit"
+                  value={formData.profit}
                   onChange={handleChange}
-                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">Select drawer front style...</option>
-                  {filteredDoorStyleOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.drawerFrontStyle && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.drawerFrontStyle}
-                  </p>
-                )}
+                  placeholder="0"
+                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                />
               </div>
-              {/* Drawer Front Moldings */}
-              <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
-                <label className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="drawerInsideMolding"
-                    checked={formData.drawerInsideMolding}
-                    onChange={(e) =>
-                      handleChange({
-                        target: {
-                          name: "drawerInsideMolding",
-                          value: e.target.checked,
-                        },
-                      })
-                    }
-                    className="rounded border-slate-300"
-                  />
-                  <span>Inside Molding</span>
-                </label>
-                <label className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="drawerReededPanel"
-                    checked={formData.drawerReededPanel}
-                    onChange={(e) =>
-                      handleChange({
-                        target: {
-                          name: "drawerReededPanel",
-                          value: e.target.checked,
-                        },
-                      })
-                    }
-                    className="rounded border-slate-300"
-                  />
-                  <span>Reeded Panel</span>
-                </label>
-                <label className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="drawerOutsideMolding"
-                    checked={formData.drawerOutsideMolding}
-                    onChange={(e) =>
-                      handleChange({
-                        target: {
-                          name: "drawerOutsideMolding",
-                          value: e.target.checked,
-                        },
-                      })
-                    }
-                    className="rounded border-slate-300"
-                  />
-                  <span>Outside Molding</span>
-                </label>
-              </div>
-
-              {/* Drawer Box Material */}
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+              
+              {/* Commission */}
+              <div className="flex flex-col gap-2 items-center">
                 <label
-                  htmlFor="drawer_box_mat"
+                  htmlFor="commission"
                   className="text-right text-sm font-medium text-slate-700"
                 >
-                  Boxes
+                  Commission
                 </label>
-                <select
-                  id="drawer_box_mat"
-                  name="drawer_box_mat"
-                  value={formData.drawer_box_mat}
+                <input
+                  type="text"
+                  id="commission"
+                  name="commission"
+                  value={formData.commission}
                   onChange={handleChange}
-                  className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                    errors.drawer_box_mat ? "border-red-500" : ""
-                  }`}
-                >
-                  <option value="">Select drawer box material...</option>
-                  {DRAWER_BOX_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.drawer_box_mat && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.drawer_box_mat}
-                  </p>
-                )}
+                  placeholder="0"
+                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                />
               </div>
-
-              {/* Drawer  Pulls */}
-              <div className="">
-                <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                  <label
-                    htmlFor="drawer_pull_id"
-                    className="text-right text-sm font-medium text-slate-700"
-                  >
-                    Pulls
-                  </label>
-                  <select
-                    id="drawer_pull_id"
-                    name="drawer_pull_id"
-                    value={formData.drawer_pull_id}
-                    onChange={handleChange}
-                    className={`block w-full h-9 rounded-md text-sm ${
-                      errors.drawer_pull_id
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                  >
-                    <option value="">Select pull type...</option>
-                    {PULL_OPTIONS.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {`${option.name} - $${option.price}/pull`}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.drawer_pull_id && (
-                    <p className="text-xs text-red-500 col-span-2">
-                      {errors.drawer_pull_id}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Drawer Slides */}
-              <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+              
+              {/* Discount */}
+              <div className="flex flex-col gap-2 items-center">
                 <label
-                  htmlFor="slide_id"
-                  className="text-sm font-medium text-slate-700 text-right"
+                  htmlFor="discount"
+                  className="text-right text-sm font-medium text-slate-700"
                 >
-                  Slides
+                  Discount
                 </label>
-                <select
-                  id="slide_id"
-                  name="slide_id"
-                  value={formData.slide_id}
+                <input
+                  type="text"
+                  id="discount"
+                  name="discount"
+                  value={formData.discount}
                   onChange={handleChange}
-                  className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                    errors.slide_id ? "border-red-500" : ""
-                  }`}
-                >
-                  <option value="">Select drawer slide type...</option>
-                  {DRAWER_SLIDE_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {`${option.name} - $${option.price}/pair`}
-                    </option>
-                  ))}
-                </select>
-                {errors.slide_id && (
-                  <p className="text-xs text-red-500 col-span-2">
-                    {errors.slide_id}
-                  </p>
-                )}
+                  placeholder="0"
+                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                />
               </div>
             </div>
           </div>

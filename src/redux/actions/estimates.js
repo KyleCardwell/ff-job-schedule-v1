@@ -611,8 +611,24 @@ export const addSection = (estimateId, taskId, sectionData) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
-      // Extract boxMaterial from the section data
-      const { boxMaterial, faceMaterial, ...restOfSectionData } = sectionData;
+      // Extract fields that go in separate columns vs section_data
+      const { 
+        boxMaterial, 
+        faceMaterial, 
+        drawer_box_mat,
+        style,
+        hinge_id,
+        slide_id,
+        door_pull_id,
+        drawer_pull_id,
+        faceFinish,
+        boxFinish,
+        quantity,
+        profit,
+        commission,
+        discount,
+        ...restOfSectionData 
+      } = sectionData;
 
       // Create the new section
       const { data: newSection, error } = await supabase
@@ -622,6 +638,18 @@ export const addSection = (estimateId, taskId, sectionData) => {
             section_data: restOfSectionData,
             box_mat: boxMaterial !== undefined ? +boxMaterial : null,
             face_mat: faceMaterial !== undefined ? +faceMaterial : null,
+            drawer_box_mat: drawer_box_mat !== undefined ? +drawer_box_mat : null,
+            cabinet_style_id: style !== undefined ? +style : null,
+            hinge_id: hinge_id !== undefined ? +hinge_id : null,
+            slide_id: slide_id !== undefined ? +slide_id : null,
+            door_pull_id: door_pull_id !== undefined ? +door_pull_id : null,
+            drawer_pull_id: drawer_pull_id !== undefined ? +drawer_pull_id : null,
+            face_finish: faceFinish !== undefined ? faceFinish : null,
+            box_finish: boxFinish !== undefined ? boxFinish : null,
+            quantity: quantity != null ? +quantity : 1,
+            profit: profit != null ? +profit : null,
+            commission: commission != null ? +commission : null,
+            discount: discount != null ? +discount : null,
             est_task_id: taskId,
           },
         ])
@@ -672,7 +700,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       );
       const currentSections = currentTask?.sections || [];
 
-      // Extract boxMaterial and faceMaterial from updates
+      // Extract fields that go in separate columns vs section_data
       const {
         boxMaterial,
         faceMaterial,
@@ -684,6 +712,10 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         drawer_pull_id,
         faceFinish,
         boxFinish,
+        quantity,
+        profit,
+        commission,
+        discount,
         ...sectionData
       } = updates;
 
@@ -702,6 +734,10 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(style !== undefined && { cabinet_style_id: +style }),
         ...(faceFinish !== undefined && { face_finish: faceFinish }),
         ...(boxFinish !== undefined && { box_finish: boxFinish }),
+        ...(quantity !== undefined && { quantity: quantity != null ? +quantity : 1 }),
+        ...(profit !== undefined && { profit: profit != null ? +profit : null }),
+        ...(commission !== undefined && { commission: commission != null ? +commission : null }),
+        ...(discount !== undefined && { discount: discount != null ? +discount : null }),
         updated_at: new Date(),
         
         // Merge the rest into section_data
