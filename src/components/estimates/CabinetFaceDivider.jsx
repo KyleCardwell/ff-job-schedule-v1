@@ -343,6 +343,8 @@ const CabinetFaceDivider = ({
       const initialHeight =
         cabinetHeight - initialReveals.top - initialReveals.bottom;
 
+      const needsShelves = itemConfig.features.shelves;
+
       setConfig({
         id: FACE_NAMES.ROOT,
         type: itemConfig.defaultFaceType,
@@ -351,7 +353,7 @@ const CabinetFaceDivider = ({
         x: initialReveals.left,
         y: initialReveals.top,
         children: null,
-        shelfQty: calculateShelfQty(initialHeight),
+        shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
       });
     } else if (config && !config.id) {
@@ -1189,10 +1191,7 @@ const CabinetFaceDivider = ({
       }
 
       // Set default shelf quantity for supported types
-      if (
-        CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(newType) &&
-        newType !== FACE_NAMES.DRAWER_FRONT
-      ) {
+      if (supportsShelves(newType)) {
         const standardShelfQty = calculateShelfQty(node.height);
         node.shelfQty = node.shelfQty || standardShelfQty;
 
@@ -1647,10 +1646,7 @@ const CabinetFaceDivider = ({
             : FACE_NAMES.PANEL
           : node.type;
 
-      const canHaveShelves =
-        CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType) &&
-        childType !== FACE_NAMES.DRAWER_FRONT &&
-        itemType !== ITEM_TYPES.FILLER.type;
+      const canHaveShelves = supportsShelves(childType);
 
       node.children = [
         {
@@ -1710,9 +1706,7 @@ const CabinetFaceDivider = ({
             : FACE_NAMES.PANEL
           : node.type;
 
-      const canHaveShelves =
-        CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(childType) &&
-        childType !== FACE_NAMES.DRAWER_FRONT;
+      const canHaveShelves = supportsShelves(childType);
 
       node.children = [
         {
@@ -1852,9 +1846,7 @@ const CabinetFaceDivider = ({
           // Update child's id to reflect new position in tree
           lastChild.id = parent.id;
         } else {
-          const canHaveShelves =
-            CAN_HAVE_ROLL_OUTS_OR_SHELVES.includes(lastChild.type) &&
-            lastChild.type !== FACE_NAMES.DRAWER_FRONT;
+          const canHaveShelves = supportsShelves(lastChild.type);
           const newHeight = cabinetHeight - reveals.top - reveals.bottom;
           // Parent is the root, so the last child becomes the new root
           Object.assign(newConfig, {
@@ -1896,15 +1888,18 @@ const CabinetFaceDivider = ({
   const handleReset = () => {
     if (disabled) return;
 
+    const needsShelves = itemConfig.features.shelves;
+    const resetHeight = cabinetHeight - reveals.top - reveals.bottom;
+
     const resetConfig = {
       id: FACE_NAMES.ROOT,
       type: itemConfig.defaultFaceType,
       width: cabinetWidth - reveals.left - reveals.right,
-      height: cabinetHeight - reveals.top - reveals.bottom,
+      height: resetHeight,
       x: reveals.left,
       y: reveals.top,
       children: null,
-      shelfQty: calculateShelfQty(cabinetHeight - reveals.top - reveals.bottom),
+      shelfQty: needsShelves ? calculateShelfQty(resetHeight) : 0,
       rootReveals: reveals,
     };
 

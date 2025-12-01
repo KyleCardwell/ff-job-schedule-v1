@@ -444,6 +444,109 @@ export const calculateDoorPartsTime = (
   return hoursByService;
 };
 
+/**
+ * Calculate total hours by service for end panels and appliance panels
+ * Uses root cabinet dimensions with parts list anchors 17 (end panel) or 18 (appliance panel)
+ * @param {Object} cabinet - Cabinet object with width, height, type, quantity
+ * @param {number} cabinetStyleId - Cabinet style ID for filtering style-specific anchors
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { serviceId: hours } (already includes quantity multiplier)
+ */
+export const calculatePanelPartsTime = (
+  cabinet,
+  cabinetStyleId,
+  context = {}
+) => {
+  const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
+
+  if (!cabinet || !partsListAnchors) {
+    return {};
+  }
+
+  // Only process end panels (type 10) and appliance panels (type 11)
+  if (cabinet.type !== 10 && cabinet.type !== 11) {
+    return {};
+  }
+
+  // Determine which parts_list_id to use
+  const partsListId = cabinet.type === 10 
+    ? PARTS_LIST_MAPPING["end_panel_finished"]      // 17
+    : PARTS_LIST_MAPPING["appliance_panel_finished"]; // 18
+
+  const anchors = partsListAnchors[partsListId];
+
+  if (!anchors || anchors.length === 0) {
+    // No anchors for this panel type - skip it
+    return {};
+  }
+
+  // Use root dimensions for area calculation
+  const area = cabinet.width * cabinet.height;
+  const quantity = Number(cabinet.quantity) || 1;
+
+  // Collect all unique service IDs from anchors
+  const allServiceIds = new Set();
+  anchors.forEach((anchor) => {
+    anchor.services.forEach((service) => {
+      allServiceIds.add(service.team_service_id);
+    });
+  });
+
+  const hoursByService = {};
+
+  // Initialize all services to 0
+  allServiceIds.forEach((serviceId) => {
+    hoursByService[serviceId] = 0;
+  });
+
+  // Calculate time for each service
+  allServiceIds.forEach((teamServiceId) => {
+    const minutesBase = interpolateTimeByArea(
+      anchors,
+      area,
+      teamServiceId,
+      cabinetStyleId
+    );
+
+    let totalMinutes = minutesBase;
+
+    // Apply multipliers if material needs finish
+    const shouldApplyMultipliers = selectedFaceMaterial?.material?.needs_finish;
+
+    if (shouldApplyMultipliers && globalServices) {
+      const service = globalServices.find(
+        (s) => s.team_service_id === parseInt(teamServiceId)
+      );
+      if (service) {
+        if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+          // Shop multiplier for service ID 2
+          totalMinutes *= selectedFaceMaterial.shopMultiplier;
+        } else if (
+          service.service_id === 3 &&
+          selectedFaceMaterial.finishMultiplier
+        ) {
+          // Finish multiplier for service ID 3
+          totalMinutes *= selectedFaceMaterial.finishMultiplier;
+        }
+      }
+    }
+
+    hoursByService[teamServiceId] += totalMinutes;
+  });
+
+  // Convert minutes to hours and multiply by quantity for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      (hoursByService[serviceId] / 60) * quantity
+    );
+  });
+
+  return hoursByService;
+};
+
 export const calculateBoardFeetFor5PieceDoor = (
   doorWidth,
   doorHeight,

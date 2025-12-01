@@ -165,10 +165,10 @@ export const FACE_STYLE_VALUES = {
 // Face styles array (works for both UI dropdowns and database)
 export const FACE_STYLES = [
   { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD, label: "5-Piece Hardwood", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD },
-  { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED, label: "5-Piece Hardwood Reeded", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED },
+  // { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED, label: "5-Piece Hardwood Reeded", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED },
   { id: FACE_STYLE_VALUES.SLAB_HARDWOOD, label: "Slab Hardwood", value: FACE_STYLE_VALUES.SLAB_HARDWOOD },
   { id: FACE_STYLE_VALUES.SLAB_SHEET, label: "Slab Sheet", value: FACE_STYLE_VALUES.SLAB_SHEET },
-  { id: FACE_STYLE_VALUES.SLAB_SHEET_REEDED, label: "Slab Sheet Reeded", value: FACE_STYLE_VALUES.SLAB_SHEET_REEDED }
+  // { id: FACE_STYLE_VALUES.SLAB_SHEET_REEDED, label: "Slab Sheet Reeded", value: FACE_STYLE_VALUES.SLAB_SHEET_REEDED }
 ];
 
 export const ACCESSORY_TYPES = {

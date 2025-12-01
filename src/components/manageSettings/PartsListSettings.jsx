@@ -321,7 +321,7 @@ const PartsListSettings = forwardRef((props, ref) => {
                               : ""
                           }`}
                         >
-                          <SettingsSection title={part.name}>
+                          <SettingsSection title={`${part.name}${part.description ? ` ${part.description}` : ""}`}>
                             <PartsListAnchorsTable
                               partsListId={part.id}
                               anchors={localAnchors[part.id] || []}

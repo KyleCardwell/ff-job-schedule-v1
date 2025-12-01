@@ -13,6 +13,7 @@ import {
   calculateBoxPartsTime,
   calculateBoxSheetsCNC,
   calculateDoorPartsTime,
+  calculatePanelPartsTime,
   calculateSlabSheetFacePriceBulk,
   roundToHundredth,
 } from "./estimateHelpers";
@@ -103,6 +104,31 @@ const calculateFaceTotals = (section, context) => {
 
       // Skip the rest of the processing for fillers (no faceSummary processing, no hours)
       return;
+    }
+
+    // Add extra service hours for end panels (type 10) and appliance panels (type 11)
+    // Uses root dimensions with parts list anchors 17 and 18 respectively
+    if (cabinet.type === 10 || cabinet.type === 11) {
+      const panelHours = calculatePanelPartsTime(
+        cabinet,
+        cabinetStyleId,
+        context
+      );
+
+      // Aggregate panel hours by converting team_service_id to service_id
+      Object.entries(panelHours).forEach(([teamServiceId, hours]) => {
+        const service = context.globalServices?.find(
+          (s) => s.team_service_id === parseInt(teamServiceId)
+        );
+        if (!service) return;
+
+        const serviceId = service.service_id;
+        if (!totals.hoursByService[serviceId]) {
+          totals.hoursByService[serviceId] = 0;
+        }
+        // Hours already include quantity multiplier from calculatePanelPartsTime
+        totals.hoursByService[serviceId] += hours || 0;
+      });
     }
 
     // Regular cabinets - process faceSummary
