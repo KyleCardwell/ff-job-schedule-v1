@@ -4,6 +4,7 @@ import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { addSection, updateSection } from "../../redux/actions/estimates";
+import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
 
 const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const dispatch = useDispatch();
@@ -16,12 +17,13 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const estimateData = currentEstimate?.estimate_data;
   const sectionData =
     section?.section_data || currentEstimate?.estimateDefault || {};
+  const finishes = useSelector((state) => state.finishes);
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = cabinetStyles || [];
-  const FINISH_OPTIONS = estimateData?.finishes || [];
-  const DOOR_STYLE_OPTIONS = estimateData?.doorStyles?.options || [];
+  const FINISH_OPTIONS = finishes?.finishes || [];
+  const DOOR_STYLE_OPTIONS = FACE_STYLES || [];
   const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
   const DOOR_HINGE_OPTIONS = hardware.hinges || [];
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
@@ -31,20 +33,21 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
   const [selectedBoxMaterial, setSelectedBoxMaterial] = useState(null);
-  
 
   const [formData, setFormData] = useState({
     style: section.cabinet_style_id || "",
     boxMaterial: section.box_mat || "",
-    boxFinish: sectionData.boxFinish || [],
+    boxFinish: section.box_finish || [],
     faceMaterial: section.face_mat || "",
-    faceFinish: sectionData.faceFinish || [],
+    faceFinish: section.face_finish || [],
     doorStyle: sectionData.doorStyle || "",
     drawerFrontStyle: sectionData.drawerFrontStyle || "",
     doorInsideMolding: sectionData.doorInsideMolding || false,
     doorOutsideMolding: sectionData.doorOutsideMolding || false,
     drawerInsideMolding: sectionData.drawerInsideMolding || false,
     drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
+    doorReededPanel: sectionData.doorReededPanel || false,
+    drawerReededPanel: sectionData.drawerReededPanel || false,
     hinge_id: section.hinge_id || "",
     slide_id: section.slide_id || "",
     door_pull_id: section.door_pull_id || "",
@@ -270,14 +273,21 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     return DOOR_STYLE_OPTIONS.filter((option) => {
       // If material supports 5-piece, include both 5_piece_hardwood and slab_hardwood
       if (selectedFaceMaterial.five_piece === true) {
-        if (option.id === "5_piece_hardwood" || option.id === "slab_hardwood") {
+        if (
+          option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+          option.id === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+          option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED
+        ) {
           return true;
         }
       }
 
       // If material supports slab doors, include slab_sheet
       if (selectedFaceMaterial.slab_door === true) {
-        if (option.id === "slab_sheet") {
+        if (
+          option.id === FACE_STYLE_VALUES.SLAB_SHEET ||
+          option.id === FACE_STYLE_VALUES.SLAB_SHEET_REEDED
+        ) {
           return true;
         }
       }
@@ -542,7 +552,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   <option value="">Select door style...</option>
                   {filteredDoorStyleOptions.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {`${option.name}`}
+                      {`${option.label}`}
                     </option>
                   ))}
                 </select>
@@ -553,7 +563,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 )}
               </div>
               {/* Door Moldings */}
-              <div className="flex gap-8 items-center justify-center">
+              <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
                 <label className="flex items-center space-x-2 text-sm">
                   <input
                     type="checkbox"
@@ -570,6 +580,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     className="rounded border-slate-300"
                   />
                   <span>Inside Molding</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="doorReededPanel"
+                    checked={formData.doorReededPanel}
+                    onChange={(e) =>
+                      handleChange({
+                        target: {
+                          name: "doorReededPanel",
+                          value: e.target.checked,
+                        },
+                      })
+                    }
+                    className="rounded border-slate-300"
+                  />
+                  <span>Reeded Panel</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm">
                   <input
@@ -681,7 +708,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   <option value="">Select drawer front style...</option>
                   {filteredDoorStyleOptions.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {option.name}
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -692,7 +719,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                 )}
               </div>
               {/* Drawer Front Moldings */}
-              <div className="flex gap-8 items-center justify-center">
+              <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
                 <label className="flex items-center space-x-2 text-sm">
                   <input
                     type="checkbox"
@@ -709,6 +736,23 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                     className="rounded border-slate-300"
                   />
                   <span>Inside Molding</span>
+                </label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="drawerReededPanel"
+                    checked={formData.drawerReededPanel}
+                    onChange={(e) =>
+                      handleChange({
+                        target: {
+                          name: "drawerReededPanel",
+                          value: e.target.checked,
+                        },
+                      })
+                    }
+                    className="rounded border-slate-300"
+                  />
+                  <span>Reeded Panel</span>
                 </label>
                 <label className="flex items-center space-x-2 text-sm">
                   <input

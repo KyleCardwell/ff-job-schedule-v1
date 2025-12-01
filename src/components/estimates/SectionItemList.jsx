@@ -4,6 +4,8 @@ import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useSelector } from "react-redux";
 
+import { ITEM_TYPES } from "../../utils/constants.js";
+import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 const SectionItemList = ({
@@ -17,6 +19,8 @@ const SectionItemList = ({
   ItemForm,
   hideAddButton = false,
   formProps = {},
+  getReorderItemName,
+  listType,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const [showNewItem, setShowNewItem] = useState(false);
@@ -64,62 +68,69 @@ const SectionItemList = ({
     }
   };
 
-  const handleKeys = (item, index, key, col) => {
-    switch (key) {
-      case "interior": {
-        if (item.finished_interior) {
-          return "F";
-        } else {
-          return "U";
-        }
-      }
-      case "type": {
-        return cabinetTypes.find((t) => t.cabinet_type_id === item.type)
-          ?.cabinet_type_name;
-      }
-      case "actions":
-        return (
-          <div key={col.key} className="flex justify-center space-x-2">
-            <button
-              onClick={() => {
-                if (!isFormActive) {
-                  setShowNewItem(false);
-                  setEditingIndex(index);
-                }
-              }}
-              disabled={isFormActive}
-              className={`p-1.5 ${
-                isFormActive
-                  ? "text-slate-600 cursor-not-allowed"
-                  : "text-slate-400 hover:text-blue-500"
-              } transition-colors`}
-            >
-              <FiEdit2 size={16} />
-            </button>
-            <button
-              onClick={() => {
-                if (!isFormActive) {
-                  handleDeleteItem(index);
-                }
-              }}
-              disabled={isFormActive}
-              className={`p-1.5 ${
-                isFormActive
-                  ? "text-slate-600 cursor-not-allowed"
-                  : "text-slate-400 hover:text-red-500"
-              } transition-colors`}
-            >
-              <FiTrash2 size={16} />
-            </button>
-          </div>
-        );
-      default:
-        return (
-          <div key={col.key} className="text-sm">
-            {item[col.key]}
-          </div>
-        );
+  const generateTextSummary = (item) => {
+    if (!item.face_config) return null;
+    const summary = generateCabinetSummary(item.face_config);
+    return summary ? <span className="text-slate-400">{summary}</span> : null;
+  };
+
+  const renderCellContent = (item, index, col) => {
+    // If column has a custom render function, use it
+    if (col.render) {
+      return col.render(item, index);
     }
+
+    // Handle actions column (standard for all item types)
+    if (col.key === "actions") {
+      return (
+        <div className="flex justify-center space-x-2">
+          <button
+            onClick={() => {
+              if (!isFormActive) {
+                setShowNewItem(false);
+                setEditingIndex(index);
+              }
+            }}
+            disabled={isFormActive}
+            className={`p-1.5 ${
+              isFormActive
+                ? "text-slate-600 cursor-not-allowed"
+                : "text-slate-400 hover:text-blue-500"
+            } transition-colors`}
+          >
+            <FiEdit2 size={16} />
+          </button>
+          <button
+            onClick={() => {
+              if (!isFormActive) {
+                handleDeleteItem(index);
+              }
+            }}
+            disabled={isFormActive}
+            className={`p-1.5 ${
+              isFormActive
+                ? "text-slate-600 cursor-not-allowed"
+                : "text-slate-400 hover:text-red-500"
+            } transition-colors`}
+          >
+            <FiTrash2 size={16} />
+          </button>
+        </div>
+      );
+    }
+
+    // Cabinet-specific rendering (for backward compatibility)
+    if (col.key === "interior") {
+      return item.finished_interior ? "F" : "U";
+    }
+
+    if (col.key === "type") {
+      return cabinetTypes.find((t) => t.cabinet_type_id === item.type)
+        ?.cabinet_type_name;
+    }
+
+    // Default: just display the item property
+    return item[col.key];
   };
 
   return (
@@ -139,17 +150,6 @@ const SectionItemList = ({
             {col.label}
           </div>
         ))}
-        {/* {onReorder && items.length > 1 && (
-          <div className="flex justify-end">
-            <button
-              onClick={() => setIsReorderModalOpen(true)}
-              className="text-slate-500 hover:text-blue-500"
-              aria-label="Reorder items"
-            >
-              <LuArrowDownUp size={16} />
-            </button>
-          </div>
-        )} */}
       </div>
 
       {/* Items List */}
@@ -167,22 +167,37 @@ const SectionItemList = ({
           ) : (
             <div
               key={index}
-              className={`grid gap-4 items-center py-1 px-3 border-b transition-colors ${
+              className={`border-b transition-colors ${
                 item.errorState
                   ? "bg-red-700 text-white border-red-500 hover:bg-red-600"
                   : "bg-slate-700 text-white border-slate-600 hover:bg-slate-600 hover:text-slate-200"
               }`}
-              style={{
-                gridTemplateColumns: columns.map((c) => c.width).join(" "),
-              }}
             >
-              {columns.map((col) => {
-                return (
-                  <div key={col.key} className="text-sm">
-                    {handleKeys(item, index, col.key, col)}
-                  </div>
-                );
-              })}
+              <div
+                className={`grid gap-4 items-center py-1 px-3`}
+                style={{
+                  gridTemplateColumns: columns.map((c) => c.width).join(" "),
+                }}
+              >
+                {columns.map((col) => {
+                  return (
+                    <div key={col.key} className="text-sm">
+                      {renderCellContent(item, index, col)}
+                    </div>
+                  );
+                })}
+              </div>
+              {listType === ITEM_TYPES.CABINET.type && item.type !== 5 && (
+                <div
+                  className={`grid gap-4 px-3 text-sm text-left`}
+                  style={{
+                    gridTemplateColumns: columns[0].width + " " + "1fr",
+                  }}
+                >
+                  <span></span>
+                  {generateTextSummary(item)}
+                </div>
+              )}
             </div>
           )
         )}
@@ -249,14 +264,24 @@ const SectionItemList = ({
           onClose={() => setIsReorderModalOpen(false)}
           onSave={handleSaveOrder}
           items={items.map((item) => {
-            const itemType = cabinetTypes.find(
-              (t) => t.cabinet_type_id === item.type
-            ).cabinet_type_name;
+            // Use custom name function if provided, otherwise fall back to cabinet logic
+            let name;
+            if (getReorderItemName) {
+              name = getReorderItemName(item);
+            } else {
+              // Default cabinet-specific logic for backward compatibility
+              const itemType = cabinetTypes.find(
+                (t) => t.cabinet_type_id === item.type
+              )?.cabinet_type_name;
+              name = itemType
+                ? `${
+                    item.quantity > 1 ? `(${item.quantity}) ` : ""
+                  }${itemType} - ${item.width} x ${item.height} x ${item.depth}`
+                : `Item ${item.id}`;
+            }
             return {
               id: item.id,
-              name:
-                `${item.quantity > 1 ? `(${item.quantity}) ` : ""}${itemType} - ${item.width} x ${item.height} x ${item.depth}` ||
-                `Item ${item.id}`,
+              name,
             };
           })}
           title="Reorder Items"
@@ -283,6 +308,8 @@ SectionItemList.propTypes = {
   ItemForm: PropTypes.elementType.isRequired,
   hideAddButton: PropTypes.bool,
   formProps: PropTypes.object,
+  getReorderItemName: PropTypes.func,
+  listType: PropTypes.string,
 };
 
 export default SectionItemList;

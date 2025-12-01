@@ -13,15 +13,15 @@ const EstimateSectionInfo = ({
     ? selectedTask?.sections?.find(
         (s) => s.est_section_id === selectedSectionId
       )
-    : selectedTask?.sections?.length === 1
-    ? selectedTask.sections[0]
+    : selectedTask?.sections?.length > 0
+    ? selectedTask.sections[selectedTask.sections.length - 1]
     : null;
 
   const sectionData = section?.section_data || {};
   const NOT_SELECTED = "Not Selected";
   const NONE = "None";
 
-  const { materials, hardware } = useSelector((state) => state);
+  const { materials, hardware, finishes } = useSelector((state) => state);
 
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
 
@@ -48,9 +48,9 @@ const EstimateSectionInfo = ({
     if (boxMaterial?.needs_finish === false) {
       return NONE;
     }
-    return sectionData.boxFinish?.length
-      ? sectionData.boxFinish
-          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+    return section.box_finish?.length
+      ? section.box_finish
+          .map((f) => finishes?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
           .join(", ")
       : NOT_SELECTED;
   };
@@ -60,9 +60,9 @@ const EstimateSectionInfo = ({
     if (faceMaterial?.needs_finish === false) {
       return NONE;
     }
-    return sectionData.faceFinish?.length
-      ? sectionData.faceFinish
-          .map((f) => estimate_data?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
+    return section.face_finish?.length
+      ? section.face_finish
+          .map((f) => finishes?.finishes?.find((fin) => fin.id === f)?.name || NOT_SELECTED)
           .join(", ")
       : NOT_SELECTED;
   };
@@ -87,6 +87,7 @@ const EstimateSectionInfo = ({
 
     if (sectionData.doorInsideMolding) result.push("Inside Molding");
     if (sectionData.doorOutsideMolding) result.push("Outside Molding");
+    if (sectionData.doorReededPanel) result.push("Reeded Panel");
 
     return result;
   };
@@ -107,6 +108,7 @@ const EstimateSectionInfo = ({
 
     if (sectionData.drawerInsideMolding) result.push("Inside Molding");
     if (sectionData.drawerOutsideMolding) result.push("Outside Molding");
+    if (sectionData.drawerReededPanel) result.push("Reeded Panel");
 
     return result;
   };

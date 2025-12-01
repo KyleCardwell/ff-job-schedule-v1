@@ -23,6 +23,7 @@ import CabinetTypeCard from "./CabinetTypeCard.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const CabinetTypeSettings = forwardRef((props, ref) => {
+  const { maxWidthClass } = props;
   const dispatch = useDispatch();
   const { types, loading, error } = useSelector((state) => state.cabinetTypes);
   const { itemsByType: anchorsByType } = useSelector(
@@ -194,7 +195,9 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
 
       localTypes.forEach((localType) => {
         if (!localType.isNew) {
-          const originalType = types.find((t) => t.team_cabinet_type_id === localType.team_cabinet_type_id);
+          const originalType = types.find(
+            (t) => t.team_cabinet_type_id === localType.team_cabinet_type_id
+          );
           if (JSON.stringify(originalType) !== JSON.stringify(localType)) {
             typesToUpdate.push(localType);
           }
@@ -202,7 +205,14 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
       });
 
       typesToUpdate.forEach((type) => {
-        const { team_cabinet_type_id, cabinet_type_name, created_at, team_id, ...data } = type;
+        const {
+          team_cabinet_type_id,
+          cabinet_type_name,
+          created_at,
+          team_id,
+          item_type,
+          ...data
+        } = type;
         dispatch(updateCabinetType(team_cabinet_type_id, data));
       });
 
@@ -266,130 +276,141 @@ const CabinetTypeSettings = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className="flex flex-col h-full pb-10">
-      <div className="sticky top-0 z-10 bg-slate-800 py-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">
-            Manage Cabinet Types
-          </h2>
-          {/* <button
+    <div className="mt-6 flex justify-center h-full pb-10">
+      <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
+        <div className="sticky top-0 z-10 bg-slate-800 py-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-200">
+              Manage Cabinet Types
+            </h2>
+            {/* <button
             onClick={handleAddNew}
             className="flex items-center px-2 py-2 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
           >
             <FiPlus className="h-5 w-5 mr-2" />
             Add Type
           </button> */}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
-        {loading && <div className="p-4 text-white">Loading...</div>}
-        {error && <div className="p-4 text-red-500">Error: {error}</div>}
-        {(Object.keys(validationErrors).length > 0 ||
-          Object.keys(anchorErrors).length > 0) && (
-          <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
-            Please fill out all required fields.
           </div>
-        )}
-        {!loading && !error && (
-          <>
-            <SettingsSection
-              title={
-                localTypes.some((t) => !t.is_active)
-                  ? "Active Cabinet Types"
-                  : ""
-              }
-            >
-              <div className="space-y-2 p-1">
-                <div className="grid grid-cols-5 gap-4 px-4 font-bold text-slate-400 items-end">
-                  <div className="col-span-2">Name</div>
-                  <div className="col-span-3 flex flex-col">
-                    <div className="text-center">Default Dimensions</div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>Width</div>
-                      <div>Height</div>
-                      <div>Depth</div>
-                    </div>
-                  </div>
-                  {/* <div className="text-right">Actions</div> */}
-                </div>
+        </div>
 
-                {localTypes
-                  .filter((t) => t.is_active)
-                  .map((type) => (
-                    <div key={type.team_cabinet_type_id}>
-                      <CabinetTypeCard
-                        type={type}
-                        onInputChange={handleInputChange}
-                        onRemove={() => toggleActiveState(type.team_cabinet_type_id)}
-                        errors={validationErrors[type.team_cabinet_type_id]}
-                      />
-                    </div>
-                  ))}
-              </div>
-            </SettingsSection>
-
-            {localTypes.some((t) => !t.is_active) && (
-              <SettingsSection title="Inactive Cabinet Types">
+        <div className="flex-1 overflow-y-auto max-h-[calc(100vh-150px)]">
+          {loading && <div className="p-4 text-white">Loading...</div>}
+          {error && <div className="p-4 text-red-500">Error: {error}</div>}
+          {(Object.keys(validationErrors).length > 0 ||
+            Object.keys(anchorErrors).length > 0) && (
+            <div className="p-2 my-2 text-red-400 bg-red-900/50 border border-red-700 rounded-md">
+              Please fill out all required fields.
+            </div>
+          )}
+          {!loading && !error && (
+            <>
+              <SettingsSection
+                title={
+                  localTypes.some((t) => !t.is_active)
+                    ? "Active Cabinet Types"
+                    : ""
+                }
+              >
                 <div className="space-y-2 p-1">
-                  <div className="grid grid-cols-6 gap-4 px-4 font-bold text-slate-400 items-end">
+                  <div className="grid grid-cols-5 gap-4 px-4 font-bold text-slate-400 items-end">
                     <div className="col-span-2">Name</div>
-                    <div>Width</div>
-                    <div>Height</div>
-                    <div>Depth</div>
-                    <div className="text-right">Actions</div>
+                    <div className="col-span-3 flex flex-col">
+                      <div className="text-center">Default Dimensions</div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>Width</div>
+                        <div>Height</div>
+                        <div>Depth</div>
+                      </div>
+                    </div>
+                    {/* <div className="text-right">Actions</div> */}
                   </div>
 
                   {localTypes
-                    .filter((t) => !t.is_active)
+                    .filter((t) => t.is_active)
                     .map((type) => (
-                      <div
-                        key={type.team_cabinet_type_id}
-                        className="grid grid-cols-6 gap-4 items-center bg-slate-800 p-2 rounded-md text-slate-500"
-                      >
-                        <div className="col-span-2">{type.cabinet_type_name}</div>
-                        <div className="">{type.default_width}</div>
-                        <div className="">{type.default_height}</div>
-                        <div className="">{type.default_depth}</div>
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => toggleActiveState(type.team_cabinet_type_id)}
-                            className="p-2 text-slate-400 hover:text-white"
-                          >
-                            Reactivate
-                          </button>
-                        </div>
+                      <div key={type.team_cabinet_type_id}>
+                        <CabinetTypeCard
+                          type={type}
+                          onInputChange={handleInputChange}
+                          onRemove={() =>
+                            toggleActiveState(type.team_cabinet_type_id)
+                          }
+                          errors={validationErrors[type.team_cabinet_type_id]}
+                        />
                       </div>
                     ))}
                 </div>
               </SettingsSection>
-            )}
-          </>
-        )}
-      </div>
 
-      <div className="z-10 bg-slate-800 py-4 sticky top-0 z-10">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-200">
-            Manage Cabinet Anchors - Time (hours)
-          </h2>
+              {localTypes.some((t) => !t.is_active) && (
+                <SettingsSection title="Inactive Cabinet Types">
+                  <div className="space-y-2 p-1">
+                    <div className="grid grid-cols-6 gap-4 px-4 font-bold text-slate-400 items-end">
+                      <div className="col-span-2">Name</div>
+                      <div>Width</div>
+                      <div>Height</div>
+                      <div>Depth</div>
+                      <div className="text-right">Actions</div>
+                    </div>
+
+                    {localTypes
+                      .filter((t) => !t.is_active)
+                      .map((type) => (
+                        <div
+                          key={type.team_cabinet_type_id}
+                          className="grid grid-cols-6 gap-4 items-center bg-slate-800 p-2 rounded-md text-slate-500"
+                        >
+                          <div className="col-span-2">
+                            {type.cabinet_type_name}
+                          </div>
+                          <div className="">{type.default_width}</div>
+                          <div className="">{type.default_height}</div>
+                          <div className="">{type.default_depth}</div>
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() =>
+                                toggleActiveState(type.team_cabinet_type_id)
+                              }
+                              className="p-2 text-slate-400 hover:text-white"
+                            >
+                              Reactivate
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </SettingsSection>
+              )}
+            </>
+          )}
         </div>
-      </div>
 
-      {localTypes
-        .filter((t) => t.is_active && !t.isNew)
-        .map((type) => (
-          <SettingsSection key={type.team_cabinet_type_id} title={type.cabinet_type_name}>
-            <CabinetAnchorsTable
-              cabinetTypeId={type.cabinet_type_id}
-              anchors={localAnchors[type.cabinet_type_id] || []}
-              errors={anchorErrors[type.cabinet_type_id] || {}}
-              onAnchorsChange={(anchors) =>
-                handleAnchorChange(type.cabinet_type_id, anchors)
-              }
-            />
-          </SettingsSection>
-        ))}
+        {/* <div className="z-10 bg-slate-800 py-4 sticky top-0 z-10">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-200">
+              Manage Cabinet Anchors - Time (hours)
+            </h2>
+          </div>
+        </div>
+
+        {localTypes
+          .filter((t) => t.is_active && !t.isNew)
+          .map((type) => (
+            <SettingsSection
+              key={type.team_cabinet_type_id}
+              title={type.cabinet_type_name}
+            >
+              <CabinetAnchorsTable
+                cabinetTypeId={type.cabinet_type_id}
+                anchors={localAnchors[type.cabinet_type_id] || []}
+                errors={anchorErrors[type.cabinet_type_id] || {}}
+                onAnchorsChange={(anchors) =>
+                  handleAnchorChange(type.cabinet_type_id, anchors)
+                }
+              />
+            </SettingsSection>
+          ))} */}
+      </div>
     </div>
   );
 });

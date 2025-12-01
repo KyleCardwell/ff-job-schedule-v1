@@ -36,16 +36,41 @@ export const fetchHinges = () => async (dispatch, getState) => {
     const state = getState();
     const teamId = state.auth.teamId;
 
+    // Fetch hinges with embedded services
     const { data, error } = await supabase
       .from("hardware_hinges")
-      .select("id, name, actual_cost, price")
+      .select(`
+        *,
+        hardware_services!hardware_hinges_id(
+          id,
+          team_service_id,
+          time_per_unit,
+          team_services!inner(
+            service_id,
+            services!inner(name)
+          )
+        )
+      `)
       .eq("team_id", teamId)
       .order("name", { ascending: true });
 
     if (error) throw error;
 
-    dispatch(fetchHingesSuccess(data));
-    return { data, error };
+    // Transform to flatten services array
+    const hingesWithServices = (data || []).map(hinge => ({
+      ...hinge,
+      services: (hinge.hardware_services || []).map(hs => ({
+        id: hs.id,
+        team_service_id: hs.team_service_id,
+        service_id: hs.team_services?.service_id,
+        service_name: hs.team_services?.services?.name,
+        time_per_unit: hs.time_per_unit
+      })),
+      hardware_services: undefined // Remove the nested structure
+    }));
+
+    dispatch(fetchHingesSuccess(hingesWithServices));
+    return { data: hingesWithServices, error };
   } catch (error) {
     console.error("Error fetching hinges:", error);
     dispatch(fetchHardwareError(error.message));
@@ -79,8 +104,8 @@ export const saveHinges =
         if (item.markedForDeletion) return; // Skip marked for deletion
 
         if (item.isNew) {
-          // New item - remove metadata fields
-          const { id, isNew, markedForDeletion, ...itemData } = item;
+          // New item - remove metadata fields and services (computed field)
+          const { id, isNew, markedForDeletion, services, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
           // Check if changed
@@ -88,7 +113,7 @@ export const saveHinges =
             (orig) => orig.id === item.id
           );
           if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, ...itemData } = item;
+            const { isNew, markedForDeletion, services, ...itemData } = item;
             toUpdate.push({ ...itemData, updated_at: new Date() });
           }
         }
@@ -147,16 +172,41 @@ export const fetchPulls = () => async (dispatch, getState) => {
     const state = getState();
     const teamId = state.auth.teamId;
 
+    // Fetch pulls with embedded services
     const { data, error } = await supabase
       .from("hardware_pulls")
-      .select("id, name, price, actual_cost")
+      .select(`
+        *,
+        hardware_services!hardware_pulls_id(
+          id,
+          team_service_id,
+          time_per_unit,
+          team_services!inner(
+            service_id,
+            services!inner(name)
+          )
+        )
+      `)
       .eq("team_id", teamId)
       .order("name", { ascending: true });
 
     if (error) throw error;
 
-    dispatch(fetchPullsSuccess(data));
-    return { data, error };
+    // Transform to flatten services array
+    const pullsWithServices = (data || []).map(pull => ({
+      ...pull,
+      services: (pull.hardware_services || []).map(hs => ({
+        id: hs.id,
+        team_service_id: hs.team_service_id,
+        service_id: hs.team_services?.service_id,
+        service_name: hs.team_services?.services?.name,
+        time_per_unit: hs.time_per_unit
+      })),
+      hardware_services: undefined // Remove the nested structure
+    }));
+
+    dispatch(fetchPullsSuccess(pullsWithServices));
+    return { data: pullsWithServices, error };
   } catch (error) {
     console.error("Error fetching pulls:", error);
     dispatch(fetchHardwareError(error.message));
@@ -190,14 +240,14 @@ export const savePulls =
         if (item.markedForDeletion) return;
 
         if (item.isNew) {
-          const { id, isNew, markedForDeletion, ...itemData } = item;
+          const { id, isNew, markedForDeletion, services, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
           const originalItem = originalItems.find(
             (orig) => orig.id === item.id
           );
           if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, ...itemData } = item;
+            const { isNew, markedForDeletion, services, ...itemData } = item;
             toUpdate.push({ ...itemData, updated_at: new Date() });
           }
         }
@@ -256,16 +306,41 @@ export const fetchSlides = () => async (dispatch, getState) => {
     const state = getState();
     const teamId = state.auth.teamId;
 
+    // Fetch slides with embedded services
     const { data, error } = await supabase
       .from("hardware_slides")
-      .select("id, name, price, actual_cost")
+      .select(`
+        *,
+        hardware_services!hardware_slides_id(
+          id,
+          team_service_id,
+          time_per_unit,
+          team_services!inner(
+            service_id,
+            services!inner(name)
+          )
+        )
+      `)
       .eq("team_id", teamId)
       .order("name", { ascending: true });
 
     if (error) throw error;
 
-    dispatch(fetchSlidesSuccess(data));
-    return { data, error };
+    // Transform to flatten services array
+    const slidesWithServices = (data || []).map(slide => ({
+      ...slide,
+      services: (slide.hardware_services || []).map(hs => ({
+        id: hs.id,
+        team_service_id: hs.team_service_id,
+        service_id: hs.team_services?.service_id,
+        service_name: hs.team_services?.services?.name,
+        time_per_unit: hs.time_per_unit
+      })),
+      hardware_services: undefined // Remove the nested structure
+    }));
+
+    dispatch(fetchSlidesSuccess(slidesWithServices));
+    return { data: slidesWithServices, error };
   } catch (error) {
     console.error("Error fetching slides:", error);
     dispatch(fetchHardwareError(error.message));
@@ -299,14 +374,14 @@ export const saveSlides =
         if (item.markedForDeletion) return;
 
         if (item.isNew) {
-          const { id, isNew, markedForDeletion, ...itemData } = item;
+          const { id, isNew, markedForDeletion, services, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
           const originalItem = originalItems.find(
             (orig) => orig.id === item.id
           );
           if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, ...itemData } = item;
+            const { isNew, markedForDeletion, services, ...itemData } = item;
             toUpdate.push({ ...itemData, updated_at: new Date() });
           }
         }
@@ -351,6 +426,126 @@ export const saveSlides =
     } catch (error) {
       console.error("Error saving slides:", error);
       dispatch(fetchHardwareError(error.message));
+      return { success: false, error: error.message };
+    }
+  };
+
+// ------------ Hardware Services ------------
+// --------------------------------------------
+
+// Save hardware services (add, update, delete)
+export const saveHardwareServices =
+  (hardwareType, hardwareId, services) => async (dispatch, getState) => {
+    dispatch({ type: hardware.SAVE_HARDWARE_SERVICES_START });
+    try {
+      const state = getState();
+      const teamId = state.auth.teamId;
+      
+      // Get all team services for this team
+      const { data: teamServices, error: teamServicesError } = await supabase
+        .from("team_services")
+        .select("id, service_id")
+        .eq("team_id", teamId);
+      
+      if (teamServicesError) throw teamServicesError;
+
+      // Map hardware type to column name
+      const hardwareColumn = `hardware_${hardwareType}s_id`;
+
+      // Get existing hardware services for this hardware item
+      const { data: existingServices, error: fetchError } = await supabase
+        .from("hardware_services")
+        .select("*")
+        .eq(hardwareColumn, hardwareId);
+
+      if (fetchError) throw fetchError;
+
+      const errors = [];
+      const toUpsert = [];
+      const toDelete = [];
+
+      // Process each service
+      services.forEach((service) => {
+        const teamService = teamServices.find(
+          (ts) => ts.service_id === service.service_id
+        );
+        
+        if (!teamService) return;
+
+        const timeValue = parseFloat(service.time_per_unit);
+        
+        // If time is 0 or empty, mark for deletion if it exists
+        if (!timeValue || timeValue === 0) {
+          const existing = existingServices?.find(
+            (es) => es.team_service_id === teamService.id
+          );
+          if (existing) {
+            toDelete.push(existing.id);
+          }
+        } else {
+          // Add or update
+          const existing = existingServices?.find(
+            (es) => es.team_service_id === teamService.id
+          );
+          
+          // Map hardware type to correct column
+          const hardwareColumn = `hardware_${hardwareType}s_id`;
+          
+          toUpsert.push({
+            id: existing?.id,
+            [hardwareColumn]: hardwareId,
+            team_service_id: teamService.id,
+            time_per_unit: timeValue,
+          });
+        }
+      });
+
+      // Delete services with 0 time
+      for (const id of toDelete) {
+        const { error } = await supabase
+          .from("hardware_services")
+          .delete()
+          .eq("id", id);
+        if (error) errors.push(`Delete failed: ${error.message}`);
+      }
+
+      // Upsert services (insert or update)
+      if (toUpsert.length > 0) {
+        for (const service of toUpsert) {
+          if (service.id) {
+            // Update existing
+            const { id, ...updateData } = service;
+            const { error } = await supabase
+              .from("hardware_services")
+              .update(updateData)
+              .eq("id", id);
+            if (error) errors.push(`Update failed: ${error.message}`);
+          } else {
+            // Insert new
+            const { id, ...insertData } = service;
+            const { error } = await supabase
+              .from("hardware_services")
+              .insert(insertData);
+            if (error) errors.push(`Insert failed: ${error.message}`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(errors.join("; "));
+      }
+
+      // Don't refetch here - let the caller decide when to refetch
+      // This prevents multiple flashes when saving services for multiple items
+      
+      dispatch({ type: hardware.SAVE_HARDWARE_SERVICES_SUCCESS });
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving hardware services:", error);
+      dispatch({
+        type: hardware.SAVE_HARDWARE_SERVICES_ERROR,
+        payload: error.message,
+      });
       return { success: false, error: error.message };
     }
   };

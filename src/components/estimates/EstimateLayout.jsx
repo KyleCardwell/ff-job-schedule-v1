@@ -4,6 +4,7 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
+import { fetchAccessoriesCatalog } from "../../redux/actions/accessories.js";
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
@@ -12,8 +13,11 @@ import {
   setCurrentEstimate,
   updateTaskOrder,
 } from "../../redux/actions/estimates";
+import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
+import { fetchPartsList } from "../../redux/actions/partsList.js";
+import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
 import { PATHS } from "../../utils/constants";
 import ReorderModal from "../common/ReorderModal.jsx";
 
@@ -80,6 +84,10 @@ const EstimateLayout = () => {
     dispatch(fetchCabinetTypes());
     dispatch(fetchCabinetAnchors())
     dispatch(fetchTeamCabinetStyles())
+    dispatch(fetchPartsList())
+    dispatch(fetchPartsListAnchors())
+    dispatch(fetchFinishes())
+    dispatch(fetchAccessoriesCatalog())
   }, []);
 
   useEffect(() => {
@@ -255,6 +263,14 @@ const EstimateLayout = () => {
               ? {
                   face_mat: templateSection.face_mat,
                   box_mat: templateSection.box_mat,
+                  box_finish: templateSection.box_finish,
+                  face_finish: templateSection.face_finish,
+                  cabinet_style_id: templateSection.cabinet_style_id,
+                  hinge_id: templateSection.hinge_id,
+                  slide_id: templateSection.slide_id,
+                  door_pull_id: templateSection.door_pull_id,
+                  drawer_pull_id: templateSection.drawer_pull_id,
+                  drawer_box_mat: templateSection.drawer_box_mat,
                   section_data: {
                     ...templateSection.section_data,
                   },

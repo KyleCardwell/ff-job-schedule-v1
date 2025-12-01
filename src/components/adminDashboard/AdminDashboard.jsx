@@ -15,9 +15,11 @@ import {
 } from "../../assets/tailwindConstants";
 import useFeatureToggles from "../../hooks/useFeatureToggles.js";
 import { PATHS } from "../../utils/constants";
+import AccessoriesSettings from "../manageSettings/AccessoriesSettings.jsx";
 import CabinetStyleSettings from "../manageSettings/CabinetStyleSettings.jsx";
 import CabinetTypeSettings from "../manageSettings/CabinetTypeSettings.jsx";
 import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
+import FinishSettings from "../manageSettings/FinishSettings.jsx";
 import HardwareSettings from "../manageSettings/HardwareSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
@@ -50,96 +52,104 @@ const AdminDashboard = () => {
       label: "Services",
       path: PATHS.MANAGE_SERVICES,
       component: ServiceSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[720px]"},
       requiresAdmin: true,
-      maxWidthClass: "max-w-[720px]",
     },
     {
       id: "employees",
       label: "Employees",
       path: PATHS.MANAGE_EMPLOYEES,
       component: EmployeeSettings,
-      props: { workdayHours, dayWidth },
+      props: { workdayHours, dayWidth, maxWidthClass: "max-w-[720px]" },
       requiresAdmin: true,
-      maxWidthClass: "max-w-[720px]",
     },
     {
       id: "team",
       label: "Team",
       path: PATHS.MANAGE_TEAM,
       component: TeamSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[1000px]"},
       requiresAdmin: true,
       requiresPermission: "can_manage_teams",
-      maxWidthClass: "max-w-[1000px]",
     },
     {
       id: "chart",
       label: "Chart",
       path: PATHS.MANAGE_CHART,
       component: ManageChartSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[720px]"},
       requiresAdmin: true,
-      maxWidthClass: "max-w-[720px]",
     },
     {
       id: "holidays",
       label: "Holidays",
       path: PATHS.MANAGE_HOLIDAYS,
       component: HolidaySettings,
-      props: { workdayHours, dayWidth },
+      props: { workdayHours, dayWidth, maxWidthClass: "max-w-[720px]" },
       requiresAdmin: true,
-      maxWidthClass: "max-w-[720px]",
     },
     {
       id: "cabinet-types",
-      label: "Cabinet Types",
+      label: "Cabinet Default Dimensions",
       path: PATHS.MANAGE_CABINET_TYPES,
       component: CabinetTypeSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[720px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
-      maxWidthClass: "max-w-[720px]",
     },
     {
       id: "cabinet-styles",
-      label: "Cabinet Styles",
+      label: "Cabinet Style Reveals",
       path: PATHS.MANAGE_CABINET_STYLES,
       component: CabinetStyleSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[720px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
-      maxWidthClass: "max-w-[720px]",
     },
     {
       id: "parts-list",
-      label: "Parts List",
+      label: "Parts Time",
       path: PATHS.MANAGE_PARTS_LIST,
       component: PartsListSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[1000px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
-      maxWidthClass: "max-w-[1000px]",
     },
     {
       id: "materials",
       label: "Materials",
       path: PATHS.MANAGE_MATERIALS,
       component: MaterialsSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[1200px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
-      maxWidthClass: "max-w-[1200px]",
+    },
+    {
+      id: "finishes",
+      label: "Finishes",
+      path: PATHS.MANAGE_FINISHES,
+      component: FinishSettings,
+      props: {maxWidthClass: "max-w-[720px]"},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
     },
     {
       id: "hardware",
       label: "Hardware",
       path: PATHS.MANAGE_HARDWARE,
       component: HardwareSettings,
-      props: {},
+      props: {maxWidthClass: "max-w-[1080px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
-      maxWidthClass: "max-w-[720px]",
+    },
+    {
+      id: "accessories",
+      label: "Accessories",
+      path: PATHS.MANAGE_ACCESSORIES,
+      component: AccessoriesSettings,
+      props: {maxWidthClass: "max-w-[1000px]"},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
     },
   ];
 
@@ -243,10 +253,11 @@ const AdminDashboard = () => {
         <div className="flex-1 overflow-auto">
           <div className="flex justify-center">
             <div
-              className={`w-full ${
-                tabs.find((tab) => tab.id === getCurrentTab())?.maxWidthClass ||
-                "max-w-[720px]"
-              }`}
+              // className={`w-full ${
+              //   tabs.find((tab) => tab.id === getCurrentTab())?.maxWidthClass ||
+              //   "max-w-[720px]"
+              // }`}
+              className="w-full"
             >
               <Routes>
                 <Route
