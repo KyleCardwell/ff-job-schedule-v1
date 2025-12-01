@@ -14,9 +14,6 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const materials = useSelector((state) => state.materials);
   const hardware = useSelector((state) => state.hardware);
   const { styles: cabinetStyles } = useSelector((state) => state.cabinetStyles);
-  const estimateData = currentEstimate?.estimate_data;
-  const sectionData =
-    section?.section_data || currentEstimate?.estimateDefault || {};
   const finishes = useSelector((state) => state.finishes);
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
@@ -40,20 +37,20 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     boxFinish: section.box_finish || [],
     faceMaterial: section.face_mat || "",
     faceFinish: section.face_finish || [],
-    doorStyle: sectionData.doorStyle || "",
-    drawerFrontStyle: sectionData.drawerFrontStyle || "",
-    doorInsideMolding: sectionData.doorInsideMolding || false,
-    doorOutsideMolding: sectionData.doorOutsideMolding || false,
-    drawerInsideMolding: sectionData.drawerInsideMolding || false,
-    drawerOutsideMolding: sectionData.drawerOutsideMolding || false,
-    doorReededPanel: sectionData.doorReededPanel || false,
-    drawerReededPanel: sectionData.drawerReededPanel || false,
+    doorStyle: section.door_style || "",
+    drawerFrontStyle: section.drawer_front_style || "",
+    doorInsideMolding: section.door_inside_molding || false,
+    doorOutsideMolding: section.door_outside_molding || false,
+    drawerInsideMolding: section.drawer_inside_molding || false,
+    drawerOutsideMolding: section.drawer_outside_molding || false,
+    doorReededPanel: section.door_reeded_panel || false,
+    drawerReededPanel: section.drawer_reeded_panel || false,
     hinge_id: section.hinge_id || "",
     slide_id: section.slide_id || "",
     door_pull_id: section.door_pull_id || "",
     drawer_pull_id: section.drawer_pull_id || "",
     drawer_box_mat: section.drawer_box_mat || "",
-    notes: sectionData.notes || "",
+    notes: section.notes || "",
     quantity: section.quantity ?? 1,
     profit: section.profit ?? "",
     commission: section.commission ?? "",

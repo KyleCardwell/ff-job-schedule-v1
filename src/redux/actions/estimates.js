@@ -611,7 +611,7 @@ export const addSection = (estimateId, taskId, sectionData) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
-      // Extract fields that go in separate columns vs section_data
+      // Extract fields that go in separate columns (all fields now have dedicated columns)
       const { 
         boxMaterial, 
         faceMaterial, 
@@ -627,7 +627,15 @@ export const addSection = (estimateId, taskId, sectionData) => {
         profit,
         commission,
         discount,
-        ...restOfSectionData 
+        doorInsideMolding,
+        doorOutsideMolding,
+        drawerInsideMolding,
+        drawerOutsideMolding,
+        notes,
+        doorReededPanel,
+        drawerReededPanel,
+        doorStyle,
+        drawerFrontStyle,
       } = sectionData;
 
       // Create the new section
@@ -635,7 +643,7 @@ export const addSection = (estimateId, taskId, sectionData) => {
         .from("estimate_sections")
         .insert([
           {
-            section_data: restOfSectionData,
+            section_data: {},
             box_mat: boxMaterial !== undefined ? +boxMaterial : null,
             face_mat: faceMaterial !== undefined ? +faceMaterial : null,
             drawer_box_mat: drawer_box_mat !== undefined ? +drawer_box_mat : null,
@@ -650,6 +658,15 @@ export const addSection = (estimateId, taskId, sectionData) => {
             profit: profit != null ? +profit : null,
             commission: commission != null ? +commission : null,
             discount: discount != null ? +discount : null,
+            door_inside_molding: doorInsideMolding !== undefined ? doorInsideMolding : null,
+            door_outside_molding: doorOutsideMolding !== undefined ? doorOutsideMolding : null,
+            drawer_inside_molding: drawerInsideMolding !== undefined ? drawerInsideMolding : null,
+            drawer_outside_molding: drawerOutsideMolding !== undefined ? drawerOutsideMolding : null,
+            notes: notes || null,
+            door_reeded_panel: doorReededPanel !== undefined ? doorReededPanel : null,
+            drawer_reeded_panel: drawerReededPanel !== undefined ? drawerReededPanel : null,
+            door_style: doorStyle || null,
+            drawer_front_style: drawerFrontStyle || null,
             est_task_id: taskId,
           },
         ])
@@ -690,17 +707,11 @@ export const addSection = (estimateId, taskId, sectionData) => {
 
 // Update an existing section
 export const updateSection = (estimateId, taskId, sectionId, updates) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
-      const { currentEstimate } = getState().estimates;
-      const currentTask = currentEstimate?.tasks?.find(
-        (task) => task.est_task_id === taskId
-      );
-      const currentSections = currentTask?.sections || [];
-
-      // Extract fields that go in separate columns vs section_data
+      // Extract fields that go in separate columns (all fields now have dedicated columns)
       const {
         boxMaterial,
         faceMaterial,
@@ -716,7 +727,15 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         profit,
         commission,
         discount,
-        ...sectionData
+        doorInsideMolding,
+        doorOutsideMolding,
+        drawerInsideMolding,
+        drawerOutsideMolding,
+        notes,
+        doorReededPanel,
+        drawerReededPanel,
+        doorStyle,
+        drawerFrontStyle,
       } = updates;
 
       // Prepare the update payload for Supabase
@@ -738,14 +757,19 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(profit !== undefined && { profit: profit != null ? +profit : null }),
         ...(commission !== undefined && { commission: commission != null ? +commission : null }),
         ...(discount !== undefined && { discount: discount != null ? +discount : null }),
+        ...(doorInsideMolding !== undefined && { door_inside_molding: doorInsideMolding }),
+        ...(doorOutsideMolding !== undefined && { door_outside_molding: doorOutsideMolding }),
+        ...(drawerInsideMolding !== undefined && { drawer_inside_molding: drawerInsideMolding }),
+        ...(drawerOutsideMolding !== undefined && { drawer_outside_molding: drawerOutsideMolding }),
+        ...(notes !== undefined && { notes: notes || null }),
+        ...(doorReededPanel !== undefined && { door_reeded_panel: doorReededPanel }),
+        ...(drawerReededPanel !== undefined && { drawer_reeded_panel: drawerReededPanel }),
+        ...(doorStyle !== undefined && { door_style: doorStyle || null }),
+        ...(drawerFrontStyle !== undefined && { drawer_front_style: drawerFrontStyle || null }),
         updated_at: new Date(),
         
-        // Merge the rest into section_data
-        section_data: {
-          ...currentSections.find((s) => s.est_section_id === sectionId)
-            ?.section_data,
-          ...sectionData,
-        },
+        // section_data is now empty - all fields have dedicated columns
+        section_data: {},
       };
 
       const { data: updatedSection, error } = await supabase
