@@ -301,26 +301,32 @@ const EstimateSectionInfo = ({
                   );
                 })()}
                 {(() => {
-                  const { value: doorStyle, source } = getSectionEffectiveValue(
+                  const { value: doorStyle, source: doorStyleSource } = getSectionEffectiveValue(
                     showEstimateDefaults ? null : sectionData.doorStyle,
                     "default_door_style",
                     "default_door_style"
                   );
-                  const doorInsideMolding = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.doorInsideMolding,
+                  const { value: doorInsideMoldingValue, source: doorInsideMoldingSource } = getSectionEffectiveValue(
+                    showEstimateDefaults ? null : section?.door_inside_molding,
                     "default_door_inside_molding",
                     "default_door_inside_molding"
                   );
-                  const doorOutsideMolding = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.doorOutsideMolding,
+                  const { value: doorOutsideMoldingValue, source: doorOutsideMoldingSource } = getSectionEffectiveValue(
+                    showEstimateDefaults ? null : section?.door_outside_molding,
                     "default_door_outside_molding",
                     "default_door_outside_molding"
                   );
-                  const doorReededPanel = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.doorReededPanel,
+                  const { value: doorReededPanelValue, source: doorReededPanelSource } = getSectionEffectiveValue(
+                    showEstimateDefaults ? null : section?.door_reeded_panel,
                     "default_door_reeded_panel",
                     "default_door_reeded_panel"
                   );
+                  
+                  // Determine most specific source (section > estimate > team)
+                  const sources = [doorStyleSource, doorInsideMoldingSource, doorOutsideMoldingSource, doorReededPanelSource];
+                  const source = sources.includes('section') ? 'section' : 
+                                 sources.includes('estimate') ? 'estimate' : 'team';
+                  
                   return (
                     <>
                       <div className="text-slate-400 flex items-center gap-2">
@@ -330,9 +336,9 @@ const EstimateSectionInfo = ({
                       <div className="pl-5 mb-3">
                         {getDoorStyleName(
                           doorStyle,
-                          doorInsideMolding.value,
-                          doorOutsideMolding.value,
-                          doorReededPanel.value
+                          doorInsideMoldingValue,
+                          doorOutsideMoldingValue,
+                          doorReededPanelValue
                         ).map((line, i) => (
                           <div key={i} className="">
                             {line}
@@ -379,26 +385,32 @@ const EstimateSectionInfo = ({
                   );
                 })()}
                 {(() => {
-                  const { value: drawerFrontStyle, source } = getSectionEffectiveValue(
+                  const { value: drawerFrontStyle, source: drawerFrontStyleSource } = getSectionEffectiveValue(
                     showEstimateDefaults ? null : sectionData.drawerFrontStyle,
                     "default_drawer_front_style",
                     "default_drawer_front_style"
                   );
-                  const drawerInsideMolding = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.drawerInsideMolding,
+                  const { value: drawerInsideMoldingValue, source: drawerInsideMoldingSource } = getSectionEffectiveValue(
+                    showEstimateDefaults ? null : section?.drawer_inside_molding,
                     "default_drawer_inside_molding",
                     "default_drawer_inside_molding"
                   );
-                  const drawerOutsideMolding = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.drawerOutsideMolding,
+                  const { value: drawerOutsideMoldingValue, source: drawerOutsideMoldingSource } = getSectionEffectiveValue(
+                    showEstimateDefaults ? null : section?.drawer_outside_molding,
                     "default_drawer_outside_molding",
                     "default_drawer_outside_molding"
                   );
-                  const drawerReededPanel = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.drawerReededPanel,
+                  const { value: drawerReededPanelValue, source: drawerReededPanelSource } = getSectionEffectiveValue(
+                    showEstimateDefaults ? null : section?.drawer_reeded_panel,
                     "default_drawer_reeded_panel",
                     "default_drawer_reeded_panel"
                   );
+                  
+                  // Determine most specific source (section > estimate > team)
+                  const sources = [drawerFrontStyleSource, drawerInsideMoldingSource, drawerOutsideMoldingSource, drawerReededPanelSource];
+                  const source = sources.includes('section') ? 'section' : 
+                                 sources.includes('estimate') ? 'estimate' : 'team';
+                  
                   return (
                     <>
                       <div className="text-slate-400 flex items-center gap-2">
@@ -408,9 +420,9 @@ const EstimateSectionInfo = ({
                       <div className="pl-5 mb-3">
                         {getDrawerFrontStyleName(
                           drawerFrontStyle,
-                          drawerInsideMolding.value,
-                          drawerOutsideMolding.value,
-                          drawerReededPanel.value
+                          drawerInsideMoldingValue,
+                          drawerOutsideMoldingValue,
+                          drawerReededPanelValue
                         ).map((line, i) => (
                           <div key={i} className="">
                             {line}
