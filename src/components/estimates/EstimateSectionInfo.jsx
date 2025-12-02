@@ -2,6 +2,8 @@ import PropTypes from "prop-types";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 
+import { getEffectiveValue as getEffectiveValueUtil } from "../../utils/estimateDefaults";
+
 const EstimateSectionInfo = ({
   selectedTask,
   estimate_data,
@@ -10,6 +12,7 @@ const EstimateSectionInfo = ({
   onEditEstimateDefaults,
   selectedSectionId,
   currentEstimate,
+  showProjectInfo,
 }) => {
   const section = selectedSectionId
     ? selectedTask?.sections?.find(
@@ -21,17 +24,27 @@ const EstimateSectionInfo = ({
 
   const sectionData = section?.section_data || {};
   
-  // Determine if we should show estimate defaults (when no section is selected)
-  const showEstimateDefaults = !section && currentEstimate;
+  // Determine if we should show estimate defaults (only when Project Information is selected)
+  const showEstimateDefaults = showProjectInfo && !!currentEstimate;
   const NOT_SELECTED = "Not Selected";
   const NONE = "None";
 
   const { materials, hardware, finishes } = useSelector((state) => state);
 
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  const teamDefaults = useSelector((state) => state.teamEstimateDefaults.teamDefaults);
+
+  // Helper to get the effective value and source level
+  // Uses the utility function for consistency across the app
+  const getEffectiveValue = (estimateValue, teamDefaultKey) => {
+    const teamValue = teamDefaults?.[teamDefaultKey];
+    const result = getEffectiveValueUtil(null, estimateValue, teamValue);
+    // result is now { value, source: 'section' | 'estimate' | 'team' }
+    return result;
+  };
 
   const getTitle = () => {
-    if (!selectedTask) return "Select a Room";
+    if (!selectedTask) return "Estimate Defaults";
     if (showEstimateDefaults) return "Estimate Defaults";
     if (selectedTask.sections?.length <= 1)
       return `${selectedTask.est_task_name} Details`;
@@ -136,77 +149,281 @@ const EstimateSectionInfo = ({
         <h2 className="text-lg font-semibold text-slate-200">{getTitle()}</h2>
       </div>
 
-      {selectedTask && (
+      {(selectedTask || showEstimateDefaults) && (
         <>
           <div className="flex-1 overflow-y-auto p-4 text-left text-slate-200">
             {showEstimateDefaults ? (
               // Show estimate defaults
               <div className="space-y-2.5">
                 <div className="text-sm text-slate-400 mb-4 italic">
-                  Defaults for new sections in this estimate. Empty values use team defaults.
+                  Defaults for new sections in this estimate.
                 </div>
-                <div className="text-slate-400">Style:</div>
-                <div className="pl-5 mb-3">
-                  {getStyleName(currentEstimate.default_cabinet_style_id) || "Use Team Default"}
+                <div className="text-xs text-slate-500 mb-4 space-y-1">
+                  <div><span className="text-teal-400">●</span> Estimate override</div>
+                  <div><span className="text-amber-400">●</span> Team default</div>
                 </div>
-                <div className="text-slate-400">Box Material:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_box_mat ? getBoxMaterialName(currentEstimate.default_box_mat) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Box Finish:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_box_finish ? getBoxFinishDisplay(currentEstimate.default_box_mat, currentEstimate.default_box_finish) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Face Material:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_face_mat ? getFaceMaterialName(currentEstimate.default_face_mat) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Face Finish:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_face_finish ? getFaceFinishDisplay(currentEstimate.default_face_mat, currentEstimate.default_face_finish) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Door Style:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_door_style ? getDoorStyleName(
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_cabinet_style_id,
+                    'default_cabinet_style_id'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Style:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getStyleName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_box_mat,
+                    'default_box_mat'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Box Material:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getBoxMaterialName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const boxMat = getEffectiveValue(
+                    currentEstimate.default_box_mat,
+                    'default_box_mat'
+                  );
+                  const { value: boxFinish, source } = getEffectiveValue(
+                    currentEstimate.default_box_finish,
+                    'default_box_finish'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Box Finish:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getBoxFinishDisplay(boxMat.value, boxFinish)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_face_mat,
+                    'default_face_mat'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Face Material:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getFaceMaterialName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const faceMat = getEffectiveValue(
+                    currentEstimate.default_face_mat,
+                    'default_face_mat'
+                  );
+                  const { value: faceFinish, source } = getEffectiveValue(
+                    currentEstimate.default_face_finish,
+                    'default_face_finish'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Face Finish:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getFaceFinishDisplay(faceMat.value, faceFinish)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value: doorStyle, source } = getEffectiveValue(
                     currentEstimate.default_door_style,
+                    'default_door_style'
+                  );
+                  const doorInsideMolding = getEffectiveValue(
                     currentEstimate.default_door_inside_molding,
+                    'default_door_inside_molding'
+                  );
+                  const doorOutsideMolding = getEffectiveValue(
                     currentEstimate.default_door_outside_molding,
-                    currentEstimate.default_door_reeded_panel
-                  ).map((line, i) => (
-                    <div key={i}>{line}</div>
-                  )) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Door Hinges:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_hinge_id ? getDoorHingeName(currentEstimate.default_hinge_id) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Door Pulls:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_door_pull_id ? getPullName(currentEstimate.default_door_pull_id) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Drawer Front Style:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_drawer_front_style ? getDrawerFrontStyleName(
+                    'default_door_outside_molding'
+                  );
+                  const doorReededPanel = getEffectiveValue(
+                    currentEstimate.default_door_reeded_panel,
+                    'default_door_reeded_panel'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Door Style:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDoorStyleName(
+                          doorStyle,
+                          doorInsideMolding.value,
+                          doorOutsideMolding.value,
+                          doorReededPanel.value
+                        ).map((line, i) => (
+                          <div key={i}>{line}</div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_hinge_id,
+                    'default_hinge_id'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Door Hinges:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDoorHingeName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_door_pull_id,
+                    'default_door_pull_id'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Door Pulls:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getPullName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value: drawerFrontStyle, source } = getEffectiveValue(
                     currentEstimate.default_drawer_front_style,
+                    'default_drawer_front_style'
+                  );
+                  const drawerInsideMolding = getEffectiveValue(
                     currentEstimate.default_drawer_inside_molding,
+                    'default_drawer_inside_molding'
+                  );
+                  const drawerOutsideMolding = getEffectiveValue(
                     currentEstimate.default_drawer_outside_molding,
-                    currentEstimate.default_drawer_reeded_panel
-                  ).map((line, i) => (
-                    <div key={i}>{line}</div>
-                  )) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Drawer Boxes:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_drawer_box_mat ? getDrawerBoxName(currentEstimate.default_drawer_box_mat) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Drawer Slides:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_slide_id ? getDrawerSlideName(currentEstimate.default_slide_id) : "Use Team Default"}
-                </div>
-                <div className="text-slate-400">Drawer Pulls:</div>
-                <div className="pl-5 mb-3">
-                  {currentEstimate.default_drawer_pull_id ? getPullName(currentEstimate.default_drawer_pull_id) : "Use Team Default"}
-                </div>
+                    'default_drawer_outside_molding'
+                  );
+                  const drawerReededPanel = getEffectiveValue(
+                    currentEstimate.default_drawer_reeded_panel,
+                    'default_drawer_reeded_panel'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Drawer Front Style:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDrawerFrontStyleName(
+                          drawerFrontStyle,
+                          drawerInsideMolding.value,
+                          drawerOutsideMolding.value,
+                          drawerReededPanel.value
+                        ).map((line, i) => (
+                          <div key={i}>{line}</div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_drawer_box_mat,
+                    'default_drawer_box_mat'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Drawer Boxes:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDrawerBoxName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_slide_id,
+                    'default_slide_id'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Drawer Slides:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDrawerSlideName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const { value, source } = getEffectiveValue(
+                    currentEstimate.default_drawer_pull_id,
+                    'default_drawer_pull_id'
+                  );
+                  const sourceColor = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={`${sourceColor}`}>●</span>
+                        <span>Drawer Pulls:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getPullName(value)}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : (
               // Show section details
@@ -288,24 +505,35 @@ const EstimateSectionInfo = ({
           </div>
 
           <div className="flex flex-col">
-            <button
-              onClick={section ? () => onEditSection(section) : onEditEstimateDefaults}
-              className="mt-auto w-full py-3 px-4 text-sm font-medium text-slate-200 hover:text-slate-100 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
-            >
-              {section ? 'Edit Section Details' : 'Edit Estimate Defaults'}
-            </button>
+            {showEstimateDefaults ? (
+              <button
+                onClick={onEditEstimateDefaults}
+                className="mt-auto w-full py-3 px-4 text-sm font-medium text-slate-200 hover:text-slate-100 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
+              >
+                Edit Estimate Defaults
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => onEditSection(section)}
+                  className="mt-auto w-full py-3 px-4 text-sm font-medium text-slate-200 hover:text-slate-100 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
+                >
+                  Edit Section Details
+                </button>
 
-            <button
-              onClick={() => {
-                // If there are sections, pass the last section's data as a template
-                const lastSection =
-                  selectedTask?.sections?.[selectedTask.sections.length - 1];
-                onAddSection(lastSection);
-              }}
-              className="mt-auto w-full py-3 px-4 text-sm font-medium text-teal-400 hover:text-teal-300 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
-            >
-              Add Section
-            </button>
+                <button
+                  onClick={() => {
+                    // If there are sections, pass the last section's data as a template
+                    const lastSection =
+                      selectedTask?.sections?.[selectedTask.sections.length - 1];
+                    onAddSection(lastSection);
+                  }}
+                  className="mt-auto w-full py-3 px-4 text-sm font-medium text-teal-400 hover:text-teal-300 border-t border-slate-700 bg-slate-800 hover:bg-slate-700"
+                >
+                  Add Section
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -321,6 +549,7 @@ EstimateSectionInfo.propTypes = {
   onEditEstimateDefaults: PropTypes.func,
   onEditSection: PropTypes.func,
   selectedSectionId: PropTypes.number,
+  showProjectInfo: PropTypes.bool,
 };
 
 export default EstimateSectionInfo;

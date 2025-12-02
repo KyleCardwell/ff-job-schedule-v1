@@ -77,6 +77,23 @@ const EstimateSectionForm = ({
     return baseName;
   };
 
+  // Get placeholder text based on edit type
+  const getPlaceholder = (itemName) => {
+    if (editType === "section") {
+      return `Match Estimate Defaults`;
+    } else if (editType === "estimate") {
+      return `Team Default`;
+    } else {
+      return `Select ${itemName}`;
+    }
+  };
+
+  // Get select value for boolean fields (converts boolean to string for select, handles null)
+  const getBooleanSelectValue = (value) => {
+    if (value === null || value === undefined) return "";
+    return value ? "true" : "false";
+  };
+
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
@@ -226,6 +243,16 @@ const EstimateSectionForm = ({
     // Handle adjustment fields - convert to number but allow empty string to become null
     const adjustmentFields = ["quantity", "profit", "commission", "discount"];
 
+    // Handle boolean fields from select boxes
+    const booleanFields = [
+      "doorInsideMolding",
+      "doorOutsideMolding",
+      "doorReededPanel",
+      "drawerInsideMolding",
+      "drawerOutsideMolding",
+      "drawerReededPanel",
+    ];
+
     let processedValue = value;
     if (numericFields.includes(name) && value !== "") {
       processedValue = +value;
@@ -233,6 +260,15 @@ const EstimateSectionForm = ({
       // For adjustment fields: empty string stays as empty string in state,
       // will be converted to null or number on submit
       processedValue = value;
+    } else if (booleanFields.includes(name)) {
+      // For boolean fields: convert string values to boolean or null
+      if (value === "") {
+        processedValue = null;
+      } else if (value === "true") {
+        processedValue = true;
+      } else if (value === "false") {
+        processedValue = false;
+      }
     }
 
     setFormData({
@@ -387,9 +423,18 @@ const EstimateSectionForm = ({
             default_door_pull_id: formData.door_pull_id || null,
             default_drawer_pull_id: formData.drawer_pull_id || null,
             default_drawer_box_mat: formData.drawer_box_mat || null,
-            default_profit: formData.profit === "" || formData.profit == null ? null : Number(formData.profit),
-            default_commission: formData.commission === "" || formData.commission == null ? null : Number(formData.commission),
-            default_discount: formData.discount === "" || formData.discount == null ? null : Number(formData.discount),
+            default_profit:
+              formData.profit === "" || formData.profit == null
+                ? null
+                : Number(formData.profit),
+            default_commission:
+              formData.commission === "" || formData.commission == null
+                ? null
+                : Number(formData.commission),
+            default_discount:
+              formData.discount === "" || formData.discount == null
+                ? null
+                : Number(formData.discount),
           };
 
           await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
@@ -420,9 +465,18 @@ const EstimateSectionForm = ({
             default_door_pull_id: formData.door_pull_id || null,
             default_drawer_pull_id: formData.drawer_pull_id || null,
             default_drawer_box_mat: formData.drawer_box_mat || null,
-            default_profit: formData.profit === "" || formData.profit == null ? null : Number(formData.profit),
-            default_commission: formData.commission === "" || formData.commission == null ? null : Number(formData.commission),
-            default_discount: formData.discount === "" || formData.discount == null ? null : Number(formData.discount),
+            default_profit:
+              formData.profit === "" || formData.profit == null
+                ? null
+                : Number(formData.profit),
+            default_commission:
+              formData.commission === "" || formData.commission == null
+                ? null
+                : Number(formData.commission),
+            default_discount:
+              formData.discount === "" || formData.discount == null
+                ? null
+                : Number(formData.discount),
           };
 
           await dispatch(
@@ -590,42 +644,44 @@ const EstimateSectionForm = ({
   return (
     <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
       {editType !== "section" && (
-        <div className="mb-4">
+        <div className="mb-2">
           <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
           {editType === "estimate" && (
-            <p className="text-sm text-slate-600 mt-1">
+            <p className="text-sm text-slate-600">
               Leave fields empty to use team defaults. Set values to override
               for this estimate only.
             </p>
           )}
           {editType === "team" && (
-            <p className="text-sm text-slate-600 mt-1">
+            <p className="text-sm text-slate-600">
               These defaults will be used for all new estimates. All fields are
               required.
             </p>
           )}
         </div>
       )}
-      
+
       {/* Error Message Display */}
       {saveError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800 font-medium">Error saving defaults:</p>
+          <p className="text-sm text-red-800 font-medium">
+            Error saving defaults:
+          </p>
           <p className="text-sm text-red-700 mt-1">{saveError}</p>
         </div>
       )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
+
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Cabinet Style Section */}
-        <div className="grid grid-cols-[4fr_1fr] gap-3">
-          <div className="space-y-3">
-            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+        <div className="grid grid-cols-[5fr_1fr] gap-2">
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
               <h3 className="text-md font-medium text-slate-700">
                 Cabinet Style
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-2 items-center">
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                <div className="grid grid-cols-2 gap-1 items-center">
+                  <div className="grid grid-cols-[1fr_3fr] gap-1 items-center">
                     <label
                       htmlFor="style"
                       className="text-right text-sm font-medium text-slate-700"
@@ -641,7 +697,7 @@ const EstimateSectionForm = ({
                         errors.style ? "border-red-500" : "border-slate-300"
                       } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                     >
-                      <option value="">Select style...</option>
+                      <option value="">{getPlaceholder("style")}</option>
                       {STYLE_OPTIONS.map((style) => (
                         <option
                           key={style.cabinet_style_id}
@@ -662,13 +718,13 @@ const EstimateSectionForm = ({
             </div>
 
             {/* Cabinet Box Material Section (with Finish)*/}
-            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
               <h3 className="text-md font-medium text-slate-700">
                 Cabinet Box
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-2 items-center">
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                <div className="grid grid-cols-2 gap-1 items-center">
+                  <div className="grid grid-cols-[1fr_3fr] gap-1 items-center">
                     <label
                       htmlFor="boxMaterial"
                       className="text-right text-sm font-medium text-slate-700"
@@ -686,7 +742,7 @@ const EstimateSectionForm = ({
                           : "border-slate-300"
                       } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                     >
-                      <option value="">Select interior material...</option>
+                      <option value="">{getPlaceholder("box material")}</option>
                       {BOX_MATERIAL_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>
                           {`${option.name} - $${option.sheet_price}/sheet`}
@@ -708,11 +764,11 @@ const EstimateSectionForm = ({
                   </div>
                   {/* Box Finish Options */}
                   <div className="col-span-2">
-                    <div className="grid grid-cols-[1fr_7fr] gap-2 items-center">
+                    <div className="grid grid-cols-[1fr_7fr] gap-1 items-center">
                       <label className="text-right text-sm font-medium text-slate-700 mb-2">
                         Finish
                       </label>
-                      <div className="grid grid-cols-4 gap-2 text-sm pl-2">
+                      <div className="grid grid-cols-4 gap-1 text-sm pl-2">
                         {FINISH_OPTIONS.map((option) => (
                           <label
                             key={option.id}
@@ -745,13 +801,13 @@ const EstimateSectionForm = ({
             </div>
 
             {/* Cabinet Face Material Section (with Finish) */}
-            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
               <h3 className="text-md font-medium text-slate-700">
                 Cabinet Face
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-2 items-center">
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                <div className="grid grid-cols-2 gap-1 items-center">
+                  <div className="grid grid-cols-[1fr_3fr] gap-1 items-center">
                     <label
                       htmlFor="faceMaterial"
                       className="text-right text-sm font-medium text-slate-700"
@@ -769,7 +825,9 @@ const EstimateSectionForm = ({
                           : "border-slate-300"
                       } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                     >
-                      <option value="">Select face material...</option>
+                      <option value="">
+                        {getPlaceholder("face material")}
+                      </option>
                       {FACE_MATERIAL_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>
                           {`${option.name} - $${option.sheet_price}/sheet`}
@@ -792,11 +850,11 @@ const EstimateSectionForm = ({
                   {/* Finish Options */}
 
                   <div className="col-span-2">
-                    <div className="grid grid-cols-[1fr_7fr] gap-2 items-center">
+                    <div className="grid grid-cols-[1fr_7fr] gap-1 items-center">
                       <label className="text-right text-sm font-medium text-slate-700 mb-2">
                         Finish
                       </label>
-                      <div className="grid grid-cols-4 gap-2 text-sm pl-2">
+                      <div className="grid grid-cols-4 gap-1 text-sm pl-2">
                         {FINISH_OPTIONS.map((option) => (
                           <label
                             key={option.id}
@@ -829,100 +887,48 @@ const EstimateSectionForm = ({
             </div>
 
             {/* Door Style Section */}
-            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
               <h3 className="text-md font-medium text-slate-700">Doors</h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                {/* <h3 className="text-sm font-medium text-slate-700 mb-2">Doors</h3> */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                    <label
-                      htmlFor="doorStyle"
-                      className="text-right text-sm font-medium text-slate-700"
-                    >
-                      Style
-                    </label>
-                    <select
-                      id="doorStyle"
-                      name="doorStyle"
-                      value={formData.doorStyle}
-                      onChange={handleChange}
-                      className={`block w-full rounded-md text-sm h-9 ${
-                        errors.doorStyle ? "border-red-500" : "border-slate-300"
-                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                    >
-                      <option value="">Select door style...</option>
-                      {filteredDoorStyleOptions.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {`${option.label}`}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.doorStyle && (
-                      <p className="text-xs text-red-500 col-span-2">
-                        {errors.doorStyle}
-                      </p>
-                    )}
-                  </div>
-                  {/* Door Moldings */}
-                  <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="doorInsideMolding"
-                        checked={formData.doorInsideMolding}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "doorInsideMolding",
-                              value: e.target.checked,
-                            },
-                          })
-                        }
-                        className="rounded border-slate-300"
-                      />
-                      <span>Inside Molding</span>
-                    </label>
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="doorReededPanel"
-                        checked={formData.doorReededPanel}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "doorReededPanel",
-                              value: e.target.checked,
-                            },
-                          })
-                        }
-                        className="rounded border-slate-300"
-                      />
-                      <span>Reeded Panel</span>
-                    </label>
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="doorOutsideMolding"
-                        checked={formData.doorOutsideMolding}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "doorOutsideMolding",
-                              value: e.target.checked,
-                            },
-                          })
-                        }
-                        className="rounded border-slate-300"
-                      />
-                      <span>Outside Molding</span>
-                    </label>
-                  </div>
-                  {/* Door Hinges */}
-                  <div className="">
-                    <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Door Style */}
+                    <div className="grid items-center">
+                      <label
+                        htmlFor="doorStyle"
+                        className="text-left text-sm font-medium text-slate-700"
+                      >
+                        Style
+                      </label>
+                      <select
+                        id="doorStyle"
+                        name="doorStyle"
+                        value={formData.doorStyle}
+                        onChange={handleChange}
+                        className={`block w-full rounded-md text-sm h-9 ${
+                          errors.doorStyle
+                            ? "border-red-500"
+                            : "border-slate-300"
+                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                      >
+                        <option value="">{getPlaceholder("door style")}</option>
+                        {filteredDoorStyleOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {`${option.label}`}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.doorStyle && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.doorStyle}
+                        </p>
+                      )}
+                    </div>
+                    {/* Door Hinges */}
+                    <div className="grid items-center">
                       <label
                         htmlFor="hinge_id"
-                        className="text-right text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700"
                       >
                         Hinges
                       </label>
@@ -937,7 +943,7 @@ const EstimateSectionForm = ({
                             : "border-slate-300"
                         } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                       >
-                        <option value="">Select hinge type...</option>
+                        <option value="">{getPlaceholder("hinge type")}</option>
                         {DOOR_HINGE_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id}>
                             {`${option.name} - $${option.price}/pair`}
@@ -950,13 +956,11 @@ const EstimateSectionForm = ({
                         </p>
                       )}
                     </div>
-                  </div>
-                  {/* Door  Pulls */}
-                  <div className="">
-                    <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                    {/* Door Pulls */}
+                    <div className="grid items-center">
                       <label
                         htmlFor="door_pull_id"
-                        className="text-right text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700"
                       >
                         Pulls
                       </label>
@@ -971,7 +975,9 @@ const EstimateSectionForm = ({
                             : "border-slate-300"
                         } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                       >
-                        <option value="">Select pull type...</option>
+                        <option value="">
+                          {getPlaceholder("door pull type")}
+                        </option>
                         {PULL_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id}>
                             {`${option.name} - $${option.price}/pull`}
@@ -985,136 +991,137 @@ const EstimateSectionForm = ({
                       )}
                     </div>
                   </div>
+                  {/* Door Moldings */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700">
+                        Inside Molding
+                      </label>
+                      <select
+                        name="doorInsideMolding"
+                        value={getBooleanSelectValue(
+                          formData.doorInsideMolding
+                        )}
+                        onChange={handleChange}
+                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700">
+                        Outside Molding
+                      </label>
+                      <select
+                        name="doorOutsideMolding"
+                        value={getBooleanSelectValue(
+                          formData.doorOutsideMolding
+                        )}
+                        onChange={handleChange}
+                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700">
+                        Reeded Panel
+                      </label>
+                      <select
+                        name="doorReededPanel"
+                        value={getBooleanSelectValue(formData.doorReededPanel)}
+                        onChange={handleChange}
+                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Drawer Front Style Section */}
-            <div className="grid grid-cols-[1fr_9fr] gap-2 items-center">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
               <h3 className="text-md font-medium text-slate-700">
                 Drawer Fronts
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                    <label
-                      htmlFor="drawerFrontStyle"
-                      className="text-right text-sm font-medium text-slate-700"
-                    >
-                      Style
-                    </label>
-                    <select
-                      id="drawerFrontStyle"
-                      name="drawerFrontStyle"
-                      value={formData.drawerFrontStyle}
-                      onChange={handleChange}
-                      className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">Select drawer front style...</option>
-                      {filteredDoorStyleOptions.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.label}
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Drawer Front Style */}
+                    <div className="grid items-center">
+                      <label
+                        htmlFor="drawerFrontStyle"
+                        className="text-left text-sm font-medium text-slate-700"
+                      >
+                        Style
+                      </label>
+                      <select
+                        id="drawerFrontStyle"
+                        name="drawerFrontStyle"
+                        value={formData.drawerFrontStyle}
+                        onChange={handleChange}
+                        className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">
+                          {getPlaceholder("drawer front style")}
                         </option>
-                      ))}
-                    </select>
-                    {errors.drawerFrontStyle && (
-                      <p className="text-xs text-red-500 col-span-2">
-                        {errors.drawerFrontStyle}
-                      </p>
-                    )}
-                  </div>
-                  {/* Drawer Front Moldings */}
-                  <div className="grid grid-cols-[1fr_1fr] gap-x-8 gap-y-1 items-center justify-center">
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="drawerInsideMolding"
-                        checked={formData.drawerInsideMolding}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "drawerInsideMolding",
-                              value: e.target.checked,
-                            },
-                          })
-                        }
-                        className="rounded border-slate-300"
-                      />
-                      <span>Inside Molding</span>
-                    </label>
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="drawerReededPanel"
-                        checked={formData.drawerReededPanel}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "drawerReededPanel",
-                              value: e.target.checked,
-                            },
-                          })
-                        }
-                        className="rounded border-slate-300"
-                      />
-                      <span>Reeded Panel</span>
-                    </label>
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input
-                        type="checkbox"
-                        name="drawerOutsideMolding"
-                        checked={formData.drawerOutsideMolding}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "drawerOutsideMolding",
-                              value: e.target.checked,
-                            },
-                          })
-                        }
-                        className="rounded border-slate-300"
-                      />
-                      <span>Outside Molding</span>
-                    </label>
-                  </div>
-
-                  {/* Drawer Box Material */}
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                    <label
-                      htmlFor="drawer_box_mat"
-                      className="text-right text-sm font-medium text-slate-700"
-                    >
-                      Boxes
-                    </label>
-                    <select
-                      id="drawer_box_mat"
-                      name="drawer_box_mat"
-                      value={formData.drawer_box_mat}
-                      onChange={handleChange}
-                      className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                        errors.drawer_box_mat ? "border-red-500" : ""
-                      }`}
-                    >
-                      <option value="">Select drawer box material...</option>
-                      {DRAWER_BOX_OPTIONS.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.name}
+                        {filteredDoorStyleOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.drawerFrontStyle && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.drawerFrontStyle}
+                        </p>
+                      )}
+                    </div>
+                    {/* Drawer Slides */}
+                    <div className="grid items-center">
+                      <label
+                        htmlFor="slide_id"
+                        className="text-left text-sm font-medium text-slate-700"
+                      >
+                        Slides
+                      </label>
+                      <select
+                        id="slide_id"
+                        name="slide_id"
+                        value={formData.slide_id}
+                        onChange={handleChange}
+                        className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                          errors.slide_id ? "border-red-500" : ""
+                        }`}
+                      >
+                        <option value="">
+                          {getPlaceholder("drawer slide type")}
                         </option>
-                      ))}
-                    </select>
-                    {errors.drawer_box_mat && (
-                      <p className="text-xs text-red-500 col-span-2">
-                        {errors.drawer_box_mat}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Drawer  Pulls */}
-                  <div className="">
-                    <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
+                        {DRAWER_SLIDE_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {`${option.name} - $${option.price}/pair`}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.slide_id && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.slide_id}
+                        </p>
+                      )}
+                    </div>
+                    {/* Drawer  Pulls */}
+                    <div className="grid items-center">
                       <label
                         htmlFor="drawer_pull_id"
-                        className="text-right text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700"
                       >
                         Pulls
                       </label>
@@ -1129,7 +1136,9 @@ const EstimateSectionForm = ({
                             : "border-slate-300"
                         } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                       >
-                        <option value="">Select pull type...</option>
+                        <option value="">
+                          {getPlaceholder("drawer pull type")}
+                        </option>
                         {PULL_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id}>
                             {`${option.name} - $${option.price}/pull`}
@@ -1143,36 +1152,94 @@ const EstimateSectionForm = ({
                       )}
                     </div>
                   </div>
+                  {/* Drawer Front Moldings */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700">
+                        Inside Molding
+                      </label>
+                      <select
+                        name="drawerInsideMolding"
+                        value={getBooleanSelectValue(
+                          formData.drawerInsideMolding
+                        )}
+                        onChange={handleChange}
+                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700">
+                        Outside Molding
+                      </label>
+                      <select
+                        name="drawerOutsideMolding"
+                        value={getBooleanSelectValue(
+                          formData.drawerOutsideMolding
+                        )}
+                        onChange={handleChange}
+                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700">
+                        Reeded Panel
+                      </label>
+                      <select
+                        name="drawerReededPanel"
+                        value={getBooleanSelectValue(
+                          formData.drawerReededPanel
+                        )}
+                        onChange={handleChange}
+                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                  </div>
 
-                  {/* Drawer Slides */}
-                  <div className="grid grid-cols-[1fr_3fr] gap-2 items-center">
-                    <label
-                      htmlFor="slide_id"
-                      className="text-sm font-medium text-slate-700 text-right"
-                    >
-                      Slides
-                    </label>
-                    <select
-                      id="slide_id"
-                      name="slide_id"
-                      value={formData.slide_id}
-                      onChange={handleChange}
-                      className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                        errors.slide_id ? "border-red-500" : ""
-                      }`}
-                    >
-                      <option value="">Select drawer slide type...</option>
-                      {DRAWER_SLIDE_OPTIONS.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {`${option.name} - $${option.price}/pair`}
+                  {/* Drawer Box Material */}
+                  <div className="grid grid-cols-3 gap-2 items-center">
+                    <div className="grid items-center">
+                      <label
+                        htmlFor="drawer_box_mat"
+                        className="text-left text-sm font-medium text-slate-700"
+                      >
+                        Drawer Boxes
+                      </label>
+                      <select
+                        id="drawer_box_mat"
+                        name="drawer_box_mat"
+                        value={formData.drawer_box_mat}
+                        onChange={handleChange}
+                        className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
+                          errors.drawer_box_mat ? "border-red-500" : ""
+                        }`}
+                      >
+                        <option value="">
+                          {getPlaceholder("drawer box material")}
                         </option>
-                      ))}
-                    </select>
-                    {errors.slide_id && (
-                      <p className="text-xs text-red-500 col-span-2">
-                        {errors.slide_id}
-                      </p>
-                    )}
+                        {DRAWER_BOX_OPTIONS.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.drawer_box_mat && (
+                        <p className="text-xs text-red-500 col-span-2">
+                          {errors.drawer_box_mat}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1210,7 +1277,7 @@ const EstimateSectionForm = ({
                   htmlFor="profit"
                   className="text-right text-sm font-medium text-slate-700"
                 >
-                  Profit
+                  Profit %
                 </label>
                 <input
                   type="text"
@@ -1229,7 +1296,7 @@ const EstimateSectionForm = ({
                   htmlFor="commission"
                   className="text-right text-sm font-medium text-slate-700"
                 >
-                  Commission
+                  Commission %
                 </label>
                 <input
                   type="text"
@@ -1248,7 +1315,7 @@ const EstimateSectionForm = ({
                   htmlFor="discount"
                   className="text-right text-sm font-medium text-slate-700"
                 >
-                  Discount
+                  Discount %
                 </label>
                 <input
                   type="text"

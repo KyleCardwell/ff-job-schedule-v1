@@ -248,6 +248,7 @@ const EstimateLayout = () => {
         currentEstimate={currentEstimate}
         selectedTask={selectedTask}
         selectedSectionId={selectedSectionId}
+        showProjectInfo={showProjectInfo}
         isNew={isNewTask}
         onTaskSaved={(taskId) => {
           setSelectedTaskId(taskId);
@@ -259,6 +260,7 @@ const EstimateLayout = () => {
         }}
         onEditEstimateDefaults={() => {
           setShowEstimateDefaultsForm(true);
+          setShowProjectInfo(false);
         }}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
@@ -304,8 +306,14 @@ const EstimateLayout = () => {
             <EstimateSectionForm
               editType="estimate"
               estimateData={currentEstimate}
-              onCancel={() => setShowEstimateDefaultsForm(false)}
-              onSave={() => setShowEstimateDefaultsForm(false)}
+              onCancel={() => {
+                setShowEstimateDefaultsForm(false);
+                setShowProjectInfo(true);
+              }}
+              onSave={() => {
+                setShowEstimateDefaultsForm(false);
+                setShowProjectInfo(true);
+              }}
             />
           </div>
         ) : showSectionForm ? (

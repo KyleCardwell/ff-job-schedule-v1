@@ -32,6 +32,11 @@ SELECT
     e.default_door_style,
     e.default_drawer_front_style,
 
+    -- Estimate pricing defaults
+    e.default_profit,
+    e.default_commission,
+    e.default_discount,
+
     ep.est_project_name,
     ep.est_client_name,
     ep.team_id,
@@ -40,29 +45,7 @@ SELECT
     ep.city,
     ep.zip,
 
-    -- Team defaults (non-nullable)
     t.team_name,
-    t.default_cabinet_style_id AS team_default_cabinet_style_id,
-    t.default_box_mat AS team_default_box_mat,
-    t.default_face_mat AS team_default_face_mat,
-    t.default_drawer_box_mat AS team_default_drawer_box_mat,
-    t.default_hinge_id AS team_default_hinge_id,
-    t.default_slide_id AS team_default_slide_id,
-    t.default_door_pull_id AS team_default_door_pull_id,
-    t.default_drawer_pull_id AS team_default_drawer_pull_id,
-    t.default_face_finish AS team_default_face_finish,
-    t.default_box_finish AS team_default_box_finish,
-    t.default_door_inside_molding AS team_default_door_inside_molding,
-    t.default_door_outside_molding AS team_default_door_outside_molding,
-    t.default_drawer_inside_molding AS team_default_drawer_inside_molding,
-    t.default_drawer_outside_molding AS team_default_drawer_outside_molding,
-    t.default_door_reeded_panel AS team_default_door_reeded_panel,
-    t.default_drawer_reeded_panel AS team_default_drawer_reeded_panel,
-    t.default_door_style AS team_default_door_style,
-    t.default_drawer_front_style AS team_default_drawer_front_style,
-
-    -- Keep old estimates_default for backward compatibility (can be removed later)
-    t.estimates_default,
 
     (
         SELECT json_agg(
@@ -135,4 +118,4 @@ FROM estimates e
 LEFT JOIN estimate_projects ep ON e.est_project_id = ep.est_project_id
 LEFT JOIN teams t ON ep.team_id = t.team_id;
 
-COMMENT ON VIEW public.estimate_full_details IS 'Full estimate details with tasks, sections, cabinets, and all related data. Includes three-tier defaults (team and estimate level).';
+COMMENT ON VIEW public.estimate_full_details IS 'Full estimate details with tasks, sections, cabinets, and all related data. Includes estimate-level defaults and pricing (profit, commission, discount).';
