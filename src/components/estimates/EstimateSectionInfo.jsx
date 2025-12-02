@@ -45,6 +45,25 @@ const EstimateSectionInfo = ({
     return result;
   };
 
+  // Helper to get the source for a section field
+  const getSectionFieldSource = (sectionValue, estimateKey, teamDefaultKey) => {
+    const estimateValue = currentEstimate?.[estimateKey];
+    const teamValue = teamDefaults?.[teamDefaultKey];
+    const result = getEffectiveValueUtil(
+      sectionValue,
+      estimateValue,
+      teamValue
+    );
+    return result.source; // 'section' | 'estimate' | 'team'
+  };
+
+  // Get color class based on source
+  const getSourceColor = (source) => {
+    if (source === "section") return "text-blue-400";
+    if (source === "estimate") return "text-teal-400";
+    return "text-amber-400"; // team
+  };
+
   const getTitle = () => {
     if (!selectedTask) return "Estimate Defaults";
     if (showEstimateDefaults) return "Estimate Defaults";
@@ -167,7 +186,7 @@ const EstimateSectionInfo = ({
 
   return (
     <div className="w-72 flex-none bg-slate-800 border-r border-slate-700 flex flex-col">
-      <div className="flex flex-col items-center justify-between pt-4 pb-2 px-6 space-y-1 border-b border-slate-700">
+      <div className="flex flex-col items-center justify-between pt-4 pb-2 px-2 space-y-1 border-b border-slate-700">
         <h2 className="text-lg font-semibold text-slate-200">{getTitle()}</h2>
         {(selectedTask || showEstimateDefaults) && (
           <div className="flex w-full justify-between text-xs text-slate-400">
@@ -175,8 +194,14 @@ const EstimateSectionInfo = ({
               <span className="text-amber-400">●</span> Team default
             </div>
             <div>
-              <span className="text-teal-400">●</span> Estimate override
+              <span className="text-teal-400">●</span> Estimate
+              {!showEstimateDefaults && " override"}
             </div>
+            {!showEstimateDefaults && (
+              <div>
+                <span className="text-blue-400">●</span> Section
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -455,75 +480,247 @@ const EstimateSectionInfo = ({
             ) : (
               // Show section details
               <div className="space-y-2.5">
-                <div className="text-slate-400">Style:</div>
-                <div className="pl-5 mb-3">
-                  {getStyleName(section?.cabinet_style_id) || NOT_SELECTED}
-                </div>
-                <div className="text-slate-400">Box Material:</div>
-                <div className="pl-5 mb-3">
-                  {getBoxMaterialName(section?.box_mat)}
-                </div>
-                <div className="text-slate-400">Box Finish:</div>
-                <div className="pl-5 mb-3">
-                  {getBoxFinishDisplay(section?.box_mat, section?.box_finish)}
-                </div>
-                <div className="text-slate-400">Face Material:</div>
-                <div className="pl-5 mb-3">
-                  {getFaceMaterialName(section?.face_mat)}
-                </div>
-                <div className="text-slate-400">Face Finish:</div>
-                <div className="pl-5 mb-3">
-                  {getFaceFinishDisplay(
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section?.cabinet_style_id,
+                    "default_cabinet_style_id",
+                    "default_cabinet_style_id"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Style:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getStyleName(section?.cabinet_style_id) ||
+                          NOT_SELECTED}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section?.box_mat,
+                    "default_box_mat",
+                    "default_box_mat"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Box Material:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getBoxMaterialName(section?.box_mat)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section?.box_finish,
+                    "default_box_finish",
+                    "default_box_finish"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Box Finish:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getBoxFinishDisplay(
+                          section?.box_mat,
+                          section?.box_finish
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
                     section?.face_mat,
-                    section?.face_finish
-                  )}
-                </div>
-                <div className="text-slate-400">Door Style:</div>
-                <div className="pl-5 mb-3">
-                  {getDoorStyleName(
+                    "default_face_mat",
+                    "default_face_mat"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Face Material:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getFaceMaterialName(section?.face_mat)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section?.face_finish,
+                    "default_face_finish",
+                    "default_face_finish"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Face Finish:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getFaceFinishDisplay(
+                          section?.face_mat,
+                          section?.face_finish
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
                     sectionData.doorStyle,
-                    sectionData.doorInsideMolding,
-                    sectionData.doorOutsideMolding,
-                    sectionData.doorReededPanel
-                  ).map((line, i) => (
-                    <div key={i} className="">
-                      {line}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-slate-400">Door Hinges:</div>
-                <div className="pl-5 mb-3">
-                  {getDoorHingeName(section.hinge_id)}
-                </div>
-                <div className="text-slate-400">Door Pulls:</div>
-                <div className="pl-5 mb-3">
-                  {getPullName(section.door_pull_id)}
-                </div>
-                <div className="text-slate-400">Drawer Front Style:</div>
-                <div className="pl-5 mb-3">
-                  {getDrawerFrontStyleName(
+                    "default_door_style",
+                    "default_door_style"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Door Style:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDoorStyleName(
+                          sectionData.doorStyle,
+                          sectionData.doorInsideMolding,
+                          sectionData.doorOutsideMolding,
+                          sectionData.doorReededPanel
+                        ).map((line, i) => (
+                          <div key={i} className="">
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section.hinge_id,
+                    "default_hinge_id",
+                    "default_hinge_id"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Door Hinges:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDoorHingeName(section.hinge_id)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section.door_pull_id,
+                    "default_door_pull_id",
+                    "default_door_pull_id"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Door Pulls:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getPullName(section.door_pull_id)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
                     sectionData.drawerFrontStyle,
-                    sectionData.drawerInsideMolding,
-                    sectionData.drawerOutsideMolding,
-                    sectionData.drawerReededPanel
-                  ).map((line, i) => (
-                    <div key={i} className="">
-                      {line}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-slate-400">Drawer Boxes:</div>
-                <div className="pl-5 mb-3">
-                  {getDrawerBoxName(section.drawer_box_mat)}
-                </div>
-                <div className="text-slate-400">Drawer Slides:</div>
-                <div className="pl-5 mb-3">
-                  {getDrawerSlideName(section.slide_id)}
-                </div>
-                <div className="text-slate-400">Drawer Pulls:</div>
-                <div className="pl-5 mb-3">
-                  {getPullName(section.drawer_pull_id)}
-                </div>
+                    "default_drawer_front_style",
+                    "default_drawer_front_style"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Drawer Front Style:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDrawerFrontStyleName(
+                          sectionData.drawerFrontStyle,
+                          sectionData.drawerInsideMolding,
+                          sectionData.drawerOutsideMolding,
+                          sectionData.drawerReededPanel
+                        ).map((line, i) => (
+                          <div key={i} className="">
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section.drawer_box_mat,
+                    "default_drawer_box_mat",
+                    "default_drawer_box_mat"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Drawer Boxes:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDrawerBoxName(section.drawer_box_mat)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section.slide_id,
+                    "default_slide_id",
+                    "default_slide_id"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Drawer Slides:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getDrawerSlideName(section.slide_id)}
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const source = getSectionFieldSource(
+                    section.drawer_pull_id,
+                    "default_drawer_pull_id",
+                    "default_drawer_pull_id"
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(source)}>●</span>
+                        <span>Drawer Pulls:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getPullName(section.drawer_pull_id)}
+                      </div>
+                    </>
+                  );
+                })()}
                 {sectionData.notes && (
                   <>
                     <div className="text-slate-400">Notes:</div>

@@ -18,6 +18,7 @@ import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardwa
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
+import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
 import { PATHS } from "../../utils/constants";
 import ReorderModal from "../common/ReorderModal.jsx";
 
@@ -77,6 +78,7 @@ const EstimateLayout = () => {
   }, [dispatch, estimateId, navigate, estimates]);
 
   useEffect(() => {
+    dispatch(fetchTeamDefaults());
     dispatch(fetchSheetGoods());
     dispatch(fetchDrawerBoxMaterials());
     dispatch(fetchHinges())

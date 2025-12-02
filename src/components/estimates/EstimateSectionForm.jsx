@@ -10,7 +10,10 @@ import {
 } from "../../redux/actions/estimates";
 import { updateTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
-import { getNewSectionDefaults } from "../../utils/estimateDefaults";
+import {
+  getNewSectionDefaults,
+  getEffectiveValue,
+} from "../../utils/estimateDefaults";
 
 /**
  * Universal defaults/section form
@@ -39,6 +42,9 @@ const EstimateSectionForm = ({
   const hardware = useSelector((state) => state.hardware);
   const { styles: cabinetStyles } = useSelector((state) => state.cabinetStyles);
   const finishes = useSelector((state) => state.finishes);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
+  );
 
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
@@ -50,8 +56,6 @@ const EstimateSectionForm = ({
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
   const PULL_OPTIONS = hardware.pulls || [];
 
-  // Get team defaults from nested estimate structure
-  const team = currentEstimate?.est_project?.team;
   const isNewSection = !section.est_section_id;
 
   // Determine what data to use based on editType
@@ -64,10 +68,10 @@ const EstimateSectionForm = ({
   // Get default values for new sections using fallback logic
   const initialDefaults = useMemo(() => {
     if (editType === "section" && isNewSection) {
-      return getNewSectionDefaults(currentEstimate, team);
+      return getNewSectionDefaults(currentEstimate, teamDefaults);
     }
     return {};
-  }, [editType, isNewSection, currentEstimate, team]);
+  }, [editType, isNewSection, currentEstimate, teamDefaults]);
 
   // Determine field name prefix (team and estimate use 'default_' prefix)
   const getFieldName = (baseName) => {
@@ -92,6 +96,78 @@ const EstimateSectionForm = ({
   const getBooleanSelectValue = (value) => {
     if (value === null || value === undefined) return "";
     return value ? "true" : "false";
+  };
+
+  // Get the effective default value to display
+  const getEffectiveDefaultDisplay = (
+    fieldValue,
+    estimateKey,
+    teamDefaultKey,
+    formatter,
+    isNumeric = false
+  ) => {
+    // Don't show for team edit type
+    if (editType === "team") {
+      return null;
+    }
+
+    // For numeric fields, check if it's truly empty (not 0 or negative)
+    // For non-numeric fields, check for null, undefined, or empty string
+    const isEmpty = isNumeric
+      ? fieldValue === "" || fieldValue === null || fieldValue === undefined
+      : fieldValue === "" || fieldValue === null || fieldValue === undefined;
+
+    if (!isEmpty) {
+      return null;
+    }
+
+    const estimateValue = currentEstimate?.[estimateKey];
+    const teamValue = teamDefaults?.[teamDefaultKey];
+    const { value, source } = getEffectiveValue(null, estimateValue, teamValue);
+
+    // Don't show if there's no effective value
+    if (value === null || value === undefined) return null;
+
+    const displayValue = formatter ? formatter(value) : value;
+    // const colorClass = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
+    const colorClass = "text-teal-500";
+    // const sourceText = source === 'estimate' ? 'Estimate' : 'Team';
+
+    return (
+      displayValue && (
+        <span className={`text-xs ${colorClass} ml-2`}>({displayValue})</span>
+      )
+    );
+  };
+
+  // Formatters for different field types
+  const formatStyleName = (id) =>
+    STYLE_OPTIONS.find((s) => s.cabinet_style_id === id)?.cabinet_style_name ||
+    "";
+  const formatMaterialName = (id, options) =>
+    options.find((m) => m.id === id)?.name || "";
+
+  const formatPullName = (id) =>
+    PULL_OPTIONS.find((p) => p.id === id)?.name || "";
+  const formatSlideName = (id) =>
+    DRAWER_SLIDE_OPTIONS.find((s) => s.id === id)?.name || "";
+  const formatHingeName = (id) =>
+    DOOR_HINGE_OPTIONS.find((h) => h.id === id)?.name || "";
+  const formatDoorStyleName = (id) =>
+    DOOR_STYLE_OPTIONS.find((s) => s.id === id)?.label || "";
+  const formatBoolean = (value) => (value ? "Yes" : "No");
+  const formatFinishArray = (finishIds) => {
+    if (!finishIds || !Array.isArray(finishIds) || finishIds.length === 0) {
+      return "None";
+    }
+    return finishIds
+      .map((id) => FINISH_OPTIONS.find((f) => f.id === id)?.name || "")
+      .filter(Boolean)
+      .join(", ");
+  };
+  const formatPercentage = (value) => {
+    if (value === null || value === undefined) return "";
+    return `${value}%`;
   };
 
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
@@ -336,59 +412,80 @@ const EstimateSectionForm = ({
   const validateForm = () => {
     const newErrors = {};
 
-    // For estimate defaults, all fields are optional
-    if (editType === "estimate") {
-      // No required fields for estimate defaults
+    // For estimate defaults and sections, all fields are optional (can use fallback)
+    if (editType === "estimate" || editType === "section") {
+      // Only validate finish requirements IF a material is selected that needs finish
+      if (
+        mustSelectFaceFinish &&
+        formData.faceMaterial &&
+        formData.faceFinish.length === 0
+      ) {
+        newErrors.faceFinish =
+          "At least one finish option is required for this material";
+      }
+
+      if (
+        mustSelectBoxFinish &&
+        formData.boxMaterial &&
+        formData.boxFinish.length === 0
+      ) {
+        newErrors.boxFinish =
+          "At least one finish option is required for this material";
+      }
+
       setErrors(newErrors);
-      return true;
+      return Object.keys(newErrors).length === 0;
     }
 
-    // For team defaults and sections, all fields are required
-    if (!formData.style) {
-      newErrors.style = "Style is required";
-    }
+    // For team defaults, all fields are required (no fallback available)
+    if (editType === "team") {
+      if (!formData.style) {
+        newErrors.style = "Style is required";
+      }
 
-    if (!formData.boxMaterial) {
-      newErrors.boxMaterial = "Cabinet interior is required";
-    }
+      if (!formData.boxMaterial) {
+        newErrors.boxMaterial = "Cabinet interior is required";
+      }
 
-    if (!formData.faceMaterial) {
-      newErrors.faceMaterial = "Face material is required";
-    }
+      if (!formData.faceMaterial) {
+        newErrors.faceMaterial = "Face material is required";
+      }
 
-    if (!formData.doorStyle) {
-      newErrors.doorStyle = "Door style is required";
-    }
+      if (!formData.doorStyle) {
+        newErrors.doorStyle = "Door style is required";
+      }
 
-    if (!formData.hinge_id) {
-      newErrors.hinge_id = "Door hinge type is required";
-    }
+      if (!formData.hinge_id) {
+        newErrors.hinge_id = "Door hinge type is required";
+      }
 
-    if (!formData.drawerFrontStyle) {
-      newErrors.drawerFrontStyle = "Drawer front style is required";
-    }
-    if (!formData.slide_id) {
-      newErrors.slide_id = "Drawer slide type is required";
-    }
+      if (!formData.drawerFrontStyle) {
+        newErrors.drawerFrontStyle = "Drawer front style is required";
+      }
 
-    if (!formData.door_pull_id) {
-      newErrors.door_pull_id = "Door pull type is required";
-    }
+      if (!formData.slide_id) {
+        newErrors.slide_id = "Drawer slide type is required";
+      }
 
-    if (!formData.drawer_pull_id) {
-      newErrors.drawer_pull_id = "Drawer pull type is required";
-    }
+      if (!formData.door_pull_id) {
+        newErrors.door_pull_id = "Door pull type is required";
+      }
 
-    if (!formData.drawer_box_mat) {
-      newErrors.drawer_box_mat = "Drawer box material is required";
-    }
+      if (!formData.drawer_pull_id) {
+        newErrors.drawer_pull_id = "Drawer pull type is required";
+      }
 
-    if (mustSelectFaceFinish && formData.faceFinish.length === 0) {
-      newErrors.faceFinish = "At least one finish option is required";
-    }
+      if (!formData.drawer_box_mat) {
+        newErrors.drawer_box_mat = "Drawer box material is required";
+      }
 
-    if (mustSelectBoxFinish && formData.boxFinish.length === 0) {
-      newErrors.boxFinish = "At least one finish option is required";
+      if (mustSelectFaceFinish && formData.faceFinish.length === 0) {
+        newErrors.faceFinish = "At least one finish option is required";
+      }
+
+      if (mustSelectBoxFinish && formData.boxFinish.length === 0) {
+        newErrors.boxFinish = "At least one finish option is required";
+      }
     }
 
     setErrors(newErrors);
@@ -648,8 +745,8 @@ const EstimateSectionForm = ({
           <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
           {editType === "estimate" && (
             <p className="text-sm text-slate-600">
-              Leave fields empty to use team defaults. Set values to override
-              for this estimate only.
+              Use team defaults or set values to override for this estimate
+              only.
             </p>
           )}
           {editType === "team" && (
@@ -680,13 +777,19 @@ const EstimateSectionForm = ({
                 Cabinet Style
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-1 items-center">
-                  <div className="grid grid-cols-[1fr_3fr] gap-1 items-center">
+                <div className="grid grid-cols-[2fr_3fr] gap-2 items-center">
+                  <div className="grid items-center">
                     <label
                       htmlFor="style"
-                      className="text-right text-sm font-medium text-slate-700"
+                      className="text-left text-sm font-medium text-slate-700 flex items-center"
                     >
-                      Style
+                      <span>Style</span>
+                      {getEffectiveDefaultDisplay(
+                        formData.style,
+                        "default_cabinet_style_id",
+                        "default_cabinet_style_id",
+                        formatStyleName
+                      )}
                     </label>
                     <select
                       id="style"
@@ -723,13 +826,19 @@ const EstimateSectionForm = ({
                 Cabinet Box
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-1 items-center">
-                  <div className="grid grid-cols-[1fr_3fr] gap-1 items-center">
+                <div className="grid grid-cols-[2fr_3fr] gap-3 items-center">
+                  <div className="grid items-center">
                     <label
                       htmlFor="boxMaterial"
-                      className="text-right text-sm font-medium text-slate-700"
+                      className="text-left text-sm font-medium text-slate-700 flex items-center"
                     >
-                      Material
+                      <span>Material</span>
+                      {getEffectiveDefaultDisplay(
+                        formData.boxMaterial,
+                        "default_box_mat",
+                        "default_box_mat",
+                        (id) => formatMaterialName(id, BOX_MATERIAL_OPTIONS)
+                      )}
                     </label>
                     <select
                       id="boxMaterial"
@@ -754,21 +863,29 @@ const EstimateSectionForm = ({
                         {errors.boxMaterial}
                       </p>
                     )}
-                  </div>
-                  <div>
-                    {!mustSelectBoxFinish && (
-                      <p className="text-xs text-teal-700 col-span-2">
-                        The selected box material does not require finish.
-                      </p>
-                    )}
+                    <div>
+                      {!mustSelectBoxFinish && (
+                        <p className="text-xs text-teal-700 col-span-2 px-2 pt-1">
+                          The selected box material does not require finish.
+                        </p>
+                      )}
+                    </div>
                   </div>
                   {/* Box Finish Options */}
-                  <div className="col-span-2">
-                    <div className="grid grid-cols-[1fr_7fr] gap-1 items-center">
-                      <label className="text-right text-sm font-medium text-slate-700 mb-2">
-                        Finish
+                  <div>
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Finish</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.boxFinish?.length > 0
+                            ? formData.boxFinish
+                            : null,
+                          "default_box_finish",
+                          "default_box_finish",
+                          formatFinishArray
+                        )}
                       </label>
-                      <div className="grid grid-cols-4 gap-1 text-sm pl-2">
+                      <div className="grid grid-cols-3 gap-1 text-sm pl-2">
                         {FINISH_OPTIONS.map((option) => (
                           <label
                             key={option.id}
@@ -789,12 +906,12 @@ const EstimateSectionForm = ({
                           </label>
                         ))}
                       </div>
-                      {errors.boxFinish && (
-                        <p className="text-xs text-red-500 col-span-2">
-                          {errors.boxFinish}
-                        </p>
-                      )}
                     </div>
+                    {errors.boxFinish && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.boxFinish}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -806,13 +923,19 @@ const EstimateSectionForm = ({
                 Cabinet Face
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-2 gap-1 items-center">
-                  <div className="grid grid-cols-[1fr_3fr] gap-1 items-center">
+                <div className="grid grid-cols-[2fr_3fr] gap-3 items-center">
+                  <div className="grid items-center">
                     <label
                       htmlFor="faceMaterial"
-                      className="text-right text-sm font-medium text-slate-700"
+                      className="text-left text-sm font-medium text-slate-700 flex items-center"
                     >
-                      Material
+                      <span>Material</span>
+                      {getEffectiveDefaultDisplay(
+                        formData.faceMaterial,
+                        "default_face_mat",
+                        "default_face_mat",
+                        (id) => formatMaterialName(id, FACE_MATERIAL_OPTIONS)
+                      )}
                     </label>
                     <select
                       id="faceMaterial"
@@ -839,22 +962,29 @@ const EstimateSectionForm = ({
                         {errors.faceMaterial}
                       </p>
                     )}
-                  </div>
-                  <div>
-                    {!mustSelectFaceFinish && (
-                      <p className="text-xs text-teal-700 col-span-2">
-                        The selected face material does not require finish.
-                      </p>
-                    )}
+                    <div>
+                      {!mustSelectFaceFinish && (
+                        <p className="text-xs text-teal-700 col-span-2 px-2 pt-1">
+                          The selected face material does not require finish.
+                        </p>
+                      )}
+                    </div>
                   </div>
                   {/* Finish Options */}
-
-                  <div className="col-span-2">
-                    <div className="grid grid-cols-[1fr_7fr] gap-1 items-center">
-                      <label className="text-right text-sm font-medium text-slate-700 mb-2">
-                        Finish
+                  <div>
+                    <div className="grid items-center">
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Finish</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.faceFinish?.length > 0
+                            ? formData.faceFinish
+                            : null,
+                          "default_face_finish",
+                          "default_face_finish",
+                          formatFinishArray
+                        )}
                       </label>
-                      <div className="grid grid-cols-4 gap-1 text-sm pl-2">
+                      <div className="grid grid-cols-3 gap-1 text-sm pl-2">
                         {FINISH_OPTIONS.map((option) => (
                           <label
                             key={option.id}
@@ -875,12 +1005,12 @@ const EstimateSectionForm = ({
                           </label>
                         ))}
                       </div>
-                      {errors.faceFinish && (
-                        <p className="text-xs text-red-500 col-span-2">
-                          {errors.faceFinish}
-                        </p>
-                      )}
                     </div>
+                    {errors.faceFinish && (
+                      <p className="text-xs text-red-500 col-span-2">
+                        {errors.faceFinish}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -896,9 +1026,15 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="doorStyle"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
-                        Style
+                        <span>Style</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.doorStyle,
+                          "default_door_style",
+                          "default_door_style",
+                          formatDoorStyleName
+                        )}
                       </label>
                       <select
                         id="doorStyle"
@@ -931,6 +1067,12 @@ const EstimateSectionForm = ({
                         className="text-left text-sm font-medium text-slate-700"
                       >
                         Hinges
+                        {getEffectiveDefaultDisplay(
+                          formData.hinge_id,
+                          "default_hinge_id",
+                          "default_hinge_id",
+                          formatHingeName
+                        )}
                       </label>
                       <select
                         id="hinge_id"
@@ -960,9 +1102,15 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="door_pull_id"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
-                        Pulls
+                        <span>Pulls</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.door_pull_id,
+                          "default_door_pull_id",
+                          "default_door_pull_id",
+                          formatPullName
+                        )}
                       </label>
                       <select
                         id="door_pull_id"
@@ -994,8 +1142,14 @@ const EstimateSectionForm = ({
                   {/* Door Moldings */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700">
-                        Inside Molding
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Inside Molding</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.doorInsideMolding,
+                          "default_door_inside_molding",
+                          "default_door_inside_molding",
+                          formatBoolean
+                        )}
                       </label>
                       <select
                         name="doorInsideMolding"
@@ -1011,8 +1165,14 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700">
-                        Outside Molding
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Outside Molding</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.doorOutsideMolding,
+                          "default_door_outside_molding",
+                          "default_door_outside_molding",
+                          formatBoolean
+                        )}
                       </label>
                       <select
                         name="doorOutsideMolding"
@@ -1028,8 +1188,14 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700">
-                        Reeded Panel
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Reeded Panel</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.doorReededPanel,
+                          "default_door_reeded_panel",
+                          "default_door_reeded_panel",
+                          formatBoolean
+                        )}
                       </label>
                       <select
                         name="doorReededPanel"
@@ -1059,9 +1225,15 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="drawerFrontStyle"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
-                        Style
+                        <span>Style</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.drawerFrontStyle,
+                          "default_drawer_front_style",
+                          "default_drawer_front_style",
+                          formatDoorStyleName
+                        )}
                       </label>
                       <select
                         id="drawerFrontStyle"
@@ -1089,9 +1261,15 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="slide_id"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
-                        Slides
+                        <span>Slides</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.slide_id,
+                          "default_slide_id",
+                          "default_slide_id",
+                          formatSlideName
+                        )}
                       </label>
                       <select
                         id="slide_id"
@@ -1121,9 +1299,15 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="drawer_pull_id"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
-                        Pulls
+                        <span>Pulls</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.drawer_pull_id,
+                          "default_drawer_pull_id",
+                          "default_drawer_pull_id",
+                          formatPullName
+                        )}
                       </label>
                       <select
                         id="drawer_pull_id"
@@ -1155,8 +1339,14 @@ const EstimateSectionForm = ({
                   {/* Drawer Front Moldings */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700">
-                        Inside Molding
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Inside Molding</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.drawerInsideMolding,
+                          "default_drawer_inside_molding",
+                          "default_drawer_inside_molding",
+                          formatBoolean
+                        )}
                       </label>
                       <select
                         name="drawerInsideMolding"
@@ -1172,8 +1362,14 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700">
-                        Outside Molding
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Outside Molding</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.drawerOutsideMolding,
+                          "default_drawer_outside_molding",
+                          "default_drawer_outside_molding",
+                          formatBoolean
+                        )}
                       </label>
                       <select
                         name="drawerOutsideMolding"
@@ -1189,8 +1385,14 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700">
-                        Reeded Panel
+                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                        <span>Reeded Panel</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.drawerReededPanel,
+                          "default_drawer_reeded_panel",
+                          "default_drawer_reeded_panel",
+                          formatBoolean
+                        )}
                       </label>
                       <select
                         name="drawerReededPanel"
@@ -1212,9 +1414,15 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="drawer_box_mat"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
-                        Drawer Boxes
+                        <span>Drawer Boxes</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.drawer_box_mat,
+                          "default_drawer_box_mat",
+                          "default_drawer_box_mat",
+                          (id) => formatMaterialName(id, DRAWER_BOX_OPTIONS)
+                        )}
                       </label>
                       <select
                         id="drawer_box_mat"
@@ -1275,9 +1483,16 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center">
                 <label
                   htmlFor="profit"
-                  className="text-right text-sm font-medium text-slate-700"
+                  className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  Profit %
+                  <span>Profit</span>
+                  {getEffectiveDefaultDisplay(
+                    formData.profit,
+                    "default_profit",
+                    "default_profit",
+                    formatPercentage,
+                    true
+                  )}
                 </label>
                 <input
                   type="text"
@@ -1285,7 +1500,7 @@ const EstimateSectionForm = ({
                   name="profit"
                   value={formData.profit}
                   onChange={handleChange}
-                  placeholder="0"
+                  placeholder="%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
@@ -1294,9 +1509,16 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center">
                 <label
                   htmlFor="commission"
-                  className="text-right text-sm font-medium text-slate-700"
+                  className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  Commission %
+                  <span>Commission</span>
+                  {getEffectiveDefaultDisplay(
+                    formData.commission,
+                    "default_commission",
+                    "default_commission",
+                    formatPercentage,
+                    true
+                  )}
                 </label>
                 <input
                   type="text"
@@ -1304,7 +1526,7 @@ const EstimateSectionForm = ({
                   name="commission"
                   value={formData.commission}
                   onChange={handleChange}
-                  placeholder="0"
+                  placeholder="%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
@@ -1313,9 +1535,16 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center">
                 <label
                   htmlFor="discount"
-                  className="text-right text-sm font-medium text-slate-700"
+                  className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  Discount %
+                  <span>Discount</span>
+                  {getEffectiveDefaultDisplay(
+                    formData.discount,
+                    "default_discount",
+                    "default_discount",
+                    formatPercentage,
+                    true
+                  )}
                 </label>
                 <input
                   type="text"
@@ -1323,7 +1552,7 @@ const EstimateSectionForm = ({
                   name="discount"
                   value={formData.discount}
                   onChange={handleChange}
-                  placeholder="0"
+                  placeholder="%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>

@@ -250,47 +250,10 @@ export const fetchEstimateById = (estimateId) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
 
-        // Restructure team defaults into nested object for convenience
-        est_project: {
-          est_project_name: data.est_project_name,
-          est_client_name: data.est_client_name,
-          team_id: data.team_id,
-          team: {
-            team_id: data.team_id,
-            team_name: data.team_name,
-            default_cabinet_style_id: data.team_default_cabinet_style_id,
-            default_box_mat: data.team_default_box_mat,
-            default_face_mat: data.team_default_face_mat,
-            default_drawer_box_mat: data.team_default_drawer_box_mat,
-            default_hinge_id: data.team_default_hinge_id,
-            default_slide_id: data.team_default_slide_id,
-            default_door_pull_id: data.team_default_door_pull_id,
-            default_drawer_pull_id: data.team_default_drawer_pull_id,
-            default_face_finish: data.team_default_face_finish,
-            default_box_finish: data.team_default_box_finish,
-            default_door_inside_molding: data.team_default_door_inside_molding,
-            default_door_outside_molding:
-              data.team_default_door_outside_molding,
-            default_drawer_inside_molding:
-              data.team_default_drawer_inside_molding,
-            default_drawer_outside_molding:
-              data.team_default_drawer_outside_molding,
-            default_door_reeded_panel: data.team_default_door_reeded_panel,
-            default_drawer_reeded_panel: data.team_default_drawer_reeded_panel,
-            default_door_style: data.team_default_door_style,
-            default_drawer_front_style: data.team_default_drawer_front_style,
-            default_profit: data.team_default_profit,
-            default_commission: data.team_default_commission,
-            default_discount: data.team_default_discount,
-          },
-        },
-
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
           sections: task.sections || [],
         })),
-
-        estimateDefault: data.estimates_default, // Keep for backward compatibility
       };
 
       dispatch({
@@ -1241,47 +1204,10 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
 
-        // Restructure team defaults
-        est_project: {
-          est_project_name: data.est_project_name,
-          est_client_name: data.est_client_name,
-          team_id: data.team_id,
-          team: {
-            team_id: data.team_id,
-            team_name: data.team_name,
-            default_cabinet_style_id: data.team_default_cabinet_style_id,
-            default_box_mat: data.team_default_box_mat,
-            default_face_mat: data.team_default_face_mat,
-            default_drawer_box_mat: data.team_default_drawer_box_mat,
-            default_hinge_id: data.team_default_hinge_id,
-            default_slide_id: data.team_default_slide_id,
-            default_door_pull_id: data.team_default_door_pull_id,
-            default_drawer_pull_id: data.team_default_drawer_pull_id,
-            default_face_finish: data.team_default_face_finish,
-            default_box_finish: data.team_default_box_finish,
-            default_door_inside_molding: data.team_default_door_inside_molding,
-            default_door_outside_molding:
-              data.team_default_door_outside_molding,
-            default_drawer_inside_molding:
-              data.team_default_drawer_inside_molding,
-            default_drawer_outside_molding:
-              data.team_default_drawer_outside_molding,
-            default_door_reeded_panel: data.team_default_door_reeded_panel,
-            default_drawer_reeded_panel: data.team_default_drawer_reeded_panel,
-            default_door_style: data.team_default_door_style,
-            default_drawer_front_style: data.team_default_drawer_front_style,
-            default_profit: data.team_default_profit,
-            default_commission: data.team_default_commission,
-            default_discount: data.team_default_discount,
-          },
-        },
-
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
           sections: task.sections || [],
         })),
-
-        estimateDefault: data.estimates_default,
       };
 
       dispatch({
