@@ -9,6 +9,7 @@ import {
   ITEM_TYPES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
+import { getEffectiveDefaults } from "./estimateDefaults";
 import {
   calculateBoxPartsTime,
   calculateBoxSheetsCNC,
@@ -39,9 +40,12 @@ const calculateFaceTotals = (section, context) => {
     return totals;
   }
 
-  const { selectedFaceMaterial } = context;
+  const { selectedFaceMaterial, estimate, team } = context;
 
   if (!selectedFaceMaterial) return totals;
+
+  // Resolve effective values using three-tier fallback (section → estimate → team)
+  const effectiveValues = getEffectiveDefaults(section, estimate, team);
 
   // Aggregate faces by style across all cabinets
   // Structure: { doorStyle: { slab_sheet: [faces...], 5_piece_hardwood: [faces...] } }
@@ -51,12 +55,12 @@ const calculateFaceTotals = (section, context) => {
   section.cabinets.forEach((cabinet) => {
     const quantity = Number(cabinet.quantity) || 1;
     const cabinetStyleId =
-      cabinet.cabinet_style_override || section.cabinet_style_id;
+      cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
 
     // Handle fillers (type 5) separately using boxPartsList
     if (cabinet.type === 5) {
       // Only include fillers if door style is slab_sheet
-      if (section.section_data.doorStyle !== FACE_STYLE_VALUES.SLAB_SHEET)
+      if (effectiveValues.door_style !== FACE_STYLE_VALUES.SLAB_SHEET)
         return;
 
       if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
@@ -77,7 +81,7 @@ const calculateFaceTotals = (section, context) => {
 
       if (totalWidth > 0 && panelHeight > 0) {
         const faceType = FACE_NAMES.PANEL;
-        const styleToUse = section.section_data.doorStyle;
+        const styleToUse = effectiveValues.door_style;
 
         // Initialize style category if needed
         if (!facesByStyle[styleToUse]) {
@@ -142,8 +146,8 @@ const calculateFaceTotals = (section, context) => {
         const styleToUse =
           faceType === FACE_NAMES.drawer_front ||
           faceType === FACE_NAMES.false_front
-            ? section.section_data.drawerFrontStyle
-            : section.section_data.doorStyle;
+            ? effectiveValues.drawer_front_style
+            : effectiveValues.door_style;
 
         // Initialize style category if needed
         if (!facesByStyle[styleToUse]) {
@@ -166,9 +170,9 @@ const calculateFaceTotals = (section, context) => {
           let reeded = false;
 
           if (faceType === FACE_NAMES.DRAWER_FRONT || faceType === FACE_NAMES.FALSE_FRONT) {
-            reeded = section.section_data.drawerReededPanel;
+            reeded = effectiveValues.drawer_reeded_panel;
           } else if (faceType === FACE_NAMES.DOOR || faceType === FACE_NAMES.PAIR_DOOR || faceType === FACE_NAMES.PANEL) {
-            reeded = section.section_data.doorReededPanel;
+            reeded = effectiveValues.door_reeded_panel;
           }
 
           // Collect faces for hour calculation with cabinet style ID
@@ -563,7 +567,13 @@ const calculateFillerMaterials = (section, context) => {
     return totals;
   }
 
-  if (section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET)
+  const { selectedFaceMaterial, estimate, team } = context;
+  if (!selectedFaceMaterial) return totals;
+
+  // Resolve effective values using three-tier fallback
+  const effectiveValues = getEffectiveDefaults(section, estimate, team);
+
+  if (effectiveValues.door_style === FACE_STYLE_VALUES.SLAB_SHEET)
     return totals;
 
   const fillers = section.cabinets.filter((cabinet) => {
@@ -572,9 +582,6 @@ const calculateFillerMaterials = (section, context) => {
   });
 
   if (fillers.length === 0) return totals;
-
-  const { selectedFaceMaterial } = context;
-  if (!selectedFaceMaterial) return totals;
 
   const { material } = selectedFaceMaterial;
 

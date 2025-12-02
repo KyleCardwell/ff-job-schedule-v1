@@ -32,6 +32,10 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.partsListAnchors?.itemsByPartsList || []
   );
 
+  // Get estimate and team for defaults fallback
+  const currentEstimate = useSelector((state) => state.estimates?.currentEstimate);
+  const team = currentEstimate?.est_project?.team;
+
   const selectedFaceMaterial = useMemo(() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
@@ -98,6 +102,10 @@ const EstimateSectionPrice = ({ section }) => {
       // Services & Anchors
       partsListAnchors,
       globalServices: services,
+
+      // Defaults for fallback (three-tier system)
+      estimate: currentEstimate,
+      team: team,
     });
   }, [
     section,
@@ -113,6 +121,8 @@ const EstimateSectionPrice = ({ section }) => {
     accessories,
     partsListAnchors,
     services,
+    currentEstimate,
+    team,
   ]);
 
   // Format number as currency

@@ -13,6 +13,7 @@ export const PATHS = {
   MANAGE_FINISHES: "/manage/finishes",
   MANAGE_HARDWARE: "/manage/hardware",
   MANAGE_ACCESSORIES: "/manage/accessories",
+  MANAGE_TEAM_ESTIMATE_DEFAULTS: "/manage/estimate-defaults",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
   SETTINGS: "/settings",

@@ -40,6 +40,7 @@ const EstimateLayout = () => {
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
+  const [showEstimateDefaultsForm, setShowEstimateDefaultsForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
@@ -244,6 +245,7 @@ const EstimateLayout = () => {
       {/* Sections Column */}
       <EstimateSectionInfo
         estimate_data={currentEstimate?.estimate_data}
+        currentEstimate={currentEstimate}
         selectedTask={selectedTask}
         selectedSectionId={selectedSectionId}
         isNew={isNewTask}
@@ -254,6 +256,9 @@ const EstimateLayout = () => {
         onTaskDeleted={() => setSelectedTaskId(null)}
         onCancel={() => {
           setIsNewTask(false);
+        }}
+        onEditEstimateDefaults={() => {
+          setShowEstimateDefaultsForm(true);
         }}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
@@ -293,6 +298,15 @@ const EstimateLayout = () => {
         {showProjectInfo || !currentEstimate ? (
           <div className="max-w-3xl mx-auto">
             <EstimateProjectForm estimate={currentEstimate} />
+          </div>
+        ) : showEstimateDefaultsForm ? (
+          <div className="max-w-4xl mx-auto">
+            <EstimateSectionForm
+              editType="estimate"
+              estimateData={currentEstimate}
+              onCancel={() => setShowEstimateDefaultsForm(false)}
+              onSave={() => setShowEstimateDefaultsForm(false)}
+            />
           </div>
         ) : showSectionForm ? (
           <div className="max-w-4xl mx-auto">

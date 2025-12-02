@@ -3,10 +3,34 @@ import { useEffect, useState, useMemo } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { addSection, updateSection } from "../../redux/actions/estimates";
+import {
+  addSection,
+  updateSection,
+  updateEstimateDefaults,
+} from "../../redux/actions/estimates";
+import { updateTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
+import { getNewSectionDefaults } from "../../utils/estimateDefaults";
 
-const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
+/**
+ * Universal defaults/section form
+ * @param {string} editType - 'team', 'estimate', or 'section' (default: 'section')
+ * @param {object} section - Section data (for editType='section')
+ * @param {object} estimateData - Estimate data (for editType='estimate')
+ * @param {object} teamData - Team data (for editType='team')
+ * @param {number} taskId - Task ID (for editType='section')
+ * @param {function} onCancel - Cancel callback
+ * @param {function} onSave - Save callback
+ */
+const EstimateSectionForm = ({
+  editType = "section",
+  section = {},
+  estimateData = null,
+  teamData = null,
+  onCancel,
+  onSave,
+  taskId,
+}) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
@@ -26,38 +50,156 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
   const PULL_OPTIONS = hardware.pulls || [];
 
+  // Get team defaults from nested estimate structure
+  const team = currentEstimate?.est_project?.team;
+  const isNewSection = !section.est_section_id;
+
+  // Determine what data to use based on editType
+  const editingData = useMemo(() => {
+    if (editType === "team") return teamData;
+    if (editType === "estimate") return estimateData || currentEstimate;
+    return section; // 'section' mode
+  }, [editType, teamData, estimateData, currentEstimate, section]);
+
+  // Get default values for new sections using fallback logic
+  const initialDefaults = useMemo(() => {
+    if (editType === "section" && isNewSection) {
+      return getNewSectionDefaults(currentEstimate, team);
+    }
+    return {};
+  }, [editType, isNewSection, currentEstimate, team]);
+
+  // Determine field name prefix (team and estimate use 'default_' prefix)
+  const getFieldName = (baseName) => {
+    if (editType === "team" || editType === "estimate") {
+      return `default_${baseName}`;
+    }
+    return baseName;
+  };
+
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
   const [selectedBoxMaterial, setSelectedBoxMaterial] = useState(null);
 
-  const [formData, setFormData] = useState({
-    style: section.cabinet_style_id || "",
-    boxMaterial: section.box_mat || "",
-    boxFinish: section.box_finish || [],
-    faceMaterial: section.face_mat || "",
-    faceFinish: section.face_finish || [],
-    doorStyle: section.door_style || "",
-    drawerFrontStyle: section.drawer_front_style || "",
-    doorInsideMolding: section.door_inside_molding || false,
-    doorOutsideMolding: section.door_outside_molding || false,
-    drawerInsideMolding: section.drawer_inside_molding || false,
-    drawerOutsideMolding: section.drawer_outside_molding || false,
-    doorReededPanel: section.door_reeded_panel || false,
-    drawerReededPanel: section.drawer_reeded_panel || false,
-    hinge_id: section.hinge_id || "",
-    slide_id: section.slide_id || "",
-    door_pull_id: section.door_pull_id || "",
-    drawer_pull_id: section.drawer_pull_id || "",
-    drawer_box_mat: section.drawer_box_mat || "",
-    notes: section.notes || "",
-    quantity: section.quantity ?? 1,
-    profit: section.profit ?? "",
-    commission: section.commission ?? "",
-    discount: section.discount ?? "",
+  const [formData, setFormData] = useState(() => {
+    const data = editingData || {};
+    const styleField = getFieldName("cabinet_style_id");
+    const boxMatField = getFieldName("box_mat");
+    const faceMatField = getFieldName("face_mat");
+    const doorStyleField = getFieldName("door_style");
+    const drawerFrontStyleField = getFieldName("drawer_front_style");
+    const doorInsideMoldingField = getFieldName("door_inside_molding");
+    const doorOutsideMoldingField = getFieldName("door_outside_molding");
+    const drawerInsideMoldingField = getFieldName("drawer_inside_molding");
+    const drawerOutsideMoldingField = getFieldName("drawer_outside_molding");
+    const doorReededPanelField = getFieldName("door_reeded_panel");
+    const drawerReededPanelField = getFieldName("drawer_reeded_panel");
+    const hingeField = getFieldName("hinge_id");
+    const slideField = getFieldName("slide_id");
+    const doorPullField = getFieldName("door_pull_id");
+    const drawerPullField = getFieldName("drawer_pull_id");
+    const drawerBoxMatField = getFieldName("drawer_box_mat");
+    const boxFinishField = getFieldName("box_finish");
+    const faceFinishField = getFieldName("face_finish");
+    const profitField = getFieldName("profit");
+    const commissionField = getFieldName("commission");
+    const discountField = getFieldName("discount");
+
+    return {
+      style:
+        data[styleField] ||
+        data.cabinet_style_id ||
+        initialDefaults.cabinet_style_id ||
+        "",
+      boxMaterial:
+        data[boxMatField] || data.box_mat || initialDefaults.box_mat || "",
+      boxFinish:
+        data[boxFinishField] ||
+        data.box_finish ||
+        initialDefaults.box_finish ||
+        [],
+      faceMaterial:
+        data[faceMatField] || data.face_mat || initialDefaults.face_mat || "",
+      faceFinish:
+        data[faceFinishField] ||
+        data.face_finish ||
+        initialDefaults.face_finish ||
+        [],
+      doorStyle:
+        data[doorStyleField] ||
+        data.door_style ||
+        initialDefaults.door_style ||
+        "",
+      drawerFrontStyle:
+        data[drawerFrontStyleField] ||
+        data.drawer_front_style ||
+        initialDefaults.drawer_front_style ||
+        "",
+      doorInsideMolding:
+        data[doorInsideMoldingField] ??
+        data.door_inside_molding ??
+        initialDefaults.door_inside_molding ??
+        false,
+      doorOutsideMolding:
+        data[doorOutsideMoldingField] ??
+        data.door_outside_molding ??
+        initialDefaults.door_outside_molding ??
+        false,
+      drawerInsideMolding:
+        data[drawerInsideMoldingField] ??
+        data.drawer_inside_molding ??
+        initialDefaults.drawer_inside_molding ??
+        false,
+      drawerOutsideMolding:
+        data[drawerOutsideMoldingField] ??
+        data.drawer_outside_molding ??
+        initialDefaults.drawer_outside_molding ??
+        false,
+      doorReededPanel:
+        data[doorReededPanelField] ??
+        data.door_reeded_panel ??
+        initialDefaults.door_reeded_panel ??
+        false,
+      drawerReededPanel:
+        data[drawerReededPanelField] ??
+        data.drawer_reeded_panel ??
+        initialDefaults.drawer_reeded_panel ??
+        false,
+      hinge_id:
+        data[hingeField] || data.hinge_id || initialDefaults.hinge_id || "",
+      slide_id:
+        data[slideField] || data.slide_id || initialDefaults.slide_id || "",
+      door_pull_id:
+        data[doorPullField] ||
+        data.door_pull_id ||
+        initialDefaults.door_pull_id ||
+        "",
+      drawer_pull_id:
+        data[drawerPullField] ||
+        data.drawer_pull_id ||
+        initialDefaults.drawer_pull_id ||
+        "",
+      drawer_box_mat:
+        data[drawerBoxMatField] ||
+        data.drawer_box_mat ||
+        initialDefaults.drawer_box_mat ||
+        "",
+      notes: data.notes || "",
+      quantity: data.quantity ?? 1,
+      profit: data[profitField] ?? data.profit ?? initialDefaults.profit ?? "",
+      commission:
+        data[commissionField] ??
+        data.commission ??
+        initialDefaults.commission ??
+        "",
+      discount:
+        data[discountField] ?? data.discount ?? initialDefaults.discount ?? "",
+    };
   });
 
   const [errors, setErrors] = useState({});
+  const [saveError, setSaveError] = useState(null);
 
   const clearFinishes = (section) => {
     setFormData({
@@ -80,10 +222,10 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
       "slide_id",
       "hinge_id",
     ];
-    
+
     // Handle adjustment fields - convert to number but allow empty string to become null
     const adjustmentFields = ["quantity", "profit", "commission", "discount"];
-    
+
     let processedValue = value;
     if (numericFields.includes(name) && value !== "") {
       processedValue = +value;
@@ -158,6 +300,14 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
   const validateForm = () => {
     const newErrors = {};
 
+    // For estimate defaults, all fields are optional
+    if (editType === "estimate") {
+      // No required fields for estimate defaults
+      setErrors(newErrors);
+      return true;
+    }
+
+    // For team defaults and sections, all fields are required
     if (!formData.style) {
       newErrors.style = "Style is required";
     }
@@ -211,46 +361,119 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaveError(null); // Clear any previous errors
 
     if (validateForm()) {
       try {
-        // Process adjustment fields before sending
-        const processedData = { ...formData };
-        
-        // Convert quantity to number (ensure it's at least 1)
-        processedData.quantity = processedData.quantity === "" || !processedData.quantity 
-          ? 1 
-          : Number(processedData.quantity);
-        
-        // Convert other adjustment fields: empty string -> null, otherwise -> number
-        ["profit", "commission", "discount"].forEach(field => {
-          if (processedData[field] === "" || processedData[field] == null) {
-            processedData[field] = null;
-          } else {
-            processedData[field] = Number(processedData[field]);
-          }
-        });
-        
-        if (section?.est_section_id) {
-          // Update existing section
+        if (editType === "team") {
+          // Update team defaults using Redux action
+          // Convert profit/commission/discount to numbers
+          const updatePayload = {
+            default_cabinet_style_id: formData.style || null,
+            default_box_mat: formData.boxMaterial || null,
+            default_box_finish: formData.boxFinish,
+            default_face_mat: formData.faceMaterial || null,
+            default_face_finish: formData.faceFinish,
+            default_door_style: formData.doorStyle || null,
+            default_drawer_front_style: formData.drawerFrontStyle || null,
+            default_door_inside_molding: formData.doorInsideMolding,
+            default_door_outside_molding: formData.doorOutsideMolding,
+            default_drawer_inside_molding: formData.drawerInsideMolding,
+            default_drawer_outside_molding: formData.drawerOutsideMolding,
+            default_door_reeded_panel: formData.doorReededPanel,
+            default_drawer_reeded_panel: formData.drawerReededPanel,
+            default_hinge_id: formData.hinge_id || null,
+            default_slide_id: formData.slide_id || null,
+            default_door_pull_id: formData.door_pull_id || null,
+            default_drawer_pull_id: formData.drawer_pull_id || null,
+            default_drawer_box_mat: formData.drawer_box_mat || null,
+            default_profit: formData.profit === "" || formData.profit == null ? null : Number(formData.profit),
+            default_commission: formData.commission === "" || formData.commission == null ? null : Number(formData.commission),
+            default_discount: formData.discount === "" || formData.discount == null ? null : Number(formData.discount),
+          };
+
+          await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
+          onSave?.();
+          onCancel?.();
+        } else if (editType === "estimate") {
+          // Update estimate defaults using Redux action
+          // Convert profit/commission/discount to numbers (nullable for estimates)
+          const defaultsPayload = {
+            default_cabinet_style_id: formData.style || null,
+            default_box_mat: formData.boxMaterial || null,
+            default_box_finish:
+              formData.boxFinish.length > 0 ? formData.boxFinish : null,
+            default_face_mat: formData.faceMaterial || null,
+            default_face_finish:
+              formData.faceFinish.length > 0 ? formData.faceFinish : null,
+            default_door_style: formData.doorStyle || null,
+            default_drawer_front_style: formData.drawerFrontStyle || null,
+            default_door_inside_molding: formData.doorInsideMolding || null,
+            default_door_outside_molding: formData.doorOutsideMolding || null,
+            default_drawer_inside_molding: formData.drawerInsideMolding || null,
+            default_drawer_outside_molding:
+              formData.drawerOutsideMolding || null,
+            default_door_reeded_panel: formData.doorReededPanel || null,
+            default_drawer_reeded_panel: formData.drawerReededPanel || null,
+            default_hinge_id: formData.hinge_id || null,
+            default_slide_id: formData.slide_id || null,
+            default_door_pull_id: formData.door_pull_id || null,
+            default_drawer_pull_id: formData.drawer_pull_id || null,
+            default_drawer_box_mat: formData.drawer_box_mat || null,
+            default_profit: formData.profit === "" || formData.profit == null ? null : Number(formData.profit),
+            default_commission: formData.commission === "" || formData.commission == null ? null : Number(formData.commission),
+            default_discount: formData.discount === "" || formData.discount == null ? null : Number(formData.discount),
+          };
+
           await dispatch(
-            updateSection(
-              currentEstimate.estimate_id,
-              taskId,
-              section.est_section_id,
-              processedData
+            updateEstimateDefaults(
+              estimateData.estimate_id || currentEstimate.estimate_id,
+              defaultsPayload
             )
           );
+          onSave?.();
+          onCancel?.();
         } else {
-          // Create new section
-          const newSection = await dispatch(
-            addSection(currentEstimate.estimate_id, taskId, processedData)
-          );
-          onSave?.(newSection.est_section_id);
+          // Section mode - original logic
+          const processedData = { ...formData };
+
+          // Convert quantity to number (ensure it's at least 1)
+          processedData.quantity =
+            processedData.quantity === "" || !processedData.quantity
+              ? 1
+              : Number(processedData.quantity);
+
+          // Convert other adjustment fields: empty string -> null, otherwise -> number
+          ["profit", "commission", "discount"].forEach((field) => {
+            if (processedData[field] === "" || processedData[field] == null) {
+              processedData[field] = null;
+            } else {
+              processedData[field] = Number(processedData[field]);
+            }
+          });
+
+          if (section?.est_section_id) {
+            // Update existing section
+            await dispatch(
+              updateSection(
+                currentEstimate.estimate_id,
+                taskId,
+                section.est_section_id,
+                processedData
+              )
+            );
+          } else {
+            // Create new section
+            const newSection = await dispatch(
+              addSection(currentEstimate.estimate_id, taskId, processedData)
+            );
+            onSave?.(newSection.est_section_id);
+          }
+          onCancel?.();
         }
-        onCancel?.();
       } catch (error) {
-        console.error("Error saving section:", error);
+        console.error(`Error saving ${editType}:`, error);
+        setSaveError(error.message || "Failed to save. Please try again.");
       }
     }
   };
@@ -356,8 +579,42 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
     }
   }, [filteredDoorStyleOptions, formData.drawerFrontStyle]);
 
+  // Get appropriate title
+  const formTitle =
+    editType === "team"
+      ? "Team Defaults"
+      : editType === "estimate"
+      ? "Estimate Defaults"
+      : "Section Details";
+
   return (
     <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
+      {editType !== "section" && (
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
+          {editType === "estimate" && (
+            <p className="text-sm text-slate-600 mt-1">
+              Leave fields empty to use team defaults. Set values to override
+              for this estimate only.
+            </p>
+          )}
+          {editType === "team" && (
+            <p className="text-sm text-slate-600 mt-1">
+              These defaults will be used for all new estimates. All fields are
+              required.
+            </p>
+          )}
+        </div>
+      )}
+      
+      {/* Error Message Display */}
+      {saveError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800 font-medium">Error saving defaults:</p>
+          <p className="text-sm text-red-700 mt-1">{saveError}</p>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Cabinet Style Section */}
         <div className="grid grid-cols-[4fr_1fr] gap-3">
@@ -921,8 +1178,11 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
               </div>
             </div>
           </div>
+
           <div className="border rounded-lg border-slate-400 p-3 w-full h-full">
-            <h3 className="text-md font-medium text-slate-700 mb-3">Adjustments</h3>
+            <h3 className="text-md font-medium text-slate-700 mb-3">
+              Adjustments
+            </h3>
             <div className="space-y-3">
               {/* Quantity */}
               <div className="flex flex-col gap-2 items-center">
@@ -939,10 +1199,11 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   value={formData.quantity}
                   onChange={handleChange}
                   placeholder="1"
+                  disabled={editType !== "section"}
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
-              
+
               {/* Profit */}
               <div className="flex flex-col gap-2 items-center">
                 <label
@@ -961,7 +1222,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
-              
+
               {/* Commission */}
               <div className="flex flex-col gap-2 items-center">
                 <label
@@ -980,7 +1241,7 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
-              
+
               {/* Discount */}
               <div className="flex flex-col gap-2 items-center">
                 <label
@@ -1003,24 +1264,26 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
           </div>
         </div>
 
-        {/* Notes Section */}
-        <div>
-          <label
-            htmlFor="notes"
-            className="block text-sm font-medium text-slate-700"
-          >
-            Notes
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            rows={2}
-            className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="Any special requirements..."
-          />
-        </div>
+        {/* Notes Section - only for sections */}
+        {editType === "section" && (
+          <div>
+            <label
+              htmlFor="notes"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Notes
+            </label>
+            <textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              rows={2}
+              className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="Any special requirements..."
+            />
+          </div>
+        )}
 
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
@@ -1037,7 +1300,11 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
             className="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 flex items-center"
           >
             <FiSave className="mr-1" size={12} />
-            Save Section
+            {editType === "team"
+              ? "Save Team Defaults"
+              : editType === "estimate"
+              ? "Save Estimate Defaults"
+              : "Save Section"}
           </button>
         </div>
       </form>
@@ -1046,7 +1313,10 @@ const EstimateSectionForm = ({ section = {}, onCancel, onSave, taskId }) => {
 };
 
 EstimateSectionForm.propTypes = {
+  editType: PropTypes.oneOf(["team", "estimate", "section"]),
   section: PropTypes.object,
+  estimateData: PropTypes.object,
+  teamData: PropTypes.object,
   taskId: PropTypes.number,
   onCancel: PropTypes.func,
   onSave: PropTypes.func,
