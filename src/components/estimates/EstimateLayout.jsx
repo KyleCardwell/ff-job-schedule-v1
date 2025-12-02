@@ -204,6 +204,7 @@ const EstimateLayout = () => {
                         );
                         setShowProjectInfo(false);
                         setShowSectionForm(false);
+                        setShowEstimateDefaultsForm(false);
                       }}
                       onDelete={() => setSelectedTaskId(null)}
                       sections={task.sections || []}
@@ -212,6 +213,7 @@ const EstimateLayout = () => {
                       setSelectedTaskId={setSelectedTaskId}
                       setShowSectionForm={setShowSectionForm}
                       setShowProjectInfo={setShowProjectInfo}
+                      setShowEstimateDefaultsForm={setShowEstimateDefaultsForm}
                     />
                   </div>
                 ))}

@@ -226,7 +226,7 @@ export const fetchEstimateById = (estimateId) => {
         zip: data.zip,
         estimate_data: data.estimate_data,
         tasks_order: data.tasks_order,
-        
+
         // Estimate-level defaults (nullable)
         default_cabinet_style_id: data.default_cabinet_style_id,
         default_box_mat: data.default_box_mat,
@@ -269,9 +269,12 @@ export const fetchEstimateById = (estimateId) => {
             default_face_finish: data.team_default_face_finish,
             default_box_finish: data.team_default_box_finish,
             default_door_inside_molding: data.team_default_door_inside_molding,
-            default_door_outside_molding: data.team_default_door_outside_molding,
-            default_drawer_inside_molding: data.team_default_drawer_inside_molding,
-            default_drawer_outside_molding: data.team_default_drawer_outside_molding,
+            default_door_outside_molding:
+              data.team_default_door_outside_molding,
+            default_drawer_inside_molding:
+              data.team_default_drawer_inside_molding,
+            default_drawer_outside_molding:
+              data.team_default_drawer_outside_molding,
             default_door_reeded_panel: data.team_default_door_reeded_panel,
             default_drawer_reeded_panel: data.team_default_drawer_reeded_panel,
             default_door_style: data.team_default_door_style,
@@ -286,7 +289,7 @@ export const fetchEstimateById = (estimateId) => {
           ...task.task,
           sections: task.sections || [],
         })),
-        
+
         estimateDefault: data.estimates_default, // Keep for backward compatibility
       };
 
@@ -671,9 +674,9 @@ export const addSection = (estimateId, taskId, sectionData) => {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
       // Extract fields that go in separate columns (all fields now have dedicated columns)
-      const { 
-        boxMaterial, 
-        faceMaterial, 
+      const {
+        boxMaterial,
+        faceMaterial,
         drawer_box_mat,
         style,
         hinge_id,
@@ -705,25 +708,33 @@ export const addSection = (estimateId, taskId, sectionData) => {
             section_data: {},
             box_mat: boxMaterial !== undefined ? +boxMaterial : null,
             face_mat: faceMaterial !== undefined ? +faceMaterial : null,
-            drawer_box_mat: drawer_box_mat !== undefined ? +drawer_box_mat : null,
+            drawer_box_mat:
+              drawer_box_mat !== undefined ? +drawer_box_mat : null,
             cabinet_style_id: style !== undefined ? +style : null,
             hinge_id: hinge_id !== undefined ? +hinge_id : null,
             slide_id: slide_id !== undefined ? +slide_id : null,
             door_pull_id: door_pull_id !== undefined ? +door_pull_id : null,
-            drawer_pull_id: drawer_pull_id !== undefined ? +drawer_pull_id : null,
-            face_finish: faceFinish !== undefined ? faceFinish : null,
-            box_finish: boxFinish !== undefined ? boxFinish : null,
+            drawer_pull_id:
+              drawer_pull_id !== undefined ? +drawer_pull_id : null,
+            face_finish: faceFinish !== undefined && faceFinish.length ? faceFinish : null,
+            box_finish: boxFinish !== undefined && boxFinish.length ? boxFinish : null,
             quantity: quantity != null ? +quantity : 1,
             profit: profit != null ? +profit : null,
             commission: commission != null ? +commission : null,
             discount: discount != null ? +discount : null,
-            door_inside_molding: doorInsideMolding !== undefined ? doorInsideMolding : null,
-            door_outside_molding: doorOutsideMolding !== undefined ? doorOutsideMolding : null,
-            drawer_inside_molding: drawerInsideMolding !== undefined ? drawerInsideMolding : null,
-            drawer_outside_molding: drawerOutsideMolding !== undefined ? drawerOutsideMolding : null,
+            door_inside_molding:
+              doorInsideMolding !== undefined ? doorInsideMolding : null,
+            door_outside_molding:
+              doorOutsideMolding !== undefined ? doorOutsideMolding : null,
+            drawer_inside_molding:
+              drawerInsideMolding !== undefined ? drawerInsideMolding : null,
+            drawer_outside_molding:
+              drawerOutsideMolding !== undefined ? drawerOutsideMolding : null,
             notes: notes || null,
-            door_reeded_panel: doorReededPanel !== undefined ? doorReededPanel : null,
-            drawer_reeded_panel: drawerReededPanel !== undefined ? drawerReededPanel : null,
+            door_reeded_panel:
+              doorReededPanel !== undefined ? doorReededPanel : null,
+            drawer_reeded_panel:
+              drawerReededPanel !== undefined ? drawerReededPanel : null,
             door_style: doorStyle || null,
             drawer_front_style: drawerFrontStyle || null,
             est_task_id: taskId,
@@ -808,25 +819,49 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(hinge_id !== undefined && { hinge_id: +hinge_id }),
         ...(slide_id !== undefined && { slide_id: +slide_id }),
         ...(door_pull_id !== undefined && { door_pull_id: +door_pull_id }),
-        ...(drawer_pull_id !== undefined && { drawer_pull_id: +drawer_pull_id }),
+        ...(drawer_pull_id !== undefined && {
+          drawer_pull_id: +drawer_pull_id,
+        }),
         ...(style !== undefined && { cabinet_style_id: +style }),
-        ...(faceFinish !== undefined && { face_finish: faceFinish }),
-        ...(boxFinish !== undefined && { box_finish: boxFinish }),
-        ...(quantity !== undefined && { quantity: quantity != null ? +quantity : 1 }),
-        ...(profit !== undefined && { profit: profit != null ? +profit : null }),
-        ...(commission !== undefined && { commission: commission != null ? +commission : null }),
-        ...(discount !== undefined && { discount: discount != null ? +discount : null }),
-        ...(doorInsideMolding !== undefined && { door_inside_molding: doorInsideMolding }),
-        ...(doorOutsideMolding !== undefined && { door_outside_molding: doorOutsideMolding }),
-        ...(drawerInsideMolding !== undefined && { drawer_inside_molding: drawerInsideMolding }),
-        ...(drawerOutsideMolding !== undefined && { drawer_outside_molding: drawerOutsideMolding }),
+        ...(faceFinish !== undefined && { face_finish: faceFinish.length ? faceFinish : null }),
+        ...(boxFinish !== undefined && { box_finish: boxFinish.length ? boxFinish : null }),
+        ...(quantity !== undefined && {
+          quantity: quantity != null ? +quantity : 1,
+        }),
+        ...(profit !== undefined && {
+          profit: profit != null ? +profit : null,
+        }),
+        ...(commission !== undefined && {
+          commission: commission != null ? +commission : null,
+        }),
+        ...(discount !== undefined && {
+          discount: discount != null ? +discount : null,
+        }),
+        ...(doorInsideMolding !== undefined && {
+          door_inside_molding: doorInsideMolding,
+        }),
+        ...(doorOutsideMolding !== undefined && {
+          door_outside_molding: doorOutsideMolding,
+        }),
+        ...(drawerInsideMolding !== undefined && {
+          drawer_inside_molding: drawerInsideMolding,
+        }),
+        ...(drawerOutsideMolding !== undefined && {
+          drawer_outside_molding: drawerOutsideMolding,
+        }),
         ...(notes !== undefined && { notes: notes || null }),
-        ...(doorReededPanel !== undefined && { door_reeded_panel: doorReededPanel }),
-        ...(drawerReededPanel !== undefined && { drawer_reeded_panel: drawerReededPanel }),
+        ...(doorReededPanel !== undefined && {
+          door_reeded_panel: doorReededPanel,
+        }),
+        ...(drawerReededPanel !== undefined && {
+          drawer_reeded_panel: drawerReededPanel,
+        }),
         ...(doorStyle !== undefined && { door_style: doorStyle || null }),
-        ...(drawerFrontStyle !== undefined && { drawer_front_style: drawerFrontStyle || null }),
+        ...(drawerFrontStyle !== undefined && {
+          drawer_front_style: drawerFrontStyle || null,
+        }),
         updated_at: new Date(),
-        
+
         // section_data is now empty - all fields have dedicated columns
         section_data: {},
       };
@@ -1123,14 +1158,23 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_slide_id: defaults.default_slide_id ?? null,
         default_door_pull_id: defaults.default_door_pull_id ?? null,
         default_drawer_pull_id: defaults.default_drawer_pull_id ?? null,
-        default_face_finish: defaults.default_face_finish ?? null,
-        default_box_finish: defaults.default_box_finish ?? null,
-        default_door_inside_molding: defaults.default_door_inside_molding ?? null,
-        default_door_outside_molding: defaults.default_door_outside_molding ?? null,
-        default_drawer_inside_molding: defaults.default_drawer_inside_molding ?? null,
-        default_drawer_outside_molding: defaults.default_drawer_outside_molding ?? null,
+        default_face_finish: defaults.default_face_finish?.length
+          ? defaults.default_face_finish
+          : null,
+        default_box_finish: defaults.default_box_finish?.length
+          ? defaults.default_box_finish
+          : null,
+        default_door_inside_molding:
+          defaults.default_door_inside_molding ?? null,
+        default_door_outside_molding:
+          defaults.default_door_outside_molding ?? null,
+        default_drawer_inside_molding:
+          defaults.default_drawer_inside_molding ?? null,
+        default_drawer_outside_molding:
+          defaults.default_drawer_outside_molding ?? null,
         default_door_reeded_panel: defaults.default_door_reeded_panel ?? null,
-        default_drawer_reeded_panel: defaults.default_drawer_reeded_panel ?? null,
+        default_drawer_reeded_panel:
+          defaults.default_drawer_reeded_panel ?? null,
         default_door_style: defaults.default_door_style ?? null,
         default_drawer_front_style: defaults.default_drawer_front_style ?? null,
         default_profit: defaults.default_profit ?? null,
@@ -1173,7 +1217,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         zip: data.zip,
         estimate_data: data.estimate_data,
         tasks_order: data.tasks_order,
-        
+
         // Estimate-level defaults
         default_cabinet_style_id: data.default_cabinet_style_id,
         default_box_mat: data.default_box_mat,
@@ -1216,9 +1260,12 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
             default_face_finish: data.team_default_face_finish,
             default_box_finish: data.team_default_box_finish,
             default_door_inside_molding: data.team_default_door_inside_molding,
-            default_door_outside_molding: data.team_default_door_outside_molding,
-            default_drawer_inside_molding: data.team_default_drawer_inside_molding,
-            default_drawer_outside_molding: data.team_default_drawer_outside_molding,
+            default_door_outside_molding:
+              data.team_default_door_outside_molding,
+            default_drawer_inside_molding:
+              data.team_default_drawer_inside_molding,
+            default_drawer_outside_molding:
+              data.team_default_drawer_outside_molding,
             default_door_reeded_panel: data.team_default_door_reeded_panel,
             default_drawer_reeded_panel: data.team_default_drawer_reeded_panel,
             default_door_style: data.team_default_door_style,
@@ -1233,7 +1280,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
           ...task.task,
           sections: task.sections || [],
         })),
-        
+
         estimateDefault: data.estimates_default,
       };
 

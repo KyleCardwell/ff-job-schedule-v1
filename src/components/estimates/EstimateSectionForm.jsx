@@ -80,7 +80,7 @@ const EstimateSectionForm = ({
   // Get placeholder text based on edit type
   const getPlaceholder = (itemName) => {
     if (editType === "section") {
-      return `Match Estimate Defaults`;
+      return `Estimate Default`;
     } else if (editType === "estimate") {
       return `Team Default`;
     } else {
@@ -1333,10 +1333,10 @@ const EstimateSectionForm = ({
 
         {/* Notes Section - only for sections */}
         {editType === "section" && (
-          <div>
+          <div className="grid grid-cols-[1fr_12fr] gap-2 items-center">
             <label
               htmlFor="notes"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-md font-medium text-slate-700"
             >
               Notes
             </label>

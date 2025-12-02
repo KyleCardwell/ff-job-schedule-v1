@@ -23,6 +23,7 @@ const EstimateTask = ({
   setSelectedTaskId,
   setShowSectionForm,
   setShowProjectInfo,
+  setShowEstimateDefaultsForm,
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
@@ -156,11 +157,13 @@ const EstimateTask = ({
                   setSelectedSectionId(section.est_section_id);
                   setShowSectionForm(false);
                   setShowProjectInfo(false);
+                  setShowEstimateDefaultsForm(false);
                 }}
                 onDelete={() => {
                   setSelectedSectionId(null);
                   setShowSectionForm(false);
                   setShowProjectInfo(false);
+                  setShowEstimateDefaultsForm(false);
                 }}
               />
             ))}
@@ -204,6 +207,7 @@ EstimateTask.propTypes = {
   setSelectedTaskId: PropTypes.func,
   setShowSectionForm: PropTypes.func,
   setShowProjectInfo: PropTypes.func,
+  setShowEstimateDefaultsForm: PropTypes.func,
 };
 
 export default EstimateTask;
