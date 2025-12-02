@@ -669,16 +669,16 @@ export const addSection = (estimateId, taskId, sectionData) => {
         .insert([
           {
             section_data: {},
-            box_mat: boxMaterial !== undefined ? +boxMaterial : null,
-            face_mat: faceMaterial !== undefined ? +faceMaterial : null,
+            box_mat: boxMaterial !== undefined && boxMaterial !== null ? +boxMaterial : null,
+            face_mat: faceMaterial !== undefined && faceMaterial !== null ? +faceMaterial : null,
             drawer_box_mat:
-              drawer_box_mat !== undefined ? +drawer_box_mat : null,
-            cabinet_style_id: style !== undefined ? +style : null,
-            hinge_id: hinge_id !== undefined ? +hinge_id : null,
-            slide_id: slide_id !== undefined ? +slide_id : null,
-            door_pull_id: door_pull_id !== undefined ? +door_pull_id : null,
+              drawer_box_mat !== undefined && drawer_box_mat !== null ? +drawer_box_mat : null,
+            cabinet_style_id: style !== undefined && style !== null ? +style : null,
+            hinge_id: hinge_id !== undefined && hinge_id !== null ? +hinge_id : null,
+            slide_id: slide_id !== undefined && slide_id !== null ? +slide_id : null,
+            door_pull_id: door_pull_id !== undefined && door_pull_id !== null ? +door_pull_id : null,
             drawer_pull_id:
-              drawer_pull_id !== undefined ? +drawer_pull_id : null,
+              drawer_pull_id !== undefined && drawer_pull_id !== null ? +drawer_pull_id : null,
             face_finish: faceFinish !== undefined && faceFinish.length ? faceFinish : null,
             box_finish: boxFinish !== undefined && boxFinish.length ? boxFinish : null,
             quantity: quantity != null ? +quantity : 1,
@@ -774,18 +774,18 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
       // Prepare the update payload for Supabase
       const updatePayload = {
         // Set box_mat and face_mat separately if provided
-        ...(boxMaterial !== undefined && { box_mat: +boxMaterial }),
-        ...(faceMaterial !== undefined && { face_mat: +faceMaterial }),
+        ...(boxMaterial !== undefined && { box_mat: boxMaterial !== null ? +boxMaterial : null }),
+        ...(faceMaterial !== undefined && { face_mat: faceMaterial !== null ? +faceMaterial : null }),
         ...(drawer_box_mat !== undefined && {
-          drawer_box_mat: +drawer_box_mat,
+          drawer_box_mat: drawer_box_mat !== null ? +drawer_box_mat : null,
         }),
-        ...(hinge_id !== undefined && { hinge_id: +hinge_id }),
-        ...(slide_id !== undefined && { slide_id: +slide_id }),
-        ...(door_pull_id !== undefined && { door_pull_id: +door_pull_id }),
+        ...(hinge_id !== undefined && { hinge_id: hinge_id !== null ? +hinge_id : null }),
+        ...(slide_id !== undefined && { slide_id: slide_id !== null ? +slide_id : null }),
+        ...(door_pull_id !== undefined && { door_pull_id: door_pull_id !== null ? +door_pull_id : null }),
         ...(drawer_pull_id !== undefined && {
-          drawer_pull_id: +drawer_pull_id,
+          drawer_pull_id: drawer_pull_id !== null ? +drawer_pull_id : null,
         }),
-        ...(style !== undefined && { cabinet_style_id: +style }),
+        ...(style !== undefined && { cabinet_style_id: style !== null ? +style : null }),
         ...(faceFinish !== undefined && { face_finish: faceFinish.length ? faceFinish : null }),
         ...(boxFinish !== undefined && { box_finish: boxFinish.length ? boxFinish : null }),
         ...(quantity !== undefined && {

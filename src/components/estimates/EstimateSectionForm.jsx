@@ -13,6 +13,7 @@ import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
 import {
   getNewSectionDefaults,
   getEffectiveValue,
+  shouldApplyFinish,
 } from "../../utils/estimateDefaults";
 
 /**
@@ -104,11 +105,31 @@ const EstimateSectionForm = ({
     estimateKey,
     teamDefaultKey,
     formatter,
-    isNumeric = false
+    isNumeric = false,
+    isFinishField = false,
+    materialField = null
   ) => {
     // Don't show for team edit type
     if (editType === "team") {
       return null;
+    }
+
+    // For finish fields, check if the effective material needs finish
+    if (isFinishField && materialField) {
+      const materialOptions = materialField === 'faceMaterial' ? FACE_MATERIAL_OPTIONS : BOX_MATERIAL_OPTIONS;
+      const materialEstimateKey = materialField === 'faceMaterial' ? 'default_face_mat' : 'default_box_mat';
+      
+      const finishNeeded = shouldApplyFinish(
+        formData[materialField] || null,
+        currentEstimate?.[materialEstimateKey] || null,
+        teamDefaults?.[materialEstimateKey] || null,
+        materialOptions
+      );
+
+      // Don't show finish defaults if the effective material doesn't need finish
+      if (!finishNeeded) {
+        return null;
+      }
     }
 
     // For numeric fields, check if it's truly empty (not 0 or negative)
@@ -233,32 +254,32 @@ const EstimateSectionForm = ({
         data[doorInsideMoldingField] ??
         data.door_inside_molding ??
         initialDefaults.door_inside_molding ??
-        false,
+        null,
       doorOutsideMolding:
         data[doorOutsideMoldingField] ??
         data.door_outside_molding ??
         initialDefaults.door_outside_molding ??
-        false,
+        null,
       drawerInsideMolding:
         data[drawerInsideMoldingField] ??
         data.drawer_inside_molding ??
         initialDefaults.drawer_inside_molding ??
-        false,
+        null,
       drawerOutsideMolding:
         data[drawerOutsideMoldingField] ??
         data.drawer_outside_molding ??
         initialDefaults.drawer_outside_molding ??
-        false,
+        null,
       doorReededPanel:
         data[doorReededPanelField] ??
         data.door_reeded_panel ??
         initialDefaults.door_reeded_panel ??
-        false,
+        null,
       drawerReededPanel:
         data[drawerReededPanelField] ??
         data.drawer_reeded_panel ??
         initialDefaults.drawer_reeded_panel ??
-        false,
+        null,
       hinge_id:
         data[hingeField] || data.hinge_id || initialDefaults.hinge_id || "",
       slide_id:
@@ -603,6 +624,31 @@ const EstimateSectionForm = ({
             }
           });
 
+          // Convert empty strings to null for material/hardware foreign key fields
+          const foreignKeyFields = [
+            "style",
+            "boxMaterial",
+            "faceMaterial",
+            "drawer_box_mat",
+            "hinge_id",
+            "slide_id",
+            "door_pull_id",
+            "drawer_pull_id",
+          ];
+          foreignKeyFields.forEach((field) => {
+            if (processedData[field] === "" || processedData[field] == null) {
+              processedData[field] = null;
+            }
+          });
+
+          // Convert empty strings to null for text fields
+          const textFields = ["doorStyle", "drawerFrontStyle"];
+          textFields.forEach((field) => {
+            if (processedData[field] === "") {
+              processedData[field] = null;
+            }
+          });
+
           if (section?.est_section_id) {
             // Update existing section
             await dispatch(
@@ -630,44 +676,70 @@ const EstimateSectionForm = ({
   };
 
   useEffect(() => {
+    // Determine if finish is needed based on the EFFECTIVE material (using three-tier fallback)
+    const finishNeeded = shouldApplyFinish(
+      formData.faceMaterial || null,
+      currentEstimate?.default_face_mat || null,
+      teamDefaults?.default_face_mat || null,
+      FACE_MATERIAL_OPTIONS
+    );
+
+    setMustSelectFaceFinish(finishNeeded);
+
+    // Update selectedFaceMaterial for door style filtering
     if (formData.faceMaterial) {
       const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
         (mat) => mat.id === +formData.faceMaterial
       );
       setSelectedFaceMaterial(selectedMaterial);
-
-      // Handle finish requirements
-      if (!selectedMaterial?.needs_finish) {
-        clearFinishes("faceFinish");
-        setMustSelectFaceFinish(false);
-      } else {
-        setMustSelectFaceFinish(true);
-      }
     } else {
       setSelectedFaceMaterial(null);
-      setMustSelectFaceFinish(false);
     }
-  }, [formData.faceMaterial, FACE_MATERIAL_OPTIONS]);
+
+    // Clear finishes if the effective material doesn't need finish
+    if (!finishNeeded && formData.faceFinish?.length > 0) {
+      clearFinishes("faceFinish");
+    }
+  }, [
+    formData.faceMaterial,
+    formData.faceFinish,
+    currentEstimate?.default_face_mat,
+    teamDefaults?.default_face_mat,
+    FACE_MATERIAL_OPTIONS,
+  ]);
 
   useEffect(() => {
+    // Determine if finish is needed based on the EFFECTIVE material (using three-tier fallback)
+    const finishNeeded = shouldApplyFinish(
+      formData.boxMaterial || null,
+      currentEstimate?.default_box_mat || null,
+      teamDefaults?.default_box_mat || null,
+      BOX_MATERIAL_OPTIONS
+    );
+
+    setMustSelectBoxFinish(finishNeeded);
+
+    // Update selectedBoxMaterial (if needed for future features)
     if (formData.boxMaterial) {
       const selectedMaterial = BOX_MATERIAL_OPTIONS.find(
         (mat) => mat.id === +formData.boxMaterial
       );
       setSelectedBoxMaterial(selectedMaterial);
-
-      // Handle finish requirements
-      if (!selectedMaterial?.needs_finish) {
-        clearFinishes("boxFinish");
-        setMustSelectBoxFinish(false);
-      } else {
-        setMustSelectBoxFinish(true);
-      }
     } else {
       setSelectedBoxMaterial(null);
-      setMustSelectBoxFinish(false);
     }
-  }, [formData.boxMaterial, BOX_MATERIAL_OPTIONS]);
+
+    // Clear finishes if the effective material doesn't need finish
+    if (!finishNeeded && formData.boxFinish?.length > 0) {
+      clearFinishes("boxFinish");
+    }
+  }, [
+    formData.boxMaterial,
+    formData.boxFinish,
+    currentEstimate?.default_box_mat,
+    teamDefaults?.default_box_mat,
+    BOX_MATERIAL_OPTIONS,
+  ]);
 
   const filteredDoorStyleOptions = useMemo(() => {
     if (!selectedFaceMaterial) return DOOR_STYLE_OPTIONS;
@@ -882,7 +954,10 @@ const EstimateSectionForm = ({
                             : null,
                           "default_box_finish",
                           "default_box_finish",
-                          formatFinishArray
+                          formatFinishArray,
+                          false,
+                          true,
+                          "boxMaterial"
                         )}
                       </label>
                       <div className="grid grid-cols-3 gap-1 text-sm pl-2">
@@ -981,7 +1056,10 @@ const EstimateSectionForm = ({
                             : null,
                           "default_face_finish",
                           "default_face_finish",
-                          formatFinishArray
+                          formatFinishArray,
+                          false,
+                          true,
+                          "faceMaterial"
                         )}
                       </label>
                       <div className="grid grid-cols-3 gap-1 text-sm pl-2">

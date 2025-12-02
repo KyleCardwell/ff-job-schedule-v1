@@ -204,3 +204,35 @@ export const getDefaultColumnName = (fieldName, level) => {
   }
   return fieldName;
 };
+
+/**
+ * Determine if finish should be applied based on the effective material
+ * Uses three-tier fallback to find the material, then checks if it needs finish
+ * @param {number|null} sectionMaterialId - Material ID from section level
+ * @param {number|null} estimateMaterialId - Material ID from estimate defaults
+ * @param {number|null} teamMaterialId - Material ID from team defaults
+ * @param {Array} materialOptions - Array of material objects with id and needs_finish properties
+ * @returns {boolean} Whether finish should be applied for the effective material
+ */
+export const shouldApplyFinish = (
+  sectionMaterialId,
+  estimateMaterialId,
+  teamMaterialId,
+  materialOptions
+) => {
+  // Get the effective material ID using three-tier fallback
+  const { value: effectiveMaterialId } = getEffectiveValue(
+    sectionMaterialId,
+    estimateMaterialId,
+    teamMaterialId
+  );
+
+  // If no material is selected, don't apply finish
+  if (!effectiveMaterialId || !materialOptions) {
+    return false;
+  }
+
+  // Find the material and check if it needs finish
+  const material = materialOptions.find((m) => m.id === effectiveMaterialId);
+  return material?.needs_finish || false;
+};

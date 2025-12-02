@@ -3,6 +3,10 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
+import {
+  getEffectiveDefaults,
+  shouldApplyFinish,
+} from "../../utils/estimateDefaults";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
@@ -11,6 +15,7 @@ const EstimateSectionPrice = ({ section }) => {
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
     (state) => state.materials
   );
+  const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
 
   // Get employee rates from Redux store
   const services = useSelector((state) => state.services?.allServices || []);
@@ -33,54 +38,128 @@ const EstimateSectionPrice = ({ section }) => {
   );
 
   // Get estimate and team for defaults fallback
-  const currentEstimate = useSelector((state) => state.estimates?.currentEstimate);
-  const team = currentEstimate?.est_project?.team;
+  const currentEstimate = useSelector(
+    (state) => state.estimates?.currentEstimate
+  );
+
+  // Create effective section with resolved fallback values (three-tier: section → estimate → team)
+  const effectiveSection = useMemo(() => {
+    const effectiveDefaults = getEffectiveDefaults(
+      section,
+      currentEstimate,
+      teamDefaults
+    );
+
+    // Merge the effective defaults with the section, preserving cabinet items and other data
+    return {
+      ...section,
+      // Override with effective defaults
+      cabinet_style_id: effectiveDefaults.cabinet_style_id,
+      box_mat: effectiveDefaults.box_mat,
+      face_mat: effectiveDefaults.face_mat,
+      drawer_box_mat: effectiveDefaults.drawer_box_mat,
+      hinge_id: effectiveDefaults.hinge_id,
+      slide_id: effectiveDefaults.slide_id,
+      door_pull_id: effectiveDefaults.door_pull_id,
+      drawer_pull_id: effectiveDefaults.drawer_pull_id,
+      face_finish: effectiveDefaults.face_finish,
+      box_finish: effectiveDefaults.box_finish,
+      door_inside_molding: effectiveDefaults.door_inside_molding,
+      door_outside_molding: effectiveDefaults.door_outside_molding,
+      drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
+      drawer_outside_molding: effectiveDefaults.drawer_outside_molding,
+      door_reeded_panel: effectiveDefaults.door_reeded_panel,
+      drawer_reeded_panel: effectiveDefaults.drawer_reeded_panel,
+      door_style: effectiveDefaults.door_style,
+      drawer_front_style: effectiveDefaults.drawer_front_style,
+    };
+  }, [section, currentEstimate, teamDefaults]);
 
   const selectedFaceMaterial = useMemo(() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const material = faceMaterials?.find((mat) => mat.id === section.face_mat);
-    if (material?.needs_finish) {
+    const material = faceMaterials?.find(
+      (mat) => mat.id === effectiveSection.face_mat
+    );
+
+    // Check if finish should be applied using three-tier fallback
+    const finishNeeded = shouldApplyFinish(
+      section.face_mat,
+      currentEstimate?.default_face_mat,
+      teamDefaults?.default_face_mat,
+      faceMaterials || []
+    );
+
+    if (finishNeeded) {
       finishMultiplier = 1;
+      if (effectiveSection.face_finish?.length > 0) {
+        effectiveSection.face_finish.forEach((finishId) => {
+          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+          if (finishObj?.finish_markup) {
+            finishMultiplier += finishObj.finish_markup / 100;
+          }
+          if (finishObj?.shop_markup) {
+            shopMultiplier += finishObj.shop_markup / 100;
+          }
+        });
+      }
     }
-    if (material?.needs_finish && section.face_finish?.length > 0) {
-      section.face_finish.forEach((finishId) => {
-        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-        if (finishObj?.finish_markup) {
-          finishMultiplier += finishObj.finish_markup / 100;
-        }
-        if (finishObj?.shop_markup) {
-          shopMultiplier += finishObj.shop_markup / 100;
-        }
-      });
-    }
+
     return { material, finishMultiplier, shopMultiplier };
-  }, [faceMaterials, section.face_mat, finishTypes, section.face_finish]);
+  }, [
+    faceMaterials,
+    effectiveSection.face_mat,
+    effectiveSection.face_finish,
+    finishTypes,
+    section.face_mat,
+    currentEstimate,
+    teamDefaults,
+  ]);
 
   const selectedBoxMaterial = useMemo(() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const material = boxMaterials?.find((mat) => mat.id === section.box_mat);
-    if (material?.needs_finish) {
+    const material = boxMaterials?.find(
+      (mat) => mat.id === effectiveSection.box_mat
+    );
+
+    // Check if finish should be applied using three-tier fallback
+    const finishNeeded = shouldApplyFinish(
+      section.box_mat,
+      currentEstimate?.default_box_mat,
+      teamDefaults?.default_box_mat,
+      boxMaterials || []
+    );
+
+    if (finishNeeded) {
       finishMultiplier = 1;
+      if (effectiveSection.box_finish?.length > 0) {
+        effectiveSection.box_finish.forEach((finishId) => {
+          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+          if (finishObj?.finish_markup) {
+            finishMultiplier += finishObj.finish_markup / 100;
+          }
+          if (finishObj?.shop_markup) {
+            shopMultiplier += finishObj.shop_markup / 100;
+          }
+        });
+      }
     }
-    if (material?.needs_finish && section.box_finish?.length > 0) {
-      section.box_finish.forEach((finishId) => {
-        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-        if (finishObj?.finish_markup) {
-          finishMultiplier += finishObj.finish_markup / 100;
-        }
-        if (finishObj?.shop_markup) {
-          shopMultiplier += finishObj.shop_markup / 100;
-        }
-      });
-    }
+
     return { material, finishMultiplier, shopMultiplier };
-  }, [boxMaterials, section.box_mat, finishTypes, section.box_finish]);
+  }, [
+    boxMaterials,
+    effectiveSection.box_mat,
+    effectiveSection.box_finish,
+    finishTypes,
+    section.box_mat,
+    currentEstimate,
+    teamDefaults,
+  ]);
 
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(section, {
+    return getSectionCalculations(effectiveSection, {
       // Materials
       boxMaterials,
       faceMaterials,
@@ -105,10 +184,10 @@ const EstimateSectionPrice = ({ section }) => {
 
       // Defaults for fallback (three-tier system)
       estimate: currentEstimate,
-      team: team,
+      team: teamDefaults,
     });
   }, [
-    section,
+    effectiveSection,
     boxMaterials,
     faceMaterials,
     selectedFaceMaterial,
@@ -122,7 +201,7 @@ const EstimateSectionPrice = ({ section }) => {
     partsListAnchors,
     services,
     currentEstimate,
-    team,
+    teamDefaults,
   ]);
 
   // Format number as currency
@@ -308,11 +387,16 @@ const EstimateSectionPrice = ({ section }) => {
               {sectionCalculations.fillerCount || 0}
             </span>
             <span className="text-sm font-medium text-teal-400 text-right">
-              {sectionCalculations.fillerCount && section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ? "(Panel)": ""}
+              {sectionCalculations.fillerCount &&
+              section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET
+                ? "(Panel)"
+                : ""}
             </span>
           </div>
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Glass (sqft):</span>
+            <span className="text-sm text-slate-300 text-left">
+              Glass (sqft):
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {roundToHundredth(sectionCalculations.glassCount || 0)}
             </span>
