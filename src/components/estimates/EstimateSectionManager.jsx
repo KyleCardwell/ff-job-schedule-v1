@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 // import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { updateSectionItems, updateSectionItemOrder } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
@@ -17,14 +18,21 @@ import EstimateOtherManager from "./EstimateOtherManager.jsx";
 const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   const dispatch = useDispatch();
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const teamDefaults = useSelector((state) => state.teamEstimateDefaults.teamDefaults);
 
   // Initialize section data from current section
+  // Use three-tier fallback for style: section → estimate → team → 13
   const [sectionData, setSectionData] = useState({
     cabinets: section?.cabinets || [],
     lengths: section?.lengths || [],
     accessories: section?.accessories || [],
     other: section?.other || [],
-    style: section?.cabinet_style_id || 13,
+    style: getEffectiveValueOnly(
+      section?.cabinet_style_id,
+      currentEstimate?.default_cabinet_style_id,
+      teamDefaults?.default_cabinet_style_id
+    ) || 13,
   });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -45,6 +53,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   };
 
   // Update local state when section changes
+  // Use three-tier fallback for style: section → estimate → team → 13
   useEffect(() => {
     if (section) {
       setSectionData({
@@ -52,7 +61,11 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
         lengths: section?.lengths || [],
         accessories: section?.accessories || [],
         other: section?.other || [],
-        style: section?.cabinet_style_id || 13,
+        style: getEffectiveValueOnly(
+          section?.cabinet_style_id,
+          currentEstimate?.default_cabinet_style_id,
+          teamDefaults?.default_cabinet_style_id
+        ) || 13,
       });
     }
   }, [
@@ -62,6 +75,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     section?.accessories,
     section?.other,
     section?.cabinet_style_id,
+    currentEstimate?.default_cabinet_style_id,
+    teamDefaults?.default_cabinet_style_id,
   ]);
 
   // Close all accordions when taskId changes
@@ -230,26 +245,39 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   };
 
   // Add errorState flag to cabinet items based on saved_style_id comparison
+  // Use effective style with three-tier fallback for accurate comparison
   const cabinetsWithErrorState = useMemo(() => {
     if (!sectionData.cabinets) {
       return [];
     }
 
+    // Calculate the effective style using three-tier fallback
+    const effectiveStyle = getEffectiveValueOnly(
+      section?.cabinet_style_id,
+      currentEstimate?.default_cabinet_style_id,
+      teamDefaults?.default_cabinet_style_id
+    ) || 13;
+
     return sectionData.cabinets.map((item) => {
       // Cabinet needs update if:
       // 1. It has no override (uses section default)
-      // 2. The saved style doesn't match current section style
+      // 2. The saved style doesn't match current effective style
       const needsUpdate =
         item.cabinet_style_override === null &&
         item.saved_style_id != null &&
-        item.saved_style_id !== sectionData.style;
+        item.saved_style_id !== effectiveStyle;
 
       return {
         ...item,
         errorState: needsUpdate,
       };
     });
-  }, [sectionData.cabinets, sectionData.style]);
+  }, [
+    sectionData.cabinets,
+    section?.cabinet_style_id,
+    currentEstimate?.default_cabinet_style_id,
+    teamDefaults?.default_cabinet_style_id,
+  ]);
 
   // TODO: Add similar processing for other section types when error state logic is implemented
   // const lengthsWithErrorState = useMemo(() => { ... }, [sectionData.lengths, ...]);
