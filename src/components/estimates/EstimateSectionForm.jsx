@@ -68,12 +68,25 @@ const EstimateSectionForm = ({
   }, [editType, teamData, estimateData, currentEstimate, section]);
 
   // Get default values for new sections using fallback logic
+  // Only use getNewSectionDefaults if we don't have template data (section is empty)
   const initialDefaults = useMemo(() => {
     if (editType === "section" && isNewSection) {
+      // Check if section has any template data (from copying last section)
+      const hasTemplateData = Object.keys(section).some(
+        key => key !== 'est_section_id' && section[key] !== undefined
+      );
+      
+      // If we have template data, don't resolve defaults - keep null values
+      // This allows the fallback logic to work at render/calculation time
+      if (hasTemplateData) {
+        return {};
+      }
+      
+      // Only resolve defaults for completely new sections with no template
       return getNewSectionDefaults(currentEstimate, teamDefaults);
     }
     return {};
-  }, [editType, isNewSection, currentEstimate, teamDefaults]);
+  }, [editType, isNewSection, currentEstimate, teamDefaults, section]);
 
   // Determine field name prefix (team and estimate use 'default_' prefix)
   const getFieldName = (baseName) => {

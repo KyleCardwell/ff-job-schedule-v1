@@ -289,7 +289,9 @@ const EstimateLayout = () => {
                   drawer_inside_molding: templateSection.drawer_inside_molding,
                   drawer_outside_molding: templateSection.drawer_outside_molding,
                   drawer_reeded_panel: templateSection.drawer_reeded_panel,
-                  notes: templateSection.notes,
+                  profit: templateSection.profit,
+                  commission: templateSection.commission,
+                  discount: templateSection.discount,
                 }
               : {};
             setInitialData(initialData);
