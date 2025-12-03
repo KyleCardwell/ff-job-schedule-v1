@@ -248,7 +248,6 @@ const EstimateLayout = () => {
 
       {/* Sections Column */}
       <EstimateSectionInfo
-        estimate_data={currentEstimate?.estimate_data}
         currentEstimate={currentEstimate}
         selectedTask={selectedTask}
         selectedSectionId={selectedSectionId}
@@ -269,7 +268,7 @@ const EstimateLayout = () => {
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
-            // If we have a template section, pass its section_data as the initial data
+            // If we have a template section, pass its fields as the initial data
             const initialData = templateSection
               ? {
                   face_mat: templateSection.face_mat,
@@ -282,9 +281,15 @@ const EstimateLayout = () => {
                   door_pull_id: templateSection.door_pull_id,
                   drawer_pull_id: templateSection.drawer_pull_id,
                   drawer_box_mat: templateSection.drawer_box_mat,
-                  section_data: {
-                    ...templateSection.section_data,
-                  },
+                  door_style: templateSection.door_style,
+                  drawer_front_style: templateSection.drawer_front_style,
+                  door_inside_molding: templateSection.door_inside_molding,
+                  door_outside_molding: templateSection.door_outside_molding,
+                  door_reeded_panel: templateSection.door_reeded_panel,
+                  drawer_inside_molding: templateSection.drawer_inside_molding,
+                  drawer_outside_molding: templateSection.drawer_outside_molding,
+                  drawer_reeded_panel: templateSection.drawer_reeded_panel,
+                  notes: templateSection.notes,
                 }
               : {};
             setInitialData(initialData);

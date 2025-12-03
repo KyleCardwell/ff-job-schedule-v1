@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useState, useMemo } from "react";
 import { FiSave, FiX } from "react-icons/fi";
+import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
@@ -116,9 +117,15 @@ const EstimateSectionForm = ({
 
     // For finish fields, check if the effective material needs finish
     if (isFinishField && materialField) {
-      const materialOptions = materialField === 'faceMaterial' ? FACE_MATERIAL_OPTIONS : BOX_MATERIAL_OPTIONS;
-      const materialEstimateKey = materialField === 'faceMaterial' ? 'default_face_mat' : 'default_box_mat';
-      
+      const materialOptions =
+        materialField === "faceMaterial"
+          ? FACE_MATERIAL_OPTIONS
+          : BOX_MATERIAL_OPTIONS;
+      const materialEstimateKey =
+        materialField === "faceMaterial"
+          ? "default_face_mat"
+          : "default_box_mat";
+
       const finishNeeded = shouldApplyFinish(
         formData[materialField] || null,
         currentEstimate?.[materialEstimateKey] || null,
@@ -142,7 +149,8 @@ const EstimateSectionForm = ({
       return null;
     }
 
-    const estimateValue = currentEstimate?.[estimateKey];
+    // When in estimate editing mode, skip estimate tier to show team defaults
+    const estimateValue = editType === 'estimate' ? null : currentEstimate?.[estimateKey];
     const teamValue = teamDefaults?.[teamDefaultKey];
     const { value, source } = getEffectiveValue(null, estimateValue, teamValue);
 
@@ -430,30 +438,75 @@ const EstimateSectionForm = ({
     }
   };
 
+  const handleRestoreDefaults = () => {
+    // Restore all fields to defaults based on editType
+    if (editType !== "team") {
+      // Reset to estimate defaults
+      setFormData({
+        style: "",
+        boxMaterial: "",
+        boxFinish: [],
+        faceMaterial: "",
+        faceFinish: [],
+        doorStyle: "",
+        drawerFrontStyle: "",
+        doorInsideMolding: null,
+        doorOutsideMolding: null,
+        doorReededPanel: null,
+        drawerInsideMolding: null,
+        drawerOutsideMolding: null,
+        drawerReededPanel: null,
+        hinge_id: "",
+        slide_id: "",
+        door_pull_id: "",
+        drawer_pull_id: "",
+        drawer_box_mat: "",
+        notes: "",
+        quantity: 1,
+        profit: "",
+        commission: "",
+        discount: "",
+      });
+    } 
+    // else if (editType === "estimate") {
+    //   // Reset to team defaults
+    //   setFormData({
+    //     style: teamDefaults?.default_cabinet_style_id || "",
+    //     boxMaterial: teamDefaults?.default_box_mat || "",
+    //     boxFinish: teamDefaults?.default_box_finish || [],
+    //     faceMaterial: teamDefaults?.default_face_mat || "",
+    //     faceFinish: teamDefaults?.default_face_finish || [],
+    //     doorStyle: teamDefaults?.default_door_style || "",
+    //     drawerFrontStyle: teamDefaults?.default_drawer_front_style || "",
+    //     doorInsideMolding: teamDefaults?.default_door_inside_molding ?? null,
+    //     doorOutsideMolding: teamDefaults?.default_door_outside_molding ?? null,
+    //     doorReededPanel: teamDefaults?.default_door_reeded_panel ?? null,
+    //     drawerInsideMolding: teamDefaults?.default_drawer_inside_molding ?? null,
+    //     drawerOutsideMolding: teamDefaults?.default_drawer_outside_molding ?? null,
+    //     drawerReededPanel: teamDefaults?.default_drawer_reeded_panel ?? null,
+    //     hinge_id: teamDefaults?.default_hinge_id || "",
+    //     slide_id: teamDefaults?.default_slide_id || "",
+    //     door_pull_id: teamDefaults?.default_door_pull_id || "",
+    //     drawer_pull_id: teamDefaults?.default_drawer_pull_id || "",
+    //     drawer_box_mat: teamDefaults?.default_drawer_box_mat || "",
+    //     notes: "",
+    //     quantity: 1,
+    //     profit: teamDefaults?.default_profit ?? "",
+    //     commission: teamDefaults?.default_commission ?? "",
+    //     discount: teamDefaults?.default_discount ?? "",
+    //   });
+    // }
+    
+    // Clear any errors
+    setErrors({});
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
     // For estimate defaults and sections, all fields are optional (can use fallback)
+    // No finish validation needed since defaults will always provide a finish
     if (editType === "estimate" || editType === "section") {
-      // Only validate finish requirements IF a material is selected that needs finish
-      if (
-        mustSelectFaceFinish &&
-        formData.faceMaterial &&
-        formData.faceFinish.length === 0
-      ) {
-        newErrors.faceFinish =
-          "At least one finish option is required for this material";
-      }
-
-      if (
-        mustSelectBoxFinish &&
-        formData.boxMaterial &&
-        formData.boxFinish.length === 0
-      ) {
-        newErrors.boxFinish =
-          "At least one finish option is required for this material";
-      }
-
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
     }
@@ -687,9 +740,15 @@ const EstimateSectionForm = ({
     setMustSelectFaceFinish(finishNeeded);
 
     // Update selectedFaceMaterial for door style filtering
-    if (formData.faceMaterial) {
+    // Use the effective material (three-tier fallback)
+    const effectiveFaceMaterialId =
+      formData.faceMaterial ||
+      currentEstimate?.default_face_mat ||
+      teamDefaults?.default_face_mat;
+
+    if (effectiveFaceMaterialId) {
       const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
-        (mat) => mat.id === +formData.faceMaterial
+        (mat) => mat.id === +effectiveFaceMaterialId
       );
       setSelectedFaceMaterial(selectedMaterial);
     } else {
@@ -720,9 +779,15 @@ const EstimateSectionForm = ({
     setMustSelectBoxFinish(finishNeeded);
 
     // Update selectedBoxMaterial (if needed for future features)
-    if (formData.boxMaterial) {
+    // Use the effective material (three-tier fallback)
+    const effectiveBoxMaterialId =
+      formData.boxMaterial ||
+      currentEstimate?.default_box_mat ||
+      teamDefaults?.default_box_mat;
+
+    if (effectiveBoxMaterialId) {
       const selectedMaterial = BOX_MATERIAL_OPTIONS.find(
-        (mat) => mat.id === +formData.boxMaterial
+        (mat) => mat.id === +effectiveBoxMaterialId
       );
       setSelectedBoxMaterial(selectedMaterial);
     } else {
@@ -1661,10 +1726,22 @@ const EstimateSectionForm = ({
 
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
+          {editType !== "team" && (
+            <div className="flex-1 flex justify-start">
+              <button
+                type="button"
+                onClick={handleRestoreDefaults}
+                className="px-3 py-1 text-xs font-medium text-white bg-teal-600 border border-teal-700 rounded hover:bg-teal-700 flex items-center"
+              >
+                <RiResetLeftFill className="mr-1" size={12} />
+                Restore Defaults
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 flex items-center"
+            className="px-3 py-1 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
           >
             <FiX className="mr-1" size={12} />
             Cancel

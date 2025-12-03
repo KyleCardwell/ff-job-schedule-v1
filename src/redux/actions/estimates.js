@@ -224,7 +224,6 @@ export const fetchEstimateById = (estimateId) => {
         state: data.state,
         city: data.city,
         zip: data.zip,
-        estimate_data: data.estimate_data,
         tasks_order: data.tasks_order,
 
         // Estimate-level defaults (nullable)
@@ -668,7 +667,6 @@ export const addSection = (estimateId, taskId, sectionData) => {
         .from("estimate_sections")
         .insert([
           {
-            section_data: {},
             box_mat: boxMaterial !== undefined && boxMaterial !== null ? +boxMaterial : null,
             face_mat: faceMaterial !== undefined && faceMaterial !== null ? +faceMaterial : null,
             drawer_box_mat:
@@ -711,7 +709,6 @@ export const addSection = (estimateId, taskId, sectionData) => {
       // Transform the section to match our frontend structure
       const sectionWithFormattedData = {
         ...newSection,
-        section_data: newSection.section_data || {},
         cabinets: [],
         lengths: [],
         accessories: [],
@@ -824,9 +821,6 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
           drawer_front_style: drawerFrontStyle || null,
         }),
         updated_at: new Date(),
-
-        // section_data is now empty - all fields have dedicated columns
-        section_data: {},
       };
 
       const { data: updatedSection, error } = await supabase
@@ -1178,7 +1172,6 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         state: data.state,
         city: data.city,
         zip: data.zip,
-        estimate_data: data.estimate_data,
         tasks_order: data.tasks_order,
 
         // Estimate-level defaults

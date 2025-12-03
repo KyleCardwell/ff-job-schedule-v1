@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 
+import { FACE_STYLES } from "../../utils/constants";
 import { getEffectiveValue as getEffectiveValueUtil } from "../../utils/estimateDefaults";
 
 const EstimateSectionInfo = ({
   selectedTask,
-  estimate_data,
   onAddSection,
   onEditSection,
   onEditEstimateDefaults,
@@ -20,8 +20,6 @@ const EstimateSectionInfo = ({
     : selectedTask?.sections?.length > 0
     ? selectedTask.sections[selectedTask.sections.length - 1]
     : null;
-
-  const sectionData = section?.section_data || {};
 
   // Determine if we should show estimate defaults (only when Project Information is selected)
   const showEstimateDefaults = showProjectInfo && !!currentEstimate;
@@ -126,8 +124,7 @@ const EstimateSectionInfo = ({
     doorReededPanel
   ) => {
     const baseName =
-      estimate_data?.doorStyles?.options?.find((s) => s.id === id)?.name ||
-      NOT_SELECTED;
+      FACE_STYLES.find((s) => s.id === id)?.label || NOT_SELECTED;
     const result = [baseName];
 
     if (doorInsideMolding) result.push("Inside Molding");
@@ -152,8 +149,7 @@ const EstimateSectionInfo = ({
     drawerReededPanel
   ) => {
     const baseName =
-      estimate_data?.drawerFrontStyles?.options?.find((s) => s.id === id)
-        ?.name || NOT_SELECTED;
+      FACE_STYLES.find((s) => s.id === id)?.label || NOT_SELECTED;
     const result = [baseName];
 
     if (drawerInsideMolding) result.push("Inside Molding");
@@ -302,7 +298,7 @@ const EstimateSectionInfo = ({
                 })()}
                 {(() => {
                   const { value: doorStyle, source: doorStyleSource } = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.doorStyle,
+                    showEstimateDefaults ? null : section?.door_style,
                     "default_door_style",
                     "default_door_style"
                   );
@@ -386,7 +382,7 @@ const EstimateSectionInfo = ({
                 })()}
                 {(() => {
                   const { value: drawerFrontStyle, source: drawerFrontStyleSource } = getSectionEffectiveValue(
-                    showEstimateDefaults ? null : sectionData.drawerFrontStyle,
+                    showEstimateDefaults ? null : section?.drawer_front_style,
                     "default_drawer_front_style",
                     "default_drawer_front_style"
                   );
@@ -486,10 +482,10 @@ const EstimateSectionInfo = ({
                     </>
                   );
                 })()}
-                {sectionData.notes && (
+                {section?.notes && (
                   <>
                     <div className="text-slate-400">Notes:</div>
-                    <div className="pl-5 mb-3 text-sm">{sectionData.notes}</div>
+                    <div className="pl-5 mb-3 text-sm">{section.notes}</div>
                   </>
                 )}
               </div>
@@ -536,7 +532,6 @@ const EstimateSectionInfo = ({
 
 EstimateSectionInfo.propTypes = {
   selectedTask: PropTypes.object,
-  estimate_data: PropTypes.object,
   currentEstimate: PropTypes.object,
   onAddSection: PropTypes.func,
   onEditEstimateDefaults: PropTypes.func,

@@ -109,7 +109,6 @@ export const estimatesReducer = (state = initialState, action) => {
             ...task,
             sections: (task.sections || []).map(section => ({
               ...section,
-              section_data: section.section_data || {},
               cabinets: section.cabinets || []
             }))
           }))
@@ -246,11 +245,7 @@ export const estimatesReducer = (state = initialState, action) => {
                   if (section.est_section_id === metaSectionId) {
                     return {
                       ...section,
-                      ...updates,
-                      section_data: {
-                        ...section.section_data,
-                        ...updates.section_data
-                      }
+                      ...updates
                     };
                   }
                   return section;

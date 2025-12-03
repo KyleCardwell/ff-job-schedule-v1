@@ -388,7 +388,7 @@ const EstimateSectionPrice = ({ section }) => {
             </span>
             <span className="text-sm font-medium text-teal-400 text-right">
               {sectionCalculations.fillerCount &&
-              section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET
+              section.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET
                 ? "(Panel)"
                 : ""}
             </span>
