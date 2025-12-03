@@ -10,6 +10,8 @@ import {
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
+import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
+
 const EstimateSectionPrice = ({ section }) => {
   // Get materials from Redux store
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
@@ -72,6 +74,10 @@ const EstimateSectionPrice = ({ section }) => {
       drawer_reeded_panel: effectiveDefaults.drawer_reeded_panel,
       door_style: effectiveDefaults.door_style,
       drawer_front_style: effectiveDefaults.drawer_front_style,
+      quantity: effectiveDefaults.quantity,
+      profit: effectiveDefaults.profit || 0,
+      commission: effectiveDefaults.commission || 0,
+      discount: effectiveDefaults.discount || 0,
     };
   }, [section, currentEstimate, teamDefaults]);
 
@@ -205,69 +211,83 @@ const EstimateSectionPrice = ({ section }) => {
   ]);
 
   // Format number as currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+ const formatCurrency = (amount, { noCents = false } = {}) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: noCents ? 0 : 2,
+    maximumFractionDigits: noCents ? 0 : 2,
+  }).format(amount);
+};
 
   // Format hours with 2 decimal places
   const formatHours = (hours) => {
     return roundToHundredth(parseFloat(hours || 0));
   };
 
-  // Calculate labor costs by service ID
-  const laborCosts = useMemo(() => {
-    const hoursByService = sectionCalculations.hoursByService || {};
-    let totalLaborCost = 0;
-    const costsByService = {};
-
-    Object.entries(hoursByService).forEach(([serviceId, hours]) => {
-      const service = services.find(
-        (s) => s.service_id === parseInt(serviceId)
-      );
-      if (service) {
-        const cost = hours * (service.hourly_rate || 0);
-        costsByService[serviceId] = {
-          hours,
-          rate: service.hourly_rate || 0,
-          cost,
-          name: service.service_name,
-        };
-        totalLaborCost += cost;
-      }
-    });
-
-    return {
-      costsByService,
-      totalLaborCost,
-    };
-  }, [sectionCalculations.hoursByService, services]);
-
   return (
-    <div className="h-full flex flex-col border-l border-slate-700 p-4 w-80">
+    <div className="h-full flex flex-col border-l border-slate-700 px-4 w-80">
       {/* Section Total Price - Top Section */}
-      <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-600">
+      <div className="flex justify-between items-center pb-3">
         <div className="text-slate-300">
           <span className="text-sm font-medium">Section Total Price:</span>
         </div>
         <div className="text-xl font-bold text-teal-400">
-          {formatCurrency(
-            sectionCalculations.totalPrice + laborCosts.totalLaborCost
-          )}
+          {formatCurrency(sectionCalculations.totalPrice, {
+            noCents: true,
+          })}
         </div>
       </div>
 
       {/* Content Section - Scrollable */}
       <div className="flex-1 overflow-auto space-y-4">
+        {/* Adjustments */}
+        <EstimateSectionPriceGroup title="Adjustments">
+          {/* Header row */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Subtotal</div>
+            <div className="text-sm font-medium text-teal-400 text-right"></div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.subTotalPrice)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Profit</div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {sectionCalculations.profitRate}%
+            </div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.profit)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Commission</div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {sectionCalculations.commissionRate}%
+            </div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.commission)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Discount</div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {sectionCalculations.discountRate}%
+            </div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.discount)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1">
+            <div className="text-sm text-slate-300 text-left">Quantity</div>
+            <div></div>
+            <div className="text-sm text-right font-bold text-teal-400">
+              {sectionCalculations.quantity}
+            </div>
+          </div>
+        </EstimateSectionPriceGroup>
         {/* Price Breakdown - Title */}
-        <div className="bg-slate-700 py-1 px-2 rounded-t-md">
-          <h3 className="text-sm font-medium text-white">Price Breakdown</h3>
-        </div>
-
-        {/* Price Breakdown - Content - Grid Layout */}
-        <div className="bg-gray-800 rounded-b-md p-3">
+        <EstimateSectionPriceGroup title="Parts Breakdown">
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-xs font-medium text-slate-400">Type</div>
@@ -278,7 +298,7 @@ const EstimateSectionPrice = ({ section }) => {
               Price
             </div>
           </div>
-
+          {/* Price Breakdown - Content - Grid Layout */}
           {/* Box Information */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
             <span className="text-sm text-slate-300 text-left">
@@ -310,7 +330,8 @@ const EstimateSectionPrice = ({ section }) => {
                 className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0"
               >
                 <span className="text-sm text-slate-300 text-left">
-                  {FACE_TYPES.find((t) => t.value === type)?.label || type}s:
+                  {FACE_TYPES.find((t) => t.value === type)?.label || type}
+                  s:
                 </span>
                 <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                   {count}
@@ -393,7 +414,7 @@ const EstimateSectionPrice = ({ section }) => {
                 : ""}
             </span>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1">
             <span className="text-sm text-slate-300 text-left">
               Glass (sqft):
             </span>
@@ -404,15 +425,11 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.glassTotal || 0)}
             </span>
           </div>
-        </div>
+        </EstimateSectionPriceGroup>
 
         {/* Labor Hours - Title */}
-        <div className="bg-slate-700 py-1 px-2 rounded-t-md mt-4">
-          <h3 className="text-sm font-medium text-white">Labor Hours</h3>
-        </div>
-
-        {/* Labor Hours - Content - Grid Layout */}
-        <div className="bg-gray-800 rounded-b-md p-3">
+        <EstimateSectionPriceGroup title="Labor Breakdown">
+          {/* Labor Hours - Content - Grid Layout */}
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-xs font-medium text-slate-400">Category</div>
@@ -425,7 +442,7 @@ const EstimateSectionPrice = ({ section }) => {
           </div>
 
           {/* Dynamic Service Hours */}
-          {Object.entries(laborCosts.costsByService).map(
+          {Object.entries(sectionCalculations.laborCosts.costsByService).map(
             ([serviceType, data]) => (
               <div
                 key={serviceType}
@@ -445,16 +462,16 @@ const EstimateSectionPrice = ({ section }) => {
           )}
 
           {/* Total Labor Cost */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 mt-2 pt-2 border-t border-gray-600">
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 mt-1 pt-2">
             <span className="text-sm font-medium text-white text-left">
               Total Labor:
             </span>
             <span className="text-sm font-medium"></span>
             <span className="text-sm font-bold text-teal-400 text-right">
-              {formatCurrency(laborCosts.totalLaborCost)}
+              {formatCurrency(sectionCalculations.laborCosts.totalLaborCost)}
             </span>
           </div>
-        </div>
+        </EstimateSectionPriceGroup>
       </div>
     </div>
   );

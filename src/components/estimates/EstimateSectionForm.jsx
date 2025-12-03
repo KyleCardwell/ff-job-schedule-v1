@@ -141,8 +141,11 @@ const EstimateSectionForm = ({
 
     // For numeric fields, check if it's truly empty (not 0 or negative)
     // For non-numeric fields, check for null, undefined, or empty string
+    // For finish fields (arrays), also treat empty arrays as empty
     const isEmpty = isNumeric
       ? fieldValue === "" || fieldValue === null || fieldValue === undefined
+      : isFinishField
+      ? fieldValue === null || fieldValue === undefined || (Array.isArray(fieldValue) && fieldValue.length === 0)
       : fieldValue === "" || fieldValue === null || fieldValue === undefined;
 
     if (!isEmpty) {
@@ -468,34 +471,6 @@ const EstimateSectionForm = ({
         discount: "",
       });
     } 
-    // else if (editType === "estimate") {
-    //   // Reset to team defaults
-    //   setFormData({
-    //     style: teamDefaults?.default_cabinet_style_id || "",
-    //     boxMaterial: teamDefaults?.default_box_mat || "",
-    //     boxFinish: teamDefaults?.default_box_finish || [],
-    //     faceMaterial: teamDefaults?.default_face_mat || "",
-    //     faceFinish: teamDefaults?.default_face_finish || [],
-    //     doorStyle: teamDefaults?.default_door_style || "",
-    //     drawerFrontStyle: teamDefaults?.default_drawer_front_style || "",
-    //     doorInsideMolding: teamDefaults?.default_door_inside_molding ?? null,
-    //     doorOutsideMolding: teamDefaults?.default_door_outside_molding ?? null,
-    //     doorReededPanel: teamDefaults?.default_door_reeded_panel ?? null,
-    //     drawerInsideMolding: teamDefaults?.default_drawer_inside_molding ?? null,
-    //     drawerOutsideMolding: teamDefaults?.default_drawer_outside_molding ?? null,
-    //     drawerReededPanel: teamDefaults?.default_drawer_reeded_panel ?? null,
-    //     hinge_id: teamDefaults?.default_hinge_id || "",
-    //     slide_id: teamDefaults?.default_slide_id || "",
-    //     door_pull_id: teamDefaults?.default_door_pull_id || "",
-    //     drawer_pull_id: teamDefaults?.default_drawer_pull_id || "",
-    //     drawer_box_mat: teamDefaults?.default_drawer_box_mat || "",
-    //     notes: "",
-    //     quantity: 1,
-    //     profit: teamDefaults?.default_profit ?? "",
-    //     commission: teamDefaults?.default_commission ?? "",
-    //     discount: teamDefaults?.default_discount ?? "",
-    //   });
-    // }
     
     // Clear any errors
     setErrors({});

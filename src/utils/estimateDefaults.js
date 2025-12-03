@@ -152,6 +152,30 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       estimate.default_drawer_front_style,
       team.default_drawer_front_style
     ),
+
+    // Quantity
+    quantity: getEffectiveValueOnly(
+      section.quantity,
+      estimate.default_quantity,
+      team.default_quantity
+    ),
+
+    // Profit, commission, and discount (numbers)
+    profit: getEffectiveValueOnly(
+      section.profit,
+      estimate.default_profit,
+      team.default_profit
+    ),
+    commission: getEffectiveValueOnly(
+      section.commission,
+      estimate.default_commission,
+      team.default_commission
+    ),
+    discount: getEffectiveValueOnly(
+      section.discount,
+      estimate.default_discount,
+      team.default_discount
+    ),
   };
 };
 
@@ -188,6 +212,10 @@ export const DEFAULTS_FIELD_MAPPING = {
   drawerReededPanel: 'drawer_reeded_panel',
   doorStyle: 'door_style',
   drawerFrontStyle: 'drawer_front_style',
+  quantity: 'quantity',
+  profit: 'profit',
+  commission: 'commission',
+  discount: 'discount',
 };
 
 /**
