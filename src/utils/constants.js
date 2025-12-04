@@ -13,6 +13,7 @@ export const PATHS = {
   MANAGE_FINISHES: "/manage/finishes",
   MANAGE_HARDWARE: "/manage/hardware",
   MANAGE_ACCESSORIES: "/manage/accessories",
+  MANAGE_LENGTHS: "/manage/lengths",
   MANAGE_TEAM_ESTIMATE_DEFAULTS: "/manage/estimate-defaults",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
@@ -186,6 +187,14 @@ export const ACCESSORY_UNITS = {
   LENGTH: "length",
   PERIMETER: "perimeter",
   UNIT: "unit",
+};
+
+export const LENGTH_TYPES = {
+  MOLDING: "molding",
+  BASE: "base",
+  SHELF: "shelf",
+  TOP: "top",
+  OTHER: "other",
 };
 
 /**
