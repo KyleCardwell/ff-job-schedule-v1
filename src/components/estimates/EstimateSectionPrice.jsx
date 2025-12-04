@@ -33,7 +33,7 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []
   );
 
-  const { hardware, accessories } = useSelector((state) => state);
+  const { hardware, accessories, lengths } = useSelector((state) => state);
 
   const partsListAnchors = useSelector(
     (state) => state.partsListAnchors?.itemsByPartsList || []
@@ -184,6 +184,9 @@ const EstimateSectionPrice = ({ section }) => {
       // Accessories
       accessories,
 
+      // Lengths
+      lengthsCatalog: lengths?.catalog || [],
+
       // Services & Anchors
       partsListAnchors,
       globalServices: services,
@@ -204,6 +207,7 @@ const EstimateSectionPrice = ({ section }) => {
     cabinetTypes,
     hardware,
     accessories,
+    lengths,
     partsListAnchors,
     services,
     currentEstimate,

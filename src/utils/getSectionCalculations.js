@@ -871,6 +871,89 @@ const calculateSimpleItemsTotal = (items, context) => {
   }, 0);
 };
 
+/**
+ * Calculate length item totals with material costs and labor hours
+ * @param {Array} items - Array of length items from the section
+ * @param {Object} context - Calculation context with lengths catalog and materials
+ * @returns {Object} { materialTotal, hoursByService: { serviceId: hours } }
+ */
+const calculateLengthTotals = (items, context) => {
+  const totals = {
+    materialTotal: 0,
+    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
+  };
+
+  const { lengthsCatalog, selectedFaceMaterial } = context;
+
+  if (!lengthsCatalog || !selectedFaceMaterial) return totals;
+  if (!items || !Array.isArray(items)) return totals;
+
+  items.forEach((item) => {
+    const lengthItem = lengthsCatalog.find(
+      (l) => l.id === item.length_catalog_id
+    );
+    if (!lengthItem) return;
+
+    const quantity = Number(item.quantity) || 1;
+    const lengthFeet = Number(item.length) || 0; // User inputs feet
+    const lengthInches = lengthFeet * 12; // Convert to inches for calculations
+    const miterCount = Number(item.miter_count) || 0;
+    const cutoutCount = Number(item.cutout_count) || 0;
+
+    // Calculate material cost based on length
+    // Use bd_ft_price if available, otherwise use fraction of sheet_price
+    const material = selectedFaceMaterial.material;
+    const width = lengthItem.width || 1; // Width in inches
+    const thickness = material.thickness || 0.75; // Thickness in inches
+
+    if (material.bd_ft_price) {
+      // Board feet calculation: (length * width * thickness) / 144
+      const boardFeet = (lengthInches * width * thickness) / 144;
+      const boardFeetWithWaste = boardFeet * 1.1; // 10% waste for linear items
+      totals.materialTotal +=
+        boardFeetWithWaste * material.bd_ft_price * quantity;
+    } else if (material.sheet_price && material.area) {
+      // Sheet goods: calculate area as fraction of sheet
+      const area = (lengthInches * width) / 144; // Square feet
+      const areaWithWaste = area * 1.1; // 10% waste
+      const pricePerSqFt = material.sheet_price / material.area;
+      totals.materialTotal += areaWithWaste * pricePerSqFt * quantity;
+    }
+
+    // Calculate labor hours from length_services
+    if (lengthItem.services && Array.isArray(lengthItem.services)) {
+      lengthItem.services.forEach((service) => {
+        const serviceId = service.service_id;
+        if (!serviceId) return;
+
+        // Base time per unit (per linear foot)
+        const timePerUnit = Number(service.time_per_unit) || 0;
+
+        // Calculate base hours for the length
+        let hours = (timePerUnit/60) * lengthFeet * quantity;
+
+        // Add additional time for miters if this is miter time
+        if (service.is_miter_time && miterCount > 0) {
+          hours += (timePerUnit/60) * miterCount * quantity;
+        }
+
+        // Add additional time for cutouts if this is cutout time
+        if (service.is_cutout_time && cutoutCount > 0) {
+          hours += (timePerUnit/60) * cutoutCount * quantity;
+        }
+
+        // Add to totals
+        if (!totals.hoursByService[serviceId]) {
+          totals.hoursByService[serviceId] = 0;
+        }
+        totals.hoursByService[serviceId] += hours;
+      });
+    }
+  });
+
+  return totals;
+};
+
 const calculateAccessoriesTotal = (items, context) => {
   const totals = {
     glass: { count: 0, total: 0 },
@@ -955,7 +1038,7 @@ export const getSectionCalculations = (section, context = {}) => {
 
   const cabinetTotals = calculateCabinetTotals(section, context);
 
-  const lengthsTotal = calculateSimpleItemsTotal(section.lengths, context);
+  const lengthTotals = calculateLengthTotals(section.lengths, context);
   const accessoriesTotal = calculateAccessoriesTotal(
     section.accessories,
     context
@@ -983,11 +1066,21 @@ export const getSectionCalculations = (section, context = {}) => {
     cabinetTotals.slidesTotal +
     cabinetTotals.woodTotal +
     glassTotal +
-    lengthsTotal +
+    lengthTotals.materialTotal +
     otherTotal;
 
-  // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
+  // Merge hoursByService from cabinets and lengths
   const finalHoursByService = { ...cabinetTotals.hoursByService };
+  
+  // Add length hours to the final totals
+  Object.entries(lengthTotals.hoursByService || {}).forEach(([serviceId, hours]) => {
+    if (!finalHoursByService[serviceId]) {
+      finalHoursByService[serviceId] = 0;
+    }
+    finalHoursByService[serviceId] += hours;
+  });
+
+  // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
   if (finalHoursByService[4] && finalHoursByService[4] > 0) {
     finalHoursByService[4] += 1;
   }
@@ -1057,7 +1150,7 @@ export const getSectionCalculations = (section, context = {}) => {
     pullsTotal: cabinetTotals.pullsTotal,
     slidesCount: cabinetTotals.slidesCount,
     slidesTotal: cabinetTotals.slidesTotal,
-    woodTotal: cabinetTotals.woodTotal,
+    woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
     fillerCount: cabinetTotals.fillerCount,
     glassCount,

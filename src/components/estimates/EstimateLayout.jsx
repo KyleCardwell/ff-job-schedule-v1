@@ -15,6 +15,7 @@ import {
 } from "../../redux/actions/estimates";
 import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
+import { fetchLengthsCatalog } from "../../redux/actions/lengths.js";
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
@@ -95,6 +96,7 @@ const EstimateLayout = () => {
     dispatch(fetchPartsListAnchors())
     dispatch(fetchFinishes())
     dispatch(fetchAccessoriesCatalog())
+    dispatch(fetchLengthsCatalog())
   }, []);
 
   useEffect(() => {
