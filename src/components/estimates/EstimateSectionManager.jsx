@@ -301,6 +301,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     {
       type: SECTION_TYPES.CABINETS.type,
       title: SECTION_TYPES.CABINETS.title,
+      count: cabinetsWithErrorState.length,
       component: (
         <EstimateCabinetManager
           items={cabinetsWithErrorState}
@@ -315,6 +316,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     {
       type: SECTION_TYPES.LENGTHS.type,
       title: SECTION_TYPES.LENGTHS.title,
+      count: sectionData.lengths?.length,
       component: (
         <EstimateLengthManager
           items={sectionData.lengths}
@@ -327,6 +329,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     {
       type: SECTION_TYPES.ACCESSORIES.type,
       title: SECTION_TYPES.ACCESSORIES.title,
+      count: sectionData.accessories?.length,
       component: (
         <EstimateAccessoriesManager
           items={sectionData.accessories}
@@ -339,6 +342,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     {
       type: SECTION_TYPES.OTHER.type,
       title: SECTION_TYPES.OTHER.title,
+      count: sectionData.other?.length,
       component: (
         <EstimateOtherManager
           items={sectionData.other}
@@ -352,7 +356,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
 
   return (
     <div className="flex-1 max-w-3xl mx-auto space-y-2">
-      {sections.map(({ type, title, component }) => (
+      {sections.map(({ type, title, count, component }) => (
         <div
           key={type}
           className="border border-slate-200 rounded-lg"
@@ -375,7 +379,8 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
                 </span>
               )}
             </div>
-            <span className="text-slate-400">
+            <span className="text-slate-400 flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-700">{count} item{count === 1 ? "" : "s"}</span>
               {openSectionType === type ? (
                 <FiChevronDown size={20} />
               ) : (

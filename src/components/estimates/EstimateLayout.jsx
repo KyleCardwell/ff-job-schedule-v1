@@ -20,6 +20,7 @@ import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
 import { PATHS } from "../../utils/constants";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
@@ -35,6 +36,9 @@ const EstimateLayout = () => {
   const { estimateId } = useParams();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
+  );
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
   );
   const estimates = useSelector((state) => state.estimates.estimates);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -112,6 +116,38 @@ const EstimateLayout = () => {
       (section) => section.est_section_id === selectedSectionId
     );
   }, [selectedTask?.sections, selectedSectionId]);
+
+  // Calculate which tasks have sections with cabinet errors
+  // Use three-tier fallback for style comparison: section → estimate → team
+  const tasksWithErrors = useMemo(() => {
+    const errorTaskIds = new Set();
+    
+    currentEstimate?.tasks?.forEach((task) => {
+      task.sections?.forEach((section) => {
+        // Calculate the effective style using three-tier fallback
+        const effectiveStyle = getEffectiveValueOnly(
+          section?.cabinet_style_id,
+          currentEstimate?.default_cabinet_style_id,
+          teamDefaults?.default_cabinet_style_id
+        ) || 13;
+
+        // Check if any cabinets in this section have error state
+        const hasErrorCabinets = section.cabinets?.some((cabinet) => {
+          return (
+            cabinet.cabinet_style_override === null &&
+            cabinet.saved_style_id != null &&
+            cabinet.saved_style_id !== effectiveStyle
+          );
+        });
+        
+        if (hasErrorCabinets) {
+          errorTaskIds.add(task.est_task_id);
+        }
+      });
+    });
+    
+    return errorTaskIds;
+  }, [currentEstimate?.tasks, currentEstimate?.default_cabinet_style_id, teamDefaults?.default_cabinet_style_id]);
 
   const handleAddTask = () => {
     setSelectedTaskId(null);
@@ -199,6 +235,7 @@ const EstimateLayout = () => {
                     <EstimateTask
                       task={task}
                       isSelected={selectedTaskId === task.est_task_id}
+                      hasErrorState={tasksWithErrors.has(task.est_task_id)}
                       onSelect={() => {
                         setSelectedTaskId(task.est_task_id);
                         setSelectedSectionId(

@@ -244,14 +244,14 @@ const EstimateSectionPrice = ({ section }) => {
         {/* Adjustments */}
         <EstimateSectionPriceGroup title="Adjustments">
           {/* Header row */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-sm text-slate-300 text-left">Subtotal</div>
             <div className="text-sm font-medium text-teal-400 text-right"></div>
             <div className="text-sm font-medium text-teal-400 text-right">
               {formatCurrency(sectionCalculations.subTotalPrice)}
             </div>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-sm text-slate-300 text-left">Profit</div>
             <div className="text-sm font-medium text-teal-400 text-right">
               {sectionCalculations.profitRate}%
@@ -260,7 +260,7 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.profit)}
             </div>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-sm text-slate-300 text-left">Commission</div>
             <div className="text-sm font-medium text-teal-400 text-right">
               {sectionCalculations.commissionRate}%
@@ -269,7 +269,7 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.commission)}
             </div>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-sm text-slate-300 text-left">Discount</div>
             <div className="text-sm font-medium text-teal-400 text-right">
               {sectionCalculations.discountRate}%
@@ -278,7 +278,7 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.discount)}
             </div>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1">
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1">
             <div className="text-sm text-slate-300 text-left">Quantity</div>
             <div></div>
             <div className="text-sm text-right font-bold text-teal-400">
