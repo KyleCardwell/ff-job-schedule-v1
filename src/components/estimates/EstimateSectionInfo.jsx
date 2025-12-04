@@ -47,9 +47,9 @@ const EstimateSectionInfo = ({
 
   // Get color class based on source
   const getSourceColor = (source) => {
-    if (source === "section") return "text-blue-400";
-    if (source === "estimate") return "text-teal-400";
-    return "text-amber-400"; // team
+    if (source === "section") return "text-amber-400";
+    if (source === "estimate") return "text-green-400";
+    return "text-slate-400"; // team
   };
 
   const getTitle = () => {
@@ -177,15 +177,15 @@ const EstimateSectionInfo = ({
         {(selectedTask || showEstimateDefaults) && (
           <div className="flex w-full justify-between text-xs text-slate-400">
             <div>
-              <span className="text-amber-400">●</span> Team default
+              <span className={`${getSourceColor("team")}`}>●</span> Team default
             </div>
             <div>
-              <span className="text-teal-400">●</span> Estimate
+              <span className={`${getSourceColor("estimate")}`}>●</span> Estimate
               {!showEstimateDefaults && " override"}
             </div>
             {!showEstimateDefaults && (
               <div>
-                <span className="text-blue-400">●</span> Section
+                <span className={`${getSourceColor("section")}`}>●</span> Section
               </div>
             )}
           </div>

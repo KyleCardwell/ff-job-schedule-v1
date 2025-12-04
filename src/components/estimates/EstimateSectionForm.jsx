@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
@@ -73,15 +73,15 @@ const EstimateSectionForm = ({
     if (editType === "section" && isNewSection) {
       // Check if section has any template data (from copying last section)
       const hasTemplateData = Object.keys(section).some(
-        key => key !== 'est_section_id' && section[key] !== undefined
+        (key) => key !== "est_section_id" && section[key] !== undefined
       );
-      
+
       // If we have template data, don't resolve defaults - keep null values
       // This allows the fallback logic to work at render/calculation time
       if (hasTemplateData) {
         return {};
       }
-      
+
       // Only resolve defaults for completely new sections with no template
       return getNewSectionDefaults(currentEstimate, teamDefaults);
     }
@@ -120,45 +120,25 @@ const EstimateSectionForm = ({
     teamDefaultKey,
     formatter,
     isNumeric = false,
-    isFinishField = false,
-    materialField = null
+    isFinishField = false
   ) => {
     // Don't show for team edit type
     if (editType === "team") {
       return null;
     }
 
-    // For finish fields, check if the effective material needs finish
-    if (isFinishField && materialField) {
-      const materialOptions =
-        materialField === "faceMaterial"
-          ? FACE_MATERIAL_OPTIONS
-          : BOX_MATERIAL_OPTIONS;
-      const materialEstimateKey =
-        materialField === "faceMaterial"
-          ? "default_face_mat"
-          : "default_box_mat";
-
-      const finishNeeded = shouldApplyFinish(
-        formData[materialField] || null,
-        currentEstimate?.[materialEstimateKey] || null,
-        teamDefaults?.[materialEstimateKey] || null,
-        materialOptions
-      );
-
-      // Don't show finish defaults if the effective material doesn't need finish
-      if (!finishNeeded) {
-        return null;
-      }
-    }
-
-    // For numeric fields, check if it's truly empty (not 0 or negative)
+    // For numeric fields, treat 0, null, undefined, or empty string as empty
+    // For finish fields (arrays), treat null, undefined, or empty arrays as empty
     // For non-numeric fields, check for null, undefined, or empty string
-    // For finish fields (arrays), also treat empty arrays as empty
     const isEmpty = isNumeric
-      ? fieldValue === "" || fieldValue === null || fieldValue === undefined
+      ? fieldValue === "" ||
+        fieldValue === null ||
+        fieldValue === undefined ||
+        fieldValue === 0
       : isFinishField
-      ? fieldValue === null || fieldValue === undefined || (Array.isArray(fieldValue) && fieldValue.length === 0)
+      ? fieldValue === null ||
+        fieldValue === undefined ||
+        (Array.isArray(fieldValue) && fieldValue.length === 0)
       : fieldValue === "" || fieldValue === null || fieldValue === undefined;
 
     if (!isEmpty) {
@@ -166,12 +146,15 @@ const EstimateSectionForm = ({
     }
 
     // When in estimate editing mode, skip estimate tier to show team defaults
-    const estimateValue = editType === 'estimate' ? null : currentEstimate?.[estimateKey];
+    const estimateValue =
+      editType === "estimate" ? null : currentEstimate?.[estimateKey];
     const teamValue = teamDefaults?.[teamDefaultKey];
     const { value, source } = getEffectiveValue(null, estimateValue, teamValue);
 
     // Don't show if there's no effective value
-    if (value === null || value === undefined) return null;
+    // For numeric fields, allow null/undefined to pass to formatter (will show "0%")
+    // For other fields, return early if no value
+    if (!isNumeric && (value === null || value === undefined)) return null;
 
     const displayValue = formatter ? formatter(value) : value;
     // const colorClass = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
@@ -180,7 +163,7 @@ const EstimateSectionForm = ({
 
     return (
       displayValue && (
-        <span className={`text-xs ${colorClass} ml-2`}>({displayValue})</span>
+        <span className={`text-sm ${colorClass} ml-1`}>({displayValue})</span>
       )
     );
   };
@@ -211,7 +194,7 @@ const EstimateSectionForm = ({
       .join(", ");
   };
   const formatPercentage = (value) => {
-    if (value === null || value === undefined) return "";
+    if (value === null || value === undefined) return "0%";
     return `${value}%`;
   };
 
@@ -339,12 +322,62 @@ const EstimateSectionForm = ({
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
 
-  const clearFinishes = (section) => {
-    setFormData({
-      ...formData,
-      [section]: [],
-    });
-  };
+  const clearFinishes = useCallback(
+    (section) => {
+      setFormData({
+        ...formData,
+        [section]: [],
+      });
+    },
+    [formData]
+  );
+
+  const getTiers = useCallback(
+    (field, options = {}) => {
+      const { emptyIsNull = false } = options;
+
+      // 1. Get raw value from formData
+      let formDataValue = formData[field] ?? null;
+
+      // 2. Treat empty string as null (when user selects "team default")
+      if (formDataValue === "") {
+        formDataValue = null;
+      }
+
+      // 3. Convert empty arrays to null when needed
+      if (
+        emptyIsNull &&
+        Array.isArray(formDataValue) &&
+        formDataValue.length === 0
+      ) {
+        formDataValue = null;
+      }
+
+      // 3. Determine the correct estimate/team key
+      const estimateKeyMap = {
+        faceMaterial: "default_face_mat",
+        boxMaterial: "default_box_mat",
+        faceFinish: "default_face_finish",
+        boxFinish: "default_box_finish",
+      };
+
+      const estimateKey = estimateKeyMap[field];
+
+      // 4. Build tier values
+      return {
+        section: editType === "section" ? formDataValue : null,
+        estimate:
+          editType === "estimate"
+            ? formDataValue
+            : currentEstimate?.[estimateKey] ?? null,
+        team:
+          editType === "team"
+            ? formDataValue
+            : teamDefaults?.[estimateKey] ?? null,
+      };
+    },
+    [editType, formData, currentEstimate, teamDefaults]
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -483,8 +516,8 @@ const EstimateSectionForm = ({
         commission: "",
         discount: "",
       });
-    } 
-    
+    }
+
     // Clear any errors
     setErrors({});
   };
@@ -492,9 +525,57 @@ const EstimateSectionForm = ({
   const validateForm = () => {
     const newErrors = {};
 
-    // For estimate defaults and sections, all fields are optional (can use fallback)
-    // No finish validation needed since defaults will always provide a finish
+    // For estimate defaults and sections, most fields are optional (can use fallback)
+    // But we still need to validate finish fields if the material needs finish
     if (editType === "estimate" || editType === "section") {
+      // Check if face finish is needed using the same logic as useEffect
+      const faceMaterialTiers = getTiers("faceMaterial");
+      const faceFinishNeeded = shouldApplyFinish(
+        faceMaterialTiers.section,
+        faceMaterialTiers.estimate,
+        faceMaterialTiers.team,
+        FACE_MATERIAL_OPTIONS
+      );
+
+      if (faceFinishNeeded) {
+        const faceFinishTiers = getTiers("faceFinish", { emptyIsNull: true });
+        const effectiveFaceFinish = getEffectiveValue(
+          faceFinishTiers.section,
+          faceFinishTiers.estimate,
+          faceFinishTiers.team
+        );
+        if (
+          !effectiveFaceFinish.value ||
+          effectiveFaceFinish.value.length === 0
+        ) {
+          newErrors.faceFinish = "At least one finish option is required";
+        }
+      }
+
+      // Check if box finish is needed using the same logic as useEffect
+      const boxMaterialTiers = getTiers("boxMaterial");
+      const boxFinishNeeded = shouldApplyFinish(
+        boxMaterialTiers.section,
+        boxMaterialTiers.estimate,
+        boxMaterialTiers.team,
+        BOX_MATERIAL_OPTIONS
+      );
+
+      if (boxFinishNeeded) {
+        const boxFinishTiers = getTiers("boxFinish", { emptyIsNull: true });
+        const effectiveBoxFinish = getEffectiveValue(
+          boxFinishTiers.section,
+          boxFinishTiers.estimate,
+          boxFinishTiers.team
+        );
+        if (
+          !effectiveBoxFinish.value ||
+          effectiveBoxFinish.value.length === 0
+        ) {
+          newErrors.boxFinish = "At least one finish option is required";
+        }
+      }
+
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
     }
@@ -540,14 +621,14 @@ const EstimateSectionForm = ({
       if (!formData.drawer_box_mat) {
         newErrors.drawer_box_mat = "Drawer box material is required";
       }
+    }
 
-      if (mustSelectFaceFinish && formData.faceFinish.length === 0) {
-        newErrors.faceFinish = "At least one finish option is required";
-      }
+    if (mustSelectFaceFinish && formData.faceFinish.length === 0) {
+      newErrors.faceFinish = "At least one finish option is required";
+    }
 
-      if (mustSelectBoxFinish && formData.boxFinish.length === 0) {
-        newErrors.boxFinish = "At least one finish option is required";
-      }
+    if (mustSelectBoxFinish && formData.boxFinish.length === 0) {
+      newErrors.boxFinish = "At least one finish option is required";
     }
 
     setErrors(newErrors);
@@ -718,10 +799,12 @@ const EstimateSectionForm = ({
 
   useEffect(() => {
     // Determine if finish is needed based on the EFFECTIVE material (using three-tier fallback)
+    const { section, estimate, team } = getTiers("faceMaterial");
+
     const finishNeeded = shouldApplyFinish(
-      formData.faceMaterial || null,
-      currentEstimate?.default_face_mat || null,
-      teamDefaults?.default_face_mat || null,
+      section,
+      estimate,
+      team,
       FACE_MATERIAL_OPTIONS
     );
 
@@ -748,19 +831,24 @@ const EstimateSectionForm = ({
       clearFinishes("faceFinish");
     }
   }, [
+    editType,
     formData.faceMaterial,
     formData.faceFinish,
     currentEstimate?.default_face_mat,
     teamDefaults?.default_face_mat,
     FACE_MATERIAL_OPTIONS,
+    clearFinishes,
+    getTiers,
   ]);
 
   useEffect(() => {
     // Determine if finish is needed based on the EFFECTIVE material (using three-tier fallback)
+    const { section, estimate, team } = getTiers("boxMaterial");
+
     const finishNeeded = shouldApplyFinish(
-      formData.boxMaterial || null,
-      currentEstimate?.default_box_mat || null,
-      teamDefaults?.default_box_mat || null,
+      section,
+      estimate,
+      team,
       BOX_MATERIAL_OPTIONS
     );
 
@@ -787,11 +875,14 @@ const EstimateSectionForm = ({
       clearFinishes("boxFinish");
     }
   }, [
+    editType,
     formData.boxMaterial,
     formData.boxFinish,
     currentEstimate?.default_box_mat,
     teamDefaults?.default_box_mat,
     BOX_MATERIAL_OPTIONS,
+    clearFinishes,
+    getTiers,
   ]);
 
   const filteredDoorStyleOptions = useMemo(() => {
@@ -1009,8 +1100,7 @@ const EstimateSectionForm = ({
                           "default_box_finish",
                           formatFinishArray,
                           false,
-                          true,
-                          "boxMaterial"
+                          true
                         )}
                       </label>
                       <div className="grid grid-cols-3 gap-1 text-sm pl-2">
@@ -1111,8 +1201,7 @@ const EstimateSectionForm = ({
                           "default_face_finish",
                           formatFinishArray,
                           false,
-                          true,
-                          "faceMaterial"
+                          true
                         )}
                       </label>
                       <div className="grid grid-cols-3 gap-1 text-sm pl-2">
