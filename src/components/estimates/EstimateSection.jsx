@@ -9,6 +9,7 @@ import ConfirmationModal from "../common/ConfirmationModal.jsx";
 const EstimateSection = ({
   task,
   isSelected,
+  hasErrorState = false,
   onSelect,
   onDelete,
   section,
@@ -44,9 +45,13 @@ const EstimateSection = ({
           className={`
               w-full py-2 px-4 text-sm font-medium text-left flex items-center justify-between group/section
               ${
-                isSelected
-                  ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
-                  : "text-slate-400 hover:bg-slate-700 hover:text-teal-400"
+                hasErrorState
+                  ? isSelected
+                    ? "bg-red-700 text-slate-200 border-l-2 border-red-500"
+                    : "bg-red-700 text-slate-200 hover:bg-red-600 hover:text-slate-100"
+                  : isSelected
+                    ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
+                    : "text-slate-400 hover:bg-slate-700 hover:text-teal-400"
               }
             `}
         >
@@ -88,9 +93,11 @@ EstimateSection.propTypes = {
     est_task_name: PropTypes.string.isRequired,
   }).isRequired,
   isSelected: PropTypes.bool,
+  hasErrorState: PropTypes.bool,
   onSelect: PropTypes.func,
   onDelete: PropTypes.func,
   section: PropTypes.object,
+  sectionNumber: PropTypes.number,
 };
 
 export default EstimateSection;

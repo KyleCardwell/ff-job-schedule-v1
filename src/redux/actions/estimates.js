@@ -199,6 +199,7 @@ export const fetchEstimateById = (estimateId) => {
     try {
       dispatch({ type: Actions.estimates.FETCH_ESTIMATE_START });
 
+      // Use estimate_full_details view which now includes all defaults
       const { data, error } = await supabase
         .from("estimate_full_details")
         .select("*")
@@ -208,6 +209,7 @@ export const fetchEstimateById = (estimateId) => {
       if (error) throw error;
 
       // Transform the data to match our frontend structure
+      // The view returns team defaults with team_ prefix, restructure them
       const estimate = {
         estimate_id: data.estimate_id,
         est_project_id: data.est_project_id,
@@ -222,13 +224,35 @@ export const fetchEstimateById = (estimateId) => {
         state: data.state,
         city: data.city,
         zip: data.zip,
-        estimate_data: data.estimate_data,
         tasks_order: data.tasks_order,
+
+        // Estimate-level defaults (nullable)
+        default_cabinet_style_id: data.default_cabinet_style_id,
+        default_box_mat: data.default_box_mat,
+        default_face_mat: data.default_face_mat,
+        default_drawer_box_mat: data.default_drawer_box_mat,
+        default_hinge_id: data.default_hinge_id,
+        default_slide_id: data.default_slide_id,
+        default_door_pull_id: data.default_door_pull_id,
+        default_drawer_pull_id: data.default_drawer_pull_id,
+        default_face_finish: data.default_face_finish,
+        default_box_finish: data.default_box_finish,
+        default_door_inside_molding: data.default_door_inside_molding,
+        default_door_outside_molding: data.default_door_outside_molding,
+        default_drawer_inside_molding: data.default_drawer_inside_molding,
+        default_drawer_outside_molding: data.default_drawer_outside_molding,
+        default_door_reeded_panel: data.default_door_reeded_panel,
+        default_drawer_reeded_panel: data.default_drawer_reeded_panel,
+        default_door_style: data.default_door_style,
+        default_drawer_front_style: data.default_drawer_front_style,
+        default_profit: data.default_profit,
+        default_commission: data.default_commission,
+        default_discount: data.default_discount,
+
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
           sections: task.sections || [],
         })),
-        estimateDefault: data.estimates_default,
       };
 
       dispatch({
@@ -611,17 +635,69 @@ export const addSection = (estimateId, taskId, sectionData) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
-      // Extract boxMaterial from the section data
-      const { boxMaterial, faceMaterial, ...restOfSectionData } = sectionData;
+      // Extract fields that go in separate columns (all fields now have dedicated columns)
+      const {
+        boxMaterial,
+        faceMaterial,
+        drawer_box_mat,
+        style,
+        hinge_id,
+        slide_id,
+        door_pull_id,
+        drawer_pull_id,
+        faceFinish,
+        boxFinish,
+        quantity,
+        profit,
+        commission,
+        discount,
+        doorInsideMolding,
+        doorOutsideMolding,
+        drawerInsideMolding,
+        drawerOutsideMolding,
+        notes,
+        doorReededPanel,
+        drawerReededPanel,
+        doorStyle,
+        drawerFrontStyle,
+      } = sectionData;
 
       // Create the new section
       const { data: newSection, error } = await supabase
         .from("estimate_sections")
         .insert([
           {
-            section_data: restOfSectionData,
-            box_mat: boxMaterial !== undefined ? +boxMaterial : null,
-            face_mat: faceMaterial !== undefined ? +faceMaterial : null,
+            box_mat: boxMaterial !== undefined && boxMaterial !== null ? +boxMaterial : null,
+            face_mat: faceMaterial !== undefined && faceMaterial !== null ? +faceMaterial : null,
+            drawer_box_mat:
+              drawer_box_mat !== undefined && drawer_box_mat !== null ? +drawer_box_mat : null,
+            cabinet_style_id: style !== undefined && style !== null ? +style : null,
+            hinge_id: hinge_id !== undefined && hinge_id !== null ? +hinge_id : null,
+            slide_id: slide_id !== undefined && slide_id !== null ? +slide_id : null,
+            door_pull_id: door_pull_id !== undefined && door_pull_id !== null ? +door_pull_id : null,
+            drawer_pull_id:
+              drawer_pull_id !== undefined && drawer_pull_id !== null ? +drawer_pull_id : null,
+            face_finish: faceFinish !== undefined && faceFinish.length ? faceFinish : null,
+            box_finish: boxFinish !== undefined && boxFinish.length ? boxFinish : null,
+            quantity: quantity != null ? +quantity : 1,
+            profit: profit != null ? +profit : null,
+            commission: commission != null ? +commission : null,
+            discount: discount != null ? +discount : null,
+            door_inside_molding:
+              doorInsideMolding !== undefined ? doorInsideMolding : null,
+            door_outside_molding:
+              doorOutsideMolding !== undefined ? doorOutsideMolding : null,
+            drawer_inside_molding:
+              drawerInsideMolding !== undefined ? drawerInsideMolding : null,
+            drawer_outside_molding:
+              drawerOutsideMolding !== undefined ? drawerOutsideMolding : null,
+            notes: notes || null,
+            door_reeded_panel:
+              doorReededPanel !== undefined ? doorReededPanel : null,
+            drawer_reeded_panel:
+              drawerReededPanel !== undefined ? drawerReededPanel : null,
+            door_style: doorStyle || null,
+            drawer_front_style: drawerFrontStyle || null,
             est_task_id: taskId,
           },
         ])
@@ -633,7 +709,6 @@ export const addSection = (estimateId, taskId, sectionData) => {
       // Transform the section to match our frontend structure
       const sectionWithFormattedData = {
         ...newSection,
-        section_data: newSection.section_data || {},
         cabinets: [],
         lengths: [],
         accessories: [],
@@ -662,17 +737,11 @@ export const addSection = (estimateId, taskId, sectionData) => {
 
 // Update an existing section
 export const updateSection = (estimateId, taskId, sectionId, updates) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
-      const { currentEstimate } = getState().estimates;
-      const currentTask = currentEstimate?.tasks?.find(
-        (task) => task.est_task_id === taskId
-      );
-      const currentSections = currentTask?.sections || [];
-
-      // Extract boxMaterial and faceMaterial from updates
+      // Extract fields that go in separate columns (all fields now have dedicated columns)
       const {
         boxMaterial,
         faceMaterial,
@@ -684,32 +753,74 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         drawer_pull_id,
         faceFinish,
         boxFinish,
-        ...sectionData
+        quantity,
+        profit,
+        commission,
+        discount,
+        doorInsideMolding,
+        doorOutsideMolding,
+        drawerInsideMolding,
+        drawerOutsideMolding,
+        notes,
+        doorReededPanel,
+        drawerReededPanel,
+        doorStyle,
+        drawerFrontStyle,
       } = updates;
 
       // Prepare the update payload for Supabase
       const updatePayload = {
         // Set box_mat and face_mat separately if provided
-        ...(boxMaterial !== undefined && { box_mat: +boxMaterial }),
-        ...(faceMaterial !== undefined && { face_mat: +faceMaterial }),
+        ...(boxMaterial !== undefined && { box_mat: boxMaterial !== null ? +boxMaterial : null }),
+        ...(faceMaterial !== undefined && { face_mat: faceMaterial !== null ? +faceMaterial : null }),
         ...(drawer_box_mat !== undefined && {
-          drawer_box_mat: +drawer_box_mat,
+          drawer_box_mat: drawer_box_mat !== null ? +drawer_box_mat : null,
         }),
-        ...(hinge_id !== undefined && { hinge_id: +hinge_id }),
-        ...(slide_id !== undefined && { slide_id: +slide_id }),
-        ...(door_pull_id !== undefined && { door_pull_id: +door_pull_id }),
-        ...(drawer_pull_id !== undefined && { drawer_pull_id: +drawer_pull_id }),
-        ...(style !== undefined && { cabinet_style_id: +style }),
-        ...(faceFinish !== undefined && { face_finish: faceFinish }),
-        ...(boxFinish !== undefined && { box_finish: boxFinish }),
+        ...(hinge_id !== undefined && { hinge_id: hinge_id !== null ? +hinge_id : null }),
+        ...(slide_id !== undefined && { slide_id: slide_id !== null ? +slide_id : null }),
+        ...(door_pull_id !== undefined && { door_pull_id: door_pull_id !== null ? +door_pull_id : null }),
+        ...(drawer_pull_id !== undefined && {
+          drawer_pull_id: drawer_pull_id !== null ? +drawer_pull_id : null,
+        }),
+        ...(style !== undefined && { cabinet_style_id: style !== null ? +style : null }),
+        ...(faceFinish !== undefined && { face_finish: faceFinish.length ? faceFinish : null }),
+        ...(boxFinish !== undefined && { box_finish: boxFinish.length ? boxFinish : null }),
+        ...(quantity !== undefined && {
+          quantity: quantity != null ? +quantity : 1,
+        }),
+        ...(profit !== undefined && {
+          profit: profit != null ? +profit : null,
+        }),
+        ...(commission !== undefined && {
+          commission: commission != null ? +commission : null,
+        }),
+        ...(discount !== undefined && {
+          discount: discount != null ? +discount : null,
+        }),
+        ...(doorInsideMolding !== undefined && {
+          door_inside_molding: doorInsideMolding,
+        }),
+        ...(doorOutsideMolding !== undefined && {
+          door_outside_molding: doorOutsideMolding,
+        }),
+        ...(drawerInsideMolding !== undefined && {
+          drawer_inside_molding: drawerInsideMolding,
+        }),
+        ...(drawerOutsideMolding !== undefined && {
+          drawer_outside_molding: drawerOutsideMolding,
+        }),
+        ...(notes !== undefined && { notes: notes || null }),
+        ...(doorReededPanel !== undefined && {
+          door_reeded_panel: doorReededPanel,
+        }),
+        ...(drawerReededPanel !== undefined && {
+          drawer_reeded_panel: drawerReededPanel,
+        }),
+        ...(doorStyle !== undefined && { door_style: doorStyle || null }),
+        ...(drawerFrontStyle !== undefined && {
+          drawer_front_style: drawerFrontStyle || null,
+        }),
         updated_at: new Date(),
-        
-        // Merge the rest into section_data
-        section_data: {
-          ...currentSections.find((s) => s.est_section_id === sectionId)
-            ?.section_data,
-          ...sectionData,
-        },
       };
 
       const { data: updatedSection, error } = await supabase
@@ -984,6 +1095,133 @@ export const updateTaskOrder = (estimateId, orderedTaskIds) => {
         type: Actions.estimates.UPDATE_TASK_ORDER_ERROR,
         payload: error.message,
       });
+    }
+  };
+};
+
+// Update estimate defaults
+export const updateEstimateDefaults = (estimateId, defaults) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_START });
+
+      // All fields use the default_ prefix and are NULLABLE
+      const updatePayload = {
+        default_cabinet_style_id: defaults.default_cabinet_style_id ?? null,
+        default_box_mat: defaults.default_box_mat ?? null,
+        default_face_mat: defaults.default_face_mat ?? null,
+        default_drawer_box_mat: defaults.default_drawer_box_mat ?? null,
+        default_hinge_id: defaults.default_hinge_id ?? null,
+        default_slide_id: defaults.default_slide_id ?? null,
+        default_door_pull_id: defaults.default_door_pull_id ?? null,
+        default_drawer_pull_id: defaults.default_drawer_pull_id ?? null,
+        default_face_finish: defaults.default_face_finish?.length
+          ? defaults.default_face_finish
+          : null,
+        default_box_finish: defaults.default_box_finish?.length
+          ? defaults.default_box_finish
+          : null,
+        default_door_inside_molding:
+          defaults.default_door_inside_molding ?? null,
+        default_door_outside_molding:
+          defaults.default_door_outside_molding ?? null,
+        default_drawer_inside_molding:
+          defaults.default_drawer_inside_molding ?? null,
+        default_drawer_outside_molding:
+          defaults.default_drawer_outside_molding ?? null,
+        default_door_reeded_panel: defaults.default_door_reeded_panel ?? null,
+        default_drawer_reeded_panel:
+          defaults.default_drawer_reeded_panel ?? null,
+        default_door_style: defaults.default_door_style ?? null,
+        default_drawer_front_style: defaults.default_drawer_front_style ?? null,
+        default_profit: defaults.default_profit ?? null,
+        default_commission: defaults.default_commission ?? null,
+        default_discount: defaults.default_discount ?? null,
+        updated_at: new Date(),
+      };
+
+      // Update the estimates table
+      const { error: updateError } = await supabase
+        .from("estimates")
+        .update(updatePayload)
+        .eq("estimate_id", estimateId);
+
+      if (updateError) throw updateError;
+
+      // Refetch using the view to get complete data with all defaults
+      const { data, error: fetchError } = await supabase
+        .from("estimate_full_details")
+        .select("*")
+        .eq("estimate_id", estimateId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Transform the data (same as fetchEstimateById)
+      const estimate = {
+        estimate_id: data.estimate_id,
+        est_project_id: data.est_project_id,
+        status: data.status,
+        is_current: data.is_current,
+        created_at: data.estimate_created_at,
+        updated_at: data.estimate_updated_at,
+        est_project_name: data.est_project_name,
+        est_client_name: data.est_client_name,
+        team_id: data.team_id,
+        street: data.street,
+        state: data.state,
+        city: data.city,
+        zip: data.zip,
+        tasks_order: data.tasks_order,
+
+        // Estimate-level defaults
+        default_cabinet_style_id: data.default_cabinet_style_id,
+        default_box_mat: data.default_box_mat,
+        default_face_mat: data.default_face_mat,
+        default_drawer_box_mat: data.default_drawer_box_mat,
+        default_hinge_id: data.default_hinge_id,
+        default_slide_id: data.default_slide_id,
+        default_door_pull_id: data.default_door_pull_id,
+        default_drawer_pull_id: data.default_drawer_pull_id,
+        default_face_finish: data.default_face_finish,
+        default_box_finish: data.default_box_finish,
+        default_door_inside_molding: data.default_door_inside_molding,
+        default_door_outside_molding: data.default_door_outside_molding,
+        default_drawer_inside_molding: data.default_drawer_inside_molding,
+        default_drawer_outside_molding: data.default_drawer_outside_molding,
+        default_door_reeded_panel: data.default_door_reeded_panel,
+        default_drawer_reeded_panel: data.default_drawer_reeded_panel,
+        default_door_style: data.default_door_style,
+        default_drawer_front_style: data.default_drawer_front_style,
+        default_profit: data.default_profit,
+        default_commission: data.default_commission,
+        default_discount: data.default_discount,
+
+        tasks: (data.tasks || []).map((task) => ({
+          ...task.task,
+          sections: task.sections || [],
+        })),
+      };
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_SUCCESS,
+        payload: estimate,
+      });
+
+      // Also update currentEstimate in state
+      dispatch({
+        type: Actions.estimates.SET_CURRENT_ESTIMATE,
+        payload: estimate,
+      });
+
+      return estimate;
+    } catch (error) {
+      console.error("Error updating estimate defaults:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_ERROR,
+        payload: error.message,
+      });
+      throw error;
     }
   };
 };

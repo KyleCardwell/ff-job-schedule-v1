@@ -3,14 +3,21 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
+import {
+  getEffectiveDefaults,
+  shouldApplyFinish,
+} from "../../utils/estimateDefaults";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
+
+import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
 
 const EstimateSectionPrice = ({ section }) => {
   // Get materials from Redux store
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
     (state) => state.materials
   );
+  const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
 
   // Get employee rates from Redux store
   const services = useSelector((state) => state.services?.allServices || []);
@@ -32,51 +39,133 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.partsListAnchors?.itemsByPartsList || []
   );
 
+  // Get estimate and team for defaults fallback
+  const currentEstimate = useSelector(
+    (state) => state.estimates?.currentEstimate
+  );
+
+  // Create effective section with resolved fallback values (three-tier: section → estimate → team)
+  const effectiveSection = useMemo(() => {
+    const effectiveDefaults = getEffectiveDefaults(
+      section,
+      currentEstimate,
+      teamDefaults
+    );
+
+    // Merge the effective defaults with the section, preserving cabinet items and other data
+    return {
+      ...section,
+      // Override with effective defaults
+      cabinet_style_id: effectiveDefaults.cabinet_style_id,
+      box_mat: effectiveDefaults.box_mat,
+      face_mat: effectiveDefaults.face_mat,
+      drawer_box_mat: effectiveDefaults.drawer_box_mat,
+      hinge_id: effectiveDefaults.hinge_id,
+      slide_id: effectiveDefaults.slide_id,
+      door_pull_id: effectiveDefaults.door_pull_id,
+      drawer_pull_id: effectiveDefaults.drawer_pull_id,
+      face_finish: effectiveDefaults.face_finish,
+      box_finish: effectiveDefaults.box_finish,
+      door_inside_molding: effectiveDefaults.door_inside_molding,
+      door_outside_molding: effectiveDefaults.door_outside_molding,
+      drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
+      drawer_outside_molding: effectiveDefaults.drawer_outside_molding,
+      door_reeded_panel: effectiveDefaults.door_reeded_panel,
+      drawer_reeded_panel: effectiveDefaults.drawer_reeded_panel,
+      door_style: effectiveDefaults.door_style,
+      drawer_front_style: effectiveDefaults.drawer_front_style,
+      quantity: effectiveDefaults.quantity,
+      profit: effectiveDefaults.profit || 0,
+      commission: effectiveDefaults.commission || 0,
+      discount: effectiveDefaults.discount || 0,
+    };
+  }, [section, currentEstimate, teamDefaults]);
+
   const selectedFaceMaterial = useMemo(() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const material = faceMaterials?.find((mat) => mat.id === section.face_mat);
-    if (material?.needs_finish) {
+    const material = faceMaterials?.find(
+      (mat) => mat.id === effectiveSection.face_mat
+    );
+
+    // Check if finish should be applied using three-tier fallback
+    const finishNeeded = shouldApplyFinish(
+      section.face_mat,
+      currentEstimate?.default_face_mat,
+      teamDefaults?.default_face_mat,
+      faceMaterials || []
+    );
+
+    if (finishNeeded) {
       finishMultiplier = 1;
+      if (effectiveSection.face_finish?.length > 0) {
+        effectiveSection.face_finish.forEach((finishId) => {
+          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+          if (finishObj?.finish_markup) {
+            finishMultiplier += finishObj.finish_markup / 100;
+          }
+          if (finishObj?.shop_markup) {
+            shopMultiplier += finishObj.shop_markup / 100;
+          }
+        });
+      }
     }
-    if (material?.needs_finish && section.face_finish?.length > 0) {
-      section.face_finish.forEach((finishId) => {
-        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-        if (finishObj?.finish_markup) {
-          finishMultiplier += finishObj.finish_markup / 100;
-        }
-        if (finishObj?.shop_markup) {
-          shopMultiplier += finishObj.shop_markup / 100;
-        }
-      });
-    }
+
     return { material, finishMultiplier, shopMultiplier };
-  }, [faceMaterials, section.face_mat, finishTypes, section.face_finish]);
+  }, [
+    faceMaterials,
+    effectiveSection.face_mat,
+    effectiveSection.face_finish,
+    finishTypes,
+    section.face_mat,
+    currentEstimate,
+    teamDefaults,
+  ]);
 
   const selectedBoxMaterial = useMemo(() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const material = boxMaterials?.find((mat) => mat.id === section.box_mat);
-    if (material?.needs_finish) {
+    const material = boxMaterials?.find(
+      (mat) => mat.id === effectiveSection.box_mat
+    );
+
+    // Check if finish should be applied using three-tier fallback
+    const finishNeeded = shouldApplyFinish(
+      section.box_mat,
+      currentEstimate?.default_box_mat,
+      teamDefaults?.default_box_mat,
+      boxMaterials || []
+    );
+
+    if (finishNeeded) {
       finishMultiplier = 1;
+      if (effectiveSection.box_finish?.length > 0) {
+        effectiveSection.box_finish.forEach((finishId) => {
+          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+          if (finishObj?.finish_markup) {
+            finishMultiplier += finishObj.finish_markup / 100;
+          }
+          if (finishObj?.shop_markup) {
+            shopMultiplier += finishObj.shop_markup / 100;
+          }
+        });
+      }
     }
-    if (material?.needs_finish && section.box_finish?.length > 0) {
-      section.box_finish.forEach((finishId) => {
-        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-        if (finishObj?.finish_markup) {
-          finishMultiplier += finishObj.finish_markup / 100;
-        }
-        if (finishObj?.shop_markup) {
-          shopMultiplier += finishObj.shop_markup / 100;
-        }
-      });
-    }
+
     return { material, finishMultiplier, shopMultiplier };
-  }, [boxMaterials, section.box_mat, finishTypes, section.box_finish]);
+  }, [
+    boxMaterials,
+    effectiveSection.box_mat,
+    effectiveSection.box_finish,
+    finishTypes,
+    section.box_mat,
+    currentEstimate,
+    teamDefaults,
+  ]);
 
   // Calculate the total price and face counts of all items in the section
   const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(section, {
+    return getSectionCalculations(effectiveSection, {
       // Materials
       boxMaterials,
       faceMaterials,
@@ -98,9 +187,13 @@ const EstimateSectionPrice = ({ section }) => {
       // Services & Anchors
       partsListAnchors,
       globalServices: services,
+
+      // Defaults for fallback (three-tier system)
+      estimate: currentEstimate,
+      team: teamDefaults,
     });
   }, [
-    section,
+    effectiveSection,
     boxMaterials,
     faceMaterials,
     selectedFaceMaterial,
@@ -113,72 +206,88 @@ const EstimateSectionPrice = ({ section }) => {
     accessories,
     partsListAnchors,
     services,
+    currentEstimate,
+    teamDefaults,
   ]);
 
   // Format number as currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+ const formatCurrency = (amount, { noCents = false } = {}) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: noCents ? 0 : 2,
+    maximumFractionDigits: noCents ? 0 : 2,
+  }).format(amount);
+};
 
   // Format hours with 2 decimal places
   const formatHours = (hours) => {
     return roundToHundredth(parseFloat(hours || 0));
   };
 
-  // Calculate labor costs by service ID
-  const laborCosts = useMemo(() => {
-    const hoursByService = sectionCalculations.hoursByService || {};
-    let totalLaborCost = 0;
-    const costsByService = {};
-
-    Object.entries(hoursByService).forEach(([serviceId, hours]) => {
-      const service = services.find(
-        (s) => s.service_id === parseInt(serviceId)
-      );
-      if (service) {
-        const cost = hours * (service.hourly_rate || 0);
-        costsByService[serviceId] = {
-          hours,
-          rate: service.hourly_rate || 0,
-          cost,
-          name: service.service_name,
-        };
-        totalLaborCost += cost;
-      }
-    });
-
-    return {
-      costsByService,
-      totalLaborCost,
-    };
-  }, [sectionCalculations.hoursByService, services]);
-
   return (
-    <div className="h-full flex flex-col border-l border-slate-700 p-4 w-80">
+    <div className="h-full flex flex-col border-l border-slate-700 px-4 w-80">
       {/* Section Total Price - Top Section */}
-      <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-600">
+      <div className="flex justify-between items-center pb-3">
         <div className="text-slate-300">
           <span className="text-sm font-medium">Section Total Price:</span>
         </div>
         <div className="text-xl font-bold text-teal-400">
-          {formatCurrency(
-            sectionCalculations.totalPrice + laborCosts.totalLaborCost
-          )}
+          {formatCurrency(sectionCalculations.totalPrice, {
+            noCents: true,
+          })}
         </div>
       </div>
 
       {/* Content Section - Scrollable */}
       <div className="flex-1 overflow-auto space-y-4">
+        {/* Adjustments */}
+        <EstimateSectionPriceGroup title="Adjustments">
+          {/* Header row */}
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Subtotal</div>
+            <div className="text-sm font-medium text-teal-400 text-right"></div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.subTotalPrice)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Profit</div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {sectionCalculations.profitRate}%
+            </div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.profit)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Commission</div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {sectionCalculations.commissionRate}%
+            </div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.commission)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-sm text-slate-300 text-left">Discount</div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {sectionCalculations.discountRate}%
+            </div>
+            <div className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.discount)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1">
+            <div className="text-sm text-slate-300 text-left">Quantity</div>
+            <div></div>
+            <div className="text-sm text-right font-bold text-teal-400">
+              {sectionCalculations.quantity}
+            </div>
+          </div>
+        </EstimateSectionPriceGroup>
         {/* Price Breakdown - Title */}
-        <div className="bg-slate-700 py-1 px-2 rounded-t-md">
-          <h3 className="text-sm font-medium text-white">Price Breakdown</h3>
-        </div>
-
-        {/* Price Breakdown - Content - Grid Layout */}
-        <div className="bg-gray-800 rounded-b-md p-3">
+        <EstimateSectionPriceGroup title="Parts Breakdown">
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-xs font-medium text-slate-400">Type</div>
@@ -189,7 +298,7 @@ const EstimateSectionPrice = ({ section }) => {
               Price
             </div>
           </div>
-
+          {/* Price Breakdown - Content - Grid Layout */}
           {/* Box Information */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
             <span className="text-sm text-slate-300 text-left">
@@ -221,7 +330,8 @@ const EstimateSectionPrice = ({ section }) => {
                 className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0"
               >
                 <span className="text-sm text-slate-300 text-left">
-                  {FACE_TYPES.find((t) => t.value === type)?.label || type}s:
+                  {FACE_TYPES.find((t) => t.value === type)?.label || type}
+                  s:
                 </span>
                 <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                   {count}
@@ -298,11 +408,16 @@ const EstimateSectionPrice = ({ section }) => {
               {sectionCalculations.fillerCount || 0}
             </span>
             <span className="text-sm font-medium text-teal-400 text-right">
-              {sectionCalculations.fillerCount && section.section_data.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ? "(Panel)": ""}
+              {sectionCalculations.fillerCount &&
+              section.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET
+                ? "(Panel)"
+                : ""}
             </span>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Glass (sqft):</span>
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1">
+            <span className="text-sm text-slate-300 text-left">
+              Glass (sqft):
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {roundToHundredth(sectionCalculations.glassCount || 0)}
             </span>
@@ -310,15 +425,11 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.glassTotal || 0)}
             </span>
           </div>
-        </div>
+        </EstimateSectionPriceGroup>
 
         {/* Labor Hours - Title */}
-        <div className="bg-slate-700 py-1 px-2 rounded-t-md mt-4">
-          <h3 className="text-sm font-medium text-white">Labor Hours</h3>
-        </div>
-
-        {/* Labor Hours - Content - Grid Layout */}
-        <div className="bg-gray-800 rounded-b-md p-3">
+        <EstimateSectionPriceGroup title="Labor Breakdown">
+          {/* Labor Hours - Content - Grid Layout */}
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-xs font-medium text-slate-400">Category</div>
@@ -331,7 +442,7 @@ const EstimateSectionPrice = ({ section }) => {
           </div>
 
           {/* Dynamic Service Hours */}
-          {Object.entries(laborCosts.costsByService).map(
+          {Object.entries(sectionCalculations.laborCosts.costsByService).map(
             ([serviceType, data]) => (
               <div
                 key={serviceType}
@@ -351,16 +462,16 @@ const EstimateSectionPrice = ({ section }) => {
           )}
 
           {/* Total Labor Cost */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 mt-2 pt-2 border-t border-gray-600">
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 mt-1 pt-2">
             <span className="text-sm font-medium text-white text-left">
               Total Labor:
             </span>
             <span className="text-sm font-medium"></span>
             <span className="text-sm font-bold text-teal-400 text-right">
-              {formatCurrency(laborCosts.totalLaborCost)}
+              {formatCurrency(sectionCalculations.laborCosts.totalLaborCost)}
             </span>
           </div>
-        </div>
+        </EstimateSectionPriceGroup>
       </div>
     </div>
   );

@@ -18,7 +18,9 @@ import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardwa
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
+import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
 import { PATHS } from "../../utils/constants";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
@@ -35,11 +37,15 @@ const EstimateLayout = () => {
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
+  );
   const estimates = useSelector((state) => state.estimates.estimates);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
+  const [showEstimateDefaultsForm, setShowEstimateDefaultsForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
@@ -76,6 +82,7 @@ const EstimateLayout = () => {
   }, [dispatch, estimateId, navigate, estimates]);
 
   useEffect(() => {
+    dispatch(fetchTeamDefaults());
     dispatch(fetchSheetGoods());
     dispatch(fetchDrawerBoxMaterials());
     dispatch(fetchHinges())
@@ -109,6 +116,38 @@ const EstimateLayout = () => {
       (section) => section.est_section_id === selectedSectionId
     );
   }, [selectedTask?.sections, selectedSectionId]);
+
+  // Calculate which tasks have sections with cabinet errors
+  // Use three-tier fallback for style comparison: section → estimate → team
+  const tasksWithErrors = useMemo(() => {
+    const errorTaskIds = new Set();
+    
+    currentEstimate?.tasks?.forEach((task) => {
+      task.sections?.forEach((section) => {
+        // Calculate the effective style using three-tier fallback
+        const effectiveStyle = getEffectiveValueOnly(
+          section?.cabinet_style_id,
+          currentEstimate?.default_cabinet_style_id,
+          teamDefaults?.default_cabinet_style_id
+        ) || 13;
+
+        // Check if any cabinets in this section have error state
+        const hasErrorCabinets = section.cabinets?.some((cabinet) => {
+          return (
+            cabinet.cabinet_style_override === null &&
+            cabinet.saved_style_id != null &&
+            cabinet.saved_style_id !== effectiveStyle
+          );
+        });
+        
+        if (hasErrorCabinets) {
+          errorTaskIds.add(task.est_task_id);
+        }
+      });
+    });
+    
+    return errorTaskIds;
+  }, [currentEstimate?.tasks, currentEstimate?.default_cabinet_style_id, teamDefaults?.default_cabinet_style_id]);
 
   const handleAddTask = () => {
     setSelectedTaskId(null);
@@ -196,6 +235,7 @@ const EstimateLayout = () => {
                     <EstimateTask
                       task={task}
                       isSelected={selectedTaskId === task.est_task_id}
+                      hasErrorState={tasksWithErrors.has(task.est_task_id)}
                       onSelect={() => {
                         setSelectedTaskId(task.est_task_id);
                         setSelectedSectionId(
@@ -203,6 +243,7 @@ const EstimateLayout = () => {
                         );
                         setShowProjectInfo(false);
                         setShowSectionForm(false);
+                        setShowEstimateDefaultsForm(false);
                       }}
                       onDelete={() => setSelectedTaskId(null)}
                       sections={task.sections || []}
@@ -211,6 +252,7 @@ const EstimateLayout = () => {
                       setSelectedTaskId={setSelectedTaskId}
                       setShowSectionForm={setShowSectionForm}
                       setShowProjectInfo={setShowProjectInfo}
+                      setShowEstimateDefaultsForm={setShowEstimateDefaultsForm}
                     />
                   </div>
                 ))}
@@ -243,9 +285,10 @@ const EstimateLayout = () => {
 
       {/* Sections Column */}
       <EstimateSectionInfo
-        estimate_data={currentEstimate?.estimate_data}
+        currentEstimate={currentEstimate}
         selectedTask={selectedTask}
         selectedSectionId={selectedSectionId}
+        showProjectInfo={showProjectInfo}
         isNew={isNewTask}
         onTaskSaved={(taskId) => {
           setSelectedTaskId(taskId);
@@ -255,10 +298,14 @@ const EstimateLayout = () => {
         onCancel={() => {
           setIsNewTask(false);
         }}
+        onEditEstimateDefaults={() => {
+          setShowEstimateDefaultsForm(true);
+          setShowProjectInfo(false);
+        }}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
-            // If we have a template section, pass its section_data as the initial data
+            // If we have a template section, pass its fields as the initial data
             const initialData = templateSection
               ? {
                   face_mat: templateSection.face_mat,
@@ -271,9 +318,17 @@ const EstimateLayout = () => {
                   door_pull_id: templateSection.door_pull_id,
                   drawer_pull_id: templateSection.drawer_pull_id,
                   drawer_box_mat: templateSection.drawer_box_mat,
-                  section_data: {
-                    ...templateSection.section_data,
-                  },
+                  door_style: templateSection.door_style,
+                  drawer_front_style: templateSection.drawer_front_style,
+                  door_inside_molding: templateSection.door_inside_molding,
+                  door_outside_molding: templateSection.door_outside_molding,
+                  door_reeded_panel: templateSection.door_reeded_panel,
+                  drawer_inside_molding: templateSection.drawer_inside_molding,
+                  drawer_outside_molding: templateSection.drawer_outside_molding,
+                  drawer_reeded_panel: templateSection.drawer_reeded_panel,
+                  profit: templateSection.profit,
+                  commission: templateSection.commission,
+                  discount: templateSection.discount,
                 }
               : {};
             setInitialData(initialData);
@@ -294,8 +349,23 @@ const EstimateLayout = () => {
           <div className="max-w-3xl mx-auto">
             <EstimateProjectForm estimate={currentEstimate} />
           </div>
+        ) : showEstimateDefaultsForm ? (
+          <div className="max-w-4xl mx-auto">
+            <EstimateSectionForm
+              editType="estimate"
+              estimateData={currentEstimate}
+              onCancel={() => {
+                setShowEstimateDefaultsForm(false);
+                setShowProjectInfo(true);
+              }}
+              onSave={() => {
+                setShowEstimateDefaultsForm(false);
+                setShowProjectInfo(true);
+              }}
+            />
+          </div>
         ) : showSectionForm ? (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <EstimateSectionForm
               taskId={selectedTaskId}
               section={

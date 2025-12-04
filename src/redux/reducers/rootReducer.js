@@ -22,6 +22,7 @@ import partsListAnchorsReducer from "./partsListAnchors";
 import { projectsReducer } from "./projects";
 import servicesReducer from "./services";
 import { taskDataReducer } from "./taskData";
+import { teamEstimateDefaultsReducer } from "./teamEstimateDefaults";
 import { teamMembersReducer } from "./teamMembers";
 
 const appReducer = combineReducers({
@@ -47,6 +48,7 @@ const appReducer = combineReducers({
 	partsList: partsListReducer,
 	partsListAnchors: partsListAnchorsReducer,
 	accessories: accessoriesReducer,
+	teamEstimateDefaults: teamEstimateDefaultsReducer,
 });
 
 // Root reducer that handles resetting state

@@ -26,11 +26,14 @@ import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
 import MaterialsSettings from "../manageSettings/MaterialsSettings.jsx";
 import PartsListSettings from "../manageSettings/PartsListSettings.jsx";
 import ServiceSettings from "../manageSettings/ServiceSettings.jsx";
+import TeamEstimateDefaultsSettings from "../manageSettings/TeamEstimateDefaultsSettings.jsx";
 import TeamSettings from "../manageSettings/TeamSettings.jsx";
 
 // Wrapper component to handle ref forwarding
 const SettingsWrapper = ({ component: Component, componentRef, ...props }) => {
-  return <Component ref={componentRef} {...props} />;
+  // Only pass ref if the component actually needs it (class components or forwardRef components)
+  // For functional components without forwardRef, just pass props
+  return componentRef ? <Component ref={componentRef} {...props} /> : <Component {...props} />;
 };
 
 const AdminDashboard = () => {
@@ -148,6 +151,15 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_ACCESSORIES,
       component: AccessoriesSettings,
       props: {maxWidthClass: "max-w-[1000px]"},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+    },
+    {
+      id: "estimate-defaults",
+      label: "Estimate Defaults",
+      path: PATHS.MANAGE_TEAM_ESTIMATE_DEFAULTS,
+      component: TeamEstimateDefaultsSettings,
+      props: {maxWidthClass: "max-w-4xl"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },

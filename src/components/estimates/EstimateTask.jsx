@@ -4,6 +4,7 @@ import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
@@ -11,6 +12,7 @@ import EstimateSection from "./EstimateSection.jsx";
 const EstimateTask = ({
   task,
   isSelected,
+  hasErrorState = false,
   onSelect,
   onDelete,
   sections = [],
@@ -23,10 +25,14 @@ const EstimateTask = ({
   setSelectedTaskId,
   setShowSectionForm,
   setShowProjectInfo,
+  setShowEstimateDefaultsForm,
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
+  );
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
   );
   const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
@@ -111,9 +117,13 @@ const EstimateTask = ({
             className={`
               w-full py-3 px-4 text-sm font-medium text-left flex items-center justify-between group/task
               ${
-                isSelected && sections.length === 1
-                  ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
-                  : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
+                hasErrorState
+                  ? isSelected && sections.length === 1
+                    ? "bg-red-700 text-slate-200 border-l-2 border-red-500"
+                    : "bg-red-900 text-slate-200 hover:bg-red-600 hover:text-slate-100"
+                  : isSelected && sections.length === 1
+                    ? "bg-slate-800 text-teal-200 border-l-2 border-teal-200"
+                    : "text-slate-200 hover:bg-slate-700 hover:text-teal-400"
               }
             `}
           >
@@ -144,26 +154,47 @@ const EstimateTask = ({
         {/* Sections List */}
         {task.sections?.length > 1 && (
           <div className="pl-6">
-            {task.sections.map((section, index) => (
-              <EstimateSection
-                key={section.est_section_id}
-                section={section}
-                sectionNumber={index + 1}
-                task={task}
-                isSelected={selectedSectionId === section.est_section_id}
-                onSelect={() => {
-                  setSelectedTaskId(task.est_task_id);
-                  setSelectedSectionId(section.est_section_id);
-                  setShowSectionForm(false);
-                  setShowProjectInfo(false);
-                }}
-                onDelete={() => {
-                  setSelectedSectionId(null);
-                  setShowSectionForm(false);
-                  setShowProjectInfo(false);
-                }}
-              />
-            ))}
+            {task.sections.map((section, index) => {
+              // Calculate the effective style using three-tier fallback
+              const effectiveStyle = getEffectiveValueOnly(
+                section?.cabinet_style_id,
+                currentEstimate?.default_cabinet_style_id,
+                teamDefaults?.default_cabinet_style_id
+              ) || 13;
+
+              // Check if this section has any cabinet errors
+              const hasErrorCabinets = section.cabinets?.some((cabinet) => {
+                return (
+                  cabinet.cabinet_style_override === null &&
+                  cabinet.saved_style_id != null &&
+                  cabinet.saved_style_id !== effectiveStyle
+                );
+              });
+              
+              return (
+                <EstimateSection
+                  key={section.est_section_id}
+                  section={section}
+                  sectionNumber={index + 1}
+                  task={task}
+                  isSelected={selectedSectionId === section.est_section_id}
+                  hasErrorState={hasErrorCabinets}
+                  onSelect={() => {
+                    setSelectedTaskId(task.est_task_id);
+                    setSelectedSectionId(section.est_section_id);
+                    setShowSectionForm(false);
+                    setShowProjectInfo(false);
+                    setShowEstimateDefaultsForm(false);
+                  }}
+                  onDelete={() => {
+                    setSelectedSectionId(null);
+                    setShowSectionForm(false);
+                    setShowProjectInfo(false);
+                    setShowEstimateDefaultsForm(false);
+                  }}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -192,6 +223,7 @@ EstimateTask.propTypes = {
     sections: PropTypes.array,
   }).isRequired,
   isSelected: PropTypes.bool,
+  hasErrorState: PropTypes.bool,
   onSelect: PropTypes.func,
   onDelete: PropTypes.func,
   sections: PropTypes.array,
@@ -204,6 +236,7 @@ EstimateTask.propTypes = {
   setSelectedTaskId: PropTypes.func,
   setShowSectionForm: PropTypes.func,
   setShowProjectInfo: PropTypes.func,
+  setShowEstimateDefaultsForm: PropTypes.func,
 };
 
 export default EstimateTask;
