@@ -57,6 +57,11 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
   const filteredLengths = getLengthsByType();
 
+  // Get the selected length item to check requirements
+  const selectedLengthItem = catalog.find(
+    (l) => l.id === formData.length_catalog_id
+  );
+
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setSelectedType(newType);
@@ -66,6 +71,24 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       length_catalog_id: "",
     });
   };
+
+  // Reset miter/cutout counts when length item changes and doesn't require them
+  useEffect(() => {
+    if (selectedLengthItem) {
+      const updates = {};
+      if (!selectedLengthItem.requires_miters && formData.miter_count > 0) {
+        updates.miter_count = 0;
+      }
+      if (!selectedLengthItem.requires_cutouts && formData.cutout_count > 0) {
+        updates.cutout_count = 0;
+      }
+      if (Object.keys(updates).length > 0) {
+        setFormData((prev) => ({ ...prev, ...updates }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Note: formData values intentionally excluded to prevent infinite loop
+  }, [selectedLengthItem?.id, selectedLengthItem?.requires_miters, selectedLengthItem?.requires_cutouts]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -262,7 +285,8 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 onChange={handleChange}
                 min="0"
                 step="1"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                disabled={!selectedLengthItem?.requires_miters}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -282,7 +306,8 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 onChange={handleChange}
                 min="0"
                 step="1"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                disabled={!selectedLengthItem?.requires_cutouts}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               />
             </div>
           </div>
