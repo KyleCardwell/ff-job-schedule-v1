@@ -158,12 +158,13 @@ const EstimateSectionForm = ({
 
     const displayValue = formatter ? formatter(value) : value;
     // const colorClass = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
-    const colorClass = "text-teal-500";
+    const colorClass = "teal-500";
     // const sourceText = source === 'estimate' ? 'Estimate' : 'Team';
 
     return (
       displayValue && (
-        <span className={`text-sm ${colorClass} ml-1`}>({displayValue})</span>
+        // <span className={`text-sm ${colorClass} ml-1`}>({displayValue})</span>
+        <span className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}>{displayValue}</span>
       )
     );
   };
@@ -999,7 +1000,7 @@ const EstimateSectionForm = ({
                       htmlFor="style"
                       className="text-left text-sm font-medium text-slate-700 flex items-center"
                     >
-                      <span>Style</span>
+                      <span >Style</span>
                       {getEffectiveDefaultDisplay(
                         formData.style,
                         "default_cabinet_style_id",
@@ -1284,7 +1285,7 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="hinge_id"
-                        className="text-left text-sm font-medium text-slate-700"
+                        className="text-left text-sm font-medium text-slate-700 flex items-center"
                       >
                         Hinges
                         {getEffectiveDefaultDisplay(

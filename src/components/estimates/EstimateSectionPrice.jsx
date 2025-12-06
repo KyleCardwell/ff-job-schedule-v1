@@ -230,7 +230,7 @@ const EstimateSectionPrice = ({ section }) => {
   };
 
   return (
-    <div className="h-full flex flex-col border-l border-slate-700 px-4 w-80">
+    <div className="h-full flex flex-col">
       {/* Section Total Price - Top Section */}
       <div className="flex justify-between items-center pb-3">
         <div className="text-slate-300">
