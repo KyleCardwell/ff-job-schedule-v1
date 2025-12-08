@@ -16,6 +16,7 @@ import {
   calculateDoorPartsTime,
   calculatePanelPartsTime,
   calculateSlabSheetFacePriceBulk,
+  calculateMoldingCost,
   roundToHundredth,
 } from "./estimateHelpers";
 
@@ -258,7 +259,13 @@ const calculateFaceTotals = (section, context) => {
       // This includes banding on all 4 sides, sheet handling, and setup costs
       const result = calculateSlabSheetFacePriceBulk(
         faces,
-        selectedFaceMaterial.material
+        selectedFaceMaterial.material,
+        {
+          doorInsideMolding: section.door_inside_molding || false,
+          doorOutsideMolding: section.door_outside_molding || false,
+          drawerInsideMolding: section.drawer_inside_molding || false,
+          drawerOutsideMolding: section.drawer_outside_molding || false,
+        }
       );
       const styleTotalPrice = result.totalCost;
 
@@ -309,7 +316,36 @@ const calculateFaceTotals = (section, context) => {
         const markup =
           1 + taxRate / 100 + deliveryFee / 100 + creditCardFee / 100;
 
-        return (basePrice + extra + setupFee) * markup;
+        const doorPrice = (basePrice + extra + setupFee) * markup;
+
+        // Add molding costs based on faceType
+        const faceType = face.faceType;
+        let insideMolding = false;
+        let outsideMolding = false;
+
+        if (
+          faceType === FACE_NAMES.DOOR ||
+          faceType === FACE_NAMES.PAIR_DOOR ||
+          faceType === FACE_NAMES.PANEL
+        ) {
+          insideMolding = section.door_inside_molding || false;
+          outsideMolding = section.door_outside_molding || false;
+        } else if (
+          faceType === FACE_NAMES.DRAWER_FRONT ||
+          faceType === FACE_NAMES.FALSE_FRONT
+        ) {
+          insideMolding = section.drawer_inside_molding || false;
+          outsideMolding = section.drawer_outside_molding || false;
+        }
+
+        const moldingCost = calculateMoldingCost(
+          width,
+          height,
+          insideMolding,
+          outsideMolding
+        );
+
+        return doorPrice + moldingCost;
       };
 
       faces.forEach((face) => {
@@ -331,11 +367,37 @@ const calculateFaceTotals = (section, context) => {
         const boardFeet = (width * height * thickness) / 144;
         const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
 
+        // Add molding costs based on faceType
         const faceType = face.faceType;
+        let insideMolding = false;
+        let outsideMolding = false;
+
+        if (
+          faceType === FACE_NAMES.DOOR ||
+          faceType === FACE_NAMES.PAIR_DOOR ||
+          faceType === FACE_NAMES.PANEL
+        ) {
+          insideMolding = section.door_inside_molding || false;
+          outsideMolding = section.door_outside_molding || false;
+        } else if (
+          faceType === FACE_NAMES.DRAWER_FRONT ||
+          faceType === FACE_NAMES.FALSE_FRONT
+        ) {
+          insideMolding = section.drawer_inside_molding || false;
+          outsideMolding = section.drawer_outside_molding || false;
+        }
+
+        const moldingCost = calculateMoldingCost(
+          width,
+          height,
+          insideMolding,
+          outsideMolding
+        );
+
         if (!totals.facePrices[faceType]) {
           totals.facePrices[faceType] = 0;
         }
-        totals.facePrices[faceType] += facePrice;
+        totals.facePrices[faceType] += facePrice + moldingCost;
       });
     }
   });
