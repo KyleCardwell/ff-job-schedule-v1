@@ -142,7 +142,7 @@ const EstimateSectionForm = ({
       : fieldValue === "" || fieldValue === null || fieldValue === undefined;
 
     if (!isEmpty) {
-      return null;
+      return <span className="flex-1 px-1 border border-teal-500 ml-1"></span>;
     }
 
     // When in estimate editing mode, skip estimate tier to show team defaults
