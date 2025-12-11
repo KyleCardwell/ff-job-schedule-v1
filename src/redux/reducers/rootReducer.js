@@ -16,6 +16,7 @@ import { financialsDataReducer } from "./financialsData";
 import { finishesReducer } from "./finishes";
 import { hardwareReducer } from "./hardware";
 import { holidaysReducer } from "./holidays";
+import { lengthsReducer } from "./lengthsReducer";
 import { materialsReducer } from "./materials";
 import partsListReducer from "./partsList";
 import partsListAnchorsReducer from "./partsListAnchors";
@@ -48,6 +49,7 @@ const appReducer = combineReducers({
 	partsList: partsListReducer,
 	partsListAnchors: partsListAnchorsReducer,
 	accessories: accessoriesReducer,
+	lengths: lengthsReducer,
 	teamEstimateDefaults: teamEstimateDefaultsReducer,
 });
 

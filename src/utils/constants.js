@@ -13,6 +13,7 @@ export const PATHS = {
   MANAGE_FINISHES: "/manage/finishes",
   MANAGE_HARDWARE: "/manage/hardware",
   MANAGE_ACCESSORIES: "/manage/accessories",
+  MANAGE_LENGTHS: "/manage/lengths",
   MANAGE_TEAM_ESTIMATE_DEFAULTS: "/manage/estimate-defaults",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
@@ -188,6 +189,14 @@ export const ACCESSORY_UNITS = {
   UNIT: "unit",
 };
 
+export const LENGTH_TYPES = {
+  MOLDING: "molding",
+  BASE: "base",
+  SHELF: "shelf",
+  TOP: "top",
+  OTHER: "other",
+};
+
 /**
  * Map box part types to parts_list IDs based on type and finish status
  * These IDs are fixed and consistent across all teams
@@ -207,8 +216,9 @@ export const PARTS_LIST_MAPPING = {
   slab_door_unfinished: 12,
   slab_door_finished: 13,
   "5_piece_door_finished": 14, // 5-piece doors always need finish
-  "reeded_panel_finished": 15,
-  "end_panel_finished": 17,
-  "appliance_panel_finished": 18,
+  reeded_panel_finished: 15,
+  end_panel_finished: 17,
+  appliance_panel_finished: 18,
+  end_panel_nosing_finished: 19
 };
   

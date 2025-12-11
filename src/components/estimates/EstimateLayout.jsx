@@ -15,6 +15,7 @@ import {
 } from "../../redux/actions/estimates";
 import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
+import { fetchLengthsCatalog } from "../../redux/actions/lengths.js";
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
@@ -95,6 +96,7 @@ const EstimateLayout = () => {
     dispatch(fetchPartsListAnchors())
     dispatch(fetchFinishes())
     dispatch(fetchAccessoriesCatalog())
+    dispatch(fetchLengthsCatalog())
   }, []);
 
   useEffect(() => {
@@ -344,57 +346,67 @@ const EstimateLayout = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 overflow-hidden">
         {showProjectInfo || !currentEstimate ? (
-          <div className="max-w-3xl mx-auto">
-            <EstimateProjectForm estimate={currentEstimate} />
+          <div className="p-6 overflow-y-auto h-full">
+            <div className="max-w-3xl mx-auto">
+              <EstimateProjectForm estimate={currentEstimate} />
+            </div>
           </div>
         ) : showEstimateDefaultsForm ? (
-          <div className="max-w-4xl mx-auto">
-            <EstimateSectionForm
-              editType="estimate"
-              estimateData={currentEstimate}
-              onCancel={() => {
-                setShowEstimateDefaultsForm(false);
-                setShowProjectInfo(true);
-              }}
-              onSave={() => {
-                setShowEstimateDefaultsForm(false);
-                setShowProjectInfo(true);
-              }}
-            />
+          <div className="p-6 overflow-y-auto h-full">
+            <div className="max-w-4xl mx-auto">
+              <EstimateSectionForm
+                editType="estimate"
+                estimateData={currentEstimate}
+                onCancel={() => {
+                  setShowEstimateDefaultsForm(false);
+                  setShowProjectInfo(true);
+                }}
+                onSave={() => {
+                  setShowEstimateDefaultsForm(false);
+                  setShowProjectInfo(true);
+                }}
+              />
+            </div>
           </div>
         ) : showSectionForm ? (
-          <div className="max-w-4xl mx-auto">
-            <EstimateSectionForm
-              taskId={selectedTaskId}
-              section={
-                selectedTask?.sections?.find(
-                  (s) => s.est_section_id === selectedSectionId
-                ) ||
-                initialData ||
-                {}
-              }
-              onCancel={() => {
-                setShowSectionForm(false);
-                // setSelectedSectionId(null);
-              }}
-              onSave={(sectionId) => {
-                setShowSectionForm(false);
-                setSelectedSectionId(sectionId);
-              }}
-            />
+          <div className="p-6 overflow-y-auto h-full">
+            <div className="max-w-4xl mx-auto">
+              <EstimateSectionForm
+                taskId={selectedTaskId}
+                section={
+                  selectedTask?.sections?.find(
+                    (s) => s.est_section_id === selectedSectionId
+                  ) ||
+                  initialData ||
+                  {}
+                }
+                onCancel={() => {
+                  setShowSectionForm(false);
+                  // setSelectedSectionId(null);
+                }}
+                onSave={(sectionId) => {
+                  setShowSectionForm(false);
+                  setSelectedSectionId(sectionId);
+                }}
+              />
+            </div>
           </div>
         ) : selectedTaskId && selectedSectionId ? (
           <>
             {selectedSection ? (
-              <div className="flex gap-6 h-full">
-                <EstimateSectionManager
-                  taskId={selectedTaskId}
-                  sectionId={selectedSectionId}
-                  section={selectedSection}
-                />
-                <EstimateSectionPrice section={selectedSection} />
+              <div className="flex h-full">
+                <div className="flex-1 py-6 overflow-y-auto mx-auto">
+                  <EstimateSectionManager
+                    taskId={selectedTaskId}
+                    sectionId={selectedSectionId}
+                    section={selectedSection}
+                  />
+                </div>
+                <div className="w-80 p-6 overflow-y-auto border-l border-slate-700">
+                  <EstimateSectionPrice section={selectedSection} />
+                </div>
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-200">

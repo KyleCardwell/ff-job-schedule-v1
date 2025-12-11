@@ -33,7 +33,7 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []
   );
 
-  const { hardware, accessories } = useSelector((state) => state);
+  const { hardware, accessories, lengths } = useSelector((state) => state);
 
   const partsListAnchors = useSelector(
     (state) => state.partsListAnchors?.itemsByPartsList || []
@@ -184,6 +184,9 @@ const EstimateSectionPrice = ({ section }) => {
       // Accessories
       accessories,
 
+      // Lengths
+      lengthsCatalog: lengths?.catalog || [],
+
       // Services & Anchors
       partsListAnchors,
       globalServices: services,
@@ -204,6 +207,7 @@ const EstimateSectionPrice = ({ section }) => {
     cabinetTypes,
     hardware,
     accessories,
+    lengths,
     partsListAnchors,
     services,
     currentEstimate,
@@ -226,7 +230,7 @@ const EstimateSectionPrice = ({ section }) => {
   };
 
   return (
-    <div className="h-full flex flex-col border-l border-slate-700 px-4 w-80">
+    <div className="h-full flex flex-col">
       {/* Section Total Price - Top Section */}
       <div className="flex justify-between items-center pb-3">
         <div className="text-slate-300">

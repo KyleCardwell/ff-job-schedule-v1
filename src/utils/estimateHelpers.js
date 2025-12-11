@@ -11,6 +11,59 @@ import {
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
 /**
+ * Calculate molding cost for a door or drawer front
+ * @param {number} width - Width of the face in inches
+ * @param {number} height - Height of the face in inches
+ * @param {boolean} insideMolding - Whether inside molding is applied
+ * @param {boolean} outsideMolding - Whether outside molding is applied
+ * @returns {number} Total molding cost in dollars
+ */
+export const calculateMoldingCost = (
+  width,
+  height,
+  insideMolding = false,
+  outsideMolding = false,
+  material
+) => {
+  if (!insideMolding && !outsideMolding) return 0;
+
+  // Determine stile/rail width based on face dimensions
+  // If width or height < 8", use 1.5" for that dimension, otherwise use 3"
+  const stileWidth = width < 8 ? 1.5 : 3;
+  const railWidth = height < 8 ? 1.5 : 3;
+
+  // Calculate perimeter based on stile/rail dimensions (inner perimeter for molding)
+  // For a door with stiles and rails, the opening is:
+  // openingWidth = width - (2 * stileWidth)
+  // openingHeight = height - (2 * railWidth)
+  const insideWidth = Math.max(0, width - 2 * stileWidth);
+  const insideHeight = Math.max(0, height - 2 * railWidth);
+  const insidePerimeterInches = 2 * (insideHeight + insideWidth);
+  const insidePerimeterFeet = insidePerimeterInches / 12;
+
+  const outsidePerimeterInches = 2 * (width + height);
+  const outsidePerimeterFeet = outsidePerimeterInches / 12;
+
+  // Pricing per foot
+  // const insideMoldingPricePerFoot = 7.90;
+  // const outsideMoldingPricePerFoot = 8.25;
+  const insideMoldingPricePerFoot =
+    5 + (material.bd_ft_price ? material.bd_ft_price : 3);
+  const outsideMoldingPricePerFoot =
+    5 + (material.bd_ft_price ? material.bd_ft_price : 3.5);
+
+  let cost = 0;
+  if (insideMolding) {
+    cost += Math.max(insidePerimeterFeet * insideMoldingPricePerFoot, 50);
+  }
+  if (outsideMolding) {
+    cost += Math.max(outsidePerimeterFeet * outsideMoldingPricePerFoot, 68);
+  }
+
+  return cost;
+};
+
+/**
  * Get parts_list_id for a box part based on its type and finish status
  */
 const getPartsListId = (partType, isFinished) => {
@@ -472,9 +525,10 @@ export const calculatePanelPartsTime = (
   }
 
   // Determine which parts_list_id to use
-  const partsListId = cabinet.type === 10 
-    ? PARTS_LIST_MAPPING["end_panel_finished"]      // 17
-    : PARTS_LIST_MAPPING["appliance_panel_finished"]; // 18
+  const partsListId =
+    cabinet.type === 10
+      ? PARTS_LIST_MAPPING["end_panel_finished"] // 17
+      : PARTS_LIST_MAPPING["appliance_panel_finished"]; // 18
 
   const anchors = partsListAnchors[partsListId];
 
@@ -682,6 +736,10 @@ export const calculateSlabSheetFacePriceBulk = (
     taxRate = 0.1,
     setupCostPerSheet = 15,
     kerfWidth = 0.25,
+    doorInsideMolding = false,
+    doorOutsideMolding = false,
+    drawerInsideMolding = false,
+    drawerOutsideMolding = false,
   } = {}
 ) => {
   if (!faces || faces.length === 0 || !selectedMaterial) {
@@ -769,7 +827,42 @@ export const calculateSlabSheetFacePriceBulk = (
   // Calculate banding cost (all 4 sides of each face)
   const bandingCost = (totalBandingLength / 12) * edgeBandPricePerFoot;
 
-  const totalCostBeforeTax = sheetCost + setupCost + cutCost + bandingCost;
+  // Calculate molding costs for each face based on faceType
+  const moldingCost = faces.reduce((sum, face) => {
+    const faceType = face.faceType;
+    let insideMolding = false;
+    let outsideMolding = false;
+
+    // Determine which molding settings apply based on faceType
+    if (
+      faceType === FACE_NAMES.DOOR ||
+      faceType === FACE_NAMES.PAIR_DOOR ||
+      faceType === FACE_NAMES.PANEL
+    ) {
+      insideMolding = doorInsideMolding;
+      outsideMolding = doorOutsideMolding;
+    } else if (
+      faceType === FACE_NAMES.DRAWER_FRONT ||
+      faceType === FACE_NAMES.FALSE_FRONT
+    ) {
+      insideMolding = drawerInsideMolding;
+      outsideMolding = drawerOutsideMolding;
+    }
+
+    return (
+      sum +
+      calculateMoldingCost(
+        face.width,
+        face.height,
+        insideMolding,
+        outsideMolding,
+        selectedMaterial
+      )
+    );
+  }, 0);
+
+  const totalCostBeforeTax =
+    sheetCost + setupCost + cutCost + bandingCost + moldingCost;
   const totalCost = totalCostBeforeTax * (1 + taxRate);
 
   return {
@@ -809,6 +902,7 @@ export const calculateSlabSheetFacePriceBulk = (
       setupCost: parseFloat(setupCost.toFixed(2)),
       cutCost: parseFloat(cutCost.toFixed(2)),
       bandingCost: parseFloat(bandingCost.toFixed(2)),
+      moldingCost: parseFloat(moldingCost.toFixed(2)),
     },
   };
 };

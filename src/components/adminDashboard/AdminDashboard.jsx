@@ -22,6 +22,7 @@ import EmployeeSettings from "../manageSettings/EmployeeSettings.jsx";
 import FinishSettings from "../manageSettings/FinishSettings.jsx";
 import HardwareSettings from "../manageSettings/HardwareSettings.jsx";
 import HolidaySettings from "../manageSettings/HolidaySettings.jsx";
+import LengthsSettings from "../manageSettings/LengthsSettings.jsx";
 import ManageChartSettings from "../manageSettings/ManageChartSettings.jsx";
 import MaterialsSettings from "../manageSettings/MaterialsSettings.jsx";
 import PartsListSettings from "../manageSettings/PartsListSettings.jsx";
@@ -151,6 +152,15 @@ const AdminDashboard = () => {
       path: PATHS.MANAGE_ACCESSORIES,
       component: AccessoriesSettings,
       props: {maxWidthClass: "max-w-[1000px]"},
+      requiresAdmin: true,
+      requiresFeatureToggle: "enable_estimates",
+    },
+    {
+      id: "lengths",
+      label: "Lengths",
+      path: PATHS.MANAGE_LENGTHS,
+      component: LengthsSettings,
+      props: {maxWidthClass: "max-w-[1100px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },

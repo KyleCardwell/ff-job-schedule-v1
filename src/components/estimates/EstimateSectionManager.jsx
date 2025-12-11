@@ -5,11 +5,12 @@ import { FiChevronDown, FiChevronRight, FiAlertCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 // import { useDebouncedCallback } from "../../hooks/useDebounce";
-import { updateSectionItems, updateSectionItemOrder } from "../../redux/actions/estimates";
+import { updateSection, updateSectionItems, updateSectionItemOrder } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
+import AddHoursManager from "./AddHoursManager.jsx";
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
 import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
@@ -244,6 +245,18 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
+  const handleSaveAddHours = async (addHoursData) => {
+    // Update section metadata with add_hours
+    await dispatch(
+      updateSection(
+        currentEstimate.estimate_id,
+        taskId,
+        sectionId,
+        { add_hours: addHoursData }
+      )
+    );
+  };
+
   // Add errorState flag to cabinet items based on saved_style_id comparison
   // Use effective style with three-tier fallback for accurate comparison
   const cabinetsWithErrorState = useMemo(() => {
@@ -356,6 +369,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
 
   return (
     <div className="flex-1 max-w-3xl mx-auto space-y-2">
+      {/* Section Items Accordions */}
       {sections.map(({ type, title, count, component }) => (
         <div
           key={type}
@@ -393,6 +407,13 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
           )}
         </div>
       ))}
+
+      {/* Add Hours Section - Always Visible */}
+      <AddHoursManager
+        addHours={section?.add_hours}
+        onSave={handleSaveAddHours}
+      />
+
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}

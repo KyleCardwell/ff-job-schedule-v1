@@ -766,6 +766,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         drawerReededPanel,
         doorStyle,
         drawerFrontStyle,
+        add_hours,
       } = updates;
 
       // Prepare the update payload for Supabase
@@ -820,6 +821,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(drawerFrontStyle !== undefined && {
           drawer_front_style: drawerFrontStyle || null,
         }),
+        ...(add_hours !== undefined && { add_hours: add_hours || null }),
         updated_at: new Date(),
       };
 
