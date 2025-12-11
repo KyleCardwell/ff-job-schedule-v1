@@ -14,6 +14,7 @@ import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
 import {
   getNewSectionDefaults,
   getEffectiveValue,
+  getEffectiveValueOnly,
   shouldApplyFinish,
 } from "../../utils/estimateDefaults";
 
@@ -120,7 +121,8 @@ const EstimateSectionForm = ({
     teamDefaultKey,
     formatter,
     isNumeric = false,
-    isFinishField = false
+    isFinishField = false,
+    shouldShowFallback = true
   ) => {
     // Don't show for team edit type
     if (editType === "team") {
@@ -145,6 +147,11 @@ const EstimateSectionForm = ({
       return <span className="flex-1 px-1 border border-teal-500 ml-1"></span>;
     }
 
+    // For finish fields, only show fallback if the material needs finish
+    if (isFinishField && !shouldShowFallback) {
+      return null;
+    }
+
     // When in estimate editing mode, skip estimate tier to show team defaults
     const estimateValue =
       editType === "estimate" ? null : currentEstimate?.[estimateKey];
@@ -164,7 +171,11 @@ const EstimateSectionForm = ({
     return (
       displayValue && (
         // <span className={`text-sm ${colorClass} ml-1`}>({displayValue})</span>
-        <span className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}>{displayValue}</span>
+        <span
+          className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}
+        >
+          {displayValue}
+        </span>
       )
     );
   };
@@ -577,6 +588,76 @@ const EstimateSectionForm = ({
         }
       }
 
+      // Validate door style is compatible with effective face material
+      const effectiveFaceMaterialId = getEffectiveValueOnly(
+        faceMaterialTiers.section,
+        faceMaterialTiers.estimate,
+        faceMaterialTiers.team
+      );
+
+      const effectiveDoorStyle = getEffectiveValueOnly(
+        formData.doorStyle || null,
+        currentEstimate?.default_door_style || null,
+        teamDefaults?.default_door_style || null
+      );
+
+      if (effectiveFaceMaterialId && effectiveDoorStyle) {
+        const material = FACE_MATERIAL_OPTIONS.find(
+          (mat) => mat.id === effectiveFaceMaterialId
+        );
+
+        if (material) {
+          // Check if door style is valid for this material
+          const isValidDoorStyle =
+            (material.five_piece === true &&
+              (effectiveDoorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+                effectiveDoorStyle ===
+                  FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
+            (material.slab_door === true &&
+              (effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+                effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
+
+          if (!isValidDoorStyle) {
+            newErrors.doorStyle =
+              "Choose a compatible door style";
+          }
+        }
+      }
+
+      // Validate drawer front style is compatible with effective face material
+      const effectiveDrawerFrontStyle = getEffectiveValueOnly(
+        formData.drawerFrontStyle || null,
+        currentEstimate?.default_drawer_front_style || null,
+        teamDefaults?.default_drawer_front_style || null
+      );
+
+      if (effectiveFaceMaterialId && effectiveDrawerFrontStyle) {
+        const material = FACE_MATERIAL_OPTIONS.find(
+          (mat) => mat.id === effectiveFaceMaterialId
+        );
+
+        if (material) {
+          // Check if drawer front style is valid for this material
+          const isValidDrawerStyle =
+            (material.five_piece === true &&
+              (effectiveDrawerFrontStyle ===
+                FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDrawerFrontStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+                effectiveDrawerFrontStyle ===
+                  FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
+            (material.slab_door === true &&
+              (effectiveDrawerFrontStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+                effectiveDrawerFrontStyle ===
+                  FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
+
+          if (!isValidDrawerStyle) {
+            newErrors.drawerFrontStyle =
+              "Choose a compatible drawer front style";
+          }
+        }
+      }
+
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
     }
@@ -621,6 +702,56 @@ const EstimateSectionForm = ({
 
       if (!formData.drawer_box_mat) {
         newErrors.drawer_box_mat = "Drawer box material is required";
+      }
+
+      // Validate door style is compatible with face material for team defaults
+      if (formData.faceMaterial && formData.doorStyle) {
+        const material = FACE_MATERIAL_OPTIONS.find(
+          (mat) => mat.id === formData.faceMaterial
+        );
+
+        if (material) {
+          const isValidDoorStyle =
+            (material.five_piece === true &&
+              (formData.doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                formData.doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+                formData.doorStyle ===
+                  FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
+            (material.slab_door === true &&
+              (formData.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+                formData.doorStyle === FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
+
+          if (!isValidDoorStyle) {
+            newErrors.doorStyle =
+              "Selected door style is not compatible with the face material";
+          }
+        }
+      }
+
+      // Validate drawer front style is compatible with face material for team defaults
+      if (formData.faceMaterial && formData.drawerFrontStyle) {
+        const material = FACE_MATERIAL_OPTIONS.find(
+          (mat) => mat.id === formData.faceMaterial
+        );
+
+        if (material) {
+          const isValidDrawerStyle =
+            (material.five_piece === true &&
+              (formData.drawerFrontStyle ===
+                FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                formData.drawerFrontStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+                formData.drawerFrontStyle ===
+                  FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
+            (material.slab_door === true &&
+              (formData.drawerFrontStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+                formData.drawerFrontStyle ===
+                  FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
+
+          if (!isValidDrawerStyle) {
+            newErrors.drawerFrontStyle =
+              "Selected drawer front style is not compatible with the face material";
+          }
+        }
       }
     }
 
@@ -812,11 +943,12 @@ const EstimateSectionForm = ({
     setMustSelectFaceFinish(finishNeeded);
 
     // Update selectedFaceMaterial for door style filtering
-    // Use the effective material (three-tier fallback)
-    const effectiveFaceMaterialId =
-      formData.faceMaterial ||
-      currentEstimate?.default_face_mat ||
-      teamDefaults?.default_face_mat;
+    // Use the effective material (three-tier fallback) using getEffectiveValue
+    const { value: effectiveFaceMaterialId } = getEffectiveValue(
+      section,
+      estimate,
+      team
+    );
 
     if (effectiveFaceMaterialId) {
       const selectedMaterial = FACE_MATERIAL_OPTIONS.find(
@@ -916,12 +1048,21 @@ const EstimateSectionForm = ({
   }, [selectedFaceMaterial, DOOR_STYLE_OPTIONS]);
 
   useEffect(() => {
-    // If current door style is not in filtered options, reset it
-    if (formData.doorStyle && filteredDoorStyleOptions.length > 0) {
+    // Check if effective door style is valid for the current material
+    // Use three-tier fallback to get the effective value
+    const effectiveDoorStyle = getEffectiveValueOnly(
+      formData.doorStyle || null,
+      currentEstimate?.default_door_style || null,
+      teamDefaults?.default_door_style || null
+    );
+
+    // If there's an effective door style and filtered options exist
+    if (effectiveDoorStyle && filteredDoorStyleOptions.length > 0) {
       const isValidOption = filteredDoorStyleOptions.some(
-        (option) => option.id === formData.doorStyle
+        (option) => option.id === effectiveDoorStyle
       );
 
+      // If the effective style is invalid, reset the section-level field
       if (!isValidOption) {
         setFormData((prev) => ({
           ...prev,
@@ -929,15 +1070,29 @@ const EstimateSectionForm = ({
         }));
       }
     }
-  }, [filteredDoorStyleOptions, formData.doorStyle]);
+  }, [
+    filteredDoorStyleOptions,
+    formData.doorStyle,
+    currentEstimate?.default_door_style,
+    teamDefaults?.default_door_style,
+  ]);
 
   useEffect(() => {
-    // If current drawer front style is not in filtered options, reset it
-    if (formData.drawerFrontStyle && filteredDoorStyleOptions.length > 0) {
+    // Check if effective drawer front style is valid for the current material
+    // Use three-tier fallback to get the effective value
+    const effectiveDrawerFrontStyle = getEffectiveValueOnly(
+      formData.drawerFrontStyle || null,
+      currentEstimate?.default_drawer_front_style || null,
+      teamDefaults?.default_drawer_front_style || null
+    );
+
+    // If there's an effective drawer front style and filtered options exist
+    if (effectiveDrawerFrontStyle && filteredDoorStyleOptions.length > 0) {
       const isValidOption = filteredDoorStyleOptions.some(
-        (option) => option.id === formData.drawerFrontStyle
+        (option) => option.id === effectiveDrawerFrontStyle
       );
 
+      // If the effective style is invalid, reset the section-level field
       if (!isValidOption) {
         setFormData((prev) => ({
           ...prev,
@@ -945,7 +1100,12 @@ const EstimateSectionForm = ({
         }));
       }
     }
-  }, [filteredDoorStyleOptions, formData.drawerFrontStyle]);
+  }, [
+    filteredDoorStyleOptions,
+    formData.drawerFrontStyle,
+    currentEstimate?.default_drawer_front_style,
+    teamDefaults?.default_drawer_front_style,
+  ]);
 
   // Get appropriate title
   const formTitle =
@@ -1000,7 +1160,7 @@ const EstimateSectionForm = ({
                       htmlFor="style"
                       className="text-left text-sm font-medium text-slate-700 flex items-center"
                     >
-                      <span >Style</span>
+                      <span>Style</span>
                       {getEffectiveDefaultDisplay(
                         formData.style,
                         "default_cabinet_style_id",
@@ -1081,9 +1241,11 @@ const EstimateSectionForm = ({
                       </p>
                     )}
                     <div className="h-6">
-                      <p className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
-                        !mustSelectBoxFinish ? 'opacity-100' : 'opacity-0'
-                      }`}>
+                      <p
+                        className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
+                          !mustSelectBoxFinish ? "opacity-100" : "opacity-0"
+                        }`}
+                      >
                         The selected box material does not require finish.
                       </p>
                     </div>
@@ -1101,7 +1263,8 @@ const EstimateSectionForm = ({
                           "default_box_finish",
                           formatFinishArray,
                           false,
-                          true
+                          true,
+                          mustSelectBoxFinish
                         )}
                       </label>
                       <div className="grid grid-cols-3 gap-1 text-sm pl-2">
@@ -1182,9 +1345,11 @@ const EstimateSectionForm = ({
                       </p>
                     )}
                     <div className="h-6">
-                      <p className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
-                        !mustSelectFaceFinish ? 'opacity-100' : 'opacity-0'
-                      }`}>
+                      <p
+                        className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
+                          !mustSelectFaceFinish ? "opacity-100" : "opacity-0"
+                        }`}
+                      >
                         The selected face material does not require finish.
                       </p>
                     </div>
@@ -1202,7 +1367,8 @@ const EstimateSectionForm = ({
                           "default_face_finish",
                           formatFinishArray,
                           false,
-                          true
+                          true,
+                          mustSelectFaceFinish
                         )}
                       </label>
                       <div className="grid grid-cols-3 gap-1 text-sm pl-2">
@@ -1244,37 +1410,41 @@ const EstimateSectionForm = ({
                 <div className="grid gap-4">
                   <div className="grid grid-cols-3 gap-2">
                     {/* Door Style */}
-                    <div className="grid items-center">
-                      <label
-                        htmlFor="doorStyle"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
-                      >
-                        <span>Style</span>
-                        {getEffectiveDefaultDisplay(
-                          formData.doorStyle,
-                          "default_door_style",
-                          "default_door_style",
-                          formatDoorStyleName
-                        )}
-                      </label>
-                      <select
-                        id="doorStyle"
-                        name="doorStyle"
-                        value={formData.doorStyle}
-                        onChange={handleChange}
-                        className={`block w-full rounded-md text-sm h-9 ${
-                          errors.doorStyle
-                            ? "border-red-500"
-                            : "border-slate-300"
-                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
-                      >
-                        <option value="">{getPlaceholder("door style")}</option>
-                        {filteredDoorStyleOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {`${option.label}`}
+                    <div>
+                      <div className="grid items-center">
+                        <label
+                          htmlFor="doorStyle"
+                          className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        >
+                          <span>Style</span>
+                          {getEffectiveDefaultDisplay(
+                            formData.doorStyle,
+                            "default_door_style",
+                            "default_door_style",
+                            formatDoorStyleName
+                          )}
+                        </label>
+                        <select
+                          id="doorStyle"
+                          name="doorStyle"
+                          value={formData.doorStyle}
+                          onChange={handleChange}
+                          className={`block w-full rounded-md text-sm h-9 ${
+                            errors.doorStyle
+                              ? "border-red-500"
+                              : "border-slate-300"
+                          } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                        >
+                          <option value="">
+                            {getPlaceholder("door style")}
                           </option>
-                        ))}
-                      </select>
+                          {filteredDoorStyleOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {`${option.label}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       {errors.doorStyle && (
                         <p className="text-xs text-red-500 col-span-2">
                           {errors.doorStyle}
@@ -1443,35 +1613,37 @@ const EstimateSectionForm = ({
                 <div className="grid gap-4">
                   <div className="grid grid-cols-3 gap-2">
                     {/* Drawer Front Style */}
-                    <div className="grid items-center">
-                      <label
-                        htmlFor="drawerFrontStyle"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
-                      >
-                        <span>Style</span>
-                        {getEffectiveDefaultDisplay(
-                          formData.drawerFrontStyle,
-                          "default_drawer_front_style",
-                          "default_drawer_front_style",
-                          formatDoorStyleName
-                        )}
-                      </label>
-                      <select
-                        id="drawerFrontStyle"
-                        name="drawerFrontStyle"
-                        value={formData.drawerFrontStyle}
-                        onChange={handleChange}
-                        className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="">
-                          {getPlaceholder("drawer front style")}
-                        </option>
-                        {filteredDoorStyleOptions.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.label}
+                    <div>
+                      <div className="grid items-center">
+                        <label
+                          htmlFor="drawerFrontStyle"
+                          className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        >
+                          <span>Style</span>
+                          {getEffectiveDefaultDisplay(
+                            formData.drawerFrontStyle,
+                            "default_drawer_front_style",
+                            "default_drawer_front_style",
+                            formatDoorStyleName
+                          )}
+                        </label>
+                        <select
+                          id="drawerFrontStyle"
+                          name="drawerFrontStyle"
+                          value={formData.drawerFrontStyle}
+                          onChange={handleChange}
+                          className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">
+                            {getPlaceholder("drawer front style")}
                           </option>
-                        ))}
-                      </select>
+                          {filteredDoorStyleOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       {errors.drawerFrontStyle && (
                         <p className="text-xs text-red-500 col-span-2">
                           {errors.drawerFrontStyle}
