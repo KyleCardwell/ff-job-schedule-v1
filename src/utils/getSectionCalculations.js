@@ -1247,6 +1247,21 @@ export const getSectionCalculations = (section, context = {}) => {
     finalHoursByService[serviceId] += hours;
   });
 
+  // Add manually entered hours from add_hours field
+  if (section.add_hours && typeof section.add_hours === 'object') {
+    Object.entries(section.add_hours).forEach(([serviceId, hours]) => {
+      const numericServiceId = parseInt(serviceId);
+      const numericHours = parseFloat(hours) || 0;
+      
+      if (numericHours > 0) {
+        if (!finalHoursByService[numericServiceId]) {
+          finalHoursByService[numericServiceId] = 0;
+        }
+        finalHoursByService[numericServiceId] += numericHours;
+      }
+    });
+  }
+
   // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
   if (finalHoursByService[4] && finalHoursByService[4] > 0) {
     finalHoursByService[4] += 1;
