@@ -1043,8 +1043,8 @@ const EstimateSectionForm = ({
                 Cabinet Box
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-[2fr_3fr] gap-3 items-center">
-                  <div className="grid items-center">
+                <div className="grid grid-cols-[2fr_3fr] gap-3 items-start">
+                  <div className="grid items-start">
                     <label
                       htmlFor="boxMaterial"
                       className="text-left text-sm font-medium text-slate-700 flex items-center"
@@ -1080,12 +1080,12 @@ const EstimateSectionForm = ({
                         {errors.boxMaterial}
                       </p>
                     )}
-                    <div>
-                      {!mustSelectBoxFinish && (
-                        <p className="text-xs text-teal-700 col-span-2 px-2 pt-1">
-                          The selected box material does not require finish.
-                        </p>
-                      )}
+                    <div className="h-6">
+                      <p className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
+                        !mustSelectBoxFinish ? 'opacity-100' : 'opacity-0'
+                      }`}>
+                        The selected box material does not require finish.
+                      </p>
                     </div>
                   </div>
                   {/* Box Finish Options */}
@@ -1142,8 +1142,8 @@ const EstimateSectionForm = ({
                 Cabinet Face
               </h3>
               <div className="border rounded-lg border-slate-400 p-3">
-                <div className="grid grid-cols-[2fr_3fr] gap-3 items-center">
-                  <div className="grid items-center">
+                <div className="grid grid-cols-[2fr_3fr] gap-3 items-start">
+                  <div className="grid items-start">
                     <label
                       htmlFor="faceMaterial"
                       className="text-left text-sm font-medium text-slate-700 flex items-center"
@@ -1181,12 +1181,12 @@ const EstimateSectionForm = ({
                         {errors.faceMaterial}
                       </p>
                     )}
-                    <div>
-                      {!mustSelectFaceFinish && (
-                        <p className="text-xs text-teal-700 col-span-2 px-2 pt-1">
-                          The selected face material does not require finish.
-                        </p>
-                      )}
+                    <div className="h-6">
+                      <p className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
+                        !mustSelectFaceFinish ? 'opacity-100' : 'opacity-0'
+                      }`}>
+                        The selected face material does not require finish.
+                      </p>
                     </div>
                   </div>
                   {/* Finish Options */}

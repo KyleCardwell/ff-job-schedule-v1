@@ -22,7 +22,8 @@ export const calculateMoldingCost = (
   width,
   height,
   insideMolding = false,
-  outsideMolding = false
+  outsideMolding = false,
+  material
 ) => {
   if (!insideMolding && !outsideMolding) return 0;
 
@@ -35,21 +36,28 @@ export const calculateMoldingCost = (
   // For a door with stiles and rails, the opening is:
   // openingWidth = width - (2 * stileWidth)
   // openingHeight = height - (2 * railWidth)
-  const openingWidth = Math.max(0, width - 2 * stileWidth);
-  const openingHeight = Math.max(0, height - 2 * railWidth);
-  const perimeterInches = 2 * (openingWidth + openingHeight);
-  const perimeterFeet = perimeterInches / 12;
+  const insideWidth = Math.max(0, width - 2 * stileWidth);
+  const insideHeight = Math.max(0, height - 2 * railWidth);
+  const insidePerimeterInches = 2 * (insideHeight + insideWidth);
+  const insidePerimeterFeet = insidePerimeterInches / 12;
+
+  const outsidePerimeterInches = 2 * (width + height);
+  const outsidePerimeterFeet = outsidePerimeterInches / 12;
 
   // Pricing per foot
-  const insideMoldingPricePerFoot = 7.90;
-  const outsideMoldingPricePerFoot = 8.25;
+  // const insideMoldingPricePerFoot = 7.90;
+  // const outsideMoldingPricePerFoot = 8.25;
+  const insideMoldingPricePerFoot =
+    5 + (material.bd_ft_price ? material.bd_ft_price : 3);
+  const outsideMoldingPricePerFoot =
+    5 + (material.bd_ft_price ? material.bd_ft_price : 3.5);
 
   let cost = 0;
   if (insideMolding) {
-    cost += Math.max(perimeterFeet * insideMoldingPricePerFoot, 50);
+    cost += Math.max(insidePerimeterFeet * insideMoldingPricePerFoot, 50);
   }
   if (outsideMolding) {
-    cost += Math.max(perimeterFeet * outsideMoldingPricePerFoot, 68);
+    cost += Math.max(outsidePerimeterFeet * outsideMoldingPricePerFoot, 68);
   }
 
   return cost;
@@ -517,9 +525,10 @@ export const calculatePanelPartsTime = (
   }
 
   // Determine which parts_list_id to use
-  const partsListId = cabinet.type === 10 
-    ? PARTS_LIST_MAPPING["end_panel_finished"]      // 17
-    : PARTS_LIST_MAPPING["appliance_panel_finished"]; // 18
+  const partsListId =
+    cabinet.type === 10
+      ? PARTS_LIST_MAPPING["end_panel_finished"] // 17
+      : PARTS_LIST_MAPPING["appliance_panel_finished"]; // 18
 
   const anchors = partsListAnchors[partsListId];
 
@@ -840,10 +849,20 @@ export const calculateSlabSheetFacePriceBulk = (
       outsideMolding = drawerOutsideMolding;
     }
 
-    return sum + calculateMoldingCost(face.width, face.height, insideMolding, outsideMolding);
+    return (
+      sum +
+      calculateMoldingCost(
+        face.width,
+        face.height,
+        insideMolding,
+        outsideMolding,
+        selectedMaterial
+      )
+    );
   }, 0);
 
-  const totalCostBeforeTax = sheetCost + setupCost + cutCost + bandingCost + moldingCost;
+  const totalCostBeforeTax =
+    sheetCost + setupCost + cutCost + bandingCost + moldingCost;
   const totalCost = totalCostBeforeTax * (1 + taxRate);
 
   return {

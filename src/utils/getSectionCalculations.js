@@ -342,7 +342,8 @@ const calculateFaceTotals = (section, context) => {
           width,
           height,
           insideMolding,
-          outsideMolding
+          outsideMolding,
+          selectedFaceMaterial.material
         );
 
         return doorPrice + moldingCost;
@@ -391,7 +392,8 @@ const calculateFaceTotals = (section, context) => {
           width,
           height,
           insideMolding,
-          outsideMolding
+          outsideMolding,
+          selectedFaceMaterial.material
         );
 
         if (!totals.facePrices[faceType]) {
