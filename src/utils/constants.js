@@ -216,8 +216,9 @@ export const PARTS_LIST_MAPPING = {
   slab_door_unfinished: 12,
   slab_door_finished: 13,
   "5_piece_door_finished": 14, // 5-piece doors always need finish
-  "reeded_panel_finished": 15,
-  "end_panel_finished": 17,
-  "appliance_panel_finished": 18,
+  reeded_panel_finished: 15,
+  end_panel_finished: 17,
+  appliance_panel_finished: 18,
+  end_panel_nosing_finished: 19
 };
   

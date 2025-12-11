@@ -34,6 +34,10 @@ const CabinetItemForm = ({
   const currentCabinetType = cabinetTypes.find(
     (t) => t.cabinet_type_id === item.type
   );
+
+  const [nosingOrFinish, setNosingOrFinish] = useState(
+    currentCabinetType?.cabinet_type_id === 10 ? "Nosing" : "Finish"
+  );
   const itemType = currentCabinetType?.item_type || "cabinet";
   const [itemTypeConfig, setItemTypeConfig] = useState(
     getItemTypeConfig(itemType)
@@ -108,14 +112,33 @@ const CabinetItemForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
-  // Update item type config when cabinet type changes
+  // Update itemTypeConfig when formData.type changes
   useEffect(() => {
     const selectedType = cabinetTypes.find(
       (t) => t.cabinet_type_id === formData.type
     );
     const derivedItemType = selectedType?.item_type || ITEM_TYPES.CABINET.type;
+    const newCabinetTypeId = selectedType?.cabinet_type_id;
+    const previousCabinetTypeId = currentCabinetType?.cabinet_type_id;
+    
     setItemTypeConfig(getItemTypeConfig(derivedItemType));
-  }, [formData.type, cabinetTypes]);
+    setNosingOrFinish(newCabinetTypeId === 10 ? "Nosing" : "Finish");
+    
+    // Clear finished fields when changing to or from type 10 (end panel)
+    // Type 10 uses these fields for nosing, other types use them for finish
+    if (
+      (previousCabinetTypeId === 10 && newCabinetTypeId !== 10) ||
+      (previousCabinetTypeId !== 10 && newCabinetTypeId === 10)
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        finished_top: false,
+        finished_bottom: false,
+        finished_left: false,
+        finished_right: false,
+      }));
+    }
+  }, [formData.type, cabinetTypes, currentCabinetType]);
 
   // Handle regular input changes
   const handleChange = (e) => {
@@ -302,6 +325,24 @@ const CabinetItemForm = ({
 
     if (!formData.quantity || formData.quantity < 1) {
       newErrors.quantity = "Quantity must be at least 1";
+    }
+
+    // Validate end panel nosing - if type 10 and depth > 0.75, at least one nosing must be selected
+    if (formData.type === 10) {
+      const hasNosing =
+        formData.finished_top ||
+        formData.finished_bottom ||
+        formData.finished_left ||
+        formData.finished_right;
+
+      if (!hasNosing && formData.depth > 0.75) {
+        newErrors.nosing =
+          "At least one nosing option must be selected when depth is greater than 0.75\"";
+      }
+      if (hasNosing && formData.depth <= .75) {
+        newErrors.nosing =
+          "Nosing can't be applied to end panels thinner than 0.75\"";
+      }
     }
 
     setErrors(newErrors);
@@ -692,22 +733,116 @@ const CabinetItemForm = ({
     const qty = Number(quantity);
 
     // Handle item types that don't need box material
-    // door_front, drawer_front, end_panel - no box parts, just faces
+    // door_front, drawer_front, end_panel, appliance_panel - no box parts, just faces
     if (
-      itemType === "door_front" ||
-      itemType === "drawer_front" ||
-      itemType === "end_panel" ||
-      itemType === "appliance_panel"
+      itemType === ITEM_TYPES.DOOR_FRONT.type ||
+      itemType === ITEM_TYPES.DRAWER_FRONT.type ||
+      itemType === ITEM_TYPES.END_PANEL.type ||
+      itemType === ITEM_TYPES.APPLIANCE_PANEL.type
     ) {
       let frameParts = {};
       if (
         cabinetStyleId !== 13 &&
-        (itemType === "end_panel" || itemType === "appliance_panel")
+        (itemType === ITEM_TYPES.END_PANEL.type || itemType === ITEM_TYPES.APPLIANCE_PANEL.type)
       ) {
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
       }
 
       const hardware = countFaceHardware(faceConfig, itemType);
+
+      // Calculate nosing for end panels (type 10) when depth > 0.75
+      let boxPartsList = [];
+      if (itemType === ITEM_TYPES.END_PANEL.type && d > 0.75) {
+        const returnWidth = 6; // Return piece width
+
+        // Top nosing - main piece (depth width) + return (6" width)
+        if (formData.finished_top) {
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "top_nosing",
+            width: roundTo16th(d),
+            height: roundTo16th(w),
+            area: roundTo16th(d * w),
+            quantity: 1,
+            finish: true,
+          });
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "top_return",
+            width: roundTo16th(returnWidth),
+            height: roundTo16th(w),
+            area: roundTo16th(returnWidth * w),
+            quantity: 1,
+            finish: true,
+          });
+        }
+
+        // Bottom nosing - main piece (depth width) + return (6" width)
+        if (formData.finished_bottom) {
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "bottom_nosing",
+            width: roundTo16th(d),
+            height: roundTo16th(w),
+            area: roundTo16th(d * w),
+            quantity: 1,
+            finish: true,
+          });
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "bottom_return",
+            width: roundTo16th(returnWidth),
+            height: roundTo16th(w),
+            area: roundTo16th(returnWidth * w),
+            quantity: 1,
+            finish: true,
+          });
+        }
+
+        // Left nosing - main piece (depth width) + return (6" width)
+        if (formData.finished_left) {
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "left_nosing",
+            width: roundTo16th(d),
+            height: roundTo16th(h),
+            area: roundTo16th(d * h),
+            quantity: 1,
+            finish: true,
+          });
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "left_return",
+            width: roundTo16th(returnWidth),
+            height: roundTo16th(h),
+            area: roundTo16th(returnWidth * h),
+            quantity: 1,
+            finish: true,
+          });
+        }
+
+        // Right nosing - main piece (depth width) + return (6" width)
+        if (formData.finished_right) {
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "right_nosing",
+            width: roundTo16th(d),
+            height: roundTo16th(h),
+            area: roundTo16th(d * h),
+            quantity: 1,
+            finish: true,
+          });
+          boxPartsList.push({
+            type: "end_panel_nosing",
+            side: "right_return",
+            width: roundTo16th(returnWidth),
+            height: roundTo16th(h),
+            area: roundTo16th(returnWidth * h),
+            quantity: 1,
+            finish: true,
+          });
+        }
+      }
 
       return {
         pieces: { sides: 0, topBottom: 0, back: 0 },
@@ -719,7 +854,7 @@ const CabinetItemForm = ({
         singleBoxPerimeterLength: 0,
         boxHardware: hardware,
         shelfDrillHoles: 0,
-        boxPartsList: [],
+        boxPartsList,
         frameParts: frameParts,
         openingsCount: 0,
       };
@@ -1448,7 +1583,7 @@ const CabinetItemForm = ({
                   itemTypeConfig.features.finishedRight) && (
                   <div className="flex flex-wrap gap-2 justify-between">
                     <div className="w-full text-xs font-medium text-slate-700 text-left">
-                      Finish:
+                      {nosingOrFinish}:
                     </div>
 
                     {/* Finished Top */}
@@ -1549,6 +1684,13 @@ const CabinetItemForm = ({
                           Right
                         </label>
                       </div>
+                    )}
+
+                    {/* Nosing error message */}
+                    {errors.nosing && (
+                      <p className="text-red-500 text-xs mt-1 w-full">
+                        {errors.nosing}
+                      </p>
                     )}
                   </div>
                 )}

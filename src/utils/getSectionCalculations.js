@@ -110,6 +110,48 @@ const calculateFaceTotals = (section, context) => {
       return;
     }
 
+    // Handle end panel nosing (type 10) separately using boxPartsList
+    if (cabinet.type === 10) {
+      // Only include nosing if door style is slab_sheet and boxPartsList exists
+      if (effectiveValues.door_style !== FACE_STYLE_VALUES.SLAB_SHEET) {
+        // Continue to regular processing for non-slab_sheet styles
+      } else if (cabinet.face_config?.boxSummary?.boxPartsList) {
+        const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
+        const nosingParts = boxPartsList.filter(
+          (part) => part.type === "end_panel_nosing"
+        );
+
+        if (nosingParts.length > 0) {
+          const styleToUse = effectiveValues.door_style;
+
+          // Initialize style category if needed
+          if (!facesByStyle[styleToUse]) {
+            facesByStyle[styleToUse] = [];
+          }
+
+          // Process each nosing piece as a panel for pricing/hours
+          // but don't count them in faceCounts
+          nosingParts.forEach((nosingPart) => {
+            const faceType = FACE_NAMES.PANEL;
+
+            // Add each nosing piece (multiplied by cabinet quantity)
+            for (let i = 0; i < quantity; i++) {
+              facesByStyle[styleToUse].push({
+                width: nosingPart.width,
+                height: nosingPart.height,
+                area: nosingPart.area,
+                faceType,
+                cabinetId: cabinet.id || cabinet.temp_id,
+                isNosing: true, // Mark as nosing to exclude from counts
+              });
+            }
+
+            // Don't update face counts for nosing parts
+          });
+        }
+      }
+    }
+
     // Add extra service hours for end panels (type 10) and appliance panels (type 11)
     // Uses root dimensions with parts list anchors 17 and 18 respectively
     if (cabinet.type === 10 || cabinet.type === 11) {
@@ -684,6 +726,65 @@ const calculateFillerMaterials = (section, context) => {
   return totals;
 };
 
+const calculateEndPanelNosingMaterials = (section, context) => {
+  const totals = {
+    woodTotal: 0,
+    boardFeet: 0,
+  };
+
+  if (!section.cabinets || !Array.isArray(section.cabinets)) {
+    return totals;
+  }
+
+  const { selectedFaceMaterial, estimate, team } = context;
+  if (!selectedFaceMaterial) return totals;
+
+  // Resolve effective values using three-tier fallback
+  const effectiveValues = getEffectiveDefaults(section, estimate, team);
+
+  if (effectiveValues.door_style === FACE_STYLE_VALUES.SLAB_SHEET)
+    return totals;
+
+  const endPanelsWithNosing = section.cabinets.filter((cabinet) => {
+    // Only include end panels (type 10) with nosing parts
+    return (
+      cabinet.type === 10 &&
+      cabinet.face_config?.boxSummary?.boxPartsList?.length > 0
+    );
+  });
+
+  if (endPanelsWithNosing.length === 0) return totals;
+
+  const { material } = selectedFaceMaterial;
+
+  endPanelsWithNosing.forEach((endPanel) => {
+    const { quantity = 1 } = endPanel;
+    const boxPartsList = endPanel.face_config.boxSummary.boxPartsList;
+    const nosingParts = boxPartsList.filter(
+      (part) => part.type === "end_panel_nosing"
+    );
+
+    if (nosingParts.length === 0) return;
+
+    // Calculate total area of all nosing pieces
+    const totalArea = nosingParts.reduce((sum, part) => sum + part.area, 0);
+    const wasteFactor = 1.25;
+
+    if (material?.bd_ft_price) {
+      const boardFeet = (totalArea * material.thickness) / 144;
+      const boardFeetWithWaste = boardFeet * wasteFactor;
+      totals.boardFeet += boardFeetWithWaste * quantity;
+      totals.woodTotal += boardFeetWithWaste * material.bd_ft_price * quantity;
+    } else {
+      const totalAreaWithWaste = totalArea * wasteFactor;
+      const sheetArea = totalAreaWithWaste / material.area;
+      totals.woodTotal += sheetArea * material.sheet_price * quantity;
+    }
+  });
+
+  return totals;
+};
+
 // Count and price hardware from cabinet boxHardware
 const countHardware = (section, faceTotals, context) => {
   let totalHinges = 0;
@@ -833,6 +934,8 @@ const calculateCabinetTotals = (section, context) => {
 
   const fillerMaterials = calculateFillerMaterials(section, context);
 
+  const endPanelNosingMaterials = calculateEndPanelNosingMaterials(section, context);
+
   const faceFramePrices = calculateFaceFramePrices(section, context);
 
   // Count total boxes
@@ -915,8 +1018,8 @@ const calculateCabinetTotals = (section, context) => {
     pullsTotal: hardwareTotals.pullsTotal,
     slidesCount: hardwareTotals.slidesCount,
     slidesTotal: hardwareTotals.slidesTotal,
-    woodTotal: faceFramePrices.woodTotal + fillerMaterials.woodTotal,
-    woodCount: faceFramePrices.boardFeet + fillerMaterials.boardFeet,
+    woodTotal: faceFramePrices.woodTotal + fillerMaterials.woodTotal + endPanelNosingMaterials.woodTotal,
+    woodCount: faceFramePrices.boardFeet + fillerMaterials.boardFeet + endPanelNosingMaterials.boardFeet,
     fillerCount: fillerCount,
     glassCount: faceTotals.glassCount,
     glassTotal: faceTotals.glassTotal,
