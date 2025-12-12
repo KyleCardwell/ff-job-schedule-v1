@@ -3,10 +3,7 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 
 import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
-import {
-  getEffectiveDefaults,
-  shouldApplyFinish,
-} from "../../utils/estimateDefaults";
+import { createSectionContext } from "../../utils/createSectionContext";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
@@ -39,180 +36,56 @@ const EstimateSectionPrice = ({ section }) => {
     (state) => state.partsListAnchors?.itemsByPartsList || []
   );
 
+  const cabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors?.itemsByType || []
+  );
+
   // Get estimate and team for defaults fallback
   const currentEstimate = useSelector(
     (state) => state.estimates?.currentEstimate
   );
 
-  // Create effective section with resolved fallback values (three-tier: section → estimate → team)
-  const effectiveSection = useMemo(() => {
-    const effectiveDefaults = getEffectiveDefaults(
-      section,
-      currentEstimate,
-      teamDefaults
-    );
-
-    // Merge the effective defaults with the section, preserving cabinet items and other data
-    return {
-      ...section,
-      // Override with effective defaults
-      cabinet_style_id: effectiveDefaults.cabinet_style_id,
-      box_mat: effectiveDefaults.box_mat,
-      face_mat: effectiveDefaults.face_mat,
-      drawer_box_mat: effectiveDefaults.drawer_box_mat,
-      hinge_id: effectiveDefaults.hinge_id,
-      slide_id: effectiveDefaults.slide_id,
-      door_pull_id: effectiveDefaults.door_pull_id,
-      drawer_pull_id: effectiveDefaults.drawer_pull_id,
-      face_finish: effectiveDefaults.face_finish,
-      box_finish: effectiveDefaults.box_finish,
-      door_inside_molding: effectiveDefaults.door_inside_molding,
-      door_outside_molding: effectiveDefaults.door_outside_molding,
-      drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
-      drawer_outside_molding: effectiveDefaults.drawer_outside_molding,
-      door_reeded_panel: effectiveDefaults.door_reeded_panel,
-      drawer_reeded_panel: effectiveDefaults.drawer_reeded_panel,
-      door_style: effectiveDefaults.door_style,
-      drawer_front_style: effectiveDefaults.drawer_front_style,
-      quantity: effectiveDefaults.quantity,
-      profit: effectiveDefaults.profit || 0,
-      commission: effectiveDefaults.commission || 0,
-      discount: effectiveDefaults.discount || 0,
-    };
-  }, [section, currentEstimate, teamDefaults]);
-
-  const selectedFaceMaterial = useMemo(() => {
-    let finishMultiplier = 0;
-    let shopMultiplier = 1;
-    const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveSection.face_mat
-    );
-
-    // Check if finish should be applied using three-tier fallback
-    const finishNeeded = shouldApplyFinish(
-      section.face_mat,
-      currentEstimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
-      faceMaterials || []
-    );
-
-    if (finishNeeded) {
-      finishMultiplier = 1;
-      if (effectiveSection.face_finish?.length > 0) {
-        effectiveSection.face_finish.forEach((finishId) => {
-          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-          if (finishObj?.finish_markup) {
-            finishMultiplier += finishObj.finish_markup / 100;
-          }
-          if (finishObj?.shop_markup) {
-            shopMultiplier += finishObj.shop_markup / 100;
-          }
-        });
-      }
-    }
-
-    return { material, finishMultiplier, shopMultiplier };
-  }, [
-    faceMaterials,
-    effectiveSection.face_mat,
-    effectiveSection.face_finish,
-    finishTypes,
-    section.face_mat,
-    currentEstimate,
-    teamDefaults,
-  ]);
-
-  const selectedBoxMaterial = useMemo(() => {
-    let finishMultiplier = 0;
-    let shopMultiplier = 1;
-    const material = boxMaterials?.find(
-      (mat) => mat.id === effectiveSection.box_mat
-    );
-
-    // Check if finish should be applied using three-tier fallback
-    const finishNeeded = shouldApplyFinish(
-      section.box_mat,
-      currentEstimate?.default_box_mat,
-      teamDefaults?.default_box_mat,
-      boxMaterials || []
-    );
-
-    if (finishNeeded) {
-      finishMultiplier = 1;
-      if (effectiveSection.box_finish?.length > 0) {
-        effectiveSection.box_finish.forEach((finishId) => {
-          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-          if (finishObj?.finish_markup) {
-            finishMultiplier += finishObj.finish_markup / 100;
-          }
-          if (finishObj?.shop_markup) {
-            shopMultiplier += finishObj.shop_markup / 100;
-          }
-        });
-      }
-    }
-
-    return { material, finishMultiplier, shopMultiplier };
-  }, [
-    boxMaterials,
-    effectiveSection.box_mat,
-    effectiveSection.box_finish,
-    finishTypes,
-    section.box_mat,
-    currentEstimate,
-    teamDefaults,
-  ]);
-
-  // Calculate the total price and face counts of all items in the section
-  const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(effectiveSection, {
-      // Materials
+  // Create context and calculate section totals using extracted utility
+  const { context, effectiveSection } = useMemo(() => {
+    const catalogData = {
       boxMaterials,
       faceMaterials,
       drawerBoxMaterials,
-      selectedFaceMaterial,
-      selectedBoxMaterial,
-
-      // Styles & Configuration
-      cabinetStyles,
       finishTypes,
+      cabinetStyles,
       cabinetTypes,
-
-      // Hardware
       hardware,
-
-      // Accessories
-      accessories,
-
-      // Lengths
-      lengthsCatalog: lengths?.catalog || [],
-
-      // Services & Anchors
       partsListAnchors,
+      cabinetAnchors,
       globalServices: services,
+      lengthsCatalog: lengths?.catalog || [],
+      accessories,
+      teamDefaults,
+    };
 
-      // Defaults for fallback (three-tier system)
-      estimate: currentEstimate,
-      team: teamDefaults,
-    });
+    return createSectionContext(section, currentEstimate, catalogData);
   }, [
-    effectiveSection,
+    section,
+    currentEstimate,
     boxMaterials,
     faceMaterials,
-    selectedFaceMaterial,
-    selectedBoxMaterial,
     drawerBoxMaterials,
     finishTypes,
     cabinetStyles,
     cabinetTypes,
     hardware,
-    accessories,
-    lengths,
     partsListAnchors,
+    cabinetAnchors,
     services,
-    currentEstimate,
+    lengths,
+    accessories,
     teamDefaults,
   ]);
+
+  // Calculate the total price and face counts of all items in the section
+  const sectionCalculations = useMemo(() => {
+    return getSectionCalculations(effectiveSection, context);
+  }, [effectiveSection, context]);
 
   // Format number as currency
  const formatCurrency = (amount, { noCents = false } = {}) => {

@@ -32,7 +32,7 @@ const EstimatePreviewTask = ({ task, estimate, onTaskTotalChange }) => {
             <EstimatePreviewSection
               key={section.est_section_id}
               section={section}
-              sectionNumber={index + 1}
+              sectionNumber={task.sections.length > 1 ? index + 1 : null}
               taskName={task.est_task_name}
               estimate={estimate}
               onTotalCalculated={(total) => handleSectionTotal(section.est_section_id, total)}

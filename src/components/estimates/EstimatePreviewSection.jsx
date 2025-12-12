@@ -111,7 +111,7 @@ const EstimatePreviewSection = ({
       {/* Section Header */}
       <div className="border-b border-slate-600 pb-4 mb-4">
         <h3 className="text-lg font-semibold text-slate-200">
-          {taskName} - Section {sectionNumber}
+          {taskName}{sectionNumber ? ` - Section ${sectionNumber}` : ''}
         </h3>
         {section.notes && (
           <p className="text-sm text-slate-400 mt-2">{section.notes}</p>
