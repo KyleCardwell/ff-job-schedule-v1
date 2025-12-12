@@ -26,12 +26,21 @@ const EstimatePreview = () => {
   }, []);
 
   // Calculate grand total from task data and prepare all sections for PDF
+  // Use currentEstimate.tasks to maintain original order
   const { grandTotal, allSections } = useMemo(() => {
-    const tasks = Object.values(taskDataMap);
-    const total = tasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
-    const sections = tasks.flatMap(t => t.sections || []);
+    if (!currentEstimate?.tasks) {
+      return { grandTotal: 0, allSections: [] };
+    }
+    
+    // Iterate through tasks in their original order
+    const orderedTasks = currentEstimate.tasks.map(task => 
+      taskDataMap[task.est_task_id]
+    ).filter(Boolean); // Remove any undefined tasks
+    
+    const total = orderedTasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
+    const sections = orderedTasks.flatMap(t => t.sections || []);
     return { grandTotal: total, allSections: sections };
-  }, [taskDataMap]);
+  }, [taskDataMap, currentEstimate]);
 
   useEffect(() => {
     const loadEstimate = async () => {
