@@ -182,6 +182,18 @@ const EstimateLayout = () => {
 
   return (
     <div className="flex h-full bg-slate-800">
+      {/* Preview Button - Fixed Top Right */}
+      {currentEstimate && (
+        <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
+          <button
+            onClick={() => navigate(`/estimates/in-progress/${estimateId}/preview`)}
+            className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors"
+          >
+            Estimate Preview
+          </button>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div className="w-64 flex-none bg-slate-900 border-t border-slate-200 flex flex-col">
         <div className="flex items-center justify-center py-4 text-slate-200 text-lg font-semibold relative">
