@@ -80,16 +80,79 @@ const EstimatePreviewSection = ({
   // Track previous total to avoid calling callback with same value
   const prevTotalRef = useRef(null);
 
-  // Notify parent when total changes (only if value actually changed)
+  // Build complete section data for PDF generation and parent aggregation
+  const sectionData = useMemo(() => {
+    if (!calculations?.totalPrice || !effectiveSection) return null;
+
+    const quantity = effectiveSection.quantity || 1;
+    const unitPrice = calculations.totalPrice / quantity;
+
+    // Get readable names for materials and styles
+    const cabinetStyleName = cabinetStyles?.find(
+      (s) => s.cabinet_style_id === effectiveSection.cabinet_style_id
+    )?.cabinet_style_name || "";
+
+    const faceFinishNames = effectiveSection.face_finish
+      ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+      .filter(Boolean)
+      .join(", ") || "None";
+
+    const boxFinishNames = effectiveSection.box_finish
+      ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+      .filter(Boolean)
+      .join(", ") || "None";
+
+    const drawerBoxMaterialName = drawerBoxMaterials?.find(
+      (m) => m.id === effectiveSection.drawer_box_mat
+    )?.name || "";
+
+    // Format display name for PDF: task name + section number if multiple sections
+    const displayName = sectionNumber 
+      ? `${taskName} - Section ${sectionNumber}`
+      : taskName;
+
+    return {
+      sectionId: section.est_section_id,
+      sectionName: section.section_name || `Section ${sectionNumber || 1}`,
+      taskName,
+      displayName, // For PDF display
+      quantity,
+      unitPrice,
+      totalPrice: calculations.totalPrice,
+      // Description details for PDF
+      cabinetStyle: cabinetStyleName,
+      faceMaterial: context.selectedFaceMaterial?.material?.name || "",
+      boxMaterial: context.selectedBoxMaterial?.material?.name || "",
+      drawerBoxMaterial: drawerBoxMaterialName,
+      doorStyle: effectiveSection.door_style?.replace(/_/g, " ") || "",
+      drawerFrontStyle: effectiveSection.drawer_front_style?.replace(/_/g, " ") || "",
+      faceFinish: faceFinishNames,
+      boxFinish: boxFinishNames,
+      notes: section.notes || "",
+    };
+  }, [
+    calculations?.totalPrice,
+    effectiveSection,
+    section,
+    sectionNumber,
+    taskName,
+    cabinetStyles,
+    finishTypes,
+    drawerBoxMaterials,
+    context,
+  ]);
+
+  // Notify parent when section data changes (only if value actually changed)
   useEffect(() => {
-    if (onTotalCalculated && calculations?.totalPrice !== undefined) {
-      // Only call if the value has actually changed
-      if (prevTotalRef.current !== calculations.totalPrice) {
-        prevTotalRef.current = calculations.totalPrice;
-        onTotalCalculated(calculations.totalPrice);
+    if (onTotalCalculated && sectionData) {
+      const currentTotal = sectionData.totalPrice;
+      // Only call if the total has actually changed
+      if (prevTotalRef.current !== currentTotal) {
+        prevTotalRef.current = currentTotal;
+        onTotalCalculated(sectionData);
       }
     }
-  }, [calculations?.totalPrice, onTotalCalculated]);
+  }, [sectionData, onTotalCalculated]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
@@ -119,7 +182,7 @@ const EstimatePreviewSection = ({
       </div>
 
       {/* Section Details */}
-      <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+      <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
         <div>
           <p className="text-slate-400">Cabinet Style:</p>
           <p className="text-slate-200">
@@ -144,6 +207,12 @@ const EstimatePreviewSection = ({
           <p className="text-slate-400">Door Style:</p>
           <p className="text-slate-200 capitalize">
             {effectiveSection.door_style?.replace(/_/g, " ") || "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-slate-400">Drawer Front Style:</p>
+          <p className="text-slate-200 capitalize">
+            {effectiveSection.drawer_front_style?.replace(/_/g, " ") || "—"}
           </p>
         </div>
       </div>

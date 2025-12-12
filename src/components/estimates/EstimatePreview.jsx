@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiArrowLeft } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { fetchEstimateById } from "../../redux/actions/estimates";
 
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
+import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
 
 const EstimatePreview = () => {
   const dispatch = useDispatch();
@@ -17,18 +18,20 @@ const EstimatePreview = () => {
   );
   const estimates = useSelector((state) => state.estimates.estimates);
 
-  // Track task totals - children will report their totals up
-  const [taskTotals, setTaskTotals] = useState({});
+  // Track all task data - children will report their complete data up
+  const [taskDataMap, setTaskDataMap] = useState({});
 
-  const handleTaskTotalChange = useCallback((taskId, total) => {
-    setTaskTotals((prev) => ({ ...prev, [taskId]: total }));
+  const handleTaskDataChange = useCallback((taskData) => {
+    setTaskDataMap((prev) => ({ ...prev, [taskData.taskId]: taskData }));
   }, []);
 
-  // Calculate grand total from task totals
-  const grandTotal = Object.values(taskTotals).reduce(
-    (sum, val) => sum + (val || 0),
-    0
-  );
+  // Calculate grand total from task data and prepare all sections for PDF
+  const { grandTotal, allSections } = useMemo(() => {
+    const tasks = Object.values(taskDataMap);
+    const total = tasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
+    const sections = tasks.flatMap(t => t.sections || []);
+    return { grandTotal: total, allSections: sections };
+  }, [taskDataMap]);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -82,10 +85,11 @@ const EstimatePreview = () => {
                 </p>
               </div>
             </div>
-            {/* Placeholder for future Generate PDF button */}
-            <div className="text-sm text-slate-400">
-              {/* Generate PDF button will go here */}
-            </div>
+            <GenerateEstimatePdf
+              estimate={currentEstimate}
+              allSections={allSections}
+              grandTotal={grandTotal}
+            />
           </div>
         </div>
       </div>
@@ -107,7 +111,7 @@ const EstimatePreview = () => {
               key={task.est_task_id}
               task={task}
               estimate={currentEstimate}
-              onTaskTotalChange={handleTaskTotalChange}
+              onTaskDataChange={handleTaskDataChange}
             />
           ))
         ) : (

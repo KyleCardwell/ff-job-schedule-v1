@@ -3,20 +3,30 @@ import { useCallback, useState } from "react";
 
 import EstimatePreviewSection from "./EstimatePreviewSection.jsx";
 
-const EstimatePreviewTask = ({ task, estimate, onTaskTotalChange }) => {
-  const [sectionTotals, setSectionTotals] = useState({});
+const EstimatePreviewTask = ({ task, estimate, onTaskDataChange }) => {
+  const [sectionDataMap, setSectionDataMap] = useState({});
 
-  const handleSectionTotal = useCallback((sectionId, total) => {
-    setSectionTotals((prev) => {
-      const updated = { ...prev, [sectionId]: total };
-      // Calculate task total and notify parent
-      const taskTotal = Object.values(updated).reduce((sum, val) => sum + (val || 0), 0);
-      if (onTaskTotalChange) {
-        onTaskTotalChange(task.est_task_id, taskTotal);
+  const handleSectionData = useCallback((sectionData) => {
+    setSectionDataMap((prev) => {
+      const updated = { ...prev, [sectionData.sectionId]: sectionData };
+      
+      // Calculate task total and build task data object
+      const sections = Object.values(updated);
+      const taskTotal = sections.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
+      
+      const taskData = {
+        taskId: task.est_task_id,
+        taskName: task.est_task_name,
+        sections,
+        totalPrice: taskTotal,
+      };
+      
+      if (onTaskDataChange) {
+        onTaskDataChange(taskData);
       }
       return updated;
     });
-  }, [task.est_task_id, onTaskTotalChange]);
+  }, [task.est_task_id, task.est_task_name, onTaskDataChange]);
 
   return (
     <div className="mb-8">
@@ -35,7 +45,7 @@ const EstimatePreviewTask = ({ task, estimate, onTaskTotalChange }) => {
               sectionNumber={task.sections.length > 1 ? index + 1 : null}
               taskName={task.est_task_name}
               estimate={estimate}
-              onTotalCalculated={(total) => handleSectionTotal(section.est_section_id, total)}
+              onTotalCalculated={handleSectionData}
             />
           ))
         ) : (
@@ -49,7 +59,7 @@ const EstimatePreviewTask = ({ task, estimate, onTaskTotalChange }) => {
 EstimatePreviewTask.propTypes = {
   task: PropTypes.object.isRequired,
   estimate: PropTypes.object.isRequired,
-  onTaskTotalChange: PropTypes.func,
+  onTaskDataChange: PropTypes.func,
 };
 
 export default EstimatePreviewTask;
