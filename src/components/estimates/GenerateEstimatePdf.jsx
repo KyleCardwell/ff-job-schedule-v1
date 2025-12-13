@@ -70,6 +70,12 @@ const GenerateEstimatePdf = ({
 
       //   const grandTotalText = "Total:   " + formatCurrency(grandTotal);
 
+      // Height variables to control header/footer and page margins
+      const HEADER_HEIGHT = 200; // Fixed height for header table
+      const FOOTER_HEIGHT = 80; // Fixed height for footer table
+      const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
+      const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
+
       // Build table body with sections
       // Table has 6 columns: Qty (1), Description (2), Cost (2), Total (2)
       // Build section rows with intelligent pagination - one table per page
@@ -254,206 +260,237 @@ const GenerateEstimatePdf = ({
       // PDF document definition
       const docDefinition = {
         pageSize: "LETTER",
-        pageMargins: [30, 125, 30, 70], // top margin increased for header with column headers, bottom for footer
+        pageMargins: [30, PAGE_TOP_MARGIN, 30, PAGE_BOTTOM_MARGIN], // Margins match header/footer heights
         content: content,
         // Header function for each page
-        header: (currentPage, pageCount) => {
-          return {
-            stack: [
-              // Logo and Estimate title/date
-              {
-                columns: [
-                  {
-                    text: "[LOGO]",
-                    width: 100,
-                    alignment: "left",
-                    fontSize: 10,
-                    color: "#999",
-                  },
-                  {
-                    stack: [
-                      {
-                        text: "Estimate",
-                        bold: true,
-                        fontSize: 16,
-                        alignment: "right",
+        header: (currentPage, pageCount) => ({
+          table: {
+            widths: ["*"],
+            body: [
+              [
+                {
+                  stack: [
+                    // Logo and Estimate title/date
+                    {
+                      columns: [
+                        {
+                          text: "[LOGO]",
+                          width: 100,
+                          alignment: "left",
+                          fontSize: 10,
+                          color: "#999",
+                        },
+                        {
+                          stack: [
+                            {
+                              text: "Estimate",
+                              bold: true,
+                              fontSize: 16,
+                              alignment: "right",
+                            },
+                            {
+                              text: formatDate(today),
+                              fontSize: 10,
+                              alignment: "right",
+                              margin: [0, 2, 0, 0],
+                            },
+                          ],
+                          width: "*",
+                        },
+                      ],
+                      margin: [0, 10, 0, 5],
+                    },
+                    // Client and Project info
+                    {
+                      columns: [
+                        {
+                          stack: [
+                            {
+                              text: "Client Name",
+                              fontSize: 9,
+                              color: "#666",
+                            },
+                            {
+                              text: estimate.client_name || "N/A",
+                              fontSize: 11,
+                              bold: true,
+                            },
+                          ],
+                          width: "*",
+                        },
+                        {
+                          stack: [
+                            {
+                              text: "Project",
+                              fontSize: 9,
+                              color: "#666",
+                            },
+                            {
+                              text: estimate.est_project_name || "N/A",
+                              fontSize: 11,
+                              bold: true,
+                            },
+                          ],
+                          width: "*",
+                        },
+                      ],
+                      margin: [0, 0, 0, 5],
+                    },
+                    // Column headers table
+                    {
+                      table: {
+                        widths: [25, "*", 30, 20, 30, 20],
+                        body: [
+                          [
+                            {
+                              text: "Qty",
+                              style: "tableHeader",
+                              border: [true, true, true, true],
+                              alignment: "center",
+                            },
+                            {
+                              text: "Description",
+                              style: "tableHeader",
+                              border: [true, true, true, true],
+                              alignment: "center",
+                            },
+                            {
+                              text: "Cost",
+                              style: "tableHeader",
+                              border: [true, true, true, true],
+                              alignment: "center",
+                              colSpan: 2,
+                            },
+                            {},
+                            {
+                              text: "Total",
+                              style: "tableHeader",
+                              border: [true, true, true, true],
+                              alignment: "center",
+                              colSpan: 2,
+                            },
+                            {},
+                          ],
+                        ],
                       },
-                      {
-                        text: formatDate(today),
-                        fontSize: 10,
-                        alignment: "right",
-                        margin: [0, 2, 0, 0],
+                      layout: {
+                        hLineWidth: () => 1,
+                        vLineWidth: () => 1,
+                        hLineColor: () => "#000",
+                        vLineColor: () => "#000",
+                        paddingLeft: () => 8,
+                        paddingRight: () => 8,
+                        paddingTop: () => 6,
+                        paddingBottom: () => 6,
                       },
-                    ],
-                    width: "*",
-                  },
-                ],
-                height: 100,
-                margin: [30, 20, 30, 10],
-              },
-              // Client and Project info
-              {
-                columns: [
-                  {
-                    stack: [
-                      {
-                        text: "Client Name",
-                        fontSize: 9,
-                        color: "#666",
-                        margin: [0, 0, 0, 2],
-                      },
-                      {
-                        text: estimate.client_name || "N/A",
-                        fontSize: 11,
-                        bold: true,
-                      },
-                    ],
-                    width: "*",
-                  },
-                  {
-                    stack: [
-                      {
-                        text: "Project",
-                        fontSize: 9,
-                        color: "#666",
-                        margin: [0, 0, 0, 2],
-                      },
-                      {
-                        text: estimate.est_project_name || "N/A",
-                        fontSize: 11,
-                        bold: true,
-                      },
-                    ],
-                    width: "*",
-                  },
-                ],
-                margin: [30, 0, 30, 10],
-              },
-              // Column headers table
-              {
-                table: {
-                  widths: [25, "*", 30, 20, 30, 20],
-                  body: [
-                    [
-                      {
-                        text: "Qty",
-                        style: "tableHeader",
-                        border: [true, true, true, true],
-                        alignment: "center",
-                      },
-                      {
-                        text: "Description",
-                        style: "tableHeader",
-                        border: [true, true, true, true],
-                        alignment: "center",
-                      },
-                      {
-                        text: "Cost",
-                        style: "tableHeader",
-                        border: [true, true, true, true],
-                        alignment: "center",
-                        colSpan: 2,
-                      },
-                      {},
-                      {
-                        text: "Total",
-                        style: "tableHeader",
-                        border: [true, true, true, true],
-                        alignment: "center",
-                        colSpan: 2,
-                      },
-                      {},
-                    ],
+                      margin: [0, 0, 0, 0],
+                    },
                   ],
+                  border: [false, false, false, false],
                 },
-                layout: {
-                  hLineWidth: () => 1,
-                  vLineWidth: () => 1,
-                  hLineColor: () => "#000",
-                  vLineColor: () => "#000",
-                  paddingLeft: () => 8,
-                  paddingRight: () => 8,
-                  paddingTop: () => 6,
-                  paddingBottom: () => 6,
-                },
-                margin: [30, 0, 30, 0], // No bottom margin to connect to first table
-              },
+              ],
             ],
-          };
-        },
+            heights: [HEADER_HEIGHT], // Fixed height
+          },
+          layout: {
+            hLineWidth: () => 0,
+            vLineWidth: () => 0,
+            paddingLeft: () => 30,
+            paddingRight: () => 30,
+            paddingTop: () => 0,
+            paddingBottom: () => 0,
+          },
+        }),
         // Footer function for each page
-        footer: (currentPage, pageCount) => {
-          return {
-            stack: [
-              // Deposit and Total row with border (using table for border support)
-              {
-                table: {
-                  widths: ["*", "auto", 100],
-                  body: [
-                    [
-                      {
-                        text: "50% deposit required",
-                        alignment: "left",
-                        bold: true,
-                        fontSize: 12,
-                        border: [true, true, false, true],
+        footer: (currentPage, pageCount) => ({
+          table: {
+            widths: ["*"],
+            body: [
+              [
+                {
+                  stack: [
+                    // Deposit and Total row with border
+                    {
+                      table: {
+                        widths: ["*", "auto", 100],
+                        body: [
+                          [
+                            {
+                              text: "50% deposit required",
+                              alignment: "left",
+                              bold: true,
+                              fontSize: 12,
+                              border: [true, true, false, true],
+                            },
+                            {
+                              text: "Total",
+                              alignment: "right",
+                              bold: true,
+                              fontSize: 12,
+                              border: [false, true, false, true],
+                            },
+                            {
+                              text: formatCurrency(grandTotal),
+                              alignment: "right",
+                              bold: true,
+                              fontSize: 14,
+                              border: [false, true, true, true],
+                            },
+                          ],
+                        ],
                       },
-                      {
-                        text: "Total",
-                        alignment: "right",
-                        bold: true,
-                        fontSize: 12,
-                        border: [false, true, false, true],
+                      layout: {
+                        hLineWidth: () => 1,
+                        vLineWidth: () => 1,
+                        hLineColor: () => "#000",
+                        vLineColor: () => "#000",
+                        paddingLeft: () => 8,
+                        paddingRight: () => 8,
+                        paddingTop: () => 6,
+                        paddingBottom: () => 6,
                       },
-                      {
-                        text: formatCurrency(grandTotal),
-                        alignment: "right",
-                        bold: true,
-                        fontSize: 14,
-                        border: [false, true, true, true],
-                      },
-                    ],
+                      margin: [0, 0, 0, 5],
+                    },
+                    // Page number and guarantee date row
+                    {
+                      columns: [
+                        {
+                          text: "",
+                          width: "*",
+                        },
+                        {
+                          text: `Page ${currentPage} of ${pageCount}`,
+                          alignment: "center",
+                          width: "auto",
+                          fontSize: 9,
+                        },
+                        {
+                          text: `Pricing guaranteed until ${formatDate(
+                            guaranteeDate
+                          )}`,
+                          alignment: "right",
+                          width: "*",
+                          fontSize: 9,
+                        },
+                      ],
+                      margin: [0, 0, 0, 0],
+                    },
                   ],
+                  border: [false, false, false, false],
                 },
-                layout: {
-                  hLineWidth: () => 1,
-                  vLineWidth: () => 1,
-                  hLineColor: () => "#000",
-                  vLineColor: () => "#000",
-                  paddingLeft: () => 8,
-                  paddingRight: () => 8,
-                  paddingTop: () => 6,
-                  paddingBottom: () => 6,
-                },
-                margin: [30, 0, 30, 8], // No top margin to connect to last table
-              },
-              // Page number and guarantee date row
-              {
-                columns: [
-                  {
-                    text: "",
-                    width: "*",
-                  },
-                  {
-                    text: `Page ${currentPage} of ${pageCount}`,
-                    alignment: "center",
-                    width: "auto",
-                    fontSize: 9,
-                  },
-                  {
-                    text: `Pricing guaranteed until ${formatDate(
-                      guaranteeDate
-                    )}`,
-                    alignment: "right",
-                    width: "*",
-                    fontSize: 9,
-                  },
-                ],
-                margin: [30, 0, 30, 10],
-              },
+              ],
             ],
-          };
-        },
+            heights: [FOOTER_HEIGHT], // Fixed height
+          },
+          layout: {
+            hLineWidth: () => 0,
+            vLineWidth: () => 0,
+            paddingLeft: () => 30,
+            paddingRight: () => 30,
+            paddingTop: () => 0,
+            paddingBottom: () => 0,
+          },
+        }),
         styles: {
           tableHeader: {
             bold: true,
