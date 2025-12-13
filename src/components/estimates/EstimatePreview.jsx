@@ -31,14 +31,14 @@ const EstimatePreview = () => {
     if (!currentEstimate?.tasks) {
       return { grandTotal: 0, allSections: [] };
     }
-    
+
     // Iterate through tasks in their original order
-    const orderedTasks = currentEstimate.tasks.map(task => 
-      taskDataMap[task.est_task_id]
-    ).filter(Boolean); // Remove any undefined tasks
-    
+    const orderedTasks = currentEstimate.tasks
+      .map((task) => taskDataMap[task.est_task_id])
+      .filter(Boolean); // Remove any undefined tasks
+
     const total = orderedTasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
-    const sections = orderedTasks.flatMap(t => t.sections || []);
+    const sections = orderedTasks.flatMap((t) => t.sections || []);
     return { grandTotal: total, allSections: sections };
   }, [taskDataMap, currentEstimate]);
 
@@ -76,6 +76,11 @@ const EstimatePreview = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200">
       {/* Header */}
+      <GenerateEstimatePdf
+        estimate={currentEstimate}
+        allSections={allSections}
+        grandTotal={grandTotal}
+      />
       <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -94,11 +99,6 @@ const EstimatePreview = () => {
                 </p>
               </div>
             </div>
-            <GenerateEstimatePdf
-              estimate={currentEstimate}
-              allSections={allSections}
-              grandTotal={grandTotal}
-            />
           </div>
         </div>
       </div>

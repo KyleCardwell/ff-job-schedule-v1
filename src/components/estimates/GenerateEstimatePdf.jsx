@@ -73,7 +73,7 @@ const GenerateEstimatePdf = ({
       // Build table body with sections
       // Table has 6 columns: Qty (1), Description (2), Cost (2), Total (2)
       // Build section rows with intelligent pagination - one table per page
-      const maxRowsPerPage = 23; // Reduced to account for column headers in page header
+      const maxRowsPerPage = 40; // Reduced to account for column headers in page header
 
       const createBlankRow = () => [
         { text: " ", border: [true, false, true, false] },
@@ -137,7 +137,7 @@ const GenerateEstimatePdf = ({
         // Detail rows
         for (let i = 0; i < maxDetailRows; i++) {
           rows.push([
-            { text:"", border: [true, false, true, false] },
+            { text: "", border: [true, false, true, false] },
             {
               columns: [
                 { text: leftColumn[i] || "", width: "*", fontSize: 9 },
@@ -145,9 +145,9 @@ const GenerateEstimatePdf = ({
               ],
               border: [true, false, true, false],
             },
-            { text:"", colSpan: 2, border: [true, false, true, false] },
+            { text: "", colSpan: 2, border: [true, false, true, false] },
             {},
-            { text:"", colSpan: 2, border: [true, false, true, false] },
+            { text: "", colSpan: 2, border: [true, false, true, false] },
             {},
           ]);
         }
@@ -155,16 +155,16 @@ const GenerateEstimatePdf = ({
         // Notes row
         if (section.notes) {
           rows.push([
-            { text:"", border: [true, false, true, false] },
+            { text: "", border: [true, false, true, false] },
             {
               text: `Notes: ${section.notes}`,
               italics: true,
               fontSize: 9,
               border: [true, false, true, false],
             },
-            { text:"", colSpan: 2, border: [true, false, true, false] },
+            { text: "", colSpan: 2, border: [true, false, true, false] },
             {},
-            { text:"", colSpan: 2, border: [true, false, true, false] },
+            { text: "", colSpan: 2, border: [true, false, true, false] },
             {},
           ]);
         }
@@ -188,9 +188,12 @@ const GenerateEstimatePdf = ({
 
       sectionRowGroups.forEach((sectionGroup) => {
         const sectionRowCount = sectionGroup.rowCount; // No header in table anymore
-        
+
         // Check if this section fits on current page
-        if (currentPageRows > 0 && currentPageRows + sectionRowCount > maxRowsPerPage) {
+        if (
+          currentPageRows > 0 &&
+          currentPageRows + sectionRowCount > maxRowsPerPage
+        ) {
           // Need to start a new page - add filler table for remaining space
           const blankRowsNeeded = maxRowsPerPage - currentPageRows;
           if (blankRowsNeeded > 0) {
@@ -211,7 +214,7 @@ const GenerateEstimatePdf = ({
           tableBody: sectionGroup.rows,
           pageBreak: undefined,
         });
-        
+
         currentPageRows += sectionRowCount;
       });
 
@@ -235,9 +238,9 @@ const GenerateEstimatePdf = ({
           body: tableObj.tableBody,
         },
         layout: {
-        //   hLineWidth: () => 1,
+          //   hLineWidth: () => 1,
           vLineWidth: () => 1,
-        //   hLineColor: () => "#000",
+          //   hLineColor: () => "#000",
           vLineColor: () => "#000",
           paddingLeft: () => 8,
           paddingRight: () => 8,
@@ -245,13 +248,13 @@ const GenerateEstimatePdf = ({
           paddingBottom: () => 3,
         },
         pageBreak: tableObj.pageBreak,
-        margin: [0, 0, 0, 0], // No vertical margins to eliminate gaps
+        margin: [0, -2, 0, 0], // No vertical margins to eliminate gaps
       }));
 
       // PDF document definition
       const docDefinition = {
         pageSize: "LETTER",
-        pageMargins: [30, 160, 30, 70], // top margin increased for header with column headers, bottom for footer
+        pageMargins: [30, 125, 30, 70], // top margin increased for header with column headers, bottom for footer
         content: content,
         // Header function for each page
         header: (currentPage, pageCount) => {
@@ -285,6 +288,7 @@ const GenerateEstimatePdf = ({
                     width: "*",
                   },
                 ],
+                height: 100,
                 margin: [30, 20, 30, 10],
               },
               // Client and Project info
@@ -478,16 +482,18 @@ const GenerateEstimatePdf = ({
   };
 
   return (
-    <button
-      onClick={generatePdf}
-      disabled={
-        disabled || isGenerating || !allSections || allSections.length === 0
-      }
-      className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-    >
-      <FiFileText className="w-4 h-4" />
-      {isGenerating ? "Generating..." : "Generate PDF"}
-    </button>
+    <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
+      <button
+        onClick={generatePdf}
+        disabled={
+          disabled || isGenerating || !allSections || allSections.length === 0
+        }
+        className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+      >
+        <FiFileText className="w-4 h-4" />
+        {isGenerating ? "Generating..." : "Generate PDF"}
+      </button>
+    </div>
   );
 };
 
