@@ -18,7 +18,7 @@ function generateEstimateHtml({
 }) {
   // Create header row (only once, not per section) - using inline styles for reliability
   const headerHtml = `
-    <div style="width: 100%; position: fixed; top: 0; left: 0;">
+    <div style="width: 100%; position: fixed; top: 0; left: 0; padding: 0 20px; box-sizing: border-box; background: white; z-index: 1000;">
       <div style="display: flex; justify-content: space-between;">
         <div style="width: 100px;">Logo</div>
         <div style="text-align: right;">
@@ -57,7 +57,7 @@ function generateEstimateHtml({
   //   `
   //   : "";
   const estimateNotesHtml = `
-      <div style="font-size: 9px; width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-left: 1px solid #000; border-right: 1px solid #000;">
+      <div style="font-size: 9px; width: calc(100% - 40px); margin: 0 20px; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-left: 1px solid #000; border-right: 1px solid #000;">
         <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
         <div style="padding: 8px; display: flex; align-items: center; border-right: 1px solid #000;">
           <p>Cabinetry to have the following description unless otherwise noted:</p>
@@ -84,7 +84,7 @@ function generateEstimateHtml({
       ];
 
       return `
-      <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; font-size:9pt; page-break-inside: avoid; border-left: 1px solid #000; border-right: 1px solid #000;">
+      <div style="width: calc(100% - 40px); margin: 0 20px; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; font-size:9pt; page-break-inside: avoid; border-left: 1px solid #000; border-right: 1px solid #000;">
         <div style="text-align: center; padding: 8px; border-right: 1px solid #000;">${
           section.quantity
         }</div>
@@ -122,12 +122,14 @@ function generateEstimateHtml({
     .join("");
 
   const footerHtml = `
-    <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
-      <div style="grid-column: span 2; padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">50% Deposit Required</div>
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000;">Total</div>
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: end; border-bottom: 1px solid #000;">${formatCurrency(
-        grandTotal
-      )}</div>
+    <div style="width: 100%; position: fixed; bottom: 0; left: 0; padding: 0 20px; box-sizing: border-box; background: white; z-index: 1000;">
+      <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
+        <div style="grid-column: span 2; padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">50% Deposit Required</div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000;">Total</div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: end; border-bottom: 1px solid #000;">${formatCurrency(
+          grandTotal
+        )}</div>
+      </div>
     </div>
   `;
 
@@ -138,23 +140,12 @@ function generateEstimateHtml({
       <meta charset="UTF-8">
       <style>
         body {
-          margin: 120px 0 0 0;
+          margin: 120px 0 80px 0;
           font-family: Arial, sans-serif;
         }
       </style>
     </head>
     <body>
-      <!-- Estimate Notes Section (optional) -->
-      ${
-        estimate.notes
-          ? `
-      <div style="background-color: #fef9c3; padding: 12px; margin-bottom: 12px; border: 1px solid #000; font-size: 9pt;">
-        <strong>Estimate Notes:</strong><br>
-        ${estimate.notes}
-      </div>
-      `
-          : ""
-      }
       
       <!-- Header Row -->
       ${headerHtml}
