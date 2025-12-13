@@ -7,6 +7,7 @@ import { fetchEstimateById } from "../../redux/actions/estimates";
 
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
 import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
+import PlaywrightEstimatePdfButton from "./PlaywrightEstimatePdfButton.jsx";
 
 const EstimatePreview = () => {
   const dispatch = useDispatch();
@@ -80,6 +81,10 @@ const EstimatePreview = () => {
         estimate={currentEstimate}
         allSections={allSections}
         grandTotal={grandTotal}
+      />
+      <PlaywrightEstimatePdfButton
+        estimate={currentEstimate}
+        allSections={allSections}
       />
       <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4">
