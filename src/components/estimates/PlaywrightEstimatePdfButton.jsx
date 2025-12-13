@@ -18,14 +18,55 @@ function generateEstimateHtml({
 }) {
   // Create header row (only once, not per section) - using inline styles for reliability
   const headerHtml = `
-    <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Qty</div>
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Description</div>
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Cost</div>
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000;">Total</div>
+    <div style="width: 100%; position: fixed; top: 0; left: 0;">
+      <div style="display: flex; justify-content: space-between;">
+        <div style="width: 100px;">Logo</div>
+        <div style="text-align: right;">
+          <h1 style="margin: 0;">Estimate</h1>
+          <div style="font-size: 12px;">Date: ${formatDate(today)}</div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; gap: 60px; margin-top: 12px;">
+        <div style="flex: 1; text-align: center;">
+          <div style="width: 100%; border-bottom: 1px solid #000; padding: 4px;">Customer</div>
+          <div style="text-align: center; padding: 4px;">${estimate.est_client_name}</div>
+        </div>
+        <div style="flex: 1; text-align: center;">
+          <div style="width: 100%; border-bottom: 1px solid #000; padding: 4px;">Project</div>
+          <div style="text-align: center; padding: 4px;">${estimate.est_project_name}</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 12px; width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Qty</div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Description</div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">Cost</div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000;">Total</div>
+      </div>
     </div>
   `;
 
+  // const estimateNotesHtml = estimate.notes
+  //   ? `
+  //     <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
+  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
+  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;">${estimate.notes}</div>
+  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
+  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center;">Total</div>
+  //     </div>
+  //   `
+  //   : "";
+  const estimateNotesHtml = `
+      <div style="font-size: 9px; width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-left: 1px solid #000; border-right: 1px solid #000;">
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
+        <div style="padding: 8px; display: flex; align-items: center; border-right: 1px solid #000;">
+          <p>Cabinetry to have the following description unless otherwise noted:</p>
+          <p>Cabinetry to have the following description unless otherwise noted:</p>
+        </div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
+        <div style="padding: 8px; display: flex; align-items: center; justify-content: center;">Total</div>
+      </div>
+    `;
   const sectionsHtml = allSections
     .map((section) => {
       const leftDetails = [
@@ -33,9 +74,9 @@ function generateEstimateHtml({
         `Drawer Boxes: ${section.drawerBoxMaterial}`,
         `Cabinets: ${section.boxMaterial}`,
         `Finish: ${section.boxFinish}`,
-    ];
-    
-    const rightDetails = [
+      ];
+
+      const rightDetails = [
         `Doors: ${section.doorStyle}`,
         `Drawer Fronts: ${section.drawerFrontStyle}`,
         `Wood: ${section.faceMaterial}`,
@@ -84,7 +125,9 @@ function generateEstimateHtml({
     <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
       <div style="grid-column: span 2; padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">50% Deposit Required</div>
       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000;">Total</div>
-      <div style="padding: 8px; display: flex; align-items: center; justify-content: end; border-bottom: 1px solid #000;">${formatCurrency(grandTotal)}</div>
+      <div style="padding: 8px; display: flex; align-items: center; justify-content: end; border-bottom: 1px solid #000;">${formatCurrency(
+        grandTotal
+      )}</div>
     </div>
   `;
 
@@ -95,8 +138,7 @@ function generateEstimateHtml({
       <meta charset="UTF-8">
       <style>
         body {
-          margin: 0;
-          padding: 20px;
+          margin: 120px 0 0 0;
           font-family: Arial, sans-serif;
         }
       </style>
@@ -116,11 +158,12 @@ function generateEstimateHtml({
       
       <!-- Header Row -->
       ${headerHtml}
+
+      <!-- Estimate Details Row -->
+      ${estimateNotesHtml}
       
       <!-- Sections -->
-      <div>
       ${sectionsHtml}
-      </div>
       
       <!-- Footer Row -->
       ${footerHtml}
