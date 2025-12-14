@@ -71,7 +71,7 @@ const GenerateEstimatePdf = ({
       //   const grandTotalText = "Total:   " + formatCurrency(grandTotal);
 
       // Height variables to control header/footer and page margins
-      const HEADER_HEIGHT = 178.5; // Fixed height for header table
+      const HEADER_HEIGHT = 179.5; // Fixed height for header table
       const FOOTER_HEIGHT = 80; // Fixed height for footer table
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
@@ -173,14 +173,14 @@ const GenerateEstimatePdf = ({
         ]);
 
         // Blank separator row
-        allRows.push([
-          { text: " " },
-          { text: " " },
-          { text: " ", colSpan: 2 },
-          {},
-          { text: " ", colSpan: 2 },
-          {},
-        ]);
+        // allRows.push([
+        //   { text: " " },
+        //   { text: " " },
+        //   { text: " ", colSpan: 2 },
+        //   {},
+        //   { text: " ", colSpan: 2 },
+        //   {},
+        // ]);
       });
 
       // Build PDF content - single table with all rows
@@ -199,7 +199,7 @@ const GenerateEstimatePdf = ({
             paddingLeft: () => 8,
             paddingRight: () => 8,
             paddingTop: () => 3,
-            paddingBottom: () => 3,
+            paddingBottom: () => 10,
           },
         },
       ];
@@ -284,8 +284,8 @@ const GenerateEstimatePdf = ({
                           stack: [
                             {
                               text: "Client Name",
-                              fontSize: 9,
-                              color: "#666",
+                              fontSize: 10,
+                              color: "#414141",
                               alignment: "center",
                             },
                             {
@@ -319,8 +319,8 @@ const GenerateEstimatePdf = ({
                           stack: [
                             {
                               text: "Project",
-                              fontSize: 9,
-                              color: "#666",
+                              fontSize: 10,
+                              color: "#414141",
                               alignment: "center",
                             },
                             {
@@ -430,7 +430,7 @@ const GenerateEstimatePdf = ({
                           [
                             {
                               text: "50% deposit required",
-                              alignment: "left",
+                              alignment: "center",
                               bold: true,
                               fontSize: 12,
                               border: [true, true, false, true],
@@ -446,7 +446,7 @@ const GenerateEstimatePdf = ({
                               text: formatCurrency(grandTotal),
                               alignment: "right",
                               bold: true,
-                              fontSize: 14,
+                              fontSize: 12,
                               border: [false, true, true, true],
                             },
                           ],
@@ -517,7 +517,7 @@ const GenerateEstimatePdf = ({
       };
 
       // Generate and download PDF
-      const fileName = `${estimate.est_project_name || "Estimate"}_${formatDate(
+      const fileName = `${estimate.est_project_name || ""} Estimate${formatDate(
         today
       )
         .replace(/,/g, "")
