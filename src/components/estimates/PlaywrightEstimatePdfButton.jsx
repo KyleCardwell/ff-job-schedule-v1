@@ -16,24 +16,38 @@ function generateEstimateHtml({
   formatDate,
   formatCurrency,
 }) {
-  // Create header row (only once, not per section) - using inline styles for reliability
-  const headerHtml = `
-    <div style="width: 100%; position: fixed; top: 0; left: 0; padding: 0 20px; box-sizing: border-box; background: white; z-index: 1000;">
+  // Fixed column borders that span full height of content area
+  // Using same padding as body content (10px) since this is in the body, not header/footer
+  const columnBordersHtml = `
+    <div style="width: calc(100% - 20px); height: 100%; position: fixed; top: 0; bottom: 0; left: 10px; pointer-events: none; z-index: 500;">
+      <div style="width: 100%; height: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-left: 1px solid #000; border-right: 1px solid #000;">
+        <div style="border-right: 1px solid #000; height: 100%;"></div>
+        <div style="border-right: 1px solid #000; height: 100%;"></div>
+        <div style="border-right: 1px solid #000; height: 100%;"></div>
+        <div style="height: 100%;"></div>
+      </div>
+    </div>
+  `;
+
+  // Header content for Playwright headerTemplate
+  // Note: Playwright header/footer templates render at full page width, so we need to add padding to match body margins
+  const playwrightHeaderHtml = `
+    <div style="width: 100%; padding: 0 34.5pt; box-sizing: border-box; font-size: 11pt; font-family: Arial, sans-serif;">
       <div style="display: flex; justify-content: space-between;">
-        <div style="width: 100px;">Logo</div>
+        <div style="width: 100px; height:100px;">Logo</div>
         <div style="text-align: right;">
           <h1 style="margin: 0;">Estimate</h1>
-          <div style="font-size: 12px;">Date: ${formatDate(today)}</div>
+          <div style="font-size: 10pt;">Date: ${formatDate(today)}</div>
         </div>
       </div>
-      <div style="display: flex; justify-content: space-between; gap: 60px; margin-top: 12px;">
-        <div style="flex: 1; text-align: center;">
-          <div style="width: 100%; border-bottom: 1px solid #000; padding: 4px;">Customer</div>
-          <div style="text-align: center; padding: 4px;">${estimate.est_client_name}</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 80px; margin-top: 12px; text-align: center;">
+        <div>
+          <div style="border-bottom: 1px solid #000; padding: 4px;">Client</div>
+          <div style="padding: 4px;">${estimate.est_client_name}</div>
         </div>
-        <div style="flex: 1; text-align: center;">
-          <div style="width: 100%; border-bottom: 1px solid #000; padding: 4px;">Project</div>
-          <div style="text-align: center; padding: 4px;">${estimate.est_project_name}</div>
+        <div>
+          <div style="border-bottom: 1px solid #000; padding: 4px;">Project</div>
+          <div style="padding: 4px;">${estimate.est_project_name}</div>
         </div>
       </div>
 
@@ -46,25 +60,15 @@ function generateEstimateHtml({
     </div>
   `;
 
-  // const estimateNotesHtml = estimate.notes
-  //   ? `
-  //     <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
-  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
-  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;">${estimate.notes}</div>
-  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
-  //       <div style="padding: 8px; display: flex; align-items: center; justify-content: center;">Total</div>
-  //     </div>
-  //   `
-  //   : "";
   const estimateNotesHtml = `
-      <div style="font-size: 9px; width: calc(100% - 40px); margin: 0 20px; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-left: 1px solid #000; border-right: 1px solid #000;">
-        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
-        <div style="padding: 8px; display: flex; align-items: center; border-right: 1px solid #000;">
-          <p>Cabinetry to have the following description unless otherwise noted:</p>
-          <p>Cabinetry to have the following description unless otherwise noted:</p>
+      <div style="font-size: 10pt; width: calc(100% - 20px); margin: 8px 10px; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr;">
+        <div></div>
+        <div style="padding-left: 8px;">
+          <div>Cabinetry to have the following description unless otherwise noted:</div>
+          <div style="padding-left: 6px;">Cabinetry to have the following description unless otherwise noted:</div>
         </div>
-        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000;"></div>
-        <div style="padding: 8px; display: flex; align-items: center; justify-content: center;">Total</div>
+        <div></div>
+        <div></div>
       </div>
     `;
   const sectionsHtml = allSections
@@ -84,11 +88,11 @@ function generateEstimateHtml({
       ];
 
       return `
-      <div style="width: calc(100% - 40px); margin: 0 20px; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; font-size:9pt; page-break-inside: avoid; border-left: 1px solid #000; border-right: 1px solid #000;">
-        <div style="text-align: center; padding: 8px; border-right: 1px solid #000;">${
+      <div style="width: calc(100% - 20px); margin: 8px 10px; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; font-size: 10pt; page-break-inside: avoid;">
+        <div style="text-align: center; padding: 8px;">${
           section.quantity
         }</div>
-        <div style="padding: 8px; border-right: 1px solid #000;">
+        <div style="padding: 8px;">
           <div style="font-weight: bold; font-size: 10pt;">${
             section.displayName || section.taskName
           }</div>
@@ -110,7 +114,7 @@ function generateEstimateHtml({
               : ""
           }
         </div>
-        <div style="text-align: right; padding: 8px; border-right: 1px solid #000;">${formatCurrency(
+        <div style="text-align: right; padding: 8px;">${formatCurrency(
           section.unitPrice
         )}</div>
         <div style="text-align: right; padding: 8px;">${formatCurrency(
@@ -121,47 +125,61 @@ function generateEstimateHtml({
     })
     .join("");
 
-  const footerHtml = `
-    <div style="width: 100%; position: fixed; bottom: 0; left: 0; padding: 0 20px; box-sizing: border-box; background: white; z-index: 1000;">
+  // Footer content for Playwright footerTemplate
+  // Note: Playwright header/footer templates render at full page width, so we need to add padding to match body margins
+  const playwrightFooterHtml = `
+    <div style="width: 100%; padding: 0 34.5pt; box-sizing: border-box; font-size: 12pt; font-family: Arial, sans-serif;">
       <div style="width: 100%; display: grid; grid-template-columns: 1fr 9fr 2fr 2fr; border-top: 1px solid #000; border-left: 1px solid #000; border-right: 1px solid #000;">
         <div style="grid-column: span 2; padding: 8px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #000; border-bottom: 1px solid #000;">50% Deposit Required</div>
-        <div style="padding: 8px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000;">Total</div>
-        <div style="padding: 8px; display: flex; align-items: center; justify-content: end; border-bottom: 1px solid #000;">${formatCurrency(
-          grandTotal
+        <div style="grid-column: span 2; display: flex; justify-content: space-between; padding: 0 8px; align-items: center; border-bottom: 1px solid #000;">
+          <div>Total</div>
+          <div style="display: flex; align-items: center; justify-content: end;">${formatCurrency(
+            grandTotal
+          )}</div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10pt; color: #666;">
+        <div style="text-align: center; flex: 1;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>
+        <div style="position: fixed; right: 45px; bottom: 20px;text-align: right;">Price Guaranteed Until ${formatDate(
+          guaranteeDate
         )}</div>
       </div>
     </div>
   `;
 
-  return `
+  const htmlContent = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <style>
         body {
-          margin: 120px 0 80px 0;
+          margin: 0;
+          padding: 0;
           font-family: Arial, sans-serif;
         }
       </style>
     </head>
     <body>
       
-      <!-- Header Row -->
-      ${headerHtml}
+      <!-- Fixed Column Borders -->
+      ${columnBordersHtml}
 
       <!-- Estimate Details Row -->
       ${estimateNotesHtml}
       
       <!-- Sections -->
       ${sectionsHtml}
-      
-      <!-- Footer Row -->
-      ${footerHtml}
     
     </body>
     </html>
   `;
+
+  return {
+    htmlContent,
+    headerTemplate: playwrightHeaderHtml,
+    footerTemplate: playwrightFooterHtml,
+  };
 }
 
 /**
@@ -221,7 +239,7 @@ const PlaywrightEstimatePdfButton = ({
       );
 
       // Build HTML matching the pdfMake layout
-      const htmlContent = generateEstimateHtml({
+      const { htmlContent, headerTemplate, footerTemplate } = generateEstimateHtml({
         estimate,
         allSections,
         grandTotal,
@@ -231,88 +249,21 @@ const PlaywrightEstimatePdfButton = ({
         formatCurrency,
       });
 
-      // Debug: log first 500 chars of HTML
-      console.log("Generated HTML preview:", htmlContent.substring(0, 500));
-      console.log("Total HTML length:", htmlContent.length);
-
-      // Build header template for Playwright (inline styles only - no external CSS)
-      //   const headerTemplate = `
-      //     <div style="width: 100%; font-size: 12px; padding: 0; margin: 0 30pt;">
-      //       <div style="padding: 0 36px; margin-bottom: 8px;">
-      //         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-      //           <div style="width: 100px; height: 40px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #999;">[LOGO]</div>
-      //           <div style="text-align: right;">
-      //             <div style="font-size: 16px; font-weight: bold;">Estimate</div>
-      //             <div style="margin-top: 2px;">${formatDate(today)}</div>
-      //           </div>
-      //         </div>
-      //         <div style="display: flex; gap: 40px; margin-bottom: 6px;">
-      //           <div style="flex: 1;">
-      //             <div style="font-size: 9px; color: #666;">Client Name</div>
-      //             <div style="font-size: 11px; font-weight: bold;">${
-      //               estimate.client_name || "N/A"
-      //             }</div>
-      //           </div>
-      //           <div style="flex: 1;">
-      //             <div style="font-size: 9px; color: #666;">Project</div>
-      //             <div style="font-size: 11px; font-weight: bold;">${
-      //               estimate.est_project_name || "N/A"
-      //             }</div>
-      //           </div>
-      //         </div>
-      //       </div>
-      //       <table style="width: 100%; border-collapse: collapse; margin: 0; padding: 0 36px; box-sizing: border-box;">
-      //         <tr>
-      //           <th style="background: #f0f0f0; padding: 6px 8px; text-align: center; border: 1px solid #000; width: 25px; box-sizing: border-box;">Qty</th>
-      //           <th style="background: #f0f0f0; padding: 6px 8px; text-align: center; border-right: 1px solid #000; border-top: 1px solid #000; border-bottom: 1px solid #000; box-sizing: border-box;">Description</th>
-      //           <th style="background: #f0f0f0; padding: 6px 8px; text-align: center; border-right: 1px solid #000; border-top: 1px solid #000; border-bottom: 1px solid #000; width: 60px; box-sizing: border-box;">Cost</th>
-      //           <th style="background: #f0f0f0; padding: 6px 8px; text-align: center; border-right: 1px solid #000; border-top: 1px solid #000; border-bottom: 1px solid #000; width: 60px; box-sizing: border-box;">Total</th>
-      //         </tr>
-      //       </table>
-      //     </div>
-      //   `;
-
-      //   // Build footer template for Playwright (inline styles only - no external CSS)
-      //   const footerTemplate = `
-      //     <div style="width: 100%; font-size: 10px; padding: 0; margin: 0 30pt;">
-      //       <table style="width: 100%; border-collapse: collapse; margin: 0; padding: 0 36px; box-sizing: border-box;">
-      //         <tr>
-      //           <td colspan="4" style="border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 0; box-sizing: border-box;">
-      //             <div style="display: flex; padding: 6px 8px; align-items: center;">
-      //               <div style="flex: 1; font-weight: bold; font-size: 12px;">50% deposit required</div>
-      //               <div style="font-weight: bold; font-size: 12px; margin-right: 8px;">Total</div>
-      //               <div style="font-weight: bold; font-size: 14px; min-width: 100px; text-align: right;">${formatCurrency(
-      //                 grandTotal
-      //               )}</div>
-      //             </div>
-      //           </td>
-      //         </tr>
-      //       </table>
-      //       <div style="display: flex; justify-content: space-between; font-size: 9px; padding: 4px 36px;">
-      //         <div></div>
-      //         <div style="text-align: center;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>
-      //         <div style="text-align: right;">Pricing guaranteed until ${formatDate(
-      //           guaranteeDate
-      //         )}</div>
-      //       </div>
-      //     </div>
-      //   `;
-
       // Generate PDF using Playwright backend
       const pdfBlob = await generatePdfFromHtml(htmlContent, {
         format: "Letter",
         printBackground: true,
         landscape: false,
         margin: {
-          top: ".5in",
-          right: "0.5in",
-          bottom: ".5in",
-          left: "0.5in",
+          top: "2.35in",
+          right: "0.375in",
+          bottom: ".82in",
+          left: "0.375in",
         },
         scale: 1,
-        // displayHeaderFooter: true,
-        // headerTemplate,
-        // footerTemplate,
+        displayHeaderFooter: true,
+        headerTemplate: headerTemplate,
+        footerTemplate: footerTemplate,
       });
 
       // Create filename
