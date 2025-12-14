@@ -71,197 +71,165 @@ const GenerateEstimatePdf = ({
       //   const grandTotalText = "Total:   " + formatCurrency(grandTotal);
 
       // Height variables to control header/footer and page margins
-      const HEADER_HEIGHT = 200; // Fixed height for header table
+      const HEADER_HEIGHT = 172.5; // Fixed height for header table
       const FOOTER_HEIGHT = 80; // Fixed height for footer table
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
 
-      // Build table body with sections
-      // Table has 6 columns: Qty (1), Description (2), Cost (2), Total (2)
-      // Build section rows with intelligent pagination - one table per page
-      const maxRowsPerPage = 40; // Reduced to account for column headers in page header
+      // Calculate column positions for canvas lines
+      // Page margins: [30, PAGE_TOP_MARGIN, 30, PAGE_BOTTOM_MARGIN]
+      // Letter page width: 612 points
+      // Content area: 612 - 30 - 30 = 552 points
+      // Column widths: [25, "*", 30, 20, 30, 20]
+      // Effective columns: Qty(25), Description(*), Cost(50), Total(50)
+      const LEFT_MARGIN = 30.5;
+      const CONTENT_WIDTH = 551;
+      const QTY_WIDTH = 42;
+      const COST_WIDTH = 84; // 30 + 20
+      const TOTAL_WIDTH = 84; // 30 + 20
+      const DESC_WIDTH = CONTENT_WIDTH - QTY_WIDTH - COST_WIDTH - TOTAL_WIDTH;
+      
+      // X-coordinates for vertical lines
+      const LINE_X = {
+        left: LEFT_MARGIN,
+        qty: LEFT_MARGIN + QTY_WIDTH,
+        cost: LEFT_MARGIN + QTY_WIDTH + DESC_WIDTH,
+        total: LEFT_MARGIN + QTY_WIDTH + DESC_WIDTH + COST_WIDTH,
+        right: LEFT_MARGIN + CONTENT_WIDTH,
+      };
 
-      const createBlankRow = () => [
-        { text: " ", border: [true, false, true, false] },
-        { text: " ", border: [true, false, true, false] },
-        { text: " ", border: [true, false, true, false], colSpan: 2 },
-        {},
-        { text: " ", border: [true, false, true, false], colSpan: 2 },
-        {},
-      ];
-
-      // First, build all section row groups
-      const sectionRowGroups = allSections.map((section) => {
-        const rows = [];
+      // Build all section rows - no borders, they'll be drawn via canvas
+      const allRows = [];
+      
+      allSections.forEach((section) => {
         const leftColumn = [];
         const rightColumn = [];
 
         // Build detail columns
         leftColumn.push(`Style: ${section.cabinetStyle}`);
         leftColumn.push(`Drawer Boxes: ${section.drawerBoxMaterial}`);
-        leftColumn.push(`Exterior: ${section.faceMaterial}`);
-        leftColumn.push(`Finish: ${section.faceFinish}`);
-
+        leftColumn.push(`Cabinets: ${section.boxMaterial}`);
+        leftColumn.push(`Finish: ${section.boxFinish}`);
+        
         rightColumn.push(`Door Style: ${section.doorStyle}`);
         rightColumn.push(`Drawer Front Style: ${section.drawerFrontStyle}`);
-        rightColumn.push(`Interior: ${section.boxMaterial}`);
-        rightColumn.push(`Finish: ${section.boxFinish}`);
+        rightColumn.push(`Wood: ${section.faceMaterial}`);
+        rightColumn.push(`Finish: ${section.faceFinish}`);
 
         const maxDetailRows = Math.max(leftColumn.length, rightColumn.length);
-        const totalRowsForSection =
-          1 + maxDetailRows + (section.notes ? 1 : 0) + 1; // task + details + notes + blank
 
-        // Row 1: Task name with Qty, Cost, Total
-        rows.push([
+        // Build details stack for the description column
+        const detailsStack = [];
+        for (let i = 0; i < maxDetailRows; i++) {
+          detailsStack.push({
+            columns: [
+              { text: leftColumn[i] || "", width: "*", fontSize: 9 },
+              { text: rightColumn[i] || "", width: "*", fontSize: 9 },
+            ],
+            margin: [0, 2, 0, 0],
+          });
+        }
+
+        // Add notes if present
+        if (section.notes) {
+          detailsStack.push({
+            text: `Notes: ${section.notes}`,
+            italics: true,
+            fontSize: 9,
+            margin: [0, 4, 0, 0],
+          });
+        }
+
+        // Single row with all section content - mark for page break avoidance
+        allRows.push([
           {
             text: section.quantity.toString(),
             alignment: "center",
-            border: [true, false, true, false],
+            rowSpan: 1,
           },
           {
+            stack: [
+              {
             text: section.displayName || section.taskName,
             bold: true,
             fontSize: 10,
-            border: [true, false, true, false],
+                margin: [0, 0, 0, 4],
+              },
+              ...detailsStack,
+            ],
           },
           {
             text: formatCurrency(section.unitPrice),
             alignment: "right",
-            border: [true, false, true, false],
             colSpan: 2,
           },
           {},
           {
             text: formatCurrency(section.totalPrice),
             alignment: "right",
-            border: [true, false, true, false],
             colSpan: 2,
           },
           {},
         ]);
 
-        // Detail rows
-        for (let i = 0; i < maxDetailRows; i++) {
-          rows.push([
-            { text: "", border: [true, false, true, false] },
-            {
-              columns: [
-                { text: leftColumn[i] || "", width: "*", fontSize: 9 },
-                { text: rightColumn[i] || "", width: "*", fontSize: 9 },
-              ],
-              border: [true, false, true, false],
-            },
-            { text: "", colSpan: 2, border: [true, false, true, false] },
-            {},
-            { text: "", colSpan: 2, border: [true, false, true, false] },
-            {},
-          ]);
-        }
-
-        // Notes row
-        if (section.notes) {
-          rows.push([
-            { text: "", border: [true, false, true, false] },
-            {
-              text: `Notes: ${section.notes}`,
-              italics: true,
-              fontSize: 9,
-              border: [true, false, true, false],
-            },
-            { text: "", colSpan: 2, border: [true, false, true, false] },
-            {},
-            { text: "", colSpan: 2, border: [true, false, true, false] },
-            {},
-          ]);
-        }
-
         // Blank separator row
-        rows.push([
-          { text: "", border: [true, false, true, false] },
-          { text: "", border: [true, false, true, false] },
-          { text: "", colSpan: 2, border: [true, false, true, false] },
+        allRows.push([
+          { text: " " },
+          { text: " " },
+          { text: " ", colSpan: 2 },
           {},
-          { text: "", colSpan: 2, border: [true, false, true, false] },
+          { text: " ", colSpan: 2 },
           {},
         ]);
-
-        return { rows, rowCount: totalRowsForSection };
       });
 
-      // Create one table per section + filler tables to manage pagination
-      const tables = [];
-      let currentPageRows = 0;
-
-      sectionRowGroups.forEach((sectionGroup) => {
-        const sectionRowCount = sectionGroup.rowCount; // No header in table anymore
-
-        // Check if this section fits on current page
-        if (
-          currentPageRows > 0 &&
-          currentPageRows + sectionRowCount > maxRowsPerPage
-        ) {
-          // Need to start a new page - add filler table for remaining space
-          const blankRowsNeeded = maxRowsPerPage - currentPageRows;
-          if (blankRowsNeeded > 0) {
-            const fillerBody = [];
-            for (let i = 0; i < blankRowsNeeded; i++) {
-              fillerBody.push(createBlankRow());
-            }
-            tables.push({
-              tableBody: fillerBody,
-              pageBreak: "after",
-            });
-          }
-          currentPageRows = 0;
-        }
-
-        // Create table for this section (no header row)
-        tables.push({
-          tableBody: sectionGroup.rows,
-          pageBreak: undefined,
-        });
-
-        currentPageRows += sectionRowCount;
-      });
-
-      // Fill remaining space on last page if needed
-      const finalBlankRowsNeeded = maxRowsPerPage - currentPageRows;
-      if (finalBlankRowsNeeded > 0) {
-        const fillerBody = [];
-        for (let i = 0; i < finalBlankRowsNeeded; i++) {
-          fillerBody.push(createBlankRow());
-        }
-        tables.push({
-          tableBody: fillerBody,
-          pageBreak: undefined,
-        });
-      }
-
-      // Build PDF content - one table per section + filler tables
-      const content = tables.map((tableObj) => ({
-        table: {
-          widths: [25, "*", 30, 20, 30, 20],
-          body: tableObj.tableBody,
+      // Build PDF content - single table with all rows
+      const content = [
+        {
+          table: {
+            widths: [25, "*", 30, 20, 30, 20],
+            body: allRows,
+            dontBreakRows: true, // Prevent rows from breaking across pages
+          },
+          layout: {
+            hLineWidth: () => 0, // No horizontal lines
+            vLineWidth: () => 0, // No vertical lines (drawn via canvas)
+            hLineColor: () => "#000",
+            vLineColor: () => "#000",
+            paddingLeft: () => 8,
+            paddingRight: () => 8,
+            paddingTop: () => 3,
+            paddingBottom: () => 3,
+          },
         },
-        layout: {
-          //   hLineWidth: () => 1,
-          vLineWidth: () => 1,
-          //   hLineColor: () => "#000",
-          vLineColor: () => "#000",
-          paddingLeft: () => 8,
-          paddingRight: () => 8,
-          paddingTop: () => 3,
-          paddingBottom: () => 3,
-        },
-        pageBreak: tableObj.pageBreak,
-        margin: [0, -2, 0, 0], // No vertical margins to eliminate gaps
-      }));
+      ];
 
       // PDF document definition
       const docDefinition = {
         pageSize: "LETTER",
         pageMargins: [30, PAGE_TOP_MARGIN, 30, PAGE_BOTTOM_MARGIN], // Margins match header/footer heights
         content: content,
+        // Background function to draw vertical lines on every page
+        background: (currentPage, pageSize) => {
+          // Letter page height: 792 points
+          const lineTop = PAGE_TOP_MARGIN;
+          const lineBottom = pageSize.height - PAGE_BOTTOM_MARGIN;
+          
+          return {
+            canvas: [
+              // Left border
+              { type: "line", x1: LINE_X.left, y1: lineTop, x2: LINE_X.left, y2: lineBottom, lineWidth: 1 },
+              // Qty | Description
+              { type: "line", x1: LINE_X.qty, y1: lineTop, x2: LINE_X.qty, y2: lineBottom, lineWidth: 1 },
+              // Description | Cost
+              { type: "line", x1: LINE_X.cost, y1: lineTop, x2: LINE_X.cost, y2: lineBottom, lineWidth: 1 },
+              // Cost | Total
+              { type: "line", x1: LINE_X.total, y1: lineTop, x2: LINE_X.total, y2: lineBottom, lineWidth: 1 },
+              // Right border
+              { type: "line", x1: LINE_X.right, y1: lineTop, x2: LINE_X.right, y2: lineBottom, lineWidth: 1 },
+            ],
+          };
+        },
         // Header function for each page
         header: (currentPage, pageCount) => ({
           table: {
@@ -274,31 +242,40 @@ const GenerateEstimatePdf = ({
                     {
                       columns: [
                         {
-                          text: "[LOGO]",
+                          // Logo placeholder - defined space
+                          canvas: [
+                            {
+                              type: "rect",
+                              x: 0,
+                              y: 0,
+                              w: 100,
+                              h: 80,
+                              lineWidth: 2,
+                              lineColor: "#cccccc",
+                              dash: { length: 5 },
+                            },
+                          ],
                           width: 100,
-                          alignment: "left",
-                          fontSize: 10,
-                          color: "#999",
                         },
                         {
                           stack: [
                             {
                               text: "Estimate",
                               bold: true,
-                              fontSize: 16,
+                              fontSize: 18,
                               alignment: "right",
                             },
                             {
                               text: formatDate(today),
                               fontSize: 10,
                               alignment: "right",
-                              margin: [0, 2, 0, 0],
+                              margin: [0, 4, 0, 0],
                             },
                           ],
                           width: "*",
                         },
                       ],
-                      margin: [0, 10, 0, 5],
+                      margin: [0, 15, 0, 15],
                     },
                     // Client and Project info
                     {
@@ -314,6 +291,7 @@ const GenerateEstimatePdf = ({
                               text: estimate.client_name || "N/A",
                               fontSize: 11,
                               bold: true,
+                              margin: [0, 2, 0, 0],
                             },
                           ],
                           width: "*",
@@ -329,12 +307,13 @@ const GenerateEstimatePdf = ({
                               text: estimate.est_project_name || "N/A",
                               fontSize: 11,
                               bold: true,
+                              margin: [0, 2, 0, 0],
                             },
                           ],
                           width: "*",
                         },
                       ],
-                      margin: [0, 0, 0, 5],
+                      margin: [0, 0, 0, 10],
                     },
                     // Column headers table
                     {

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { fetchEstimateById } from "../../redux/actions/estimates";
 
+import EstimatePdfPreview from "./EstimatePdfPreview.jsx";
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
 import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
 import PlaywrightEstimatePdfButton from "./PlaywrightEstimatePdfButton.jsx";
@@ -77,15 +78,21 @@ const EstimatePreview = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200">
       {/* Header */}
-      <GenerateEstimatePdf
-        estimate={currentEstimate}
-        allSections={allSections}
-        grandTotal={grandTotal}
-      />
-      <PlaywrightEstimatePdfButton
-        estimate={currentEstimate}
-        allSections={allSections}
-      />
+      <div className="fixed right-0 top-0 h-[50px] z-30 flex gap-2 print:hidden">
+        {/* <EstimatePdfPreview
+          estimate={currentEstimate}
+          allSections={allSections}
+        /> */}
+        <GenerateEstimatePdf
+          estimate={currentEstimate}
+          allSections={allSections}
+          grandTotal={grandTotal}
+        />
+        {/* <PlaywrightEstimatePdfButton
+          estimate={currentEstimate}
+          allSections={allSections}
+        /> */}
+      </div>
       <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
