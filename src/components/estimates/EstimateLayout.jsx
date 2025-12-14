@@ -24,6 +24,7 @@ import { PATHS } from "../../utils/constants";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ReorderModal from "../common/ReorderModal.jsx";
 
+import EstimateLineItemsEditor from "./EstimateLineItemsEditor.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
@@ -47,6 +48,7 @@ const EstimateLayout = () => {
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
   const [showEstimateDefaultsForm, setShowEstimateDefaultsForm] = useState(false);
+  const [showLineItemsEditor, setShowLineItemsEditor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
@@ -316,6 +318,10 @@ const EstimateLayout = () => {
           setShowEstimateDefaultsForm(true);
           setShowProjectInfo(false);
         }}
+        onEditLineItems={() => {
+          setShowLineItemsEditor(true);
+          setShowProjectInfo(false);
+        }}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
@@ -377,6 +383,22 @@ const EstimateLayout = () => {
                 }}
                 onSave={() => {
                   setShowEstimateDefaultsForm(false);
+                  setShowProjectInfo(true);
+                }}
+              />
+            </div>
+          </div>
+        ) : showLineItemsEditor ? (
+          <div className="p-6 overflow-y-auto h-full">
+            <div className="max-w-6xl mx-auto">
+              <EstimateLineItemsEditor
+                estimate={currentEstimate}
+                onCancel={() => {
+                  setShowLineItemsEditor(false);
+                  setShowProjectInfo(true);
+                }}
+                onSave={() => {
+                  setShowLineItemsEditor(false);
                   setShowProjectInfo(true);
                 }}
               />

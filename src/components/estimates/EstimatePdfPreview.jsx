@@ -29,11 +29,30 @@ const EstimatePdfPreview = ({ estimate, allSections, onClose }) => {
     })}`;
   };
 
-  // Calculate grand total
-  const grandTotal = allSections.reduce(
+  // Calculate grand total including line items
+  const sectionsTotal = allSections.reduce(
     (sum, section) => sum + (section.totalPrice || 0),
     0
   );
+
+  // Calculate line items total
+  let lineItemsTotal = 0;
+  if (estimate.line_items && Array.isArray(estimate.line_items)) {
+    estimate.line_items.forEach((item) => {
+      if (item.quantity && item.cost) {
+        lineItemsTotal += parseFloat(item.quantity) * parseFloat(item.cost);
+      }
+      if (item.subItems && Array.isArray(item.subItems)) {
+        item.subItems.forEach((subItem) => {
+          if (subItem.quantity && subItem.cost) {
+            lineItemsTotal += parseFloat(subItem.quantity) * parseFloat(subItem.cost);
+          }
+        });
+      }
+    });
+  }
+
+  const grandTotal = sectionsTotal + lineItemsTotal;
 
   const handlePrint = () => {
     window.print();
@@ -185,6 +204,77 @@ const EstimatePdfPreview = ({ estimate, allSections, onClose }) => {
               </div>
             );
           })}
+
+          {/* Line Items */}
+          {estimate.line_items && estimate.line_items.length > 0 && (
+            <>
+              {estimate.line_items.map((item, index) => {
+                const itemTotal = (item.quantity && item.cost) 
+                  ? parseFloat(item.quantity) * parseFloat(item.cost) 
+                  : 0;
+                const subItemsTotal = (item.subItems && Array.isArray(item.subItems))
+                  ? item.subItems.reduce((sum, sub) => {
+                      if (sub.quantity && sub.cost) {
+                        return sum + parseFloat(sub.quantity) * parseFloat(sub.cost);
+                      }
+                      return sum;
+                    }, 0)
+                  : 0;
+                const lineTotal = itemTotal + subItemsTotal;
+
+                return (
+                  <div key={`lineitem-${index}`}>
+                    {/* Parent Line Item */}
+                    <div className="px-[0.375in] py-2 text-[10pt] grid grid-cols-[1fr_9fr_2fr_2fr] border-x border-black print:break-inside-avoid">
+                      <div className="text-center p-2">{item.quantity || ''}</div>
+                      <div className="p-2">
+                        <div className="font-bold text-[10pt]">
+                          {item.title || 'Line Item'}
+                        </div>
+                      </div>
+                      <div className="text-right p-2">
+                        {item.cost ? formatCurrency(parseFloat(item.cost)) : ''}
+                      </div>
+                      <div className="text-right p-2">
+                        {item.quantity && item.cost ? formatCurrency(itemTotal) : ''}
+                      </div>
+                    </div>
+                    
+                    {/* Sub-items - each in its own row */}
+                    {item.subItems && item.subItems.length > 0 && (
+                      <>
+                        {item.subItems.map((subItem, subIndex) => {
+                          const subTotal = (subItem.quantity && subItem.cost)
+                            ? parseFloat(subItem.quantity) * parseFloat(subItem.cost)
+                            : 0;
+                          
+                          return (
+                            <div 
+                              key={subIndex}
+                              className="px-[0.375in] text-[9pt] grid grid-cols-[1fr_9fr_2fr_2fr] border-x border-black print:break-inside-avoid"
+                            >
+                              <div className="text-center p-2 text-gray-600">
+                                {subItem.quantity || ''}
+                              </div>
+                              <div className="p-2 pl-6 text-gray-700">
+                                {subItem.title || 'Sub-item'}
+                              </div>
+                              <div className="text-right p-2 text-gray-600">
+                                {subItem.cost ? formatCurrency(parseFloat(subItem.cost)) : ''}
+                              </div>
+                              <div className="text-right p-2 text-gray-600">
+                                {subItem.quantity && subItem.cost ? formatCurrency(subTotal) : ''}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* Page Footer */}

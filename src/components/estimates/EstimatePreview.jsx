@@ -27,9 +27,9 @@ const EstimatePreview = () => {
 
   // Calculate grand total from task data and prepare all sections for PDF
   // Use currentEstimate.tasks to maintain original order
-  const { grandTotal, allSections } = useMemo(() => {
+  const { grandTotal, allSections, lineItemsTotal } = useMemo(() => {
     if (!currentEstimate?.tasks) {
-      return { grandTotal: 0, allSections: [] };
+      return { grandTotal: 0, allSections: [], lineItemsTotal: 0 };
     }
 
     // Iterate through tasks in their original order
@@ -37,9 +37,30 @@ const EstimatePreview = () => {
       .map((task) => taskDataMap[task.est_task_id])
       .filter(Boolean); // Remove any undefined tasks
 
-    const total = orderedTasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
+    const tasksTotal = orderedTasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
     const sections = orderedTasks.flatMap((t) => t.sections || []);
-    return { grandTotal: total, allSections: sections };
+    
+    // Calculate line items total
+    let lineItemsTotal = 0;
+    if (currentEstimate.line_items && Array.isArray(currentEstimate.line_items)) {
+      currentEstimate.line_items.forEach((item) => {
+        // Add parent item total if it has quantity and cost
+        if (item.quantity && item.cost) {
+          lineItemsTotal += parseFloat(item.quantity) * parseFloat(item.cost);
+        }
+        // Add sub-items totals
+        if (item.subItems && Array.isArray(item.subItems)) {
+          item.subItems.forEach((subItem) => {
+            if (subItem.quantity && subItem.cost) {
+              lineItemsTotal += parseFloat(subItem.quantity) * parseFloat(subItem.cost);
+            }
+          });
+        }
+      });
+    }
+
+    const grandTotal = tasksTotal + lineItemsTotal;
+    return { grandTotal, allSections: sections, lineItemsTotal };
   }, [taskDataMap, currentEstimate]);
 
   useEffect(() => {
@@ -126,6 +147,59 @@ const EstimatePreview = () => {
         ) : (
           <div className="bg-slate-800 rounded-lg p-8 text-center">
             <p className="text-slate-400">No rooms in this estimate</p>
+          </div>
+        )}
+
+        {/* Line Items Section */}
+        {currentEstimate.line_items && currentEstimate.line_items.length > 0 && (
+          <div className="bg-slate-800 rounded-lg p-6 mb-8">
+            <h2 className="text-xl font-bold mb-4 text-teal-400">Additional Line Items</h2>
+            <div className="space-y-3">
+              {currentEstimate.line_items.map((item, index) => (
+                <div key={index} className="border-l-2 border-slate-600 pl-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-200">{item.title || "Untitled Item"}</div>
+                      {item.quantity && item.cost && (
+                        <div className="text-sm text-slate-400">
+                          {item.quantity} × {formatCurrency(item.cost)}
+                        </div>
+                      )}
+                    </div>
+                    {item.quantity && item.cost && (
+                      <div className="text-lg font-semibold text-slate-200">
+                        {formatCurrency(parseFloat(item.quantity) * parseFloat(item.cost))}
+                      </div>
+                    )}
+                  </div>
+                  {item.subItems && item.subItems.length > 0 && (
+                    <div className="ml-4 mt-2 space-y-2 border-l-2 border-slate-700 pl-3">
+                      {item.subItems.map((subItem, subIndex) => (
+                        <div key={subIndex} className="flex justify-between items-center text-sm">
+                          <div className="flex-1">
+                            <div className="text-slate-300">{subItem.title || "Untitled Sub-item"}</div>
+                            {subItem.quantity && subItem.cost && (
+                              <div className="text-xs text-slate-500">
+                                {subItem.quantity} × {formatCurrency(subItem.cost)}
+                              </div>
+                            )}
+                          </div>
+                          {subItem.quantity && subItem.cost && (
+                            <div className="font-medium text-slate-300">
+                              {formatCurrency(parseFloat(subItem.quantity) * parseFloat(subItem.cost))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
+              <span className="text-lg font-semibold text-slate-300">Line Items Subtotal:</span>
+              <span className="text-xl font-bold text-teal-400">{formatCurrency(lineItemsTotal)}</span>
+            </div>
           </div>
         )}
 

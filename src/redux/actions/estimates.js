@@ -249,6 +249,9 @@ export const fetchEstimateById = (estimateId) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
 
+        // Line items
+        line_items: data.line_items,
+
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
           sections: task.sections || [],
@@ -1199,6 +1202,9 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
 
+        // Line items
+        line_items: data.line_items,
+
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
           sections: task.sections || [],
@@ -1223,6 +1229,41 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_ERROR,
         payload: error.message,
       });
+      throw error;
+    }
+  };
+};
+
+// Update estimate line items
+export const updateEstimateLineItems = (estimateId, lineItems) => {
+  return async (dispatch, getState) => {
+    try {
+      // Update the estimates table with line items
+      const { error: updateError } = await supabase
+        .from("estimates")
+        .update({
+          line_items: lineItems,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (updateError) throw updateError;
+
+      // Update the current estimate in state
+      const currentEstimate = getState().estimates.currentEstimate;
+      if (currentEstimate && currentEstimate.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            line_items: lineItems,
+          },
+        });
+      }
+
+      return lineItems;
+    } catch (error) {
+      console.error("Error updating estimate line items:", error);
       throw error;
     }
   };

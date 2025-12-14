@@ -61,6 +61,14 @@ const GenerateEstimatePdf = ({
         });
       };
 
+      const formatDateShort = (date) => {
+        const mm = String(date.getMonth() + 1).padStart(2, "0"); // getMonth is 0-based
+        const dd = String(date.getDate()).padStart(2, "0");
+        const yyyy = date.getFullYear();
+
+        return `${mm}-${dd}-${yyyy}`;
+      };
+
       const formatCurrency = (value) => {
         return `$${value.toLocaleString("en-US", {
           minimumFractionDigits: 2,
@@ -88,7 +96,7 @@ const GenerateEstimatePdf = ({
       const COST_WIDTH = 84; // 30 + 20
       const TOTAL_WIDTH = 84; // 30 + 20
       const DESC_WIDTH = CONTENT_WIDTH - QTY_WIDTH - COST_WIDTH - TOTAL_WIDTH;
-      
+
       // X-coordinates for vertical lines
       const LINE_X = {
         left: LEFT_MARGIN,
@@ -100,7 +108,7 @@ const GenerateEstimatePdf = ({
 
       // Build all section rows - no borders, they'll be drawn via canvas
       const allRows = [];
-      
+
       allSections.forEach((section) => {
         const leftColumn = [];
         const rightColumn = [];
@@ -110,7 +118,7 @@ const GenerateEstimatePdf = ({
         leftColumn.push(`Drawer Boxes: ${section.drawerBoxMaterial}`);
         leftColumn.push(`Cabinets: ${section.boxMaterial}`);
         leftColumn.push(`Finish: ${section.boxFinish}`);
-        
+
         rightColumn.push(`Door Style: ${section.doorStyle}`);
         rightColumn.push(`Drawer Front Style: ${section.drawerFrontStyle}`);
         rightColumn.push(`Wood: ${section.faceMaterial}`);
@@ -183,6 +191,92 @@ const GenerateEstimatePdf = ({
         // ]);
       });
 
+      // Add line items to PDF
+      if (estimate.line_items && Array.isArray(estimate.line_items)) {
+        estimate.line_items.forEach((item) => {
+          const itemTotal =
+            item.quantity && item.cost
+              ? parseFloat(item.quantity) * parseFloat(item.cost)
+              : 0;
+
+          // Add parent line item row
+          allRows.push([
+            {
+              text: item.quantity ? item.quantity.toString() : "",
+              alignment: "center",
+              rowSpan: 1,
+            },
+            {
+              text: item.title || "Line Item",
+              bold: true,
+              fontSize: 10,
+            },
+            {
+              text: item.cost ? formatCurrency(parseFloat(item.cost)) : "",
+              alignment: "right",
+              colSpan: 2,
+            },
+            {},
+            {
+              text: item.quantity && item.cost ? formatCurrency(itemTotal) : "",
+              alignment: "right",
+              colSpan: 2,
+            },
+            {},
+          ]);
+
+          // Add sub-items as separate rows
+          if (
+            item.subItems &&
+            Array.isArray(item.subItems) &&
+            item.subItems.length > 0
+          ) {
+            item.subItems.forEach((subItem) => {
+              const subTotal =
+                subItem.quantity && subItem.cost
+                  ? parseFloat(subItem.quantity) * parseFloat(subItem.cost)
+                  : 0;
+
+              allRows.push([
+                {
+                  text: subItem.quantity ? subItem.quantity.toString() : "",
+                  alignment: "center",
+                  fontSize: 10,
+                  // color: "#666666",
+                },
+                {
+                  text: subItem.title || "Sub-item",
+                  fontSize: 10,
+                  // color: "#666666",
+                  margin: [10, 0, 0, 0], // Indent sub-items
+                },
+                {
+                  text: subItem.cost
+                    ? formatCurrency(parseFloat(subItem.cost))
+                    : "",
+                  alignment: "right",
+                  fontSize: 10,
+                  // color: "#666666",
+                  colSpan: 2,
+                },
+                {},
+                {
+                  text:
+                    subItem.quantity && subItem.cost
+                      ? formatCurrency(subTotal)
+                      : "",
+                  alignment: "right",
+                  fontSize: 10,
+                  // color: "#666666",
+                  colSpan: 2,
+                },
+                {},
+              ]);
+            });
+          }
+        });
+      }
+
       // Build PDF content - single table with all rows
       const content = [
         {
@@ -214,19 +308,54 @@ const GenerateEstimatePdf = ({
           // Letter page height: 792 points
           const lineTop = PAGE_TOP_MARGIN;
           const lineBottom = pageSize.height - PAGE_BOTTOM_MARGIN;
-          
+
           return {
             canvas: [
               // Left border
-              { type: "line", x1: LINE_X.left, y1: lineTop, x2: LINE_X.left, y2: lineBottom, lineWidth: 1 },
+              {
+                type: "line",
+                x1: LINE_X.left,
+                y1: lineTop,
+                x2: LINE_X.left,
+                y2: lineBottom,
+                lineWidth: 1,
+              },
               // Qty | Description
-              { type: "line", x1: LINE_X.qty, y1: lineTop, x2: LINE_X.qty, y2: lineBottom, lineWidth: 1 },
+              {
+                type: "line",
+                x1: LINE_X.qty,
+                y1: lineTop,
+                x2: LINE_X.qty,
+                y2: lineBottom,
+                lineWidth: 1,
+              },
               // Description | Cost
-              { type: "line", x1: LINE_X.cost, y1: lineTop, x2: LINE_X.cost, y2: lineBottom, lineWidth: 1 },
+              {
+                type: "line",
+                x1: LINE_X.cost,
+                y1: lineTop,
+                x2: LINE_X.cost,
+                y2: lineBottom,
+                lineWidth: 1,
+              },
               // Cost | Total
-              { type: "line", x1: LINE_X.total, y1: lineTop, x2: LINE_X.total, y2: lineBottom, lineWidth: 1 },
+              {
+                type: "line",
+                x1: LINE_X.total,
+                y1: lineTop,
+                x2: LINE_X.total,
+                y2: lineBottom,
+                lineWidth: 1,
+              },
               // Right border
-              { type: "line", x1: LINE_X.right, y1: lineTop, x2: LINE_X.right, y2: lineBottom, lineWidth: 1 },
+              {
+                type: "line",
+                x1: LINE_X.right,
+                y1: lineTop,
+                x2: LINE_X.right,
+                y2: lineBottom,
+                lineWidth: 1,
+              },
             ],
           };
         },
@@ -517,11 +646,9 @@ const GenerateEstimatePdf = ({
       };
 
       // Generate and download PDF
-      const fileName = `${estimate.est_project_name || ""} Estimate${formatDate(
-        today
-      )
-        .replace(/,/g, "")
-        .replace(/ /g, "_")}.pdf`;
+      const fileName = `${
+        estimate.est_project_name || ""
+      } Estimate ${formatDateShort(today)}.pdf`;
       window.pdfMake.createPdf(docDefinition).download(fileName);
     } catch (error) {
       console.error("Error generating PDF:", error);

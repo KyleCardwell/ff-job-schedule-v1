@@ -37,6 +37,9 @@ SELECT
     e.default_commission,
     e.default_discount,
 
+    -- Line items
+    e.line_items,
+
     ep.est_project_name,
     ep.est_client_name,
     ep.team_id,
