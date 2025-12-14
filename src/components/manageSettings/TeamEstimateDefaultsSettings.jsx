@@ -7,6 +7,7 @@ import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
 import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
+import DefaultEstimateNotesForm from "../estimates/DefaultEstimateNotesForm.jsx";
 import EstimateSectionForm from "../estimates/EstimateSectionForm.jsx";
 
 const TeamEstimateDefaultsSettings = (props) => {
@@ -66,6 +67,7 @@ const TeamEstimateDefaultsSettings = (props) => {
         }}
         onSave={handleSave}
       />
+      <DefaultEstimateNotesForm teamDefaults={teamDefaults} />
     </div>
   );
 };

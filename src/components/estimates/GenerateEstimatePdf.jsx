@@ -13,6 +13,7 @@ const GenerateEstimatePdf = ({
   estimate,
   allSections,
   grandTotal,
+  selectedNotes = [],
   disabled,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -108,6 +109,69 @@ const GenerateEstimatePdf = ({
 
       // Build all section rows - no borders, they'll be drawn via canvas
       const allRows = [];
+      
+      // Add estimate notes at the beginning if any are selected
+      if (selectedNotes && selectedNotes.length > 0) {
+        // Add introductory line
+        allRows.push([
+          {
+            text: "",
+            alignment: "center",
+          },
+          {
+            text: "Cabinetry is to have the following description unless otherwise noted:",
+            fontSize: 10,
+            bold: true,
+          },
+          {
+            text: "",
+            colSpan: 2,
+          },
+          {},
+          {
+            text: "",
+            colSpan: 2,
+          },
+          {},
+        ]);
+        
+        // Add each note with minimal padding
+        selectedNotes.forEach((noteText) => {
+          allRows.push([
+            {
+              text: "",
+              alignment: "center",
+            },
+            {
+              text: "-" + noteText,
+              fontSize: 10,
+              italics: true,
+              color: "#333333",
+              margin: [5, 0, 0, 0],
+            },
+            {
+              text: "",
+              colSpan: 2,
+            },
+            {},
+            {
+              text: "",
+              colSpan: 2,
+            },
+            {},
+          ]);
+        });
+        
+        // Add a minimal separator row after notes section
+        allRows.push([
+          { text: " " },
+          { text: " " },
+          { text: " ", colSpan: 2 },
+          {},
+          { text: " ", colSpan: 2 },
+          {},
+        ]);
+      }
 
       allSections.forEach((section) => {
         const leftColumn = [];
@@ -292,8 +356,27 @@ const GenerateEstimatePdf = ({
             vLineColor: () => "#000",
             paddingLeft: () => 8,
             paddingRight: () => 8,
-            paddingTop: () => 3,
-            paddingBottom: () => 10,
+            paddingTop: (i, node) => {
+              // No padding for note rows (italics) or intro line (bold)
+              if (i > 0 && (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)) {
+                return 0;
+              }
+              return 3;
+            },
+            paddingBottom: (i, node) => {
+              if (i === 0) {
+                return 0;
+              }
+              // Minimal padding for note rows and separator rows
+              if (i > 0 && (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)) {
+                return 0;
+              }
+              // Very minimal for blank separator rows
+              if (i > 0 && node.table.body[i][1]?.text === " ") {
+                return 2;
+              }
+              return 10;
+            },
           },
         },
       ];
@@ -678,6 +761,7 @@ GenerateEstimatePdf.propTypes = {
   estimate: PropTypes.object.isRequired,
   allSections: PropTypes.array.isRequired,
   grandTotal: PropTypes.number.isRequired,
+  selectedNotes: PropTypes.arrayOf(PropTypes.string),
   disabled: PropTypes.bool,
 };
 

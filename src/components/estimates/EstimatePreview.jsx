@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { fetchEstimateById } from "../../redux/actions/estimates";
+import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
 import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
@@ -17,14 +18,63 @@ const EstimatePreview = () => {
     (state) => state.estimates.currentEstimate
   );
   const estimates = useSelector((state) => state.estimates.estimates);
+  const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
 
   // Track all task data - children will report their complete data up
   const [taskDataMap, setTaskDataMap] = useState({});
+  
+  // Track selected notes: { noteIndex: { selected: bool, alternativeIndex: number|null } }
+  const [selectedNotes, setSelectedNotes] = useState({});
 
   const handleTaskDataChange = useCallback((taskData) => {
     setTaskDataMap((prev) => ({ ...prev, [taskData.taskId]: taskData }));
   }, []);
+  
+  const handleNoteToggle = useCallback((noteIndex) => {
+    setSelectedNotes((prev) => ({
+      ...prev,
+      [noteIndex]: {
+        selected: !prev[noteIndex]?.selected,
+        alternativeIndex: prev[noteIndex]?.alternativeIndex ?? null,
+      },
+    }));
+  }, []);
+  
+  const handleAlternativeChange = useCallback((noteIndex, altIndex) => {
+    setSelectedNotes((prev) => ({
+      ...prev,
+      [noteIndex]: {
+        selected: prev[noteIndex]?.selected ?? true,
+        alternativeIndex: altIndex === "" ? null : parseInt(altIndex, 10),
+      },
+    }));
+  }, []);
 
+  // Build selected notes for PDF
+  const selectedNotesForPdf = useMemo(() => {
+    if (!teamDefaults?.default_estimate_notes) return [];
+    
+    return teamDefaults.default_estimate_notes
+      .map((note, index) => {
+        const selection = selectedNotes[index];
+        if (!selection?.selected) return null;
+        
+        // If note has alternatives, check which option is selected
+        if (note.alternatives?.length > 0) {
+          const selectedIndex = selection.alternativeIndex ?? 0;
+          // Index 0 is main text, index 1+ are alternatives
+          if (selectedIndex === 0) {
+            return note.text;
+          }
+          return note.alternatives[selectedIndex - 1];
+        }
+        
+        // Otherwise use the main text
+        return note.text;
+      })
+      .filter(Boolean);
+  }, [teamDefaults, selectedNotes]);
+  
   // Calculate grand total from task data and prepare all sections for PDF
   // Use currentEstimate.tasks to maintain original order
   const { grandTotal, allSections, lineItemsTotal } = useMemo(() => {
@@ -77,6 +127,27 @@ const EstimatePreview = () => {
 
     loadEstimate();
   }, [dispatch, estimateId, estimates]);
+  
+  // Fetch team defaults for estimate notes
+  useEffect(() => {
+    if (!teamDefaults) {
+      dispatch(fetchTeamDefaults());
+    }
+  }, [dispatch, teamDefaults]);
+  
+  // Initialize all notes as selected when teamDefaults loads
+  useEffect(() => {
+    if (teamDefaults?.default_estimate_notes && Object.keys(selectedNotes).length === 0) {
+      const initialSelection = {};
+      teamDefaults.default_estimate_notes.forEach((note, index) => {
+        initialSelection[index] = {
+          selected: true,
+          alternativeIndex: note.alternatives?.length > 0 ? 0 : null,
+        };
+      });
+      setSelectedNotes(initialSelection);
+    }
+  }, [teamDefaults, selectedNotes]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
@@ -101,6 +172,7 @@ const EstimatePreview = () => {
         estimate={currentEstimate}
         allSections={allSections}
         grandTotal={grandTotal}
+        selectedNotes={selectedNotesForPdf}
       />
       <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4">
@@ -126,13 +198,43 @@ const EstimatePreview = () => {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Estimate Notes Section (Placeholder for future) */}
-        <div className="bg-slate-800 rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-3">Estimate Notes</h2>
-          <p className="text-slate-400 text-sm">
-            (Note editing functionality will be added here)
-          </p>
-        </div>
+        {/* Estimate Notes Section */}
+        {teamDefaults?.default_estimate_notes && teamDefaults.default_estimate_notes.length > 0 && (
+          <div className="bg-slate-800 rounded-lg p-6 mb-8">
+            <h2 className="text-lg font-semibold mb-4">Estimate Notes</h2>
+            <div className="space-y-3">
+              {teamDefaults.default_estimate_notes.map((note, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedNotes[index]?.selected || false}
+                    onChange={() => handleNoteToggle(index)}
+                    className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
+                  />
+                  <div className="flex-1 text-left">
+                    {note.alternatives && note.alternatives.length > 0 ? (
+                      <select
+                        value={selectedNotes[index]?.alternativeIndex ?? 0}
+                        onChange={(e) => handleAlternativeChange(index, e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
+                        disabled={!selectedNotes[index]?.selected}
+                      >
+                        <option value={0}>{note.text}</option>
+                        {note.alternatives.map((alt, altIndex) => (
+                          <option key={altIndex} value={altIndex + 1}>
+                            {alt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-slate-300">{note.text}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tasks and Sections */}
         {currentEstimate.tasks && currentEstimate.tasks.length > 0 ? (
