@@ -71,7 +71,7 @@ const GenerateEstimatePdf = ({
       //   const grandTotalText = "Total:   " + formatCurrency(grandTotal);
 
       // Height variables to control header/footer and page margins
-      const HEADER_HEIGHT = 172.5; // Fixed height for header table
+      const HEADER_HEIGHT = 178.5; // Fixed height for header table
       const FOOTER_HEIGHT = 80; // Fixed height for footer table
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
@@ -126,7 +126,7 @@ const GenerateEstimatePdf = ({
               { text: leftColumn[i] || "", width: "*", fontSize: 9 },
               { text: rightColumn[i] || "", width: "*", fontSize: 9 },
             ],
-            margin: [0, 2, 0, 0],
+            margin: [5, 0, 0, 0], // Left indent
           });
         }
 
@@ -136,7 +136,7 @@ const GenerateEstimatePdf = ({
             text: `Notes: ${section.notes}`,
             italics: true,
             fontSize: 9,
-            margin: [0, 4, 0, 0],
+            margin: [5, 0, 0, 0], // Left indent with small top margin
           });
         }
 
@@ -150,10 +150,10 @@ const GenerateEstimatePdf = ({
           {
             stack: [
               {
-            text: section.displayName || section.taskName,
-            bold: true,
-            fontSize: 10,
-                margin: [0, 0, 0, 4],
+                text: section.displayName || section.taskName,
+                bold: true,
+                fontSize: 10,
+                margin: [0, 0, 0, 2], // Reduced bottom margin
               },
               ...detailsStack,
             ],
@@ -286,15 +286,34 @@ const GenerateEstimatePdf = ({
                               text: "Client Name",
                               fontSize: 9,
                               color: "#666",
+                              alignment: "center",
                             },
                             {
-                              text: estimate.client_name || "N/A",
+                              canvas: [
+                                {
+                                  type: "line",
+                                  x1: 0,
+                                  y1: 0,
+                                  x2: 235,
+                                  y2: 0,
+                                  lineWidth: 1,
+                                  lineColor: "#000",
+                                },
+                              ],
+                              margin: [0, 4, 0, 4],
+                            },
+                            {
+                              text: estimate.est_client_name || "",
                               fontSize: 11,
                               bold: true,
-                              margin: [0, 2, 0, 0],
+                              alignment: "center",
                             },
                           ],
                           width: "*",
+                        },
+                        {
+                          text: "",
+                          width: 81,
                         },
                         {
                           stack: [
@@ -302,12 +321,27 @@ const GenerateEstimatePdf = ({
                               text: "Project",
                               fontSize: 9,
                               color: "#666",
+                              alignment: "center",
                             },
                             {
-                              text: estimate.est_project_name || "N/A",
+                              canvas: [
+                                {
+                                  type: "line",
+                                  x1: 0,
+                                  y1: 0,
+                                  x2: 235,
+                                  y2: 0,
+                                  lineWidth: 1,
+                                  lineColor: "#000",
+                                },
+                              ],
+                              margin: [0, 4, 0, 4],
+                            },
+                            {
+                              text: estimate.est_project_name || "",
                               fontSize: 11,
                               bold: true,
-                              margin: [0, 2, 0, 0],
+                              alignment: "center",
                             },
                           ],
                           width: "*",
