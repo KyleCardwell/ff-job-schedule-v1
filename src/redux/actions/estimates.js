@@ -746,6 +746,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
 
       // Extract fields that go in separate columns (all fields now have dedicated columns)
       const {
+        section_name,
         boxMaterial,
         faceMaterial,
         drawer_box_mat,
@@ -774,6 +775,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
 
       // Prepare the update payload for Supabase
       const updatePayload = {
+        // Set section_name if provided (handles null for empty strings)
+        ...(section_name !== undefined && { section_name: section_name }),
         // Set box_mat and face_mat separately if provided
         ...(boxMaterial !== undefined && { box_mat: boxMaterial !== null ? +boxMaterial : null }),
         ...(faceMaterial !== undefined && { face_mat: faceMaterial !== null ? +faceMaterial : null }),

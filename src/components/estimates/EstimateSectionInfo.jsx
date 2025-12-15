@@ -62,11 +62,13 @@ const EstimateSectionInfo = ({
     if (showEstimateDefaults) return "Estimate Defaults";
     if (selectedTask.sections?.length <= 1)
       return `${selectedTask.est_task_name} Details`;
-    const sectionNumber =
-      selectedTask.sections.findIndex(
-        (s) => s.est_section_id === selectedSectionId
-      ) + 1;
-    return `${selectedTask.est_task_name} - Section ${sectionNumber} Details`;
+    const sectionIndex = selectedTask.sections.findIndex(
+      (s) => s.est_section_id === selectedSectionId
+    );
+    const section = selectedTask.sections[sectionIndex];
+    const sectionNumber = sectionIndex + 1;
+    const sectionName = section?.section_name || `Section ${sectionNumber}`;
+    return `${selectedTask.est_task_name} - ${sectionName} Details`;
   };
 
   const getStyleName = (id) => {

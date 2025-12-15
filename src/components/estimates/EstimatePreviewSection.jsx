@@ -26,7 +26,7 @@ const EstimatePreviewSection = ({
     (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []
   );
 
-  const {hardware, accessories, lengths} = useSelector((state) => state);
+  const { hardware, accessories, lengths } = useSelector((state) => state);
 
   const partsListAnchors = useSelector(
     (state) => state.partsListAnchors.itemsByPartsList
@@ -55,9 +55,13 @@ const EstimatePreviewSection = ({
       teamDefaults,
     };
 
-    const { context, effectiveSection } = createSectionContext(section, estimate, catalogData);
+    const { context, effectiveSection } = createSectionContext(
+      section,
+      estimate,
+      catalogData
+    );
     const calculations = getSectionCalculations(effectiveSection, context);
-    
+
     return { calculations, context, effectiveSection };
   }, [
     section,
@@ -88,26 +92,31 @@ const EstimatePreviewSection = ({
     const unitPrice = calculations.totalPrice / quantity;
 
     // Get readable names for materials and styles
-    const cabinetStyleName = cabinetStyles?.find(
-      (s) => s.cabinet_style_id === effectiveSection.cabinet_style_id
-    )?.cabinet_style_name || "";
+    const cabinetStyleName =
+      cabinetStyles?.find(
+        (s) => s.cabinet_style_id === effectiveSection.cabinet_style_id
+      )?.cabinet_style_name || "";
 
-    const faceFinishNames = effectiveSection.face_finish
-      ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-      .filter(Boolean)
-      .join(", ") || "None";
+    const faceFinishNames =
+      effectiveSection.face_finish
+        ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+        .filter(Boolean)
+        .join(", ") || "None";
 
-    const boxFinishNames = effectiveSection.box_finish
-      ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-      .filter(Boolean)
-      .join(", ") || "None";
+    const boxFinishNames =
+      effectiveSection.box_finish
+        ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+        .filter(Boolean)
+        .join(", ") || "None";
 
-    const drawerBoxMaterialName = drawerBoxMaterials?.find(
-      (m) => m.id === effectiveSection.drawer_box_mat
-    )?.name || "";
+    const drawerBoxMaterialName =
+      drawerBoxMaterials?.find((m) => m.id === effectiveSection.drawer_box_mat)
+        ?.name || "";
 
     // Format display name for PDF: task name + section number if multiple sections
-    const displayName = sectionNumber 
+    const displayName = section.section_name
+      ? `${taskName} - ${section.section_name}`
+      : sectionNumber
       ? `${taskName} - Section ${sectionNumber}`
       : taskName;
 
@@ -125,7 +134,8 @@ const EstimatePreviewSection = ({
       boxMaterial: context.selectedBoxMaterial?.material?.name || "",
       drawerBoxMaterial: drawerBoxMaterialName,
       doorStyle: effectiveSection.door_style?.replace(/_/g, " ") || "",
-      drawerFrontStyle: effectiveSection.drawer_front_style?.replace(/_/g, " ") || "",
+      drawerFrontStyle:
+        effectiveSection.drawer_front_style?.replace(/_/g, " ") || "",
       faceFinish: faceFinishNames,
       boxFinish: boxFinishNames,
       notes: section.notes || "",
@@ -174,7 +184,10 @@ const EstimatePreviewSection = ({
       {/* Section Header */}
       <div className="border-b border-slate-600 pb-4 mb-4">
         <h3 className="text-lg font-semibold text-slate-200">
-          {taskName}{sectionNumber ? ` - Section ${sectionNumber}` : ''}
+          {taskName}
+          {sectionNumber
+            ? ` - ${section.section_name || `Section ${sectionNumber}`}`
+            : ""}
         </h3>
         {section.notes && (
           <p className="text-sm text-slate-400 mt-2">{section.notes}</p>
