@@ -21,7 +21,7 @@ const EstimatePreview = () => {
   // Track all task data - children will report their complete data up
   const [taskDataMap, setTaskDataMap] = useState({});
 
-  // Track selected notes: { noteIndex: { selected: bool, alternativeIndex: number|null } }
+  // Track selected notes: { noteId: { selected: bool, selectedOptionId: string|null } }
   const [selectedNotes, setSelectedNotes] = useState({});
   const notesInitialized = useRef(false);
 
@@ -29,22 +29,22 @@ const EstimatePreview = () => {
     setTaskDataMap((prev) => ({ ...prev, [taskData.taskId]: taskData }));
   }, []);
 
-  const handleNoteToggle = useCallback((noteIndex) => {
+  const handleNoteToggle = useCallback((noteId) => {
     setSelectedNotes((prev) => ({
       ...prev,
-      [noteIndex]: {
-        selected: !prev[noteIndex]?.selected,
-        alternativeIndex: prev[noteIndex]?.alternativeIndex ?? null,
+      [noteId]: {
+        selected: !prev[noteId]?.selected,
+        selectedOptionId: prev[noteId]?.selectedOptionId ?? null,
       },
     }));
   }, []);
 
-  const handleAlternativeChange = useCallback((noteIndex, altIndex) => {
+  const handleOptionChange = useCallback((noteId, optionId) => {
     setSelectedNotes((prev) => ({
       ...prev,
-      [noteIndex]: {
-        selected: prev[noteIndex]?.selected ?? true,
-        alternativeIndex: altIndex === "" ? null : parseInt(altIndex, 10),
+      [noteId]: {
+        selected: prev[noteId]?.selected ?? true,
+        selectedOptionId: optionId,
       },
     }));
   }, []);
@@ -54,22 +54,20 @@ const EstimatePreview = () => {
     if (!teamDefaults?.default_estimate_notes) return [];
 
     return teamDefaults.default_estimate_notes
-      .map((note, index) => {
-        const selection = selectedNotes[index];
+      .map((note) => {
+        const selection = selectedNotes[note.id];
         if (!selection?.selected) return null;
 
-        // If note has alternatives, check which option is selected
-        if (note.alternatives?.length > 0) {
-          const selectedIndex = selection.alternativeIndex ?? 0;
-          // Index 0 is main text, index 1+ are alternatives
-          if (selectedIndex === 0) {
-            return note.text;
-          }
-          return note.alternatives[selectedIndex - 1];
+        // Find the selected option
+        if (note.options && note.options.length > 0) {
+          const selectedOption = note.options.find(
+            (opt) => opt.id === selection.selectedOptionId
+          );
+          // If no option selected or not found, use first option
+          return selectedOption?.text || note.options[0]?.text;
         }
 
-        // Otherwise use the main text
-        return note.text;
+        return null;
       })
       .filter(Boolean);
   }, [teamDefaults, selectedNotes]);
@@ -137,10 +135,10 @@ const EstimatePreview = () => {
   useEffect(() => {
     if (teamDefaults?.default_estimate_notes && !notesInitialized.current) {
       const initialSelection = {};
-      teamDefaults.default_estimate_notes.forEach((note, index) => {
-        initialSelection[index] = {
+      teamDefaults.default_estimate_notes.forEach((note) => {
+        initialSelection[note.id] = {
           selected: true,
-          alternativeIndex: note.alternatives?.length > 0 ? 0 : null,
+          selectedOptionId: note.options?.[0]?.id || null,
         };
       });
       setSelectedNotes(initialSelection);
@@ -199,37 +197,42 @@ const EstimatePreview = () => {
             <div className="bg-slate-800 rounded-lg p-6 mb-8">
               <h2 className="text-lg font-semibold mb-4">Estimate Notes</h2>
               <div className="space-y-3">
-                {teamDefaults.default_estimate_notes.map((note, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedNotes[index]?.selected || false}
-                      onChange={() => handleNoteToggle(index)}
-                      className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
-                    />
-                    <div className="flex-1 text-left">
-                      {note.alternatives && note.alternatives.length > 0 ? (
-                        <select
-                          value={selectedNotes[index]?.alternativeIndex ?? 0}
-                          onChange={(e) =>
-                            handleAlternativeChange(index, e.target.value)
-                          }
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
-                          disabled={!selectedNotes[index]?.selected}
-                        >
-                          <option value={0}>{note.text}</option>
-                          {note.alternatives.map((alt, altIndex) => (
-                            <option key={altIndex} value={altIndex + 1}>
-                              {alt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-slate-300">{note.text}</span>
-                      )}
+                {teamDefaults.default_estimate_notes.map((note) => {
+                  const hasMultipleOptions = note.options && note.options.length > 1;
+                  
+                  return (
+                    <div key={note.id} className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedNotes[note.id]?.selected || false}
+                        onChange={() => handleNoteToggle(note.id)}
+                        className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
+                      />
+                      <div className="flex-1 text-left">
+                        {hasMultipleOptions ? (
+                          <select
+                            value={selectedNotes[note.id]?.selectedOptionId || note.options[0]?.id}
+                            onChange={(e) =>
+                              handleOptionChange(note.id, e.target.value)
+                            }
+                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
+                            disabled={!selectedNotes[note.id]?.selected}
+                          >
+                            {note.options.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.text}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-slate-300">
+                            {note.options?.[0]?.text || ""}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

@@ -7,7 +7,10 @@ import { updateTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 
 /**
  * Component for managing default estimate notes
- * Notes structure: { text: string, alternatives: string[] }
+ * Notes structure: [{ id: string, options: [{ id: string, text: string }] }]
+ * - Parent array contains note objects with unique IDs
+ * - Each note has an options array
+ * - Single option = plain text display, multiple options = dropdown selector
  */
 const DefaultEstimateNotesForm = ({ teamDefaults }) => {
   const dispatch = useDispatch();
@@ -28,7 +31,11 @@ const DefaultEstimateNotesForm = ({ teamDefaults }) => {
   };
 
   const addNote = () => {
-    setNotes([...notes, { text: "", alternatives: [] }]);
+    const newNote = {
+      id: `note-${Date.now()}`,
+      options: [{ id: `opt-${Date.now()}-0`, text: "" }],
+    };
+    setNotes([...notes, newNote]);
     setExpandedNotes(new Set([...expandedNotes, notes.length]));
   };
 
@@ -39,52 +46,57 @@ const DefaultEstimateNotesForm = ({ teamDefaults }) => {
     setExpandedNotes(newExpanded);
   };
 
-  const updateNoteText = (index, text) => {
+  const updateOptionText = (noteIndex, optionIndex, text) => {
     const updatedNotes = [...notes];
-    updatedNotes[index] = { ...updatedNotes[index], text };
+    const updatedOptions = [...updatedNotes[noteIndex].options];
+    updatedOptions[optionIndex] = { ...updatedOptions[optionIndex], text };
+    updatedNotes[noteIndex] = { ...updatedNotes[noteIndex], options: updatedOptions };
     setNotes(updatedNotes);
   };
 
-  const addAlternative = (noteIndex) => {
+  const addOption = (noteIndex) => {
     const updatedNotes = [...notes];
+    const newOption = {
+      id: `opt-${Date.now()}-${updatedNotes[noteIndex].options.length}`,
+      text: "",
+    };
     updatedNotes[noteIndex] = {
       ...updatedNotes[noteIndex],
-      alternatives: [...(updatedNotes[noteIndex].alternatives || []), ""],
+      options: [...updatedNotes[noteIndex].options, newOption],
     };
     setNotes(updatedNotes);
   };
 
-  const removeAlternative = (noteIndex, altIndex) => {
+  const removeOption = (noteIndex, optIndex) => {
     const updatedNotes = [...notes];
+    // Don't allow removing the last option
+    if (updatedNotes[noteIndex].options.length <= 1) return;
+    
     updatedNotes[noteIndex] = {
       ...updatedNotes[noteIndex],
-      alternatives: updatedNotes[noteIndex].alternatives.filter(
-        (_, i) => i !== altIndex
+      options: updatedNotes[noteIndex].options.filter(
+        (_, i) => i !== optIndex
       ),
     };
     setNotes(updatedNotes);
   };
 
-  const updateAlternative = (noteIndex, altIndex, value) => {
-    const updatedNotes = [...notes];
-    const alternatives = [...updatedNotes[noteIndex].alternatives];
-    alternatives[altIndex] = value;
-    updatedNotes[noteIndex] = { ...updatedNotes[noteIndex], alternatives };
-    setNotes(updatedNotes);
-  };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Filter out notes with empty text
+      // Filter out notes with all empty options
       const validNotes = notes
-        .filter((note) => note.text.trim())
         .map((note) => ({
-          text: note.text.trim(),
-          alternatives: (note.alternatives || [])
-            .map((alt) => alt.trim())
-            .filter((alt) => alt),
-        }));
+          id: note.id,
+          options: note.options
+            .map((opt) => ({
+              id: opt.id,
+              text: opt.text.trim(),
+            }))
+            .filter((opt) => opt.text),
+        }))
+        .filter((note) => note.options.length > 0);
 
       await dispatch(
         updateTeamDefaults(teamDefaults.team_id, {
@@ -122,7 +134,7 @@ const DefaultEstimateNotesForm = ({ teamDefaults }) => {
         ) : (
           notes.map((note, noteIndex) => (
             <div
-              key={noteIndex}
+              key={note.id}
               className="bg-slate-700 rounded-lg p-4 border border-slate-600"
             >
               <div className="flex items-start gap-3">
@@ -140,15 +152,28 @@ const DefaultEstimateNotesForm = ({ teamDefaults }) => {
                   <div className="flex items-start gap-3">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Note Text
+                        {note.options.length === 1 ? "Note Text" : "Note Options"}
                       </label>
-                      <input
-                        type="text"
-                        value={note.text}
-                        onChange={(e) => updateNoteText(noteIndex, e.target.value)}
-                        placeholder="Enter default note text..."
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500"
-                      />
+                      {note.options.map((option, optIndex) => (
+                        <div key={option.id} className="flex items-center gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={option.text}
+                            onChange={(e) => updateOptionText(noteIndex, optIndex, e.target.value)}
+                            placeholder={note.options.length === 1 ? "Enter note text..." : `Option ${optIndex + 1}...`}
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500"
+                          />
+                          {note.options.length > 1 && (
+                            <button
+                              onClick={() => removeOption(noteIndex, optIndex)}
+                              className="text-red-400 hover:text-red-300"
+                              title="Remove option"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                     <button
                       onClick={() => removeNote(noteIndex)}
@@ -163,52 +188,21 @@ const DefaultEstimateNotesForm = ({ teamDefaults }) => {
                     <div className="mt-4">
                       <div className="flex justify-between items-center mb-2">
                         <label className="block text-sm font-medium text-slate-300">
-                          Alternatives (Optional)
+                          {note.options.length === 1 ? "Add Alternative Options" : "Options"}
                         </label>
                         <button
-                          onClick={() => addAlternative(noteIndex)}
+                          onClick={() => addOption(noteIndex)}
                           className="flex items-center gap-1 px-2 py-1 bg-slate-600 hover:bg-slate-500 text-slate-200 text-sm rounded transition-colors"
                         >
                           <FiPlus className="w-3 h-3" />
-                          Add Alternative
+                          Add Option
                         </button>
                       </div>
-
-                      {note.alternatives && note.alternatives.length > 0 ? (
-                        <div className="space-y-2">
-                          {note.alternatives.map((alt, altIndex) => (
-                            <div key={altIndex} className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={alt}
-                                onChange={(e) =>
-                                  updateAlternative(
-                                    noteIndex,
-                                    altIndex,
-                                    e.target.value
-                                  )
-                                }
-                                placeholder={`Alternative ${altIndex + 1}...`}
-                                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500"
-                              />
-                              <button
-                                onClick={() =>
-                                  removeAlternative(noteIndex, altIndex)
-                                }
-                                className="text-red-400 hover:text-red-300"
-                                title="Remove alternative"
-                              >
-                                <FiTrash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-slate-500 text-sm italic">
-                          No alternatives added. If this note has multiple
-                          options, add them here.
-                        </p>
-                      )}
+                      <p className="text-slate-500 text-sm italic">
+                        {note.options.length === 1
+                          ? "Single option will display as plain text. Add more options to show a dropdown selector."
+                          : "Multiple options will display as a dropdown selector in the estimate preview."}
+                      </p>
                     </div>
                   )}
                 </div>
