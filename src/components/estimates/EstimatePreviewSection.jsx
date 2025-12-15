@@ -120,6 +120,43 @@ const EstimatePreviewSection = ({
       ? `${taskName} - Section ${sectionNumber}`
       : taskName;
 
+    // Determine reeded note based on door and drawer reeded panel settings
+    const hasReededDoors =
+      effectiveSection.door_reeded_panel;
+    const hasReededDrawers =
+      effectiveSection.drawer_reeded_panel;
+    
+    let reededPanels = ""
+    if (hasReededDoors && hasReededDrawers) {
+      reededPanels = "Reeded panels on doors and drawer fronts.";
+    } else if (hasReededDoors) {
+      reededPanels = "Reeded panels on doors.";
+    } else if (hasReededDrawers) {
+      reededPanels = "Reeded panels on drawer fronts.";
+    }
+
+    // Determine molding note based on door and drawer molding settings
+    const hasDoorMolding =
+      effectiveSection.door_inside_molding ||
+      effectiveSection.door_outside_molding;
+    const hasDrawerMolding =
+      effectiveSection.drawer_inside_molding ||
+      effectiveSection.drawer_outside_molding;
+
+    let appliedMolding = "";
+    if (hasDoorMolding && hasDrawerMolding) {
+      appliedMolding = "Applied molding on doors and drawer fronts.";
+    } else if (hasDoorMolding) {
+      appliedMolding = "Applied molding on doors.";
+    } else if (hasDrawerMolding) {
+      appliedMolding = "Applied molding on drawer fronts.";
+    }
+
+    // Combine section notes with molding note
+    const combinedNotes = [reededPanels, appliedMolding, section.notes]
+      .filter(Boolean)
+      .join(" ");
+
     return {
       sectionId: section.est_section_id,
       sectionName: section.section_name || `Section ${sectionNumber || 1}`,
@@ -138,7 +175,7 @@ const EstimatePreviewSection = ({
         effectiveSection.drawer_front_style?.replace(/_/g, " ") || "",
       faceFinish: faceFinishNames,
       boxFinish: boxFinishNames,
-      notes: section.notes || "",
+      notes: combinedNotes,
     };
   }, [
     calculations?.totalPrice,
@@ -189,8 +226,8 @@ const EstimatePreviewSection = ({
             ? ` - ${section.section_name || `Section ${sectionNumber}`}`
             : ""}
         </h3>
-        {section.notes && (
-          <p className="text-sm text-slate-400 mt-2">{section.notes}</p>
+        {sectionData.notes && (
+          <p className="text-sm text-slate-400 mt-2">{sectionData.notes}</p>
         )}
       </div>
 
