@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiArrowLeft } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
@@ -25,6 +25,7 @@ const EstimatePreview = () => {
   
   // Track selected notes: { noteIndex: { selected: bool, alternativeIndex: number|null } }
   const [selectedNotes, setSelectedNotes] = useState({});
+  const notesInitialized = useRef(false);
 
   const handleTaskDataChange = useCallback((taskData) => {
     setTaskDataMap((prev) => ({ ...prev, [taskData.taskId]: taskData }));
@@ -137,7 +138,7 @@ const EstimatePreview = () => {
   
   // Initialize all notes as selected when teamDefaults loads
   useEffect(() => {
-    if (teamDefaults?.default_estimate_notes && Object.keys(selectedNotes).length === 0) {
+    if (teamDefaults?.default_estimate_notes && !notesInitialized.current) {
       const initialSelection = {};
       teamDefaults.default_estimate_notes.forEach((note, index) => {
         initialSelection[index] = {
@@ -146,8 +147,9 @@ const EstimatePreview = () => {
         };
       });
       setSelectedNotes(initialSelection);
+      notesInitialized.current = true;
     }
-  }, [teamDefaults, selectedNotes]);
+  }, [teamDefaults]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
