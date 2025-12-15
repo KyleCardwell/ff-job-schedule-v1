@@ -1097,7 +1097,11 @@ const calculateLengthTotals = (items, context) => {
         const timePerUnit = Number(service.time_per_unit) || 0;
 
         // Calculate base hours for the length
-        let hours = (timePerUnit/60) * lengthFeet * quantity;
+        let hours = 0;
+        
+        if (!service.is_miter_time && !service.is_cutout_time) {
+          hours = (timePerUnit/60) * lengthFeet * quantity;
+        }
 
         // Add additional time for miters if this is miter time
         if (service.is_miter_time && miterCount > 0) {
