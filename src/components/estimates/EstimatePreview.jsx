@@ -3,7 +3,6 @@ import { FiArrowLeft } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { fetchEstimateById } from "../../redux/actions/estimates";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
@@ -17,7 +16,6 @@ const EstimatePreview = () => {
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
-  const estimates = useSelector((state) => state.estimates.estimates);
   const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
 
   // Track all task data - children will report their complete data up
@@ -114,20 +112,12 @@ const EstimatePreview = () => {
     return { grandTotal, allSections: sections, lineItemsTotal };
   }, [taskDataMap, currentEstimate]);
 
+  // Redirect to edit page if no currentEstimate exists
   useEffect(() => {
-    const loadEstimate = async () => {
-      if (estimateId) {
-        const existingEstimate = estimates.find(
-          (est) => est.est_project_id === estimateId
-        );
-        if (!existingEstimate) {
-          await dispatch(fetchEstimateById(estimateId));
-        }
-      }
-    };
-
-    loadEstimate();
-  }, [dispatch, estimateId, estimates]);
+    if (!currentEstimate && estimateId) {
+      navigate(`/estimates/in-progress/${estimateId}`);
+    }
+  }, [currentEstimate, estimateId, navigate]);
   
   // Fetch team defaults for estimate notes
   useEffect(() => {
@@ -159,12 +149,9 @@ const EstimatePreview = () => {
     }).format(value || 0);
   };
 
+  // This should not render if currentEstimate is null due to the redirect above
   if (!currentEstimate) {
-    return (
-      <div className="flex items-center justify-center h-full bg-slate-900 text-slate-200">
-        Loading...
-      </div>
-    );
+    return null;
   }
 
   return (
