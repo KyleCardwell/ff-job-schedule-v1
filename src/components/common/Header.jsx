@@ -12,6 +12,9 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
 
   // Map routes to page titles
   const getPageTitle = () => {
+    if (location.pathname.includes("/preview")) {
+      return "Estimate Preview";
+    }
     if (location.pathname.includes("/estimates")) {
       return "Estimates";
     }

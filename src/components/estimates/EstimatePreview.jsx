@@ -20,7 +20,7 @@ const EstimatePreview = () => {
 
   // Track all task data - children will report their complete data up
   const [taskDataMap, setTaskDataMap] = useState({});
-  
+
   // Track selected notes: { noteIndex: { selected: bool, alternativeIndex: number|null } }
   const [selectedNotes, setSelectedNotes] = useState({});
   const notesInitialized = useRef(false);
@@ -28,7 +28,7 @@ const EstimatePreview = () => {
   const handleTaskDataChange = useCallback((taskData) => {
     setTaskDataMap((prev) => ({ ...prev, [taskData.taskId]: taskData }));
   }, []);
-  
+
   const handleNoteToggle = useCallback((noteIndex) => {
     setSelectedNotes((prev) => ({
       ...prev,
@@ -38,7 +38,7 @@ const EstimatePreview = () => {
       },
     }));
   }, []);
-  
+
   const handleAlternativeChange = useCallback((noteIndex, altIndex) => {
     setSelectedNotes((prev) => ({
       ...prev,
@@ -52,12 +52,12 @@ const EstimatePreview = () => {
   // Build selected notes for PDF
   const selectedNotesForPdf = useMemo(() => {
     if (!teamDefaults?.default_estimate_notes) return [];
-    
+
     return teamDefaults.default_estimate_notes
       .map((note, index) => {
         const selection = selectedNotes[index];
         if (!selection?.selected) return null;
-        
+
         // If note has alternatives, check which option is selected
         if (note.alternatives?.length > 0) {
           const selectedIndex = selection.alternativeIndex ?? 0;
@@ -67,13 +67,13 @@ const EstimatePreview = () => {
           }
           return note.alternatives[selectedIndex - 1];
         }
-        
+
         // Otherwise use the main text
         return note.text;
       })
       .filter(Boolean);
   }, [teamDefaults, selectedNotes]);
-  
+
   // Calculate grand total from task data and prepare all sections for PDF
   // Use currentEstimate.tasks to maintain original order
   const { grandTotal, allSections, lineItemsTotal } = useMemo(() => {
@@ -86,12 +86,18 @@ const EstimatePreview = () => {
       .map((task) => taskDataMap[task.est_task_id])
       .filter(Boolean); // Remove any undefined tasks
 
-    const tasksTotal = orderedTasks.reduce((sum, t) => sum + (t.totalPrice || 0), 0);
+    const tasksTotal = orderedTasks.reduce(
+      (sum, t) => sum + (t.totalPrice || 0),
+      0
+    );
     const sections = orderedTasks.flatMap((t) => t.sections || []);
-    
+
     // Calculate line items total
     let lineItemsTotal = 0;
-    if (currentEstimate.line_items && Array.isArray(currentEstimate.line_items)) {
+    if (
+      currentEstimate.line_items &&
+      Array.isArray(currentEstimate.line_items)
+    ) {
       currentEstimate.line_items.forEach((item) => {
         // Add parent item total if it has quantity and cost
         if (item.quantity && item.cost) {
@@ -101,7 +107,8 @@ const EstimatePreview = () => {
         if (item.subItems && Array.isArray(item.subItems)) {
           item.subItems.forEach((subItem) => {
             if (subItem.quantity && subItem.cost) {
-              lineItemsTotal += parseFloat(subItem.quantity) * parseFloat(subItem.cost);
+              lineItemsTotal +=
+                parseFloat(subItem.quantity) * parseFloat(subItem.cost);
             }
           });
         }
@@ -118,14 +125,14 @@ const EstimatePreview = () => {
       navigate(`/estimates/in-progress/${estimateId}`);
     }
   }, [currentEstimate, estimateId, navigate]);
-  
+
   // Fetch team defaults for estimate notes
   useEffect(() => {
     if (!teamDefaults) {
       dispatch(fetchTeamDefaults());
     }
   }, [dispatch, teamDefaults]);
-  
+
   // Initialize all notes as selected when teamDefaults loads
   useEffect(() => {
     if (teamDefaults?.default_estimate_notes && !notesInitialized.current) {
@@ -163,7 +170,7 @@ const EstimatePreview = () => {
         grandTotal={grandTotal}
         selectedNotes={selectedNotesForPdf}
       />
-      <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
+      <div className="bg-slate-800 border-b border-slate-700 sticky top-12 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -175,10 +182,9 @@ const EstimatePreview = () => {
                 <FiArrowLeft size={24} />
               </button>
               <div>
-                <h1 className="text-2xl font-bold">Estimate Preview</h1>
-                <p className="text-slate-400 text-sm">
+                <h2 className="text-2xl font-bold">
                   {currentEstimate.est_project_name}
-                </p>
+                </h2>
               </div>
             </div>
           </div>
@@ -188,42 +194,45 @@ const EstimatePreview = () => {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Estimate Notes Section */}
-        {teamDefaults?.default_estimate_notes && teamDefaults.default_estimate_notes.length > 0 && (
-          <div className="bg-slate-800 rounded-lg p-6 mb-8">
-            <h2 className="text-lg font-semibold mb-4">Estimate Notes</h2>
-            <div className="space-y-3">
-              {teamDefaults.default_estimate_notes.map((note, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedNotes[index]?.selected || false}
-                    onChange={() => handleNoteToggle(index)}
-                    className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
-                  />
-                  <div className="flex-1 text-left">
-                    {note.alternatives && note.alternatives.length > 0 ? (
-                      <select
-                        value={selectedNotes[index]?.alternativeIndex ?? 0}
-                        onChange={(e) => handleAlternativeChange(index, e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
-                        disabled={!selectedNotes[index]?.selected}
-                      >
-                        <option value={0}>{note.text}</option>
-                        {note.alternatives.map((alt, altIndex) => (
-                          <option key={altIndex} value={altIndex + 1}>
-                            {alt}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-slate-300">{note.text}</span>
-                    )}
+        {teamDefaults?.default_estimate_notes &&
+          teamDefaults.default_estimate_notes.length > 0 && (
+            <div className="bg-slate-800 rounded-lg p-6 mb-8">
+              <h2 className="text-lg font-semibold mb-4">Estimate Notes</h2>
+              <div className="space-y-3">
+                {teamDefaults.default_estimate_notes.map((note, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedNotes[index]?.selected || false}
+                      onChange={() => handleNoteToggle(index)}
+                      className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
+                    />
+                    <div className="flex-1 text-left">
+                      {note.alternatives && note.alternatives.length > 0 ? (
+                        <select
+                          value={selectedNotes[index]?.alternativeIndex ?? 0}
+                          onChange={(e) =>
+                            handleAlternativeChange(index, e.target.value)
+                          }
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
+                          disabled={!selectedNotes[index]?.selected}
+                        >
+                          <option value={0}>{note.text}</option>
+                          {note.alternatives.map((alt, altIndex) => (
+                            <option key={altIndex} value={altIndex + 1}>
+                              {alt}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-slate-300">{note.text}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Tasks and Sections */}
         {currentEstimate.tasks && currentEstimate.tasks.length > 0 ? (
@@ -242,57 +251,81 @@ const EstimatePreview = () => {
         )}
 
         {/* Line Items Section */}
-        {currentEstimate.line_items && currentEstimate.line_items.length > 0 && (
-          <div className="bg-slate-800 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4 text-teal-400">Additional Line Items</h2>
-            <div className="space-y-3">
-              {currentEstimate.line_items.map((item, index) => (
-                <div key={index} className="border-l-2 border-slate-600 pl-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-200">{item.title || "Untitled Item"}</div>
-                      {item.quantity && item.cost && (
-                        <div className="text-sm text-slate-400">
-                          {item.quantity} × {formatCurrency(item.cost)}
-                        </div>
-                      )}
+        {currentEstimate.line_items &&
+          currentEstimate.line_items.length > 0 && (
+            <div className="bg-slate-800 rounded-lg p-6 mb-8">
+              <h2 className="text-xl font-bold mb-4 text-teal-400">
+                Additional Line Items
+              </h2>
+              <div className="space-y-1">
+                {currentEstimate.line_items.map((item, index) => (
+                  <div key={index}>
+                    {/* Parent Line Item */}
+                    <div className="grid grid-cols-[1fr_80px_120px_120px] gap-4 items-center py-2 border-b border-slate-700">
+                      <div className="font-medium text-slate-200 text-left">
+                        {item.title || "Untitled Item"}
+                      </div>
+                      <div className="text-slate-300 text-right">
+                        {item.quantity || "-"}
+                      </div>
+                      <div className="text-slate-300 text-right">
+                        {item.cost ? formatCurrency(item.cost) : "-"}
+                      </div>
+                      <div className="text-lg font-semibold text-slate-200 text-right">
+                        {item.quantity && item.cost
+                          ? formatCurrency(
+                              parseFloat(item.quantity) * parseFloat(item.cost)
+                            )
+                          : "-"}
+                      </div>
                     </div>
-                    {item.quantity && item.cost && (
-                      <div className="text-lg font-semibold text-slate-200">
-                        {formatCurrency(parseFloat(item.quantity) * parseFloat(item.cost))}
+
+                    {/* Sub Items */}
+                    {item.subItems && item.subItems.length > 0 && (
+                      <div className="ml-8 border-l-2 border-slate-700 text-md">
+                        {item.subItems.map((subItem, subIndex) => (
+                          <div
+                            key={subIndex}
+                            className="grid grid-cols-[1fr_80px_120px_120px] gap-4 items-center py-2 pl-4 border-b border-slate-700/50"
+                          >
+                            <div className="text-slate-300 text-left">
+                              {subItem.title || "Untitled Sub-item"}
+                            </div>
+                            <div className="text-slate-400 text-right">
+                              {subItem.quantity || "-"}
+                            </div>
+                            <div className="text-slate-400 text-right">
+                              {subItem.cost
+                                ? formatCurrency(subItem.cost)
+                                : "-"}
+                            </div>
+                            <div className="font-medium text-slate-300 text-right">
+                              {subItem.quantity && subItem.cost
+                                ? formatCurrency(
+                                    parseFloat(subItem.quantity) *
+                                      parseFloat(subItem.cost)
+                                  )
+                                : "-"}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                  {item.subItems && item.subItems.length > 0 && (
-                    <div className="ml-4 mt-2 space-y-2 border-l-2 border-slate-700 pl-3">
-                      {item.subItems.map((subItem, subIndex) => (
-                        <div key={subIndex} className="flex justify-between items-center text-sm">
-                          <div className="flex-1">
-                            <div className="text-slate-300">{subItem.title || "Untitled Sub-item"}</div>
-                            {subItem.quantity && subItem.cost && (
-                              <div className="text-xs text-slate-500">
-                                {subItem.quantity} × {formatCurrency(subItem.cost)}
-                              </div>
-                            )}
-                          </div>
-                          {subItem.quantity && subItem.cost && (
-                            <div className="font-medium text-slate-300">
-                              {formatCurrency(parseFloat(subItem.quantity) * parseFloat(subItem.cost))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t-2 border-slate-600 grid grid-cols-[80px_1fr_120px_120px] gap-4 items-center">
+                <div></div>
+                <div className="text-lg font-semibold text-slate-300">
+                  Line Items Subtotal:
                 </div>
-              ))}
+                <div></div>
+                <div className="text-xl font-bold text-teal-400 text-right">
+                  {formatCurrency(lineItemsTotal)}
+                </div>
+              </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
-              <span className="text-lg font-semibold text-slate-300">Line Items Subtotal:</span>
-              <span className="text-xl font-bold text-teal-400">{formatCurrency(lineItemsTotal)}</span>
-            </div>
-          </div>
-        )}
+          )}
 
         {/* Grand Total */}
         <div className="bg-slate-800 rounded-lg p-6 sticky bottom-0 border-t-4 border-teal-500">
