@@ -98,6 +98,18 @@ const EstimatePreviewSection = ({
         (s) => s.cabinet_style_id === effectiveSection.cabinet_style_id
       )?.cabinet_style_name || "";
 
+    // Check if there are doors (door + panel)
+    const hasDoors = (calculations.faceCounts?.door || 0) + (calculations.faceCounts?.panel || 0) > 0;
+    
+    // Check if there are drawer fronts (drawer_front + false_front)
+    const hasDrawerFronts = (calculations.faceCounts?.drawer_front || 0) + (calculations.faceCounts?.false_front || 0) > 0;
+    
+    // Check if there are drawer boxes (drawerBoxCount + rollOutCount)
+    const hasDrawerBoxes = (calculations.drawerBoxCount || 0) + (calculations.rollOutCount || 0) > 0;
+    
+    // Check if there are boxes
+    const hasBoxes = (calculations.boxCount || 0) > 0;
+
     const faceFinishNames =
       effectiveSection.face_finish
         ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
@@ -110,9 +122,9 @@ const EstimatePreviewSection = ({
         .filter(Boolean)
         .join(", ") || "None";
 
-    const drawerBoxMaterialName =
-      drawerBoxMaterials?.find((m) => m.id === effectiveSection.drawer_box_mat)
-        ?.name || "";
+    const drawerBoxMaterialName = hasDrawerBoxes
+      ? `${drawerBoxMaterials?.find((m) => m.id === effectiveSection.drawer_box_mat)?.name || ""}`
+      : "None";
 
     // Format display name for PDF: task name + section number if multiple sections
     const displayName = section.section_name
@@ -167,17 +179,18 @@ const EstimatePreviewSection = ({
       // Description details for PDF
       cabinetStyle: cabinetStyleName,
       faceMaterial: context.selectedFaceMaterial?.material?.name || "",
-      boxMaterial: context.selectedBoxMaterial?.material?.name || "",
+      boxMaterial: hasBoxes ? context.selectedBoxMaterial?.material?.name || "" : "None",
       drawerBoxMaterial: drawerBoxMaterialName,
-      doorStyle: formatDoorDrawerStyle(effectiveSection.door_style),
-      drawerFrontStyle:
-        formatDoorDrawerStyle(effectiveSection.drawer_front_style),
+      doorStyle: hasDoors ? formatDoorDrawerStyle(effectiveSection.door_style) : "None",
+      drawerFrontStyle: hasDrawerFronts
+        ? formatDoorDrawerStyle(effectiveSection.drawer_front_style)
+        : "None",
       faceFinish: faceFinishNames,
       boxFinish: boxFinishNames,
       notes: combinedNotes,
     };
   }, [
-    calculations?.totalPrice,
+    calculations,
     effectiveSection,
     section,
     sectionNumber,

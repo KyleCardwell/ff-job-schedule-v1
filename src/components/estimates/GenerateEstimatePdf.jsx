@@ -211,8 +211,8 @@ const GenerateEstimatePdf = ({
         leftColumn.push(`Cabinets: ${section.boxMaterial}`);
         leftColumn.push(`Finish: ${section.boxFinish}`);
 
-        rightColumn.push(`Door Style: ${section.doorStyle}`);
-        rightColumn.push(`Drawer Front Style: ${section.drawerFrontStyle}`);
+        rightColumn.push(`Doors: ${section.doorStyle}`);
+        rightColumn.push(`Drawer Fronts: ${section.drawerFrontStyle}`);
         rightColumn.push(`Wood: ${section.faceMaterial}`);
         rightColumn.push(`Finish: ${section.faceFinish}`);
 
