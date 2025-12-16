@@ -32,6 +32,22 @@ export const createSectionContext = (section, estimate, catalogData) => {
   // Get effective defaults and merge with section (three-tier fallback)
   const effectiveDefaults = getEffectiveDefaults(section, estimate, teamDefaults);
   
+  // Check if face finish should be applied using three-tier fallback
+  const faceFinishNeeded = shouldApplyFinish(
+    section.face_mat,
+    estimate?.default_face_mat,
+    teamDefaults?.default_face_mat,
+    faceMaterials || []
+  );
+  
+  // Check if box finish should be applied using three-tier fallback
+  const boxFinishNeeded = shouldApplyFinish(
+    section.box_mat,
+    estimate?.default_box_mat,
+    teamDefaults?.default_box_mat,
+    boxMaterials || []
+  );
+  
   // Merge the effective defaults with the section, preserving cabinet items and other data
   const effectiveSection = {
     ...section,
@@ -44,8 +60,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
     slide_id: effectiveDefaults.slide_id,
     door_pull_id: effectiveDefaults.door_pull_id,
     drawer_pull_id: effectiveDefaults.drawer_pull_id,
-    face_finish: effectiveDefaults.face_finish,
-    box_finish: effectiveDefaults.box_finish,
+    // Only include finishes if the material needs them
+    face_finish: faceFinishNeeded ? effectiveDefaults.face_finish : [],
+    box_finish: boxFinishNeeded ? effectiveDefaults.box_finish : [],
     door_inside_molding: effectiveDefaults.door_inside_molding,
     door_outside_molding: effectiveDefaults.door_outside_molding,
     drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
