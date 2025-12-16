@@ -14,6 +14,8 @@ const GenerateEstimatePdf = ({
   allSections,
   grandTotal,
   selectedNotes = [],
+  teamData,
+  logoDataUrl,
   disabled,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -79,9 +81,35 @@ const GenerateEstimatePdf = ({
 
       //   const grandTotalText = "Total:   " + formatCurrency(grandTotal);
 
+      // Build contact info text
+      const contactInfo = teamData?.contact_info;
+      const contactLines = [];
+      if (contactInfo?.street) {
+        contactLines.push(contactInfo.street);
+      }
+      if (contactInfo?.city || contactInfo?.state || contactInfo?.zip) {
+        const cityStateZip = [
+          contactInfo.city,
+          contactInfo.state,
+          contactInfo.zip,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        if (cityStateZip) contactLines.push(cityStateZip);
+      }
+      if (contactInfo?.phone) {
+        contactLines.push(`Phone: ${contactInfo.phone}`);
+      }
+      if (contactInfo?.email) {
+        contactLines.push(`Email: ${contactInfo.email}`);
+      }
+      if (contactInfo?.fax) {
+        contactLines.push(`Fax: ${contactInfo.fax}`);
+      }
+      
       // Height variables to control header/footer and page margins
-      const HEADER_HEIGHT = 179.5; // Fixed height for header table
-      const FOOTER_HEIGHT = 80; // Fixed height for footer table
+      const HEADER_HEIGHT =  209.75; // Increased if we have contact info
+      const FOOTER_HEIGHT = 65; // Fixed height for footer table
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
 
@@ -454,20 +482,47 @@ const GenerateEstimatePdf = ({
                     {
                       columns: [
                         {
-                          // Logo placeholder - defined space
-                          canvas: [
-                            {
-                              type: "rect",
-                              x: 0,
-                              y: 0,
-                              w: 100,
-                              h: 80,
-                              lineWidth: 2,
-                              lineColor: "#cccccc",
-                              dash: { length: 5 },
-                            },
+                          // Left column: Logo and contact info stacked
+                          stack: [
+                            logoDataUrl && logoDataUrl.startsWith('data:image/')
+                              ? {
+                                  // Actual logo - adjust fit dimensions to control size
+                                  image: logoDataUrl,
+                                  fit: [240, 180], // [maxWidth, maxHeight] - increase these for larger logo
+                                  alignment: "center",
+                                }
+                              : {
+                                  // Placeholder (shown if no logo or invalid format)
+                                  canvas: [
+                                    {
+                                      type: "rect",
+                                      x: 0,
+                                      y: 0,
+                                      w: 100,
+                                      h: 80,
+                                      lineWidth: 2,
+                                      lineColor: "#cccccc",
+                                      dash: { length: 5 },
+                                    },
+                                  ],
+                                  width: 100,
+                                },
+                            // Company Contact Info below logo
+                            ...(contactLines.length > 0
+                              ? [
+                                  {
+                                    stack: contactLines.map((line) => ({
+                                      text: line,
+                                      fontSize: 12,
+                                      color: "#414141",
+                                      alignment: "center",
+                                    })),
+                                    margin: [0, 10, 0, 0],
+                                  },
+                                ]
+                              : []),
                           ],
-                          width: 100,
+                          width: 240,
                         },
                         {
                           stack: [
@@ -688,14 +743,16 @@ const GenerateEstimatePdf = ({
                           alignment: "center",
                           width: "auto",
                           fontSize: 9,
+                          margin: [0, 2, 0, 0]
                         },
                         {
                           text: `Pricing guaranteed until ${formatDate(
                             guaranteeDate
                           )}`,
+                          bold: true,
                           alignment: "right",
                           width: "*",
-                          fontSize: 9,
+                          fontSize: 11,
                         },
                       ],
                       margin: [0, 0, 0, 0],
@@ -762,6 +819,8 @@ GenerateEstimatePdf.propTypes = {
   allSections: PropTypes.array.isRequired,
   grandTotal: PropTypes.number.isRequired,
   selectedNotes: PropTypes.arrayOf(PropTypes.string),
+  teamData: PropTypes.object,
+  logoDataUrl: PropTypes.string,
   disabled: PropTypes.bool,
 };
 

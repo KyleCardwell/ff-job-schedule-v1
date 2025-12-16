@@ -6,8 +6,11 @@ import {
   fetchUserRoles,
   updateTeamMembers,
 } from "../../redux/actions/teamMembers";
+import { fetchTeamData } from "../../redux/actions/teams";
 import ErrorModal from "../common/ErrorModal.jsx";
 
+import TeamContactInfo from "./TeamContactInfo.jsx";
+import TeamLogo from "./TeamLogo.jsx";
 import TeamMemberRow from "./TeamMemberRow.jsx";
 
 const TeamSettings = forwardRef((props, ref) => {
@@ -17,6 +20,7 @@ const TeamSettings = forwardRef((props, ref) => {
   const { teamMembers, userRoles, loading, error } = useSelector(
     (state) => state.teamMembers
   );
+  const { teamData } = useSelector((state) => state.teams);
   const [localTeamMembers, setLocalTeamMembers] = useState([]);
   const [originalTeamMembers, setOriginalTeamMembers] = useState([]); // Store original state
   const [adminError, setAdminError] = useState(null);
@@ -99,9 +103,10 @@ const TeamSettings = forwardRef((props, ref) => {
     fetchUserRoles(dispatch);
   }, [dispatch]);
 
-  // Load team members when we have a teamId
+  // Load team data and team members when we have a teamId
   useEffect(() => {
     if (teamId) {
+      fetchTeamData(dispatch, teamId);
       fetchTeamMembers(dispatch, teamId);
     }
   }, [dispatch, teamId]);
@@ -144,9 +149,20 @@ const TeamSettings = forwardRef((props, ref) => {
   return (
     <div className="mt-4 flex justify-center h-full pb-10">
       <div className={`flex-1 flex flex-col ${maxWidthClass}`}>
-        <h2 className="text-xl font-bold mb-4 text-slate-200">
-          Manage Team Members
+        <h2 className="text-xl font-bold mb-6 text-slate-200">
+          Team Settings
         </h2>
+
+        {/* Company Info Section */}
+        <div className="space-y-6 mb-8">
+          <TeamContactInfo teamData={teamData} />
+          <TeamLogo teamData={teamData} />
+        </div>
+
+        {/* Team Members Section */}
+        <h3 className="text-lg font-semibold mb-4 text-slate-200">
+          Manage Team Members
+        </h3>
 
         <div className="bg-slate-700 p-4 rounded-lg shadow relative">
           {/* Fade out effect - moved outside the scroll container */}

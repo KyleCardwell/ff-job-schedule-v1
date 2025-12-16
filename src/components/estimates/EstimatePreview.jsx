@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
+import { fetchTeamData, getTeamLogoSignedUrl } from "../../redux/actions/teams";
 
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
 import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
@@ -16,14 +17,127 @@ const EstimatePreview = () => {
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
+  const teamId = useSelector((state) => state.auth.teamId);
   const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
+  const { teamData } = useSelector((state) => state.teams);
 
   // Track all task data - children will report their complete data up
   const [taskDataMap, setTaskDataMap] = useState({});
+  const [logoDataUrl, setLogoDataUrl] = useState(null);
 
   // Track selected notes: { noteId: { selected: bool, selectedOptionId: string|null } }
   const [selectedNotes, setSelectedNotes] = useState({});
   const notesInitialized = useRef(false);
+
+  // Fetch team data and logo for PDF
+  useEffect(() => {
+    if (teamId) {
+      fetchTeamData(dispatch, teamId);
+    }
+  }, [dispatch, teamId]);
+
+  // Convert logo to data URL for PDF embedding
+  useEffect(() => {
+    const loadLogoForPdf = async () => {
+      if (teamData?.logo_path && teamId) {
+        try {
+          // Get signed URL
+          const signedUrl = await getTeamLogoSignedUrl(teamId, teamData.logo_path);
+          
+          if (signedUrl) {
+            // Fetch the image and convert to data URL
+            const response = await fetch(signedUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch logo: ${response.status}`);
+            }
+            
+            const blob = await response.blob();
+            console.log("Logo blob type:", blob.type);
+            
+            // Verify it's an image
+            if (!blob.type.startsWith('image/')) {
+              console.error("Invalid blob type:", blob.type);
+              return;
+            }
+            
+            // If SVG, convert to PNG for pdfMake compatibility
+            if (blob.type === 'image/svg+xml') {
+              const svgText = await blob.text();
+              const img = new Image();
+              const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+              const url = URL.createObjectURL(svgBlob);
+              
+              img.onload = () => {
+                // Get original dimensions
+                const originalWidth = img.width || img.naturalWidth;
+                const originalHeight = img.height || img.naturalHeight;
+                
+                // Target dimensions for PDF (100x80 in PDF, but use higher res for quality)
+                const targetMaxWidth = 1200;
+                const targetMaxHeight = 960;
+                
+                // Calculate aspect ratio
+                const aspectRatio = originalWidth / originalHeight;
+                
+                // Calculate scaled dimensions maintaining aspect ratio
+                let canvasWidth, canvasHeight;
+                if (aspectRatio > targetMaxWidth / targetMaxHeight) {
+                  // Width is the limiting factor
+                  canvasWidth = targetMaxWidth;
+                  canvasHeight = targetMaxWidth / aspectRatio;
+                } else {
+                  // Height is the limiting factor
+                  canvasHeight = targetMaxHeight;
+                  canvasWidth = targetMaxHeight * aspectRatio;
+                }
+                
+                // Create canvas with calculated dimensions
+                const canvas = document.createElement('canvas');
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw SVG maintaining aspect ratio
+                ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+                
+                // Convert to PNG data URL
+                const pngDataUrl = canvas.toDataURL('image/png');
+                console.log(`SVG converted to PNG (${Math.round(canvasWidth)}x${Math.round(canvasHeight)}), length:`, pngDataUrl.length);
+                setLogoDataUrl(pngDataUrl);
+                URL.revokeObjectURL(url);
+              };
+              
+              img.onerror = () => {
+                console.error("Failed to load SVG image");
+                URL.revokeObjectURL(url);
+                setLogoDataUrl(null);
+              };
+              
+              img.src = url;
+            } else {
+              // For PNG/JPEG, use directly
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                console.log("Logo data URL created, length:", reader.result?.length);
+                setLogoDataUrl(reader.result);
+              };
+              reader.onerror = () => {
+                console.error("FileReader error");
+              };
+              reader.readAsDataURL(blob);
+            }
+          }
+        } catch (error) {
+          console.error("Error loading logo for PDF:", error);
+          setLogoDataUrl(null); // Clear on error
+        }
+      } else {
+        setLogoDataUrl(null); // Clear if no logo
+      }
+    };
+
+    loadLogoForPdf();
+  }, [teamData, teamId]);
 
   const handleTaskDataChange = useCallback((taskData) => {
     setTaskDataMap((prev) => ({ ...prev, [taskData.taskId]: taskData }));
@@ -167,6 +281,9 @@ const EstimatePreview = () => {
         allSections={allSections}
         grandTotal={grandTotal}
         selectedNotes={selectedNotesForPdf}
+        teamData={teamData}
+        logoDataUrl={logoDataUrl}
+        disabled={!currentEstimate || allSections.length === 0}
       />
       <div className="bg-slate-800 border-b border-slate-700 sticky top-12 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4">
