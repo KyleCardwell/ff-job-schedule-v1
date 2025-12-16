@@ -226,7 +226,7 @@ const GenerateEstimatePdf = ({
               { text: leftColumn[i] || "", width: "*", fontSize: 9 },
               { text: rightColumn[i] || "", width: "*", fontSize: 9 },
             ],
-            margin: [5, 0, 0, 0], // Left indent
+            margin: [5, 0, 0, 4], // Left indent
           });
         }
 
@@ -393,11 +393,11 @@ const GenerateEstimatePdf = ({
             },
             paddingBottom: (i, node) => {
               if (i === 0) {
-                return 0;
+                return 4;
               }
               // Minimal padding for note rows and separator rows
               if (i > 0 && (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)) {
-                return 0;
+                return 4;
               }
               // Very minimal for blank separator rows
               if (i > 0 && node.table.body[i][1]?.text === " ") {

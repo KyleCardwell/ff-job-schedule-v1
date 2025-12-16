@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
+import { formatDoorDrawerStyle } from "../../utils/helpers";
 
 const EstimatePreviewSection = ({
   section,
@@ -121,12 +122,10 @@ const EstimatePreviewSection = ({
       : taskName;
 
     // Determine reeded note based on door and drawer reeded panel settings
-    const hasReededDoors =
-      effectiveSection.door_reeded_panel;
-    const hasReededDrawers =
-      effectiveSection.drawer_reeded_panel;
-    
-    let reededPanels = ""
+    const hasReededDoors = effectiveSection.door_reeded_panel;
+    const hasReededDrawers = effectiveSection.drawer_reeded_panel;
+
+    let reededPanels = "";
     if (hasReededDoors && hasReededDrawers) {
       reededPanels = "Reeded panels on doors and drawer fronts.";
     } else if (hasReededDoors) {
@@ -170,9 +169,9 @@ const EstimatePreviewSection = ({
       faceMaterial: context.selectedFaceMaterial?.material?.name || "",
       boxMaterial: context.selectedBoxMaterial?.material?.name || "",
       drawerBoxMaterial: drawerBoxMaterialName,
-      doorStyle: effectiveSection.door_style?.replace(/_/g, " ") || "",
+      doorStyle: formatDoorDrawerStyle(effectiveSection.door_style),
       drawerFrontStyle:
-        effectiveSection.drawer_front_style?.replace(/_/g, " ") || "",
+        formatDoorDrawerStyle(effectiveSection.drawer_front_style),
       faceFinish: faceFinishNames,
       boxFinish: boxFinishNames,
       notes: combinedNotes,
@@ -256,13 +255,13 @@ const EstimatePreviewSection = ({
         <div>
           <p className="text-slate-400">Door Style:</p>
           <p className="text-slate-200 capitalize">
-            {effectiveSection.door_style?.replace(/_/g, " ") || "—"}
+            {formatDoorDrawerStyle(effectiveSection.door_style)}
           </p>
         </div>
         <div>
           <p className="text-slate-400">Drawer Front Style:</p>
           <p className="text-slate-200 capitalize">
-            {effectiveSection.drawer_front_style?.replace(/_/g, " ") || "—"}
+            {formatDoorDrawerStyle(effectiveSection.drawer_front_style)}
           </p>
         </div>
       </div>
