@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 
 import EstimatePreviewSection from "./EstimatePreviewSection.jsx";
 
-const EstimatePreviewTask = ({ task, estimate, onTaskDataChange }) => {
+const EstimatePreviewTask = ({ task, estimate, onTaskDataChange, sectionRefs, selectedSections }) => {
   const [sectionDataMap, setSectionDataMap] = useState({});
 
   const handleSectionData = useCallback((sectionData) => {
@@ -14,10 +14,18 @@ const EstimatePreviewTask = ({ task, estimate, onTaskDataChange }) => {
       const sections = Object.values(updated);
       const taskTotal = sections.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
       
+      // Add metadata for scroll offset logic
+      const hasMultipleSections = task.sections.length > 1;
+      const sectionsWithMetadata = sections.map((section, index) => ({
+        ...section,
+        hasMultipleSections,
+        isFirstSection: index === 0,
+      }));
+      
       const taskData = {
         taskId: task.est_task_id,
         taskName: task.est_task_name,
-        sections,
+        sections: sectionsWithMetadata,
         totalPrice: taskTotal,
       };
       
@@ -26,7 +34,7 @@ const EstimatePreviewTask = ({ task, estimate, onTaskDataChange }) => {
       }
       return updated;
     });
-  }, [task.est_task_id, task.est_task_name, onTaskDataChange]);
+  }, [task.est_task_id, task.est_task_name, task.sections.length, onTaskDataChange]);
 
   return (
     <div className="mb-8">
@@ -46,6 +54,14 @@ const EstimatePreviewTask = ({ task, estimate, onTaskDataChange }) => {
               taskName={task.est_task_name}
               estimate={estimate}
               onTotalCalculated={handleSectionData}
+              hasMultipleSections={task.sections.length > 1}
+              isFirstSection={index === 0}
+              isSelected={selectedSections?.[section.est_section_id] || false}
+              sectionRef={(el) => {
+                if (sectionRefs?.current && el) {
+                  sectionRefs.current[section.est_section_id] = el;
+                }
+              }}
             />
           ))
         ) : (
@@ -60,6 +76,8 @@ EstimatePreviewTask.propTypes = {
   task: PropTypes.object.isRequired,
   estimate: PropTypes.object.isRequired,
   onTaskDataChange: PropTypes.func,
+  sectionRefs: PropTypes.object,
+  selectedSections: PropTypes.object,
 };
 
 export default EstimatePreviewTask;

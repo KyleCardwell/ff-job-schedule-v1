@@ -12,6 +12,10 @@ const EstimatePreviewSection = ({
   taskName,
   estimate,
   onTotalCalculated,
+  hasMultipleSections,
+  isFirstSection,
+  isSelected,
+  sectionRef,
 }) => {
   // Get all necessary context data from Redux
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
@@ -168,9 +172,20 @@ const EstimatePreviewSection = ({
       .filter(Boolean)
       .join(" ");
 
+    // Determine section name display
+    let sectionNameDisplay = "";
+    if (hasMultipleSections) {
+      if (section.section_name) {
+        sectionNameDisplay = ` - ${section.section_name}`;
+      } else if (sectionNumber) {
+        sectionNameDisplay = ` - Section ${sectionNumber}`;
+      }
+    }
+
     return {
       sectionId: section.est_section_id,
       sectionName: section.section_name || `Section ${sectionNumber || 1}`,
+      sectionNameDisplay,
       taskName,
       displayName, // For PDF display
       quantity,
@@ -199,6 +214,7 @@ const EstimatePreviewSection = ({
     finishTypes,
     drawerBoxMaterials,
     context,
+    hasMultipleSections,
   ]);
 
   // Notify parent when section data changes (only if value actually changed)
@@ -229,17 +245,31 @@ const EstimatePreviewSection = ({
   };
 
   return (
-    <div className="bg-slate-700 rounded-lg p-6 mb-4">
+    <div 
+      ref={sectionRef}
+      data-section-id={section.est_section_id}
+      className={`p-6 mb-4 ${
+        hasMultipleSections && !isFirstSection ? "border-t-2 border-teal-500 pt-6" : ""
+      } ${
+        !isSelected ? "bg-slate-950 rounded-lg opacity-60" : ""
+      }`}
+    >
       {/* Section Header */}
-      <div className="border-b border-slate-600 pb-4 mb-4">
-        <h3 className="text-lg font-semibold text-slate-200">
-          {taskName}
-          {sectionData.sectionName}
-        </h3>
-        {sectionData.notes && (
-          <p className="text-sm text-slate-400 mt-2">{sectionData.notes}</p>
-        )}
-      </div>
+      {hasMultipleSections && (
+        <div className="border-b border-slate-600 pb-4 mb-4">
+          <h3 className="text-lg font-semibold text-slate-200">
+            {taskName}{sectionData.sectionNameDisplay}
+          </h3>
+          {sectionData.notes && (
+            <p className="text-sm text-slate-400 mt-2">{sectionData.notes}</p>
+          )}
+        </div>
+      )}
+      {!hasMultipleSections && sectionData.notes && (
+        <div className="border-b border-slate-600 pb-4 mb-4">
+          <p className="text-sm text-slate-400">{sectionData.notes}</p>
+        </div>
+      )}
 
       {/* Section Details */}
       <div className="grid grid-cols-4 gap-4 mb-4 text-sm">
@@ -373,10 +403,14 @@ const EstimatePreviewSection = ({
 
 EstimatePreviewSection.propTypes = {
   section: PropTypes.object.isRequired,
-  sectionNumber: PropTypes.number.isRequired,
+  sectionNumber: PropTypes.number,
   taskName: PropTypes.string.isRequired,
   estimate: PropTypes.object.isRequired,
   onTotalCalculated: PropTypes.func,
+  hasMultipleSections: PropTypes.bool,
+  isFirstSection: PropTypes.bool,
+  isSelected: PropTypes.bool,
+  sectionRef: PropTypes.func,
 };
 
 export default EstimatePreviewSection;

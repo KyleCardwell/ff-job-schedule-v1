@@ -16,12 +16,20 @@ const GenerateEstimatePdf = ({
   selectedNotes = [],
   teamData,
   logoDataUrl,
+  selectedLineItems = {},
   disabled,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generatePdf = async () => {
-    if (!estimate || !allSections || allSections.length === 0 || isGenerating) {
+    if (!estimate || isGenerating) {
+      return;
+    }
+
+    // Check if there's anything to generate (sections or line items)
+    const hasSections = allSections && allSections.length > 0;
+    const hasLineItems = estimate.line_items && estimate.line_items.length > 0;
+    if (!hasSections && !hasLineItems) {
       return;
     }
 
@@ -283,9 +291,13 @@ const GenerateEstimatePdf = ({
         // ]);
       });
 
-      // Add line items to PDF
+      // Add line items to PDF (only selected ones)
       if (estimate.line_items && Array.isArray(estimate.line_items)) {
-        estimate.line_items.forEach((item) => {
+        estimate.line_items.forEach((item, index) => {
+          // Skip if not selected
+          if (!selectedLineItems[index]) {
+            return;
+          }
           const itemTotal =
             item.quantity && item.cost
               ? parseFloat(item.quantity) * parseFloat(item.cost)
@@ -802,9 +814,7 @@ const GenerateEstimatePdf = ({
     <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
       <button
         onClick={generatePdf}
-        disabled={
-          disabled || isGenerating || !allSections || allSections.length === 0
-        }
+        disabled={disabled || isGenerating}
         className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
       >
         <FiFileText className="w-4 h-4" />
@@ -821,6 +831,7 @@ GenerateEstimatePdf.propTypes = {
   selectedNotes: PropTypes.arrayOf(PropTypes.string),
   teamData: PropTypes.object,
   logoDataUrl: PropTypes.string,
+  selectedLineItems: PropTypes.object,
   disabled: PropTypes.bool,
 };
 
