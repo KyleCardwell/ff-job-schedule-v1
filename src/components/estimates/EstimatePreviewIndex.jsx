@@ -18,6 +18,7 @@ const EstimatePreviewIndex = ({
   selectedLineItems = {},
   onToggleLineItem,
   onToggleAllLineItems,
+  onScrollToLineItems,
   className = "",
 }) => {
   const [activeItemId, setActiveItemId] = useState(null);
@@ -201,23 +202,55 @@ const EstimatePreviewIndex = ({
               Line Items
             </h4>
             <div className="space-y-1">
-              {lineItems.map((item, index) => (
-                <div key={index} className="flex items-center gap-2 px-2 py-1.5">
-                  <input
-                    type="checkbox"
-                    checked={selectedLineItems[index] || false}
-                    onChange={() => onToggleLineItem && onToggleLineItem(index)}
-                    className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
-                  />
-                  <span
-                    className="text-sm text-slate-300 cursor-pointer hover:text-teal-400 transition-colors truncate"
-                    onClick={() => onToggleLineItem && onToggleLineItem(index)}
-                    title={item.title || `Line Item ${index + 1}`}
-                  >
-                    {item.title || `Line Item ${index + 1}`}
-                  </span>
-                </div>
-              ))}
+              {lineItems.map((item, index) => {
+                const parentKey = String(index);
+                return (
+                  <div key={index}>
+                    {/* Parent Line Item */}
+                    <div className="flex items-center gap-2 px-2 py-1.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedLineItems[parentKey] || false}
+                        onChange={() => onToggleLineItem && onToggleLineItem(parentKey)}
+                        className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
+                      />
+                      <button
+                        onClick={() => onScrollToLineItems && onScrollToLineItems()}
+                        className="flex-1 text-left text-sm text-slate-300 hover:text-teal-400 transition-colors truncate"
+                        title={item.title || `Line Item ${index + 1}`}
+                      >
+                        {item.title || `Line Item ${index + 1}`}
+                      </button>
+                    </div>
+                    
+                    {/* Child Line Items */}
+                    {item.subItems && item.subItems.length > 0 && (
+                      <div className="ml-6 space-y-1">
+                        {item.subItems.map((subItem, subIndex) => {
+                          const childKey = `${index}-${subIndex}`;
+                          return (
+                            <div key={subIndex} className="flex items-center gap-2 px-2 py-1">
+                              <input
+                                type="checkbox"
+                                checked={selectedLineItems[childKey] || false}
+                                onChange={() => onToggleLineItem && onToggleLineItem(childKey)}
+                                className="w-3.5 h-3.5 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
+                              />
+                              <button
+                                onClick={() => onScrollToLineItems && onScrollToLineItems()}
+                                className="flex-1 text-left text-xs text-slate-400 hover:text-teal-400 transition-colors truncate"
+                                title={subItem.title || `Sub-item ${subIndex + 1}`}
+                              >
+                                {subItem.title || `Sub-item ${subIndex + 1}`}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -239,6 +272,7 @@ EstimatePreviewIndex.propTypes = {
   selectedLineItems: PropTypes.object,
   onToggleLineItem: PropTypes.func,
   onToggleAllLineItems: PropTypes.func,
+  onScrollToLineItems: PropTypes.func,
   className: PropTypes.string,
 };
 

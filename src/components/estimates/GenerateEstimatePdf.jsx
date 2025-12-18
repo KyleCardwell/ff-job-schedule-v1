@@ -121,6 +121,10 @@ const GenerateEstimatePdf = ({
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
 
+      const GROUP_HEADER_FONT_SIZE = 10;
+      const GROUP_DATA_FONT_SIZE = 9;
+      const QUANTITY_FONT_SIZE = 10;
+
       // Calculate column positions for canvas lines
       // Page margins: [30, PAGE_TOP_MARGIN, 30, PAGE_BOTTOM_MARGIN]
       // Letter page width: 612 points
@@ -156,7 +160,7 @@ const GenerateEstimatePdf = ({
           },
           {
             text: "Cabinetry is to have the following description unless otherwise noted:",
-            fontSize: 10,
+            fontSize: GROUP_HEADER_FONT_SIZE,
             bold: true,
           },
           {
@@ -180,7 +184,7 @@ const GenerateEstimatePdf = ({
             },
             {
               text: "-" + noteText,
-              fontSize: 10,
+              fontSize: GROUP_DATA_FONT_SIZE,
               italics: true,
               color: "#333333",
               margin: [5, 0, 0, 0],
@@ -231,8 +235,8 @@ const GenerateEstimatePdf = ({
         for (let i = 0; i < maxDetailRows; i++) {
           detailsStack.push({
             columns: [
-              { text: leftColumn[i] || "", width: "*", fontSize: 9 },
-              { text: rightColumn[i] || "", width: "*", fontSize: 9 },
+              { text: leftColumn[i] || "", width: "*", fontSize: GROUP_DATA_FONT_SIZE },
+              { text: rightColumn[i] || "", width: "*", fontSize: GROUP_DATA_FONT_SIZE },
             ],
             margin: [5, 0, 0, 4], // Left indent
           });
@@ -243,7 +247,7 @@ const GenerateEstimatePdf = ({
           detailsStack.push({
             text: `Notes: ${section.notes}`,
             italics: true,
-            fontSize: 9,
+            fontSize: GROUP_DATA_FONT_SIZE,
             margin: [5, 0, 0, 0], // Left indent with small top margin
           });
         }
@@ -260,7 +264,7 @@ const GenerateEstimatePdf = ({
               {
                 text: section.displayName || section.taskName,
                 bold: true,
-                fontSize: 10,
+                fontSize: GROUP_HEADER_FONT_SIZE,
                 margin: [0, 0, 0, 2], // Reduced bottom margin
               },
               ...detailsStack,
@@ -294,48 +298,58 @@ const GenerateEstimatePdf = ({
       // Add line items to PDF (only selected ones)
       if (estimate.line_items && Array.isArray(estimate.line_items)) {
         estimate.line_items.forEach((item, index) => {
-          // Skip if not selected
-          if (!selectedLineItems[index]) {
-            return;
+          const parentKey = String(index);
+          
+          // Add parent line item if selected
+          if (selectedLineItems[parentKey]) {
+            const itemTotal =
+              item.quantity && item.cost
+                ? parseFloat(item.quantity) * parseFloat(item.cost)
+                : 0;
+
+            allRows.push([
+              {
+                text: item.quantity ? item.quantity.toString() : "",
+                alignment: "center",
+                rowSpan: 1,
+                fontSize: QUANTITY_FONT_SIZE,
+              },
+              {
+                text: item.title || "Line Item",
+                bold: true,
+                fontSize: GROUP_HEADER_FONT_SIZE,
+              },
+              {
+                text: item.cost ? formatCurrency(parseFloat(item.cost)) : "",
+                alignment: "right",
+                colSpan: 2,
+                fontSize: QUANTITY_FONT_SIZE,
+              },
+              {},
+              {
+                text: item.quantity && item.cost ? formatCurrency(itemTotal) : "",
+                alignment: "right",
+                colSpan: 2,
+                fontSize: QUANTITY_FONT_SIZE,
+              },
+              {},
+            ]);
           }
-          const itemTotal =
-            item.quantity && item.cost
-              ? parseFloat(item.quantity) * parseFloat(item.cost)
-              : 0;
 
-          // Add parent line item row
-          allRows.push([
-            {
-              text: item.quantity ? item.quantity.toString() : "",
-              alignment: "center",
-              rowSpan: 1,
-            },
-            {
-              text: item.title || "Line Item",
-              bold: true,
-              fontSize: 10,
-            },
-            {
-              text: item.cost ? formatCurrency(parseFloat(item.cost)) : "",
-              alignment: "right",
-              colSpan: 2,
-            },
-            {},
-            {
-              text: item.quantity && item.cost ? formatCurrency(itemTotal) : "",
-              alignment: "right",
-              colSpan: 2,
-            },
-            {},
-          ]);
-
-          // Add sub-items as separate rows
+          // Add sub-items as separate rows (only if selected)
           if (
             item.subItems &&
             Array.isArray(item.subItems) &&
             item.subItems.length > 0
           ) {
-            item.subItems.forEach((subItem) => {
+            item.subItems.forEach((subItem, subIndex) => {
+              const childKey = `${index}-${subIndex}`;
+              
+              // Skip if not selected
+              if (!selectedLineItems[childKey]) {
+                return;
+              }
+              
               const subTotal =
                 subItem.quantity && subItem.cost
                   ? parseFloat(subItem.quantity) * parseFloat(subItem.cost)
@@ -345,21 +359,21 @@ const GenerateEstimatePdf = ({
                 {
                   text: subItem.quantity ? subItem.quantity.toString() : "",
                   alignment: "center",
-                  fontSize: 10,
+                  fontSize: QUANTITY_FONT_SIZE,
                   // color: "#666666",
                 },
                 {
                   text: subItem.title || "Sub-item",
-                  fontSize: 10,
+                  fontSize: GROUP_DATA_FONT_SIZE,
                   // color: "#666666",
-                  margin: [10, 0, 0, 0], // Indent sub-items
+                  margin: [5, 0, 0, 0], // Indent sub-items
                 },
                 {
                   text: subItem.cost
                     ? formatCurrency(parseFloat(subItem.cost))
                     : "",
                   alignment: "right",
-                  fontSize: 10,
+                  fontSize: QUANTITY_FONT_SIZE,
                   // color: "#666666",
                   colSpan: 2,
                 },
@@ -370,7 +384,7 @@ const GenerateEstimatePdf = ({
                       ? formatCurrency(subTotal)
                       : "",
                   alignment: "right",
-                  fontSize: 10,
+                  fontSize: QUANTITY_FONT_SIZE,
                   // color: "#666666",
                   colSpan: 2,
                 },

@@ -50,6 +50,7 @@ const EstimatePreview = () => {
   // Refs for scrolling functionality
   const scrollContainerRef = useRef(null);
   const sectionRefs = useRef({});
+  const lineItemsSectionRef = useRef(null);
 
   // Fetch team data and logo for PDF
   useEffect(() => {
@@ -213,11 +214,22 @@ const EstimatePreview = () => {
     });
   }, []);
 
-  const handleToggleLineItem = useCallback((lineItemIndex) => {
+  const handleToggleLineItem = useCallback((lineItemKey) => {
     setSelectedLineItems((prev) => ({
       ...prev,
-      [lineItemIndex]: !prev[lineItemIndex],
+      [lineItemKey]: !prev[lineItemKey],
     }));
+  }, []);
+
+  const scrollToLineItems = useCallback(() => {
+    if (lineItemsSectionRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const elementTop = lineItemsSectionRef.current.offsetTop;
+      container.scrollTo({
+        top: elementTop - 150,
+        behavior: "smooth",
+      });
+    }
   }, []);
 
   const handleToggleAllLineItems = useCallback((selectAll) => {
@@ -371,21 +383,21 @@ const EstimatePreview = () => {
       Array.isArray(currentEstimate.line_items)
     ) {
       currentEstimate.line_items.forEach((item, index) => {
-        // Only include if selected
-        if (selectedLineItems[index]) {
-          // Add parent item total if it has quantity and cost
-          if (item.quantity && item.cost) {
-            lineItemsTotal += parseFloat(item.quantity) * parseFloat(item.cost);
-          }
-          // Add sub-items totals
-          if (item.subItems && Array.isArray(item.subItems)) {
-            item.subItems.forEach((subItem) => {
-              if (subItem.quantity && subItem.cost) {
-                lineItemsTotal +=
-                  parseFloat(subItem.quantity) * parseFloat(subItem.cost);
-              }
-            });
-          }
+        // Add parent item total if selected and has quantity and cost
+        const parentKey = String(index);
+        if (selectedLineItems[parentKey] && item.quantity && item.cost) {
+          lineItemsTotal += parseFloat(item.quantity) * parseFloat(item.cost);
+        }
+        
+        // Add sub-items totals if selected
+        if (item.subItems && Array.isArray(item.subItems)) {
+          item.subItems.forEach((subItem, subIndex) => {
+            const childKey = `${index}-${subIndex}`;
+            if (selectedLineItems[childKey] && subItem.quantity && subItem.cost) {
+              lineItemsTotal +=
+                parseFloat(subItem.quantity) * parseFloat(subItem.cost);
+            }
+          });
         }
       });
     }
@@ -469,10 +481,23 @@ const EstimatePreview = () => {
         const newSelection = { ...prev };
         let hasChanges = false;
 
-        currentEstimate.line_items.forEach((_, index) => {
-          if (!(index in newSelection)) {
-            newSelection[index] = true;
+        currentEstimate.line_items.forEach((item, index) => {
+          // Initialize parent item
+          const parentKey = String(index);
+          if (!(parentKey in newSelection)) {
+            newSelection[parentKey] = true;
             hasChanges = true;
+          }
+          
+          // Initialize child items
+          if (item.subItems && Array.isArray(item.subItems)) {
+            item.subItems.forEach((_, subIndex) => {
+              const childKey = `${index}-${subIndex}`;
+              if (!(childKey in newSelection)) {
+                newSelection[childKey] = true;
+                hasChanges = true;
+              }
+            });
           }
         });
 
@@ -553,6 +578,7 @@ const EstimatePreview = () => {
           selectedLineItems={selectedLineItems}
           onToggleLineItem={handleToggleLineItem}
           onToggleAllLineItems={handleToggleAllLineItems}
+          onScrollToLineItems={scrollToLineItems}
         />
 
         {/* Right Content Panel */}
@@ -658,7 +684,7 @@ const EstimatePreview = () => {
           {/* Line Items Section */}
           {currentEstimate.line_items &&
             currentEstimate.line_items.length > 0 && (
-              <div className="bg-slate-800 rounded-lg p-6 mb-8">
+              <div ref={lineItemsSectionRef} className="bg-slate-800 rounded-lg p-6 mb-8">
                 <h2 className="text-xl font-bold mb-4 text-teal-400">
                   Additional Line Items
                 </h2>
