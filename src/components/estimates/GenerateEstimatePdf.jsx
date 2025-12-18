@@ -125,6 +125,9 @@ const GenerateEstimatePdf = ({
       const GROUP_DATA_FONT_SIZE = 9;
       const QUANTITY_FONT_SIZE = 10;
 
+
+      const GROUP_DATA_INDENT = 5;
+
       // Calculate column positions for canvas lines
       // Page margins: [30, PAGE_TOP_MARGIN, 30, PAGE_BOTTOM_MARGIN]
       // Letter page width: 612 points
@@ -186,8 +189,7 @@ const GenerateEstimatePdf = ({
               text: "-" + noteText,
               fontSize: GROUP_DATA_FONT_SIZE,
               italics: true,
-              color: "#333333",
-              margin: [5, 0, 0, 0],
+              margin: [GROUP_DATA_INDENT, 0, 0, 0],
             },
             {
               text: "",
@@ -238,18 +240,34 @@ const GenerateEstimatePdf = ({
               { text: leftColumn[i] || "", width: "*", fontSize: GROUP_DATA_FONT_SIZE },
               { text: rightColumn[i] || "", width: "*", fontSize: GROUP_DATA_FONT_SIZE },
             ],
-            margin: [5, 0, 0, 4], // Left indent
+            margin: [GROUP_DATA_INDENT, 0, 0, 4], // Left indent
           });
         }
 
-        // Add notes if present
+        // Add notes if present (handle both array and string formats)
         if (section.notes) {
-          detailsStack.push({
-            text: `Notes: ${section.notes}`,
-            italics: true,
-            fontSize: GROUP_DATA_FONT_SIZE,
-            margin: [5, 0, 0, 0], // Left indent with small top margin
-          });
+          if (Array.isArray(section.notes)) {
+            const notesLabels = ["Notes:", "Includes:", "Does Not Include:"];
+            
+            section.notes.forEach((note, index) => {
+              if (note && note.trim()) {
+                detailsStack.push({
+                  text: `${notesLabels[index]} ${note}`,
+                  italics: true,
+                  fontSize: GROUP_DATA_FONT_SIZE,
+                  margin: [GROUP_DATA_INDENT, 0, 0, 4], // Left indent with top margin for new line
+                });
+              }
+            });
+          } else if (section.notes.trim()) {
+            // Backward compatibility for string notes
+            detailsStack.push({
+              text: `Notes: ${section.notes}`,
+              italics: true,
+              fontSize: GROUP_DATA_FONT_SIZE,
+              margin: [GROUP_DATA_INDENT, 0, 0, 4],
+            });
+          }
         }
 
         // Single row with all section content - mark for page break avoidance
@@ -366,7 +384,7 @@ const GenerateEstimatePdf = ({
                   text: subItem.title || "Sub-item",
                   fontSize: GROUP_DATA_FONT_SIZE,
                   // color: "#666666",
-                  margin: [5, 0, 0, 0], // Indent sub-items
+                  margin: [GROUP_DATA_INDENT, 0, 0, 0], // Indent sub-items
                 },
                 {
                   text: subItem.cost

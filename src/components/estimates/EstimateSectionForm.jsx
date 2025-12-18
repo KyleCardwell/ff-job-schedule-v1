@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
@@ -318,7 +318,7 @@ const EstimateSectionForm = ({
         data.drawer_box_mat ||
         initialDefaults.drawer_box_mat ||
         "",
-      notes: data.notes || "",
+      notes: Array.isArray(data.notes) ? data.notes : ["", "", ""],
       quantity: data.quantity ?? 1,
       profit: data[profitField] ?? data.profit ?? initialDefaults.profit ?? "",
       commission:
@@ -333,6 +333,28 @@ const EstimateSectionForm = ({
 
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
+  
+  // Refs for synchronized textarea heights
+  const notesTextareaRefs = useRef([]);
+  
+  // Function to synchronize textarea heights
+  const syncTextareaHeights = useCallback(() => {
+    const textareas = notesTextareaRefs.current.filter(Boolean);
+    if (textareas.length === 0) return;
+    
+    // Reset heights to auto to get natural height
+    textareas.forEach(textarea => {
+      textarea.style.height = 'auto';
+    });
+    
+    // Find the maximum scroll height
+    const maxHeight = Math.max(...textareas.map(textarea => textarea.scrollHeight));
+    
+    // Set all textareas to the maximum height
+    textareas.forEach(textarea => {
+      textarea.style.height = `${maxHeight}px`;
+    });
+  }, []);
 
   const clearFinishes = useCallback(
     (section) => {
@@ -392,7 +414,24 @@ const EstimateSectionForm = ({
   );
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, dataset } = e.target;
+    const notesIndex = dataset.notesIndex;
+
+    // Handle notes array separately
+    if (name === "notes" && notesIndex !== undefined) {
+      const newNotes = [...formData.notes];
+      newNotes[parseInt(notesIndex)] = value;
+      setFormData({
+        ...formData,
+        notes: newNotes,
+      });
+      
+      // Synchronize textarea heights
+      setTimeout(() => {
+        syncTextareaHeights();
+      }, 0);
+      return;
+    }
 
     // Convert to number for fields that should have numerical values
     const numericFields = [
@@ -619,8 +658,7 @@ const EstimateSectionForm = ({
                 effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
 
           if (!isValidDoorStyle) {
-            newErrors.doorStyle =
-              "Choose a compatible door style";
+            newErrors.doorStyle = "Choose a compatible door style";
           }
         }
       }
@@ -1046,6 +1084,13 @@ const EstimateSectionForm = ({
       return false;
     });
   }, [selectedFaceMaterial, DOOR_STYLE_OPTIONS]);
+
+  // Sync textarea heights on mount and when notes change
+  useEffect(() => {
+    if (editType === "section") {
+      syncTextareaHeights();
+    }
+  }, [editType, formData.notes, syncTextareaHeights]);
 
   useEffect(() => {
     // Check if effective door style is valid for the current material
@@ -1955,22 +2000,64 @@ const EstimateSectionForm = ({
 
         {/* Notes Section - only for sections */}
         {editType === "section" && (
-          <div className="grid grid-cols-[1fr_12fr] gap-2 items-center">
-            <label
-              htmlFor="notes"
-              className="block text-md font-medium text-slate-700"
-            >
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={2}
-              className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="Any special requirements..."
-            />
+          <div className="grid grid-cols-3 gap-2 items-start">
+            <div>
+              <label
+                htmlFor="notes-0"
+                className="block text-md font-medium text-slate-700"
+              >
+                Notes
+              </label>
+              <textarea
+                ref={(el) => (notesTextareaRefs.current[0] = el)}
+                id="notes-0"
+                name="notes"
+                data-notes-index="0"
+                value={formData.notes[0] || ""}
+                onChange={handleChange}
+                rows={2}
+                className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
+                placeholder="Any special notes..."
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="notes-1"
+                className="block text-md font-medium text-slate-700"
+              >
+                Includes
+              </label>
+              <textarea
+                ref={(el) => (notesTextareaRefs.current[1] = el)}
+                id="notes-1"
+                name="notes"
+                data-notes-index="1"
+                value={formData.notes[1] || ""}
+                onChange={handleChange}
+                rows={2}
+                className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
+                placeholder="What's included..."
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="notes-2"
+                className="block text-md font-medium text-slate-700"
+              >
+                Does Not Include
+              </label>
+              <textarea
+                ref={(el) => (notesTextareaRefs.current[2] = el)}
+                id="notes-2"
+                name="notes"
+                data-notes-index="2"
+                value={formData.notes[2] || ""}
+                onChange={handleChange}
+                rows={2}
+                className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
+                placeholder="What's not included..."
+              />
+            </div>
           </div>
         )}
 

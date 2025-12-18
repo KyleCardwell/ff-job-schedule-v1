@@ -167,10 +167,52 @@ const EstimatePreviewSection = ({
       appliedMolding = "Applied molding on drawer fronts.";
     }
 
-    // Combine section notes with molding note
-    const combinedNotes = [reededPanels, appliedMolding, section.notes]
-      .filter(Boolean)
-      .join(" ");
+    // Handle notes array structure - preserve array format for PDF
+    let processedNotes = null;
+    if (section.notes) {
+      if (Array.isArray(section.notes)) {
+        // Clone the notes array
+        processedNotes = [...section.notes];
+        
+        // Prepend reeded panels and molding to notes[0]
+        const additionalNotes = [reededPanels, appliedMolding].filter(Boolean).join(" ");
+        if (additionalNotes) {
+          if (processedNotes[0]) {
+            processedNotes[0] = `${additionalNotes} ${processedNotes[0]}`;
+          } else {
+            processedNotes[0] = additionalNotes;
+          }
+        }
+      } else if (section.notes.trim()) {
+        // Backward compatibility for string notes
+        const additionalNotes = [reededPanels, appliedMolding].filter(Boolean).join(" ");
+        processedNotes = additionalNotes ? `${additionalNotes} ${section.notes}` : section.notes;
+      }
+    } else {
+      // No section notes, but we might have reeded/molding notes
+      const additionalNotes = [reededPanels, appliedMolding].filter(Boolean).join(" ");
+      if (additionalNotes) {
+        processedNotes = [additionalNotes, "", ""];
+      }
+    }
+    
+    // For display purposes, create array of note lines with labels
+    let displayNotesLines = null;
+    if (processedNotes) {
+      if (Array.isArray(processedNotes)) {
+        const notesLabels = ["Notes:", "Includes:", "Does Not Include:"];
+        displayNotesLines = processedNotes
+          .map((note, index) => {
+            if (note && note.trim()) {
+              return `${notesLabels[index]} ${note}`;
+            }
+            return null;
+          })
+          .filter(Boolean);
+      } else {
+        displayNotesLines = [processedNotes];
+      }
+    }
 
     // Determine section name display
     let sectionNameDisplay = "";
@@ -202,7 +244,8 @@ const EstimatePreviewSection = ({
         : "None",
       faceFinish: faceFinishNames,
       boxFinish: boxFinishNames,
-      notes: combinedNotes,
+      notes: processedNotes, // Array format for PDF
+      displayNotes: displayNotesLines, // Formatted lines for UI display
     };
   }, [
     calculations,
@@ -260,14 +303,22 @@ const EstimatePreviewSection = ({
           <h3 className="text-lg font-semibold text-slate-200">
             {taskName}{sectionData.sectionNameDisplay}
           </h3>
-          {sectionData.notes && (
-            <p className="text-sm text-slate-400 mt-2">{sectionData.notes}</p>
+          {sectionData.displayNotes && Array.isArray(sectionData.displayNotes) && (
+            <div className="text-sm text-slate-400 mt-2 space-y-1">
+              {sectionData.displayNotes.map((noteLine, index) => (
+                <p key={index}>{noteLine}</p>
+              ))}
+            </div>
           )}
         </div>
       )}
-      {!hasMultipleSections && sectionData.notes && (
+      {!hasMultipleSections && sectionData.displayNotes && Array.isArray(sectionData.displayNotes) && (
         <div className="border-b border-slate-600 pb-4 mb-4">
-          <p className="text-sm text-slate-400">{sectionData.notes}</p>
+          <div className="text-sm text-slate-400 space-y-1">
+            {sectionData.displayNotes.map((noteLine, index) => (
+              <p key={index}>{noteLine}</p>
+            ))}
+          </div>
         </div>
       )}
 
