@@ -249,6 +249,9 @@ export const fetchEstimateById = (estimateId) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
 
+        // Custom notes
+        custom_notes: data.custom_notes || [],
+
         // Line items
         line_items: data.line_items,
 
@@ -1230,6 +1233,42 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
       console.error("Error updating estimate defaults:", error);
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Update custom notes for an estimate
+export const updateCustomNotes = (estimateId, customNotes) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { error } = await supabase
+        .from("estimates")
+        .update({
+          custom_notes: customNotes,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "custom_notes",
+          data: { custom_notes: customNotes },
+        },
+      });
+
+      return customNotes;
+    } catch (error) {
+      console.error("Error updating custom notes:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
       });
       throw error;
