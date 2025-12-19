@@ -91,10 +91,16 @@ const EstimatePreviewSection = ({
 
   // Build complete section data for PDF generation and parent aggregation
   const sectionData = useMemo(() => {
-    if (!calculations?.totalPrice || !effectiveSection) return null;
+    if (!calculations || !effectiveSection) return null;
 
-    const quantity = effectiveSection.quantity || 1;
-    const unitPrice = calculations.totalPrice / quantity;
+    // Use quantity 1 for calculations if quantity is 0, but preserve actual quantity for display
+    const actualQuantity = effectiveSection.quantity;
+    const calculationQuantity = actualQuantity === 0 ? 1 : actualQuantity;
+    const unitPrice = calculations.totalPrice / calculationQuantity;
+
+    // If actual quantity is 0, total should be 0
+    const displayTotalPrice =
+      actualQuantity === 0 ? 0 : calculations.totalPrice;
 
     // Get readable names for materials and styles
     const cabinetStyleName =
@@ -103,14 +109,21 @@ const EstimatePreviewSection = ({
       )?.cabinet_style_name || "";
 
     // Check if there are doors (door + panel)
-    const hasDoors = (calculations.faceCounts?.door || 0) + (calculations.faceCounts?.panel || 0) > 0;
-    
+    const hasDoors =
+      (calculations.faceCounts?.door || 0) +
+        (calculations.faceCounts?.panel || 0) >
+      0;
+
     // Check if there are drawer fronts (drawer_front + false_front)
-    const hasDrawerFronts = (calculations.faceCounts?.drawer_front || 0) + (calculations.faceCounts?.false_front || 0) > 0;
-    
+    const hasDrawerFronts =
+      (calculations.faceCounts?.drawer_front || 0) +
+        (calculations.faceCounts?.false_front || 0) >
+      0;
+
     // Check if there are drawer boxes (drawerBoxCount + rollOutCount)
-    const hasDrawerBoxes = (calculations.drawerBoxCount || 0) + (calculations.rollOutCount || 0) > 0;
-    
+    const hasDrawerBoxes =
+      (calculations.drawerBoxCount || 0) + (calculations.rollOutCount || 0) > 0;
+
     // Check if there are boxes
     const hasBoxes = (calculations.boxCount || 0) > 0;
 
@@ -127,7 +140,11 @@ const EstimatePreviewSection = ({
         .join(", ") || "None";
 
     const drawerBoxMaterialName = hasDrawerBoxes
-      ? `${drawerBoxMaterials?.find((m) => m.id === effectiveSection.drawer_box_mat)?.name || ""}`
+      ? `${
+          drawerBoxMaterials?.find(
+            (m) => m.id === effectiveSection.drawer_box_mat
+          )?.name || ""
+        }`
       : "None";
 
     // Format display name for PDF: task name + section number if multiple sections
@@ -173,9 +190,11 @@ const EstimatePreviewSection = ({
       if (Array.isArray(section.notes)) {
         // Clone the notes array
         processedNotes = [...section.notes];
-        
+
         // Prepend reeded panels and molding to notes[0]
-        const additionalNotes = [reededPanels, appliedMolding].filter(Boolean).join(" ");
+        const additionalNotes = [reededPanels, appliedMolding]
+          .filter(Boolean)
+          .join(" ");
         if (additionalNotes) {
           if (processedNotes[0]) {
             processedNotes[0] = `${additionalNotes} ${processedNotes[0]}`;
@@ -185,17 +204,23 @@ const EstimatePreviewSection = ({
         }
       } else if (section.notes.trim()) {
         // Backward compatibility for string notes
-        const additionalNotes = [reededPanels, appliedMolding].filter(Boolean).join(" ");
-        processedNotes = additionalNotes ? `${additionalNotes} ${section.notes}` : section.notes;
+        const additionalNotes = [reededPanels, appliedMolding]
+          .filter(Boolean)
+          .join(" ");
+        processedNotes = additionalNotes
+          ? `${additionalNotes} ${section.notes}`
+          : section.notes;
       }
     } else {
       // No section notes, but we might have reeded/molding notes
-      const additionalNotes = [reededPanels, appliedMolding].filter(Boolean).join(" ");
+      const additionalNotes = [reededPanels, appliedMolding]
+        .filter(Boolean)
+        .join(" ");
       if (additionalNotes) {
         processedNotes = [additionalNotes, "", ""];
       }
     }
-    
+
     // For display purposes, create array of note lines with labels
     let displayNotesLines = null;
     if (processedNotes) {
@@ -230,15 +255,19 @@ const EstimatePreviewSection = ({
       sectionNameDisplay,
       taskName,
       displayName, // For PDF display
-      quantity,
+      quantity: actualQuantity,
       unitPrice,
-      totalPrice: calculations.totalPrice,
+      totalPrice: displayTotalPrice,
       // Description details for PDF
       cabinetStyle: cabinetStyleName,
       faceMaterial: context.selectedFaceMaterial?.material?.name || "",
-      boxMaterial: hasBoxes ? context.selectedBoxMaterial?.material?.name || "" : "None",
+      boxMaterial: hasBoxes
+        ? context.selectedBoxMaterial?.material?.name || ""
+        : "None",
       drawerBoxMaterial: drawerBoxMaterialName,
-      doorStyle: hasDoors ? formatDoorDrawerStyle(effectiveSection.door_style) : "None",
+      doorStyle: hasDoors
+        ? formatDoorDrawerStyle(effectiveSection.door_style)
+        : "None",
       drawerFrontStyle: hasDrawerFronts
         ? formatDoorDrawerStyle(effectiveSection.drawer_front_style)
         : "None",
@@ -287,60 +316,63 @@ const EstimatePreviewSection = ({
     }).format(value || 0);
   };
 
+  // Don't render if sectionData is null
+  if (!sectionData) {
+    return null;
+  }
+
   return (
-    <div 
+    <div
       ref={sectionRef}
       data-section-id={section.est_section_id}
       className={`p-6 mb-4 ${
-        hasMultipleSections && !isFirstSection ? "border-t-2 border-teal-500 pt-6" : ""
-      } ${
-        !isSelected ? "bg-slate-950 rounded-lg opacity-60" : ""
-      }`}
+        hasMultipleSections && !isFirstSection
+          ? "border-t-2 border-teal-500 pt-6"
+          : ""
+      } ${!isSelected ? "bg-slate-950 rounded-lg opacity-60" : ""}`}
     >
       {/* Section Header */}
       {hasMultipleSections && (
         <div className="border-b border-slate-600 pb-4 mb-4">
           <h3 className="text-lg font-semibold text-slate-200">
-            {taskName}{sectionData.sectionNameDisplay}
+            {taskName}
+            {sectionData.sectionNameDisplay}
           </h3>
-          {sectionData.displayNotes && Array.isArray(sectionData.displayNotes) && (
-            <div className="text-sm text-slate-400 mt-2 space-y-1">
+          {sectionData.displayNotes &&
+            Array.isArray(sectionData.displayNotes) && (
+              <div className="text-sm text-slate-400 mt-2 space-y-1">
+                {sectionData.displayNotes.map((noteLine, index) => (
+                  <p key={index}>{noteLine}</p>
+                ))}
+              </div>
+            )}
+        </div>
+      )}
+      {!hasMultipleSections &&
+        sectionData.displayNotes &&
+        Array.isArray(sectionData.displayNotes) && (
+          <div className="border-b border-slate-600 pb-4 mb-4">
+            <div className="text-sm text-slate-400 space-y-1">
               {sectionData.displayNotes.map((noteLine, index) => (
                 <p key={index}>{noteLine}</p>
               ))}
             </div>
-          )}
-        </div>
-      )}
-      {!hasMultipleSections && sectionData.displayNotes && Array.isArray(sectionData.displayNotes) && (
-        <div className="border-b border-slate-600 pb-4 mb-4">
-          <div className="text-sm text-slate-400 space-y-1">
-            {sectionData.displayNotes.map((noteLine, index) => (
-              <p key={index}>{noteLine}</p>
-            ))}
           </div>
-        </div>
-      )}
+        )}
 
       {/* Section Details */}
       <div className="grid grid-cols-4 gap-4 mb-4 text-sm">
         <div>
           <p className="text-slate-400">Cabinet Style:</p>
-          <p className="text-slate-200">
-            {sectionData.cabinetStyle || "—"}
-          </p>
+          <p className="text-slate-200">{sectionData.cabinetStyle || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Face Material:</p>
-          <p className="text-slate-200">
-            {sectionData.faceMaterial || "—"}
-          </p>
+          <p className="text-slate-200">{sectionData.faceMaterial || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Box Material:</p>
-          <p className="text-slate-200">
-            {sectionData.boxMaterial || "—"}
-          </p>
+          <p className="text-slate-200">{sectionData.boxMaterial || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Door Style:</p>
@@ -356,15 +388,11 @@ const EstimatePreviewSection = ({
         </div>
         <div>
           <p className="text-slate-400">Face Finish:</p>
-          <p className="text-slate-200">
-            {sectionData.faceFinish || "—"}
-          </p>
+          <p className="text-slate-200">{sectionData.faceFinish || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Box Finish:</p>
-          <p className="text-slate-200">
-            {sectionData.boxFinish || "—"}
-          </p>
+          <p className="text-slate-200">{sectionData.boxFinish || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Drawer Front Style:</p>
@@ -436,15 +464,25 @@ const EstimatePreviewSection = ({
               <span>-{formatCurrency(calculations.discount)}</span>
             </div>
           )}
-          {section.quantity > 1 && (
-            <div className="flex justify-between text-slate-300">
+          {/* {section.quantity > 1 && ( */}
+            <div className={`flex justify-between ${section.quantity === 0 ? 'px-1 bg-amber-400 text-slate-900' : 'text-slate-300'}`}>
               <span>Quantity:</span>
               <span>× {section.quantity}</span>
             </div>
-          )}
-          <div className="flex justify-between text-lg font-semibold text-teal-400 border-t border-slate-600 pt-2 mt-2">
-            <span>Section Total:</span>
-            <span>{formatCurrency(calculations.totalPrice)}</span>
+          {/* )} */}
+          <div
+            className={`${
+              section.quantity === 0 ? "px-1 bg-amber-400 text-slate-900" : "text-teal-400"
+            } flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2`}
+          >
+            <span>Section Total</span>
+            <span>
+              {formatCurrency(
+                section.quantity === 0
+                  ? sectionData.unitPrice
+                  : sectionData.totalPrice
+              )}
+            </span>
           </div>
         </div>
       </div>

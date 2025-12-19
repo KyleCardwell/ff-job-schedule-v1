@@ -1315,7 +1315,7 @@ export const getSectionCalculations = (section, context = {}) => {
       (sectionProfit + sectionCommission + subTotalPrice - sectionDiscount) / 5
     ) * 5;
 
-  const totalPrice =  roundPriceUpTo5 * section.quantity;
+  const totalPrice =  roundPriceUpTo5 * (section.quantity || 1);
 
   return {
     totalPrice,

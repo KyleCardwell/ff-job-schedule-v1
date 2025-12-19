@@ -87,15 +87,35 @@ const EstimateSectionPrice = ({ section }) => {
     return getSectionCalculations(effectiveSection, context);
   }, [effectiveSection, context]);
 
+  // Calculate display values for quantity 0 handling
+  const displayValues = useMemo(() => {
+    const actualQuantity = section.quantity;
+    const calculationQuantity = actualQuantity === 0 ? 1 : actualQuantity;
+
+    // Get the per-unit price (what it would cost for quantity 1)
+    const unitPrice = sectionCalculations.totalPrice / calculationQuantity;
+
+    // Display total is 0 if quantity is 0, otherwise use calculated total
+    const displayTotal =
+      actualQuantity === 0 ? 0 : sectionCalculations.totalPrice;
+
+    return {
+      unitPrice,
+      displayTotal,
+      actualQuantity,
+      showUnitPrice: actualQuantity === 0, // Show unit price when quantity is 0
+    };
+  }, [section.quantity, sectionCalculations.totalPrice]);
+
   // Format number as currency
- const formatCurrency = (amount, { noCents = false } = {}) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: noCents ? 0 : 2,
-    maximumFractionDigits: noCents ? 0 : 2,
-  }).format(amount);
-};
+  const formatCurrency = (amount, { noCents = false } = {}) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: noCents ? 0 : 2,
+      maximumFractionDigits: noCents ? 0 : 2,
+    }).format(amount);
+  };
 
   // Format hours with 2 decimal places
   const formatHours = (hours) => {
@@ -107,12 +127,19 @@ const EstimateSectionPrice = ({ section }) => {
       {/* Section Total Price - Top Section */}
       <div className="flex justify-between items-center pb-3">
         <div className="text-slate-300">
-          <span className="text-sm font-medium">Section Total Price:</span>
+          <span className="text-sm font-medium">
+               Section Total Price:
+          </span>
         </div>
-        <div className="text-xl font-bold text-teal-400">
-          {formatCurrency(sectionCalculations.totalPrice, {
-            noCents: true,
-          })}
+        <div className={`text-xl font-bold ${displayValues.showUnitPrice ? 'text-amber-400' : 'text-teal-400'}`}>
+          {formatCurrency(
+            displayValues.showUnitPrice
+              ? displayValues.unitPrice
+              : displayValues.displayTotal,
+            {
+              noCents: true,
+            }
+          )}
         </div>
       </div>
 
@@ -155,10 +182,28 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.discount)}
             </div>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1">
-            <div className="text-sm text-slate-300 text-left">Quantity</div>
+          <div
+            className={`grid grid-cols-[3fr,1fr,3fr] gap-1 ${
+              displayValues.showUnitPrice ? "bg-amber-400 px-1 text-white" : ""
+            }`}
+          >
+            <div
+              className={`${
+                displayValues.showUnitPrice
+                  ? "text-lg text-slate-900 text-left font-bold"
+                  : "text-sm text-slate-300 text-left"
+              }`}
+            >
+              Quantity
+            </div>
             <div></div>
-            <div className="text-sm text-right font-bold text-teal-400">
+            <div
+              className={`${
+                displayValues.showUnitPrice
+                  ? "text-lg text-right font-bold text-slate-900"
+                  : "text-sm text-right font-bold text-teal-400"
+              }`}
+            >
               {sectionCalculations.quantity}
             </div>
           </div>

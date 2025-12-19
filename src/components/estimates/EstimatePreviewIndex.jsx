@@ -238,7 +238,7 @@ const EstimatePreviewIndex = ({
                               />
                               <button
                                 onClick={() => onScrollToLineItems && onScrollToLineItems()}
-                                className="flex-1 text-left text-xs text-slate-400 hover:text-teal-400 transition-colors truncate"
+                                className="flex-1 text-left text-sm text-slate-300 hover:text-teal-400 transition-colors truncate"
                                 title={subItem.title || `Sub-item ${subIndex + 1}`}
                               >
                                 {subItem.title || `Sub-item ${subIndex + 1}`}
