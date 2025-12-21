@@ -9,7 +9,7 @@ import {
   ITEM_TYPES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
-import { getEffectiveDefaults } from "./estimateDefaults";
+import { getEffectiveDefaults, getEffectiveValueOnly } from "./estimateDefaults";
 import {
   calculateBoxPartsTime,
   calculateBoxSheetsCNC,
@@ -1216,27 +1216,43 @@ export const getSectionCalculations = (section, context = {}) => {
   );
   const otherTotal = calculateSimpleItemsTotal(section.other, context);
 
-  // Calculate total face price from facePrices object
-  const totalFacePrice = Object.values(cabinetTotals.facePrices || {}).reduce(
-    (sum, price) => sum + price,
-    0
-  );
-
   const glassTotal =
     (cabinetTotals.glassTotal || 0) + (accessoriesTotal.glass.total || 0);
   const glassCount =
     (cabinetTotals.glassCount || 0) + (accessoriesTotal.glass.count || 0);
 
+  // Get parts_included toggles (default all to true)
+  const partsIncluded = section.parts_included || {};
+  
+  // Helper function to check if a part should be included
+  const isPartIncluded = (partKey) => partsIncluded[partKey] !== false;
+  
+  // Calculate individual face prices that can be toggled
+  const doorPrice = isPartIncluded('facePrices.door') ? (cabinetTotals.facePrices?.door || 0) : 0;
+  const drawerFrontPrice = isPartIncluded('facePrices.drawer_front') ? (cabinetTotals.facePrices?.drawer_front || 0) : 0;
+  const falseFrontPrice = isPartIncluded('facePrices.false_front') ? (cabinetTotals.facePrices?.false_front || 0) : 0;
+  const panelPrice = isPartIncluded('facePrices.panel') ? (cabinetTotals.facePrices?.panel || 0) : 0;
+  
+  // Calculate other face prices (not individually toggled)
+  const otherFacePrice = Object.entries(cabinetTotals.facePrices || {}).reduce((sum, [faceType, price]) => {
+    if (!['door', 'drawer_front', 'false_front', 'panel'].includes(faceType)) {
+      return sum + price;
+    }
+    return sum;
+  }, 0);
+  
+  const totalFacePriceWithToggles = doorPrice + drawerFrontPrice + falseFrontPrice + panelPrice + otherFacePrice;
+
   const partsTotalPrice =
-    totalFacePrice +
-    cabinetTotals.boxPrice +
-    cabinetTotals.drawerBoxTotal +
-    cabinetTotals.rollOutTotal +
-    cabinetTotals.hingesTotal +
-    cabinetTotals.pullsTotal +
-    cabinetTotals.slidesTotal +
-    cabinetTotals.woodTotal +
-    glassTotal +
+    totalFacePriceWithToggles +
+    (isPartIncluded('boxTotal') ? cabinetTotals.boxPrice : 0) +
+    (isPartIncluded('drawerBoxTotal') ? cabinetTotals.drawerBoxTotal : 0) +
+    (isPartIncluded('rollOutTotal') ? cabinetTotals.rollOutTotal : 0) +
+    (isPartIncluded('hingesTotal') ? cabinetTotals.hingesTotal : 0) +
+    (isPartIncluded('pullsTotal') ? cabinetTotals.pullsTotal : 0) +
+    (isPartIncluded('slidesTotal') ? cabinetTotals.slidesTotal : 0) +
+    (isPartIncluded('woodTotal') ? cabinetTotals.woodTotal : 0) +
+    (isPartIncluded('glassTotal') ? glassTotal : 0) +
     lengthTotals.materialTotal +
     otherTotal;
 
@@ -1276,6 +1292,9 @@ export const getSectionCalculations = (section, context = {}) => {
     const hoursByService = finalHoursByService || {};
     let totalLaborCost = 0;
     const costsByService = {};
+    
+    // Get services_included toggles
+    const servicesIncluded = section.services_included || {};
 
     Object.entries(hoursByService).forEach(([serviceId, hours]) => {
       const service = context.globalServices.find(
@@ -1283,16 +1302,26 @@ export const getSectionCalculations = (section, context = {}) => {
       );
       const roundedHours = roundToHundredth(hours);
       if (service) {
-        const cost = roundToHundredth(
-          roundedHours * (service.hourly_rate || 0)
-        );
+        // Use three-tier fallback for service rate: section -> estimate -> team (service default)
+        const rate = getEffectiveValueOnly(
+          section.service_price_overrides?.[serviceId],
+          context.estimate?.default_service_price_overrides?.[serviceId],
+          service.hourly_rate
+        ) || 0;
+        const cost = roundToHundredth(roundedHours * rate);
+        
         costsByService[serviceId] = {
           hours: roundedHours,
-          rate: service.hourly_rate || 0,
+          rate: rate,
           cost,
           name: service.service_name,
+          isIncluded: servicesIncluded[serviceId] !== false, // Default to true
         };
-        totalLaborCost += cost;
+        
+        // Only add to total if service is included
+        if (servicesIncluded[serviceId] !== false) {
+          totalLaborCost += cost;
+        }
       }
     });
 
@@ -1348,6 +1377,8 @@ export const getSectionCalculations = (section, context = {}) => {
     commissionRate: section.commission,
     discount: sectionDiscount,
     discountRate: section.discount,
+    partsIncluded: partsIncluded, // Pass through for UI to know what's included
+    servicesIncluded: section.services_included || {}, // Pass through for UI
   };
 };
 
