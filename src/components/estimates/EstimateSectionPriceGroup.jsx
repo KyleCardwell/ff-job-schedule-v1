@@ -1,10 +1,11 @@
 import PropTypes from "prop-types";
 
-const EstimateSectionPriceGroup = ({title, children}) => {
+const EstimateSectionPriceGroup = ({title, titleAction, children}) => {
     return (
         <div>
-            <div className="bg-slate-700 pt-1 rounded-t-md mb-0">
+            <div className="bg-slate-700 pt-1 px-3 rounded-t-md mb-0 flex items-center justify-between">
             <h3 className="text-sm font-medium text-white">{title}</h3>
+            {titleAction && <div>{titleAction}</div>}
           </div>
 
           {/* Price Breakdown - Content - Grid Layout */}
@@ -17,6 +18,7 @@ const EstimateSectionPriceGroup = ({title, children}) => {
 
 EstimateSectionPriceGroup.propTypes = {
     title: PropTypes.string,
+    titleAction: PropTypes.node,
     children: PropTypes.node,
 }
 

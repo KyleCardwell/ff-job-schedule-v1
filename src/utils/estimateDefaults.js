@@ -40,6 +40,7 @@ export const getEffectiveValueOnly = (sectionValue, estimateValue, teamValue) =>
   return getEffectiveValue(sectionValue, estimateValue, teamValue).value;
 };
 
+
 /**
  * Get all effective defaults for a section using the fallback chain
  * @param {Object} section - Section data

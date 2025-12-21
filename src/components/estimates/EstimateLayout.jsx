@@ -12,6 +12,7 @@ import {
   fetchEstimateById,
   setCurrentEstimate,
   updateTaskOrder,
+  updateSection,
 } from "../../redux/actions/estimates";
 import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
@@ -168,9 +169,25 @@ const EstimateLayout = () => {
     setIsNewTask(false);
   };
 
-  const handleSaveTaskOrder = (orderedTaskIds) => {
-    if (currentEstimate?.estimate_id) {
-      dispatch(updateTaskOrder(currentEstimate.estimate_id, orderedTaskIds));
+  const handleSaveTaskOrder = (reorderedTasks) => {
+    const taskOrder = reorderedTasks.map((task) => task.est_task_id);
+    dispatch(updateTaskOrder(currentEstimate.estimate_id, taskOrder));
+    setIsReorderModalOpen(false);
+  };
+
+  const handleSaveToggles = async (data) => {
+    if (selectedTaskId && selectedSectionId && currentEstimate) {
+      await dispatch(
+        updateSection(
+          currentEstimate.estimate_id,
+          selectedTaskId,
+          selectedSectionId,
+          {
+            parts_included: data.parts_included,
+            services_included: data.services_included,
+          }
+        )
+      );
     }
   };
 
@@ -439,7 +456,10 @@ const EstimateLayout = () => {
                   />
                 </div>
                 <div className="w-80 p-6 overflow-y-auto border-l border-slate-700">
-                  <EstimateSectionPrice section={selectedSection} />
+                  <EstimateSectionPrice 
+                    section={selectedSection}
+                    onSaveToggles={handleSaveToggles}
+                  />
                 </div>
               </div>
             ) : (

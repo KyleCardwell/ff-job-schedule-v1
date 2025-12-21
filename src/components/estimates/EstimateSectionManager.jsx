@@ -10,11 +10,11 @@ import { SECTION_TYPES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
-import AddHoursManager from "./AddHoursManager.jsx";
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
 import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
 import EstimateOtherManager from "./EstimateOtherManager.jsx";
+import LaborAdjustmentssManager from "./LaborAdjustmentsManager.jsx";
 
 const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   const dispatch = useDispatch();
@@ -245,14 +245,16 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
-  const handleSaveAddHours = async (addHoursData) => {
+  const handleSaveAddHours = async (data) => {
     // Update section metadata with add_hours
     await dispatch(
       updateSection(
         currentEstimate.estimate_id,
         taskId,
         sectionId,
-        { add_hours: addHoursData }
+        {
+          add_hours: data.add_hours,
+        }
       )
     );
   };
@@ -368,7 +370,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
   ];
 
   return (
-    <div className="flex-1 max-w-3xl mx-auto space-y-2">
+    <div className="flex-1 max-w-3xl mx-auto space-y-4">
       {/* Section Items Accordions */}
       {sections.map(({ type, title, count, component }) => (
         <div
@@ -409,7 +411,7 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
       ))}
 
       {/* Add Hours Section - Always Visible */}
-      <AddHoursManager
+      <LaborAdjustmentssManager
         addHours={section?.add_hours}
         onSave={handleSaveAddHours}
       />

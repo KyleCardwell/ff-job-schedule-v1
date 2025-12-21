@@ -59,6 +59,9 @@ const EstimateSectionForm = ({
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
   const PULL_OPTIONS = hardware.pulls || [];
 
+  const services = useSelector((state) => state.services?.allServices || []);
+  const activeServices = services.filter((service) => service.is_active);
+
   const isNewSection = !section.est_section_id;
 
   // Determine what data to use based on editType
@@ -210,6 +213,54 @@ const EstimateSectionForm = ({
     return `${value}%`;
   };
 
+  const formatServiceRate = (value) => {
+    if (value === null || value === undefined) return "$0";
+    return `$${value}`;
+  };
+
+  // Get effective service rate display - uses existing getEffectiveValue with service-specific paths
+  const getEffectiveServiceRateDisplay = (serviceId, service) => {
+    // Don't show for team edit type
+    if (editType === "team") {
+      return null;
+    }
+
+    const fieldValue = formData.service_price_overrides?.[serviceId];
+    const isEmpty =
+      fieldValue === "" || fieldValue === null || fieldValue === undefined;
+
+    if (!isEmpty) {
+      return <span className="flex-1 px-1 border border-teal-500 ml-1"></span>;
+    }
+
+    // Extract service-specific values for three-tier fallback
+    // When in estimate editing mode, skip estimate tier to show team defaults
+    const sectionValue = null; // We're in the form, so section override is what we're editing
+    const estimateValue =
+      editType === "estimate"
+        ? null
+        : currentEstimate?.default_service_price_overrides?.[serviceId];
+    const teamValue = service?.hourly_rate; // Service default rate from services store
+
+    const { value } = getEffectiveValue(sectionValue, estimateValue, teamValue);
+
+    // Don't show if there's no effective value
+    if (value === null || value === undefined) return null;
+
+    const displayValue = formatServiceRate(value);
+    const colorClass = "teal-500";
+
+    return (
+      displayValue && (
+        <span
+          className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}
+        >
+          {displayValue}
+        </span>
+      )
+    );
+  };
+
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
@@ -238,6 +289,7 @@ const EstimateSectionForm = ({
     const profitField = getFieldName("profit");
     const commissionField = getFieldName("commission");
     const discountField = getFieldName("discount");
+    const servicePriceOverridesField = getFieldName("service_price_overrides");
 
     return {
       style:
@@ -328,30 +380,37 @@ const EstimateSectionForm = ({
         "",
       discount:
         data[discountField] ?? data.discount ?? initialDefaults.discount ?? "",
+      service_price_overrides:
+        data[servicePriceOverridesField] ??
+        data.service_price_overrides ??
+        initialDefaults.service_price_overrides ??
+        {},
     };
   });
 
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
-  
+
   // Refs for synchronized textarea heights
   const notesTextareaRefs = useRef([]);
-  
+
   // Function to synchronize textarea heights
   const syncTextareaHeights = useCallback(() => {
     const textareas = notesTextareaRefs.current.filter(Boolean);
     if (textareas.length === 0) return;
-    
+
     // Reset heights to auto to get natural height
-    textareas.forEach(textarea => {
-      textarea.style.height = 'auto';
+    textareas.forEach((textarea) => {
+      textarea.style.height = "auto";
     });
-    
+
     // Find the maximum scroll height
-    const maxHeight = Math.max(...textareas.map(textarea => textarea.scrollHeight));
-    
+    const maxHeight = Math.max(
+      ...textareas.map((textarea) => textarea.scrollHeight)
+    );
+
     // Set all textareas to the maximum height
-    textareas.forEach(textarea => {
+    textareas.forEach((textarea) => {
       textarea.style.height = `${maxHeight}px`;
     });
   }, []);
@@ -425,7 +484,7 @@ const EstimateSectionForm = ({
         ...formData,
         notes: newNotes,
       });
-      
+
       // Synchronize textarea heights
       setTimeout(() => {
         syncTextareaHeights();
@@ -887,6 +946,13 @@ const EstimateSectionForm = ({
               formData.discount === "" || formData.discount == null
                 ? null
                 : Number(formData.discount),
+            default_service_price_overrides:
+              formData.service_price_overrides &&
+              Object.keys(formData.service_price_overrides).filter(
+                (key) => formData.service_price_overrides[key] !== undefined
+              ).length > 0
+                ? formData.service_price_overrides
+                : null,
           };
 
           await dispatch(
@@ -915,6 +981,22 @@ const EstimateSectionForm = ({
               processedData[field] = Number(processedData[field]);
             }
           });
+
+          // Clean up service_price_overrides - remove undefined values
+          if (processedData.service_price_overrides) {
+            const cleanedOverrides = {};
+            Object.entries(processedData.service_price_overrides).forEach(
+              ([serviceId, rate]) => {
+                if (rate !== undefined && rate !== null && rate !== "") {
+                  cleanedOverrides[serviceId] = Number(rate);
+                }
+              }
+            );
+            processedData.service_price_overrides =
+              Object.keys(cleanedOverrides).length > 0
+                ? cleanedOverrides
+                : null;
+          }
 
           // Convert empty strings to null for material/hardware foreign key fields
           const foreignKeyFields = [
@@ -1898,7 +1980,7 @@ const EstimateSectionForm = ({
             </h3>
             <div className="space-y-3">
               {/* Quantity */}
-              <div className="flex flex-col gap-2 items-center">
+              <div className="flex flex-col gap-2 items-center -mt-2">
                 <label
                   htmlFor="quantity"
                   className="text-right text-sm font-medium text-slate-700"
@@ -1923,7 +2005,7 @@ const EstimateSectionForm = ({
                   htmlFor="profit"
                   className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  <span>Profit</span>
+                  <span>Profit{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
                     formData.profit,
                     "default_profit",
@@ -1938,7 +2020,7 @@ const EstimateSectionForm = ({
                   name="profit"
                   value={formData.profit}
                   onChange={handleChange}
-                  placeholder="%"
+                  placeholder="0%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
@@ -1949,7 +2031,7 @@ const EstimateSectionForm = ({
                   htmlFor="commission"
                   className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  <span>Commission</span>
+                  <span>Commission{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
                     formData.commission,
                     "default_commission",
@@ -1964,7 +2046,7 @@ const EstimateSectionForm = ({
                   name="commission"
                   value={formData.commission}
                   onChange={handleChange}
-                  placeholder="%"
+                  placeholder="0%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
@@ -1975,7 +2057,7 @@ const EstimateSectionForm = ({
                   htmlFor="discount"
                   className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  <span>Discount</span>
+                  <span>Discount{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
                     formData.discount,
                     "default_discount",
@@ -1990,10 +2072,75 @@ const EstimateSectionForm = ({
                   name="discount"
                   value={formData.discount}
                   onChange={handleChange}
-                  placeholder="%"
+                  placeholder="0%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
+
+              <h3 className="text-md font-medium text-slate-700 mb-3 border-t border-slate-400 pt-2">
+                Rates
+              </h3>
+
+              {/* Service Rate Overrides - only for estimate and section */}
+              {editType === "team" ? (
+                // Team mode: Display rates as read-only text
+                activeServices.map((service) => (
+                  <div
+                    key={service.service_id}
+                    className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0"
+                  >
+                    <span className="text-sm font-medium text-slate-700">
+                      {service.service_name}
+                    </span>
+                    <span className="text-sm text-slate-600">
+                      ${service.hourly_rate}/hr
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Estimate/Section mode: Editable inputs with effective value display
+                activeServices.map((service) => (
+                  <div
+                    key={service.service_id}
+                    className="flex flex-col gap-2 items-center"
+                  >
+                    <label
+                      htmlFor={`service-rate-${service.service_id}`}
+                      className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
+                    >
+                      <span>{service.service_name}</span>
+                      {getEffectiveServiceRateDisplay(
+                        service.service_id,
+                        service
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      id={`service-rate-${service.service_id}`}
+                      min="0"
+                      step="1"
+                      value={
+                        formData.service_price_overrides?.[
+                          service.service_id
+                        ] || ""
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData({
+                          ...formData,
+                          service_price_overrides: {
+                            ...formData.service_price_overrides,
+                            [service.service_id]:
+                              value === "" ? undefined : parseFloat(value),
+                          },
+                        });
+                      }}
+                      placeholder="$/hr"
+                      className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

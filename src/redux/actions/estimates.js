@@ -248,6 +248,7 @@ export const fetchEstimateById = (estimateId) => {
         default_profit: data.default_profit,
         default_commission: data.default_commission,
         default_discount: data.default_discount,
+        default_service_price_overrides: data.default_service_price_overrides,
 
         // Custom notes
         custom_notes: data.custom_notes || [],
@@ -774,6 +775,9 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         doorStyle,
         drawerFrontStyle,
         add_hours,
+        parts_included,
+        services_included,
+        service_price_overrides,
       } = updates;
 
       // Prepare the update payload for Supabase
@@ -831,6 +835,9 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
           drawer_front_style: drawerFrontStyle || null,
         }),
         ...(add_hours !== undefined && { add_hours: add_hours || null }),
+        ...(parts_included !== undefined && { parts_included: parts_included || null }),
+        ...(services_included !== undefined && { services_included: services_included || null }),
+        ...(service_price_overrides !== undefined && { service_price_overrides: service_price_overrides || null }),
         updated_at: new Date(),
       };
 
@@ -1148,6 +1155,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_profit: defaults.default_profit ?? null,
         default_commission: defaults.default_commission ?? null,
         default_discount: defaults.default_discount ?? null,
+        default_service_price_overrides: defaults.default_service_price_overrides ?? null,
         updated_at: new Date(),
       };
 
@@ -1207,6 +1215,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_profit: data.default_profit,
         default_commission: data.default_commission,
         default_discount: data.default_discount,
+        default_service_price_overrides: data.default_service_price_overrides,
 
         // Line items
         line_items: data.line_items,
