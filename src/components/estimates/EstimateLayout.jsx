@@ -12,6 +12,7 @@ import {
   fetchEstimateById,
   setCurrentEstimate,
   updateTaskOrder,
+  updateSection,
 } from "../../redux/actions/estimates";
 import { fetchFinishes } from "../../redux/actions/finishes.js";
 import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
@@ -24,6 +25,7 @@ import { PATHS } from "../../utils/constants";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ReorderModal from "../common/ReorderModal.jsx";
 
+import EstimateLineItemsEditor from "./EstimateLineItemsEditor.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
@@ -47,6 +49,7 @@ const EstimateLayout = () => {
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
   const [showEstimateDefaultsForm, setShowEstimateDefaultsForm] = useState(false);
+  const [showLineItemsEditor, setShowLineItemsEditor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
@@ -166,9 +169,25 @@ const EstimateLayout = () => {
     setIsNewTask(false);
   };
 
-  const handleSaveTaskOrder = (orderedTaskIds) => {
-    if (currentEstimate?.estimate_id) {
-      dispatch(updateTaskOrder(currentEstimate.estimate_id, orderedTaskIds));
+  const handleSaveTaskOrder = (reorderedTasks) => {
+    const taskOrder = reorderedTasks.map((task) => task.est_task_id);
+    dispatch(updateTaskOrder(currentEstimate.estimate_id, taskOrder));
+    setIsReorderModalOpen(false);
+  };
+
+  const handleSaveToggles = async (data) => {
+    if (selectedTaskId && selectedSectionId && currentEstimate) {
+      await dispatch(
+        updateSection(
+          currentEstimate.estimate_id,
+          selectedTaskId,
+          selectedSectionId,
+          {
+            parts_included: data.parts_included,
+            services_included: data.services_included,
+          }
+        )
+      );
     }
   };
 
@@ -182,6 +201,18 @@ const EstimateLayout = () => {
 
   return (
     <div className="flex h-full bg-slate-800">
+      {/* Preview Button - Fixed Top Right */}
+      {currentEstimate && (
+        <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
+          <button
+            onClick={() => navigate(`/estimates/in-progress/${estimateId}/preview`)}
+            className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors"
+          >
+            Estimate Preview
+          </button>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div className="w-64 flex-none bg-slate-900 border-t border-slate-200 flex flex-col">
         <div className="flex items-center justify-center py-4 text-slate-200 text-lg font-semibold relative">
@@ -304,6 +335,10 @@ const EstimateLayout = () => {
           setShowEstimateDefaultsForm(true);
           setShowProjectInfo(false);
         }}
+        onEditLineItems={() => {
+          setShowLineItemsEditor(true);
+          setShowProjectInfo(false);
+        }}
         onAddSection={(templateSection) => {
           if (selectedTaskId) {
             setSelectedSectionId(null);
@@ -370,6 +405,22 @@ const EstimateLayout = () => {
               />
             </div>
           </div>
+        ) : showLineItemsEditor ? (
+          <div className="p-6 overflow-y-auto h-full">
+            <div className="max-w-6xl mx-auto">
+              <EstimateLineItemsEditor
+                estimate={currentEstimate}
+                onCancel={() => {
+                  setShowLineItemsEditor(false);
+                  setShowProjectInfo(true);
+                }}
+                onSave={() => {
+                  setShowLineItemsEditor(false);
+                  setShowProjectInfo(true);
+                }}
+              />
+            </div>
+          </div>
         ) : showSectionForm ? (
           <div className="p-6 overflow-y-auto h-full">
             <div className="max-w-4xl mx-auto">
@@ -405,7 +456,10 @@ const EstimateLayout = () => {
                   />
                 </div>
                 <div className="w-80 p-6 overflow-y-auto border-l border-slate-700">
-                  <EstimateSectionPrice section={selectedSection} />
+                  <EstimateSectionPrice 
+                    section={selectedSection}
+                    onSaveToggles={handleSaveToggles}
+                  />
                 </div>
               </div>
             ) : (

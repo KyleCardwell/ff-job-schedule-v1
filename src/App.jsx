@@ -21,6 +21,7 @@ import CompletedJobsContainer from "./components/completedProjects/CompletedProj
 import CompletedProjectView from "./components/completedProjects/CompletedProjectView.jsx";
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout.jsx";
+import EstimatePreview from "./components/estimates/EstimatePreview.jsx";
 import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";
 import MockAuth from "./mocks/mockAuth.js";
 import { fetchEmployees } from "./redux/actions/builders";
@@ -253,6 +254,14 @@ const AppContent = () => {
                   element={
                     <ProtectedRoute>
                       <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="in-progress/:estimateId/preview"
+                  element={
+                    <ProtectedRoute>
+                      <EstimatePreview />
                     </ProtectedRoute>
                   }
                 />

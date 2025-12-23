@@ -1,18 +1,16 @@
 import PropTypes from "prop-types";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
-import {
-  getEffectiveDefaults,
-  shouldApplyFinish,
-} from "../../utils/estimateDefaults";
+import { createSectionContext } from "../../utils/createSectionContext";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
 import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
 
-const EstimateSectionPrice = ({ section }) => {
+const EstimateSectionPrice = ({ section, onSaveToggles }) => {
   // Get materials from Redux store
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
     (state) => state.materials
@@ -35,194 +33,197 @@ const EstimateSectionPrice = ({ section }) => {
 
   const { hardware, accessories, lengths } = useSelector((state) => state);
 
+  // Edit mode state for toggles
+  const [isEditingToggles, setIsEditingToggles] = useState(false);
+  const [partsToggles, setPartsToggles] = useState({});
+  const [serviceToggles, setServiceToggles] = useState({});
+
+  // Define the parts that can be toggled
+  const partsCategories = [
+    { key: "boxTotal", label: "Cabinet Boxes" },
+    { key: "facePrices.door", label: "Doors" },
+    { key: "facePrices.drawer_front", label: "Drawer Fronts" },
+    { key: "facePrices.false_front", label: "False Fronts" },
+    { key: "facePrices.panel", label: "Panels" },
+    { key: "drawerBoxTotal", label: "Drawer Boxes" },
+    { key: "rollOutTotal", label: "Rollouts" },
+    { key: "hingesTotal", label: "Hinges" },
+    { key: "slidesTotal", label: "Slides" },
+    { key: "pullsTotal", label: "Pulls" },
+    { key: "woodTotal", label: "Wood" },
+    { key: "glassTotal", label: "Glass" },
+  ];
+
+  // Initialize toggles from section data
+  useEffect(() => {
+    if (section?.parts_included && typeof section.parts_included === "object") {
+      setPartsToggles({ ...section.parts_included });
+    } else {
+      const initialPartsToggles = {};
+      partsCategories.forEach((part) => {
+        initialPartsToggles[part.key] = true;
+      });
+      setPartsToggles(initialPartsToggles);
+    }
+
+    if (
+      section?.services_included &&
+      typeof section.services_included === "object"
+    ) {
+      setServiceToggles({ ...section.services_included });
+    } else {
+      const initialServiceToggles = {};
+      services
+        .filter((s) => s.is_active)
+        .forEach((service) => {
+          initialServiceToggles[service.service_id] = true;
+        });
+      setServiceToggles(initialServiceToggles);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section?.parts_included, section?.services_included]);
+
   const partsListAnchors = useSelector(
     (state) => state.partsListAnchors?.itemsByPartsList || []
   );
+
+  const cabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors?.itemsByType || []
+  );
+
+  const handleEditToggles = () => {
+    setIsEditingToggles(true);
+  };
+
+  const handleCancelToggles = () => {
+    // Reset to original values
+    if (section?.parts_included && typeof section.parts_included === "object") {
+      setPartsToggles({ ...section.parts_included });
+    } else {
+      const initialPartsToggles = {};
+      partsCategories.forEach((part) => {
+        initialPartsToggles[part.key] = true;
+      });
+      setPartsToggles(initialPartsToggles);
+    }
+
+    if (
+      section?.services_included &&
+      typeof section.services_included === "object"
+    ) {
+      setServiceToggles({ ...section.services_included });
+    } else {
+      const initialServiceToggles = {};
+      services
+        .filter((s) => s.is_active)
+        .forEach((service) => {
+          initialServiceToggles[service.service_id] = true;
+        });
+      setServiceToggles(initialServiceToggles);
+    }
+    setIsEditingToggles(false);
+  };
+
+  const handleSaveToggles = () => {
+    if (onSaveToggles) {
+      onSaveToggles({
+        parts_included: partsToggles,
+        services_included: serviceToggles,
+      });
+    }
+    setIsEditingToggles(false);
+  };
+
+  const handlePartsToggle = (partKey) => {
+    setPartsToggles((prev) => ({
+      ...prev,
+      [partKey]: !prev[partKey],
+    }));
+  };
+
+  const handleServiceToggle = (serviceId) => {
+    setServiceToggles((prev) => ({
+      ...prev,
+      [serviceId]: !prev[serviceId],
+    }));
+  };
 
   // Get estimate and team for defaults fallback
   const currentEstimate = useSelector(
     (state) => state.estimates?.currentEstimate
   );
 
-  // Create effective section with resolved fallback values (three-tier: section → estimate → team)
-  const effectiveSection = useMemo(() => {
-    const effectiveDefaults = getEffectiveDefaults(
-      section,
-      currentEstimate,
-      teamDefaults
-    );
-
-    // Merge the effective defaults with the section, preserving cabinet items and other data
-    return {
-      ...section,
-      // Override with effective defaults
-      cabinet_style_id: effectiveDefaults.cabinet_style_id,
-      box_mat: effectiveDefaults.box_mat,
-      face_mat: effectiveDefaults.face_mat,
-      drawer_box_mat: effectiveDefaults.drawer_box_mat,
-      hinge_id: effectiveDefaults.hinge_id,
-      slide_id: effectiveDefaults.slide_id,
-      door_pull_id: effectiveDefaults.door_pull_id,
-      drawer_pull_id: effectiveDefaults.drawer_pull_id,
-      face_finish: effectiveDefaults.face_finish,
-      box_finish: effectiveDefaults.box_finish,
-      door_inside_molding: effectiveDefaults.door_inside_molding,
-      door_outside_molding: effectiveDefaults.door_outside_molding,
-      drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
-      drawer_outside_molding: effectiveDefaults.drawer_outside_molding,
-      door_reeded_panel: effectiveDefaults.door_reeded_panel,
-      drawer_reeded_panel: effectiveDefaults.drawer_reeded_panel,
-      door_style: effectiveDefaults.door_style,
-      drawer_front_style: effectiveDefaults.drawer_front_style,
-      quantity: effectiveDefaults.quantity,
-      profit: effectiveDefaults.profit || 0,
-      commission: effectiveDefaults.commission || 0,
-      discount: effectiveDefaults.discount || 0,
-    };
-  }, [section, currentEstimate, teamDefaults]);
-
-  const selectedFaceMaterial = useMemo(() => {
-    let finishMultiplier = 0;
-    let shopMultiplier = 1;
-    const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveSection.face_mat
-    );
-
-    // Check if finish should be applied using three-tier fallback
-    const finishNeeded = shouldApplyFinish(
-      section.face_mat,
-      currentEstimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
-      faceMaterials || []
-    );
-
-    if (finishNeeded) {
-      finishMultiplier = 1;
-      if (effectiveSection.face_finish?.length > 0) {
-        effectiveSection.face_finish.forEach((finishId) => {
-          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-          if (finishObj?.finish_markup) {
-            finishMultiplier += finishObj.finish_markup / 100;
-          }
-          if (finishObj?.shop_markup) {
-            shopMultiplier += finishObj.shop_markup / 100;
-          }
-        });
-      }
-    }
-
-    return { material, finishMultiplier, shopMultiplier };
-  }, [
-    faceMaterials,
-    effectiveSection.face_mat,
-    effectiveSection.face_finish,
-    finishTypes,
-    section.face_mat,
-    currentEstimate,
-    teamDefaults,
-  ]);
-
-  const selectedBoxMaterial = useMemo(() => {
-    let finishMultiplier = 0;
-    let shopMultiplier = 1;
-    const material = boxMaterials?.find(
-      (mat) => mat.id === effectiveSection.box_mat
-    );
-
-    // Check if finish should be applied using three-tier fallback
-    const finishNeeded = shouldApplyFinish(
-      section.box_mat,
-      currentEstimate?.default_box_mat,
-      teamDefaults?.default_box_mat,
-      boxMaterials || []
-    );
-
-    if (finishNeeded) {
-      finishMultiplier = 1;
-      if (effectiveSection.box_finish?.length > 0) {
-        effectiveSection.box_finish.forEach((finishId) => {
-          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-          if (finishObj?.finish_markup) {
-            finishMultiplier += finishObj.finish_markup / 100;
-          }
-          if (finishObj?.shop_markup) {
-            shopMultiplier += finishObj.shop_markup / 100;
-          }
-        });
-      }
-    }
-
-    return { material, finishMultiplier, shopMultiplier };
-  }, [
-    boxMaterials,
-    effectiveSection.box_mat,
-    effectiveSection.box_finish,
-    finishTypes,
-    section.box_mat,
-    currentEstimate,
-    teamDefaults,
-  ]);
-
-  // Calculate the total price and face counts of all items in the section
-  const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(effectiveSection, {
-      // Materials
+  // Create context and calculate section totals using extracted utility
+  const { context, effectiveSection } = useMemo(() => {
+    const catalogData = {
       boxMaterials,
       faceMaterials,
       drawerBoxMaterials,
-      selectedFaceMaterial,
-      selectedBoxMaterial,
-
-      // Styles & Configuration
-      cabinetStyles,
       finishTypes,
+      cabinetStyles,
       cabinetTypes,
-
-      // Hardware
       hardware,
-
-      // Accessories
-      accessories,
-
-      // Lengths
-      lengthsCatalog: lengths?.catalog || [],
-
-      // Services & Anchors
       partsListAnchors,
+      cabinetAnchors,
       globalServices: services,
+      lengthsCatalog: lengths?.catalog || [],
+      accessories,
+      teamDefaults,
+    };
 
-      // Defaults for fallback (three-tier system)
-      estimate: currentEstimate,
-      team: teamDefaults,
-    });
+    return createSectionContext(section, currentEstimate, catalogData);
   }, [
-    effectiveSection,
+    section,
+    currentEstimate,
     boxMaterials,
     faceMaterials,
-    selectedFaceMaterial,
-    selectedBoxMaterial,
     drawerBoxMaterials,
     finishTypes,
     cabinetStyles,
     cabinetTypes,
     hardware,
-    accessories,
-    lengths,
     partsListAnchors,
+    cabinetAnchors,
     services,
-    currentEstimate,
+    lengths,
+    accessories,
     teamDefaults,
   ]);
 
+  // Calculate the total price and face counts of all items in the section
+  const sectionCalculations = useMemo(() => {
+    return getSectionCalculations(effectiveSection, context);
+  }, [effectiveSection, context]);
+
+  // Calculate display values for quantity 0 handling
+  const displayValues = useMemo(() => {
+    const actualQuantity = section.quantity;
+    const calculationQuantity = actualQuantity === 0 ? 1 : actualQuantity;
+
+    // Get the per-unit price (what it would cost for quantity 1)
+    const unitPrice = sectionCalculations.totalPrice / calculationQuantity;
+
+    // Display total is 0 if quantity is 0, otherwise use calculated total
+    const displayTotal =
+      actualQuantity === 0 ? 0 : sectionCalculations.totalPrice;
+
+    return {
+      unitPrice,
+      displayTotal,
+      actualQuantity,
+      showUnitPrice: actualQuantity === 0, // Show unit price when quantity is 0
+    };
+  }, [section.quantity, sectionCalculations.totalPrice]);
+
   // Format number as currency
- const formatCurrency = (amount, { noCents = false } = {}) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: noCents ? 0 : 2,
-    maximumFractionDigits: noCents ? 0 : 2,
-  }).format(amount);
-};
+  const formatCurrency = (amount, { noCents = false } = {}) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: noCents ? 0 : 2,
+      maximumFractionDigits: noCents ? 0 : 2,
+    }).format(amount);
+  };
 
   // Format hours with 2 decimal places
   const formatHours = (hours) => {
@@ -236,10 +237,19 @@ const EstimateSectionPrice = ({ section }) => {
         <div className="text-slate-300">
           <span className="text-sm font-medium">Section Total Price:</span>
         </div>
-        <div className="text-xl font-bold text-teal-400">
-          {formatCurrency(sectionCalculations.totalPrice, {
-            noCents: true,
-          })}
+        <div
+          className={`text-xl font-bold ${
+            displayValues.showUnitPrice ? "text-amber-400" : "text-teal-400"
+          }`}
+        >
+          {formatCurrency(
+            displayValues.showUnitPrice
+              ? displayValues.unitPrice
+              : displayValues.displayTotal,
+            {
+              noCents: true,
+            }
+          )}
         </div>
       </div>
 
@@ -282,16 +292,64 @@ const EstimateSectionPrice = ({ section }) => {
               {formatCurrency(sectionCalculations.discount)}
             </div>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1">
-            <div className="text-sm text-slate-300 text-left">Quantity</div>
+          <div
+            className={`grid grid-cols-[3fr,1fr,3fr] gap-1 ${
+              displayValues.showUnitPrice ? "bg-amber-400 px-1 text-white" : ""
+            }`}
+          >
+            <div
+              className={`${
+                displayValues.showUnitPrice
+                  ? "text-lg text-slate-900 text-left font-bold"
+                  : "text-sm text-slate-300 text-left"
+              }`}
+            >
+              Quantity
+            </div>
             <div></div>
-            <div className="text-sm text-right font-bold text-teal-400">
+            <div
+              className={`${
+                displayValues.showUnitPrice
+                  ? "text-lg text-right font-bold text-slate-900"
+                  : "text-sm text-right font-bold text-teal-400"
+              }`}
+            >
               {sectionCalculations.quantity}
             </div>
           </div>
         </EstimateSectionPriceGroup>
-        {/* Price Breakdown - Title */}
-        <EstimateSectionPriceGroup title="Parts Breakdown">
+        {/* Price Breakdown - Title with Edit Button */}
+        <EstimateSectionPriceGroup
+          title="Parts Breakdown"
+          titleAction={
+            !isEditingToggles ? (
+              <button
+                onClick={handleEditToggles}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
+              >
+                <FiEdit2 size={12} />
+                Edit Included
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancelToggles}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                >
+                  <FiX size={12} />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveToggles}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-500 text-white rounded hover:bg-teal-600 transition-colors"
+                >
+                  <FiSave size={12} />
+                  Save
+                </button>
+              </div>
+            )
+          }
+        >
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-xs font-medium text-slate-400">Type</div>
@@ -304,14 +362,42 @@ const EstimateSectionPrice = ({ section }) => {
           </div>
           {/* Price Breakdown - Content - Grid Layout */}
           {/* Box Information */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["boxTotal"] !== false}
+                  onChange={() => handlePartsToggle("boxTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.boxTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
               Cabinet Boxes:
             </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.boxCount}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.boxTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.boxTotal)}
             </span>
           </div>
@@ -328,81 +414,286 @@ const EstimateSectionPrice = ({ section }) => {
                   "glassShelfFaces",
                 ].includes(type)
             )
-            .map(([type, count]) => (
-              <div
-                key={type}
-                className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700 last:border-0"
-              >
-                <span className="text-sm text-slate-300 text-left">
-                  {FACE_TYPES.find((t) => t.value === type)?.label || type}
-                  s:
-                </span>
-                <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-                  {count}
-                </span>
-                <span className="text-sm font-medium text-teal-400 text-right">
-                  {formatCurrency(sectionCalculations.facePrices[type])}
-                </span>
-              </div>
-            ))}
+            .map(([type, count]) => {
+              const partKey = `facePrices.${type}`;
+              const isExcluded =
+                sectionCalculations.partsIncluded?.[partKey] === false;
+              return (
+                <div
+                  key={type}
+                  className={`grid ${
+                    isEditingToggles
+                      ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                      : "grid-cols-[3fr,1fr,2fr]"
+                  } gap-1 py-1 border-b border-gray-700 last:border-0`}
+                >
+                  {isEditingToggles && (
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={partsToggles[partKey] !== false}
+                        onChange={() => handlePartsToggle(partKey)}
+                        className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                      />
+                    </div>
+                  )}
+                  <span
+                    className={`text-sm text-left ${
+                      isExcluded ? "text-amber-400" : "text-slate-300"
+                    }`}
+                  >
+                    {FACE_TYPES.find((t) => t.value === type)?.label || type}
+                    s:
+                  </span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {count}
+                  </span>
+                  <span
+                    className={`text-sm font-medium text-right ${
+                      isExcluded ? "text-amber-400" : "text-teal-400"
+                    }`}
+                  >
+                    {formatCurrency(sectionCalculations.facePrices[type])}
+                  </span>
+                </div>
+              );
+            })}
           {/* Drawer Box Information */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["drawerBoxTotal"] !== false}
+                  onChange={() => handlePartsToggle("drawerBoxTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.drawerBoxTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
               Drawer Boxes:
             </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.drawerBoxCount}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.drawerBoxTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.drawerBoxTotal)}
             </span>
           </div>
 
           {/* Rollout Information */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Rollouts:</span>
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["rollOutTotal"] !== false}
+                  onChange={() => handlePartsToggle("rollOutTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.rollOutTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
+              Rollouts:
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.rollOutCount}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.rollOutTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.rollOutTotal)}
             </span>
           </div>
 
           {/* Hardware Information */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Hinges:</span>
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["hingesTotal"] !== false}
+                  onChange={() => handlePartsToggle("hingesTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.hingesTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
+              Hinges:
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.hingesCount || 0}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.hingesTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.hingesTotal || 0)}
             </span>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Slides:</span>
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["slidesTotal"] !== false}
+                  onChange={() => handlePartsToggle("slidesTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.slidesTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
+              Slides:
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.slidesCount || 0}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.slidesTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.slidesTotal || 0)}
             </span>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Pulls:</span>
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["pullsTotal"] !== false}
+                  onChange={() => handlePartsToggle("pullsTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.pullsTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
+              Pulls:
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.pullsCount || 0}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.pullsTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.pullsTotal || 0)}
             </span>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700">
-            <span className="text-sm text-slate-300 text-left">Wood:</span>
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1 border-b border-gray-700`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["woodTotal"] !== false}
+                  onChange={() => handlePartsToggle("woodTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.woodTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
+              Wood:
+            </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {sectionCalculations.woodCount || 0}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.woodTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.woodTotal || 0)}
             </span>
           </div>
@@ -418,14 +709,42 @@ const EstimateSectionPrice = ({ section }) => {
                 : ""}
             </span>
           </div>
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1">
-            <span className="text-sm text-slate-300 text-left">
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 py-1`}
+          >
+            {isEditingToggles && (
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  checked={partsToggles["glassTotal"] !== false}
+                  onChange={() => handlePartsToggle("glassTotal")}
+                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                />
+              </div>
+            )}
+            <span
+              className={`text-sm text-left ${
+                sectionCalculations.partsIncluded?.glassTotal === false
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }`}
+            >
               Glass (sqft):
             </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
               {roundToHundredth(sectionCalculations.glassCount || 0)}
             </span>
-            <span className="text-sm font-medium text-teal-400 text-right">
+            <span
+              className={`text-sm font-medium text-right ${
+                sectionCalculations.partsIncluded?.glassTotal === false
+                  ? "text-amber-400"
+                  : "text-teal-400"
+              }`}
+            >
               {formatCurrency(sectionCalculations.glassTotal || 0)}
             </span>
           </div>
@@ -447,22 +766,47 @@ const EstimateSectionPrice = ({ section }) => {
 
           {/* Dynamic Service Hours */}
           {Object.entries(sectionCalculations.laborCosts.costsByService).map(
-            ([serviceType, data]) => (
-              <div
-                key={serviceType}
-                className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1 border-b border-gray-700"
-              >
-                <span className="text-sm text-slate-300 text-left capitalize">
-                  {data.name}:
-                </span>
-                <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-                  {formatHours(data.hours)}
-                </span>
-                <span className="text-sm font-medium text-teal-400 text-right">
-                  {formatCurrency(data.cost)}
-                </span>
-              </div>
-            )
+            ([serviceType, data]) => {
+              const isExcluded = data.isIncluded === false;
+              return (
+                <div
+                  key={serviceType}
+                  className={`grid ${
+                    isEditingToggles
+                      ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                      : "grid-cols-[3fr,1fr,2fr]"
+                  } gap-1 py-1 border-b border-gray-700`}
+                >
+                  {isEditingToggles && (
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={serviceToggles[serviceType] !== false}
+                        onChange={() => handleServiceToggle(serviceType)}
+                        className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
+                      />
+                    </div>
+                  )}
+                  <span
+                    className={`text-sm text-left capitalize ${
+                      isExcluded ? "text-amber-400" : "text-slate-300"
+                    }`}
+                  >
+                    {data.name}:
+                  </span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {formatHours(data.hours)}
+                  </span>
+                  <span
+                    className={`text-sm font-medium text-right ${
+                      isExcluded ? "text-amber-400" : "text-teal-400"
+                    }`}
+                  >
+                    {formatCurrency(data.cost)}
+                  </span>
+                </div>
+              );
+            }
           )}
 
           {/* Total Labor Cost */}
@@ -482,7 +826,8 @@ const EstimateSectionPrice = ({ section }) => {
 };
 
 EstimateSectionPrice.propTypes = {
-  section: PropTypes.object,
+  section: PropTypes.object.isRequired,
+  onSaveToggles: PropTypes.func,
 };
 
 export default EstimateSectionPrice;

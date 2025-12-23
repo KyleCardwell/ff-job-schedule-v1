@@ -154,6 +154,16 @@ export const estimatesReducer = (state = initialState, action) => {
           loading: false,
           error: null
         };
+      } else if (type === 'custom_notes') {
+        return {
+          ...state,
+          currentEstimate: {
+            ...state.currentEstimate,
+            custom_notes: data.custom_notes
+          },
+          loading: false,
+          error: null
+        };
       }
       return state;
 

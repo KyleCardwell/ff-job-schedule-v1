@@ -25,6 +25,7 @@ import servicesReducer from "./services";
 import { taskDataReducer } from "./taskData";
 import { teamEstimateDefaultsReducer } from "./teamEstimateDefaults";
 import { teamMembersReducer } from "./teamMembers";
+import { teamsReducer } from "./teams";
 
 const appReducer = combineReducers({
 	auth: authReducer,
@@ -37,6 +38,7 @@ const appReducer = combineReducers({
 	chartConfig: chartConfigReducer,
 	financialsData: financialsDataReducer,
 	teamMembers: teamMembersReducer,
+	teams: teamsReducer,
 	estimates: estimatesReducer,
 	featureToggles: featureTogglesReducer,
 	materials: materialsReducer,

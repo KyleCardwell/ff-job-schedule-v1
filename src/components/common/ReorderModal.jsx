@@ -59,7 +59,7 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title, idKey
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         >
           <SortableContext items={items.map(i => i[idKey])} strategy={verticalListSortingStrategy}>
-            <div className="max-h-96 overflow-y-auto pr-2">
+            <div className="max-h-144 overflow-y-auto pr-2">
               {items.map(item => (
                 <SortableItem key={item[idKey]} id={item[idKey]}>
                   {item[itemName] || item[idKey]} 

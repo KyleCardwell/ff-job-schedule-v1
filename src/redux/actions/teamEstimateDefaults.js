@@ -38,7 +38,8 @@ export const fetchTeamDefaults = () => {
           default_drawer_front_style,
           default_profit,
           default_commission,
-          default_discount
+          default_discount,
+          default_estimate_notes
         `)
         .eq("team_id", teamId)
         .single();
@@ -96,6 +97,7 @@ export const updateTeamDefaults = (teamId, defaults) => {
         default_profit: defaults.default_profit,
         default_commission: defaults.default_commission,
         default_discount: defaults.default_discount,
+        default_estimate_notes: defaults.default_estimate_notes,
         updated_at: new Date(),
       };
 
@@ -132,7 +134,8 @@ export const updateTeamDefaults = (teamId, defaults) => {
           default_drawer_front_style,
           default_profit,
           default_commission,
-          default_discount
+          default_discount,
+          default_estimate_notes
         `)
         .eq("team_id", teamId)
         .single();

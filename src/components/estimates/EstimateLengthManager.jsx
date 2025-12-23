@@ -27,13 +27,12 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   });
 
   const [errors, setErrors] = useState({});
+  const [selectedLengthItem, setSelectedLengthItem] = useState(null);
 
   // Set initial type if editing existing item
   useEffect(() => {
     if (item.length_catalog_id && catalog.length > 0) {
-      const lengthItem = catalog.find(
-        (l) => l.id === item.length_catalog_id
-      );
+      const lengthItem = catalog.find((l) => l.id === item.length_catalog_id);
       if (lengthItem) {
         setSelectedType(lengthItem.type);
       }
@@ -57,10 +56,17 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
   const filteredLengths = getLengthsByType();
 
-  // Get the selected length item to check requirements
-  const selectedLengthItem = catalog.find(
-    (l) => l.id === formData.length_catalog_id
-  );
+  // Update selectedLengthItem when length_catalog_id changes
+  useEffect(() => {
+    if (formData.length_catalog_id) {
+      const lengthItem = catalog.find(
+        (l) => l.id === +formData.length_catalog_id
+      );
+      setSelectedLengthItem(lengthItem || null);
+    } else {
+      setSelectedLengthItem(null);
+    }
+  }, [formData.length_catalog_id, catalog]);
 
   const handleTypeChange = (e) => {
     const newType = e.target.value;
@@ -88,7 +94,11 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // Note: formData values intentionally excluded to prevent infinite loop
-  }, [selectedLengthItem?.id, selectedLengthItem?.requires_miters, selectedLengthItem?.requires_cutouts]);
+  }, [
+    selectedLengthItem?.id,
+    selectedLengthItem?.requires_miters,
+    selectedLengthItem?.requires_cutouts,
+  ]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -196,7 +206,9 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                     ? "border-red-500"
                     : "border-slate-300"
                 } rounded-md text-sm`}
-                disabled={loading || filteredLengths.length === 0 || !selectedType}
+                disabled={
+                  loading || filteredLengths.length === 0 || !selectedType
+                }
               >
                 <option value="">
                   {filteredLengths.length === 0
@@ -344,7 +356,12 @@ LengthItemForm.propTypes = {
   onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateLengthManager = ({ items, onUpdateItems, onReorderItems, onDeleteItem }) => {
+const EstimateLengthManager = ({
+  items,
+  onUpdateItems,
+  onReorderItems,
+  onDeleteItem,
+}) => {
   const { catalog } = useSelector((state) => state.lengths);
 
   const getLengthName = (lengthCatalogId) => {
@@ -436,6 +453,12 @@ const EstimateLengthManager = ({ items, onUpdateItems, onReorderItems, onDeleteI
     onReorderItems(reorderedItems);
   };
 
+  const getReorderItemName = (item) => {
+    const lengthName = getLengthName(item.length_catalog_id);
+    const length = item.length ? `${item.length} ft` : "";
+    return `${lengthName}${length ? ` - ${length}` : ""}`;
+  };
+
   return (
     <SectionItemList
       items={items}
@@ -446,6 +469,7 @@ const EstimateLengthManager = ({ items, onUpdateItems, onReorderItems, onDeleteI
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={LengthItemForm}
+      getReorderItemName={getReorderItemName}
     />
   );
 };

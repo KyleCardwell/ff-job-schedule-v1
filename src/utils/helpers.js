@@ -530,15 +530,12 @@ export const calculateFinancialTotals = (
         };
       } else {
         // For non-hours sections, calculate actual from input rows
-        const actualTotal = (section.inputRows || []).reduce(
-          (sum, row) => {
-            const cost = row.cost || 0;
-            const taxRate = row.taxRate || 0;
-            const total = taxRate > 0 ? cost * (1 + taxRate/100) : cost;
-            return sum + total;
-          },
-          0
-        );
+        const actualTotal = (section.inputRows || []).reduce((sum, row) => {
+          const cost = row.cost || 0;
+          const taxRate = row.taxRate || 0;
+          const total = taxRate > 0 ? cost * (1 + taxRate / 100) : cost;
+          return sum + total;
+        }, 0);
 
         return {
           ...acc,
@@ -638,4 +635,19 @@ export function truncateTrailingZeros(num) {
 
 export const calculateShelfQty = (height) => {
   return Math.floor(height / 16);
+};
+
+export const formatDoorDrawerStyle = (style) => {
+  if (!style) return "—";
+
+  if (style.includes("5_piece_hardwood")) {
+    return "5-Piece";
+  }
+
+  if (style.includes("slab_sheet") || style.includes("slab_hardwood")) {
+    return "Slab";
+  }
+
+  // Default: replace underscores with spaces
+  return style.replace(/_/g, " ");
 };

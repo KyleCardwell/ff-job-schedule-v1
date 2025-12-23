@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
@@ -58,6 +58,9 @@ const EstimateSectionForm = ({
   const DOOR_HINGE_OPTIONS = hardware.hinges || [];
   const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
   const PULL_OPTIONS = hardware.pulls || [];
+
+  const services = useSelector((state) => state.services?.allServices || []);
+  const activeServices = services.filter((service) => service.is_active);
 
   const isNewSection = !section.est_section_id;
 
@@ -210,6 +213,54 @@ const EstimateSectionForm = ({
     return `${value}%`;
   };
 
+  const formatServiceRate = (value) => {
+    if (value === null || value === undefined) return "$0";
+    return `$${value}`;
+  };
+
+  // Get effective service rate display - uses existing getEffectiveValue with service-specific paths
+  const getEffectiveServiceRateDisplay = (serviceId, service) => {
+    // Don't show for team edit type
+    if (editType === "team") {
+      return null;
+    }
+
+    const fieldValue = formData.service_price_overrides?.[serviceId];
+    const isEmpty =
+      fieldValue === "" || fieldValue === null || fieldValue === undefined;
+
+    if (!isEmpty) {
+      return <span className="flex-1 px-1 border border-teal-500 ml-1"></span>;
+    }
+
+    // Extract service-specific values for three-tier fallback
+    // When in estimate editing mode, skip estimate tier to show team defaults
+    const sectionValue = null; // We're in the form, so section override is what we're editing
+    const estimateValue =
+      editType === "estimate"
+        ? null
+        : currentEstimate?.default_service_price_overrides?.[serviceId];
+    const teamValue = service?.hourly_rate; // Service default rate from services store
+
+    const { value } = getEffectiveValue(sectionValue, estimateValue, teamValue);
+
+    // Don't show if there's no effective value
+    if (value === null || value === undefined) return null;
+
+    const displayValue = formatServiceRate(value);
+    const colorClass = "teal-500";
+
+    return (
+      displayValue && (
+        <span
+          className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}
+        >
+          {displayValue}
+        </span>
+      )
+    );
+  };
+
   const [mustSelectFaceFinish, setMustSelectFaceFinish] = useState(false);
   const [mustSelectBoxFinish, setMustSelectBoxFinish] = useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
@@ -238,6 +289,7 @@ const EstimateSectionForm = ({
     const profitField = getFieldName("profit");
     const commissionField = getFieldName("commission");
     const discountField = getFieldName("discount");
+    const servicePriceOverridesField = getFieldName("service_price_overrides");
 
     return {
       style:
@@ -318,7 +370,7 @@ const EstimateSectionForm = ({
         data.drawer_box_mat ||
         initialDefaults.drawer_box_mat ||
         "",
-      notes: data.notes || "",
+      notes: Array.isArray(data.notes) ? data.notes : ["", "", ""],
       quantity: data.quantity ?? 1,
       profit: data[profitField] ?? data.profit ?? initialDefaults.profit ?? "",
       commission:
@@ -328,11 +380,40 @@ const EstimateSectionForm = ({
         "",
       discount:
         data[discountField] ?? data.discount ?? initialDefaults.discount ?? "",
+      service_price_overrides:
+        data[servicePriceOverridesField] ??
+        data.service_price_overrides ??
+        initialDefaults.service_price_overrides ??
+        {},
     };
   });
 
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
+
+  // Refs for synchronized textarea heights
+  const notesTextareaRefs = useRef([]);
+
+  // Function to synchronize textarea heights
+  const syncTextareaHeights = useCallback(() => {
+    const textareas = notesTextareaRefs.current.filter(Boolean);
+    if (textareas.length === 0) return;
+
+    // Reset heights to auto to get natural height
+    textareas.forEach((textarea) => {
+      textarea.style.height = "auto";
+    });
+
+    // Find the maximum scroll height
+    const maxHeight = Math.max(
+      ...textareas.map((textarea) => textarea.scrollHeight)
+    );
+
+    // Set all textareas to the maximum height
+    textareas.forEach((textarea) => {
+      textarea.style.height = `${maxHeight}px`;
+    });
+  }, []);
 
   const clearFinishes = useCallback(
     (section) => {
@@ -392,7 +473,24 @@ const EstimateSectionForm = ({
   );
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, dataset } = e.target;
+    const notesIndex = dataset.notesIndex;
+
+    // Handle notes array separately
+    if (name === "notes" && notesIndex !== undefined) {
+      const newNotes = [...formData.notes];
+      newNotes[parseInt(notesIndex)] = value;
+      setFormData({
+        ...formData,
+        notes: newNotes,
+      });
+
+      // Synchronize textarea heights
+      setTimeout(() => {
+        syncTextareaHeights();
+      }, 0);
+      return;
+    }
 
     // Convert to number for fields that should have numerical values
     const numericFields = [
@@ -619,8 +717,7 @@ const EstimateSectionForm = ({
                 effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
 
           if (!isValidDoorStyle) {
-            newErrors.doorStyle =
-              "Choose a compatible door style";
+            newErrors.doorStyle = "Choose a compatible door style";
           }
         }
       }
@@ -849,6 +946,13 @@ const EstimateSectionForm = ({
               formData.discount === "" || formData.discount == null
                 ? null
                 : Number(formData.discount),
+            default_service_price_overrides:
+              formData.service_price_overrides &&
+              Object.keys(formData.service_price_overrides).filter(
+                (key) => formData.service_price_overrides[key] !== undefined
+              ).length > 0
+                ? formData.service_price_overrides
+                : null,
           };
 
           await dispatch(
@@ -877,6 +981,22 @@ const EstimateSectionForm = ({
               processedData[field] = Number(processedData[field]);
             }
           });
+
+          // Clean up service_price_overrides - remove undefined values
+          if (processedData.service_price_overrides) {
+            const cleanedOverrides = {};
+            Object.entries(processedData.service_price_overrides).forEach(
+              ([serviceId, rate]) => {
+                if (rate !== undefined && rate !== null && rate !== "") {
+                  cleanedOverrides[serviceId] = Number(rate);
+                }
+              }
+            );
+            processedData.service_price_overrides =
+              Object.keys(cleanedOverrides).length > 0
+                ? cleanedOverrides
+                : null;
+          }
 
           // Convert empty strings to null for material/hardware foreign key fields
           const foreignKeyFields = [
@@ -1046,6 +1166,13 @@ const EstimateSectionForm = ({
       return false;
     });
   }, [selectedFaceMaterial, DOOR_STYLE_OPTIONS]);
+
+  // Sync textarea heights on mount and when notes change
+  useEffect(() => {
+    if (editType === "section") {
+      syncTextareaHeights();
+    }
+  }, [editType, formData.notes, syncTextareaHeights]);
 
   useEffect(() => {
     // Check if effective door style is valid for the current material
@@ -1853,7 +1980,7 @@ const EstimateSectionForm = ({
             </h3>
             <div className="space-y-3">
               {/* Quantity */}
-              <div className="flex flex-col gap-2 items-center">
+              <div className="flex flex-col gap-2 items-center -mt-2">
                 <label
                   htmlFor="quantity"
                   className="text-right text-sm font-medium text-slate-700"
@@ -1878,7 +2005,7 @@ const EstimateSectionForm = ({
                   htmlFor="profit"
                   className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  <span>Profit</span>
+                  <span>Profit{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
                     formData.profit,
                     "default_profit",
@@ -1893,7 +2020,7 @@ const EstimateSectionForm = ({
                   name="profit"
                   value={formData.profit}
                   onChange={handleChange}
-                  placeholder="%"
+                  placeholder="0%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
@@ -1904,7 +2031,7 @@ const EstimateSectionForm = ({
                   htmlFor="commission"
                   className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  <span>Commission</span>
+                  <span>Commission{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
                     formData.commission,
                     "default_commission",
@@ -1919,7 +2046,7 @@ const EstimateSectionForm = ({
                   name="commission"
                   value={formData.commission}
                   onChange={handleChange}
-                  placeholder="%"
+                  placeholder="0%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
@@ -1930,7 +2057,7 @@ const EstimateSectionForm = ({
                   htmlFor="discount"
                   className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
                 >
-                  <span>Discount</span>
+                  <span>Discount{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
                     formData.discount,
                     "default_discount",
@@ -1945,32 +2072,139 @@ const EstimateSectionForm = ({
                   name="discount"
                   value={formData.discount}
                   onChange={handleChange}
-                  placeholder="%"
+                  placeholder="0%"
                   className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
                 />
               </div>
+
+              <h3 className="text-md font-medium text-slate-700 mb-3 border-t border-slate-400 pt-2">
+                Rates
+              </h3>
+
+              {/* Service Rate Overrides - only for estimate and section */}
+              {editType === "team" ? (
+                // Team mode: Display rates as read-only text
+                activeServices.map((service) => (
+                  <div
+                    key={service.service_id}
+                    className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0"
+                  >
+                    <span className="text-sm font-medium text-slate-700">
+                      {service.service_name}
+                    </span>
+                    <span className="text-sm text-slate-600">
+                      ${service.hourly_rate}/hr
+                    </span>
+                  </div>
+                ))
+              ) : (
+                // Estimate/Section mode: Editable inputs with effective value display
+                activeServices.map((service) => (
+                  <div
+                    key={service.service_id}
+                    className="flex flex-col gap-2 items-center"
+                  >
+                    <label
+                      htmlFor={`service-rate-${service.service_id}`}
+                      className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
+                    >
+                      <span>{service.service_name}</span>
+                      {getEffectiveServiceRateDisplay(
+                        service.service_id,
+                        service
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      id={`service-rate-${service.service_id}`}
+                      min="0"
+                      step="1"
+                      value={
+                        formData.service_price_overrides?.[
+                          service.service_id
+                        ] || ""
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData({
+                          ...formData,
+                          service_price_overrides: {
+                            ...formData.service_price_overrides,
+                            [service.service_id]:
+                              value === "" ? undefined : parseFloat(value),
+                          },
+                        });
+                      }}
+                      placeholder="$/hr"
+                      className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
 
         {/* Notes Section - only for sections */}
         {editType === "section" && (
-          <div className="grid grid-cols-[1fr_12fr] gap-2 items-center">
-            <label
-              htmlFor="notes"
-              className="block text-md font-medium text-slate-700"
-            >
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={2}
-              className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="Any special requirements..."
-            />
+          <div className="grid grid-cols-3 gap-2 items-start">
+            <div>
+              <label
+                htmlFor="notes-0"
+                className="block text-md font-medium text-slate-700"
+              >
+                Notes
+              </label>
+              <textarea
+                ref={(el) => (notesTextareaRefs.current[0] = el)}
+                id="notes-0"
+                name="notes"
+                data-notes-index="0"
+                value={formData.notes[0] || ""}
+                onChange={handleChange}
+                rows={2}
+                className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
+                placeholder="Any special notes..."
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="notes-1"
+                className="block text-md font-medium text-slate-700"
+              >
+                Includes
+              </label>
+              <textarea
+                ref={(el) => (notesTextareaRefs.current[1] = el)}
+                id="notes-1"
+                name="notes"
+                data-notes-index="1"
+                value={formData.notes[1] || ""}
+                onChange={handleChange}
+                rows={2}
+                className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
+                placeholder="What's included..."
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="notes-2"
+                className="block text-md font-medium text-slate-700"
+              >
+                Does Not Include
+              </label>
+              <textarea
+                ref={(el) => (notesTextareaRefs.current[2] = el)}
+                id="notes-2"
+                name="notes"
+                data-notes-index="2"
+                value={formData.notes[2] || ""}
+                onChange={handleChange}
+                rows={2}
+                className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
+                placeholder="What's not included..."
+              />
+            </div>
           </div>
         )}
 

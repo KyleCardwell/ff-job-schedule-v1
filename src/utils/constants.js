@@ -23,6 +23,7 @@ export const PATHS = {
   NEW_ESTIMATE: "/estimates/new",
   IN_PROGRESS_ESTIMATES: "/estimates/in-progress",
   FINALIZED_ESTIMATES: "/estimates/finalized",
+  ESTIMATE_PREVIEW: "/estimates/in-progress/:estimateId/preview",
 };
 
 export const ESTIMATE_STATUS = {
@@ -90,6 +91,7 @@ export const PANEL_FACE_TYPES = [
 // Face types for drawer fronts (includes reveals)
 export const DRAWER_FRONT_FACE_TYPES = [
   { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
+  { value: FACE_NAMES.FALSE_FRONT, label: "False Front", color: "#f54d0b" },
 ];
 
 export const DOOR_FRONT_FACE_TYPES = [

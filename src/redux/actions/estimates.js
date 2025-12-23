@@ -248,6 +248,13 @@ export const fetchEstimateById = (estimateId) => {
         default_profit: data.default_profit,
         default_commission: data.default_commission,
         default_discount: data.default_discount,
+        default_service_price_overrides: data.default_service_price_overrides,
+
+        // Custom notes
+        custom_notes: data.custom_notes || [],
+
+        // Line items
+        line_items: data.line_items,
 
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
@@ -743,6 +750,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
 
       // Extract fields that go in separate columns (all fields now have dedicated columns)
       const {
+        section_name,
         boxMaterial,
         faceMaterial,
         drawer_box_mat,
@@ -767,10 +775,15 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         doorStyle,
         drawerFrontStyle,
         add_hours,
+        parts_included,
+        services_included,
+        service_price_overrides,
       } = updates;
 
       // Prepare the update payload for Supabase
       const updatePayload = {
+        // Set section_name if provided (handles null for empty strings)
+        ...(section_name !== undefined && { section_name: section_name }),
         // Set box_mat and face_mat separately if provided
         ...(boxMaterial !== undefined && { box_mat: boxMaterial !== null ? +boxMaterial : null }),
         ...(faceMaterial !== undefined && { face_mat: faceMaterial !== null ? +faceMaterial : null }),
@@ -822,6 +835,9 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
           drawer_front_style: drawerFrontStyle || null,
         }),
         ...(add_hours !== undefined && { add_hours: add_hours || null }),
+        ...(parts_included !== undefined && { parts_included: parts_included || null }),
+        ...(services_included !== undefined && { services_included: services_included || null }),
+        ...(service_price_overrides !== undefined && { service_price_overrides: service_price_overrides || null }),
         updated_at: new Date(),
       };
 
@@ -1139,6 +1155,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_profit: defaults.default_profit ?? null,
         default_commission: defaults.default_commission ?? null,
         default_discount: defaults.default_discount ?? null,
+        default_service_price_overrides: defaults.default_service_price_overrides ?? null,
         updated_at: new Date(),
       };
 
@@ -1198,6 +1215,10 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_profit: data.default_profit,
         default_commission: data.default_commission,
         default_discount: data.default_discount,
+        default_service_price_overrides: data.default_service_price_overrides,
+
+        // Line items
+        line_items: data.line_items,
 
         tasks: (data.tasks || []).map((task) => ({
           ...task.task,
@@ -1223,6 +1244,77 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_ERROR,
         payload: error.message,
       });
+      throw error;
+    }
+  };
+};
+
+// Update custom notes for an estimate
+export const updateCustomNotes = (estimateId, customNotes) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { error } = await supabase
+        .from("estimates")
+        .update({
+          custom_notes: customNotes,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "custom_notes",
+          data: { custom_notes: customNotes },
+        },
+      });
+
+      return customNotes;
+    } catch (error) {
+      console.error("Error updating custom notes:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Update estimate line items
+export const updateEstimateLineItems = (estimateId, lineItems) => {
+  return async (dispatch, getState) => {
+    try {
+      // Update the estimates table with line items
+      const { error: updateError } = await supabase
+        .from("estimates")
+        .update({
+          line_items: lineItems,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (updateError) throw updateError;
+
+      // Update the current estimate in state
+      const currentEstimate = getState().estimates.currentEstimate;
+      if (currentEstimate && currentEstimate.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            line_items: lineItems,
+          },
+        });
+      }
+
+      return lineItems;
+    } catch (error) {
+      console.error("Error updating estimate line items:", error);
       throw error;
     }
   };
