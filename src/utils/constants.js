@@ -91,6 +91,7 @@ export const PANEL_FACE_TYPES = [
 // Face types for drawer fronts (includes reveals)
 export const DRAWER_FRONT_FACE_TYPES = [
   { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
+  { value: FACE_NAMES.FALSE_FRONT, label: "False Front", color: "#f54d0b" },
 ];
 
 export const DOOR_FRONT_FACE_TYPES = [

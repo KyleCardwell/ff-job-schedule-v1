@@ -69,7 +69,7 @@ export const CABINET_ITEM_TYPES = {
   drawer_front: {
     label: 'Drawer Front',
     faceTypesArray: DRAWER_FRONT_FACE_TYPES,
-    defaultFaceType: FACE_NAMES.drawer_front,
+    defaultFaceType: FACE_NAMES.DRAWER_FRONT,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: false,

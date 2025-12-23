@@ -1420,7 +1420,7 @@ export const calculateRollOutDimensions = (
   // Depth should be a multiple of 3 inches and maximum cabinet depth - 1 inch
   const maxDepth = Math.max(cabinetDepth - 1.25, 6);
   // Find the largest multiple of 3 that fits within maxDepth
-  const depth = Math.floor(maxDepth / 3) * 3;
+  const depth = cabinetDepth < 2 ? 21 :Math.floor(maxDepth / 3) * 3;
 
   return { width, height, depth, rollOut: type === "rollOut" };
 };
