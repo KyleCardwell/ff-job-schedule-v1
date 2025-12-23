@@ -30,6 +30,8 @@ import {
   totalJobHours,
 } from "../utils/helpers";
 
+import GenerateJobSchedulePdf from "./GenerateJobSchedulePdf.jsx";
+
 const JobModal = ({
   isOpen,
   onClose,
@@ -1283,14 +1285,25 @@ const JobModal = ({
               ) : (
                 <h2 className="text-lg font-bold">{jobName}</h2>
               )}
-              <button
-                className={`${
-                  !jobData || !canEditSchedule ? "hidden" : ""
-                } ${buttonClass} bg-gray-800 absolute right-5`}
-                onClick={handleCompleteJob}
-              >
-                Complete Job
-              </button>
+              <div className={`flex gap-5 absolute right-5`}>
+                <GenerateJobSchedulePdf
+                  jobName={jobName}
+                  depositDate={depositDate}
+                  deliveryDate={deliveryDate}
+                  projectNotes={projectNotes}
+                  localRooms={localRooms}
+                  employees={employees}
+                  formatDateForDisplay={formatDateForDisplay}
+                  disabled={!jobName || localRooms.length === 0}
+                />
+                <button
+                  className={`${!jobData || !canEditSchedule ? "hidden" : ""}
+                    ${buttonClass} bg-gray-800`}
+                  onClick={handleCompleteJob}
+                >
+                  Complete Job
+                </button>
+              </div>
             </div>
             <div className={`flex gap-8 items-center mb-5 justify-center`}>
               <div className="md:w-1/4">
