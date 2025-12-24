@@ -18,6 +18,7 @@ import {
   calculateSlabSheetFacePriceBulk,
   calculateMoldingCost,
   roundToHundredth,
+  interpolateTimeByArea,
 } from "./estimateHelpers";
 
 // Calculate face counts and prices for all cabinets in a section
@@ -598,10 +599,12 @@ const calculateFaceFramePrices = (section, context) => {
 
   if (!section.cabinets || !Array.isArray(section.cabinets)) return totals;
 
-  const { selectedFaceMaterial } = context;
+  const { selectedFaceMaterial, partsListAnchors, globalServices } = context;
   if (!selectedFaceMaterial) return totals;
 
-  let totalTapeHours = 0; // 👈 track tape time separately
+  let totalTapeHours = 0;
+
+  const faceFrameAnchors = partsListAnchors?.[20];
 
   section.cabinets.forEach((cabinet) => {
     if (cabinet.cabinet_style_override === 13) return;
@@ -630,16 +633,12 @@ const calculateFaceFramePrices = (section, context) => {
 
     if (!frameParts?.framePieces) return;
 
+    const cabinetStyleId =
+      cabinet.cabinet_style_override || section.cabinet_style_id;
+
     frameParts.framePieces.forEach((piece) => {
       const length = piece.length || 0;
       const width = piece.width || 0;
-
-      let shopTimeMinutes = 15;
-      if (length > 36) {
-        const extraLength = Math.min(length - 36, 60);
-        const timeIncrease = (extraLength / 60) * 10;
-        shopTimeMinutes = 15 + timeIncrease;
-      }
 
       if (selectedFaceMaterial?.material?.bd_ft_price) {
         const boardFeet =
@@ -652,14 +651,38 @@ const calculateFaceFramePrices = (section, context) => {
           quantity;
       }
 
-      const shopTimeHours = shopTimeMinutes / 60;
-      if (!totals.hoursByService[2]) totals.hoursByService[2] = 0;
+      if (faceFrameAnchors && faceFrameAnchors.length > 0) {
+        const area = length * width;
 
-      const shopMultiplier = selectedFaceMaterial.material?.needs_finish
-        ? selectedFaceMaterial.shopMultiplier
-        : 1;
+        globalServices?.forEach((service) => {
+          const teamServiceId = service.team_service_id;
+          const serviceId = service.service_id;
 
-      totals.hoursByService[2] += shopTimeHours * quantity * shopMultiplier;
+          const minutesEach = interpolateTimeByArea(
+            faceFrameAnchors,
+            area,
+            teamServiceId,
+            cabinetStyleId
+          );
+
+          let totalMinutes = minutesEach * quantity;
+
+          if (serviceId === 2 && selectedFaceMaterial.material?.needs_finish) {
+            totalMinutes *= selectedFaceMaterial.shopMultiplier || 1;
+          }
+
+          if (serviceId === 3 && selectedFaceMaterial.material?.needs_finish) {
+            totalMinutes *= selectedFaceMaterial.finishMultiplier || 1;
+          }
+
+          const hours = totalMinutes / 60;
+
+          if (!totals.hoursByService[serviceId]) {
+            totals.hoursByService[serviceId] = 0;
+          }
+          totals.hoursByService[serviceId] += hours;
+        });
+      }
     });
   });
 

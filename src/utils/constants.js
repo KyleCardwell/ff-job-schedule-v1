@@ -221,6 +221,7 @@ export const PARTS_LIST_MAPPING = {
   reeded_panel_finished: 15,
   end_panel_finished: 17,
   appliance_panel_finished: 18,
-  end_panel_nosing_finished: 19
+  end_panel_nosing_finished: 19,
+  face_frame_finished: 20,
 };
   
