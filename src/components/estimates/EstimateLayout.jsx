@@ -170,8 +170,7 @@ const EstimateLayout = () => {
   };
 
   const handleSaveTaskOrder = (reorderedTasks) => {
-    const taskOrder = reorderedTasks.map((task) => task.est_task_id);
-    dispatch(updateTaskOrder(currentEstimate.estimate_id, taskOrder));
+    dispatch(updateTaskOrder(currentEstimate.estimate_id, reorderedTasks));
     setIsReorderModalOpen(false);
   };
 

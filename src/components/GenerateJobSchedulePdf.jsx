@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { FiFileText } from "react-icons/fi";
+
 import { buttonClass } from "../assets/tailwindConstants";
 
 const GenerateJobSchedulePdf = ({
