@@ -1269,11 +1269,11 @@ const calculateAccessoriesTotal = (items, context) => {
     // Calculate labor hours from time anchors if available
     if (accessories.timeAnchors && accessories.timeAnchors.length > 0) {
       const accessoryAnchors = accessories.timeAnchors.filter(
-        (anchor) => anchor.accessory_catalog_id === accessory.id
+        (anchor) => anchor.accessories_catalog_id === accessory.id
       );
 
       accessoryAnchors.forEach((anchor) => {
-        let totalMinutes = anchor.minutes_per_unit * quantity * unit;
+        let totalMinutes = anchor.minutes_per_unit * quantity * Math.max(1, unit);
 
         // Apply multipliers for shop-built items that match room material
         if (
@@ -1512,6 +1512,15 @@ export const getSectionCalculations = (section, context = {}) => {
 
   const totalPrice =  roundPriceUpTo5 * (section.quantity || 1);
 
+  // Calculate total accessories count and price
+  const accessoriesCount = Object.values(accessoriesTotal)
+    .filter(item => typeof item === 'object' && item.count !== undefined)
+    .reduce((sum, item) => sum + item.count, 0);
+  
+  const accessoriesTotalPrice = Object.values(accessoriesTotal)
+    .filter(item => typeof item === 'object' && item.total !== undefined)
+    .reduce((sum, item) => sum + item.total, 0);
+
   return {
     totalPrice,
     subTotalPrice,
@@ -1536,6 +1545,8 @@ export const getSectionCalculations = (section, context = {}) => {
     fillerCount: cabinetTotals.fillerCount,
     glassCount,
     glassTotal,
+    accessoriesCount,
+    accessoriesTotal: accessoriesTotalPrice,
     quantity: section.quantity,
     profit: sectionProfit,
     profitRate: section.profit,

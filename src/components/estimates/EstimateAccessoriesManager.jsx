@@ -389,13 +389,22 @@ const EstimateAccessoriesManager = ({
 
   const handleSaveItem = async (item, itemIndex = -1) => {
     try {
+      // Clean up numeric fields: convert empty strings to null
+      const cleanedItem = {
+        ...item,
+        width: item.width === "" || item.width === null || item.width === undefined ? null : Number(item.width),
+        height: item.height === "" || item.height === null || item.height === undefined ? null : Number(item.height),
+        depth: item.depth === "" || item.depth === null || item.depth === undefined ? null : Number(item.depth),
+        quantity: item.quantity === "" || item.quantity === null || item.quantity === undefined ? 1 : Number(item.quantity),
+      };
+
       const updatedItems = [...items];
       if (itemIndex === -1) {
         // New item
-        updatedItems.push(item);
+        updatedItems.push(cleanedItem);
       } else {
         // Update existing item
-        updatedItems[itemIndex] = item;
+        updatedItems[itemIndex] = cleanedItem;
       }
       onUpdateItems(updatedItems);
     } catch (error) {

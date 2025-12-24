@@ -206,7 +206,7 @@ export const saveAccessoryTimeAnchors =
           .from("accessory_time_anchors")
           .insert(
             newAnchors.map((anchor) => ({
-              accessory_catalog_id: accessoryCatalogId,
+              accessories_catalog_id: accessoryCatalogId,
               team_service_id: anchor.team_service_id,
               minutes_per_unit: anchor.minutes_per_unit,
             }))

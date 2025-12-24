@@ -13,6 +13,8 @@ import { v4 as uuidv4 } from "uuid";
 import {
   fetchAccessoriesCatalog,
   saveAccessoriesCatalog,
+  fetchAccessoryTimeAnchors,
+  saveAccessoryTimeAnchors,
 } from "../../redux/actions/accessories";
 import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS, ACCESSORY_TYPES } from "../../utils/constants";
 
@@ -22,25 +24,69 @@ import SettingsSection from "./SettingsSection.jsx";
 const AccessoriesSettings = forwardRef((props, ref) => {
   const { maxWidthClass } = props;
   const dispatch = useDispatch();
-  const { catalog, glass, insert, hardware, shop_built, organizer, other, loading, error } = useSelector(
+  const { catalog, glass, insert, hardware, shop_built, organizer, other, timeAnchors, loading, error } = useSelector(
     (state) => state.accessories
   );
+  
+  const services = useSelector((state) => state.services?.allServices || []);
 
   // Local state for editing
   const [localCatalog, setLocalCatalog] = useState([]);
   const [originalCatalog, setOriginalCatalog] = useState([]);
+  const [localTimeAnchors, setLocalTimeAnchors] = useState([]);
+  const [originalTimeAnchors, setOriginalTimeAnchors] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
   const [focusItemId, setFocusItemId] = useState(null);
   const inputRefs = useRef({});
 
   useEffect(() => {
     dispatch(fetchAccessoriesCatalog());
+    dispatch(fetchAccessoryTimeAnchors());
   }, [dispatch]);
 
   useEffect(() => {
     setLocalCatalog(catalog || []);
     setOriginalCatalog(JSON.parse(JSON.stringify(catalog || [])));
   }, [catalog]);
+
+  useEffect(() => {
+    setLocalTimeAnchors(timeAnchors || []);
+    setOriginalTimeAnchors(JSON.parse(JSON.stringify(timeAnchors || [])));
+  }, [timeAnchors]);
+
+  // Helper to get time anchors for a specific accessory
+  const getTimeAnchorsForAccessory = (accessoryId) => {
+    return localTimeAnchors.filter(anchor => anchor.accessories_catalog_id === accessoryId);
+  };
+
+  // Handle time anchor changes
+  const handleTimeAnchorChange = (accessoryId, teamServiceId, minutes) => {
+    const existingAnchor = localTimeAnchors.find(
+      a => a.accessories_catalog_id === accessoryId && a.team_service_id === teamServiceId
+    );
+
+    if (existingAnchor) {
+      setLocalTimeAnchors(prev =>
+        prev.map(a =>
+          a.id === existingAnchor.id
+            ? { ...a, minutes_per_unit: minutes }
+            : a
+        )
+      );
+    } else {
+      // Add new anchor
+      setLocalTimeAnchors(prev => [
+        ...prev,
+        {
+          id: uuidv4(),
+          accessories_catalog_id: accessoryId,
+          team_service_id: teamServiceId,
+          minutes_per_unit: minutes,
+          isNew: true,
+        },
+      ]);
+    }
+  };
 
   const handleCatalogChange = (id, field, value) => {
     setLocalCatalog((prev) =>
@@ -173,7 +219,82 @@ const AccessoriesSettings = forwardRef((props, ref) => {
         result = { success: true, data: localCatalog };
       }
 
-      console.log("Accessories catalog saved successfully");
+      // Save time anchors if changed (only for existing accessories with real IDs)
+      if (!isEqual(localTimeAnchors, originalTimeAnchors)) {
+        // Group anchors by accessory for batch save
+        const anchorsByAccessory = {};
+        
+        localTimeAnchors.forEach(anchor => {
+          const accessoryId = anchor.accessories_catalog_id;
+          
+          // Skip if accessory doesn't have a real database ID (is a UUID or undefined)
+          if (!accessoryId || typeof accessoryId === 'string' && accessoryId.includes('-')) {
+            return;
+          }
+          
+          if (!anchorsByAccessory[accessoryId]) {
+            anchorsByAccessory[accessoryId] = {
+              new: [],
+              updated: [],
+              deleted: [],
+            };
+          }
+          
+          if (anchor.isNew) {
+            anchorsByAccessory[accessoryId].new.push(anchor);
+          } else if (anchor.markedForDeletion) {
+            anchorsByAccessory[accessoryId].deleted.push(anchor.id);
+          } else {
+            const original = originalTimeAnchors.find(o => o.id === anchor.id);
+            if (original && !isEqual(anchor, original)) {
+              anchorsByAccessory[accessoryId].updated.push(anchor);
+            }
+          }
+        });
+
+        // Also check for deleted anchors
+        originalTimeAnchors.forEach(original => {
+          const accessoryId = original.accessories_catalog_id;
+          
+          // Skip if accessory doesn't have a real database ID
+          if (!accessoryId || typeof accessoryId === 'string' && accessoryId.includes('-')) {
+            return;
+          }
+          
+          if (!localTimeAnchors.find(a => a.id === original.id)) {
+            if (!anchorsByAccessory[accessoryId]) {
+              anchorsByAccessory[accessoryId] = {
+                new: [],
+                updated: [],
+                deleted: [],
+              };
+            }
+            anchorsByAccessory[accessoryId].deleted.push(original.id);
+          }
+        });
+
+        // Save anchors for each accessory
+        for (const [accessoryId, changes] of Object.entries(anchorsByAccessory)) {
+          if (changes.new.length > 0 || changes.updated.length > 0 || changes.deleted.length > 0) {
+            const timeResult = await dispatch(
+              saveAccessoryTimeAnchors(
+                accessoryId,
+                changes.new,
+                changes.updated,
+                changes.deleted
+              )
+            );
+
+            if (!timeResult || !timeResult.success) {
+              throw new Error(
+                timeResult?.error || "Failed to save accessory time anchors"
+              );
+            }
+          }
+        }
+      }
+
+      console.log("Accessories catalog and time anchors saved successfully");
 
       if (result.data) {
         setLocalCatalog(result.data);
@@ -381,6 +502,46 @@ const AccessoriesSettings = forwardRef((props, ref) => {
         allowEmpty: true,
       },
     ] : []),
+    // Labor Time column for all types
+    {
+      field: "labor_time",
+      label: "Labor Time (min/unit)",
+      width: "200px",
+      render: (item) => {
+        const itemAnchors = getTimeAnchorsForAccessory(item.id);
+        const activeServices = services.filter(s => s.is_active);
+        
+        return (
+          <div className="flex flex-col gap-1">
+            {activeServices.map(service => {
+              const anchor = itemAnchors.find(a => a.team_service_id === service.team_service_id);
+              const minutes = anchor?.minutes_per_unit || "";
+              
+              return (
+                <div key={service.team_service_id} className="flex items-center gap-1">
+                  <span className="text-xs text-slate-400 w-16 truncate" title={service.service_name}>
+                    {service.service_name}:
+                  </span>
+                  <input
+                    type="number"
+                    value={minutes}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? 0 : Number(e.target.value);
+                      handleTimeAnchorChange(item.id, service.team_service_id, value);
+                    }}
+                    placeholder="0"
+                    disabled={item.markedForDeletion || item.isNew}
+                    className="px-1 py-0.5 bg-slate-700 border border-slate-600 rounded text-xs text-white w-16"
+                    step="0.1"
+                    min="0"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
+    },
   ];
 
   return (
