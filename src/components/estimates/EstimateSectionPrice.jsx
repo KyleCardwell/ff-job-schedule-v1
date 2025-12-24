@@ -51,7 +51,6 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
     { key: "slidesTotal", label: "Slides" },
     { key: "pullsTotal", label: "Pulls" },
     { key: "woodTotal", label: "Wood" },
-    { key: "glassTotal", label: "Glass" },
     { key: "accessoriesTotal", label: "Accessories" },
   ];
 
@@ -710,47 +709,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
                 : ""}
             </span>
           </div>
-          <div
-            className={`grid ${
-              isEditingToggles
-                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
-                : "grid-cols-[3fr,1fr,2fr]"
-            } gap-1 py-1 border-b border-gray-700`}
-          >
-            {isEditingToggles && (
-              <div className="flex justify-center">
-                <input
-                  type="checkbox"
-                  checked={partsToggles["glassTotal"] !== false}
-                  onChange={() => handlePartsToggle("glassTotal")}
-                  className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
-                />
-              </div>
-            )}
-            <span
-              className={`text-sm text-left ${
-                sectionCalculations.partsIncluded?.glassTotal === false
-                  ? "text-amber-400"
-                  : "text-slate-300"
-              }`}
-            >
-              Glass (sqft):
-            </span>
-            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-              {roundToHundredth(sectionCalculations.glassCount || 0)}
-            </span>
-            <span
-              className={`text-sm font-medium text-right ${
-                sectionCalculations.partsIncluded?.glassTotal === false
-                  ? "text-amber-400"
-                  : "text-teal-400"
-              }`}
-            >
-              {formatCurrency(sectionCalculations.glassTotal || 0)}
-            </span>
-          </div>
-
-          {/* Accessories Information */}
+          {/* Accessories Information (includes glass) */}
           <div
             className={`grid ${
               isEditingToggles

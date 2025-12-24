@@ -237,6 +237,7 @@ const calculateFaceTotals = (section, context) => {
           });
         }
 
+        // Glass faces are now tracked separately to be added to accessories total later
         if (faceData.glass) {
           const { glass } = context?.accessories || {};
 
@@ -244,8 +245,9 @@ const calculateFaceTotals = (section, context) => {
             const sqft = (piece.width * piece.height) / 144;
             const price = glass.find(
               (g) => g.id === piece.accessoryCatalogId
-            ).default_price_per_unit;
-            totals.glassCount += roundToHundredth((sqft || 0) * piece.quantity);
+            )?.default_price_per_unit || 0;
+            // Store glass count as quantity (number of pieces) not square footage
+            totals.glassCount += piece.quantity;
             totals.glassTotal += (sqft * price || 0) * piece.quantity;
           });
         }
@@ -1262,7 +1264,7 @@ const calculateAccessoriesTotal = (items, context) => {
     // Accumulate totals by type
     const accessoryType = accessory.type;
     if (totals[accessoryType]) {
-      totals[accessoryType].count += quantity * unit;
+      totals[accessoryType].count += quantity;
       totals[accessoryType].total += price * quantity;
     }
 
@@ -1369,11 +1371,6 @@ export const getSectionCalculations = (section, context = {}) => {
   );
   const otherTotal = calculateSimpleItemsTotal(section.other, context);
 
-  const glassTotal =
-    (cabinetTotals.glassTotal || 0) + (accessoriesTotal.glass.total || 0);
-  const glassCount =
-    (cabinetTotals.glassCount || 0) + (accessoriesTotal.glass.count || 0);
-
   // Get parts_included toggles (default all to true)
   const partsIncluded = section.parts_included || {};
   
@@ -1396,6 +1393,7 @@ export const getSectionCalculations = (section, context = {}) => {
   
   const totalFacePriceWithToggles = doorPrice + drawerFrontPrice + falseFrontPrice + panelPrice + otherFacePrice;
 
+  // Calculate parts total price with toggles
   const partsTotalPrice =
     totalFacePriceWithToggles +
     (isPartIncluded('boxTotal') ? cabinetTotals.boxPrice : 0) +
@@ -1405,14 +1403,18 @@ export const getSectionCalculations = (section, context = {}) => {
     (isPartIncluded('pullsTotal') ? cabinetTotals.pullsTotal : 0) +
     (isPartIncluded('slidesTotal') ? cabinetTotals.slidesTotal : 0) +
     (isPartIncluded('woodTotal') ? cabinetTotals.woodTotal : 0) +
-    (isPartIncluded('glassTotal') ? glassTotal : 0) +
     lengthTotals.materialTotal +
-    accessoriesTotal.insert.total +
-    accessoriesTotal.hardware.total +
-    accessoriesTotal.shop_built.total +
-    accessoriesTotal.organizer.total +
-    accessoriesTotal.other.total +
-    otherTotal;
+    otherTotal +
+    // Include all accessories (glass from accessories + glass from faces + other accessory types)
+    (isPartIncluded('accessoriesTotal') ? (
+      accessoriesTotal.glass.total + 
+      (cabinetTotals.glassTotal || 0) + // Glass from faces
+      accessoriesTotal.insert.total +
+      accessoriesTotal.hardware.total +
+      accessoriesTotal.shop_built.total +
+      accessoriesTotal.organizer.total +
+      accessoriesTotal.other.total
+    ) : 0);
 
   // Merge hoursByService from cabinets, lengths, and accessories
   const finalHoursByService = { ...cabinetTotals.hoursByService };
@@ -1512,14 +1514,14 @@ export const getSectionCalculations = (section, context = {}) => {
 
   const totalPrice =  roundPriceUpTo5 * (section.quantity || 1);
 
-  // Calculate total accessories count and price
+  // Calculate total accessories count and price (including glass from faces)
   const accessoriesCount = Object.values(accessoriesTotal)
     .filter(item => typeof item === 'object' && item.count !== undefined)
-    .reduce((sum, item) => sum + item.count, 0);
+    .reduce((sum, item) => sum + item.count, 0) + (cabinetTotals.glassCount || 0);
   
   const accessoriesTotalPrice = Object.values(accessoriesTotal)
     .filter(item => typeof item === 'object' && item.total !== undefined)
-    .reduce((sum, item) => sum + item.total, 0);
+    .reduce((sum, item) => sum + item.total, 0) + (cabinetTotals.glassTotal || 0);
 
   return {
     totalPrice,
@@ -1543,8 +1545,6 @@ export const getSectionCalculations = (section, context = {}) => {
     woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
     fillerCount: cabinetTotals.fillerCount,
-    glassCount,
-    glassTotal,
     accessoriesCount,
     accessoriesTotal: accessoriesTotalPrice,
     quantity: section.quantity,
