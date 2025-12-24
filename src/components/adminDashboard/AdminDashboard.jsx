@@ -151,7 +151,7 @@ const AdminDashboard = () => {
       label: "Accessories",
       path: PATHS.MANAGE_ACCESSORIES,
       component: AccessoriesSettings,
-      props: {maxWidthClass: "max-w-[1000px]"},
+      props: {maxWidthClass: "max-w-[1100px]"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },

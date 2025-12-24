@@ -10,7 +10,7 @@ const organizeCatalogByType = (catalog) => {
     glass: [],
     insert: [],
     hardware: [],
-    rod: [],
+    shop_built: [],
     organizer: [],
     other: [],
   };
@@ -32,7 +32,7 @@ const initialState = {
   glass: [],
   insert: [],
   hardware: [],
-  rod: [],
+  shop_built: [],
   organizer: [],
   other: [],
   timeAnchors: [],

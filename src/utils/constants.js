@@ -179,7 +179,7 @@ export const ACCESSORY_TYPES = {
   GLASS: "glass",
   INSERT: "insert",
   HARDWARE: "hardware",
-  ROD: "rod",
+  SHOP_BUILT: "shop_built",
   ORGANIZER: "organizer",
   OTHER: "other",
 };
@@ -188,6 +188,7 @@ export const ACCESSORY_UNITS = {
   AREA: "area",
   LENGTH: "length",
   PERIMETER: "perimeter",
+  VOLUME: "volume",
   UNIT: "unit",
 };
 

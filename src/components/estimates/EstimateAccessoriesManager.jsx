@@ -12,18 +12,18 @@ import SectionItemList from "./SectionItemList.jsx";
 
 const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const dispatch = useDispatch();
-  const { catalog, glass, insert, hardware, rod, organizer, other, loading } =
+  const { catalog, glass, insert, hardware, shop_built, organizer, other, loading } =
     useSelector((state) => state.accessories);
 
   const [selectedType, setSelectedType] = useState("");
   const [formData, setFormData] = useState({
     accessory_catalog_id: item.accessory_catalog_id || "",
-    quantity: item.quantity || 1,
-    width: item.width || null,
-    height: item.height || null,
-    depth: item.depth || null,
+    quantity: item.quantity !== undefined && item.quantity !== null ? item.quantity : 1,
+    width: item.width !== undefined && item.width !== null ? item.width : "",
+    height: item.height !== undefined && item.height !== null ? item.height : "",
+    depth: item.depth !== undefined && item.depth !== null ? item.depth : "",
     temp_id: item.temp_id || uuid(),
-    id: item.id || undefined,
+    id: item.id !== undefined ? item.id : undefined,
   });
 
   const [errors, setErrors] = useState({});
@@ -57,7 +57,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       glass,
       insert,
       hardware,
-      rod,
+      shop_built,
       organizer,
       other,
     };
@@ -83,7 +83,15 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
     // Handle numeric inputs
     if (["quantity", "width", "height", "depth"].includes(name)) {
-      const numValue = value === "" ? null : Number(value);
+      // Use empty string instead of null to avoid React controlled input warnings
+      const numValue = value === "" ? "" : Number(value);
+      setFormData({
+        ...formData,
+        [name]: numValue,
+      });
+    } else if (name === "accessory_catalog_id") {
+      // Convert accessory_catalog_id to number for consistency
+      const numValue = value === "" ? "" : Number(value);
       setFormData({
         ...formData,
         [name]: numValue,
@@ -111,7 +119,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       newErrors.accessory_catalog_id = "Accessory type is required";
     }
 
-    if (!formData.quantity || formData.quantity < 0) {
+    if (formData.quantity === null || formData.quantity === undefined || formData.quantity < 0) {
       newErrors.quantity = "Quantity must be at least 0";
     }
 
@@ -158,7 +166,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 <option value="glass">Glass</option>
                 <option value="insert">Inserts</option>
                 <option value="hardware">Hardware</option>
-                <option value="rod">Rods</option>
+                <option value="shop_built">Shop-Built</option>
                 <option value="organizer">Organizers</option>
                 <option value="other">Other</option>
               </select>
@@ -203,6 +211,15 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
               )}
             </div>
           </div>
+
+          {/* Shop-built material matching info */}
+          {selectedAccessory?.matches_room_material && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
+              <p className="text-xs text-blue-700">
+                <span className="font-semibold">Material Matching:</span> This shop-built item will use the room&apos;s face material for pricing and finish multipliers for labor.
+              </p>
+            </div>
+          )}
 
           {/* Dimensions Grid - Always visible */}
           <div className="grid grid-cols-3 gap-3">
@@ -322,7 +339,7 @@ const EstimateAccessoriesManager = ({
       glass: "Glass",
       insert: "Insert",
       hardware: "Hardware",
-      rod: "Rod",
+      shop_built: "Shop-Built",
       organizer: "Organizer",
       other: "Other",
     };

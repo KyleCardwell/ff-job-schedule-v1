@@ -14,7 +14,7 @@ import {
   fetchAccessoriesCatalog,
   saveAccessoriesCatalog,
 } from "../../redux/actions/accessories";
-import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS } from "../../utils/constants";
+import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS, ACCESSORY_TYPES } from "../../utils/constants";
 
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
@@ -22,7 +22,7 @@ import SettingsSection from "./SettingsSection.jsx";
 const AccessoriesSettings = forwardRef((props, ref) => {
   const { maxWidthClass } = props;
   const dispatch = useDispatch();
-  const { catalog, glass, insert, hardware, rod, organizer, other, loading, error } = useSelector(
+  const { catalog, glass, insert, hardware, shop_built, organizer, other, loading, error } = useSelector(
     (state) => state.accessories
   );
 
@@ -70,12 +70,14 @@ const AccessoriesSettings = forwardRef((props, ref) => {
       id: uuidv4(),
       name: "",
       type: type,
-      calculation_type: "unit",
-      applies_to: ["standalone"],
+      calculation_type: type === ACCESSORY_TYPES.SHOP_BUILT ? "volume" : "unit",
+      applies_to: [],
       width: null,
       height: null,
       depth: null,
       default_price_per_unit: 0,
+      matches_room_material: type === ACCESSORY_TYPES.SHOP_BUILT ? true : false,
+      material_waste_factor: type === ACCESSORY_TYPES.SHOP_BUILT ? 1.25 : null,
       isNew: true,
     };
     setLocalCatalog((prev) => [...prev, newItem]);
@@ -121,9 +123,9 @@ const AccessoriesSettings = forwardRef((props, ref) => {
       if (!item.calculation_type) {
         itemErrors.calculation_type = "Calculation type is required";
       }
-      if (!item.applies_to || item.applies_to.length === 0) {
-        itemErrors.applies_to = "At least one application is required";
-      }
+      // if (!item.applies_to || item.applies_to.length === 0) {
+      //   itemErrors.applies_to = "At least one application is required";
+      // }
 
       if (Object.keys(itemErrors).length > 0) {
         newErrors[`catalog-${item.type}-${item.id}`] = itemErrors;
@@ -152,6 +154,10 @@ const AccessoriesSettings = forwardRef((props, ref) => {
           default_price_per_unit: item.default_price_per_unit === "" || item.default_price_per_unit === null 
             ? 0 
             : Number(item.default_price_per_unit),
+          material_waste_factor: item.material_waste_factor === "" || item.material_waste_factor === null
+            ? null
+            : Number(item.material_waste_factor),
+          matches_room_material: item.matches_room_material || false,
         }));
 
         result = await dispatch(
@@ -207,7 +213,7 @@ const AccessoriesSettings = forwardRef((props, ref) => {
     { value: "glass", label: "Glass", items: glass },
     { value: "insert", label: "Inserts", items: insert },
     { value: "hardware", label: "Hardware", items: hardware },
-    { value: "rod", label: "Rods", items: rod },
+    { value: "shop_built", label: "Shop-Built", items: shop_built },
     { value: "organizer", label: "Organizers", items: organizer },
     { value: "other", label: "Other", items: other },
   ];
@@ -244,6 +250,7 @@ const AccessoriesSettings = forwardRef((props, ref) => {
           <option value={ACCESSORY_UNITS.AREA}>Area (sq ft)</option>
           <option value={ACCESSORY_UNITS.LENGTH}>Length (ft)</option>
           <option value={ACCESSORY_UNITS.PERIMETER}>Perimeter (ft)</option>
+          <option value={ACCESSORY_UNITS.VOLUME}>Volume (cu ft)</option>
           <option value={ACCESSORY_UNITS.UNIT}>Unit Count</option>
         </select>
       ),
@@ -346,13 +353,34 @@ const AccessoriesSettings = forwardRef((props, ref) => {
       type: "number",
       placeholder: "0",
     },
-    // {
-    //   field: "description",
-    //   label: "Description",
-    //   width: "200px",
-    //   type: "text",
-    //   placeholder: "Optional description",
-    // },
+    // Shop-built specific columns
+    ...(type === ACCESSORY_TYPES.SHOP_BUILT ? [
+      {
+        field: "matches_room_material",
+        label: "Match Room",
+        width: "120px",
+        render: (item, onChange) => (
+          <label className="flex items-center justify-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={item.matches_room_material || false}
+              onChange={(e) => onChange("matches_room_material", e.target.checked)}
+              disabled={item.markedForDeletion}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+          </label>
+        ),
+      },
+      {
+        field: "material_waste_factor",
+        label: "Waste Factor",
+        width: "100px",
+        type: "number",
+        placeholder: "1.25",
+        step: "0.01",
+        allowEmpty: true,
+      },
+    ] : []),
   ];
 
   return (
