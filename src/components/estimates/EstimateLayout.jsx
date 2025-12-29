@@ -4,7 +4,7 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
-import { fetchAccessoriesCatalog } from "../../redux/actions/accessories.js";
+import { fetchAccessoriesCatalog, fetchAccessoryTimeAnchors } from "../../redux/actions/accessories.js";
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
@@ -99,6 +99,7 @@ const EstimateLayout = () => {
     dispatch(fetchPartsListAnchors())
     dispatch(fetchFinishes())
     dispatch(fetchAccessoriesCatalog())
+    dispatch(fetchAccessoryTimeAnchors());
     dispatch(fetchLengthsCatalog())
   }, []);
 

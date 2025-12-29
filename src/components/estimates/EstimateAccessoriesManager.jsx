@@ -10,7 +10,7 @@ import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
 import SectionItemList from "./SectionItemList.jsx";
 
-const AccessoryItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
+const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   const dispatch = useDispatch();
   const { catalog, glass, insert, hardware, shop_built, organizer, other, loading } =
     useSelector((state) => state.accessories);
@@ -315,7 +315,6 @@ AccessoryItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  onDeleteItem: PropTypes.func.isRequired,
 };
 
 const EstimateAccessoriesManager = ({

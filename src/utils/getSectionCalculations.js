@@ -1195,6 +1195,9 @@ const calculateAccessoriesTotal = (items, context) => {
       depth: item.depth,
     };
 
+    // Store unitDifference in local variable (don't mutate Redux state)
+    let itemUnitDifference = 0;
+
     // Handle shop-built accessories with material matching
     if (accessory.matches_room_material && accessory.type === ACCESSORY_TYPES.SHOP_BUILT) {
       // Use helper to calculate unit quantity based on size
@@ -1237,28 +1240,31 @@ const calculateAccessoriesTotal = (items, context) => {
 
         // Add proportional base price if specified
         if (accessory.default_price_per_unit) {
-          const { basePrice } = calculateAccessoryUnitAndPrice(
+          const { basePrice, unitDifference } = calculateAccessoryUnitAndPrice(
             accessory,
             itemDimensions
           );
           price += basePrice;
+          itemUnitDifference = unitDifference;
         }
       } else {
         // Fallback to proportional default price if no material selected
-        const { basePrice } = calculateAccessoryUnitAndPrice(
+        const { basePrice, unitDifference } = calculateAccessoryUnitAndPrice(
           accessory,
           itemDimensions
         );
         price = basePrice;
+        itemUnitDifference = unitDifference;
       }
     } else {
       // Standard accessory pricing logic - use helper for all types
-      const { unit: calculatedUnit, basePrice } = calculateAccessoryUnitAndPrice(
+      const { unit: calculatedUnit, basePrice, unitDifference } = calculateAccessoryUnitAndPrice(
         accessory,
         itemDimensions
       );
       unit = calculatedUnit;
       price = basePrice;
+      itemUnitDifference = unitDifference;
     }
 
     // Accumulate totals by type
@@ -1275,7 +1281,10 @@ const calculateAccessoriesTotal = (items, context) => {
       );
 
       accessoryAnchors.forEach((anchor) => {
-        let totalMinutes = anchor.minutes_per_unit * quantity * Math.max(1, unit);
+        // Use unitDifference to adjust labor time for oversized items
+        // Base time is for catalog size, add extra time proportional to size difference
+        const laborMultiplier = 1 + Math.max(0, itemUnitDifference); // Only add time for larger items, not reduce for smaller
+        let totalMinutes = anchor.minutes_per_unit * quantity * laborMultiplier;
 
         // Apply multipliers for shop-built items that match room material
         if (

@@ -87,7 +87,7 @@ export const calculateAccessoryQuantity = (
  * Compares item dimensions to catalog dimensions and scales price accordingly
  * @param {Object} accessory - The accessory catalog item
  * @param {Object} itemDimensions - { width, height, depth } from the estimate item
- * @returns {Object} { unit, basePrice } - unit quantity and base price (before applying item quantity multiplier)
+ * @returns {Object} { unit, basePrice, unitDifference } - unit quantity, base price, and size difference for labor calculations
  */
 export const calculateAccessoryUnitAndPrice = (
   accessory,
@@ -115,18 +115,27 @@ export const calculateAccessoryUnitAndPrice = (
   const catalogPrice = accessory.default_price_per_unit || 0;
   
   let basePrice = 0;
+  let unitDifference = 0;
+  
   if (catalogUnit > 0) {
     // Scale price proportionally: (itemSize / catalogSize) × catalogPrice
     const sizeRatio = itemUnit / catalogUnit;
     basePrice = sizeRatio * catalogPrice;
+    
+    // Calculate unit difference for labor time adjustments
+    // If item is larger than catalog, this will be positive
+    // If item is smaller, this will be negative (but we'll use Math.max(0, ...) in labor calc)
+    unitDifference = itemUnit - catalogUnit;
   } else if (accessory.calculation_type === ACCESSORY_UNITS.UNIT) {
     // For UNIT type with no catalog dimensions, use catalog price directly
     basePrice = catalogPrice;
+    unitDifference = 0;
   }
 
   return {
     unit: roundToHundredth(itemUnit),
     basePrice: roundToHundredth(basePrice),
+    unitDifference: roundToHundredth(unitDifference),
   };
 };
 
