@@ -715,7 +715,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
               isEditingToggles
                 ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
                 : "grid-cols-[3fr,1fr,2fr]"
-            } gap-1 py-1`}
+            } gap-1 py-1 border-b border-gray-700`}
           >
             {isEditingToggles && (
               <div className="flex justify-center">
@@ -747,6 +747,16 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
               }`}
             >
               {formatCurrency(sectionCalculations.accessoriesTotal || 0)}
+            </span>
+          </div>
+          {/* Other Items Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1">
+            <span className="text-sm text-slate-300 text-left">Other:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.otherCount || 0}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.otherTotal || 0)}
             </span>
           </div>
         </EstimateSectionPriceGroup>

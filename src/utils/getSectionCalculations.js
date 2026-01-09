@@ -1532,6 +1532,11 @@ export const getSectionCalculations = (section, context = {}) => {
     .filter(item => typeof item === 'object' && item.total !== undefined)
     .reduce((sum, item) => sum + item.total, 0) + (cabinetTotals.glassTotal || 0);
 
+  // Calculate other items count
+  const otherCount = (section.other || []).reduce((sum, item) => {
+    return sum + (Number(item.quantity) || 0);
+  }, 0);
+
   return {
     totalPrice,
     subTotalPrice,
@@ -1556,6 +1561,8 @@ export const getSectionCalculations = (section, context = {}) => {
     fillerCount: cabinetTotals.fillerCount,
     accessoriesCount,
     accessoriesTotal: accessoriesTotalPrice,
+    otherCount,
+    otherTotal,
     quantity: section.quantity,
     profit: sectionProfit,
     profitRate: section.profit,

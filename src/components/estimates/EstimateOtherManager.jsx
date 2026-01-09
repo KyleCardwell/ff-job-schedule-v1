@@ -8,9 +8,8 @@ import SectionItemList from "./SectionItemList.jsx";
 const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
-    quantity: item.quantity || 1,
-    description: item.description || "",
-    notes: item.notes || "",
+    quantity: item.quantity ?? 1,
+    price: item.price ?? 0,
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });
@@ -21,7 +20,7 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     const { name, value } = e.target;
 
     // Handle numeric inputs
-    if (["quantity"].includes(name)) {
+    if (["quantity", "price"].includes(name)) {
       const numValue = value === "" ? "" : Number(value);
       setFormData({
         ...formData,
@@ -50,12 +49,12 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       newErrors.name = "Name is required";
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
+    if (formData.quantity === "" || formData.quantity < 0) {
+      newErrors.quantity = "Quantity must be 0 or greater";
     }
 
-    if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = "Quantity must be at least 1";
+    if (formData.price === "" || formData.price < 0) {
+      newErrors.price = "Cost must be 0 or greater";
     }
 
     setErrors(newErrors);
@@ -72,15 +71,42 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     }
   };
 
+  const total = (formData.quantity || 0) * (formData.price || 0);
+
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
       <h4 className="text-sm font-medium text-slate-700 mb-3">
         Other Item
       </h4>
 
-      <div>
+      <div className="grid grid-cols-[1fr,1fr,1fr,1fr] gap-3 items-start">
+        {/* Quantity */}
+        <div>
+          <label
+            htmlFor="quantity"
+            className="block text-xs font-medium text-slate-700 mb-1"
+          >
+            Quantity <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            id="quantity"
+            name="quantity"
+            value={formData.quantity}
+            onChange={handleChange}
+            min="0"
+            step="1"
+            className={`w-full px-3 py-2 border ${
+              errors.quantity ? "border-red-500" : "border-slate-300"
+            } rounded-md text-sm`}
+          />
+          {errors.quantity && (
+            <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+          )}
+        </div>
+
         {/* Name */}
-        <div className="mb-3">
+        <div className="col-span-2">
           <label
             htmlFor="name"
             className="block text-xs font-medium text-slate-700 mb-1"
@@ -103,92 +129,59 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
           )}
         </div>
 
-        {/* Description */}
-        <div className="mb-3">
+        {/* Cost */}
+        <div>
           <label
-            htmlFor="description"
+            htmlFor="price"
             className="block text-xs font-medium text-slate-700 mb-1"
           >
-            Description <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={2}
-            className={`w-full px-3 py-2 border ${
-              errors.description ? "border-red-500" : "border-slate-300"
-            } rounded-md text-sm`}
-            placeholder="Detailed description of the item..."
-          />
-          {errors.description && (
-            <p className="text-red-500 text-xs mt-1">{errors.description}</p>
-          )}
-        </div>
-
-        {/* Quantity */}
-        <div className="mb-3">
-          <label
-            htmlFor="quantity"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Quantity <span className="text-red-500">*</span>
+            Cost <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
-            id="quantity"
-            name="quantity"
-            value={formData.quantity}
+            id="price"
+            name="price"
+            value={formData.price}
             onChange={handleChange}
-            min="1"
+            min="0"
+            step="0.01"
             className={`w-full px-3 py-2 border ${
-              errors.quantity ? "border-red-500" : "border-slate-300"
+              errors.price ? "border-red-500" : "border-slate-300"
             } rounded-md text-sm`}
+            placeholder="0.00"
           />
-          {errors.quantity && (
-            <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
+          {errors.price && (
+            <p className="text-red-500 text-xs mt-1">{errors.price}</p>
           )}
         </div>
+      </div>
 
-        {/* Notes */}
-        <div className="mb-4">
-          <label
-            htmlFor="notes"
-            className="block text-xs font-medium text-slate-700 mb-1"
-          >
-            Notes
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            rows={2}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-            placeholder="Optional notes..."
-          />
-        </div>
+      {/* Total Display */}
+      <div className="mt-4 pt-3 border-t border-slate-200 flex justify-end items-center">
+        <span className="text-sm font-medium text-slate-700 mr-2">Total:</span>
+        <span className="text-lg font-bold text-teal-600">
+          ${total.toFixed(2)}
+        </span>
+      </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 flex items-center"
-          >
-            <FiX className="mr-1" />
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
-          >
-            <FiSave className="mr-1" />
-            Save
-          </button>
-        </div>
+      {/* Form Actions */}
+      <div className="flex justify-end space-x-2 mt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 flex items-center"
+        >
+          <FiX className="mr-1" />
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600 flex items-center"
+        >
+          <FiSave className="mr-1" />
+          Save
+        </button>
       </div>
     </div>
   );
@@ -202,10 +195,20 @@ OtherItemForm.propTypes = {
 };
 
 const EstimateOtherManager = ({ items, onUpdateItems, onDeleteItem }) => {
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
-    { key: "name", label: "Item", width: "1fr" },
-    { key: "notes", label: "Notes", width: "1fr" },
+    { key: "name", label: "Item", width: "2fr" },
+    { key: "price", label: "Cost", width: ".75fr", render: (item) => formatCurrency(item.price || 0) },
+    { key: "total", label: "Total", width: ".75fr", render: (item) => formatCurrency((item.quantity || 0) * (item.price || 0)) },
     { key: "actions", label: "Actions", width: "0.5fr" },
   ];
 
@@ -248,7 +251,6 @@ const EstimateOtherManager = ({ items, onUpdateItems, onDeleteItem }) => {
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       ItemForm={OtherItemForm}
-      hideAddButton
     />
   );
 };
