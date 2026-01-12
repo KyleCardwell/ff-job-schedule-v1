@@ -45,6 +45,7 @@ export const ITEM_TYPES = {
   APPLIANCE_PANEL: { type: "appliance_panel", title: "Appliance Panel" },
   DOOR_FRONT: { type: "door_front", title: "Door Front" },
   DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
+  HOOD: { type: "hood", title: "Hood" },
 };
 
 export const ITEM_FORM_WIDTHS = {
@@ -224,5 +225,6 @@ export const PARTS_LIST_MAPPING = {
   appliance_panel_finished: 18,
   end_panel_nosing_finished: 19,
   face_frame_finished: 20,
+  hood_finished: 21, // Hood cabinets - includes depth in calculation
 };
   

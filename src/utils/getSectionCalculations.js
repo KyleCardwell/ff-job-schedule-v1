@@ -16,6 +16,7 @@ import {
   calculateBoxSheetsCNC,
   calculateDoorPartsTime,
   calculatePanelPartsTime,
+  calculateHoodPartsTime,
   calculateSlabSheetFacePriceBulk,
   calculateMoldingCost,
   roundToHundredth,
@@ -175,6 +176,31 @@ const calculateFaceTotals = (section, context) => {
           totals.hoursByService[serviceId] = 0;
         }
         // Hours already include quantity multiplier from calculatePanelPartsTime
+        totals.hoursByService[serviceId] += hours || 0;
+      });
+    }
+
+    // Add service hours for hoods (type 14)
+    // Uses 3D volume (width × height × depth) with parts list anchor 21
+    if (cabinet.type === 14) {
+      const hoodHours = calculateHoodPartsTime(
+        cabinet,
+        cabinetStyleId,
+        context
+      );
+
+      // Aggregate hood hours by converting team_service_id to service_id
+      Object.entries(hoodHours).forEach(([teamServiceId, hours]) => {
+        const service = context.globalServices?.find(
+          (s) => s.team_service_id === parseInt(teamServiceId)
+        );
+        if (!service) return;
+
+        const serviceId = service.service_id;
+        if (!totals.hoursByService[serviceId]) {
+          totals.hoursByService[serviceId] = 0;
+        }
+        // Hours already include quantity multiplier from calculateHoodPartsTime
         totals.hoursByService[serviceId] += hours || 0;
       });
     }
@@ -1069,7 +1095,7 @@ const calculateSimpleItemsTotal = (items, context) => {
   if (!items || !Array.isArray(items)) return 0;
   return items.reduce((total, item) => {
     if (!item) return total;
-    const quantity = Number(item.quantity) || 1;
+    const quantity = item.quantity !== null ? Number(item.quantity) : 1;
     const price = Number(item.price) || 0;
     return total + price * quantity;
   }, 0);

@@ -921,6 +921,27 @@ const CabinetItemForm = ({
       };
     }
 
+    // Handle hood - no box parts, only face materials and service hours
+    // Service hours are calculated via 3D volume interpolation in getSectionCalculations
+    if (itemType === ITEM_TYPES.HOOD.type) {
+      const hardware = countFaceHardware(faceConfig, itemType);
+
+      return {
+        pieces: { sides: 0, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: 0,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 0,
+        singleBoxPerimeterLength: 0,
+        boxHardware: hardware,
+        shelfDrillHoles: 0,
+        boxPartsList: [], // No box parts for hoods
+        frameParts: {},
+        openingsCount: 0,
+      };
+    }
+
     // Full cabinet - continue with existing complex logic
     let sideArea, topBottomArea, backArea;
     let sidePerimeterLength, topBottomPerimeterLength, backPerimeterLength;
