@@ -275,6 +275,13 @@ const EstimatePreviewSection = ({
       boxFinish: boxFinishNames,
       notes: processedNotes, // Array format for PDF
       displayNotes: displayNotesLines, // Formatted lines for UI display
+      // Calculation breakdown data for aggregation
+      laborCosts: calculations.laborCosts,
+      partsTotalPrice: calculations.partsTotalPrice,
+      subTotalPrice: calculations.subTotalPrice,
+      profit: calculations.profit,
+      commission: calculations.commission,
+      discount: calculations.discount,
     };
   }, [
     calculations,

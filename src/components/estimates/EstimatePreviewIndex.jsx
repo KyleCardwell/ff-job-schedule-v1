@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
  */
 const EstimatePreviewIndex = ({
   taskDataMap,
+  tasksOrder = [],
   selectedItems,
   onToggleItem,
   onToggleAll,
@@ -22,6 +23,17 @@ const EstimatePreviewIndex = ({
   className = "",
 }) => {
   const [activeItemId, setActiveItemId] = useState(null);
+
+  // Sort tasks by tasks_order array
+  const orderedTasks = useMemo(() => {
+    if (!tasksOrder || tasksOrder.length === 0) {
+      return Object.values(taskDataMap);
+    }
+    
+    return tasksOrder
+      .map((taskId) => taskDataMap[taskId])
+      .filter(Boolean); // Remove any undefined tasks
+  }, [taskDataMap, tasksOrder]);
 
   // Check if all sections are selected
   const allSectionsSelected = useMemo(() => {
@@ -126,12 +138,12 @@ const EstimatePreviewIndex = ({
           </button>
         </div>
         <nav className="space-y-1">
-          {Object.values(taskDataMap).map((taskData) => {
+          {orderedTasks.map((taskData) => {
             const hasSections = taskData.sections && taskData.sections.length > 0;
             const hasMultipleSections = hasSections && taskData.sections.length > 1;
 
             return (
-              <div key={taskData.taskId} className="mb-3">
+              <div key={taskData.taskId} className="">
                 {/* If task has only 1 section, show task with checkbox */}
                 {!hasMultipleSections && hasSections && (
                   <div className="flex items-center gap-2 px-2 py-1.5">
@@ -261,6 +273,7 @@ const EstimatePreviewIndex = ({
 
 EstimatePreviewIndex.propTypes = {
   taskDataMap: PropTypes.object.isRequired,
+  tasksOrder: PropTypes.array,
   selectedItems: PropTypes.object.isRequired,
   onToggleItem: PropTypes.func.isRequired,
   onToggleAll: PropTypes.func.isRequired,
