@@ -69,6 +69,7 @@ const CabinetItemForm = ({
     cabinet_style_override: item.cabinet_style_override,
     corner_45: item.corner_45 || false,
     updated_at: item.updated_at,
+    type_specific_options: item.type_specific_options || {},
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -182,7 +183,7 @@ const CabinetItemForm = ({
           const updates = { [name]: numValue };
           const inputUpdates = {};
 
-          // If type is changing, always set dimensions to defaults and reset face_config
+          // If type is changing, always set dimensions to defaults, reset face_config, and clear type_specific_options
           if (name === "type" && numValue) {
             const selectedType = cabinetTypes.find(
               (t) => t.cabinet_type_id === numValue
@@ -206,6 +207,9 @@ const CabinetItemForm = ({
               // Reset face_config to null when type changes
               // CabinetFaceDivider will reinitialize it with the correct defaultFaceType
               updates.face_config = null;
+
+              // Clear type_specific_options when type changes
+              updates.type_specific_options = {};
             }
 
             // Update inputValues with dimension defaults
@@ -304,6 +308,17 @@ const CabinetItemForm = ({
     }
   };
 
+  // Handle type-specific options changes
+  const handleTypeSpecificOptionChange = (optionName, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      type_specific_options: {
+        ...prev.type_specific_options,
+        [optionName]: value,
+      },
+    }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -379,6 +394,9 @@ const CabinetItemForm = ({
       // Save the style ID this cabinet was configured with
       // This allows accurate error detection when section style changes
       finalFormData.saved_style_id = effectiveStyleId;
+
+      // Include type_specific_options in the saved data
+      finalFormData.type_specific_options = formData.type_specific_options || {};
 
       const itemType = cabinetTypes.find(
         (t) => t.cabinet_type_id === formData.type
@@ -1736,6 +1754,110 @@ const CabinetItemForm = ({
                   </label>
                 </div>
               )}
+
+              {/* Dynamic Type-Specific Options */}
+              {itemTypeConfig.typeSpecificOptions?.map((option) => {
+                const optionValue = formData.type_specific_options?.[option.name] ?? option.defaultValue;
+
+                if (option.type === "checkbox") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <input
+                        type="checkbox"
+                        id={option.name}
+                        name={option.name}
+                        checked={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, e.target.checked)
+                        }
+                        className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                      />
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  );
+                } else if (option.type === "number") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                      <input
+                        type="number"
+                        id={option.name}
+                        name={option.name}
+                        value={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, Number(e.target.value))
+                        }
+                        min={option.min ?? 0}
+                        max={option.max}
+                        step={option.step ?? 1}
+                        className="w-20 px-2 py-1 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                  );
+                } else if (option.type === "select") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                      <select
+                        id={option.name}
+                        name={option.name}
+                        value={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, e.target.value)
+                        }
+                        className="px-2 py-1 border border-slate-300 rounded-md text-sm"
+                      >
+                        {option.options?.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                } else if (option.type === "text") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                      <input
+                        type="text"
+                        id={option.name}
+                        name={option.name}
+                        value={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, e.target.value)
+                        }
+                        className="px-2 py-1 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })}
             </div>
 
             {/* Dimensions Section */}

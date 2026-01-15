@@ -248,6 +248,15 @@ export const CABINET_ITEM_TYPES = {
       autoScoop: true, // Automatically includes a scoop
       corner45: false,
     },
+    typeSpecificOptions: [
+      {
+        name: 'tapered',
+        type: 'checkbox',
+        label: 'Tapered Hood',
+        defaultValue: false,
+        description: 'Hood narrows from bottom to top',
+      },
+    ],
   },
 };
 
