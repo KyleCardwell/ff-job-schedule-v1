@@ -282,12 +282,13 @@ export const interpolateTimeByVolume = (
 /**
  * Calculate total hours by service for hood cabinets using 3D volume
  * Hoods are calculated based on width × height × depth since all three dimensions matter
- * @param {Object} cabinet - Cabinet object with width, height, depth, type, quantity
+ * @param {Object} cabinet - Cabinet object with width, height, depth, type, quantity, type_specific_options
  * @param {number} cabinetStyleId - Cabinet style ID for filtering style-specific anchors
  * @param {Object} context - Calculation context
  * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
  * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
  * @param {Array} context.globalServices - Global services array
+ * @param {Object} context.itemTypeConfig - Item type configuration with typeSpecificOptions
  * @returns {Object} - { serviceId: hours } (already includes quantity multiplier)
  */
 export const calculateHoodPartsTime = (
@@ -295,7 +296,7 @@ export const calculateHoodPartsTime = (
   cabinetStyleId,
   context = {}
 ) => {
-  const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
+  const { partsListAnchors, selectedFaceMaterial, globalServices, itemTypeConfig } = context;
 
   if (!cabinet || !partsListAnchors) {
     return {};
@@ -362,6 +363,25 @@ export const calculateHoodPartsTime = (
           // Finish multiplier for service ID 3
           totalMinutes *= selectedFaceMaterial.finishMultiplier;
         }
+      }
+    }
+
+    // Apply type-specific option multipliers (e.g., tapered hood = 1.5x shop time)
+    if (cabinet.type_specific_options && itemTypeConfig?.typeSpecificOptions && globalServices) {
+      const service = globalServices.find(
+        (s) => s.team_service_id === parseInt(teamServiceId)
+      );
+      if (service) {
+        itemTypeConfig.typeSpecificOptions.forEach((option) => {
+          const optionValue = cabinet.type_specific_options[option.name];
+          // If option is enabled/truthy and has service multipliers
+          if (optionValue && option.serviceMultipliers) {
+            const multiplier = option.serviceMultipliers[service.service_id];
+            if (multiplier) {
+              totalMinutes *= multiplier;
+            }
+          }
+        });
       }
     }
 

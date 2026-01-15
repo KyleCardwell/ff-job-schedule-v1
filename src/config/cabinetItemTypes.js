@@ -252,9 +252,12 @@ export const CABINET_ITEM_TYPES = {
       {
         name: 'tapered',
         type: 'checkbox',
-        label: 'Tapered Hood',
+        label: 'Tapered Sides',
         defaultValue: false,
-        description: 'Hood narrows from bottom to top',
+        description: 'Hood width narrows from bottom to top',
+        serviceMultipliers: {
+          2: 1.5, // Tapered hoods take 1.5x shop time (service_id 2)
+        },
       },
     ],
   },

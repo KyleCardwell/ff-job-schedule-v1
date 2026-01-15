@@ -1,3 +1,5 @@
+import { getItemTypeConfig } from "../config/cabinetItemTypes";
+
 import { calculateAccessoryUnitAndPrice } from "./accessoryCalculations";
 import {
   DRAWER_BOX_HEIGHTS,
@@ -183,10 +185,11 @@ const calculateFaceTotals = (section, context) => {
     // Add service hours for hoods (type 14)
     // Uses 3D volume (width × height × depth) with parts list anchor 21
     if (cabinet.type === 14) {
+      const itemTypeConfig = getItemTypeConfig(ITEM_TYPES.HOOD.type);
       const hoodHours = calculateHoodPartsTime(
         cabinet,
         cabinetStyleId,
-        context
+        { ...context, itemTypeConfig }
       );
 
       // Aggregate hood hours by converting team_service_id to service_id

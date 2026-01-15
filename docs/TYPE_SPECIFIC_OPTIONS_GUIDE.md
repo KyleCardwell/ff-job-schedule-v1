@@ -25,6 +25,9 @@ hood: {
       label: 'Tapered Hood',        // Display label
       defaultValue: false,          // Default value
       description: 'Hood narrows from bottom to top', // Tooltip
+      serviceMultipliers: {         // Optional: multiply service hours
+        2: 1.5,                     // service_id 2 (shop) = 1.5x time
+      },
     },
   ],
 }
@@ -210,13 +213,18 @@ hood: {
       label: 'Tapered Hood',
       defaultValue: false,
       description: 'Hood narrows from bottom to top',
+      serviceMultipliers: {
+        2: 1.5, // Tapered hoods take 1.5x shop time (service_id 2)
+      },
     },
   ],
 }
 ```
 
 **Purpose**: Indicates if the hood should be tapered (narrower at top)  
-**Impact**: Affects material calculations and pricing  
+**Impact**: 
+- Automatically increases shop time (service_id 2) by 50% when enabled
+- Applied during hood time calculations in `calculateHoodPartsTime`
 **Rendered**: Automatically appears as a checkbox when hood type is selected
 
 ## Configuration Reference
@@ -231,6 +239,10 @@ hood: {
   label: 'Display Label',
   defaultValue: false,
   description: 'Shows as tooltip',
+  serviceMultipliers: {    // Optional
+    2: 1.5,                // Multiply shop time (service_id 2) by 1.5x
+    3: 1.2,                // Multiply finish time (service_id 3) by 1.2x
+  },
 }
 ```
 
@@ -290,13 +302,17 @@ cabinet: {
   label: 'Cabinet',
   features: { /* ... */ },
   typeSpecificOptions: [
-    // Checkbox option
+    // Checkbox option with service multipliers
     {
       name: 'lazy_susan',
       type: 'checkbox',
       label: 'Lazy Susan',
       defaultValue: false,
       description: 'Rotating shelf system for corner cabinets',
+      serviceMultipliers: {
+        2: 1.3, // Lazy susans add 30% shop time
+        4: 1.2, // And 20% install time
+      },
     },
     // Conditional number option
     {
@@ -328,6 +344,39 @@ cabinet: {
 
 **Result**: All three inputs automatically render in the form when cabinet type is selected!
 
+## Service Multipliers
+
+### How Service Multipliers Work
+
+Service multipliers automatically adjust labor hours for specific services when an option is enabled:
+
+```javascript
+serviceMultipliers: {
+  2: 1.5,  // service_id 2 (shop) - multiply by 1.5x
+  3: 1.2,  // service_id 3 (finish) - multiply by 1.2x
+  4: 1.1,  // service_id 4 (install) - multiply by 1.1x
+}
+```
+
+**Standard Service IDs**:
+- `2` = Shop time
+- `3` = Finish time  
+- `4` = Install time
+- `1` = Design time (rarely multiplied)
+
+**Application**:
+- Multipliers are applied in calculation functions (e.g., `calculateHoodPartsTime`)
+- Only affects enabled options (checkbox = true, or truthy values)
+- Multiplies the base time AFTER material multipliers are applied
+- Works with any item type that passes `itemTypeConfig` to calculation functions
+
+### Example Flow
+
+1. **Base calculation**: Hood requires 60 minutes shop time
+2. **Material multiplier**: Hardwood adds 1.2x = 72 minutes
+3. **Type-specific multiplier**: Tapered adds 1.5x = 108 minutes
+4. **Final result**: 108 minutes (1.8 hours) of shop time
+
 ## Accessing Options in Other Components
 
 ### In Redux Actions
@@ -338,24 +387,15 @@ const isTapered = cabinet.type_specific_options?.tapered || false;
 ```
 
 ### In Calculation Helpers
-```javascript
-// Pass type_specific_options to helper functions
-const result = calculateHoodMaterials(
-  width,
-  height,
-  depth,
-  item.type_specific_options
-);
 
-// Inside helper:
-function calculateHoodMaterials(width, height, depth, options = {}) {
-  const isTapered = options?.tapered || false;
-  
-  if (isTapered) {
-    // Apply tapered calculations
-  } else {
-    // Apply standard calculations
-  }
+Service multipliers are **automatically applied** in calculation functions like `calculateHoodPartsTime`. The logic reads the config and applies multipliers when options are enabled.
+
+For custom calculations:
+```javascript
+// Access options directly
+if (cabinet.type_specific_options?.tapered) {
+  // Apply custom tapered logic
+  adjustedDimensions = calculateTaperedDimensions(cabinet);
 }
 ```
 
