@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { FiSave, FiX } from "react-icons/fi";
+import { FiSave, FiX, FiCopy } from "react-icons/fi";
 import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -17,6 +17,8 @@ import {
   getEffectiveValueOnly,
   shouldApplyFinish,
 } from "../../utils/estimateDefaults";
+
+import CopyRoomDetailsModal from "./CopyRoomDetailsModal.jsx";
 
 /**
  * Universal defaults/section form
@@ -390,6 +392,7 @@ const EstimateSectionForm = ({
 
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
 
   // Refs for synchronized textarea heights
   const notesTextareaRefs = useRef([]);
@@ -633,6 +636,42 @@ const EstimateSectionForm = ({
     }
 
     // Clear any errors
+    setErrors({});
+  };
+
+  const handleCopyFromSection = (sourceSection) => {
+    // Copy all relevant fields from the source section to formData
+    setFormData({
+      ...formData,
+      style: sourceSection.cabinet_style_id || "",
+      boxMaterial: sourceSection.box_mat || "",
+      boxFinish: sourceSection.box_finish || [],
+      faceMaterial: sourceSection.face_mat || "",
+      faceFinish: sourceSection.face_finish || [],
+      doorStyle: sourceSection.door_style || "",
+      drawerFrontStyle: sourceSection.drawer_front_style || "",
+      doorInsideMolding: sourceSection.door_inside_molding ?? null,
+      doorOutsideMolding: sourceSection.door_outside_molding ?? null,
+      drawerInsideMolding: sourceSection.drawer_inside_molding ?? null,
+      drawerOutsideMolding: sourceSection.drawer_outside_molding ?? null,
+      doorPanelModId: sourceSection.door_panel_mod_id ?? "",
+      drawerPanelModId: sourceSection.drawer_panel_mod_id ?? "",
+      hinge_id: sourceSection.hinge_id || "",
+      slide_id: sourceSection.slide_id || "",
+      door_pull_id: sourceSection.door_pull_id || "",
+      drawer_pull_id: sourceSection.drawer_pull_id || "",
+      drawer_box_mat: sourceSection.drawer_box_mat || "",
+      profit: sourceSection.profit ?? "",
+      commission: sourceSection.commission ?? "",
+      discount: sourceSection.discount ?? "",
+      service_price_overrides: sourceSection.service_price_overrides || {},
+      // Don't copy notes - keep the current notes
+      notes: formData.notes,
+      // Don't copy quantity - keep the current quantity
+      quantity: formData.quantity,
+    });
+
+    // Clear any validation errors since we're loading new data
     setErrors({});
   };
 
@@ -2227,7 +2266,7 @@ const EstimateSectionForm = ({
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
           {editType !== "team" && (
-            <div className="flex-1 flex justify-start">
+            <div className="flex-1 flex justify-start space-x-2">
               <button
                 type="button"
                 onClick={handleRestoreDefaults}
@@ -2236,6 +2275,16 @@ const EstimateSectionForm = ({
                 <RiResetLeftFill className="mr-1" size={12} />
                 Restore Defaults
               </button>
+              {editType === "section" && (
+                <button
+                  type="button"
+                  onClick={() => setIsCopyModalOpen(true)}
+                  className="px-3 py-1 text-xs font-medium text-white bg-purple-600 border border-purple-700 rounded hover:bg-purple-700 flex items-center"
+                >
+                  <FiCopy className="mr-1" size={12} />
+                  Copy Room Details
+                </button>
+              )}
             </div>
           )}
           <button
@@ -2259,6 +2308,17 @@ const EstimateSectionForm = ({
           </button>
         </div>
       </form>
+
+      {/* Copy Room Details Modal */}
+      {editType === "section" && (
+        <CopyRoomDetailsModal
+          isOpen={isCopyModalOpen}
+          onClose={() => setIsCopyModalOpen(false)}
+          currentEstimate={currentEstimate}
+          currentSectionId={section?.est_section_id}
+          onCopySection={handleCopyFromSection}
+        />
+      )}
     </div>
   );
 };
