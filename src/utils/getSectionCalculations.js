@@ -240,19 +240,19 @@ const calculateFaceTotals = (section, context) => {
             }
           });
 
-          let reeded = false;
+          let panelModId = null;
 
           if (
             faceType === FACE_NAMES.DRAWER_FRONT ||
             faceType === FACE_NAMES.FALSE_FRONT
           ) {
-            reeded = effectiveValues.drawer_reeded_panel;
+            panelModId = effectiveValues.drawer_panel_mod_id;
           } else if (
             faceType === FACE_NAMES.DOOR ||
             faceType === FACE_NAMES.PAIR_DOOR ||
             faceType === FACE_NAMES.PANEL
           ) {
-            reeded = effectiveValues.door_reeded_panel;
+            panelModId = effectiveValues.door_panel_mod_id;
           }
 
           // Collect faces for hour calculation with cabinet style ID
@@ -260,7 +260,7 @@ const calculateFaceTotals = (section, context) => {
             faces: faceData.faces,
             styleToUse,
             cabinetStyleId,
-            reeded,
+            panelModId,
             quantity,
             cabinetTypeId: cabinet.type,
           });
@@ -293,7 +293,7 @@ const calculateFaceTotals = (section, context) => {
       faces,
       styleToUse,
       cabinetStyleId,
-      reeded,
+      panelModId,
       quantity,
       cabinetTypeId,
     }) => {
@@ -301,7 +301,7 @@ const calculateFaceTotals = (section, context) => {
         faces,
         styleToUse,
         cabinetStyleId,
-        reeded,
+        panelModId,
         cabinetTypeId,
         context
       );

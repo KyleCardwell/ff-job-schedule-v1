@@ -241,8 +241,8 @@ export const fetchEstimateById = (estimateId) => {
         default_door_outside_molding: data.default_door_outside_molding,
         default_drawer_inside_molding: data.default_drawer_inside_molding,
         default_drawer_outside_molding: data.default_drawer_outside_molding,
-        default_door_reeded_panel: data.default_door_reeded_panel,
-        default_drawer_reeded_panel: data.default_drawer_reeded_panel,
+        default_door_panel_mod_id: data.default_door_panel_mod_id,
+        default_drawer_panel_mod_id: data.default_drawer_panel_mod_id,
         default_door_style: data.default_door_style,
         default_drawer_front_style: data.default_drawer_front_style,
         default_profit: data.default_profit,
@@ -663,8 +663,8 @@ export const addSection = (estimateId, taskId, sectionData) => {
         drawerInsideMolding,
         drawerOutsideMolding,
         notes,
-        doorReededPanel,
-        drawerReededPanel,
+        doorPanelModId,
+        drawerPanelModId,
         doorStyle,
         drawerFrontStyle,
       } = sectionData;
@@ -699,10 +699,10 @@ export const addSection = (estimateId, taskId, sectionData) => {
             drawer_outside_molding:
               drawerOutsideMolding !== undefined ? drawerOutsideMolding : null,
             notes: notes || null,
-            door_reeded_panel:
-              doorReededPanel !== undefined ? doorReededPanel : null,
-            drawer_reeded_panel:
-              drawerReededPanel !== undefined ? drawerReededPanel : null,
+            door_panel_mod_id:
+              doorPanelModId !== undefined ? doorPanelModId : null,
+            drawer_panel_mod_id:
+              drawerPanelModId !== undefined ? drawerPanelModId : null,
             door_style: doorStyle || null,
             drawer_front_style: drawerFrontStyle || null,
             est_task_id: taskId,
@@ -770,8 +770,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         drawerInsideMolding,
         drawerOutsideMolding,
         notes,
-        doorReededPanel,
-        drawerReededPanel,
+        doorPanelModId,
+        drawerPanelModId,
         doorStyle,
         drawerFrontStyle,
         add_hours,
@@ -824,11 +824,11 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
           drawer_outside_molding: drawerOutsideMolding,
         }),
         ...(notes !== undefined && { notes: notes || null }),
-        ...(doorReededPanel !== undefined && {
-          door_reeded_panel: doorReededPanel,
+        ...(doorPanelModId !== undefined && {
+          door_panel_mod_id: doorPanelModId,
         }),
-        ...(drawerReededPanel !== undefined && {
-          drawer_reeded_panel: drawerReededPanel,
+        ...(drawerPanelModId !== undefined && {
+          drawer_panel_mod_id: drawerPanelModId,
         }),
         ...(doorStyle !== undefined && { door_style: doorStyle || null }),
         ...(drawerFrontStyle !== undefined && {
@@ -1147,9 +1147,9 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
           defaults.default_drawer_inside_molding ?? null,
         default_drawer_outside_molding:
           defaults.default_drawer_outside_molding ?? null,
-        default_door_reeded_panel: defaults.default_door_reeded_panel ?? null,
-        default_drawer_reeded_panel:
-          defaults.default_drawer_reeded_panel ?? null,
+        default_door_panel_mod_id: defaults.default_door_panel_mod_id ?? null,
+        default_drawer_panel_mod_id:
+          defaults.default_drawer_panel_mod_id ?? null,
         default_door_style: defaults.default_door_style ?? null,
         default_drawer_front_style: defaults.default_drawer_front_style ?? null,
         default_profit: defaults.default_profit ?? null,
@@ -1208,8 +1208,8 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_door_outside_molding: data.default_door_outside_molding,
         default_drawer_inside_molding: data.default_drawer_inside_molding,
         default_drawer_outside_molding: data.default_drawer_outside_molding,
-        default_door_reeded_panel: data.default_door_reeded_panel,
-        default_drawer_reeded_panel: data.default_drawer_reeded_panel,
+        default_door_panel_mod_id: data.default_door_panel_mod_id,
+        default_drawer_panel_mod_id: data.default_drawer_panel_mod_id,
         default_door_style: data.default_door_style,
         default_drawer_front_style: data.default_drawer_front_style,
         default_profit: data.default_profit,

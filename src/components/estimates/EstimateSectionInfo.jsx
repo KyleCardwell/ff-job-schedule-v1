@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 
-import { FACE_STYLES } from "../../utils/constants";
+import { FACE_STYLES, PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants";
 import { getEffectiveValue as getEffectiveValueUtil } from "../../utils/estimateDefaults";
 
 const EstimateSectionInfo = ({
@@ -128,7 +128,7 @@ const EstimateSectionInfo = ({
     id,
     doorInsideMolding,
     doorOutsideMolding,
-    doorReededPanel
+    doorPanelModId
   ) => {
     const baseName =
       FACE_STYLES.find((s) => s.id === id)?.label || NOT_SELECTED;
@@ -136,7 +136,9 @@ const EstimateSectionInfo = ({
 
     if (doorInsideMolding) result.push("Inside Molding");
     if (doorOutsideMolding) result.push("Outside Molding");
-    if (doorReededPanel) result.push("Reeded Panel");
+    if (doorPanelModId && doorPanelModId > 0) {
+      result.push(PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod");
+    }
 
     return result;
   };
@@ -153,7 +155,7 @@ const EstimateSectionInfo = ({
     id,
     drawerInsideMolding,
     drawerOutsideMolding,
-    drawerReededPanel
+    drawerPanelModId
   ) => {
     const baseName =
       FACE_STYLES.find((s) => s.id === id)?.label || NOT_SELECTED;
@@ -161,7 +163,9 @@ const EstimateSectionInfo = ({
 
     if (drawerInsideMolding) result.push("Inside Molding");
     if (drawerOutsideMolding) result.push("Outside Molding");
-    if (drawerReededPanel) result.push("Reeded Panel");
+    if (drawerPanelModId && drawerPanelModId > 0) {
+      result.push(PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod");
+    }
 
     return result;
   };
@@ -326,12 +330,12 @@ const EstimateSectionInfo = ({
                   "default_door_outside_molding"
                 );
                 const {
-                  value: doorReededPanelValue,
-                  source: doorReededPanelSource,
+                  value: doorPanelModIdValue,
+                  source: doorPanelModIdSource,
                 } = getSectionEffectiveValue(
-                  showEstimateDefaults ? null : section?.door_reeded_panel,
-                  "default_door_reeded_panel",
-                  "default_door_reeded_panel"
+                  showEstimateDefaults ? null : section?.door_panel_mod_id,
+                  "default_door_panel_mod_id",
+                  "default_door_panel_mod_id"
                 );
 
                 // Determine most specific source (section > estimate > team)
@@ -339,7 +343,7 @@ const EstimateSectionInfo = ({
                   doorStyleSource,
                   doorInsideMoldingSource,
                   doorOutsideMoldingSource,
-                  doorReededPanelSource,
+                  doorPanelModIdSource,
                 ];
                 const source = sources.includes("section")
                   ? "section"
@@ -358,7 +362,7 @@ const EstimateSectionInfo = ({
                         doorStyle,
                         doorInsideMoldingValue,
                         doorOutsideMoldingValue,
-                        doorReededPanelValue
+                        doorPanelModIdValue
                       ).map((line, i) => (
                         <div key={i} className="">
                           {line}
@@ -426,24 +430,24 @@ const EstimateSectionInfo = ({
                   "default_drawer_outside_molding"
                 );
                 const {
-                  value: drawerReededPanelValue,
-                  source: drawerReededPanelSource,
+                  value: drawerPanelModIdValue,
+                  source: drawerPanelModIdSource,
                 } = getSectionEffectiveValue(
-                  showEstimateDefaults ? null : section?.drawer_reeded_panel,
-                  "default_drawer_reeded_panel",
-                  "default_drawer_reeded_panel"
+                  showEstimateDefaults ? null : section?.drawer_panel_mod_id,
+                  "default_drawer_panel_mod_id",
+                  "default_drawer_panel_mod_id"
                 );
 
                 // Determine most specific source (section > estimate > team)
-                const sources = [
+                const drawerSources = [
                   drawerFrontStyleSource,
                   drawerInsideMoldingSource,
                   drawerOutsideMoldingSource,
-                  drawerReededPanelSource,
+                  drawerPanelModIdSource,
                 ];
-                const source = sources.includes("section")
+                const source = drawerSources.includes("section")
                   ? "section"
-                  : sources.includes("estimate")
+                  : drawerSources.includes("estimate")
                   ? "estimate"
                   : "team";
 
@@ -458,7 +462,7 @@ const EstimateSectionInfo = ({
                         drawerFrontStyle,
                         drawerInsideMoldingValue,
                         drawerOutsideMoldingValue,
-                        drawerReededPanelValue
+                        drawerPanelModIdValue
                       ).map((line, i) => (
                         <div key={i} className="">
                           {line}

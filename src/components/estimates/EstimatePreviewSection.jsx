@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
 
+import { PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import { formatDoorDrawerStyle } from "../../utils/helpers";
@@ -154,17 +155,30 @@ const EstimatePreviewSection = ({
       ? `${taskName} - Section ${sectionNumber}`
       : taskName;
 
-    // Determine reeded note based on door and drawer reeded panel settings
-    const hasReededDoors = effectiveSection.door_reeded_panel;
-    const hasReededDrawers = effectiveSection.drawer_reeded_panel;
+    // Determine panel mod note based on door and drawer panel mod settings
+    // 0 = none, 15 = reeded, 22 = grooved, etc.
+    const doorPanelModId = effectiveSection.door_panel_mod_id;
+    const drawerPanelModId = effectiveSection.drawer_panel_mod_id;
+    const hasPanelModDoors = doorPanelModId && doorPanelModId > 0;
+    const hasPanelModDrawers = drawerPanelModId && drawerPanelModId > 0;
 
     let reededPanels = "";
-    if (hasReededDoors && hasReededDrawers) {
-      reededPanels = "Reeded panels on doors and drawer fronts.";
-    } else if (hasReededDoors) {
-      reededPanels = "Reeded panels on doors.";
-    } else if (hasReededDrawers) {
-      reededPanels = "Reeded panels on drawer fronts.";
+    if (hasPanelModDoors && hasPanelModDrawers) {
+      // Both have panel mods - check if they're the same
+      if (doorPanelModId === drawerPanelModId) {
+        const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+        reededPanels = `${panelModName} on doors and drawer fronts.`;
+      } else {
+        const doorPanelName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+        const drawerPanelName = PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
+        reededPanels = `${doorPanelName} on doors, ${drawerPanelName} on drawer fronts.`;
+      }
+    } else if (hasPanelModDoors) {
+      const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+      reededPanels = `${panelModName} on doors.`;
+    } else if (hasPanelModDrawers) {
+      const panelModName = PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
+      reededPanels = `${panelModName} on drawer fronts.`;
     }
 
     // Determine molding note based on door and drawer molding settings

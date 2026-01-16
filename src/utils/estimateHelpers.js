@@ -579,7 +579,7 @@ export const calculateDoorPartsTime = (
   faces,
   doorStyle,
   cabinetStyleId,
-  reeded,
+  panelModId,
   cabinetTypeId,
   context = {}
 ) => {
@@ -609,7 +609,14 @@ export const calculateDoorPartsTime = (
   }
 
   const anchors = partsListAnchors[partsListId];
-  const reededAnchors = partsListAnchors[15];
+  
+  // Look up panel mod anchors using the parts_list ID directly
+  // 0 = explicit "none" (no panel mod), NULL/undefined = no panel mod
+  // Only lookup if panelModId is a positive number (15=reeded, 22=grooved, etc.)
+  let panelModAnchors = null;
+  if (panelModId && panelModId > 0) {
+    panelModAnchors = partsListAnchors[panelModId];
+  }
 
   if (!anchors || anchors.length === 0) {
     // No anchors for this door type - skip it
@@ -624,9 +631,9 @@ export const calculateDoorPartsTime = (
     });
   });
 
-  // If reeded, also collect service IDs from reeded anchors
-  if (reeded && reededAnchors && reededAnchors.length > 0) {
-    reededAnchors.forEach((anchor) => {
+  // If panel mod is applied, also collect service IDs from panel mod anchors
+  if (panelModAnchors && panelModAnchors.length > 0) {
+    panelModAnchors.forEach((anchor) => {
       anchor.services.forEach((service) => {
         allServiceIds.add(service.team_service_id);
       });
@@ -679,18 +686,18 @@ export const calculateDoorPartsTime = (
         }
       }
 
-      let reededMinutes = 0;
+      let panelModMinutes = 0;
 
-      if (reeded && reededAnchors && reededAnchors.length > 0) {
-        reededMinutes = interpolateTimeByArea(
-          reededAnchors,
+      if (panelModAnchors && panelModAnchors.length > 0) {
+        panelModMinutes = interpolateTimeByArea(
+          panelModAnchors,
           area,
           teamServiceId,
           cabinetStyleId
         );
       }
 
-      hoursByService[teamServiceId] += totalMinutes + reededMinutes;
+      hoursByService[teamServiceId] += totalMinutes + panelModMinutes;
     });
   });
 
