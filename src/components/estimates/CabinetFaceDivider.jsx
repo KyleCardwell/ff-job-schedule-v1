@@ -22,6 +22,8 @@ import {
 import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
 import { truncateTrailingZeros, calculateShelfQty } from "../../utils/helpers";
 
+import FaceAccessories from "./FaceAccessories.jsx";
+
 const CabinetFaceDivider = ({
   cabinetWidth,
   cabinetHeight,
@@ -314,6 +316,7 @@ const CabinetFaceDivider = ({
         children: null,
         shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
+        accessories: [],
       });
 
       // Update the ref to the new type
@@ -355,6 +358,7 @@ const CabinetFaceDivider = ({
         children: null,
         shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
+        accessories: [],
       });
     } else if (config && !config.id) {
       // Ensure existing config has an id and rootReveals
@@ -1173,6 +1177,25 @@ const CabinetFaceDivider = ({
     }
   };
 
+  // Handle accessories change
+  const handleAccessoriesChange = (updatedAccessories) => {
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // Store the accessories array on the node
+      node.accessories = updatedAccessories;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        accessories: updatedAccessories,
+      });
+    }
+  };
+
   // Handle type change
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
@@ -1657,12 +1680,14 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
+          accessories: [],
         },
         {
           id: generateId(node.id, 1),
           type: dividerType,
           width: dividerWidth,
           height: node.height,
+          accessories: [],
         },
         {
           id: generateId(node.id, 2),
@@ -1672,6 +1697,7 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
+          accessories: [],
         },
       ];
       node.splitDirection = SPLIT_DIRECTIONS.HORIZONTAL;
@@ -1717,12 +1743,14 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
+          accessories: [],
         },
         {
           id: generateId(node.id, 1),
           type: dividerType,
           width: node.width,
           height: dividerHeight,
+          accessories: [],
         },
         {
           id: generateId(node.id, 2),
@@ -1732,6 +1760,7 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
+          accessories: [],
         },
       ];
       node.splitDirection = SPLIT_DIRECTIONS.VERTICAL;
@@ -2299,8 +2328,12 @@ const CabinetFaceDivider = ({
                   </>
                 )}
               </div>
-              <div className="border-l border-slate-200 pl-2">
-                accessories
+              <div className="border-l border-slate-200 pl-2 w-64">
+                <FaceAccessories
+                  faceNode={selectedNode}
+                  accessories={accessories}
+                  onAccessoriesChange={handleAccessoriesChange}
+                />
               </div>  
             </div>
           )}

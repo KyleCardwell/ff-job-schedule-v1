@@ -1332,6 +1332,7 @@ const CabinetItemForm = ({
   // Calculate face type summary
   const calculateFaceSummary = (node, itemType, width, height, depth) => {
     const summary = {};
+    const allAccessories = []; // Track all accessories across all faces
 
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)
@@ -1389,6 +1390,38 @@ const CabinetItemForm = ({
               quantity: 2,
             });
           }
+
+          // Process accessories for pair doors (each accessory applies to both doors)
+          if (node.accessories && node.accessories.length > 0) {
+            node.accessories.forEach((accessory) => {
+              // Add for left door
+              allAccessories.push({
+                faceId: `${node.id}-L`,
+                faceType: faceType,
+                accessory_id: accessory.accessory_id,
+                name: accessory.name,
+                type: accessory.type,
+                calculation_type: accessory.calculation_type,
+                quantity: accessory.quantity,
+                width: doorWidth,
+                height: doorHeight,
+                depth: accessory.depth,
+              });
+              // Add for right door
+              allAccessories.push({
+                faceId: `${node.id}-R`,
+                faceType: faceType,
+                accessory_id: accessory.accessory_id,
+                name: accessory.name,
+                type: accessory.type,
+                calculation_type: accessory.calculation_type,
+                quantity: accessory.quantity,
+                width: doorWidth,
+                height: doorHeight,
+                depth: accessory.depth,
+              });
+            });
+          }
         } else {
           // Handle all other face types normally
           if (!summary[faceType]) {
@@ -1435,6 +1468,24 @@ const CabinetItemForm = ({
               quantity: 1,
             });
           }
+
+          // Process accessories for this face
+          if (node.accessories && node.accessories.length > 0) {
+            node.accessories.forEach((accessory) => {
+              allAccessories.push({
+                faceId: node.id,
+                faceType: faceType,
+                accessory_id: accessory.accessory_id,
+                name: accessory.name,
+                type: accessory.type,
+                calculation_type: accessory.calculation_type,
+                quantity: accessory.quantity,
+                width: accessory.width,
+                height: accessory.height,
+                depth: accessory.depth,
+              });
+            });
+          }
         }
         // Track faces with glass shelves for separate material calculation
         if (node.glassShelves && node.shelfQty > 0) {
@@ -1454,9 +1505,10 @@ const CabinetItemForm = ({
 
     processNode(node);
 
-    // Include glass data in the summary
+    // Include glass data and accessories in the summary
     return {
       ...summary,
+      accessories: allAccessories,
     };
   };
 
