@@ -1332,7 +1332,34 @@ const CabinetItemForm = ({
   // Calculate face type summary
   const calculateFaceSummary = (node, itemType, width, height, depth) => {
     const summary = {};
-    const allAccessories = []; // Track all accessories across all faces
+
+    // Update accessory dimensions throughout the tree
+    const updateAccessoryDimensions = (node) => {
+      if (!node) return;
+      
+      // Update accessories on this node with current node dimensions
+      if (node.accessories && Array.isArray(node.accessories)) {
+        node.accessories.forEach((accessory) => {
+          // For pair doors, use half width (individual door width)
+          if (node.type === FACE_NAMES.PAIR_DOOR) {
+            accessory.width = roundTo16th(node.width / 2);
+            accessory.height = roundTo16th(node.height);
+          } else {
+            accessory.width = roundTo16th(node.width);
+            accessory.height = roundTo16th(node.height);
+          }
+          // depth comes from the accessory definition, not the face
+        });
+      }
+      
+      // Recurse through children
+      if (node.children && Array.isArray(node.children)) {
+        node.children.forEach((child) => updateAccessoryDimensions(child));
+      }
+    };
+    
+    // Update all accessory dimensions first
+    updateAccessoryDimensions(node);
 
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)
@@ -1391,37 +1418,7 @@ const CabinetItemForm = ({
             });
           }
 
-          // Process accessories for pair doors (each accessory applies to both doors)
-          if (node.accessories && node.accessories.length > 0) {
-            node.accessories.forEach((accessory) => {
-              // Add for left door
-              allAccessories.push({
-                faceId: `${node.id}-L`,
-                faceType: faceType,
-                accessory_id: accessory.accessory_id,
-                name: accessory.name,
-                type: accessory.type,
-                calculation_type: accessory.calculation_type,
-                quantity: accessory.quantity,
-                width: doorWidth,
-                height: doorHeight,
-                depth: accessory.depth,
-              });
-              // Add for right door
-              allAccessories.push({
-                faceId: `${node.id}-R`,
-                faceType: faceType,
-                accessory_id: accessory.accessory_id,
-                name: accessory.name,
-                type: accessory.type,
-                calculation_type: accessory.calculation_type,
-                quantity: accessory.quantity,
-                width: doorWidth,
-                height: doorHeight,
-                depth: accessory.depth,
-              });
-            });
-          }
+          // Accessories are stored on the node itself, no need to aggregate them here
         } else {
           // Handle all other face types normally
           if (!summary[faceType]) {
@@ -1469,23 +1466,7 @@ const CabinetItemForm = ({
             });
           }
 
-          // Process accessories for this face
-          if (node.accessories && node.accessories.length > 0) {
-            node.accessories.forEach((accessory) => {
-              allAccessories.push({
-                faceId: node.id,
-                faceType: faceType,
-                accessory_id: accessory.accessory_id,
-                name: accessory.name,
-                type: accessory.type,
-                calculation_type: accessory.calculation_type,
-                quantity: accessory.quantity,
-                width: accessory.width,
-                height: accessory.height,
-                depth: accessory.depth,
-              });
-            });
-          }
+          // Accessories are stored on the node itself, no need to aggregate them here
         }
         // Track faces with glass shelves for separate material calculation
         if (node.glassShelves && node.shelfQty > 0) {
@@ -1505,11 +1486,8 @@ const CabinetItemForm = ({
 
     processNode(node);
 
-    // Include glass data and accessories in the summary
-    return {
-      ...summary,
-      accessories: allAccessories,
-    };
+    // Return face type summary (accessories are on individual nodes)
+    return summary;
   };
 
   const handleFaceConfigSave = useCallback(
@@ -1672,8 +1650,8 @@ const CabinetItemForm = ({
                   itemTypeConfig.features.finishedBottom ||
                   itemTypeConfig.features.finishedLeft ||
                   itemTypeConfig.features.finishedRight) && (
-                  <div className="flex flex-wrap gap-2 justify-between">
-                    <div className="w-full text-xs font-medium text-slate-700 text-left">
+                  <div className="grid grid-cols-3 gap-2 justify-between">
+                    <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
                       {nosingOrFinish}:
                     </div>
 

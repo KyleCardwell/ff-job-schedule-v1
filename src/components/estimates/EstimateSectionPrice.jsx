@@ -402,7 +402,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
             </span>
           </div>
 
-          {/* Face Types - Filter out "open", "container", "pair_door" */}
+          {/* Face Types - Filter out "open", "container", "pair_door", "accessories" */}
           {Object.entries(sectionCalculations.faceCounts)
             .filter(
               ([type]) =>
@@ -412,6 +412,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
                   "pair_door",
                   "glassPanels",
                   "glassShelfFaces",
+                  // "accessories",
                 ].includes(type)
             )
             .map(([type, count]) => {

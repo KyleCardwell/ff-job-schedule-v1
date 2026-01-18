@@ -2018,5 +2018,38 @@ export const generateCabinetSummary = (faceConfig) => {
     parts.push(`${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`);
   }
 
+  // Count accessories from face nodes by traversing the tree
+  const accessoryGroups = {};
+  
+  // Recursively collect accessories from all face nodes
+  const collectAccessories = (node) => {
+    if (!node) return;
+    
+    // Collect accessories from this node
+    if (node.accessories && Array.isArray(node.accessories)) {
+      node.accessories.forEach((accessory) => {
+        const name = accessory.name || 'Unknown';
+        if (!accessoryGroups[name]) {
+          accessoryGroups[name] = 0;
+        }
+        accessoryGroups[name] += accessory.quantity || 1;
+      });
+    }
+    
+    // Recurse through children
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((child) => collectAccessories(child));
+    }
+  };
+  
+  collectAccessories(faceConfig);
+  
+  // Create summary strings for each accessory type
+  if (Object.keys(accessoryGroups).length > 0) {
+    Object.entries(accessoryGroups).forEach(([name, count]) => {
+      parts.push(`${count} ${name}`);
+    });
+  }
+
   return parts.join(", ");
 };

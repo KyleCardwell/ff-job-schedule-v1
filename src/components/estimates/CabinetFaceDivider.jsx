@@ -16,11 +16,13 @@ import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_NAMES,
+  FACE_TYPES,
   ITEM_TYPES,
   SPLIT_DIRECTIONS,
 } from "../../utils/constants";
 import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
 import { truncateTrailingZeros, calculateShelfQty } from "../../utils/helpers";
+import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
 import FaceAccessories from "./FaceAccessories.jsx";
 
@@ -85,6 +87,9 @@ const CabinetFaceDivider = ({
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
   const previousCabinetTypeIdRef = useRef(cabinetTypeId); // Track previous cabinet type
+  // State for confirmation modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingTypeChange, setPendingTypeChange] = useState(null);
   // State for temporary input values
   const [inputValues, setInputValues] = useState({
     rollOutQty: "",
@@ -1200,10 +1205,51 @@ const CabinetFaceDivider = ({
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
 
+    // Check for incompatible accessories before changing type
+    const node = findNode(config, selectedNode.id);
+    if (!node || newType === FACE_NAMES.CONTAINER) return;
+
+    let removedAccessories = [];
+    if (node.accessories && node.accessories.length > 0) {
+      removedAccessories = node.accessories.filter((accessory) => {
+        const accessoryCatalog = accessories?.catalog?.find(
+          (acc) => acc.id === +accessory.accessory_id
+        );
+        return !accessoryCatalog?.applies_to?.includes(newType);
+      });
+    }
+
+    // If there are accessories to remove, show confirmation modal
+    if (removedAccessories.length > 0) {
+      setPendingTypeChange({
+        nodeId: selectedNode.id, // Store node ID for later
+        newType,
+        removedAccessories,
+      });
+      setShowConfirmModal(true);
+    } else {
+      // No accessories to remove, proceed directly
+      proceedWithTypeChange(newType, selectedNode.id);
+    }
+  };
+
+  // Actually perform the type change
+  const proceedWithTypeChange = (newType, nodeId) => {
     setConfig((prevConfig) => {
       const newConfig = cloneDeep(prevConfig);
-      const node = findNode(newConfig, selectedNode.id);
+      const node = findNode(newConfig, nodeId);
       if (!node || newType === FACE_NAMES.CONTAINER) return newConfig;
+
+      // Remove incompatible accessories
+      if (node.accessories && node.accessories.length > 0) {
+        const compatibleAccessories = node.accessories.filter((accessory) => {
+          const accessoryCatalog = accessories?.catalog?.find(
+            (acc) => acc.id === +accessory.accessory_id
+          );
+          return accessoryCatalog?.applies_to?.includes(newType);
+        });
+        node.accessories = compatibleAccessories;
+      }
 
       node.type = newType;
       node.children = null; // containers only, so reset
@@ -1240,6 +1286,25 @@ const CabinetFaceDivider = ({
 
     setShowTypeSelector(false);
     setSelectedNode(null);
+  };
+
+  // Handle confirmation modal confirm
+  const handleConfirmTypeChange = () => {
+    if (pendingTypeChange) {
+      proceedWithTypeChange(
+        pendingTypeChange.newType,
+        pendingTypeChange.nodeId
+      );
+    }
+    setShowConfirmModal(false);
+    setPendingTypeChange(null);
+  };
+
+  // Handle confirmation modal cancel
+  const handleCancelTypeChange = () => {
+    setShowConfirmModal(false);
+    setPendingTypeChange(null);
+    // Keep the type selector open so user can choose a different type
   };
 
   // Calculate face summary whenever config changes
@@ -2163,7 +2228,7 @@ const CabinetFaceDivider = ({
                         {supportsRollouts(selectedNode.type) && (
                           <div className="flex flex-col items-center space-x-1">
                             <label className="text-xs text-slate-600">
-                              Roll-Outs:
+                              Roll-Out Qty:
                             </label>
                             <input
                               type="number"
@@ -2180,7 +2245,7 @@ const CabinetFaceDivider = ({
                         {supportsShelves(selectedNode.type) && (
                           <div className="flex flex-col items-center space-x-1">
                             <label className="text-xs text-slate-600">
-                              Shelves:
+                              Shelf Qty:
                             </label>
                             <input
                               type="number"
@@ -2196,49 +2261,55 @@ const CabinetFaceDivider = ({
                         )}
                       </div>
                     )}
-                    <div className="mt-2 flex space-x-4">
-                      {supportsGlassPanel && glassPanelOptions(selectedNode.type).length > 0 && (
-                        <div className="flex-1 flex flex-col items-center space-x-1">
-                          <label className="text-xs text-slate-600">
-                            Glass Panel:
-                          </label>
-                          <select
-                            name="glassPanel"
-                            value={inputValues.glassPanel}
-                            onChange={(e) => handleGlassPanelChange(e)}
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                          >
-                            <option value="">None</option>
-                            {glassPanelOptions(selectedNode.type).map(
-                              (glass) => (
-                                <option key={glass.id} value={glass.id}>
-                                  {glass.name}
-                                </option>
-                              )
-                            )}
-                          </select>
-                        </div>
-                      )}
-                      {supportsShelves(selectedNode.type) && accessories.glass.length > 0 && (
-                        <div className="flex-1 flex flex-col items-center space-x-1">
-                          <label className="text-xs text-slate-600">
-                            Shelves:
-                          </label>
-                          <select
-                            name="glassShelves"
-                            value={inputValues.glassShelves}
-                            onChange={(e) => handleGlassShelvesChange(e)}
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                          >
-                            <option value="">Box Material</option>
-                            {accessories.glass.map((glass) => (
-                              <option key={glass.id} value={glass.id}>
-                                {glass.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                    <div className="mt-2 grid grid-cols-2 space-x-4">
+                      <div>
+                        {supportsGlassPanel &&
+                          glassPanelOptions(selectedNode.type).length > 0 && (
+                            <div className="flex-1 flex flex-col items-center space-x-1">
+                              <label className="text-xs text-slate-600">
+                                Glass Panel:
+                              </label>
+                              <select
+                                name="glassPanel"
+                                value={inputValues.glassPanel}
+                                onChange={(e) => handleGlassPanelChange(e)}
+                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              >
+                                <option value="">None</option>
+                                {glassPanelOptions(selectedNode.type).map(
+                                  (glass) => (
+                                    <option key={glass.id} value={glass.id}>
+                                      {glass.name}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                            </div>
+                          )}
+                      </div>
+                      <div>
+                        {supportsShelves(selectedNode.type) &&
+                          accessories.glass.length > 0 && (
+                            <div className="flex-1 flex flex-col items-center space-x-1">
+                              <label className="text-xs text-slate-600">
+                                Shelf material:
+                              </label>
+                              <select
+                                name="glassShelves"
+                                value={inputValues.glassShelves}
+                                onChange={(e) => handleGlassShelvesChange(e)}
+                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              >
+                                <option value="">Box Material</option>
+                                {accessories.glass.map((glass) => (
+                                  <option key={glass.id} value={glass.id}>
+                                    {glass.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2334,7 +2405,7 @@ const CabinetFaceDivider = ({
                   accessories={accessories}
                   onAccessoriesChange={handleAccessoriesChange}
                 />
-              </div>  
+              </div>
             </div>
           )}
         </div>
@@ -2345,6 +2416,31 @@ const CabinetFaceDivider = ({
           Click faces to change type, edit dimensions, or split them.
         </div>
       </div>
+
+      {/* Confirmation Modal for Accessory Removal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        title="Remove Incompatible Accessories?"
+        message={
+          pendingTypeChange
+            ? [
+                `The following accessories are not compatible with ${
+                  FACE_TYPES.find((t) => t.value === pendingTypeChange.newType)
+                    ?.label || pendingTypeChange.newType
+                }:`,
+                pendingTypeChange.removedAccessories
+                  .map((acc) => `• ${acc.quantity}x ${acc.name}`)
+                  .join("\n"),
+                "Do you want to proceed and remove these accessories?",
+              ]
+            : []
+        }
+        onConfirm={handleConfirmTypeChange}
+        onCancel={handleCancelTypeChange}
+        confirmText="OK"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-500 hover:bg-red-600"
+      />
     </div>
   );
 };

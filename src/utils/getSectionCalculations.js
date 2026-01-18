@@ -1192,7 +1192,7 @@ const calculateLengthTotals = (items, context) => {
   return totals;
 };
 
-const calculateAccessoriesTotal = (items, context) => {
+const calculateAccessoriesTotal = (items, context, section) => {
   const totals = {
     glass: { count: 0, total: 0 },
     insert: { count: 0, total: 0 },
@@ -1206,9 +1206,50 @@ const calculateAccessoriesTotal = (items, context) => {
 
   if (!accessories) return totals;
 
-  if (!items || !Array.isArray(items)) return totals;
+  // Collect all accessories from section.accessories items AND face configs
+  const allAccessories = [];
+  
+  // Add section accessories
+  if (items && Array.isArray(items)) {
+    allAccessories.push(...items);
+  }
+  
+  // Add accessories from cabinet face configs by traversing the tree
+  if (section?.cabinets && Array.isArray(section.cabinets)) {
+    section.cabinets.forEach((cabinet) => {
+      const quantity = Number(cabinet.quantity) || 1;
+      const faceConfig = cabinet.face_config;
+      
+      if (!faceConfig) return;
+      
+      // Recursively collect accessories from all face nodes
+      const collectAccessories = (node) => {
+        if (!node) return;
+        
+        // Collect accessories from this node
+        if (node.accessories && Array.isArray(node.accessories)) {
+          node.accessories.forEach((accessory) => {
+            allAccessories.push({
+              accessory_catalog_id: +accessory.accessory_id,
+              quantity: accessory.quantity * quantity, // Multiply by cabinet quantity
+              width: node.width,
+              height: node.height,
+              depth: accessory.depth,
+            });
+          });
+        }
+        
+        // Recurse through children
+        if (node.children && Array.isArray(node.children)) {
+          node.children.forEach((child) => collectAccessories(child));
+        }
+      };
+      
+      collectAccessories(faceConfig);
+    });
+  }
 
-  items.forEach((item) => {
+  allAccessories.forEach((item) => {
     const accessory = accessories.catalog.find(
       (acc) => acc.id === item.accessory_catalog_id
     );
@@ -1406,7 +1447,8 @@ export const getSectionCalculations = (section, context = {}) => {
   const lengthTotals = calculateLengthTotals(section.lengths, context);
   const accessoriesTotal = calculateAccessoriesTotal(
     section.accessories,
-    context
+    context,
+    section
   );
   const otherTotal = calculateSimpleItemsTotal(section.other, context);
 
