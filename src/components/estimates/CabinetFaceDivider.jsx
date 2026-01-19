@@ -16,11 +16,15 @@ import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   FACE_NAMES,
+  FACE_TYPES,
   ITEM_TYPES,
   SPLIT_DIRECTIONS,
 } from "../../utils/constants";
 import { calculateRollOutDimensions } from "../../utils/getSectionCalculations";
 import { truncateTrailingZeros, calculateShelfQty } from "../../utils/helpers";
+import ConfirmationModal from "../common/ConfirmationModal.jsx";
+
+import FaceAccessories from "./FaceAccessories.jsx";
 
 const CabinetFaceDivider = ({
   cabinetWidth,
@@ -83,6 +87,9 @@ const CabinetFaceDivider = ({
   const previousConfigRef = useRef();
   const originalConfigRef = useRef();
   const previousCabinetTypeIdRef = useRef(cabinetTypeId); // Track previous cabinet type
+  // State for confirmation modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingTypeChange, setPendingTypeChange] = useState(null);
   // State for temporary input values
   const [inputValues, setInputValues] = useState({
     rollOutQty: "",
@@ -207,75 +214,7 @@ const CabinetFaceDivider = ({
     });
   };
 
-  // Separate useEffect to handle rootReveals changes from parent (faceConfig prop)
-  useEffect(() => {
-    // Check if the incoming faceConfig has different rootReveals than our local config state
-    if (
-      faceConfig?.rootReveals &&
-      config?.id === FACE_NAMES.ROOT &&
-      !isEqual(faceConfig.rootReveals, config.rootReveals)
-    ) {
-      // Update the ref to the new reveals
-      revealsRef.current = faceConfig.rootReveals;
-
-      const updatedConfig = cloneDeep(config);
-
-      // Update rootReveals with the new values from parent
-      updatedConfig.rootReveals = faceConfig.rootReveals;
-
-      // Update root dimensions based on new reveals FIRST
-      updatedConfig.width =
-        cabinetWidth -
-        faceConfig.rootReveals.left -
-        faceConfig.rootReveals.right;
-      updatedConfig.height =
-        cabinetHeight -
-        faceConfig.rootReveals.top -
-        faceConfig.rootReveals.bottom;
-      updatedConfig.x = faceConfig.rootReveals.left;
-      updatedConfig.y = faceConfig.rootReveals.top;
-
-      // Normalize reveal dimensions with new reveals throughout the entire tree
-      // We need to use the new reveals value directly
-      const normalizeWithNewReveals = (node) => {
-        if (!node || !node.children) return;
-
-        const revealValue = faceConfig.rootReveals.reveal;
-
-        node.children.forEach((child) => {
-          if (child.type === FACE_NAMES.REVEAL) {
-            if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
-              child.width = revealValue;
-            } else if (node.splitDirection === SPLIT_DIRECTIONS.VERTICAL) {
-              child.height = revealValue;
-            }
-          }
-          // Recurse for nested containers
-          normalizeWithNewReveals(child);
-        });
-      };
-
-      // Normalize all reveals first
-      normalizeWithNewReveals(updatedConfig);
-
-      // THEN recursively update all children to scale proportionally
-      // This ensures the scaling calculations use the correct reveal sizes
-      updateChildrenFromParent(updatedConfig);
-
-      // Force recalculation of layout with new dimensions and positions
-      const layoutConfig = calculateLayout(updatedConfig);
-
-      // Update state with the new configuration
-      setConfig(layoutConfig);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    faceConfig?.rootReveals,
-    config?.rootReveals,
-    cabinetWidth,
-    cabinetHeight,
-  ]);
-
+  // Single useEffect to handle all config updates in coordinated priority order
   useEffect(() => {
     // Check if cabinet type has actually changed
     const cabinetTypeChanged =
@@ -314,6 +253,7 @@ const CabinetFaceDivider = ({
         children: null,
         shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
+        accessories: [],
       });
 
       // Update the ref to the new type
@@ -355,6 +295,7 @@ const CabinetFaceDivider = ({
         children: null,
         shelfQty: needsShelves ? calculateShelfQty(initialHeight) : 0,
         rootReveals: initialReveals,
+        accessories: [],
       });
     } else if (config && !config.id) {
       // Ensure existing config has an id and rootReveals
@@ -383,9 +324,10 @@ const CabinetFaceDivider = ({
         rootReveals: configReveals,
       });
     } else if (config && config.id === FACE_NAMES.ROOT) {
-      // Get the current reveals from type config
-      // If !usesRootReveals, all reveals should be 0
-      const currentReveals = usesRootReveals
+      // Priority 1: Use faceConfig.rootReveals if provided by parent (from EstimateCabinetManager)
+      // Priority 2: Fall back to type?.config if no faceConfig.rootReveals
+      // This ensures parent's explicit reveals always take precedence
+      const typeConfigReveals = usesRootReveals
         ? type?.config || {
             top: 0,
             bottom: 0,
@@ -401,49 +343,69 @@ const CabinetFaceDivider = ({
             reveal: 0,
           };
 
-      // Calculate expected dimensions
-      const expectedWidth =
-        cabinetWidth - currentReveals.left - currentReveals.right;
-      const expectedHeight =
-        cabinetHeight - currentReveals.top - currentReveals.bottom;
+      const revealsToUse = faceConfig?.rootReveals || typeConfigReveals;
 
-      // Only update if dimensions or reveals changed (NOT face type)
-      const needsUpdate =
+      console.log('[CabinetFaceDivider] Main useEffect - cabinetStyleId:', cabinetStyleId);
+      console.log('[CabinetFaceDivider] type?.config:', typeConfigReveals);
+      console.log('[CabinetFaceDivider] faceConfig?.rootReveals:', faceConfig?.rootReveals);
+      console.log('[CabinetFaceDivider] revealsToUse (priority):', revealsToUse);
+      console.log('[CabinetFaceDivider] config.rootReveals:', config.rootReveals);
+
+      // Calculate expected dimensions based on revealsToUse
+      const expectedWidth =
+        cabinetWidth - revealsToUse.left - revealsToUse.right;
+      const expectedHeight =
+        cabinetHeight - revealsToUse.top - revealsToUse.bottom;
+
+      // Check what needs updating
+      const dimensionsChanged =
         config.width !== expectedWidth ||
-        config.height !== expectedHeight ||
-        !config.rootReveals ||
-        !isEqual(config.rootReveals, currentReveals);
+        config.height !== expectedHeight;
+
+      const revealsChanged = !config.rootReveals || !isEqual(config.rootReveals, revealsToUse);
+
+      const needsUpdate = dimensionsChanged || revealsChanged;
+
+      console.log('[CabinetFaceDivider] dimensionsChanged:', dimensionsChanged, 'revealsChanged:', revealsChanged, 'needsUpdate:', needsUpdate);
 
       if (needsUpdate) {
+        console.log('[CabinetFaceDivider] Updating config in main useEffect');
+        
+        // Update the ref to track current reveals
+        revealsRef.current = revealsToUse;
+
         const updatedConfig = cloneDeep(config);
 
-        // Update rootReveals
-        updatedConfig.rootReveals = currentReveals;
+        // Always sync rootReveals
+        updatedConfig.rootReveals = revealsToUse;
 
-        // DO NOT update root face type - preserve the saved type
-        // Only cabinet type changes should reset the face type
+        // If reveals changed, normalize all reveal nodes in the tree
+        if (revealsChanged) {
+          console.log('[CabinetFaceDivider] Reveals changed - normalizing reveal nodes');
+          normalizeRevealDimensions(updatedConfig, revealsToUse);
+        }
 
-        // Normalize reveals before doing anything else - pass currentReveals explicitly
-        normalizeRevealDimensions(updatedConfig, currentReveals);
-
-        // Update root dimensions first so updateChildrenFromParent uses new values
+        // Update root dimensions
         updatedConfig.width = expectedWidth;
         updatedConfig.height = expectedHeight;
-        updatedConfig.x = currentReveals.left;
-        updatedConfig.y = currentReveals.top;
+        updatedConfig.x = revealsToUse.left;
+        updatedConfig.y = revealsToUse.top;
 
-        // Recursively update all children to scale proportionally
-        updateChildrenFromParent(updatedConfig);
+        // If dimensions or reveals changed, update children proportionally
+        if (dimensionsChanged || revealsChanged) {
+          console.log('[CabinetFaceDivider] Updating children proportionally');
+          updateChildrenFromParent(updatedConfig);
+        }
 
-        // Force recalculation of layout with new dimensions
+        // Force recalculation of layout
         const layoutConfig = calculateLayout(updatedConfig);
 
-        // Update state with the new configuration
+        console.log('[CabinetFaceDivider] Setting config with rootReveals:', layoutConfig.rootReveals);
         setConfig(layoutConfig);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cabinetWidth, cabinetHeight, cabinetTypeId, usesRootReveals, type]);
+  }, [cabinetWidth, cabinetHeight, cabinetTypeId, cabinetStyleId, usesRootReveals, type, faceConfig?.rootReveals]);
 
   useEffect(() => {
     renderCabinet();
@@ -561,10 +523,12 @@ const CabinetFaceDivider = ({
 
     // Apply outer reveals for the root container
     if (isRoot) {
-      newX = reveals.left;
-      newY = reveals.top;
-      newWidth = cabinetWidth - (reveals.left + reveals.right);
-      newHeight = cabinetHeight - (reveals.top + reveals.bottom);
+      // Use node.rootReveals if available (updated reveals), otherwise fall back to reveals memo
+      const currentReveals = node.rootReveals || reveals;
+      newX = currentReveals.left;
+      newY = currentReveals.top;
+      newWidth = cabinetWidth - (currentReveals.left + currentReveals.right);
+      newHeight = cabinetHeight - (currentReveals.top + currentReveals.bottom);
     }
 
     const newNode = {
@@ -1173,14 +1137,74 @@ const CabinetFaceDivider = ({
     }
   };
 
+  // Handle accessories change
+  const handleAccessoriesChange = (updatedAccessories) => {
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // Store the accessories array on the node
+      node.accessories = updatedAccessories;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        accessories: updatedAccessories,
+      });
+    }
+  };
+
   // Handle type change
   const handleTypeChange = (newType) => {
     if (!selectedNode) return;
 
+    // Check for incompatible accessories before changing type
+    const node = findNode(config, selectedNode.id);
+    if (!node || newType === FACE_NAMES.CONTAINER) return;
+
+    let removedAccessories = [];
+    if (node.accessories && node.accessories.length > 0) {
+      removedAccessories = node.accessories.filter((accessory) => {
+        const accessoryCatalog = accessories?.catalog?.find(
+          (acc) => acc.id === +accessory.accessory_id
+        );
+        return !accessoryCatalog?.applies_to?.includes(newType);
+      });
+    }
+
+    // If there are accessories to remove, show confirmation modal
+    if (removedAccessories.length > 0) {
+      setPendingTypeChange({
+        nodeId: selectedNode.id, // Store node ID for later
+        newType,
+        removedAccessories,
+      });
+      setShowConfirmModal(true);
+    } else {
+      // No accessories to remove, proceed directly
+      proceedWithTypeChange(newType, selectedNode.id);
+    }
+  };
+
+  // Actually perform the type change
+  const proceedWithTypeChange = (newType, nodeId) => {
     setConfig((prevConfig) => {
       const newConfig = cloneDeep(prevConfig);
-      const node = findNode(newConfig, selectedNode.id);
+      const node = findNode(newConfig, nodeId);
       if (!node || newType === FACE_NAMES.CONTAINER) return newConfig;
+
+      // Remove incompatible accessories
+      if (node.accessories && node.accessories.length > 0) {
+        const compatibleAccessories = node.accessories.filter((accessory) => {
+          const accessoryCatalog = accessories?.catalog?.find(
+            (acc) => acc.id === +accessory.accessory_id
+          );
+          return accessoryCatalog?.applies_to?.includes(newType);
+        });
+        node.accessories = compatibleAccessories;
+      }
 
       node.type = newType;
       node.children = null; // containers only, so reset
@@ -1219,6 +1243,25 @@ const CabinetFaceDivider = ({
     setSelectedNode(null);
   };
 
+  // Handle confirmation modal confirm
+  const handleConfirmTypeChange = () => {
+    if (pendingTypeChange) {
+      proceedWithTypeChange(
+        pendingTypeChange.newType,
+        pendingTypeChange.nodeId
+      );
+    }
+    setShowConfirmModal(false);
+    setPendingTypeChange(null);
+  };
+
+  // Handle confirmation modal cancel
+  const handleCancelTypeChange = () => {
+    setShowConfirmModal(false);
+    setPendingTypeChange(null);
+    // Keep the type selector open so user can choose a different type
+  };
+
   // Calculate face summary whenever config changes
   useEffect(() => {
     if (config && onSave) {
@@ -1227,6 +1270,9 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
+        console.log('[CabinetFaceDivider] onSave useEffect - config changed, calling onSave');
+        console.log('[CabinetFaceDivider] config.rootReveals being saved:', config.rootReveals);
+        console.log('[CabinetFaceDivider] config dimensions being saved:', { x: config.x, y: config.y, width: config.width, height: config.height });
         // Create a copy of the config for saving
         const configForSave = cloneDeep(config);
 
@@ -1271,12 +1317,13 @@ const CabinetFaceDivider = ({
         // Process the entire tree
         processNode(configForSave);
 
+        console.log('[CabinetFaceDivider] Calling onSave with rootReveals:', configForSave.rootReveals);
         // Save the config with calculated dimensions
         onSave(configForSave);
         previousConfigRef.current = configString;
       }
     }
-  }, [config, onSave, cabinetDepth]);
+  }, [config, onSave, cabinetDepth, style]);
 
   const handleDragStart = (event, node, dimension) => {
     if (disabled) return;
@@ -1657,12 +1704,14 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
+          accessories: [],
         },
         {
           id: generateId(node.id, 1),
           type: dividerType,
           width: dividerWidth,
           height: node.height,
+          accessories: [],
         },
         {
           id: generateId(node.id, 2),
@@ -1672,6 +1721,7 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
+          accessories: [],
         },
       ];
       node.splitDirection = SPLIT_DIRECTIONS.HORIZONTAL;
@@ -1717,12 +1767,14 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
+          accessories: [],
         },
         {
           id: generateId(node.id, 1),
           type: dividerType,
           width: node.width,
           height: dividerHeight,
+          accessories: [],
         },
         {
           id: generateId(node.id, 2),
@@ -1732,6 +1784,7 @@ const CabinetFaceDivider = ({
           rollOutQty: null,
           shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
+          accessories: [],
         },
       ];
       node.splitDirection = SPLIT_DIRECTIONS.VERTICAL;
@@ -2134,7 +2187,7 @@ const CabinetFaceDivider = ({
                         {supportsRollouts(selectedNode.type) && (
                           <div className="flex flex-col items-center space-x-1">
                             <label className="text-xs text-slate-600">
-                              Roll-Outs:
+                              Roll-Out Qty:
                             </label>
                             <input
                               type="number"
@@ -2151,7 +2204,7 @@ const CabinetFaceDivider = ({
                         {supportsShelves(selectedNode.type) && (
                           <div className="flex flex-col items-center space-x-1">
                             <label className="text-xs text-slate-600">
-                              Shelves:
+                              Shelf Qty:
                             </label>
                             <input
                               type="number"
@@ -2167,49 +2220,55 @@ const CabinetFaceDivider = ({
                         )}
                       </div>
                     )}
-                    <div className="mt-2 flex space-x-4">
-                      {supportsGlassPanel && glassPanelOptions(selectedNode.type).length > 0 && (
-                        <div className="flex-1 flex flex-col items-center space-x-1">
-                          <label className="text-xs text-slate-600">
-                            Glass Panel:
-                          </label>
-                          <select
-                            name="glassPanel"
-                            value={inputValues.glassPanel}
-                            onChange={(e) => handleGlassPanelChange(e)}
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                          >
-                            <option value="">None</option>
-                            {glassPanelOptions(selectedNode.type).map(
-                              (glass) => (
-                                <option key={glass.id} value={glass.id}>
-                                  {glass.name}
-                                </option>
-                              )
-                            )}
-                          </select>
-                        </div>
-                      )}
-                      {supportsShelves(selectedNode.type) && accessories.glass.length > 0 && (
-                        <div className="flex-1 flex flex-col items-center space-x-1">
-                          <label className="text-xs text-slate-600">
-                            Shelves:
-                          </label>
-                          <select
-                            name="glassShelves"
-                            value={inputValues.glassShelves}
-                            onChange={(e) => handleGlassShelvesChange(e)}
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                          >
-                            <option value="">Box Material</option>
-                            {accessories.glass.map((glass) => (
-                              <option key={glass.id} value={glass.id}>
-                                {glass.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                    <div className="mt-2 grid grid-cols-2 space-x-4">
+                      <div>
+                        {supportsGlassPanel &&
+                          glassPanelOptions(selectedNode.type).length > 0 && (
+                            <div className="flex-1 flex flex-col items-center space-x-1">
+                              <label className="text-xs text-slate-600">
+                                Glass Panel:
+                              </label>
+                              <select
+                                name="glassPanel"
+                                value={inputValues.glassPanel}
+                                onChange={(e) => handleGlassPanelChange(e)}
+                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              >
+                                <option value="">None</option>
+                                {glassPanelOptions(selectedNode.type).map(
+                                  (glass) => (
+                                    <option key={glass.id} value={glass.id}>
+                                      {glass.name}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                            </div>
+                          )}
+                      </div>
+                      <div>
+                        {supportsShelves(selectedNode.type) &&
+                          accessories.glass.length > 0 && (
+                            <div className="flex-1 flex flex-col items-center space-x-1">
+                              <label className="text-xs text-slate-600">
+                                Shelf material:
+                              </label>
+                              <select
+                                name="glassShelves"
+                                value={inputValues.glassShelves}
+                                onChange={(e) => handleGlassShelvesChange(e)}
+                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              >
+                                <option value="">Box Material</option>
+                                {accessories.glass.map((glass) => (
+                                  <option key={glass.id} value={glass.id}>
+                                    {glass.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2299,9 +2358,13 @@ const CabinetFaceDivider = ({
                   </>
                 )}
               </div>
-              <div className="border-l border-slate-200 pl-2">
-                accessories
-              </div>  
+              <div className="border-l border-slate-200 pl-2 w-64">
+                <FaceAccessories
+                  faceNode={selectedNode}
+                  accessories={accessories}
+                  onAccessoriesChange={handleAccessoriesChange}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -2312,6 +2375,31 @@ const CabinetFaceDivider = ({
           Click faces to change type, edit dimensions, or split them.
         </div>
       </div>
+
+      {/* Confirmation Modal for Accessory Removal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        title="Remove Incompatible Accessories?"
+        message={
+          pendingTypeChange
+            ? [
+                `The following accessories are not compatible with ${
+                  FACE_TYPES.find((t) => t.value === pendingTypeChange.newType)
+                    ?.label || pendingTypeChange.newType
+                }:`,
+                pendingTypeChange.removedAccessories
+                  .map((acc) => `• ${acc.quantity}x ${acc.name}`)
+                  .join("\n"),
+                "Do you want to proceed and remove these accessories?",
+              ]
+            : []
+        }
+        onConfirm={handleConfirmTypeChange}
+        onCancel={handleCancelTypeChange}
+        confirmText="OK"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-500 hover:bg-red-600"
+      />
     </div>
   );
 };

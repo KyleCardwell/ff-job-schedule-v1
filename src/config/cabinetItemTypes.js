@@ -221,9 +221,45 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: false,
       finishedInterior: false,
       finishedBack: false,
+    },
+  },
+  hood: {
+    label: 'Hood',
+    faceTypesArray: [], // Not divisible
+    defaultFaceType: FACE_NAMES.PANEL,
+    usesReveals: false,
+    usesRootReveals: false,
+    allowsSplitting: true,
+    requiresStyleReveals: false,
+    isDivisible: false,
+    features: {
+      sides: false,
+      top: false,
+      bottom: false,
+      back: false,
+      shelves: false,
+      rollouts: false,
+      finishedTop: false,
+      finishedBottom: false,
+      finishedLeft: false,
+      finishedRight: false,
+      finishedInterior: false,
+      finishedBack: false,
       autoScoop: true, // Automatically includes a scoop
       corner45: false,
     },
+    typeSpecificOptions: [
+      {
+        name: 'tapered',
+        type: 'checkbox',
+        label: 'Tapered Sides',
+        defaultValue: false,
+        description: 'Hood width narrows from bottom to top',
+        serviceMultipliers: {
+          2: 1.5, // Tapered hoods take 1.5x shop time (service_id 2)
+        },
+      },
+    ],
   },
 };
 

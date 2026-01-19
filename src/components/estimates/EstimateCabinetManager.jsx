@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useCallback, useEffect } from "react";
 import { useSelector } from "react-redux";
@@ -69,6 +70,7 @@ const CabinetItemForm = ({
     cabinet_style_override: item.cabinet_style_override,
     corner_45: item.corner_45 || false,
     updated_at: item.updated_at,
+    type_specific_options: item.type_specific_options || {},
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -80,26 +82,36 @@ const CabinetItemForm = ({
 
   const [errors, setErrors] = useState({});
 
-  // Sync rootReveals on mount if cabinet_style_override is null
+  // Sync rootReveals when cabinet_style_override is null and section style changes
   useEffect(() => {
+    console.log('[EstimateCabinetManager] useEffect triggered - cabinetStyleId:', cabinetStyleId, 'override:', formData.cabinet_style_override);
     // Only run if cabinet_style_override is null (using section default)
     if (
-      (item.cabinet_style_override === null ||
-        item.cabinet_style_override === undefined) &&
-      item.face_config &&
-      item.type &&
-      cabinetStyles.length > 0
+      (formData.cabinet_style_override === null ||
+        formData.cabinet_style_override === undefined) &&
+      formData.face_config &&
+      formData.type &&
+      cabinetStyles.length > 0 &&
+      cabinetStyleId
     ) {
       // Find the style and type config for the section's style
       const style = cabinetStyles.find(
         (s) => s.cabinet_style_id === cabinetStyleId
       );
       const typeConfig = style?.types?.find(
-        (t) => t.cabinet_type_id === item.type
+        (t) => t.cabinet_type_id === formData.type
       );
 
-      // Update rootReveals to match the section's style config
-      if (typeConfig?.config) {
+      console.log('[EstimateCabinetManager] Found typeConfig:', typeConfig?.config);
+      console.log('[EstimateCabinetManager] Current rootReveals:', formData.face_config?.rootReveals);
+
+      // Update rootReveals - CabinetFaceDivider will handle dimension recalculation
+      // Only update if reveals are different to prevent infinite loop
+      if (typeConfig?.config && !isEqual(formData.face_config?.rootReveals, typeConfig.config)) {
+        console.log('[EstimateCabinetManager] Updating rootReveals to:', typeConfig.config);
+        console.log('----------------------------------------------')
+        console.log('----------------------------------------------')
+        console.log('----------------------------------------------')
         setFormData((prev) => ({
           ...prev,
           face_config: {
@@ -107,10 +119,12 @@ const CabinetItemForm = ({
             rootReveals: typeConfig.config,
           },
         }));
+      } else {
+        console.log('[EstimateCabinetManager] Reveals already match - skipping update');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [cabinetStyleId, formData.cabinet_style_override, formData.type, cabinetStyles])
 
   // Update itemTypeConfig when formData.type changes
   useEffect(() => {
@@ -182,7 +196,7 @@ const CabinetItemForm = ({
           const updates = { [name]: numValue };
           const inputUpdates = {};
 
-          // If type is changing, always set dimensions to defaults and reset face_config
+          // If type is changing, always set dimensions to defaults, reset face_config, and clear type_specific_options
           if (name === "type" && numValue) {
             const selectedType = cabinetTypes.find(
               (t) => t.cabinet_type_id === numValue
@@ -206,6 +220,9 @@ const CabinetItemForm = ({
               // Reset face_config to null when type changes
               // CabinetFaceDivider will reinitialize it with the correct defaultFaceType
               updates.face_config = null;
+
+              // Clear type_specific_options when type changes
+              updates.type_specific_options = {};
             }
 
             // Update inputValues with dimension defaults
@@ -216,12 +233,15 @@ const CabinetItemForm = ({
               }));
             }
           } else if (name === "cabinet_style_override") {
-            // For style changes only, update rootReveals if config exists
+            // For style changes only, update rootReveals - CabinetFaceDivider will handle dimensions
+            console.log('[EstimateCabinetManager] handleChange - cabinet_style_override changed to:', numValue);
+            console.log('[EstimateCabinetManager] typeConfig:', typeConfig?.config);
             if (
               typeConfig?.config &&
               formData.face_config &&
               formData.face_config.id
             ) {
+              console.log('[EstimateCabinetManager] Updating face_config.rootReveals to:', typeConfig.config);
               updates.face_config = {
                 ...formData.face_config,
                 rootReveals: typeConfig.config,
@@ -304,6 +324,17 @@ const CabinetItemForm = ({
     }
   };
 
+  // Handle type-specific options changes
+  const handleTypeSpecificOptionChange = (optionName, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      type_specific_options: {
+        ...prev.type_specific_options,
+        [optionName]: value,
+      },
+    }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -379,6 +410,9 @@ const CabinetItemForm = ({
       // Save the style ID this cabinet was configured with
       // This allows accurate error detection when section style changes
       finalFormData.saved_style_id = effectiveStyleId;
+
+      // Include type_specific_options in the saved data
+      finalFormData.type_specific_options = formData.type_specific_options || {};
 
       const itemType = cabinetTypes.find(
         (t) => t.cabinet_type_id === formData.type
@@ -921,6 +955,27 @@ const CabinetItemForm = ({
       };
     }
 
+    // Handle hood - no box parts, only face materials and service hours
+    // Service hours are calculated via 3D volume interpolation in getSectionCalculations
+    if (itemType === ITEM_TYPES.HOOD.type) {
+      const hardware = countFaceHardware(faceConfig, itemType);
+
+      return {
+        pieces: { sides: 0, topBottom: 0, back: 0 },
+        cabinetCount: qty,
+        areaPerCabinet: 0,
+        partitionArea: 0,
+        bandingLength: 0,
+        singleBoxPartsCount: 0,
+        singleBoxPerimeterLength: 0,
+        boxHardware: hardware,
+        shelfDrillHoles: 0,
+        boxPartsList: [], // No box parts for hoods
+        frameParts: {},
+        openingsCount: 0,
+      };
+    }
+
     // Full cabinet - continue with existing complex logic
     let sideArea, topBottomArea, backArea;
     let sidePerimeterLength, topBottomPerimeterLength, backPerimeterLength;
@@ -1294,6 +1349,34 @@ const CabinetItemForm = ({
   const calculateFaceSummary = (node, itemType, width, height, depth) => {
     const summary = {};
 
+    // Update accessory dimensions throughout the tree
+    const updateAccessoryDimensions = (node) => {
+      if (!node) return;
+      
+      // Update accessories on this node with current node dimensions
+      if (node.accessories && Array.isArray(node.accessories)) {
+        node.accessories.forEach((accessory) => {
+          // For pair doors, use half width (individual door width)
+          if (node.type === FACE_NAMES.PAIR_DOOR) {
+            accessory.width = roundTo16th(node.width / 2);
+            accessory.height = roundTo16th(node.height);
+          } else {
+            accessory.width = roundTo16th(node.width);
+            accessory.height = roundTo16th(node.height);
+          }
+          // depth comes from the accessory definition, not the face
+        });
+      }
+      
+      // Recurse through children
+      if (node.children && Array.isArray(node.children)) {
+        node.children.forEach((child) => updateAccessoryDimensions(child));
+      }
+    };
+    
+    // Update all accessory dimensions first
+    updateAccessoryDimensions(node);
+
     const processNode = (node) => {
       // Only count leaf nodes (actual faces, not containers)
       if (!node.children) {
@@ -1350,6 +1433,8 @@ const CabinetItemForm = ({
               quantity: 2,
             });
           }
+
+          // Accessories are stored on the node itself, no need to aggregate them here
         } else {
           // Handle all other face types normally
           if (!summary[faceType]) {
@@ -1396,6 +1481,8 @@ const CabinetItemForm = ({
               quantity: 1,
             });
           }
+
+          // Accessories are stored on the node itself, no need to aggregate them here
         }
         // Track faces with glass shelves for separate material calculation
         if (node.glassShelves && node.shelfQty > 0) {
@@ -1415,24 +1502,33 @@ const CabinetItemForm = ({
 
     processNode(node);
 
-    // Include glass data in the summary
-    return {
-      ...summary,
-    };
+    // Return face type summary (accessories are on individual nodes)
+    return summary;
   };
 
-  const handleFaceConfigSave = useCallback(
-    (faceConfig) => {
+  const handleFaceConfigSave = useCallback((faceConfig) => {
+    console.log('[EstimateCabinetManager] handleFaceConfigSave called');
+    console.log('[EstimateCabinetManager] Incoming faceConfig.rootReveals:', faceConfig?.rootReveals);
+    console.log('[EstimateCabinetManager] Incoming faceConfig dimensions:', { width: faceConfig?.width, height: faceConfig?.height, x: faceConfig?.x, y: faceConfig?.y });
+    
+    // Use functional update to avoid needing formData.face_config in dependencies
+    setFormData((prevData) => {
+      console.log('[EstimateCabinetManager] Previous face_config.rootReveals:', prevData.face_config?.rootReveals);
+      console.log('[EstimateCabinetManager] Previous face_config dimensions:', { width: prevData.face_config?.width, height: prevData.face_config?.height, x: prevData.face_config?.x, y: prevData.face_config?.y });
+      
       // Only update if the face_config has actually changed
-      if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
-        setFormData((prevData) => ({
+      if (JSON.stringify(prevData.face_config) !== JSON.stringify(faceConfig)) {
+        console.log('[EstimateCabinetManager] face_config changed - updating formData');
+        return {
           ...prevData,
           face_config: faceConfig,
-        }));
+        };
+      } else {
+        console.log('[EstimateCabinetManager] face_config unchanged - skipping update');
+        return prevData;
       }
-    },
-    [formData.face_config]
-  );
+    });
+  }, []); // Empty dependencies - stable reference
 
   const canEditFaces =
     formData.type &&
@@ -1581,8 +1677,8 @@ const CabinetItemForm = ({
                   itemTypeConfig.features.finishedBottom ||
                   itemTypeConfig.features.finishedLeft ||
                   itemTypeConfig.features.finishedRight) && (
-                  <div className="flex flex-wrap gap-2 justify-between">
-                    <div className="w-full text-xs font-medium text-slate-700 text-left">
+                  <div className="grid grid-cols-3 gap-2 justify-between">
+                    <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
                       {nosingOrFinish}:
                     </div>
 
@@ -1715,6 +1811,110 @@ const CabinetItemForm = ({
                   </label>
                 </div>
               )}
+
+              {/* Dynamic Type-Specific Options */}
+              {itemTypeConfig.typeSpecificOptions?.map((option) => {
+                const optionValue = formData.type_specific_options?.[option.name] ?? option.defaultValue;
+
+                if (option.type === "checkbox") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <input
+                        type="checkbox"
+                        id={option.name}
+                        name={option.name}
+                        checked={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, e.target.checked)
+                        }
+                        className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                      />
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  );
+                } else if (option.type === "number") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                      <input
+                        type="number"
+                        id={option.name}
+                        name={option.name}
+                        value={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, Number(e.target.value))
+                        }
+                        min={option.min ?? 0}
+                        max={option.max}
+                        step={option.step ?? 1}
+                        className="w-20 px-2 py-1 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                  );
+                } else if (option.type === "select") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                      <select
+                        id={option.name}
+                        name={option.name}
+                        value={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, e.target.value)
+                        }
+                        className="px-2 py-1 border border-slate-300 rounded-md text-sm"
+                      >
+                        {option.options?.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                } else if (option.type === "text") {
+                  return (
+                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                      <label
+                        htmlFor={option.name}
+                        className="text-xs font-medium text-slate-700"
+                        title={option.description}
+                      >
+                        {option.label}
+                      </label>
+                      <input
+                        type="text"
+                        id={option.name}
+                        name={option.name}
+                        value={optionValue}
+                        onChange={(e) =>
+                          handleTypeSpecificOptionChange(option.name, e.target.value)
+                        }
+                        className="px-2 py-1 border border-slate-300 rounded-md text-sm"
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })}
             </div>
 
             {/* Dimensions Section */}

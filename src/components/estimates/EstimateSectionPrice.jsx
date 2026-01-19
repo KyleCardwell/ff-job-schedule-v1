@@ -51,7 +51,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
     { key: "slidesTotal", label: "Slides" },
     { key: "pullsTotal", label: "Pulls" },
     { key: "woodTotal", label: "Wood" },
-    { key: "glassTotal", label: "Glass" },
+    { key: "accessoriesTotal", label: "Accessories" },
   ];
 
   // Initialize toggles from section data
@@ -402,7 +402,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
             </span>
           </div>
 
-          {/* Face Types - Filter out "open", "container", "pair_door" */}
+          {/* Face Types - Filter out "open", "container", "pair_door", "accessories" */}
           {Object.entries(sectionCalculations.faceCounts)
             .filter(
               ([type]) =>
@@ -412,6 +412,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
                   "pair_door",
                   "glassPanels",
                   "glassShelfFaces",
+                  // "accessories",
                 ].includes(type)
             )
             .map(([type, count]) => {
@@ -709,43 +710,54 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
                 : ""}
             </span>
           </div>
+          {/* Accessories Information (includes glass) */}
           <div
             className={`grid ${
               isEditingToggles
                 ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
                 : "grid-cols-[3fr,1fr,2fr]"
-            } gap-1 py-1`}
+            } gap-1 py-1 border-b border-gray-700`}
           >
             {isEditingToggles && (
               <div className="flex justify-center">
                 <input
                   type="checkbox"
-                  checked={partsToggles["glassTotal"] !== false}
-                  onChange={() => handlePartsToggle("glassTotal")}
+                  checked={partsToggles["accessoriesTotal"] !== false}
+                  onChange={() => handlePartsToggle("accessoriesTotal")}
                   className="w-4 h-4 text-teal-500 border-slate-300 rounded focus:ring-teal-500"
                 />
               </div>
             )}
             <span
               className={`text-sm text-left ${
-                sectionCalculations.partsIncluded?.glassTotal === false
+                sectionCalculations.partsIncluded?.accessoriesTotal === false
                   ? "text-amber-400"
                   : "text-slate-300"
               }`}
             >
-              Glass (sqft):
+              Accessories:
             </span>
             <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-              {roundToHundredth(sectionCalculations.glassCount || 0)}
+              {sectionCalculations.accessoriesCount || 0}
             </span>
             <span
               className={`text-sm font-medium text-right ${
-                sectionCalculations.partsIncluded?.glassTotal === false
+                sectionCalculations.partsIncluded?.accessoriesTotal === false
                   ? "text-amber-400"
                   : "text-teal-400"
               }`}
             >
-              {formatCurrency(sectionCalculations.glassTotal || 0)}
+              {formatCurrency(sectionCalculations.accessoriesTotal || 0)}
+            </span>
+          </div>
+          {/* Other Items Information */}
+          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 py-1">
+            <span className="text-sm text-slate-300 text-left">Other:</span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {sectionCalculations.otherCount || 0}
+            </span>
+            <span className="text-sm font-medium text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.otherTotal || 0)}
             </span>
           </div>
         </EstimateSectionPriceGroup>

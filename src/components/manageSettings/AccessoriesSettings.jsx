@@ -13,8 +13,10 @@ import { v4 as uuidv4 } from "uuid";
 import {
   fetchAccessoriesCatalog,
   saveAccessoriesCatalog,
+  fetchAccessoryTimeAnchors,
+  saveAccessoryTimeAnchors,
 } from "../../redux/actions/accessories";
-import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS } from "../../utils/constants";
+import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS, ACCESSORY_TYPES } from "../../utils/constants";
 
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
@@ -22,25 +24,69 @@ import SettingsSection from "./SettingsSection.jsx";
 const AccessoriesSettings = forwardRef((props, ref) => {
   const { maxWidthClass } = props;
   const dispatch = useDispatch();
-  const { catalog, glass, insert, hardware, rod, organizer, other, loading, error } = useSelector(
+  const { catalog, glass, insert, hardware, shop_built, organizer, other, timeAnchors, loading, error } = useSelector(
     (state) => state.accessories
   );
+  
+  const services = useSelector((state) => state.services?.allServices || []);
 
   // Local state for editing
   const [localCatalog, setLocalCatalog] = useState([]);
   const [originalCatalog, setOriginalCatalog] = useState([]);
+  const [localTimeAnchors, setLocalTimeAnchors] = useState([]);
+  const [originalTimeAnchors, setOriginalTimeAnchors] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
   const [focusItemId, setFocusItemId] = useState(null);
   const inputRefs = useRef({});
 
   useEffect(() => {
     dispatch(fetchAccessoriesCatalog());
+    dispatch(fetchAccessoryTimeAnchors());
   }, [dispatch]);
 
   useEffect(() => {
     setLocalCatalog(catalog || []);
     setOriginalCatalog(JSON.parse(JSON.stringify(catalog || [])));
   }, [catalog]);
+
+  useEffect(() => {
+    setLocalTimeAnchors(timeAnchors || []);
+    setOriginalTimeAnchors(JSON.parse(JSON.stringify(timeAnchors || [])));
+  }, [timeAnchors]);
+
+  // Helper to get time anchors for a specific accessory
+  const getTimeAnchorsForAccessory = (accessoryId) => {
+    return localTimeAnchors.filter(anchor => anchor.accessories_catalog_id === accessoryId);
+  };
+
+  // Handle time anchor changes
+  const handleTimeAnchorChange = (accessoryId, teamServiceId, minutes) => {
+    const existingAnchor = localTimeAnchors.find(
+      a => a.accessories_catalog_id === accessoryId && a.team_service_id === teamServiceId
+    );
+
+    if (existingAnchor) {
+      setLocalTimeAnchors(prev =>
+        prev.map(a =>
+          a.id === existingAnchor.id
+            ? { ...a, minutes_per_unit: minutes }
+            : a
+        )
+      );
+    } else {
+      // Add new anchor
+      setLocalTimeAnchors(prev => [
+        ...prev,
+        {
+          id: uuidv4(),
+          accessories_catalog_id: accessoryId,
+          team_service_id: teamServiceId,
+          minutes_per_unit: minutes,
+          isNew: true,
+        },
+      ]);
+    }
+  };
 
   const handleCatalogChange = (id, field, value) => {
     setLocalCatalog((prev) =>
@@ -70,12 +116,14 @@ const AccessoriesSettings = forwardRef((props, ref) => {
       id: uuidv4(),
       name: "",
       type: type,
-      calculation_type: "unit",
-      applies_to: ["standalone"],
+      calculation_type: type === ACCESSORY_TYPES.SHOP_BUILT ? "volume" : "unit",
+      applies_to: [],
       width: null,
       height: null,
       depth: null,
       default_price_per_unit: 0,
+      matches_room_material: type === ACCESSORY_TYPES.SHOP_BUILT ? true : false,
+      material_waste_factor: type === ACCESSORY_TYPES.SHOP_BUILT ? 1.25 : null,
       isNew: true,
     };
     setLocalCatalog((prev) => [...prev, newItem]);
@@ -121,9 +169,9 @@ const AccessoriesSettings = forwardRef((props, ref) => {
       if (!item.calculation_type) {
         itemErrors.calculation_type = "Calculation type is required";
       }
-      if (!item.applies_to || item.applies_to.length === 0) {
-        itemErrors.applies_to = "At least one application is required";
-      }
+      // if (!item.applies_to || item.applies_to.length === 0) {
+      //   itemErrors.applies_to = "At least one application is required";
+      // }
 
       if (Object.keys(itemErrors).length > 0) {
         newErrors[`catalog-${item.type}-${item.id}`] = itemErrors;
@@ -152,6 +200,10 @@ const AccessoriesSettings = forwardRef((props, ref) => {
           default_price_per_unit: item.default_price_per_unit === "" || item.default_price_per_unit === null 
             ? 0 
             : Number(item.default_price_per_unit),
+          material_waste_factor: item.material_waste_factor === "" || item.material_waste_factor === null
+            ? null
+            : Number(item.material_waste_factor),
+          matches_room_material: item.matches_room_material || false,
         }));
 
         result = await dispatch(
@@ -167,7 +219,82 @@ const AccessoriesSettings = forwardRef((props, ref) => {
         result = { success: true, data: localCatalog };
       }
 
-      console.log("Accessories catalog saved successfully");
+      // Save time anchors if changed (only for existing accessories with real IDs)
+      if (!isEqual(localTimeAnchors, originalTimeAnchors)) {
+        // Group anchors by accessory for batch save
+        const anchorsByAccessory = {};
+        
+        localTimeAnchors.forEach(anchor => {
+          const accessoryId = anchor.accessories_catalog_id;
+          
+          // Skip if accessory doesn't have a real database ID (is a UUID or undefined)
+          if (!accessoryId || typeof accessoryId === 'string' && accessoryId.includes('-')) {
+            return;
+          }
+          
+          if (!anchorsByAccessory[accessoryId]) {
+            anchorsByAccessory[accessoryId] = {
+              new: [],
+              updated: [],
+              deleted: [],
+            };
+          }
+          
+          if (anchor.isNew) {
+            anchorsByAccessory[accessoryId].new.push(anchor);
+          } else if (anchor.markedForDeletion) {
+            anchorsByAccessory[accessoryId].deleted.push(anchor.id);
+          } else {
+            const original = originalTimeAnchors.find(o => o.id === anchor.id);
+            if (original && !isEqual(anchor, original)) {
+              anchorsByAccessory[accessoryId].updated.push(anchor);
+            }
+          }
+        });
+
+        // Also check for deleted anchors
+        originalTimeAnchors.forEach(original => {
+          const accessoryId = original.accessories_catalog_id;
+          
+          // Skip if accessory doesn't have a real database ID
+          if (!accessoryId || typeof accessoryId === 'string' && accessoryId.includes('-')) {
+            return;
+          }
+          
+          if (!localTimeAnchors.find(a => a.id === original.id)) {
+            if (!anchorsByAccessory[accessoryId]) {
+              anchorsByAccessory[accessoryId] = {
+                new: [],
+                updated: [],
+                deleted: [],
+              };
+            }
+            anchorsByAccessory[accessoryId].deleted.push(original.id);
+          }
+        });
+
+        // Save anchors for each accessory
+        for (const [accessoryId, changes] of Object.entries(anchorsByAccessory)) {
+          if (changes.new.length > 0 || changes.updated.length > 0 || changes.deleted.length > 0) {
+            const timeResult = await dispatch(
+              saveAccessoryTimeAnchors(
+                accessoryId,
+                changes.new,
+                changes.updated,
+                changes.deleted
+              )
+            );
+
+            if (!timeResult || !timeResult.success) {
+              throw new Error(
+                timeResult?.error || "Failed to save accessory time anchors"
+              );
+            }
+          }
+        }
+      }
+
+      console.log("Accessories catalog and time anchors saved successfully");
 
       if (result.data) {
         setLocalCatalog(result.data);
@@ -207,7 +334,7 @@ const AccessoriesSettings = forwardRef((props, ref) => {
     { value: "glass", label: "Glass", items: glass },
     { value: "insert", label: "Inserts", items: insert },
     { value: "hardware", label: "Hardware", items: hardware },
-    { value: "rod", label: "Rods", items: rod },
+    { value: "shop_built", label: "Shop-Built", items: shop_built },
     { value: "organizer", label: "Organizers", items: organizer },
     { value: "other", label: "Other", items: other },
   ];
@@ -244,6 +371,7 @@ const AccessoriesSettings = forwardRef((props, ref) => {
           <option value={ACCESSORY_UNITS.AREA}>Area (sq ft)</option>
           <option value={ACCESSORY_UNITS.LENGTH}>Length (ft)</option>
           <option value={ACCESSORY_UNITS.PERIMETER}>Perimeter (ft)</option>
+          <option value={ACCESSORY_UNITS.VOLUME}>Volume (cu ft)</option>
           <option value={ACCESSORY_UNITS.UNIT}>Unit Count</option>
         </select>
       ),
@@ -346,13 +474,74 @@ const AccessoriesSettings = forwardRef((props, ref) => {
       type: "number",
       placeholder: "0",
     },
-    // {
-    //   field: "description",
-    //   label: "Description",
-    //   width: "200px",
-    //   type: "text",
-    //   placeholder: "Optional description",
-    // },
+    // Shop-built specific columns
+    ...(type === ACCESSORY_TYPES.SHOP_BUILT ? [
+      {
+        field: "matches_room_material",
+        label: "Match Room",
+        width: "120px",
+        render: (item, onChange) => (
+          <label className="flex items-center justify-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={item.matches_room_material || false}
+              onChange={(e) => onChange("matches_room_material", e.target.checked)}
+              disabled={item.markedForDeletion}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+          </label>
+        ),
+      },
+      {
+        field: "material_waste_factor",
+        label: "Waste Factor",
+        width: "100px",
+        type: "number",
+        placeholder: "1.25",
+        step: "0.01",
+        allowEmpty: true,
+      },
+    ] : []),
+    // Labor Time column for all types
+    {
+      field: "labor_time",
+      label: "Labor Time (min/unit)",
+      width: "200px",
+      render: (item) => {
+        const itemAnchors = getTimeAnchorsForAccessory(item.id);
+        const activeServices = services.filter(s => s.is_active);
+        
+        return (
+          <div className="flex flex-col gap-1">
+            {activeServices.map(service => {
+              const anchor = itemAnchors.find(a => a.team_service_id === service.team_service_id);
+              const minutes = anchor?.minutes_per_unit || "";
+              
+              return (
+                <div key={service.team_service_id} className="flex items-center gap-1">
+                  <span className="text-xs text-slate-400 w-16 truncate" title={service.service_name}>
+                    {service.service_name}:
+                  </span>
+                  <input
+                    type="number"
+                    value={minutes}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? 0 : Number(e.target.value);
+                      handleTimeAnchorChange(item.id, service.team_service_id, value);
+                    }}
+                    placeholder="0"
+                    disabled={item.markedForDeletion || item.isNew}
+                    className="px-1 py-0.5 bg-slate-700 border border-slate-600 rounded text-xs text-white w-16"
+                    step="0.1"
+                    min="0"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
+    },
   ];
 
   return (

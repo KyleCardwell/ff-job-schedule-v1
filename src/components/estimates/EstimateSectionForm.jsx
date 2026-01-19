@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { FiSave, FiX } from "react-icons/fi";
+import { FiSave, FiX, FiCopy } from "react-icons/fi";
 import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -17,6 +17,8 @@ import {
   getEffectiveValueOnly,
   shouldApplyFinish,
 } from "../../utils/estimateDefaults";
+
+import CopyRoomDetailsModal from "./CopyRoomDetailsModal.jsx";
 
 /**
  * Universal defaults/section form
@@ -277,8 +279,8 @@ const EstimateSectionForm = ({
     const doorOutsideMoldingField = getFieldName("door_outside_molding");
     const drawerInsideMoldingField = getFieldName("drawer_inside_molding");
     const drawerOutsideMoldingField = getFieldName("drawer_outside_molding");
-    const doorReededPanelField = getFieldName("door_reeded_panel");
-    const drawerReededPanelField = getFieldName("drawer_reeded_panel");
+    const doorPanelModField = getFieldName("door_panel_mod_id");
+    const drawerPanelModField = getFieldName("drawer_panel_mod_id");
     const hingeField = getFieldName("hinge_id");
     const slideField = getFieldName("slide_id");
     const doorPullField = getFieldName("door_pull_id");
@@ -341,16 +343,16 @@ const EstimateSectionForm = ({
         data.drawer_outside_molding ??
         initialDefaults.drawer_outside_molding ??
         null,
-      doorReededPanel:
-        data[doorReededPanelField] ??
-        data.door_reeded_panel ??
-        initialDefaults.door_reeded_panel ??
-        null,
-      drawerReededPanel:
-        data[drawerReededPanelField] ??
-        data.drawer_reeded_panel ??
-        initialDefaults.drawer_reeded_panel ??
-        null,
+      doorPanelModId:
+        data[doorPanelModField] ??
+        data.door_panel_mod_id ??
+        initialDefaults.door_panel_mod_id ??
+        "",
+      drawerPanelModId:
+        data[drawerPanelModField] ??
+        data.drawer_panel_mod_id ??
+        initialDefaults.drawer_panel_mod_id ??
+        "",
       hinge_id:
         data[hingeField] || data.hinge_id || initialDefaults.hinge_id || "",
       slide_id:
@@ -390,6 +392,7 @@ const EstimateSectionForm = ({
 
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
 
   // Refs for synchronized textarea heights
   const notesTextareaRefs = useRef([]);
@@ -511,11 +514,12 @@ const EstimateSectionForm = ({
     const booleanFields = [
       "doorInsideMolding",
       "doorOutsideMolding",
-      "doorReededPanel",
       "drawerInsideMolding",
       "drawerOutsideMolding",
-      "drawerReededPanel",
     ];
+
+    // Handle panel mod ID fields (foreign keys)
+    const panelModIdFields = ["doorPanelModId", "drawerPanelModId"];
 
     let processedValue = value;
     if (numericFields.includes(name) && value !== "") {
@@ -533,6 +537,9 @@ const EstimateSectionForm = ({
       } else if (value === "false") {
         processedValue = false;
       }
+    } else if (panelModIdFields.includes(name)) {
+      // For panel mod ID fields: convert empty string to null, otherwise to number
+      processedValue = value === "" ? null : +value;
     }
 
     setFormData({
@@ -611,10 +618,10 @@ const EstimateSectionForm = ({
         drawerFrontStyle: "",
         doorInsideMolding: null,
         doorOutsideMolding: null,
-        doorReededPanel: null,
+        doorPanelModId: "",
         drawerInsideMolding: null,
         drawerOutsideMolding: null,
-        drawerReededPanel: null,
+        drawerPanelModId: "",
         hinge_id: "",
         slide_id: "",
         door_pull_id: "",
@@ -629,6 +636,42 @@ const EstimateSectionForm = ({
     }
 
     // Clear any errors
+    setErrors({});
+  };
+
+  const handleCopyFromSection = (sourceSection) => {
+    // Copy all relevant fields from the source section to formData
+    setFormData({
+      ...formData,
+      style: sourceSection.cabinet_style_id || "",
+      boxMaterial: sourceSection.box_mat || "",
+      boxFinish: sourceSection.box_finish || [],
+      faceMaterial: sourceSection.face_mat || "",
+      faceFinish: sourceSection.face_finish || [],
+      doorStyle: sourceSection.door_style || "",
+      drawerFrontStyle: sourceSection.drawer_front_style || "",
+      doorInsideMolding: sourceSection.door_inside_molding ?? null,
+      doorOutsideMolding: sourceSection.door_outside_molding ?? null,
+      drawerInsideMolding: sourceSection.drawer_inside_molding ?? null,
+      drawerOutsideMolding: sourceSection.drawer_outside_molding ?? null,
+      doorPanelModId: sourceSection.door_panel_mod_id ?? "",
+      drawerPanelModId: sourceSection.drawer_panel_mod_id ?? "",
+      hinge_id: sourceSection.hinge_id || "",
+      slide_id: sourceSection.slide_id || "",
+      door_pull_id: sourceSection.door_pull_id || "",
+      drawer_pull_id: sourceSection.drawer_pull_id || "",
+      drawer_box_mat: sourceSection.drawer_box_mat || "",
+      profit: sourceSection.profit ?? "",
+      commission: sourceSection.commission ?? "",
+      discount: sourceSection.discount ?? "",
+      service_price_overrides: sourceSection.service_price_overrides || {},
+      // Don't copy notes - keep the current notes
+      notes: formData.notes,
+      // Don't copy quantity - keep the current quantity
+      quantity: formData.quantity,
+    });
+
+    // Clear any validation errors since we're loading new data
     setErrors({});
   };
 
@@ -885,8 +928,8 @@ const EstimateSectionForm = ({
             default_door_outside_molding: formData.doorOutsideMolding,
             default_drawer_inside_molding: formData.drawerInsideMolding,
             default_drawer_outside_molding: formData.drawerOutsideMolding,
-            default_door_reeded_panel: formData.doorReededPanel,
-            default_drawer_reeded_panel: formData.drawerReededPanel,
+            default_door_panel_mod_id: formData.doorPanelModId === "" ? null : formData.doorPanelModId,
+            default_drawer_panel_mod_id: formData.drawerPanelModId === "" ? null : formData.drawerPanelModId,
             default_hinge_id: formData.hinge_id || null,
             default_slide_id: formData.slide_id || null,
             default_door_pull_id: formData.door_pull_id || null,
@@ -927,8 +970,8 @@ const EstimateSectionForm = ({
             default_drawer_inside_molding: formData.drawerInsideMolding || null,
             default_drawer_outside_molding:
               formData.drawerOutsideMolding || null,
-            default_door_reeded_panel: formData.doorReededPanel || null,
-            default_drawer_reeded_panel: formData.drawerReededPanel || null,
+            default_door_panel_mod_id: formData.doorPanelModId === "" ? null : formData.doorPanelModId,
+            default_drawer_panel_mod_id: formData.drawerPanelModId === "" ? null : formData.drawerPanelModId,
             default_hinge_id: formData.hinge_id || null,
             default_slide_id: formData.slide_id || null,
             default_door_pull_id: formData.door_pull_id || null,
@@ -1008,6 +1051,8 @@ const EstimateSectionForm = ({
             "slide_id",
             "door_pull_id",
             "drawer_pull_id",
+            "doorPanelModId",
+            "drawerPanelModId",
           ];
           foreignKeyFields.forEach((field) => {
             if (processedData[field] === "" || processedData[field] == null) {
@@ -1707,23 +1752,29 @@ const EstimateSectionForm = ({
                     </div>
                     <div className="grid items-center">
                       <label className="text-left text-sm font-medium text-slate-700 flex items-center">
-                        <span>Reeded Panel</span>
+                        <span>Panel Mod</span>
                         {getEffectiveDefaultDisplay(
-                          formData.doorReededPanel,
-                          "default_door_reeded_panel",
-                          "default_door_reeded_panel",
-                          formatBoolean
+                          formData.doorPanelModId,
+                          "default_door_panel_mod_id",
+                          "default_door_panel_mod_id",
+                          (value) => {
+                            if (value === 0) return "None";
+                            if (value === 15) return "Reeded";
+                            if (value === 22) return "Grooved";
+                            return value ? `ID ${value}` : "None";
+                          }
                         )}
                       </label>
                       <select
-                        name="doorReededPanel"
-                        value={getBooleanSelectValue(formData.doorReededPanel)}
+                        name="doorPanelModId"
+                        value={formData.doorPanelModId === null || formData.doorPanelModId === "" ? "" : formData.doorPanelModId}
                         onChange={handleChange}
                         className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="">{getPlaceholder("...")}</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
+                        <option value="0">None</option>
+                        <option value="15">Reeded</option>
+                        <option value="22">Grooved</option>
                       </select>
                     </div>
                   </div>
@@ -1906,25 +1957,29 @@ const EstimateSectionForm = ({
                     </div>
                     <div className="grid items-center">
                       <label className="text-left text-sm font-medium text-slate-700 flex items-center">
-                        <span>Reeded Panel</span>
+                        <span>Panel Mod</span>
                         {getEffectiveDefaultDisplay(
-                          formData.drawerReededPanel,
-                          "default_drawer_reeded_panel",
-                          "default_drawer_reeded_panel",
-                          formatBoolean
+                          formData.drawerPanelModId,
+                          "default_drawer_panel_mod_id",
+                          "default_drawer_panel_mod_id",
+                          (value) => {
+                            if (value === 0) return "None";
+                            if (value === 15) return "Reeded";
+                            if (value === 22) return "Grooved";
+                            return value ? `ID ${value}` : "None";
+                          }
                         )}
                       </label>
                       <select
-                        name="drawerReededPanel"
-                        value={getBooleanSelectValue(
-                          formData.drawerReededPanel
-                        )}
+                        name="drawerPanelModId"
+                        value={formData.drawerPanelModId === null || formData.drawerPanelModId === "" ? "" : formData.drawerPanelModId}
                         onChange={handleChange}
                         className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="">{getPlaceholder("...")}</option>
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
+                        <option value="0">None</option>
+                        <option value="15">Reeded</option>
+                        <option value="22">Grooved</option>
                       </select>
                     </div>
                   </div>
@@ -2211,7 +2266,7 @@ const EstimateSectionForm = ({
         {/* Form Actions */}
         <div className="flex justify-end space-x-2">
           {editType !== "team" && (
-            <div className="flex-1 flex justify-start">
+            <div className="flex-1 flex justify-start space-x-2">
               <button
                 type="button"
                 onClick={handleRestoreDefaults}
@@ -2220,6 +2275,16 @@ const EstimateSectionForm = ({
                 <RiResetLeftFill className="mr-1" size={12} />
                 Restore Defaults
               </button>
+              {editType === "section" && (
+                <button
+                  type="button"
+                  onClick={() => setIsCopyModalOpen(true)}
+                  className="px-3 py-1 text-xs font-medium text-white bg-purple-600 border border-purple-700 rounded hover:bg-purple-700 flex items-center"
+                >
+                  <FiCopy className="mr-1" size={12} />
+                  Copy Room Details
+                </button>
+              )}
             </div>
           )}
           <button
@@ -2243,6 +2308,17 @@ const EstimateSectionForm = ({
           </button>
         </div>
       </form>
+
+      {/* Copy Room Details Modal */}
+      {editType === "section" && (
+        <CopyRoomDetailsModal
+          isOpen={isCopyModalOpen}
+          onClose={() => setIsCopyModalOpen(false)}
+          currentEstimate={currentEstimate}
+          currentSectionId={section?.est_section_id}
+          onCopySection={handleCopyFromSection}
+        />
+      )}
     </div>
   );
 };

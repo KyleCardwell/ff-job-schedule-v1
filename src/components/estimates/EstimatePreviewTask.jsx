@@ -1,10 +1,56 @@
 import PropTypes from "prop-types";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import EstimatePreviewSection from "./EstimatePreviewSection.jsx";
 
-const EstimatePreviewTask = ({ task, estimate, onTaskDataChange, sectionRefs, selectedSections }) => {
+const EstimatePreviewTask = ({ task, estimate, onTaskDataChange, onTaskBreakdownChange, sectionRefs, selectedSections }) => {
   const [sectionDataMap, setSectionDataMap] = useState({});
+
+  // Helper function to calculate breakdown from sections
+  const calculateBreakdown = useCallback((sections) => {
+    if (!onTaskBreakdownChange) return;
+
+    const taskBreakdown = {
+      taskId: task.est_task_id,
+      services: {},
+      partsTotal: 0,
+      subtotal: 0,
+      profit: 0,
+      commission: 0,
+      discount: 0,
+    };
+
+    // Only include selected sections in breakdown
+    const selectedSectionsForTask = sections.filter(
+      (section) => selectedSections?.[section.sectionId]
+    );
+
+    selectedSectionsForTask.forEach((section) => {
+      // Aggregate services from laborCosts
+      if (section.laborCosts?.costsByService) {
+        Object.entries(section.laborCosts.costsByService).forEach(([serviceId, data]) => {
+          if (!taskBreakdown.services[serviceId]) {
+            taskBreakdown.services[serviceId] = {
+              name: data.name,
+              hours: 0,
+              cost: 0,
+            };
+          }
+          taskBreakdown.services[serviceId].hours += data.hours || 0;
+          taskBreakdown.services[serviceId].cost += data.cost || 0;
+        });
+      }
+
+      // Aggregate other totals
+      taskBreakdown.partsTotal += section.partsTotalPrice || 0;
+      taskBreakdown.subtotal += section.subTotalPrice || 0;
+      taskBreakdown.profit += section.profit || 0;
+      taskBreakdown.commission += section.commission || 0;
+      taskBreakdown.discount += section.discount || 0;
+    });
+
+    onTaskBreakdownChange(taskBreakdown);
+  }, [task.est_task_id, selectedSections, onTaskBreakdownChange]);
 
   const handleSectionData = useCallback((sectionData) => {
     setSectionDataMap((prev) => {
@@ -32,9 +78,21 @@ const EstimatePreviewTask = ({ task, estimate, onTaskDataChange, sectionRefs, se
       if (onTaskDataChange) {
         onTaskDataChange(taskData);
       }
+
+      // Calculate breakdown with updated sections
+      calculateBreakdown(sections);
+
       return updated;
     });
-  }, [task.est_task_id, task.est_task_name, task.sections.length, onTaskDataChange]);
+  }, [task.est_task_id, task.est_task_name, task.sections.length, onTaskDataChange, calculateBreakdown]);
+
+  // Recalculate breakdown when selectedSections changes
+  useEffect(() => {
+    const sections = Object.values(sectionDataMap);
+    if (sections.length > 0) {
+      calculateBreakdown(sections);
+    }
+  }, [selectedSections, calculateBreakdown, sectionDataMap]);
 
   return (
     <div className="mb-8">
@@ -76,6 +134,7 @@ EstimatePreviewTask.propTypes = {
   task: PropTypes.object.isRequired,
   estimate: PropTypes.object.isRequired,
   onTaskDataChange: PropTypes.func,
+  onTaskBreakdownChange: PropTypes.func,
   sectionRefs: PropTypes.object,
   selectedSections: PropTypes.object,
 };

@@ -130,16 +130,16 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       team.default_drawer_outside_molding
     ),
     
-    // Reeded panels (booleans)
-    door_reeded_panel: getEffectiveValueOnly(
-      section.door_reeded_panel,
-      estimate.default_door_reeded_panel,
-      team.default_door_reeded_panel
+    // Panel mods (foreign key to parts_list, NULL = none)
+    door_panel_mod_id: getEffectiveValueOnly(
+      section.door_panel_mod_id,
+      estimate.default_door_panel_mod_id,
+      team.default_door_panel_mod_id
     ),
-    drawer_reeded_panel: getEffectiveValueOnly(
-      section.drawer_reeded_panel,
-      estimate.default_drawer_reeded_panel,
-      team.default_drawer_reeded_panel
+    drawer_panel_mod_id: getEffectiveValueOnly(
+      section.drawer_panel_mod_id,
+      estimate.default_drawer_panel_mod_id,
+      team.default_drawer_panel_mod_id
     ),
     
     // Door and drawer styles (text)
@@ -209,8 +209,8 @@ export const DEFAULTS_FIELD_MAPPING = {
   doorOutsideMolding: 'door_outside_molding',
   drawerInsideMolding: 'drawer_inside_molding',
   drawerOutsideMolding: 'drawer_outside_molding',
-  doorReededPanel: 'door_reeded_panel',
-  drawerReededPanel: 'drawer_reeded_panel',
+  doorPanelModId: 'door_panel_mod_id',
+  drawerPanelModId: 'drawer_panel_mod_id',
   doorStyle: 'door_style',
   drawerFrontStyle: 'drawer_front_style',
   quantity: 'quantity',

@@ -4,7 +4,7 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
-import { fetchAccessoriesCatalog } from "../../redux/actions/accessories.js";
+import { fetchAccessoriesCatalog, fetchAccessoryTimeAnchors } from "../../redux/actions/accessories.js";
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
@@ -99,6 +99,7 @@ const EstimateLayout = () => {
     dispatch(fetchPartsListAnchors())
     dispatch(fetchFinishes())
     dispatch(fetchAccessoriesCatalog())
+    dispatch(fetchAccessoryTimeAnchors());
     dispatch(fetchLengthsCatalog())
   }, []);
 
@@ -170,8 +171,7 @@ const EstimateLayout = () => {
   };
 
   const handleSaveTaskOrder = (reorderedTasks) => {
-    const taskOrder = reorderedTasks.map((task) => task.est_task_id);
-    dispatch(updateTaskOrder(currentEstimate.estimate_id, taskOrder));
+    dispatch(updateTaskOrder(currentEstimate.estimate_id, reorderedTasks));
     setIsReorderModalOpen(false);
   };
 
@@ -359,10 +359,10 @@ const EstimateLayout = () => {
                   drawer_front_style: templateSection.drawer_front_style,
                   door_inside_molding: templateSection.door_inside_molding,
                   door_outside_molding: templateSection.door_outside_molding,
-                  door_reeded_panel: templateSection.door_reeded_panel,
+                  door_panel_mod_id: templateSection.door_panel_mod_id,
                   drawer_inside_molding: templateSection.drawer_inside_molding,
                   drawer_outside_molding: templateSection.drawer_outside_molding,
-                  drawer_reeded_panel: templateSection.drawer_reeded_panel,
+                  drawer_panel_mod_id: templateSection.drawer_panel_mod_id,
                   profit: templateSection.profit,
                   commission: templateSection.commission,
                   discount: templateSection.discount,

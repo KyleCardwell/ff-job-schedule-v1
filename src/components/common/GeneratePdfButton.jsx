@@ -1,7 +1,8 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 
-import { buttonClass, headerButtonClass, headerButtonColor } from "../../assets/tailwindConstants";
+import { headerButtonClass, headerButtonColor } from "../../assets/tailwindConstants";
+import { FIXED_AMOUNT } from "../../utils/constants";
 import { calculateFinancialTotals } from "../../utils/helpers";
 
 // Use CDN approach for pdfMake to avoid font loading issues
@@ -288,7 +289,7 @@ const GeneratePdfButton = ({
               // Calculate actual hours, excluding fixed_amount entries
               const actualHours = (service.inputRows || []).reduce(
                 (sum, row) => {
-                  if (row.employee_id === "fixed_amount") return sum;
+                  if (row.employee_id === FIXED_AMOUNT) return sum;
                   const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
                   return sum + hoursValue;
                 },

@@ -1,3 +1,6 @@
+import { getItemTypeConfig } from "../config/cabinetItemTypes";
+
+import { calculateAccessoryUnitAndPrice } from "./accessoryCalculations";
 import {
   DRAWER_BOX_HEIGHTS,
   FACE_NAMES,
@@ -5,7 +8,7 @@ import {
   DRAWER_BOX_MOD_BY_ID,
   CABINET_TYPES,
   FACE_STYLE_VALUES,
-  ACCESSORY_UNITS,
+  ACCESSORY_TYPES,
   ITEM_TYPES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
@@ -15,9 +18,11 @@ import {
   calculateBoxSheetsCNC,
   calculateDoorPartsTime,
   calculatePanelPartsTime,
+  calculateHoodPartsTime,
   calculateSlabSheetFacePriceBulk,
   calculateMoldingCost,
   roundToHundredth,
+  interpolateTimeByArea,
 } from "./estimateHelpers";
 
 // Calculate face counts and prices for all cabinets in a section
@@ -177,6 +182,32 @@ const calculateFaceTotals = (section, context) => {
       });
     }
 
+    // Add service hours for hoods (type 14)
+    // Uses 3D volume (width × height × depth) with parts list anchor 21
+    if (cabinet.type === 14) {
+      const itemTypeConfig = getItemTypeConfig(ITEM_TYPES.HOOD.type);
+      const hoodHours = calculateHoodPartsTime(
+        cabinet,
+        cabinetStyleId,
+        { ...context, itemTypeConfig }
+      );
+
+      // Aggregate hood hours by converting team_service_id to service_id
+      Object.entries(hoodHours).forEach(([teamServiceId, hours]) => {
+        const service = context.globalServices?.find(
+          (s) => s.team_service_id === parseInt(teamServiceId)
+        );
+        if (!service) return;
+
+        const serviceId = service.service_id;
+        if (!totals.hoursByService[serviceId]) {
+          totals.hoursByService[serviceId] = 0;
+        }
+        // Hours already include quantity multiplier from calculateHoodPartsTime
+        totals.hoursByService[serviceId] += hours || 0;
+      });
+    }
+
     // Regular cabinets - process faceSummary
     if (!cabinet.face_config?.faceSummary) return;
 
@@ -209,19 +240,19 @@ const calculateFaceTotals = (section, context) => {
             }
           });
 
-          let reeded = false;
+          let panelModId = null;
 
           if (
             faceType === FACE_NAMES.DRAWER_FRONT ||
             faceType === FACE_NAMES.FALSE_FRONT
           ) {
-            reeded = effectiveValues.drawer_reeded_panel;
+            panelModId = effectiveValues.drawer_panel_mod_id;
           } else if (
             faceType === FACE_NAMES.DOOR ||
             faceType === FACE_NAMES.PAIR_DOOR ||
             faceType === FACE_NAMES.PANEL
           ) {
-            reeded = effectiveValues.door_reeded_panel;
+            panelModId = effectiveValues.door_panel_mod_id;
           }
 
           // Collect faces for hour calculation with cabinet style ID
@@ -229,12 +260,13 @@ const calculateFaceTotals = (section, context) => {
             faces: faceData.faces,
             styleToUse,
             cabinetStyleId,
-            reeded,
+            panelModId,
             quantity,
             cabinetTypeId: cabinet.type,
           });
         }
 
+        // Glass faces are now tracked separately to be added to accessories total later
         if (faceData.glass) {
           const { glass } = context?.accessories || {};
 
@@ -242,8 +274,9 @@ const calculateFaceTotals = (section, context) => {
             const sqft = (piece.width * piece.height) / 144;
             const price = glass.find(
               (g) => g.id === piece.accessoryCatalogId
-            ).default_price_per_unit;
-            totals.glassCount += roundToHundredth((sqft || 0) * piece.quantity);
+            )?.default_price_per_unit || 0;
+            // Store glass count as quantity (number of pieces) not square footage
+            totals.glassCount += piece.quantity;
             totals.glassTotal += (sqft * price || 0) * piece.quantity;
           });
         }
@@ -260,7 +293,7 @@ const calculateFaceTotals = (section, context) => {
       faces,
       styleToUse,
       cabinetStyleId,
-      reeded,
+      panelModId,
       quantity,
       cabinetTypeId,
     }) => {
@@ -268,7 +301,7 @@ const calculateFaceTotals = (section, context) => {
         faces,
         styleToUse,
         cabinetStyleId,
-        reeded,
+        panelModId,
         cabinetTypeId,
         context
       );
@@ -564,6 +597,7 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
   return totals;
 };
 
+// TODO: add interpolation rates for face frame finish tape time
 const tapeTimeMinutes = ({
   beadLengthIn = 0,
   openingsCount = 0,
@@ -589,6 +623,16 @@ const tapeTimeMinutes = ({
   return minutes;
 };
 
+/**
+ * Calculate face frame finish tape time using interpolation
+ * @param {Object} params - Tape calculation parameters
+ * @param {number} params.beadLengthIn - Total bead length in inches
+ * @param {number} params.openingsCount - Number of openings
+ * @param {number} params.overheadPerOpeningMin - Base time per opening in minutes
+ * @param {number} params.perInchRate - Rate per inch (calculated if null)
+ * @param {number} params.minMinutes - Minimum total minutes
+ * @returns {number} Total tape time in minutes
+ */
 const calculateFaceFramePrices = (section, context) => {
   const totals = {
     hoursByService: {}, // 2=shop, 3=finish
@@ -598,14 +642,17 @@ const calculateFaceFramePrices = (section, context) => {
 
   if (!section.cabinets || !Array.isArray(section.cabinets)) return totals;
 
-  const { selectedFaceMaterial } = context;
+  const { selectedFaceMaterial, partsListAnchors, globalServices } = context;
   if (!selectedFaceMaterial) return totals;
 
-  let totalTapeHours = 0; // 👈 track tape time separately
+  let totalTapeHours = 0;
+
+  const faceFrameAnchors = partsListAnchors?.[20];
 
   section.cabinets.forEach((cabinet) => {
+    // 13 is euro cabinets (no face frame)
     if (cabinet.cabinet_style_override === 13) return;
-    if (!cabinet.cabinet_tyle_override && section.cabinet_style_id === 13)
+    if (!cabinet.cabinet_style_override && section.cabinet_style_id === 13)
       return;
 
     const quantity = Number(cabinet.quantity) || 1;
@@ -630,16 +677,12 @@ const calculateFaceFramePrices = (section, context) => {
 
     if (!frameParts?.framePieces) return;
 
+    const cabinetStyleId =
+      cabinet.cabinet_style_override || section.cabinet_style_id;
+
     frameParts.framePieces.forEach((piece) => {
       const length = piece.length || 0;
       const width = piece.width || 0;
-
-      let shopTimeMinutes = 15;
-      if (length > 36) {
-        const extraLength = Math.min(length - 36, 60);
-        const timeIncrease = (extraLength / 60) * 10;
-        shopTimeMinutes = 15 + timeIncrease;
-      }
 
       if (selectedFaceMaterial?.material?.bd_ft_price) {
         const boardFeet =
@@ -652,14 +695,38 @@ const calculateFaceFramePrices = (section, context) => {
           quantity;
       }
 
-      const shopTimeHours = shopTimeMinutes / 60;
-      if (!totals.hoursByService[2]) totals.hoursByService[2] = 0;
+      if (faceFrameAnchors && faceFrameAnchors.length > 0) {
+        const area = length * width;
 
-      const shopMultiplier = selectedFaceMaterial.material?.needs_finish
-        ? selectedFaceMaterial.shopMultiplier
-        : 1;
+        globalServices?.forEach((service) => {
+          const teamServiceId = service.team_service_id;
+          const serviceId = service.service_id;
 
-      totals.hoursByService[2] += shopTimeHours * quantity * shopMultiplier;
+          const minutesEach = interpolateTimeByArea(
+            faceFrameAnchors,
+            area,
+            teamServiceId,
+            cabinetStyleId
+          );
+
+          let totalMinutes = minutesEach * quantity;
+
+          if (serviceId === 2 && selectedFaceMaterial.material?.needs_finish) {
+            totalMinutes *= selectedFaceMaterial.shopMultiplier || 1;
+          }
+
+          if (serviceId === 3 && selectedFaceMaterial.material?.needs_finish) {
+            totalMinutes *= selectedFaceMaterial.finishMultiplier || 1;
+          }
+
+          const hours = totalMinutes / 60;
+
+          if (!totals.hoursByService[serviceId]) {
+            totals.hoursByService[serviceId] = 0;
+          }
+          totals.hoursByService[serviceId] += hours;
+        });
+      }
     });
   });
 
@@ -1032,7 +1099,7 @@ const calculateSimpleItemsTotal = (items, context) => {
   if (!items || !Array.isArray(items)) return 0;
   return items.reduce((total, item) => {
     if (!item) return total;
-    const quantity = Number(item.quantity) || 1;
+    const quantity = item.quantity !== null ? Number(item.quantity) : 1;
     const price = Number(item.price) || 0;
     return total + price * quantity;
   }, 0);
@@ -1125,39 +1192,207 @@ const calculateLengthTotals = (items, context) => {
   return totals;
 };
 
-const calculateAccessoriesTotal = (items, context) => {
+const calculateAccessoriesTotal = (items, context, section) => {
   const totals = {
     glass: { count: 0, total: 0 },
     insert: { count: 0, total: 0 },
     hardware: { count: 0, total: 0 },
-    rod: { count: 0, total: 0 },
+    shop_built: { count: 0, total: 0 },
     organizer: { count: 0, total: 0 },
     other: { count: 0, total: 0 },
+    hoursByService: {},
   };
-  const { accessories } = context;
+  const { accessories, selectedFaceMaterial, globalServices } = context;
 
   if (!accessories) return totals;
 
-  if (!items || !Array.isArray(items)) return totals;
+  // Collect all accessories from section.accessories items AND face configs
+  const allAccessories = [];
+  
+  // Add section accessories
+  if (items && Array.isArray(items)) {
+    allAccessories.push(...items);
+  }
+  
+  // Add accessories from cabinet face configs by traversing the tree
+  if (section?.cabinets && Array.isArray(section.cabinets)) {
+    section.cabinets.forEach((cabinet) => {
+      const quantity = Number(cabinet.quantity) || 1;
+      const faceConfig = cabinet.face_config;
+      
+      if (!faceConfig) return;
+      
+      // Recursively collect accessories from all face nodes
+      const collectAccessories = (node) => {
+        if (!node) return;
+        
+        // Collect accessories from this node
+        if (node.accessories && Array.isArray(node.accessories)) {
+          node.accessories.forEach((accessory) => {
+            allAccessories.push({
+              accessory_catalog_id: +accessory.accessory_id,
+              quantity: accessory.quantity * quantity, // Multiply by cabinet quantity
+              width: node.width,
+              height: node.height,
+              depth: accessory.depth,
+            });
+          });
+        }
+        
+        // Recurse through children
+        if (node.children && Array.isArray(node.children)) {
+          node.children.forEach((child) => collectAccessories(child));
+        }
+      };
+      
+      collectAccessories(faceConfig);
+    });
+  }
 
-  items.forEach((item) => {
-    const type = accessories.catalog.find(
+  allAccessories.forEach((item) => {
+    const accessory = accessories.catalog.find(
       (acc) => acc.id === item.accessory_catalog_id
     );
-    if (!type) return;
+    if (!accessory) return;
+
+    const quantity = item.quantity !== undefined ? item.quantity : 1;
     let price = 0;
     let unit = 0;
-    if (type.calculation_type === ACCESSORY_UNITS.AREA) {
-      const area = (item.width * item.height) / 144;
-      price = area * type.default_price_per_unit;
-      unit = area;
+
+    // Calculate dimensions for the accessory
+    const itemDimensions = {
+      width: item.width,
+      height: item.height,
+      depth: item.depth,
+    };
+
+    // Store unitDifference in local variable (don't mutate Redux state)
+    let itemUnitDifference = 0;
+
+    // Handle shop-built accessories with material matching
+    if (accessory.matches_room_material && accessory.type === ACCESSORY_TYPES.SHOP_BUILT) {
+      // Use helper to calculate unit quantity based on size
+      const { unit: calculatedUnit } = calculateAccessoryUnitAndPrice(
+        accessory,
+        itemDimensions
+      );
+      unit = calculatedUnit;
+
+      // Calculate price including material cost
+      if (selectedFaceMaterial) {
+        // Material cost calculated using face material
+        const material = selectedFaceMaterial.material;
+        const wasteFactor = accessory.material_waste_factor || 1.25;
+        const dimensions = {
+          width: itemDimensions.width || accessory.width || 0,
+          height: itemDimensions.height || accessory.height || 0,
+          depth: itemDimensions.depth || accessory.depth || 0,
+        };
+        const volume = dimensions.width * dimensions.height * dimensions.depth;
+
+        if (volume > 0) {
+          if (material?.bd_ft_price) {
+            // Hardwood calculation
+            const boardFeet = volume / 144;
+            const boardFeetWithWaste = boardFeet * wasteFactor;
+            price = boardFeetWithWaste * material.bd_ft_price;
+          } else if (material?.sheet_price && material?.area) {
+            // Sheet goods calculation
+            const volumeWithWaste = volume * wasteFactor;
+            const materialThickness = material.thickness || 0.75;
+            const sheetVolume = material.width * material.height * materialThickness;
+            
+            if (sheetVolume > 0) {
+              const sheetsNeeded = volumeWithWaste / sheetVolume;
+              price = sheetsNeeded * material.sheet_price;
+            }
+          }
+        }
+
+        // Add proportional base price if specified
+        if (accessory.default_price_per_unit) {
+          const { basePrice, unitDifference } = calculateAccessoryUnitAndPrice(
+            accessory,
+            itemDimensions
+          );
+          price += basePrice;
+          itemUnitDifference = unitDifference;
+        }
+      } else {
+        // Fallback to proportional default price if no material selected
+        const { basePrice, unitDifference } = calculateAccessoryUnitAndPrice(
+          accessory,
+          itemDimensions
+        );
+        price = basePrice;
+        itemUnitDifference = unitDifference;
+      }
     } else {
-      price = type.default_price_per_unit;
-      unit = 1;
+      // Standard accessory pricing logic - use helper for all types
+      const { unit: calculatedUnit, basePrice, unitDifference } = calculateAccessoryUnitAndPrice(
+        accessory,
+        itemDimensions
+      );
+      unit = calculatedUnit;
+      price = basePrice;
+      itemUnitDifference = unitDifference;
     }
-    totals[type.type].count += item.quantity * unit || 0;
-    totals[type.type].total += price * (item.quantity || 0);
-    // return total + price * quantity;
+
+    // Accumulate totals by type
+    const accessoryType = accessory.type;
+    if (totals[accessoryType]) {
+      totals[accessoryType].count += quantity;
+      totals[accessoryType].total += price * quantity;
+    }
+
+    // Calculate labor hours from time anchors if available
+    if (accessories.timeAnchors && accessories.timeAnchors.length > 0) {
+      const accessoryAnchors = accessories.timeAnchors.filter(
+        (anchor) => anchor.accessories_catalog_id === accessory.id
+      );
+
+      accessoryAnchors.forEach((anchor) => {
+        // Use unitDifference to adjust labor time for oversized items
+        // Base time is for catalog size, add extra time proportional to size difference
+        const laborMultiplier = 1 + Math.max(0, itemUnitDifference); // Only add time for larger items, not reduce for smaller
+        let totalMinutes = anchor.minutes_per_unit * quantity * laborMultiplier;
+
+        // Apply multipliers for shop-built items that match room material
+        if (
+          accessory.matches_room_material &&
+          accessory.type === ACCESSORY_TYPES.SHOP_BUILT &&
+          selectedFaceMaterial &&
+          globalServices
+        ) {
+          const service = globalServices.find(
+            (s) => s.team_service_id === anchor.team_service_id
+          );
+
+          if (service && selectedFaceMaterial.material?.needs_finish) {
+            // Apply shop multiplier for service ID 2
+            if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+              totalMinutes *= selectedFaceMaterial.shopMultiplier;
+            }
+            // Apply finish multiplier for service ID 3
+            if (service.service_id === 3 && selectedFaceMaterial.finishMultiplier) {
+              totalMinutes *= selectedFaceMaterial.finishMultiplier;
+            }
+          }
+        }
+
+        const hours = totalMinutes / 60;
+        const service = globalServices?.find(
+          (s) => s.team_service_id === anchor.team_service_id
+        );
+        
+        if (service) {
+          if (!totals.hoursByService[service.service_id]) {
+            totals.hoursByService[service.service_id] = 0;
+          }
+          totals.hoursByService[service.service_id] += hours;
+        }
+      });
+    }
   });
 
   return totals;
@@ -1212,14 +1447,10 @@ export const getSectionCalculations = (section, context = {}) => {
   const lengthTotals = calculateLengthTotals(section.lengths, context);
   const accessoriesTotal = calculateAccessoriesTotal(
     section.accessories,
-    context
+    context,
+    section
   );
   const otherTotal = calculateSimpleItemsTotal(section.other, context);
-
-  const glassTotal =
-    (cabinetTotals.glassTotal || 0) + (accessoriesTotal.glass.total || 0);
-  const glassCount =
-    (cabinetTotals.glassCount || 0) + (accessoriesTotal.glass.count || 0);
 
   // Get parts_included toggles (default all to true)
   const partsIncluded = section.parts_included || {};
@@ -1243,6 +1474,7 @@ export const getSectionCalculations = (section, context = {}) => {
   
   const totalFacePriceWithToggles = doorPrice + drawerFrontPrice + falseFrontPrice + panelPrice + otherFacePrice;
 
+  // Calculate parts total price with toggles
   const partsTotalPrice =
     totalFacePriceWithToggles +
     (isPartIncluded('boxTotal') ? cabinetTotals.boxPrice : 0) +
@@ -1252,15 +1484,32 @@ export const getSectionCalculations = (section, context = {}) => {
     (isPartIncluded('pullsTotal') ? cabinetTotals.pullsTotal : 0) +
     (isPartIncluded('slidesTotal') ? cabinetTotals.slidesTotal : 0) +
     (isPartIncluded('woodTotal') ? cabinetTotals.woodTotal : 0) +
-    (isPartIncluded('glassTotal') ? glassTotal : 0) +
     lengthTotals.materialTotal +
-    otherTotal;
+    otherTotal +
+    // Include all accessories (glass from accessories + glass from faces + other accessory types)
+    (isPartIncluded('accessoriesTotal') ? (
+      accessoriesTotal.glass.total + 
+      (cabinetTotals.glassTotal || 0) + // Glass from faces
+      accessoriesTotal.insert.total +
+      accessoriesTotal.hardware.total +
+      accessoriesTotal.shop_built.total +
+      accessoriesTotal.organizer.total +
+      accessoriesTotal.other.total
+    ) : 0);
 
-  // Merge hoursByService from cabinets and lengths
+  // Merge hoursByService from cabinets, lengths, and accessories
   const finalHoursByService = { ...cabinetTotals.hoursByService };
   
   // Add length hours to the final totals
   Object.entries(lengthTotals.hoursByService || {}).forEach(([serviceId, hours]) => {
+    if (!finalHoursByService[serviceId]) {
+      finalHoursByService[serviceId] = 0;
+    }
+    finalHoursByService[serviceId] += hours;
+  });
+
+  // Add accessory hours to the final totals
+  Object.entries(accessoriesTotal.hoursByService || {}).forEach(([serviceId, hours]) => {
     if (!finalHoursByService[serviceId]) {
       finalHoursByService[serviceId] = 0;
     }
@@ -1346,6 +1595,20 @@ export const getSectionCalculations = (section, context = {}) => {
 
   const totalPrice =  roundPriceUpTo5 * (section.quantity || 1);
 
+  // Calculate total accessories count and price (including glass from faces)
+  const accessoriesCount = Object.values(accessoriesTotal)
+    .filter(item => typeof item === 'object' && item.count !== undefined)
+    .reduce((sum, item) => sum + item.count, 0) + (cabinetTotals.glassCount || 0);
+  
+  const accessoriesTotalPrice = Object.values(accessoriesTotal)
+    .filter(item => typeof item === 'object' && item.total !== undefined)
+    .reduce((sum, item) => sum + item.total, 0) + (cabinetTotals.glassTotal || 0);
+
+  // Calculate other items count
+  const otherCount = (section.other || []).reduce((sum, item) => {
+    return sum + (Number(item.quantity) || 0);
+  }, 0);
+
   return {
     totalPrice,
     subTotalPrice,
@@ -1368,8 +1631,10 @@ export const getSectionCalculations = (section, context = {}) => {
     woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
     fillerCount: cabinetTotals.fillerCount,
-    glassCount,
-    glassTotal,
+    accessoriesCount,
+    accessoriesTotal: accessoriesTotalPrice,
+    otherCount,
+    otherTotal,
     quantity: section.quantity,
     profit: sectionProfit,
     profitRate: section.profit,

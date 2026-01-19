@@ -192,6 +192,213 @@ export const interpolateTimeByArea = (
 };
 
 /**
+ * Generic interpolation function for calculating time based on volume (3D)
+ * Used for hoods where depth is a significant dimension
+ * @param {Array} anchors - Array of anchor objects with width, height, depth, and services
+ * @param {number} targetVolume - The volume to interpolate for (width × height × depth)
+ * @param {number} teamServiceId - The service ID to get time for
+ * @param {number} cabinetStyleId - Optional cabinet style ID for filtering (null = applies to all)
+ * @returns {number} - Interpolated time in minutes
+ */
+export const interpolateTimeByVolume = (
+  anchors,
+  targetVolume,
+  teamServiceId,
+  cabinetStyleId = null
+) => {
+  if (!anchors || anchors.length === 0) {
+    return 0;
+  }
+
+  // Filter anchors by cabinet_style_id
+  const filteredAnchors = anchors.filter((anchor) => {
+    return (
+      anchor.cabinet_style_id === null ||
+      anchor.cabinet_style_id == cabinetStyleId
+    );
+  });
+
+  if (filteredAnchors.length === 0) {
+    return 0;
+  }
+
+  // Build array of {volume, minutes} for this service
+  const dataPoints = filteredAnchors
+    .map((anchor) => {
+      const service = anchor.services.find(
+        (s) => s.team_service_id === teamServiceId
+      );
+      if (!service) return null;
+
+      const volume = anchor.width * anchor.height * (anchor.depth || 1);
+      return {
+        volume,
+        minutes: service.minutes || 0,
+      };
+    })
+    .filter(Boolean);
+
+  if (dataPoints.length === 0) {
+    return 0;
+  }
+
+  // Sort by volume for interpolation
+  dataPoints.sort((a, b) => a.volume - b.volume);
+
+  // If only one data point, return its value
+  if (dataPoints.length === 1) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is below minimum, return minimum value
+  if (targetVolume <= dataPoints[0].volume) {
+    return dataPoints[0].minutes;
+  }
+
+  // Find the two points to interpolate between
+  for (let i = 0; i < dataPoints.length - 1; i++) {
+    const lower = dataPoints[i];
+    const upper = dataPoints[i + 1];
+
+    if (targetVolume >= lower.volume && targetVolume <= upper.volume) {
+      // Avoid division by zero
+      if (upper.volume - lower.volume === 0) {
+        return lower.minutes;
+      }
+
+      // Linear interpolation
+      const ratio = (targetVolume - lower.volume) / (upper.volume - lower.volume);
+      const interpolatedMinutes =
+        lower.minutes + ratio * (upper.minutes - lower.minutes);
+
+      return roundToHundredth(interpolatedMinutes);
+    }
+  }
+
+  // Fallback (shouldn't reach here with proper sorting)
+  return dataPoints[dataPoints.length - 1].minutes;
+};
+
+/**
+ * Calculate total hours by service for hood cabinets using 3D volume
+ * Hoods are calculated based on width × height × depth since all three dimensions matter
+ * @param {Object} cabinet - Cabinet object with width, height, depth, type, quantity, type_specific_options
+ * @param {number} cabinetStyleId - Cabinet style ID for filtering style-specific anchors
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Object} context.selectedFaceMaterial - Selected face material with multipliers
+ * @param {Array} context.globalServices - Global services array
+ * @param {Object} context.itemTypeConfig - Item type configuration with typeSpecificOptions
+ * @returns {Object} - { serviceId: hours } (already includes quantity multiplier)
+ */
+export const calculateHoodPartsTime = (
+  cabinet,
+  cabinetStyleId,
+  context = {}
+) => {
+  const { partsListAnchors, selectedFaceMaterial, globalServices, itemTypeConfig } = context;
+
+  if (!cabinet || !partsListAnchors) {
+    return {};
+  }
+
+  // Only process hoods (type 14)
+  if (cabinet.type !== 14) {
+    return {};
+  }
+
+  const partsListId = PARTS_LIST_MAPPING["hood_finished"];
+  const anchors = partsListAnchors[partsListId];
+
+  if (!anchors || anchors.length === 0) {
+    // No anchors for hoods - skip it
+    return {};
+  }
+
+  // Use 3D volume for hood calculation (width × height × depth)
+  const volume = cabinet.width * cabinet.height * cabinet.depth;
+  const quantity = Number(cabinet.quantity) || 1;
+
+  // Collect all unique service IDs from anchors
+  const allServiceIds = new Set();
+  anchors.forEach((anchor) => {
+    anchor.services.forEach((service) => {
+      allServiceIds.add(service.team_service_id);
+    });
+  });
+
+  const hoursByService = {};
+
+  // Initialize all services to 0
+  allServiceIds.forEach((serviceId) => {
+    hoursByService[serviceId] = 0;
+  });
+
+  // Calculate time for each service using volume interpolation
+  allServiceIds.forEach((teamServiceId) => {
+    const minutesBase = interpolateTimeByVolume(
+      anchors,
+      volume,
+      teamServiceId,
+      cabinetStyleId
+    );
+
+    let totalMinutes = minutesBase;
+
+    // Apply multipliers if material needs finish
+    const shouldApplyMultipliers = selectedFaceMaterial?.material?.needs_finish;
+
+    if (shouldApplyMultipliers && globalServices) {
+      const service = globalServices.find(
+        (s) => s.team_service_id === parseInt(teamServiceId)
+      );
+      if (service) {
+        if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+          // Shop multiplier for service ID 2
+          totalMinutes *= selectedFaceMaterial.shopMultiplier;
+        } else if (
+          service.service_id === 3 &&
+          selectedFaceMaterial.finishMultiplier
+        ) {
+          // Finish multiplier for service ID 3
+          totalMinutes *= selectedFaceMaterial.finishMultiplier;
+        }
+      }
+    }
+
+    // Apply type-specific option multipliers (e.g., tapered hood = 1.5x shop time)
+    if (cabinet.type_specific_options && itemTypeConfig?.typeSpecificOptions && globalServices) {
+      const service = globalServices.find(
+        (s) => s.team_service_id === parseInt(teamServiceId)
+      );
+      if (service) {
+        itemTypeConfig.typeSpecificOptions.forEach((option) => {
+          const optionValue = cabinet.type_specific_options[option.name];
+          // If option is enabled/truthy and has service multipliers
+          if (optionValue && option.serviceMultipliers) {
+            const multiplier = option.serviceMultipliers[service.service_id];
+            if (multiplier) {
+              totalMinutes *= multiplier;
+            }
+          }
+        });
+      }
+    }
+
+    hoursByService[teamServiceId] += totalMinutes;
+  });
+
+  // Convert minutes to hours and multiply by quantity for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      (hoursByService[serviceId] / 60) * quantity
+    );
+  });
+
+  return hoursByService;
+};
+
+/**
  * Calculate total hours by service for a list of box parts (single cabinet)
  * @param {Array} boxPartsList - Array of box part objects from calculateBoxSummary
  * @param {Object} context - Calculation context
@@ -372,7 +579,7 @@ export const calculateDoorPartsTime = (
   faces,
   doorStyle,
   cabinetStyleId,
-  reeded,
+  panelModId,
   cabinetTypeId,
   context = {}
 ) => {
@@ -402,7 +609,14 @@ export const calculateDoorPartsTime = (
   }
 
   const anchors = partsListAnchors[partsListId];
-  const reededAnchors = partsListAnchors[15];
+  
+  // Look up panel mod anchors using the parts_list ID directly
+  // 0 = explicit "none" (no panel mod), NULL/undefined = no panel mod
+  // Only lookup if panelModId is a positive number (15=reeded, 22=grooved, etc.)
+  let panelModAnchors = null;
+  if (panelModId && panelModId > 0) {
+    panelModAnchors = partsListAnchors[panelModId];
+  }
 
   if (!anchors || anchors.length === 0) {
     // No anchors for this door type - skip it
@@ -417,9 +631,9 @@ export const calculateDoorPartsTime = (
     });
   });
 
-  // If reeded, also collect service IDs from reeded anchors
-  if (reeded && reededAnchors && reededAnchors.length > 0) {
-    reededAnchors.forEach((anchor) => {
+  // If panel mod is applied, also collect service IDs from panel mod anchors
+  if (panelModAnchors && panelModAnchors.length > 0) {
+    panelModAnchors.forEach((anchor) => {
       anchor.services.forEach((service) => {
         allServiceIds.add(service.team_service_id);
       });
@@ -472,18 +686,18 @@ export const calculateDoorPartsTime = (
         }
       }
 
-      let reededMinutes = 0;
+      let panelModMinutes = 0;
 
-      if (reeded && reededAnchors && reededAnchors.length > 0) {
-        reededMinutes = interpolateTimeByArea(
-          reededAnchors,
+      if (panelModAnchors && panelModAnchors.length > 0) {
+        panelModMinutes = interpolateTimeByArea(
+          panelModAnchors,
           area,
           teamServiceId,
           cabinetStyleId
         );
       }
 
-      hoursByService[teamServiceId] += totalMinutes + reededMinutes;
+      hoursByService[teamServiceId] += totalMinutes + panelModMinutes;
     });
   });
 
@@ -1802,6 +2016,39 @@ export const generateCabinetSummary = (faceConfig) => {
 
   if (totalRollouts > 0) {
     parts.push(`${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`);
+  }
+
+  // Count accessories from face nodes by traversing the tree
+  const accessoryGroups = {};
+  
+  // Recursively collect accessories from all face nodes
+  const collectAccessories = (node) => {
+    if (!node) return;
+    
+    // Collect accessories from this node
+    if (node.accessories && Array.isArray(node.accessories)) {
+      node.accessories.forEach((accessory) => {
+        const name = accessory.name || 'Unknown';
+        if (!accessoryGroups[name]) {
+          accessoryGroups[name] = 0;
+        }
+        accessoryGroups[name] += accessory.quantity || 1;
+      });
+    }
+    
+    // Recurse through children
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((child) => collectAccessories(child));
+    }
+  };
+  
+  collectAccessories(faceConfig);
+  
+  // Create summary strings for each accessory type
+  if (Object.keys(accessoryGroups).length > 0) {
+    Object.entries(accessoryGroups).forEach(([name, count]) => {
+      parts.push(`${count} ${name}`);
+    });
   }
 
   return parts.join(", ");

@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useSelector } from "react-redux";
@@ -26,12 +26,24 @@ const SectionItemList = ({
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [recentlyClosedIndex, setRecentlyClosedIndex] = useState(-1);
 
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
 
-  const handleCancelEdit = useCallback(() => {
+  // Clear the recently closed highlight after 2 seconds
+  useEffect(() => {
+    if (recentlyClosedIndex !== -1) {
+      const timer = setTimeout(() => {
+        setRecentlyClosedIndex(-1);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [recentlyClosedIndex]);
+
+  const handleCancelEdit = useCallback((itemIndex) => {
     setEditingIndex(-1);
+    setRecentlyClosedIndex(itemIndex);
   }, []);
 
   const handleCancelNew = useCallback(() => {
@@ -45,6 +57,7 @@ const SectionItemList = ({
         setShowNewItem(false);
       } else {
         setEditingIndex(-1);
+        setRecentlyClosedIndex(itemIndex);
       }
     } catch (error) {
       console.error("Error saving item:", error);
@@ -160,14 +173,18 @@ const SectionItemList = ({
               <ItemForm
                 item={item}
                 onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
-                onCancel={handleCancelEdit}
+                onCancel={() => handleCancelEdit(index)}
                 {...formProps}
               />
             </div>
           ) : (
             <div
               key={index}
-              className={`border-b transition-colors ${
+              className={`border-b transition-all duration-200 ${
+                recentlyClosedIndex === index
+                  ? "border-4 border-teal-500 bg-teal-900"
+                  : ""
+              } ${
                 item.errorState
                   ? "bg-red-700 text-white border-red-500 hover:bg-red-600"
                   : "bg-slate-700 text-white border-slate-600 hover:bg-slate-600 hover:text-slate-200"

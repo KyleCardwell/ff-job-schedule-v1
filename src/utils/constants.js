@@ -45,6 +45,7 @@ export const ITEM_TYPES = {
   APPLIANCE_PANEL: { type: "appliance_panel", title: "Appliance Panel" },
   DOOR_FRONT: { type: "door_front", title: "Door Front" },
   DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
+  HOOD: { type: "hood", title: "Hood" },
 };
 
 export const ITEM_FORM_WIDTHS = {
@@ -179,7 +180,7 @@ export const ACCESSORY_TYPES = {
   GLASS: "glass",
   INSERT: "insert",
   HARDWARE: "hardware",
-  ROD: "rod",
+  SHOP_BUILT: "shop_built",
   ORGANIZER: "organizer",
   OTHER: "other",
 };
@@ -188,6 +189,7 @@ export const ACCESSORY_UNITS = {
   AREA: "area",
   LENGTH: "length",
   PERIMETER: "perimeter",
+  VOLUME: "volume",
   UNIT: "unit",
 };
 
@@ -218,9 +220,20 @@ export const PARTS_LIST_MAPPING = {
   slab_door_unfinished: 12,
   slab_door_finished: 13,
   "5_piece_door_finished": 14, // 5-piece doors always need finish
-  reeded_panel_finished: 15,
+  panel_mod_reeded_finished: 15,
   end_panel_finished: 17,
   appliance_panel_finished: 18,
-  end_panel_nosing_finished: 19
+  end_panel_nosing_finished: 19,
+  face_frame_finished: 20,
+  hood_finished: 21, // Hood cabinets - includes depth in calculation
+  panel_mod_grooved_finished: 22,
+};
+
+// Display names for panel mods (used in estimates, PDFs, etc.)
+export const PANEL_MOD_DISPLAY_NAMES = {
+  15: "Reeded Panels",
+  22: "Grooved Panels",
+  // Add more panel mods here as needed
 };
   
+export const FIXED_AMOUNT = 'fixed_amount';
