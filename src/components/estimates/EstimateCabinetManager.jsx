@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useCallback, useEffect } from "react";
 import { useSelector } from "react-redux";
@@ -81,26 +82,36 @@ const CabinetItemForm = ({
 
   const [errors, setErrors] = useState({});
 
-  // Sync rootReveals on mount if cabinet_style_override is null
+  // Sync rootReveals when cabinet_style_override is null and section style changes
   useEffect(() => {
+    console.log('[EstimateCabinetManager] useEffect triggered - cabinetStyleId:', cabinetStyleId, 'override:', formData.cabinet_style_override);
     // Only run if cabinet_style_override is null (using section default)
     if (
-      (item.cabinet_style_override === null ||
-        item.cabinet_style_override === undefined) &&
-      item.face_config &&
-      item.type &&
-      cabinetStyles.length > 0
+      (formData.cabinet_style_override === null ||
+        formData.cabinet_style_override === undefined) &&
+      formData.face_config &&
+      formData.type &&
+      cabinetStyles.length > 0 &&
+      cabinetStyleId
     ) {
       // Find the style and type config for the section's style
       const style = cabinetStyles.find(
         (s) => s.cabinet_style_id === cabinetStyleId
       );
       const typeConfig = style?.types?.find(
-        (t) => t.cabinet_type_id === item.type
+        (t) => t.cabinet_type_id === formData.type
       );
 
-      // Update rootReveals to match the section's style config
-      if (typeConfig?.config) {
+      console.log('[EstimateCabinetManager] Found typeConfig:', typeConfig?.config);
+      console.log('[EstimateCabinetManager] Current rootReveals:', formData.face_config?.rootReveals);
+
+      // Update rootReveals - CabinetFaceDivider will handle dimension recalculation
+      // Only update if reveals are different to prevent infinite loop
+      if (typeConfig?.config && !isEqual(formData.face_config?.rootReveals, typeConfig.config)) {
+        console.log('[EstimateCabinetManager] Updating rootReveals to:', typeConfig.config);
+        console.log('----------------------------------------------')
+        console.log('----------------------------------------------')
+        console.log('----------------------------------------------')
         setFormData((prev) => ({
           ...prev,
           face_config: {
@@ -108,10 +119,12 @@ const CabinetItemForm = ({
             rootReveals: typeConfig.config,
           },
         }));
+      } else {
+        console.log('[EstimateCabinetManager] Reveals already match - skipping update');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [cabinetStyleId, formData.cabinet_style_override, formData.type, cabinetStyles])
 
   // Update itemTypeConfig when formData.type changes
   useEffect(() => {
@@ -220,12 +233,15 @@ const CabinetItemForm = ({
               }));
             }
           } else if (name === "cabinet_style_override") {
-            // For style changes only, update rootReveals if config exists
+            // For style changes only, update rootReveals - CabinetFaceDivider will handle dimensions
+            console.log('[EstimateCabinetManager] handleChange - cabinet_style_override changed to:', numValue);
+            console.log('[EstimateCabinetManager] typeConfig:', typeConfig?.config);
             if (
               typeConfig?.config &&
               formData.face_config &&
               formData.face_config.id
             ) {
+              console.log('[EstimateCabinetManager] Updating face_config.rootReveals to:', typeConfig.config);
               updates.face_config = {
                 ...formData.face_config,
                 rootReveals: typeConfig.config,
@@ -1490,18 +1506,29 @@ const CabinetItemForm = ({
     return summary;
   };
 
-  const handleFaceConfigSave = useCallback(
-    (faceConfig) => {
+  const handleFaceConfigSave = useCallback((faceConfig) => {
+    console.log('[EstimateCabinetManager] handleFaceConfigSave called');
+    console.log('[EstimateCabinetManager] Incoming faceConfig.rootReveals:', faceConfig?.rootReveals);
+    console.log('[EstimateCabinetManager] Incoming faceConfig dimensions:', { width: faceConfig?.width, height: faceConfig?.height, x: faceConfig?.x, y: faceConfig?.y });
+    
+    // Use functional update to avoid needing formData.face_config in dependencies
+    setFormData((prevData) => {
+      console.log('[EstimateCabinetManager] Previous face_config.rootReveals:', prevData.face_config?.rootReveals);
+      console.log('[EstimateCabinetManager] Previous face_config dimensions:', { width: prevData.face_config?.width, height: prevData.face_config?.height, x: prevData.face_config?.x, y: prevData.face_config?.y });
+      
       // Only update if the face_config has actually changed
-      if (JSON.stringify(formData.face_config) !== JSON.stringify(faceConfig)) {
-        setFormData((prevData) => ({
+      if (JSON.stringify(prevData.face_config) !== JSON.stringify(faceConfig)) {
+        console.log('[EstimateCabinetManager] face_config changed - updating formData');
+        return {
           ...prevData,
           face_config: faceConfig,
-        }));
+        };
+      } else {
+        console.log('[EstimateCabinetManager] face_config unchanged - skipping update');
+        return prevData;
       }
-    },
-    [formData.face_config]
-  );
+    });
+  }, []); // Empty dependencies - stable reference
 
   const canEditFaces =
     formData.type &&

@@ -214,75 +214,7 @@ const CabinetFaceDivider = ({
     });
   };
 
-  // Separate useEffect to handle rootReveals changes from parent (faceConfig prop)
-  useEffect(() => {
-    // Check if the incoming faceConfig has different rootReveals than our local config state
-    if (
-      faceConfig?.rootReveals &&
-      config?.id === FACE_NAMES.ROOT &&
-      !isEqual(faceConfig.rootReveals, config.rootReveals)
-    ) {
-      // Update the ref to the new reveals
-      revealsRef.current = faceConfig.rootReveals;
-
-      const updatedConfig = cloneDeep(config);
-
-      // Update rootReveals with the new values from parent
-      updatedConfig.rootReveals = faceConfig.rootReveals;
-
-      // Update root dimensions based on new reveals FIRST
-      updatedConfig.width =
-        cabinetWidth -
-        faceConfig.rootReveals.left -
-        faceConfig.rootReveals.right;
-      updatedConfig.height =
-        cabinetHeight -
-        faceConfig.rootReveals.top -
-        faceConfig.rootReveals.bottom;
-      updatedConfig.x = faceConfig.rootReveals.left;
-      updatedConfig.y = faceConfig.rootReveals.top;
-
-      // Normalize reveal dimensions with new reveals throughout the entire tree
-      // We need to use the new reveals value directly
-      const normalizeWithNewReveals = (node) => {
-        if (!node || !node.children) return;
-
-        const revealValue = faceConfig.rootReveals.reveal;
-
-        node.children.forEach((child) => {
-          if (child.type === FACE_NAMES.REVEAL) {
-            if (node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL) {
-              child.width = revealValue;
-            } else if (node.splitDirection === SPLIT_DIRECTIONS.VERTICAL) {
-              child.height = revealValue;
-            }
-          }
-          // Recurse for nested containers
-          normalizeWithNewReveals(child);
-        });
-      };
-
-      // Normalize all reveals first
-      normalizeWithNewReveals(updatedConfig);
-
-      // THEN recursively update all children to scale proportionally
-      // This ensures the scaling calculations use the correct reveal sizes
-      updateChildrenFromParent(updatedConfig);
-
-      // Force recalculation of layout with new dimensions and positions
-      const layoutConfig = calculateLayout(updatedConfig);
-
-      // Update state with the new configuration
-      setConfig(layoutConfig);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    faceConfig?.rootReveals,
-    config?.rootReveals,
-    cabinetWidth,
-    cabinetHeight,
-  ]);
-
+  // Single useEffect to handle all config updates in coordinated priority order
   useEffect(() => {
     // Check if cabinet type has actually changed
     const cabinetTypeChanged =
@@ -392,9 +324,10 @@ const CabinetFaceDivider = ({
         rootReveals: configReveals,
       });
     } else if (config && config.id === FACE_NAMES.ROOT) {
-      // Get the current reveals from type config
-      // If !usesRootReveals, all reveals should be 0
-      const currentReveals = usesRootReveals
+      // Priority 1: Use faceConfig.rootReveals if provided by parent (from EstimateCabinetManager)
+      // Priority 2: Fall back to type?.config if no faceConfig.rootReveals
+      // This ensures parent's explicit reveals always take precedence
+      const typeConfigReveals = usesRootReveals
         ? type?.config || {
             top: 0,
             bottom: 0,
@@ -410,49 +343,69 @@ const CabinetFaceDivider = ({
             reveal: 0,
           };
 
-      // Calculate expected dimensions
-      const expectedWidth =
-        cabinetWidth - currentReveals.left - currentReveals.right;
-      const expectedHeight =
-        cabinetHeight - currentReveals.top - currentReveals.bottom;
+      const revealsToUse = faceConfig?.rootReveals || typeConfigReveals;
 
-      // Only update if dimensions or reveals changed (NOT face type)
-      const needsUpdate =
+      console.log('[CabinetFaceDivider] Main useEffect - cabinetStyleId:', cabinetStyleId);
+      console.log('[CabinetFaceDivider] type?.config:', typeConfigReveals);
+      console.log('[CabinetFaceDivider] faceConfig?.rootReveals:', faceConfig?.rootReveals);
+      console.log('[CabinetFaceDivider] revealsToUse (priority):', revealsToUse);
+      console.log('[CabinetFaceDivider] config.rootReveals:', config.rootReveals);
+
+      // Calculate expected dimensions based on revealsToUse
+      const expectedWidth =
+        cabinetWidth - revealsToUse.left - revealsToUse.right;
+      const expectedHeight =
+        cabinetHeight - revealsToUse.top - revealsToUse.bottom;
+
+      // Check what needs updating
+      const dimensionsChanged =
         config.width !== expectedWidth ||
-        config.height !== expectedHeight ||
-        !config.rootReveals ||
-        !isEqual(config.rootReveals, currentReveals);
+        config.height !== expectedHeight;
+
+      const revealsChanged = !config.rootReveals || !isEqual(config.rootReveals, revealsToUse);
+
+      const needsUpdate = dimensionsChanged || revealsChanged;
+
+      console.log('[CabinetFaceDivider] dimensionsChanged:', dimensionsChanged, 'revealsChanged:', revealsChanged, 'needsUpdate:', needsUpdate);
 
       if (needsUpdate) {
+        console.log('[CabinetFaceDivider] Updating config in main useEffect');
+        
+        // Update the ref to track current reveals
+        revealsRef.current = revealsToUse;
+
         const updatedConfig = cloneDeep(config);
 
-        // Update rootReveals
-        updatedConfig.rootReveals = currentReveals;
+        // Always sync rootReveals
+        updatedConfig.rootReveals = revealsToUse;
 
-        // DO NOT update root face type - preserve the saved type
-        // Only cabinet type changes should reset the face type
+        // If reveals changed, normalize all reveal nodes in the tree
+        if (revealsChanged) {
+          console.log('[CabinetFaceDivider] Reveals changed - normalizing reveal nodes');
+          normalizeRevealDimensions(updatedConfig, revealsToUse);
+        }
 
-        // Normalize reveals before doing anything else - pass currentReveals explicitly
-        normalizeRevealDimensions(updatedConfig, currentReveals);
-
-        // Update root dimensions first so updateChildrenFromParent uses new values
+        // Update root dimensions
         updatedConfig.width = expectedWidth;
         updatedConfig.height = expectedHeight;
-        updatedConfig.x = currentReveals.left;
-        updatedConfig.y = currentReveals.top;
+        updatedConfig.x = revealsToUse.left;
+        updatedConfig.y = revealsToUse.top;
 
-        // Recursively update all children to scale proportionally
-        updateChildrenFromParent(updatedConfig);
+        // If dimensions or reveals changed, update children proportionally
+        if (dimensionsChanged || revealsChanged) {
+          console.log('[CabinetFaceDivider] Updating children proportionally');
+          updateChildrenFromParent(updatedConfig);
+        }
 
-        // Force recalculation of layout with new dimensions
+        // Force recalculation of layout
         const layoutConfig = calculateLayout(updatedConfig);
 
-        // Update state with the new configuration
+        console.log('[CabinetFaceDivider] Setting config with rootReveals:', layoutConfig.rootReveals);
         setConfig(layoutConfig);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cabinetWidth, cabinetHeight, cabinetTypeId, usesRootReveals, type]);
+  }, [cabinetWidth, cabinetHeight, cabinetTypeId, cabinetStyleId, usesRootReveals, type, faceConfig?.rootReveals]);
 
   useEffect(() => {
     renderCabinet();
@@ -570,10 +523,12 @@ const CabinetFaceDivider = ({
 
     // Apply outer reveals for the root container
     if (isRoot) {
-      newX = reveals.left;
-      newY = reveals.top;
-      newWidth = cabinetWidth - (reveals.left + reveals.right);
-      newHeight = cabinetHeight - (reveals.top + reveals.bottom);
+      // Use node.rootReveals if available (updated reveals), otherwise fall back to reveals memo
+      const currentReveals = node.rootReveals || reveals;
+      newX = currentReveals.left;
+      newY = currentReveals.top;
+      newWidth = cabinetWidth - (currentReveals.left + currentReveals.right);
+      newHeight = cabinetHeight - (currentReveals.top + currentReveals.bottom);
     }
 
     const newNode = {
@@ -1315,6 +1270,9 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
+        console.log('[CabinetFaceDivider] onSave useEffect - config changed, calling onSave');
+        console.log('[CabinetFaceDivider] config.rootReveals being saved:', config.rootReveals);
+        console.log('[CabinetFaceDivider] config dimensions being saved:', { x: config.x, y: config.y, width: config.width, height: config.height });
         // Create a copy of the config for saving
         const configForSave = cloneDeep(config);
 
@@ -1359,12 +1317,13 @@ const CabinetFaceDivider = ({
         // Process the entire tree
         processNode(configForSave);
 
+        console.log('[CabinetFaceDivider] Calling onSave with rootReveals:', configForSave.rootReveals);
         // Save the config with calculated dimensions
         onSave(configForSave);
         previousConfigRef.current = configString;
       }
     }
-  }, [config, onSave, cabinetDepth]);
+  }, [config, onSave, cabinetDepth, style]);
 
   const handleDragStart = (event, node, dimension) => {
     if (disabled) return;

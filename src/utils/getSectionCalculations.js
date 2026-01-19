@@ -652,7 +652,7 @@ const calculateFaceFramePrices = (section, context) => {
   section.cabinets.forEach((cabinet) => {
     // 13 is euro cabinets (no face frame)
     if (cabinet.cabinet_style_override === 13) return;
-    if (!cabinet.cabinet_tyle_override && section.cabinet_style_id === 13)
+    if (!cabinet.cabinet_style_override && section.cabinet_style_id === 13)
       return;
 
     const quantity = Number(cabinet.quantity) || 1;
