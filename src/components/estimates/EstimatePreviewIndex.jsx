@@ -37,17 +37,42 @@ const EstimatePreviewIndex = ({
 
   // Check if all sections are selected
   const allSectionsSelected = useMemo(() => {
-    const allSectionIds = Object.keys(selectedItems);
-    return allSectionIds.length > 0 && allSectionIds.every((id) => selectedItems[id]);
-  }, [selectedItems]);
+    // Get all possible section IDs from taskDataMap
+    const allPossibleSectionIds = orderedTasks.flatMap((task) =>
+      (task.sections || []).map((section) => section.sectionId)
+    );
+    
+    if (allPossibleSectionIds.length === 0) return false;
+    
+    // Check if every possible section is selected
+    return allPossibleSectionIds.every((id) => selectedItems[id] === true);
+  }, [selectedItems, orderedTasks]);
 
   // Check if all line items are selected
   const allLineItemsSelected = useMemo(() => {
-    const allLineItemIds = Object.keys(selectedLineItems);
-    return allLineItemIds.length > 0 && allLineItemIds.every((id) => selectedLineItems[id]);
-  }, [selectedLineItems]);
+    // Get all possible line item keys from lineItems array
+    const allPossibleLineItemKeys = [];
+    lineItems.forEach((item, index) => {
+      const parentKey = String(index);
+      allPossibleLineItemKeys.push(parentKey);
+      
+      // Add child keys
+      if (item.subItems && Array.isArray(item.subItems)) {
+        item.subItems.forEach((_, subIndex) => {
+          allPossibleLineItemKeys.push(`${index}-${subIndex}`);
+        });
+      }
+    });
+    
+    // If no line items exist, return true (nothing to deselect)
+    if (allPossibleLineItemKeys.length === 0) return true;
+    
+    // Check if every possible line item is selected
+    return allPossibleLineItemKeys.every((key) => selectedLineItems[key] === true);
+  }, [selectedLineItems, lineItems]);
 
   // Check if everything is selected
+  // Both sections and line items must be selected (or not exist)
   const allSelected = allSectionsSelected && allLineItemsSelected;
 
   // Intersection Observer to track visible sections
