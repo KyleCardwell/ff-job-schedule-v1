@@ -158,25 +158,41 @@ const EstimateSectionManager = ({ taskId, sectionId, section }) => {
     setItemToDelete(null);
   };
 
-  const handleDeleteItem = () => {
+  const handleDeleteItem = async () => {
     if (!itemToDelete) return;
 
     const { type, item: itemToDeleteData } = itemToDelete;
 
     if (!itemToDeleteData || typeof itemToDeleteData.id === 'undefined') return;
 
-    const updatedItems = sectionData[type].filter((item) => {
+    // Get current items from Redux/section, not local state
+    const currentItems = section?.[type] || [];
+    
+    // Filter out the deleted item for local state update
+    const updatedItems = currentItems.filter((item) => {
       if (item.id) return item.id !== itemToDeleteData.id;
       if (item.temp_id) return item.temp_id !== itemToDeleteData.temp_id;
       return false;
     });
 
+    // Update local state immediately for UI responsiveness
     setSectionData((prev) => ({
       ...prev,
       [type]: updatedItems,
     }));
 
-    saveImmediately(type, updatedItems, [itemToDeleteData.id]);
+    // Save to database - pass empty array for items since we're only deleting
+    // The Redux action will handle the deletion via idsToDelete
+    try {
+      await saveImmediately(type, [], [itemToDeleteData.id]);
+    } catch (error) {
+      // On error, revert local state to Redux state
+      setSectionData((prev) => ({
+        ...prev,
+        [type]: section?.[type] || [],
+      }));
+    }
+    
     setIsDeleteModalOpen(false);
     setItemToDelete(null);
   };
