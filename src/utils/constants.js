@@ -236,3 +236,4 @@ export const PANEL_MOD_DISPLAY_NAMES = {
   // Add more panel mods here as needed
 };
   
+export const FIXED_AMOUNT = 'fixed_amount';

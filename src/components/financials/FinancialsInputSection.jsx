@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
 import { usePermissions } from "../../hooks/usePermissions";
+import { FIXED_AMOUNT } from "../../utils/constants.js";
 import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
 
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
@@ -157,7 +158,7 @@ const FinancialsInputSection = ({
             // Handle employee_id change - reset overtime if changing to fixed_amount
             if (field === "employee_id") {
               // If switching to fixed_amount, uncheck overtime
-              if (value === "fixed_amount") {
+              if (value === FIXED_AMOUNT) {
                 return {
                   ...row,
                   [field]: value,
@@ -203,7 +204,7 @@ const FinancialsInputSection = ({
           field === "isOvertime"
         ) {
           updatedRows = updatedRows.map((row) => {
-            if (row.employee_id === "fixed_amount") {
+            if (row.employee_id === FIXED_AMOUNT) {
               // For fixed amount, use the decimal value
               return {
                 ...row,
@@ -511,7 +512,7 @@ const FinancialsInputSection = ({
 
         // Calculate actual hours from input rows
         const actualHours = (serviceData.inputRows || []).reduce((sum, row) => {
-          if (row.employee_id === "fixed_amount") return sum;
+          if (row.employee_id === FIXED_AMOUNT) return sum;
           const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
           return sum + hoursValue;
         }, 0);

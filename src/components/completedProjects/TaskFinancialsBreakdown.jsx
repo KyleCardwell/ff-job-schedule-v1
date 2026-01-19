@@ -1,5 +1,7 @@
 import PropTypes from "prop-types";
 
+import { FIXED_AMOUNT } from "../../utils/constants";
+
 const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   if (!task.financial_data) {
     return (
@@ -43,7 +45,7 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                   // Calculate actual hours, excluding fixed_amount entries
                   const actualHours = (service.inputRows || []).reduce(
                     (sum, row) => {
-                      if (row.employee_id === "fixed_amount") return sum;
+                      if (row.employee_id === FIXED_AMOUNT) return sum;
                       const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
                       return sum + hoursValue;
                     },

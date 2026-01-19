@@ -9,6 +9,7 @@ import {
   differenceInCalendarDays,
 } from "date-fns";
 
+import { FIXED_AMOUNT } from "./constants";
 import { normalizeDate } from "./dateUtils";
 
 export const getChartData = (jobData) => {
@@ -499,7 +500,7 @@ export const calculateFinancialTotals = (
 
           // Calculate actual hours, excluding fixed_amount entries
           const actualHours = (typeData.inputRows || []).reduce((sum, row) => {
-            if (row.employee_id === "fixed_amount") return sum;
+            if (row.employee_id === FIXED_AMOUNT) return sum;
             const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
             return sum + hoursValue;
           }, 0);
