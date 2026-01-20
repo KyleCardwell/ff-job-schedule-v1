@@ -51,6 +51,25 @@ const EstimateSectionForm = ({
     (state) => state.teamEstimateDefaults.teamDefaults
   );
 
+    // Style constants
+  const STYLES = {
+    sectionHeader: "text-md font-medium text-slate-200",
+    sectionBorder: "border rounded-lg border-slate-400 p-3",
+    label: "text-left text-sm font-medium flex items-center text-slate-200",
+    input: "block w-full rounded-md text-sm h-9 bg-slate-700 text-slate-200",
+    inputError: "border-red-500",
+    inputNormal: "border-slate-300",
+    inputFocus: "focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+    select: "block w-full rounded-md text-sm h-9 bg-slate-700 text-slate-200",
+    errorText: "text-xs text-red-500 col-span-2",
+    checkboxLabel: "flex items-center space-x-2 text-slate-200",
+    checkboxLabelDisabled: "opacity-50",
+    door_drawer_grid: "grid grid-cols-3 gap-4",
+    material_finish_warn: "text-xs text-teal-400"
+  };
+
+  const COLOR_CLASS = "teal-600"
+
   const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
   const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
   const STYLE_OPTIONS = cabinetStyles || [];
@@ -169,15 +188,12 @@ const EstimateSectionForm = ({
     if (!isNumeric && (value === null || value === undefined)) return null;
 
     const displayValue = formatter ? formatter(value) : value;
-    // const colorClass = source === 'estimate' ? 'text-teal-400' : 'text-amber-400';
-    const colorClass = "teal-500";
-    // const sourceText = source === 'estimate' ? 'Estimate' : 'Team';
 
     return (
       displayValue && (
         // <span className={`text-sm ${colorClass} ml-1`}>({displayValue})</span>
         <span
-          className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}
+          className={`flex-1 px-1 text-white text-sm bg-${COLOR_CLASS} ml-1`}
         >
           {displayValue}
         </span>
@@ -250,12 +266,11 @@ const EstimateSectionForm = ({
     if (value === null || value === undefined) return null;
 
     const displayValue = formatServiceRate(value);
-    const colorClass = "teal-500";
 
     return (
       displayValue && (
         <span
-          className={`flex-1 px-1 text-white text-sm bg-${colorClass} ml-1`}
+          className={`flex-1 px-1 text-white text-sm bg-${COLOR_CLASS} ml-1`}
         >
           {displayValue}
         </span>
@@ -928,8 +943,12 @@ const EstimateSectionForm = ({
             default_door_outside_molding: formData.doorOutsideMolding,
             default_drawer_inside_molding: formData.drawerInsideMolding,
             default_drawer_outside_molding: formData.drawerOutsideMolding,
-            default_door_panel_mod_id: formData.doorPanelModId === "" ? null : formData.doorPanelModId,
-            default_drawer_panel_mod_id: formData.drawerPanelModId === "" ? null : formData.drawerPanelModId,
+            default_door_panel_mod_id:
+              formData.doorPanelModId === "" ? null : formData.doorPanelModId,
+            default_drawer_panel_mod_id:
+              formData.drawerPanelModId === ""
+                ? null
+                : formData.drawerPanelModId,
             default_hinge_id: formData.hinge_id || null,
             default_slide_id: formData.slide_id || null,
             default_door_pull_id: formData.door_pull_id || null,
@@ -970,8 +989,12 @@ const EstimateSectionForm = ({
             default_drawer_inside_molding: formData.drawerInsideMolding || null,
             default_drawer_outside_molding:
               formData.drawerOutsideMolding || null,
-            default_door_panel_mod_id: formData.doorPanelModId === "" ? null : formData.doorPanelModId,
-            default_drawer_panel_mod_id: formData.drawerPanelModId === "" ? null : formData.drawerPanelModId,
+            default_door_panel_mod_id:
+              formData.doorPanelModId === "" ? null : formData.doorPanelModId,
+            default_drawer_panel_mod_id:
+              formData.drawerPanelModId === ""
+                ? null
+                : formData.drawerPanelModId,
             default_hinge_id: formData.hinge_id || null,
             default_slide_id: formData.slide_id || null,
             default_door_pull_id: formData.door_pull_id || null,
@@ -1288,24 +1311,27 @@ const EstimateSectionForm = ({
       : "Section Details";
 
   return (
-    <div className="bg-slate-50 border border-slate-400 rounded-lg p-4 shadow-sm">
-      {editType !== "section" && (
-        <div className="mb-2">
-          <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
-          {editType === "estimate" && (
-            <p className="text-sm text-slate-600">
-              Use team defaults or set values to override for this estimate
-              only.
-            </p>
-          )}
-          {editType === "team" && (
-            <p className="text-sm text-slate-600">
-              These defaults will be used for all new estimates. All fields are
-              required.
-            </p>
-          )}
-        </div>
-      )}
+    <div className="flex flex-col h-full mt-0">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto space-y-2 pb-16">
+        {/* Header */}
+        {editType !== "team" && (
+          <div className="mb-2">
+            <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
+            {editType === "estimate" && (
+              <p className="text-sm text-slate-200">
+                Use team defaults or set values to override for this estimate
+                only.
+              </p>
+            )}
+            {editType === "team" && (
+              <p className="text-sm text-slate-200">
+                These defaults will be used for all new estimates. All fields are
+                required.
+              </p>
+            )}
+          </div>
+        )}
 
       {/* Error Message Display */}
       {saveError && (
@@ -1317,20 +1343,18 @@ const EstimateSectionForm = ({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form id="estimate-section-form" onSubmit={handleSubmit} className="space-y-3">
         {/* Cabinet Style Section */}
-        <div className="grid grid-cols-[5fr_1fr] gap-2">
-          <div className="space-y-2">
-            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
-              <h3 className="text-md font-medium text-slate-700">
-                Cabinet Style
-              </h3>
-              <div className="border rounded-lg border-slate-400 p-3">
+        <div className="grid grid-cols-[5fr_1fr] gap-5">
+          <div className="space-y-5">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center text-slate-200">
+              <h3 className={STYLES.sectionHeader}>Cabinet Style</h3>
+              <div className={STYLES.sectionBorder}>
                 <div className="grid grid-cols-[2fr_3fr] gap-2 items-center">
                   <div className="grid items-center">
                     <label
                       htmlFor="style"
-                      className="text-left text-sm font-medium text-slate-700 flex items-center"
+                      className={STYLES.label}
                     >
                       <span>Style</span>
                       {getEffectiveDefaultDisplay(
@@ -1345,9 +1369,9 @@ const EstimateSectionForm = ({
                       name="style"
                       value={formData.style}
                       onChange={handleChange}
-                      className={`block w-full rounded-md text-sm h-9 ${
-                        errors.style ? "border-red-500" : "border-slate-300"
-                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                      className={`${STYLES.select} ${
+                        errors.style ? STYLES.inputError : STYLES.inputNormal
+                      } ${STYLES.inputFocus}`}
                     >
                       <option value="">{getPlaceholder("style")}</option>
                       {STYLE_OPTIONS.map((style) => (
@@ -1360,7 +1384,7 @@ const EstimateSectionForm = ({
                       ))}
                     </select>
                     {errors.style && (
-                      <p className="text-xs text-red-500 col-span-2">
+                      <p className={STYLES.errorText}>
                         {errors.style}
                       </p>
                     )}
@@ -1370,16 +1394,14 @@ const EstimateSectionForm = ({
             </div>
 
             {/* Cabinet Box Material Section (with Finish)*/}
-            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
-              <h3 className="text-md font-medium text-slate-700">
-                Cabinet Box
-              </h3>
-              <div className="border rounded-lg border-slate-400 p-3">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center text-slate-200">
+              <h3 className={STYLES.sectionHeader}>Cabinet Box</h3>
+              <div className={STYLES.sectionBorder}>
                 <div className="grid grid-cols-[2fr_3fr] gap-3 items-start">
                   <div className="grid items-start">
                     <label
                       htmlFor="boxMaterial"
-                      className="text-left text-sm font-medium text-slate-700 flex items-center"
+                      className={STYLES.label}
                     >
                       <span>Material</span>
                       {getEffectiveDefaultDisplay(
@@ -1394,11 +1416,11 @@ const EstimateSectionForm = ({
                       name="boxMaterial"
                       value={formData.boxMaterial}
                       onChange={handleChange}
-                      className={`block w-full rounded-md text-sm h-9 ${
+                      className={`${STYLES.select} ${
                         errors.boxMaterial
-                          ? "border-red-500"
-                          : "border-slate-300"
-                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                          ? STYLES.inputError
+                          : STYLES.inputNormal
+                      } ${STYLES.inputFocus}`}
                     >
                       <option value="">{getPlaceholder("box material")}</option>
                       {BOX_MATERIAL_OPTIONS.map((option) => (
@@ -1408,13 +1430,13 @@ const EstimateSectionForm = ({
                       ))}
                     </select>
                     {errors.boxMaterial && (
-                      <p className="text-xs text-red-500 col-span-2">
+                      <p className={STYLES.errorText}>
                         {errors.boxMaterial}
                       </p>
                     )}
                     <div className="h-6">
                       <p
-                        className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
+                        className={`${STYLES.material_finish_warn} col-span-2 px-2 pt-1 transition-opacity duration-200 ${
                           !mustSelectBoxFinish ? "opacity-100" : "opacity-0"
                         }`}
                       >
@@ -1425,7 +1447,7 @@ const EstimateSectionForm = ({
                   {/* Box Finish Options */}
                   <div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Finish</span>
                         {getEffectiveDefaultDisplay(
                           formData.boxFinish?.length > 0
@@ -1439,11 +1461,11 @@ const EstimateSectionForm = ({
                           mustSelectBoxFinish
                         )}
                       </label>
-                      <div className="grid grid-cols-3 gap-1 text-sm pl-2">
+                      <div className="grid grid-cols-3 gap-1 text-sm pl-2 text-slate-600">
                         {FINISH_OPTIONS.map((option) => (
                           <label
                             key={option.id}
-                            className="flex items-center space-x-2"
+                            className={`${STYLES.checkboxLabel} ${!mustSelectBoxFinish ? STYLES.checkboxLabelDisabled : ''}`}
                           >
                             <input
                               disabled={!mustSelectBoxFinish}
@@ -1454,7 +1476,7 @@ const EstimateSectionForm = ({
                               }
                               className="rounded border-slate-300"
                             />
-                            <span className="text-slate-600">
+                            <span>
                               {option.name}
                             </span>
                           </label>
@@ -1462,7 +1484,7 @@ const EstimateSectionForm = ({
                       </div>
                     </div>
                     {errors.boxFinish && (
-                      <p className="text-xs text-red-500 col-span-2">
+                      <p className={STYLES.errorText}>
                         {errors.boxFinish}
                       </p>
                     )}
@@ -1472,16 +1494,16 @@ const EstimateSectionForm = ({
             </div>
 
             {/* Cabinet Face Material Section (with Finish) */}
-            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
-              <h3 className="text-md font-medium text-slate-700">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center text-slate-700">
+              <h3 className={STYLES.sectionHeader}>
                 Cabinet Face
               </h3>
-              <div className="border rounded-lg border-slate-400 p-3">
+              <div className={STYLES.sectionBorder}>
                 <div className="grid grid-cols-[2fr_3fr] gap-3 items-start">
                   <div className="grid items-start">
                     <label
                       htmlFor="faceMaterial"
-                      className="text-left text-sm font-medium text-slate-700 flex items-center"
+                      className={STYLES.label}
                     >
                       <span>Material</span>
                       {getEffectiveDefaultDisplay(
@@ -1496,11 +1518,11 @@ const EstimateSectionForm = ({
                       name="faceMaterial"
                       value={formData.faceMaterial}
                       onChange={handleChange}
-                      className={`block w-full rounded-md text-sm h-9 ${
+                      className={`${STYLES.select} ${
                         errors.faceMaterial
-                          ? "border-red-500"
-                          : "border-slate-300"
-                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                          ? STYLES.inputError
+                          : STYLES.inputNormal
+                      } ${STYLES.inputFocus}`}
                     >
                       <option value="">
                         {getPlaceholder("face material")}
@@ -1512,13 +1534,13 @@ const EstimateSectionForm = ({
                       ))}
                     </select>
                     {errors.faceMaterial && (
-                      <p className="text-xs text-red-500 col-span-2">
+                      <p className={STYLES.errorText}>
                         {errors.faceMaterial}
                       </p>
                     )}
                     <div className="h-6">
                       <p
-                        className={`text-xs text-teal-700 col-span-2 px-2 pt-1 transition-opacity duration-200 ${
+                        className={`${STYLES.material_finish_warn} col-span-2 px-2 pt-1 transition-opacity duration-200 ${
                           !mustSelectFaceFinish ? "opacity-100" : "opacity-0"
                         }`}
                       >
@@ -1529,7 +1551,7 @@ const EstimateSectionForm = ({
                   {/* Finish Options */}
                   <div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Finish</span>
                         {getEffectiveDefaultDisplay(
                           formData.faceFinish?.length > 0
@@ -1543,11 +1565,11 @@ const EstimateSectionForm = ({
                           mustSelectFaceFinish
                         )}
                       </label>
-                      <div className="grid grid-cols-3 gap-1 text-sm pl-2">
+                      <div className="grid grid-cols-3 gap-1 text-sm pl-2 text-slate-600">
                         {FINISH_OPTIONS.map((option) => (
                           <label
                             key={option.id}
-                            className="flex items-center space-x-2"
+                            className={`${STYLES.checkboxLabel} ${!mustSelectFaceFinish ? STYLES.checkboxLabelDisabled : ''}`}
                           >
                             <input
                               disabled={!mustSelectFaceFinish}
@@ -1558,7 +1580,7 @@ const EstimateSectionForm = ({
                               }
                               className="rounded border-slate-300"
                             />
-                            <span className="text-slate-600">
+                            <span>
                               {option.name}
                             </span>
                           </label>
@@ -1566,7 +1588,7 @@ const EstimateSectionForm = ({
                       </div>
                     </div>
                     {errors.faceFinish && (
-                      <p className="text-xs text-red-500 col-span-2">
+                      <p className={STYLES.errorText}>
                         {errors.faceFinish}
                       </p>
                     )}
@@ -1577,16 +1599,16 @@ const EstimateSectionForm = ({
 
             {/* Door Style Section */}
             <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
-              <h3 className="text-md font-medium text-slate-700">Doors</h3>
-              <div className="border rounded-lg border-slate-400 p-3">
+              <h3 className={STYLES.sectionHeader}>Doors</h3>
+              <div className={STYLES.sectionBorder}>
                 <div className="grid gap-4">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={STYLES.door_drawer_grid}>
                     {/* Door Style */}
                     <div>
                       <div className="grid items-center">
                         <label
                           htmlFor="doorStyle"
-                          className="text-left text-sm font-medium text-slate-700 flex items-center"
+                          className={STYLES.label}
                         >
                           <span>Style</span>
                           {getEffectiveDefaultDisplay(
@@ -1601,11 +1623,11 @@ const EstimateSectionForm = ({
                           name="doorStyle"
                           value={formData.doorStyle}
                           onChange={handleChange}
-                          className={`block w-full rounded-md text-sm h-9 ${
+                          className={`${STYLES.select} ${
                             errors.doorStyle
-                              ? "border-red-500"
-                              : "border-slate-300"
-                          } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">
                             {getPlaceholder("door style")}
@@ -1618,7 +1640,7 @@ const EstimateSectionForm = ({
                         </select>
                       </div>
                       {errors.doorStyle && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.doorStyle}
                         </p>
                       )}
@@ -1627,7 +1649,7 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="hinge_id"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        className={STYLES.label}
                       >
                         Hinges
                         {getEffectiveDefaultDisplay(
@@ -1642,11 +1664,11 @@ const EstimateSectionForm = ({
                         name="hinge_id"
                         value={formData.hinge_id}
                         onChange={handleChange}
-                        className={`block w-full h-9 rounded-md text-sm ${
+                        className={`${STYLES.select} ${
                           errors.hinge_id
-                            ? "border-red-500"
-                            : "border-slate-300"
-                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                            ? STYLES.inputError
+                            : STYLES.inputNormal
+                        } ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("hinge type")}</option>
                         {DOOR_HINGE_OPTIONS.map((option) => (
@@ -1656,7 +1678,7 @@ const EstimateSectionForm = ({
                         ))}
                       </select>
                       {errors.hinge_id && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.hinge_id}
                         </p>
                       )}
@@ -1665,7 +1687,7 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="door_pull_id"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        className={STYLES.label}
                       >
                         <span>Pulls</span>
                         {getEffectiveDefaultDisplay(
@@ -1680,11 +1702,11 @@ const EstimateSectionForm = ({
                         name="door_pull_id"
                         value={formData.door_pull_id}
                         onChange={handleChange}
-                        className={`block w-full h-9 rounded-md text-sm ${
+                        className={`${STYLES.select} ${
                           errors.door_pull_id
-                            ? "border-red-500"
-                            : "border-slate-300"
-                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                            ? STYLES.inputError
+                            : STYLES.inputNormal
+                        } ${STYLES.inputFocus}`}
                       >
                         <option value="">
                           {getPlaceholder("door pull type")}
@@ -1696,16 +1718,16 @@ const EstimateSectionForm = ({
                         ))}
                       </select>
                       {errors.door_pull_id && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.door_pull_id}
                         </p>
                       )}
                     </div>
                   </div>
                   {/* Door Moldings */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={STYLES.door_drawer_grid}>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Inside Molding</span>
                         {getEffectiveDefaultDisplay(
                           formData.doorInsideMolding,
@@ -1720,7 +1742,7 @@ const EstimateSectionForm = ({
                           formData.doorInsideMolding
                         )}
                         onChange={handleChange}
-                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="true">Yes</option>
@@ -1728,7 +1750,7 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Outside Molding</span>
                         {getEffectiveDefaultDisplay(
                           formData.doorOutsideMolding,
@@ -1743,7 +1765,7 @@ const EstimateSectionForm = ({
                           formData.doorOutsideMolding
                         )}
                         onChange={handleChange}
-                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="true">Yes</option>
@@ -1751,7 +1773,7 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Panel Mod</span>
                         {getEffectiveDefaultDisplay(
                           formData.doorPanelModId,
@@ -1767,9 +1789,14 @@ const EstimateSectionForm = ({
                       </label>
                       <select
                         name="doorPanelModId"
-                        value={formData.doorPanelModId === null || formData.doorPanelModId === "" ? "" : formData.doorPanelModId}
+                        value={
+                          formData.doorPanelModId === null ||
+                          formData.doorPanelModId === ""
+                            ? ""
+                            : formData.doorPanelModId
+                        }
                         onChange={handleChange}
-                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="0">None</option>
@@ -1783,19 +1810,19 @@ const EstimateSectionForm = ({
             </div>
 
             {/* Drawer Front Style Section */}
-            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
-              <h3 className="text-md font-medium text-slate-700">
+            <div className="grid grid-cols-[1fr_9fr] gap-1 items-center text-slate-700">
+              <h3 className={STYLES.sectionHeader}>
                 Drawer Fronts
               </h3>
-              <div className="border rounded-lg border-slate-400 p-3">
+              <div className={STYLES.sectionBorder}>
                 <div className="grid gap-4">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={STYLES.door_drawer_grid}>
                     {/* Drawer Front Style */}
                     <div>
                       <div className="grid items-center">
                         <label
                           htmlFor="drawerFrontStyle"
-                          className="text-left text-sm font-medium text-slate-700 flex items-center"
+                          className={STYLES.label}
                         >
                           <span>Style</span>
                           {getEffectiveDefaultDisplay(
@@ -1810,7 +1837,7 @@ const EstimateSectionForm = ({
                           name="drawerFrontStyle"
                           value={formData.drawerFrontStyle}
                           onChange={handleChange}
-                          className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                         >
                           <option value="">
                             {getPlaceholder("drawer front style")}
@@ -1823,7 +1850,7 @@ const EstimateSectionForm = ({
                         </select>
                       </div>
                       {errors.drawerFrontStyle && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.drawerFrontStyle}
                         </p>
                       )}
@@ -1832,7 +1859,7 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="slide_id"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        className={STYLES.label}
                       >
                         <span>Slides</span>
                         {getEffectiveDefaultDisplay(
@@ -1847,9 +1874,9 @@ const EstimateSectionForm = ({
                         name="slide_id"
                         value={formData.slide_id}
                         onChange={handleChange}
-                        className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                          errors.slide_id ? "border-red-500" : ""
-                        }`}
+                        className={`${STYLES.select} ${
+                          errors.slide_id ? STYLES.inputError : STYLES.inputNormal
+                        } ${STYLES.inputFocus}`}
                       >
                         <option value="">
                           {getPlaceholder("drawer slide type")}
@@ -1861,7 +1888,7 @@ const EstimateSectionForm = ({
                         ))}
                       </select>
                       {errors.slide_id && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.slide_id}
                         </p>
                       )}
@@ -1870,7 +1897,7 @@ const EstimateSectionForm = ({
                     <div className="grid items-center">
                       <label
                         htmlFor="drawer_pull_id"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        className={STYLES.label}
                       >
                         <span>Pulls</span>
                         {getEffectiveDefaultDisplay(
@@ -1885,11 +1912,11 @@ const EstimateSectionForm = ({
                         name="drawer_pull_id"
                         value={formData.drawer_pull_id}
                         onChange={handleChange}
-                        className={`block w-full h-9 rounded-md text-sm ${
+                        className={`${STYLES.select} ${
                           errors.drawer_pull_id
-                            ? "border-red-500"
-                            : "border-slate-300"
-                        } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                            ? STYLES.inputError
+                            : STYLES.inputNormal
+                        } ${STYLES.inputFocus}`}
                       >
                         <option value="">
                           {getPlaceholder("drawer pull type")}
@@ -1901,16 +1928,16 @@ const EstimateSectionForm = ({
                         ))}
                       </select>
                       {errors.drawer_pull_id && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.drawer_pull_id}
                         </p>
                       )}
                     </div>
                   </div>
                   {/* Drawer Front Moldings */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={STYLES.door_drawer_grid}>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Inside Molding</span>
                         {getEffectiveDefaultDisplay(
                           formData.drawerInsideMolding,
@@ -1925,7 +1952,7 @@ const EstimateSectionForm = ({
                           formData.drawerInsideMolding
                         )}
                         onChange={handleChange}
-                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="true">Yes</option>
@@ -1933,7 +1960,7 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Outside Molding</span>
                         {getEffectiveDefaultDisplay(
                           formData.drawerOutsideMolding,
@@ -1948,7 +1975,7 @@ const EstimateSectionForm = ({
                           formData.drawerOutsideMolding
                         )}
                         onChange={handleChange}
-                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="true">Yes</option>
@@ -1956,7 +1983,7 @@ const EstimateSectionForm = ({
                       </select>
                     </div>
                     <div className="grid items-center">
-                      <label className="text-left text-sm font-medium text-slate-700 flex items-center">
+                      <label className={STYLES.label}>
                         <span>Panel Mod</span>
                         {getEffectiveDefaultDisplay(
                           formData.drawerPanelModId,
@@ -1972,9 +1999,14 @@ const EstimateSectionForm = ({
                       </label>
                       <select
                         name="drawerPanelModId"
-                        value={formData.drawerPanelModId === null || formData.drawerPanelModId === "" ? "" : formData.drawerPanelModId}
+                        value={
+                          formData.drawerPanelModId === null ||
+                          formData.drawerPanelModId === ""
+                            ? ""
+                            : formData.drawerPanelModId
+                        }
                         onChange={handleChange}
-                        className="block w-full rounded-md text-sm h-9 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="0">None</option>
@@ -1985,11 +2017,11 @@ const EstimateSectionForm = ({
                   </div>
 
                   {/* Drawer Box Material */}
-                  <div className="grid grid-cols-3 gap-2 items-center">
+                  <div className={STYLES.door_drawer_grid}>
                     <div className="grid items-center">
                       <label
                         htmlFor="drawer_box_mat"
-                        className="text-left text-sm font-medium text-slate-700 flex items-center"
+                        className={STYLES.label}
                       >
                         <span>Drawer Boxes</span>
                         {getEffectiveDefaultDisplay(
@@ -2004,9 +2036,9 @@ const EstimateSectionForm = ({
                         name="drawer_box_mat"
                         value={formData.drawer_box_mat}
                         onChange={handleChange}
-                        className={`block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${
-                          errors.drawer_box_mat ? "border-red-500" : ""
-                        }`}
+                        className={`${STYLES.select} ${
+                          errors.drawer_box_mat ? STYLES.inputError : STYLES.inputNormal
+                        } ${STYLES.inputFocus}`}
                       >
                         <option value="">
                           {getPlaceholder("drawer box material")}
@@ -2018,7 +2050,7 @@ const EstimateSectionForm = ({
                         ))}
                       </select>
                       {errors.drawer_box_mat && (
-                        <p className="text-xs text-red-500 col-span-2">
+                        <p className={STYLES.errorText}>
                           {errors.drawer_box_mat}
                         </p>
                       )}
@@ -2029,8 +2061,8 @@ const EstimateSectionForm = ({
             </div>
           </div>
 
-          <div className="border rounded-lg border-slate-400 p-3 w-full h-full">
-            <h3 className="text-md font-medium text-slate-700 mb-3">
+          <div className="border rounded-lg border-slate-400 p-3 w-full h-full text-slate-700">
+            <h3 className={`${STYLES.sectionHeader} mb-3`}>
               Adjustments
             </h3>
             <div className="space-y-3">
@@ -2038,7 +2070,7 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center -mt-2">
                 <label
                   htmlFor="quantity"
-                  className="text-right text-sm font-medium text-slate-700"
+                  className={STYLES.label}
                 >
                   Quantity
                 </label>
@@ -2050,7 +2082,7 @@ const EstimateSectionForm = ({
                   onChange={handleChange}
                   placeholder="1"
                   disabled={editType !== "section"}
-                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                  className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
                 />
               </div>
 
@@ -2058,7 +2090,7 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center">
                 <label
                   htmlFor="profit"
-                  className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
+                  className={STYLES.label}
                 >
                   <span>Profit{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
@@ -2076,7 +2108,7 @@ const EstimateSectionForm = ({
                   value={formData.profit}
                   onChange={handleChange}
                   placeholder="0%"
-                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                  className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
                 />
               </div>
 
@@ -2084,7 +2116,7 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center">
                 <label
                   htmlFor="commission"
-                  className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
+                  className={STYLES.label}
                 >
                   <span>Commission{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
@@ -2102,7 +2134,7 @@ const EstimateSectionForm = ({
                   value={formData.commission}
                   onChange={handleChange}
                   placeholder="0%"
-                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                  className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
                 />
               </div>
 
@@ -2110,7 +2142,7 @@ const EstimateSectionForm = ({
               <div className="flex flex-col gap-2 items-center">
                 <label
                   htmlFor="discount"
-                  className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
+                  className={STYLES.label}
                 >
                   <span>Discount{editType === "team" ? " %" : ""}</span>
                   {getEffectiveDefaultDisplay(
@@ -2128,85 +2160,83 @@ const EstimateSectionForm = ({
                   value={formData.discount}
                   onChange={handleChange}
                   placeholder="0%"
-                  className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
+                  className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
                 />
               </div>
 
-              <h3 className="text-md font-medium text-slate-700 mb-3 border-t border-slate-400 pt-2">
+              <h3 className={`${STYLES.sectionHeader} mb-3 border-t border-slate-400 pt-2`}>
                 Rates
               </h3>
 
               {/* Service Rate Overrides - only for estimate and section */}
-              {editType === "team" ? (
-                // Team mode: Display rates as read-only text
-                activeServices.map((service) => (
-                  <div
-                    key={service.service_id}
-                    className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0"
-                  >
-                    <span className="text-sm font-medium text-slate-700">
-                      {service.service_name}
-                    </span>
-                    <span className="text-sm text-slate-600">
-                      ${service.hourly_rate}/hr
-                    </span>
-                  </div>
-                ))
-              ) : (
-                // Estimate/Section mode: Editable inputs with effective value display
-                activeServices.map((service) => (
-                  <div
-                    key={service.service_id}
-                    className="flex flex-col gap-2 items-center"
-                  >
-                    <label
-                      htmlFor={`service-rate-${service.service_id}`}
-                      className="text-right text-sm font-medium text-slate-700 flex items-center justify-center"
+              {editType === "team"
+                ? // Team mode: Display rates as read-only text
+                  activeServices.map((service) => (
+                    <div
+                      key={service.service_id}
+                      className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0"
                     >
-                      <span>{service.service_name}</span>
-                      {getEffectiveServiceRateDisplay(
-                        service.service_id,
-                        service
-                      )}
-                    </label>
-                    <input
-                      type="number"
-                      id={`service-rate-${service.service_id}`}
-                      min="0"
-                      step="1"
-                      value={
-                        formData.service_price_overrides?.[
-                          service.service_id
-                        ] || ""
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFormData({
-                          ...formData,
-                          service_price_overrides: {
-                            ...formData.service_price_overrides,
-                            [service.service_id]:
-                              value === "" ? undefined : parseFloat(value),
-                          },
-                        });
-                      }}
-                      placeholder="$/hr"
-                      className="block w-full h-9 rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-center"
-                    />
-                  </div>
-                ))
-              )}
+                      <span className="text-sm font-medium">
+                        {service.service_name}
+                      </span>
+                      <span className="text-sm text-slate-600">
+                        ${service.hourly_rate}/hr
+                      </span>
+                    </div>
+                  ))
+                : // Estimate/Section mode: Editable inputs with effective value display
+                  activeServices.map((service) => (
+                    <div
+                      key={service.service_id}
+                      className="flex flex-col gap-2 items-center"
+                    >
+                      <label
+                        htmlFor={`service-rate-${service.service_id}`}
+                        className={STYLES.label}
+                      >
+                        <span>{service.service_name}</span>
+                        {getEffectiveServiceRateDisplay(
+                          service.service_id,
+                          service
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        id={`service-rate-${service.service_id}`}
+                        min="0"
+                        step="1"
+                        value={
+                          formData.service_price_overrides?.[
+                            service.service_id
+                          ] || ""
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData({
+                            ...formData,
+                            service_price_overrides: {
+                              ...formData.service_price_overrides,
+                              [service.service_id]:
+                                value === "" ? undefined : parseFloat(value),
+                            },
+                          });
+                        }}
+                        placeholder="$/hr"
+                        className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
+                      />
+                    </div>
+                  ))}
             </div>
           </div>
         </div>
 
         {/* Notes Section - only for sections */}
         {editType === "section" && (
-          <div className="grid grid-cols-3 gap-2 items-start">
+          <div className="grid grid-cols-3 gap-4 items-start text-slate-700 px-1">
             <div>
               <label
                 htmlFor="notes-0"
-                className="block text-md font-medium text-slate-700"
+                className={STYLES.label}
               >
                 Notes
               </label>
@@ -2225,7 +2255,7 @@ const EstimateSectionForm = ({
             <div>
               <label
                 htmlFor="notes-1"
-                className="block text-md font-medium text-slate-700"
+                className={STYLES.label}
               >
                 Includes
               </label>
@@ -2244,7 +2274,7 @@ const EstimateSectionForm = ({
             <div>
               <label
                 htmlFor="notes-2"
-                className="block text-md font-medium text-slate-700"
+                className={STYLES.label}
               >
                 Does Not Include
               </label>
@@ -2262,52 +2292,54 @@ const EstimateSectionForm = ({
             </div>
           </div>
         )}
+      </form>
+      </div>
 
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-2">
-          {editType !== "team" && (
-            <div className="flex-1 flex justify-start space-x-2">
+      {/* Form Actions - Sticky to Bottom */}
+      <div className="sticky bottom-0 flex justify-end space-x-2 bg-slate-800 py-2 px-4 border-t border-slate-600 z-10 mt-auto">
+        {editType !== "team" && (
+          <div className="flex-1 flex justify-start space-x-2">
+            <button
+              type="button"
+              onClick={handleRestoreDefaults}
+              className="px-3 py-1 text-xs font-medium text-white bg-teal-600 border border-teal-700 rounded hover:bg-teal-700 flex items-center"
+            >
+              <RiResetLeftFill className="mr-1" size={12} />
+              Restore Defaults
+            </button>
+            {editType === "section" && (
               <button
                 type="button"
-                onClick={handleRestoreDefaults}
-                className="px-3 py-1 text-xs font-medium text-white bg-teal-600 border border-teal-700 rounded hover:bg-teal-700 flex items-center"
+                onClick={() => setIsCopyModalOpen(true)}
+                className="px-3 py-1 text-xs font-medium text-white bg-purple-600 border border-purple-700 rounded hover:bg-purple-700 flex items-center"
               >
-                <RiResetLeftFill className="mr-1" size={12} />
-                Restore Defaults
+                <FiCopy className="mr-1" size={12} />
+                Copy Room Details
               </button>
-              {editType === "section" && (
-                <button
-                  type="button"
-                  onClick={() => setIsCopyModalOpen(true)}
-                  className="px-3 py-1 text-xs font-medium text-white bg-purple-600 border border-purple-700 rounded hover:bg-purple-700 flex items-center"
-                >
-                  <FiCopy className="mr-1" size={12} />
-                  Copy Room Details
-                </button>
-              )}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-3 py-1 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
-          >
-            <FiX className="mr-1" size={12} />
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 flex items-center"
-          >
-            <FiSave className="mr-1" size={12} />
-            {editType === "team"
-              ? "Save Team Defaults"
-              : editType === "estimate"
-              ? "Save Estimate Defaults"
-              : "Save Section"}
-          </button>
-        </div>
-      </form>
+            )}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
+        >
+          <FiX className="mr-1" size={12} />
+          Cancel
+        </button>
+        <button
+          type="submit"
+          form="estimate-section-form"
+          className="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 flex items-center"
+        >
+          <FiSave className="mr-1" size={12} />
+          {editType === "team"
+            ? "Save Team Defaults"
+            : editType === "estimate"
+            ? "Save Estimate Defaults"
+            : "Save Section"}
+        </button>
+      </div>
 
       {/* Copy Room Details Modal */}
       {editType === "section" && (

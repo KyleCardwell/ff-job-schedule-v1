@@ -7,6 +7,7 @@ import { FIXED_AMOUNT } from "../../utils/constants";
 
 const EmployeeTypeAccordion = ({
   service,
+  services,
   employees,
   serviceData = { estimate: 0, actual_cost: 0, inputRows: [] },
   onAddRow,
@@ -21,15 +22,35 @@ const EmployeeTypeAccordion = ({
   const prevRowsLengthRef = useRef(serviceData?.inputRows?.length || 0);
 
   const availableEmployees = useMemo(
-    () => [
-      {
-        employee_id: FIXED_AMOUNT,
-        employee_name: "Fixed Amount",
-        is_fixed_amount: true,
-      },
-      ...employees.filter((e) => e.team_service_id === service.team_service_id),
-    ],
-    [employees, service.team_service_id]
+    () => {
+      // Get employees currently assigned to this service
+      const currentServiceEmployees = employees.filter(
+        (e) => e.team_service_id === service.team_service_id
+      );
+
+      // Get employee IDs that are already selected in rows
+      const selectedEmployeeIds = new Set(
+        (serviceData?.inputRows || []).map((row) => row.employee_id).filter(Boolean)
+      );
+
+      // Find previously assigned employees (not in current service but selected in rows)
+      const previouslyAssignedEmployees = employees.filter(
+        (e) =>
+          e.team_service_id !== service.team_service_id &&
+          selectedEmployeeIds.has(e.employee_id)
+      );
+
+      return [
+        {
+          employee_id: FIXED_AMOUNT,
+          employee_name: "Fixed Amount",
+          is_fixed_amount: true,
+        },
+        ...currentServiceEmployees,
+        ...previouslyAssignedEmployees,
+      ];
+    },
+    [employees, service.team_service_id, serviceData?.inputRows]
   );
 
   const actualHours = useMemo(
@@ -129,104 +150,162 @@ const EmployeeTypeAccordion = ({
         }`}
       >
         <div className="p-4 space-y-2">
-          {(serviceData?.inputRows || []).map((row) => (
-            <div
-              key={row.id}
-              className="grid grid-cols-[1fr,1fr,80px,auto,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg"
-            >
-              <select
-                ref={(el) => (selectRefs.current[row.id] = el)}
-                value={row.employee_id}
-                onChange={(e) =>
-                  onInputChange(row.id, "employee_id", e.target.value)
-                }
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select...</option>
-                {availableEmployees.map((employee) => (
-                  <option
-                    key={employee.employee_id}
-                    value={employee.employee_id}
+          {(serviceData?.inputRows || []).map((row) => {
+            // Get the currently selected employee for this row
+            const currentEmployee = row.employee_id
+              ? employees.find((e) => e.employee_id === +row.employee_id)
+              : null;
+
+            // Check if current employee is reassigned (not in this service)
+            const isCurrentReassigned =
+              currentEmployee &&
+              currentEmployee.team_service_id !== service.team_service_id;
+
+            // Get the service name for the reassigned employee
+            const newService = isCurrentReassigned
+              ? services.find((s) => s.team_service_id === currentEmployee.team_service_id)
+              : null;
+
+            return (
+              <div key={row.id} className="space-y-1">
+                <div className="grid grid-cols-[1fr,1fr,80px,auto,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
+                  <select
+                    ref={(el) => (selectRefs.current[row.id] = el)}
+                    value={row.employee_id}
+                    onChange={(e) =>
+                      onInputChange(row.id, "employee_id", e.target.value)
+                    }
+                    className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      isCurrentReassigned
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
                   >
-                    {employee.employee_name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={
-                  row.hours?.display ||
-                  (typeof row.hours === "object" ? "" : row.hours) ||
-                  ""
-                }
-                onChange={(e) => onInputChange(row.id, "hours", e.target.value)}
-                onBlur={onBlur}
-                disabled={!row.employee_id}
-                className={`px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  !row.employee_id ? "bg-gray-100 cursor-not-allowed" : ""
-                }`}
-                placeholder={
-                  !row.employee_id
-                    ? "Select employee first"
-                    : row.employee_id === FIXED_AMOUNT
-                    ? "Amount"
-                    : "Hours (HH:MM or decimal)"
-                }
-                pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
-              />
-              <span className="text-sm text-gray-500">
-                {row.employee_id !== FIXED_AMOUNT && row.hours?.decimal
-                  ? row.hours.decimal
-                  : ""}
-              </span>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id={`overtime-${row.id}`}
-                  checked={row.isOvertime || false}
-                  onChange={(e) =>
-                    onInputChange(row.id, "isOvertime", e.target.checked)
-                  }
-                  disabled={
-                    !row.employee_id || row.employee_id === FIXED_AMOUNT
-                  }
-                  className={`h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
-                    !row.employee_id || row.employee_id === FIXED_AMOUNT
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
-                />
-                <label
-                  htmlFor={`overtime-${row.id}`}
-                  className={`ml-2 text-sm ${
-                    !row.employee_id || row.employee_id === FIXED_AMOUNT
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-gray-700"
-                  }`}
-                >
-                  Overtime
-                </label>
-              </div>
-              <button
-                onClick={() => onDeleteRow(row.id)}
-                className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    <option value="">Select...</option>
+                    {(() => {
+                      // Build the options list
+                      const options = [];
+
+                      // Add currently assigned employees
+                      availableEmployees.forEach((employee) => {
+                        const isPreviouslyAssigned =
+                          employee.team_service_id !== service.team_service_id &&
+                          !employee.is_fixed_amount;
+                        options.push(
+                          <option
+                            key={employee.employee_id}
+                            value={employee.employee_id}
+                            disabled={isPreviouslyAssigned}
+                          >
+                            {employee.employee_name}
+                            {isPreviouslyAssigned ? " (reassign)" : ""}
+                          </option>
+                        );
+                      });
+
+                      // If current employee is reassigned and not already in the list, add them
+                      if (
+                        isCurrentReassigned &&
+                        !availableEmployees.find(
+                          (e) => e.employee_id === currentEmployee.employee_id
+                        )
+                      ) {
+                        options.push(
+                          <option
+                            key={currentEmployee.employee_id}
+                            value={currentEmployee.employee_id}
+                            disabled
+                          >
+                            {currentEmployee.employee_name}
+                          </option>
+                        );
+                      }
+
+                      return options;
+                    })()}
+                  </select>
+                  <input
+                    type="text"
+                    value={
+                      row.hours?.display ||
+                      (typeof row.hours === "object" ? "" : row.hours) ||
+                      ""
+                    }
+                    onChange={(e) => onInputChange(row.id, "hours", e.target.value)}
+                    onBlur={onBlur}
+                    disabled={!row.employee_id}
+                    className={`px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      !row.employee_id ? "bg-gray-100 cursor-not-allowed" : ""
+                    }`}
+                    placeholder={
+                      !row.employee_id
+                        ? "Select employee first"
+                        : row.employee_id === FIXED_AMOUNT
+                        ? "Amount"
+                        : "Hours (HH:MM or decimal)"
+                    }
+                    pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
                   />
-                </svg>
-              </button>
-            </div>
-          ))}
+                  <span className="text-sm text-gray-500">
+                    {row.employee_id !== FIXED_AMOUNT && row.hours?.decimal
+                      ? row.hours.decimal
+                      : ""}
+                  </span>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`overtime-${row.id}`}
+                      checked={row.isOvertime || false}
+                      onChange={(e) =>
+                        onInputChange(row.id, "isOvertime", e.target.checked)
+                      }
+                      disabled={
+                        !row.employee_id || row.employee_id === FIXED_AMOUNT
+                      }
+                      className={`h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                        !row.employee_id || row.employee_id === FIXED_AMOUNT
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    />
+                    <label
+                      htmlFor={`overtime-${row.id}`}
+                      className={`ml-2 text-sm ${
+                        !row.employee_id || row.employee_id === FIXED_AMOUNT
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      Overtime
+                    </label>
+                  </div>
+                  <button
+                    onClick={() => onDeleteRow(row.id)}
+                    className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                {isCurrentReassigned && (
+                  <div className="px-4 text-sm text-red-600">
+                    Move {currentEmployee.employee_name} to {newService?.service_name || 'their new service'}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           <button
             onClick={() => onAddRow(service.team_service_id)}
             className="w-full py-2 px-4 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-150 ease-in-out"
@@ -241,6 +320,7 @@ const EmployeeTypeAccordion = ({
 
 EmployeeTypeAccordion.propTypes = {
   service: PropTypes.object.isRequired,
+  services: PropTypes.array.isRequired,
   employees: PropTypes.array.isRequired,
   serviceData: PropTypes.object.isRequired,
   onAddRow: PropTypes.func.isRequired,
