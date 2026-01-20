@@ -169,7 +169,7 @@ const AdminDashboard = () => {
       label: "Estimate Defaults",
       path: PATHS.MANAGE_TEAM_ESTIMATE_DEFAULTS,
       component: TeamEstimateDefaultsSettings,
-      props: {maxWidthClass: "max-w-4xl"},
+      props: {maxWidthClass: "max-w-5xl"},
       requiresAdmin: true,
       requiresFeatureToggle: "enable_estimates",
     },

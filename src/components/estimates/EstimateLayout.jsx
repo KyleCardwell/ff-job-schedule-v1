@@ -277,6 +277,7 @@ const EstimateLayout = () => {
                         setShowProjectInfo(false);
                         setShowSectionForm(false);
                         setShowEstimateDefaultsForm(false);
+                        setShowLineItemsEditor(false);
                       }}
                       onDelete={() => setSelectedTaskId(null)}
                       sections={task.sections || []}
@@ -389,8 +390,8 @@ const EstimateLayout = () => {
             </div>
           </div>
         ) : showEstimateDefaultsForm ? (
-          <div className="p-6 overflow-y-auto h-full">
-            <div className="max-w-4xl mx-auto">
+          <div className="px-6 overflow-y-auto h-full">
+            <div className="max-w-5xl mx-auto">
               <EstimateSectionForm
                 editType="estimate"
                 estimateData={currentEstimate}
@@ -423,7 +424,7 @@ const EstimateLayout = () => {
           </div>
         ) : showSectionForm ? (
           <div className="p-6 overflow-y-auto h-full">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <EstimateSectionForm
                 taskId={selectedTaskId}
                 section={
