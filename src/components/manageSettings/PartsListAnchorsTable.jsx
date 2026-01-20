@@ -22,9 +22,28 @@ const AnchorRow = ({
 
     let updatedAnchor;
     if (serviceId) {
-      const updatedServices = anchor.services.map((s) =>
-        s.team_service_id === serviceId ? { ...s, minutes: value } : s
+      const existingService = anchor.services?.find(
+        (s) => s.team_service_id === serviceId
       );
+      
+      let updatedServices;
+      if (existingService) {
+        // Update existing service
+        updatedServices = anchor.services.map((s) =>
+          s.team_service_id === serviceId ? { ...s, minutes: value } : s
+        );
+      } else {
+        // Add new service
+        const service = services.find((s) => s.team_service_id === serviceId);
+        updatedServices = [
+          ...(anchor.services || []),
+          {
+            id: service?.id,
+            team_service_id: serviceId,
+            minutes: value,
+          },
+        ];
+      }
       updatedAnchor = { ...anchor, services: updatedServices };
     } else {
       updatedAnchor = { ...anchor, [name]: value };
