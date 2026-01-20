@@ -212,6 +212,8 @@ const FinancialsInputSection = ({
               };
             } else if (row.employee_id) {
               // For regular employees, multiply decimal hours by rate
+              // Note: This searches the full employees array, so it will find
+              // employees even if they've been reassigned to a different service
               const selectedEmployee = employees.find(
                 (e) => e.employee_id === +row.employee_id
               );
@@ -680,6 +682,7 @@ const FinancialsInputSection = ({
                     <EmployeeTypeAccordion
                       key={service.team_service_id}
                       service={service}
+                      services={services}
                       employees={employees}
                       serviceData={serviceData}
                       onAddRow={handleAddHoursRow}
