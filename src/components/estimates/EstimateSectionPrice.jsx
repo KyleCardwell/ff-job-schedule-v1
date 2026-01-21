@@ -4,39 +4,20 @@ import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
-import { createSectionContext } from "../../utils/createSectionContext";
 import { roundToHundredth } from "../../utils/estimateHelpers";
-import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
 import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
 
-const EstimateSectionPrice = ({ section, onSaveToggles }) => {
-  // Get materials from Redux store
-  const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
-    (state) => state.materials
-  );
-  const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
-
-  // Get employee rates from Redux store
-  const services = useSelector((state) => state.services?.allServices || []);
-
-  const finishTypes = useSelector((state) => state.finishes?.finishes || []);
-
-  const cabinetStyles = useSelector(
-    (state) =>
-      state.cabinetStyles?.styles.filter((style) => style.is_active) || []
-  );
-
-  const cabinetTypes = useSelector(
-    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []
-  );
-
-  const { hardware, accessories, lengths } = useSelector((state) => state);
+const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) => {
+  // sectionCalculations is now passed as a prop from EstimateLayout
 
   // Edit mode state for toggles
   const [isEditingToggles, setIsEditingToggles] = useState(false);
   const [partsToggles, setPartsToggles] = useState({});
   const [serviceToggles, setServiceToggles] = useState({});
+
+  // Get services from Redux for toggle initialization
+  const services = useSelector((state) => state.services?.allServices || []);
 
   // Define the parts that can be toggled
   const partsCategories = [
@@ -83,13 +64,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section?.parts_included, section?.services_included]);
 
-  const partsListAnchors = useSelector(
-    (state) => state.partsListAnchors?.itemsByPartsList || []
-  );
-
-  const cabinetAnchors = useSelector(
-    (state) => state.cabinetAnchors?.itemsByType || []
-  );
+  // Removed Redux selectors - data is now calculated in parent
 
   const handleEditToggles = () => {
     setIsEditingToggles(true);
@@ -148,55 +123,12 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
     }));
   };
 
-  // Get estimate and team for defaults fallback
-  const currentEstimate = useSelector(
-    (state) => state.estimates?.currentEstimate
-  );
-
-  // Create context and calculate section totals using extracted utility
-  const { context, effectiveSection } = useMemo(() => {
-    const catalogData = {
-      boxMaterials,
-      faceMaterials,
-      drawerBoxMaterials,
-      finishTypes,
-      cabinetStyles,
-      cabinetTypes,
-      hardware,
-      partsListAnchors,
-      cabinetAnchors,
-      globalServices: services,
-      lengthsCatalog: lengths?.catalog || [],
-      accessories,
-      teamDefaults,
-    };
-
-    return createSectionContext(section, currentEstimate, catalogData);
-  }, [
-    section,
-    currentEstimate,
-    boxMaterials,
-    faceMaterials,
-    drawerBoxMaterials,
-    finishTypes,
-    cabinetStyles,
-    cabinetTypes,
-    hardware,
-    partsListAnchors,
-    cabinetAnchors,
-    services,
-    lengths,
-    accessories,
-    teamDefaults,
-  ]);
-
-  // Calculate the total price and face counts of all items in the section
-  const sectionCalculations = useMemo(() => {
-    return getSectionCalculations(effectiveSection, context);
-  }, [effectiveSection, context]);
+  // Section calculations are now passed from parent
 
   // Calculate display values for quantity 0 handling
   const displayValues = useMemo(() => {
+    if (!sectionCalculations) return { unitPrice: 0, displayTotal: 0, actualQuantity: 0, showUnitPrice: false };
+    
     const actualQuantity = section.quantity;
     const calculationQuantity = actualQuantity === 0 ? 1 : actualQuantity;
 
@@ -213,7 +145,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
       actualQuantity,
       showUnitPrice: actualQuantity === 0, // Show unit price when quantity is 0
     };
-  }, [section.quantity, sectionCalculations.totalPrice]);
+  }, [section.quantity, sectionCalculations]);
 
   // Format number as currency
   const formatCurrency = (amount, { noCents = false } = {}) => {
@@ -229,6 +161,11 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
   const formatHours = (hours) => {
     return roundToHundredth(parseFloat(hours || 0));
   };
+
+  // Breakdown is now handled in EstimateSectionManager (not here)
+  if (!sectionCalculations) {
+    return <div className="text-slate-400 text-center p-4">Loading...</div>;
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -839,6 +776,7 @@ const EstimateSectionPrice = ({ section, onSaveToggles }) => {
 
 EstimateSectionPrice.propTypes = {
   section: PropTypes.object.isRequired,
+  sectionCalculations: PropTypes.object,
   onSaveToggles: PropTypes.func,
 };
 

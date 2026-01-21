@@ -525,7 +525,12 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
 export const calculateBoxPartsTime = (section, context = {}) => {
   const { partsListAnchors, globalServices } = context;
   const totals = {
-    hoursByService: {}, // Detailed breakdown by service
+    hoursByService: {}, // Detailed breakdown by service (all parts)
+    categoryHours: {
+      boxes: {}, // Regular box parts
+      fillers: {}, // Filler parts
+      endPanelNosing: {}, // End panel nosing parts
+    },
   };
 
   if (!section.cabinets || !Array.isArray(section.cabinets)) {
@@ -542,23 +547,58 @@ export const calculateBoxPartsTime = (section, context = {}) => {
     const quantity = Number(cabinet.quantity) || 1;
     const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
 
-    // Calculate hours for this cabinet's parts (multipliers applied per-part)
-    const cabinetHours = calculatePartsTimeForCabinet(boxPartsList, context);
+    // Separate parts by type
+    const fillerParts = boxPartsList.filter(p => p.type === 'filler' || (cabinet.type === 5));
+    const nosingParts = boxPartsList.filter(p => p.type === 'end_panel_nosing');
+    const regularParts = boxPartsList.filter(p => p.type !== 'filler' && p.type !== 'end_panel_nosing' && cabinet.type !== 5);
 
-    // Aggregate by service and multiply by cabinet quantity
-    Object.entries(cabinetHours).forEach(([teamServiceId, hours]) => {
-      const service = globalServices.find(
-        (s) => s.team_service_id === parseInt(teamServiceId)
-      );
-      if (!service) return;
+    // Calculate hours for regular box parts
+    if (regularParts.length > 0) {
+      const regularHours = calculatePartsTimeForCabinet(regularParts, context);
+      Object.entries(regularHours).forEach(([teamServiceId, hours]) => {
+        const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
+        if (!service) return;
+        
+        const roundedHours = roundToHundredth(hours * quantity);
+        if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
+        if (!totals.categoryHours.boxes[service.service_id]) totals.categoryHours.boxes[service.service_id] = 0;
+        
+        totals.hoursByService[service.service_id] += roundedHours;
+        totals.categoryHours.boxes[service.service_id] += roundedHours;
+      });
+    }
 
-      if (!totals.hoursByService[service.service_id]) {
-        totals.hoursByService[service.service_id] = 0;
-      }
+    // Calculate hours for filler parts
+    if (fillerParts.length > 0) {
+      const fillerHours = calculatePartsTimeForCabinet(fillerParts, context);
+      Object.entries(fillerHours).forEach(([teamServiceId, hours]) => {
+        const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
+        if (!service) return;
+        
+        const roundedHours = roundToHundredth(hours * quantity);
+        if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
+        if (!totals.categoryHours.fillers[service.service_id]) totals.categoryHours.fillers[service.service_id] = 0;
+        
+        totals.hoursByService[service.service_id] += roundedHours;
+        totals.categoryHours.fillers[service.service_id] += roundedHours;
+      });
+    }
 
-      // Only multiply by cabinet quantity here - multipliers already applied per-part
-      totals.hoursByService[service.service_id] += hours * quantity;
-    });
+    // Calculate hours for nosing parts
+    if (nosingParts.length > 0) {
+      const nosingHours = calculatePartsTimeForCabinet(nosingParts, context);
+      Object.entries(nosingHours).forEach(([teamServiceId, hours]) => {
+        const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
+        if (!service) return;
+        
+        const roundedHours = roundToHundredth(hours * quantity);
+        if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
+        if (!totals.categoryHours.endPanelNosing[service.service_id]) totals.categoryHours.endPanelNosing[service.service_id] = 0;
+        
+        totals.hoursByService[service.service_id] += roundedHours;
+        totals.categoryHours.endPanelNosing[service.service_id] += roundedHours;
+      });
+    }
   });
 
   return totals;

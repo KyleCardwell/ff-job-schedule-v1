@@ -22,7 +22,9 @@ import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
 import { PATHS } from "../../utils/constants";
+import { createSectionContext } from "../../utils/createSectionContext";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
+import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateLineItemsEditor from "./EstimateLineItemsEditor.jsx";
@@ -122,6 +124,56 @@ const EstimateLayout = () => {
       (section) => section.est_section_id === selectedSectionId
     );
   }, [selectedTask?.sections, selectedSectionId]);
+
+  // Get all catalog data from Redux
+  const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector((state) => state.materials);
+  const services = useSelector((state) => state.services?.allServices || []);
+  const finishTypes = useSelector((state) => state.finishes?.finishes || []);
+  const cabinetStyles = useSelector((state) => state.cabinetStyles?.styles.filter((style) => style.is_active) || []);
+  const cabinetTypes = useSelector((state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []);
+  const { hardware, accessories, lengths } = useSelector((state) => state);
+  const partsListAnchors = useSelector((state) => state.partsListAnchors?.itemsByPartsList || []);
+  const cabinetAnchors = useSelector((state) => state.cabinetAnchors?.itemsByType || []);
+
+  // Calculate section calculations for the selected section
+  const sectionCalculations = useMemo(() => {
+    if (!selectedSection) return null;
+
+    const catalogData = {
+      boxMaterials,
+      faceMaterials,
+      drawerBoxMaterials,
+      finishTypes,
+      cabinetStyles,
+      cabinetTypes,
+      hardware,
+      partsListAnchors,
+      cabinetAnchors,
+      globalServices: services,
+      lengthsCatalog: lengths?.catalog || [],
+      accessories,
+      teamDefaults,
+    };
+
+    const { context, effectiveSection } = createSectionContext(selectedSection, currentEstimate, catalogData);
+    return getSectionCalculations(effectiveSection, context);
+  }, [
+    selectedSection,
+    currentEstimate,
+    boxMaterials,
+    faceMaterials,
+    drawerBoxMaterials,
+    finishTypes,
+    cabinetStyles,
+    cabinetTypes,
+    hardware,
+    partsListAnchors,
+    cabinetAnchors,
+    services,
+    lengths,
+    accessories,
+    teamDefaults,
+  ]);
 
   // Calculate which tasks have sections with cabinet errors
   // Use three-tier fallback for style comparison: section → estimate → team
@@ -454,11 +506,13 @@ const EstimateLayout = () => {
                     taskId={selectedTaskId}
                     sectionId={selectedSectionId}
                     section={selectedSection}
+                    sectionCalculations={sectionCalculations}
                   />
                 </div>
                 <div className="w-80 p-6 overflow-y-auto border-l border-slate-700">
                   <EstimateSectionPrice 
                     section={selectedSection}
+                    sectionCalculations={sectionCalculations}
                     onSaveToggles={handleSaveToggles}
                   />
                 </div>
