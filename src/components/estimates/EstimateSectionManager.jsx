@@ -439,10 +439,28 @@ const EstimateSectionManager = ({
 
   // Render breakdown view if active
   if (showBreakdown && sectionCalculations) {
+    // Find the current task to get task name
+    const currentTask = currentEstimate?.tasks?.find(
+      (t) => t.est_task_id === taskId,
+    );
+    
+    // Calculate section number (1-indexed)
+    const sectionIndex = currentTask?.sections?.findIndex(
+      (s) => s.est_section_id === section.est_section_id,
+    );
+    const sectionNumber = sectionIndex !== undefined && sectionIndex >= 0 ? sectionIndex + 1 : null;
+    
+    // Determine section display name
+    const sectionDisplayName = section?.section_name 
+      || (sectionNumber ? `Section ${sectionNumber}` : "");
+
     return (
       <div className="flex-1 max-w-6xl mx-auto space-y-4">
         <EstimateSectionBreakdown
           sectionCalculations={sectionCalculations}
+          projectName={currentEstimate?.est_project_name || ""}
+          taskName={currentTask?.est_task_name || ""}
+          sectionName={sectionDisplayName}
           onClose={() => setShowBreakdown(false)}
         />
       </div>

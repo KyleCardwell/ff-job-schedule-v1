@@ -3,7 +3,15 @@ import { FiX } from "react-icons/fi";
 
 import { roundToHundredth } from "../../utils/estimateHelpers";
 
-const EstimateSectionBreakdown = ({ sectionCalculations, onClose }) => {
+import GenerateSectionBreakdownPdf from "./GenerateSectionBreakdownPdf.jsx";
+
+const EstimateSectionBreakdown = ({ 
+  sectionCalculations, 
+  projectName,
+  taskName,
+  sectionName,
+  onClose 
+}) => {
   const formatCurrency = (value) => {
     return `$${roundToHundredth(parseFloat(value || 0)).toLocaleString()}`;
   };
@@ -162,16 +170,24 @@ const EstimateSectionBreakdown = ({ sectionCalculations, onClose }) => {
 
   return (
     <div className="bg-slate-800 rounded-lg flex flex-col h-full">
-      {/* Sticky Header - Title and Close Button */}
+      {/* Sticky Header - Title and Buttons */}
       <div className="flex justify-between items-center p-6 pb-4 border-b border-slate-600 flex-shrink-0">
         <h2 className="text-xl font-bold text-white">Section Parts & Labor Breakdown</h2>
-        <button
-          onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
-        >
-          <FiX size={18} />
-          Close
-        </button>
+        <div className="flex gap-3">
+          <GenerateSectionBreakdownPdf 
+            sectionCalculations={sectionCalculations}
+            projectName={projectName}
+            taskName={taskName}
+            sectionName={sectionName}
+          />
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
+          >
+            <FiX size={18} />
+            Close
+          </button>
+        </div>
       </div>
 
       {/* Sticky Table Header */}
@@ -254,6 +270,9 @@ const EstimateSectionBreakdown = ({ sectionCalculations, onClose }) => {
 
 EstimateSectionBreakdown.propTypes = {
   sectionCalculations: PropTypes.object.isRequired,
+  projectName: PropTypes.string,
+  taskName: PropTypes.string,
+  sectionName: PropTypes.string,
   onClose: PropTypes.func.isRequired,
 };
 
