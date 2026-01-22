@@ -31,15 +31,18 @@ const calculateFaceTotals = (section, context) => {
   const totals = {
     faceCounts: {},
     facePrices: {},
-    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
+    hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install (aggregate)
+    categoryHours: {}, // Hours by face type
     glassTotal: 0,
     glassCount: 0,
+    hoodCount: 0,
   };
 
   FACE_TYPES.forEach((type) => {
     if (type.value === "reveal") return;
     totals.faceCounts[type.value] = 0;
     totals.facePrices[type.value] = 0;
+    totals.categoryHours[type.value] = {}; // Initialize hours tracking for each face type
   });
 
   if (!section.cabinets || !Array.isArray(section.cabinets)) {
@@ -166,6 +169,11 @@ const calculateFaceTotals = (section, context) => {
         context
       );
 
+      const categoryKey = 'panel';
+      const typeName = cabinet.type === 10 ? 'End Panel' : 'Appliance Panel';
+      
+      console.log(`🟣 ${typeName} (cabinet ${cabinet.id || cabinet.temp_id}):`, panelHours);
+      
       // Aggregate panel hours by converting team_service_id to service_id
       Object.entries(panelHours).forEach(([teamServiceId, hours]) => {
         const service = context.globalServices?.find(
@@ -179,7 +187,20 @@ const calculateFaceTotals = (section, context) => {
         }
         // Hours already include quantity multiplier from calculatePanelPartsTime
         totals.hoursByService[serviceId] += hours || 0;
+        
+        // Track in categoryHours for breakdown display
+        if (!totals.categoryHours[categoryKey]) {
+          totals.categoryHours[categoryKey] = {};
+        }
+        if (!totals.categoryHours[categoryKey][serviceId]) {
+          totals.categoryHours[categoryKey][serviceId] = 0;
+        }
+        totals.categoryHours[categoryKey][serviceId] += hours || 0;
+        
+        console.log(`  Added ${hours} hours to categoryHours.${categoryKey}[${serviceId}]`);
       });
+      
+      console.log(`  categoryHours.${categoryKey} now:`, totals.categoryHours[categoryKey]);
     }
 
     // Add service hours for hoods (type 14)
@@ -191,6 +212,9 @@ const calculateFaceTotals = (section, context) => {
         cabinetStyleId,
         { ...context, itemTypeConfig }
       );
+
+      // Increment hood count
+      totals.hoodCount += quantity;
 
       // Aggregate hood hours by converting team_service_id to service_id
       Object.entries(hoodHours).forEach(([teamServiceId, hours]) => {
@@ -205,6 +229,15 @@ const calculateFaceTotals = (section, context) => {
         }
         // Hours already include quantity multiplier from calculateHoodPartsTime
         totals.hoursByService[serviceId] += hours || 0;
+        
+        // Track in categoryHours for breakdown display
+        if (!totals.categoryHours.hood) {
+          totals.categoryHours.hood = {};
+        }
+        if (!totals.categoryHours.hood[serviceId]) {
+          totals.categoryHours.hood[serviceId] = 0;
+        }
+        totals.categoryHours.hood[serviceId] += hours || 0;
       });
     }
 
@@ -254,10 +287,11 @@ const calculateFaceTotals = (section, context) => {
           ) {
             panelModId = effectiveValues.door_panel_mod_id;
           }
-
-          // Collect faces for hour calculation with cabinet style ID
+          
+          // Collect faces for hour calculation with cabinet style ID and face type
           allFacesForHours.push({
             faces: faceData.faces,
+            faceType,
             styleToUse,
             cabinetStyleId,
             panelModId,
@@ -287,16 +321,29 @@ const calculateFaceTotals = (section, context) => {
     );
   });
 
-  // Calculate hours using parts list anchors (same as before)
+  // Log what's in facesByStyle for comparison
+  console.log('📊 facesByStyle summary:');
+  Object.entries(facesByStyle).forEach(([style, faces]) => {
+    const byType = faces.reduce((acc, face) => {
+      acc[face.faceType] = (acc[face.faceType] || 0) + 1;
+      return acc;
+    }, {});
+    console.log(`  Style "${style}": ${faces.length} faces`, byType);
+  });
+
+  // Calculate hours using parts list anchors
+  console.log('🔵 Starting face hours calculation, allFacesForHours count:', allFacesForHours.length);
+  
   allFacesForHours.forEach(
     ({
       faces,
+      faceType,
       styleToUse,
       cabinetStyleId,
       panelModId,
       quantity,
       cabinetTypeId,
-    }) => {
+    }, index) => {
       const faceHours = calculateDoorPartsTime(
         faces,
         styleToUse,
@@ -305,6 +352,9 @@ const calculateFaceTotals = (section, context) => {
         cabinetTypeId,
         context
       );
+
+      console.log(`  Face batch ${index + 1}: faceType="${faceType}", quantity=${quantity}, faces=${faces?.length || 0}`);
+      console.log(`    Raw hours from calculateDoorPartsTime:`, faceHours);
 
       // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
       if (faceHours) {
@@ -315,15 +365,35 @@ const calculateFaceTotals = (section, context) => {
           if (!service) return;
 
           const serviceId = service.service_id;
+          const hoursWithQuantity = roundToHundredth((hours || 0) * quantity);
+          
+          console.log(`    Service ${serviceId}: ${hours} × ${quantity} = ${hoursWithQuantity}`);
+          
+          // Add to aggregate total
           if (!totals.hoursByService[serviceId]) {
             totals.hoursByService[serviceId] = 0;
           }
-          // Multiply by cabinet quantity (multipliers already applied per-face)
-          totals.hoursByService[serviceId] += (hours || 0) * quantity;
+          totals.hoursByService[serviceId] += hoursWithQuantity;
+          
+          // Track by face type for category hours
+          // Initialize the faceType object if it doesn't exist (for non-standard face types)
+          if (!totals.categoryHours[faceType]) {
+            totals.categoryHours[faceType] = {};
+          }
+          if (!totals.categoryHours[faceType][serviceId]) {
+            totals.categoryHours[faceType][serviceId] = 0;
+          }
+          totals.categoryHours[faceType][serviceId] += hoursWithQuantity;
+          
+          console.log(`    categoryHours.${faceType}[${serviceId}] now = ${totals.categoryHours[faceType][serviceId]}`);
         });
       }
     }
   );
+  
+  console.log('🔵 Face hours calculation complete');
+  console.log('  Aggregate hoursByService:', totals.hoursByService);
+  console.log('  categoryHours breakdown:', totals.categoryHours);
 
   // Calculate prices by style using bulk functions
   Object.entries(facesByStyle).forEach(([styleToUse, faces]) => {
@@ -967,6 +1037,58 @@ const countHardware = (section, faceTotals, context) => {
     });
   }
 
+  // Separate hours by hardware type for detailed breakdown
+  const hingesHours = {};
+  const slidesHours = {};
+  const pullsHours = {};
+
+  // Process hinges services
+  if (doorHinge && totalHinges > 0) {
+    (doorHinge.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        const hoursPerUnit = service.time_per_unit / 60;
+        hingesHours[serviceId] = roundToHundredth(hoursPerUnit * totalHinges);
+      }
+    });
+  }
+
+  // Process door pulls services
+  if (doorPull && (totalDoorPulls > 0 || totalAppliancePulls > 0)) {
+    const totalDoorAndAppliancePulls = totalDoorPulls + totalAppliancePulls;
+    (doorPull.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        const hoursPerUnit = service.time_per_unit / 60;
+        if (!pullsHours[serviceId]) pullsHours[serviceId] = 0;
+        pullsHours[serviceId] += roundToHundredth(hoursPerUnit * totalDoorAndAppliancePulls);
+      }
+    });
+  }
+
+  // Process drawer pulls services
+  if (drawerPull && totalDrawerPulls > 0) {
+    (drawerPull.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        const hoursPerUnit = service.time_per_unit / 60;
+        if (!pullsHours[serviceId]) pullsHours[serviceId] = 0;
+        pullsHours[serviceId] += roundToHundredth(hoursPerUnit * totalDrawerPulls);
+      }
+    });
+  }
+
+  // Process slides services
+  if (drawerSlide && totalSlides > 0) {
+    (drawerSlide.services || []).forEach((service) => {
+      if (service.time_per_unit > 0) {
+        const serviceId = service.service_id;
+        const hoursPerUnit = service.time_per_unit / 60;
+        slidesHours[serviceId] = roundToHundredth(hoursPerUnit * totalSlides);
+      }
+    });
+  }
+
   return {
     hingesCount: totalHinges,
     hingesTotal,
@@ -975,6 +1097,11 @@ const countHardware = (section, faceTotals, context) => {
     slidesCount: totalSlides,
     slidesTotal,
     hoursByService,
+    categoryHours: {
+      hinges: hingesHours,
+      slides: slidesHours,
+      pulls: pullsHours,
+    },
   };
 };
 
@@ -995,6 +1122,13 @@ const calculateCabinetTotals = (section, context) => {
 
   // Calculate face totals (counts, prices, and hours)
   const faceTotals = calculateFaceTotals(section, context);
+  
+  console.log('🟢 calculateCabinetTotals - faceTotals received:');
+  console.log('  faceTotals.hoursByService:', faceTotals.hoursByService);
+  console.log('  faceTotals.categoryHours:', faceTotals.categoryHours);
+
+  // Calculate hardware counts and totals
+  const hardwareTotals = countHardware(section, faceTotals, context);
 
   // Calculate drawer box and rollout totals
   const drawerRolloutTotals = calculateDrawerAndRolloutTotals(section, context);
@@ -1030,9 +1164,6 @@ const calculateCabinetTotals = (section, context) => {
   //   (sum, price) => sum + price,
   //   0
   // );
-
-  // Calculate hardware counts and totals
-  const hardwareTotals = countHardware(section, faceTotals, context);
 
   // Initialize all services from globalServices with 0 hours
   // This ensures all services show up in the UI, even if they have 0 hours
@@ -1075,8 +1206,9 @@ const calculateCabinetTotals = (section, context) => {
     hoursByService: mergedHoursByService,
     faceCounts: faceTotals.faceCounts,
     facePrices: faceTotals.facePrices,
-    drawerBoxCount: drawerRolloutTotals.drawerBoxCount,
+    hoodCount: faceTotals.hoodCount || 0,
     drawerBoxTotal: drawerRolloutTotals.drawerBoxTotal,
+    drawerBoxCount: drawerRolloutTotals.drawerBoxCount,
     rollOutCount: drawerRolloutTotals.rollOutCount,
     rollOutTotal: drawerRolloutTotals.rollOutTotal,
     hingesCount: hardwareTotals.hingesCount,
@@ -1090,6 +1222,44 @@ const calculateCabinetTotals = (section, context) => {
     fillerCount: fillerCount,
     glassCount: faceTotals.glassCount,
     glassTotal: faceTotals.glassTotal,
+    // Face frame component breakdown (for detailed breakdown view only)
+    faceFramePrices: {
+      woodTotal: faceFramePrices.woodTotal,
+      boardFeet: faceFramePrices.boardFeet,
+    },
+    fillerMaterials: {
+      woodTotal: fillerMaterials.woodTotal,
+      boardFeet: fillerMaterials.boardFeet,
+    },
+    endPanelNosingMaterials: {
+      woodTotal: endPanelNosingMaterials.woodTotal,
+      boardFeet: endPanelNosingMaterials.boardFeet,
+    },
+    // Per-category hours for breakdown display
+    categoryHours: {
+      boxes: boxHours?.categoryHours?.boxes || {},
+      faces: faceTotals.hoursByService || {},
+      // Individual face types
+      door: faceTotals.categoryHours?.door || {},
+      pair_door: faceTotals.categoryHours?.pair_door || {},
+      drawer_front: faceTotals.categoryHours?.drawer_front || {},
+      false_front: faceTotals.categoryHours?.false_front || {},
+      panel: faceTotals.categoryHours?.panel || {},
+      // Special cabinet types
+      endPanel: faceTotals.categoryHours?.endPanel || {},
+      appliancePanel: faceTotals.categoryHours?.appliancePanel || {},
+      hood: faceTotals.categoryHours?.hood || {},
+      // Hardware
+      hardware: hardwareTotals.hoursByService || {},
+      hinges: hardwareTotals.categoryHours?.hinges || {},
+      slides: hardwareTotals.categoryHours?.slides || {},
+      pulls: hardwareTotals.categoryHours?.pulls || {},
+      // Wood/face frame
+      wood: faceFramePrices.hoursByService || {},
+      faceFrame: faceFramePrices.hoursByService || {},
+      fillers: boxHours?.categoryHours?.fillers || {},
+      endPanelNosing: boxHours?.categoryHours?.endPanelNosing || {},
+    },
   };
 
   return totals;
@@ -1519,6 +1689,9 @@ export const getSectionCalculations = (section, context = {}) => {
   // Add manually entered hours from add_hours field
   if (section.add_hours && typeof section.add_hours === 'object') {
     Object.entries(section.add_hours).forEach(([serviceId, hours]) => {
+      // Skip setup_hours as it's handled separately below
+      if (serviceId === 'setup_hours') return;
+      
       const numericServiceId = parseInt(serviceId);
       const numericHours = parseFloat(hours) || 0;
       
@@ -1529,11 +1702,15 @@ export const getSectionCalculations = (section, context = {}) => {
         finalHoursByService[numericServiceId] += numericHours;
       }
     });
-  }
-
-  // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
-  if (finalHoursByService[4] && finalHoursByService[4] > 0) {
-    finalHoursByService[4] += 1;
+    
+    // Add setup_hours to Install service (service_id 4)
+    const setupHours = parseFloat(section.add_hours.setup_hours) || 0;
+    if (setupHours > 0) {
+      if (!finalHoursByService[4]) {
+        finalHoursByService[4] = 0;
+      }
+      finalHoursByService[4] += setupHours;
+    }
   }
 
   // Calculate labor costs by service ID
@@ -1617,6 +1794,7 @@ export const getSectionCalculations = (section, context = {}) => {
     facePrices: cabinetTotals.facePrices,
     boxTotal: cabinetTotals.boxPrice,
     boxCount: cabinetTotals.boxCount,
+    hoodCount: cabinetTotals.hoodCount || 0,
     laborCosts,
     drawerBoxCount: cabinetTotals.drawerBoxCount,
     drawerBoxTotal: cabinetTotals.drawerBoxTotal,
@@ -1630,6 +1808,8 @@ export const getSectionCalculations = (section, context = {}) => {
     slidesTotal: cabinetTotals.slidesTotal,
     woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
     woodCount: roundToHundredth(cabinetTotals.woodCount),
+    lengthsTotal: lengthTotals.materialTotal,
+    lengthsCount: (section.lengths || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
     fillerCount: cabinetTotals.fillerCount,
     accessoriesCount,
     accessoriesTotal: accessoriesTotalPrice,
@@ -1644,6 +1824,41 @@ export const getSectionCalculations = (section, context = {}) => {
     discountRate: section.discount,
     partsIncluded: partsIncluded, // Pass through for UI to know what's included
     servicesIncluded: section.services_included || {}, // Pass through for UI
+    // Face frame component breakdown (for detailed breakdown view only)
+    faceFrameWoodTotal: cabinetTotals.faceFramePrices?.woodTotal || 0,
+    faceFrameWoodCount: cabinetTotals.faceFramePrices?.boardFeet || 0,
+    fillerWoodTotal: cabinetTotals.fillerMaterials?.woodTotal || 0,
+    fillerWoodCount: cabinetTotals.fillerMaterials?.boardFeet || 0,
+    endPanelNosingWoodTotal: cabinetTotals.endPanelNosingMaterials?.woodTotal || 0,
+    endPanelNosingWoodCount: cabinetTotals.endPanelNosingMaterials?.boardFeet || 0,
+    // Per-category hours for breakdown display
+    categoryHours: {
+      boxes: cabinetTotals.categoryHours?.boxes || {},
+      faces: cabinetTotals.categoryHours?.faces || {},
+      // Individual face types
+      door: cabinetTotals.categoryHours?.door || {},
+      pair_door: cabinetTotals.categoryHours?.pair_door || {},
+      drawer_front: cabinetTotals.categoryHours?.drawer_front || {},
+      false_front: cabinetTotals.categoryHours?.false_front || {},
+      panel: cabinetTotals.categoryHours?.panel || {},
+      // Special cabinet types
+      endPanel: cabinetTotals.categoryHours?.endPanel || {},
+      appliancePanel: cabinetTotals.categoryHours?.appliancePanel || {},
+      hood: cabinetTotals.categoryHours?.hood || {},
+      // Hardware
+      hardware: cabinetTotals.categoryHours?.hardware || {},
+      hinges: cabinetTotals.categoryHours?.hinges || {},
+      slides: cabinetTotals.categoryHours?.slides || {},
+      pulls: cabinetTotals.categoryHours?.pulls || {},
+      // Wood/face frame
+      wood: cabinetTotals.categoryHours?.wood || {},
+      faceFrame: cabinetTotals.categoryHours?.faceFrame || {},
+      fillers: cabinetTotals.categoryHours?.fillers || {},
+      endPanelNosing: cabinetTotals.categoryHours?.endPanelNosing || {},
+      // Other categories
+      lengths: lengthTotals.hoursByService || {},
+      accessories: accessoriesTotal.hoursByService || {},
+    },
   };
 };
 

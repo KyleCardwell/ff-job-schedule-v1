@@ -1528,8 +1528,7 @@ const JobModal = ({
                         <input
                           id={`${room.task_id}-${workPeriod.subtask_id}-duration`}
                           type="number"
-                          step="0.01"
-                          min="0.01"
+                          step="1"
                           value={workPeriod.duration || ""}
                           onChange={(e) => {
                             handleWorkPeriodChange(
