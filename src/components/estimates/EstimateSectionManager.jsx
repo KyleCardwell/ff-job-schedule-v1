@@ -458,6 +458,7 @@ const EstimateSectionManager = ({
       <div className="flex-1 max-w-6xl mx-auto space-y-4">
         <EstimateSectionBreakdown
           sectionCalculations={sectionCalculations}
+          section={section}
           projectName={currentEstimate?.est_project_name || ""}
           taskName={currentTask?.est_task_name || ""}
           sectionName={sectionDisplayName}

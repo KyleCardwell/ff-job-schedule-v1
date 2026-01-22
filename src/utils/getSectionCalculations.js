@@ -1689,6 +1689,9 @@ export const getSectionCalculations = (section, context = {}) => {
   // Add manually entered hours from add_hours field
   if (section.add_hours && typeof section.add_hours === 'object') {
     Object.entries(section.add_hours).forEach(([serviceId, hours]) => {
+      // Skip setup_hours as it's handled separately below
+      if (serviceId === 'setup_hours') return;
+      
       const numericServiceId = parseInt(serviceId);
       const numericHours = parseFloat(hours) || 0;
       
@@ -1699,12 +1702,21 @@ export const getSectionCalculations = (section, context = {}) => {
         finalHoursByService[numericServiceId] += numericHours;
       }
     });
+    
+    // Add setup_hours to Install service (service_id 4)
+    const setupHours = parseFloat(section.add_hours.setup_hours) || 0;
+    if (setupHours > 0) {
+      if (!finalHoursByService[4]) {
+        finalHoursByService[4] = 0;
+      }
+      finalHoursByService[4] += setupHours;
+    }
   }
 
-  // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
-  if (finalHoursByService[4] && finalHoursByService[4] > 0) {
-    finalHoursByService[4] += 1;
-  }
+  // // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
+  // if (finalHoursByService[4] && finalHoursByService[4] > 0) {
+  //   finalHoursByService[4] += 1;
+  // }
 
   // Calculate labor costs by service ID
   const getLaborCosts = () => {

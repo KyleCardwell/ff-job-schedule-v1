@@ -15,18 +15,23 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
+  const [setupHours, setSetupHours] = useState(1);
 
   // Initialize form data from props
   useEffect(() => {
     // Initialize add hours
     if (addHours && typeof addHours === "object") {
-      setFormData({ ...addHours });
+      // Extract setup_hours separately
+      const { setup_hours, ...otherHours } = addHours;
+      setSetupHours(setup_hours !== undefined ? setup_hours : 1);
+      setFormData(otherHours);
     } else {
       const initialData = {};
       activeServices.forEach((service) => {
         initialData[service.service_id] = 0;
       });
       setFormData(initialData);
+      setSetupHours(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addHours]);
@@ -38,13 +43,16 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
   const handleCancel = () => {
     // Reset form data to original values
     if (addHours && typeof addHours === "object") {
-      setFormData({ ...addHours });
+      const { setup_hours, ...otherHours } = addHours;
+      setSetupHours(setup_hours !== undefined ? setup_hours : 1);
+      setFormData(otherHours);
     } else {
       const initialData = {};
       activeServices.forEach((service) => {
         initialData[service.service_id] = 0;
       });
       setFormData(initialData);
+      setSetupHours(1);
     }
 
     setIsEditing(false);
@@ -59,6 +67,12 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
         cleanedData[serviceId] = numericHours;
       }
     });
+
+    // Add setup_hours to the object
+    const numericSetupHours = parseFloat(setupHours);
+    if (!isNaN(numericSetupHours) && numericSetupHours >= 0) {
+      cleanedData.setup_hours = numericSetupHours;
+    }
 
     // Save all data to parent
     onSave({
@@ -83,9 +97,11 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
 
 
   const getTotalHours = () => {
-    return Object.values(formData).reduce((sum, hours) => {
+    const serviceHours = Object.values(formData).reduce((sum, hours) => {
       return sum + (parseFloat(hours) || 0);
     }, 0);
+    const setup = parseFloat(setupHours) || 0;
+    return serviceHours + setup;
   };
 
   return (
@@ -127,6 +143,52 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Setup Hours Input */}
+      <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <label
+              htmlFor="setup-hours"
+              className="text-sm font-medium text-white block mb-1"
+            >
+              Setup/Cleanup Hours
+            </label>
+            <p className="text-xs text-slate-300">
+              Added to Install hours. Defaults to 1 hour per section
+            </p>
+          </div>
+          <div className="flex items-center gap-2 ml-4">
+            <input
+              id="setup-hours"
+              type="number"
+              min="0"
+              step="0.25"
+              value={setupHours}
+              onChange={(e) => setSetupHours(e.target.value)}
+              disabled={!isEditing}
+              className={`
+                w-24 px-2 py-1 text-sm border rounded
+                ${
+                  isEditing
+                    ? "border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    : "border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
+                }
+              `}
+              placeholder="1"
+            />
+            {isEditing && parseFloat(setupHours) > 0 && (
+              <button
+                onClick={() => setSetupHours(0)}
+                className="text-slate-400 hover:text-red-500 transition-colors"
+                title="Clear setup hours"
+              >
+                <FiXCircle size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
