@@ -1713,11 +1713,6 @@ export const getSectionCalculations = (section, context = {}) => {
     }
   }
 
-  // // Add 1 hour setup/cleanup to install hours (service ID 4) if any install work exists
-  // if (finalHoursByService[4] && finalHoursByService[4] > 0) {
-  //   finalHoursByService[4] += 1;
-  // }
-
   // Calculate labor costs by service ID
   const getLaborCosts = () => {
     const hoursByService = finalHoursByService || {};
