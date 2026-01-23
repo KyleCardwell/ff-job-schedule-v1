@@ -784,97 +784,112 @@ const CabinetItemForm = ({
 
       const hardware = countFaceHardware(faceConfig, itemType);
 
-      // Calculate nosing for end panels (type 10) when depth > 0.75
+      // Calculate nosing for end panels (type 10)
       let boxPartsList = [];
-      if (itemType === ITEM_TYPES.END_PANEL.type && d > 0.75) {
-        const returnWidth = 6; // Return piece width
-
-        // Top nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_top) {
+      if (itemType === ITEM_TYPES.END_PANEL.type) {
+        // For cabinetStyleId !== 13 and depth === 0.75, add nosing with width 0
+        if (cabinetStyleId !== 13 && d === 0.75) {
           boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "top_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(w),
-            area: roundTo16th(d * w),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "top_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(w),
-            area: roundTo16th(returnWidth * w),
+            type: "nosing",
+            side: "edge_nosing",
+            width: 0,
+            height: roundTo16th(h),
+            area: 0,
             quantity: 1,
             finish: true,
           });
         }
+        // For depth > 0.75, add nosing with actual dimensions
+        else if (d > 0.75) {
+          const returnWidth = 6; // Return piece width
 
-        // Bottom nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_bottom) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "bottom_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(w),
-            area: roundTo16th(d * w),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "bottom_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(w),
-            area: roundTo16th(returnWidth * w),
-            quantity: 1,
-            finish: true,
-          });
-        }
+          // Top nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_top) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "top_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(w),
+              area: roundTo16th(d * w),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: "nosing",
+              side: "top_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(w),
+              area: roundTo16th(returnWidth * w),
+              quantity: 1,
+              finish: true,
+            });
+          }
 
-        // Left nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_left) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "left_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(h),
-            area: roundTo16th(d * h),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "left_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(h),
-            area: roundTo16th(returnWidth * h),
-            quantity: 1,
-            finish: true,
-          });
-        }
+          // Bottom nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_bottom) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "bottom_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(w),
+              area: roundTo16th(d * w),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: "nosing",
+              side: "bottom_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(w),
+              area: roundTo16th(returnWidth * w),
+              quantity: 1,
+              finish: true,
+            });
+          }
 
-        // Right nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_right) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "right_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(h),
-            area: roundTo16th(d * h),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "right_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(h),
-            area: roundTo16th(returnWidth * h),
-            quantity: 1,
-            finish: true,
-          });
+          // Left nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_left) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "left_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(h),
+              area: roundTo16th(d * h),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: "nosing",
+              side: "left_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(h),
+              area: roundTo16th(returnWidth * h),
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Right nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_right) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "right_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(h),
+              area: roundTo16th(d * h),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: "nosing",
+              side: "right_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(h),
+              area: roundTo16th(returnWidth * h),
+              quantity: 1,
+              finish: true,
+            });
+          }
         }
       }
 

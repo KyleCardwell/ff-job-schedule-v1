@@ -529,7 +529,7 @@ export const calculateBoxPartsTime = (section, context = {}) => {
     categoryHours: {
       boxes: {}, // Regular box parts
       fillers: {}, // Filler parts
-      endPanelNosing: {}, // End panel nosing parts
+      nosing: {}, // Nosing parts
     },
   };
 
@@ -549,8 +549,8 @@ export const calculateBoxPartsTime = (section, context = {}) => {
 
     // Separate parts by type
     const fillerParts = boxPartsList.filter(p => p.type === 'filler' || (cabinet.type === 5));
-    const nosingParts = boxPartsList.filter(p => p.type === 'end_panel_nosing');
-    const regularParts = boxPartsList.filter(p => p.type !== 'filler' && p.type !== 'end_panel_nosing' && cabinet.type !== 5);
+    const nosingParts = boxPartsList.filter(p => p.type === 'nosing');
+    const regularParts = boxPartsList.filter(p => p.type !== 'filler' && p.type !== 'nosing' && cabinet.type !== 5);
 
     // Calculate hours for regular box parts
     if (regularParts.length > 0) {
@@ -585,18 +585,39 @@ export const calculateBoxPartsTime = (section, context = {}) => {
     }
 
     // Calculate hours for nosing parts
+    // First, calculate material time for the parts (with multipliers)
+    // Then add nosing process time based on length (without multipliers)
     if (nosingParts.length > 0) {
-      const nosingHours = calculatePartsTimeForCabinet(nosingParts, context);
-      Object.entries(nosingHours).forEach(([teamServiceId, hours]) => {
+      // Calculate material hours (includes multipliers for the material itself)
+      const materialHours = calculatePartsTimeForCabinet(nosingParts, context);
+      Object.entries(materialHours).forEach(([teamServiceId, hours]) => {
         const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
         if (!service) return;
         
         const roundedHours = roundToHundredth(hours * quantity);
         if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
-        if (!totals.categoryHours.endPanelNosing[service.service_id]) totals.categoryHours.endPanelNosing[service.service_id] = 0;
+        if (!totals.categoryHours.nosing[service.service_id]) totals.categoryHours.nosing[service.service_id] = 0;
         
         totals.hoursByService[service.service_id] += roundedHours;
-        totals.categoryHours.endPanelNosing[service.service_id] += roundedHours;
+        totals.categoryHours.nosing[service.service_id] += roundedHours;
+      });
+
+      // Add nosing process time based on length (height) - NO multipliers
+      nosingParts.forEach((part) => {
+        const nosingLength = part.height; // Using height as the length for nosing
+        const nosingProcessHours = calculateNosingTime(nosingLength, context);
+        
+        Object.entries(nosingProcessHours).forEach(([teamServiceId, hours]) => {
+          const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
+          if (!service) return;
+          
+          const roundedHours = roundToHundredth(hours * quantity);
+          if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
+          if (!totals.categoryHours.nosing[service.service_id]) totals.categoryHours.nosing[service.service_id] = 0;
+          
+          totals.hoursByService[service.service_id] += roundedHours;
+          totals.categoryHours.nosing[service.service_id] += roundedHours;
+        });
       });
     }
   });
@@ -681,10 +702,12 @@ export const calculateDoorPartsTime = (
   }
 
   const hoursByService = {};
+  const panelModHoursByService = {};
 
   // Initialize all services to 0
   allServiceIds.forEach((serviceId) => {
     hoursByService[serviceId] = 0;
+    panelModHoursByService[serviceId] = 0;
   });
 
   // Process each face
@@ -735,6 +758,8 @@ export const calculateDoorPartsTime = (
           teamServiceId,
           cabinetStyleId
         );
+        // Track panel mod hours separately
+        panelModHoursByService[teamServiceId] += panelModMinutes;
       }
 
       hoursByService[teamServiceId] += totalMinutes + panelModMinutes;
@@ -748,7 +773,16 @@ export const calculateDoorPartsTime = (
     );
   });
 
-  return hoursByService;
+  Object.keys(panelModHoursByService).forEach((serviceId) => {
+    panelModHoursByService[serviceId] = roundToHundredth(
+      panelModHoursByService[serviceId] / 60
+    );
+  });
+
+  return {
+    hoursByService,
+    panelModHoursByService,
+  };
 };
 
 /**
@@ -849,6 +883,142 @@ export const calculatePanelPartsTime = (
   Object.keys(hoursByService).forEach((serviceId) => {
     hoursByService[serviceId] = roundToHundredth(
       (hoursByService[serviceId] / 60) * quantity
+    );
+  });
+
+  return hoursByService;
+};
+
+/**
+ * Linear interpolation based on a single dimension (length/width)
+ * Used for nosing where time is per linear inch
+ * @param {Array} anchors - Array of anchor objects with dimensions and services
+ * @param {number} targetLength - The length to interpolate for
+ * @param {number} teamServiceId - The service ID to get time for
+ * @returns {number} - Interpolated time in minutes
+ */
+const interpolateTimeByLength = (anchors, targetLength, teamServiceId) => {
+  if (!anchors || anchors.length === 0) {
+    return 0;
+  }
+
+  // Build array of {length, minutes} for this service, filtering out missing services
+  const dataPoints = anchors
+    .map((anchor) => {
+      const service = anchor.services.find(
+        (s) => s.team_service_id === teamServiceId
+      );
+      if (!service) return null;
+
+      return {
+        length: anchor.height, // Use width as the length dimension
+        minutes: service.minutes || 0,
+      };
+    })
+    .filter(Boolean);
+
+  if (dataPoints.length === 0) {
+    return 0;
+  }
+
+  // Sort by length for interpolation
+  dataPoints.sort((a, b) => a.length - b.length);
+
+  // If only one data point, return its value
+  if (dataPoints.length === 1) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is below minimum, return minimum value
+  if (targetLength <= dataPoints[0].length) {
+    return dataPoints[0].minutes;
+  }
+
+  // Find the two points to interpolate between
+  for (let i = 0; i < dataPoints.length - 1; i++) {
+    const lower = dataPoints[i];
+    const upper = dataPoints[i + 1];
+
+    if (targetLength >= lower.length && targetLength <= upper.length) {
+      // Avoid division by zero
+      if (upper.length - lower.length === 0) {
+        return lower.minutes;
+      }
+
+      // Linear interpolation: minutes = m1 + (m2 - m1) * (length - l1) / (l2 - l1)
+      const ratio = (targetLength - lower.length) / (upper.length - lower.length);
+      const interpolatedMinutes =
+        lower.minutes + ratio * (upper.minutes - lower.minutes);
+
+      return roundToHundredth(interpolatedMinutes);
+    }
+  }
+
+  // If target is above maximum, extrapolate using the last two points
+  const lastTwo = dataPoints.slice(-2);
+  if (lastTwo.length === 2) {
+    const lower = lastTwo[0];
+    const upper = lastTwo[1];
+    const ratio = (targetLength - lower.length) / (upper.length - lower.length);
+    const extrapolatedMinutes =
+      lower.minutes + ratio * (upper.minutes - lower.minutes);
+    return roundToHundredth(extrapolatedMinutes);
+  }
+
+  // Fallback
+  return dataPoints[dataPoints.length - 1].minutes;
+};
+
+/**
+ * Calculate nosing time based on length (time per inch of nosing)
+ * Nosing is a process that can be applied to various parts (end panels, appliance panels, etc.)
+ * Does NOT apply shop or finish multipliers - it's a separate process
+ * @param {number} length - Length of the nosing edge in inches (typically height or width)
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { serviceId: hours }
+ */
+export const calculateNosingTime = (length, context = {}) => {
+  const { partsListAnchors } = context;
+
+  if (!length || !partsListAnchors) {
+    return {};
+  }
+
+  const partsListId = PARTS_LIST_MAPPING["nosing"];
+  const anchors = partsListAnchors[partsListId];
+
+  if (!anchors || anchors.length === 0) {
+    return {};
+  }
+
+  // Collect all unique service IDs from anchors
+  const allServiceIds = new Set();
+  anchors.forEach((anchor) => {
+    anchor.services.forEach((service) => {
+      allServiceIds.add(service.team_service_id);
+    });
+  });
+
+  const hoursByService = {};
+
+  // Calculate time for each service based on length using linear interpolation
+  allServiceIds.forEach((teamServiceId) => {
+    const minutesBase = interpolateTimeByLength(
+      anchors,
+      length,
+      teamServiceId
+    );
+
+    // NO multipliers for nosing - it's a separate process
+    hoursByService[teamServiceId] = minutesBase;
+  });
+
+  // Convert minutes to hours for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      hoursByService[serviceId] / 60
     );
   });
 

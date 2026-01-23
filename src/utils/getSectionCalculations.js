@@ -126,7 +126,7 @@ const calculateFaceTotals = (section, context) => {
       } else if (cabinet.face_config?.boxSummary?.boxPartsList) {
         const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
         const nosingParts = boxPartsList.filter(
-          (part) => part.type === "end_panel_nosing"
+          (part) => part.type === "nosing"
         );
 
         if (nosingParts.length > 0) {
@@ -160,48 +160,48 @@ const calculateFaceTotals = (section, context) => {
       }
     }
 
-    // Add extra service hours for end panels (type 10) and appliance panels (type 11)
-    // Uses root dimensions with parts list anchors 17 and 18 respectively
-    if (cabinet.type === 10 || cabinet.type === 11) {
-      const panelHours = calculatePanelPartsTime(
-        cabinet,
-        cabinetStyleId,
-        context
-      );
+    // // Add extra service hours for end panels (type 10) and appliance panels (type 11)
+    // // Uses root dimensions with parts list anchors 17 and 18 respectively
+    // if (cabinet.type === 10 || cabinet.type === 11) {
+    //   const panelHours = calculatePanelPartsTime(
+    //     cabinet,
+    //     cabinetStyleId,
+    //     context
+    //   );
 
-      const categoryKey = 'panel';
-      const typeName = cabinet.type === 10 ? 'End Panel' : 'Appliance Panel';
+    //   const categoryKey = 'panel';
+    //   const typeName = cabinet.type === 10 ? 'End Panel' : 'Appliance Panel';
       
-      console.log(`🟣 ${typeName} (cabinet ${cabinet.id || cabinet.temp_id}):`, panelHours);
+    //   console.log(`🟣 ${typeName} (cabinet ${cabinet.id || cabinet.temp_id}):`, panelHours);
       
-      // Aggregate panel hours by converting team_service_id to service_id
-      Object.entries(panelHours).forEach(([teamServiceId, hours]) => {
-        const service = context.globalServices?.find(
-          (s) => s.team_service_id === parseInt(teamServiceId)
-        );
-        if (!service) return;
+    //   // Aggregate panel hours by converting team_service_id to service_id
+    //   Object.entries(panelHours).forEach(([teamServiceId, hours]) => {
+    //     const service = context.globalServices?.find(
+    //       (s) => s.team_service_id === parseInt(teamServiceId)
+    //     );
+    //     if (!service) return;
 
-        const serviceId = service.service_id;
-        if (!totals.hoursByService[serviceId]) {
-          totals.hoursByService[serviceId] = 0;
-        }
-        // Hours already include quantity multiplier from calculatePanelPartsTime
-        totals.hoursByService[serviceId] += hours || 0;
+    //     const serviceId = service.service_id;
+    //     if (!totals.hoursByService[serviceId]) {
+    //       totals.hoursByService[serviceId] = 0;
+    //     }
+    //     // Hours already include quantity multiplier from calculatePanelPartsTime
+    //     totals.hoursByService[serviceId] += hours || 0;
         
-        // Track in categoryHours for breakdown display
-        if (!totals.categoryHours[categoryKey]) {
-          totals.categoryHours[categoryKey] = {};
-        }
-        if (!totals.categoryHours[categoryKey][serviceId]) {
-          totals.categoryHours[categoryKey][serviceId] = 0;
-        }
-        totals.categoryHours[categoryKey][serviceId] += hours || 0;
+    //     // Track in categoryHours for breakdown display
+    //     if (!totals.categoryHours[categoryKey]) {
+    //       totals.categoryHours[categoryKey] = {};
+    //     }
+    //     if (!totals.categoryHours[categoryKey][serviceId]) {
+    //       totals.categoryHours[categoryKey][serviceId] = 0;
+    //     }
+    //     totals.categoryHours[categoryKey][serviceId] += hours || 0;
         
-        console.log(`  Added ${hours} hours to categoryHours.${categoryKey}[${serviceId}]`);
-      });
+    //     console.log(`  Added ${hours} hours to categoryHours.${categoryKey}[${serviceId}]`);
+    //   });
       
-      console.log(`  categoryHours.${categoryKey} now:`, totals.categoryHours[categoryKey]);
-    }
+    //   console.log(`  categoryHours.${categoryKey} now:`, totals.categoryHours[categoryKey]);
+    // }
 
     // Add service hours for hoods (type 14)
     // Uses 3D volume (width × height × depth) with parts list anchor 21
@@ -344,7 +344,7 @@ const calculateFaceTotals = (section, context) => {
       quantity,
       cabinetTypeId,
     }, index) => {
-      const faceHours = calculateDoorPartsTime(
+      const result = calculateDoorPartsTime(
         faces,
         styleToUse,
         cabinetStyleId,
@@ -352,6 +352,9 @@ const calculateFaceTotals = (section, context) => {
         cabinetTypeId,
         context
       );
+
+      const faceHours = result.hoursByService;
+      const panelModHours = result.panelModHoursByService;
 
       console.log(`  Face batch ${index + 1}: faceType="${faceType}", quantity=${quantity}, faces=${faces?.length || 0}`);
       console.log(`    Raw hours from calculateDoorPartsTime:`, faceHours);
@@ -367,15 +370,21 @@ const calculateFaceTotals = (section, context) => {
           const serviceId = service.service_id;
           const hoursWithQuantity = roundToHundredth((hours || 0) * quantity);
           
-          console.log(`    Service ${serviceId}: ${hours} × ${quantity} = ${hoursWithQuantity}`);
+          // Get panel mod hours for this service to subtract from face category
+          const panelModHoursForService = (panelModHours && panelModHours[teamServiceId]) 
+            ? roundToHundredth(panelModHours[teamServiceId] * quantity) 
+            : 0;
+          const faceOnlyHours = roundToHundredth(hoursWithQuantity - panelModHoursForService);
           
-          // Add to aggregate total
+          console.log(`    Service ${serviceId}: ${hours} × ${quantity} = ${hoursWithQuantity} (face: ${faceOnlyHours}, panelMod: ${panelModHoursForService})`);
+          
+          // Add to aggregate total (includes both face and panel mod)
           if (!totals.hoursByService[serviceId]) {
             totals.hoursByService[serviceId] = 0;
           }
           totals.hoursByService[serviceId] += hoursWithQuantity;
           
-          // Track by face type for category hours
+          // Track by face type for category hours (WITHOUT panel mod time)
           // Initialize the faceType object if it doesn't exist (for non-standard face types)
           if (!totals.categoryHours[faceType]) {
             totals.categoryHours[faceType] = {};
@@ -383,9 +392,31 @@ const calculateFaceTotals = (section, context) => {
           if (!totals.categoryHours[faceType][serviceId]) {
             totals.categoryHours[faceType][serviceId] = 0;
           }
-          totals.categoryHours[faceType][serviceId] += hoursWithQuantity;
+          totals.categoryHours[faceType][serviceId] += faceOnlyHours;
           
           console.log(`    categoryHours.${faceType}[${serviceId}] now = ${totals.categoryHours[faceType][serviceId]}`);
+        });
+      }
+
+      // Track panel mod hours separately for breakdown (already calculated in calculateDoorPartsTime)
+      if (panelModHours && Object.keys(panelModHours).length > 0) {
+        Object.entries(panelModHours).forEach(([teamServiceId, hours]) => {
+          const service = context.globalServices?.find(
+            (s) => s.team_service_id === parseInt(teamServiceId)
+          );
+          if (!service) return;
+
+          const serviceId = service.service_id;
+          const hoursWithQuantity = roundToHundredth((hours || 0) * quantity);
+
+          // Track in panelMods category
+          if (!totals.categoryHours.panelMods) {
+            totals.categoryHours.panelMods = {};
+          }
+          if (!totals.categoryHours.panelMods[serviceId]) {
+            totals.categoryHours.panelMods[serviceId] = 0;
+          }
+          totals.categoryHours.panelMods[serviceId] += hoursWithQuantity;
         });
       }
     }
@@ -898,7 +929,7 @@ const calculateEndPanelNosingMaterials = (section, context) => {
     const { quantity = 1 } = endPanel;
     const boxPartsList = endPanel.face_config.boxSummary.boxPartsList;
     const nosingParts = boxPartsList.filter(
-      (part) => part.type === "end_panel_nosing"
+      (part) => part.type === "nosing"
     );
 
     if (nosingParts.length === 0) return;
@@ -1258,7 +1289,8 @@ const calculateCabinetTotals = (section, context) => {
       wood: faceFramePrices.hoursByService || {},
       faceFrame: faceFramePrices.hoursByService || {},
       fillers: boxHours?.categoryHours?.fillers || {},
-      endPanelNosing: boxHours?.categoryHours?.endPanelNosing || {},
+      nosing: boxHours?.categoryHours?.nosing || {},
+      panelMods: faceTotals.categoryHours?.panelMods || {},
     },
   };
 
@@ -1854,7 +1886,8 @@ export const getSectionCalculations = (section, context = {}) => {
       wood: cabinetTotals.categoryHours?.wood || {},
       faceFrame: cabinetTotals.categoryHours?.faceFrame || {},
       fillers: cabinetTotals.categoryHours?.fillers || {},
-      endPanelNosing: cabinetTotals.categoryHours?.endPanelNosing || {},
+      nosing: cabinetTotals.categoryHours?.nosing || {},
+      panelMods: cabinetTotals.categoryHours?.panelMods || {},
       // Other categories
       lengths: lengthTotals.hoursByService || {},
       accessories: accessoriesTotal.hoursByService || {},

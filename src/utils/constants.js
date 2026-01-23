@@ -223,7 +223,7 @@ export const PARTS_LIST_MAPPING = {
   panel_mod_reeded_finished: 15,
   end_panel_finished: 17,
   appliance_panel_finished: 18,
-  end_panel_nosing_finished: 19,
+  nosing: 19,
   face_frame_finished: 20,
   hood_finished: 21, // Hood cabinets - includes depth in calculation
   panel_mod_grooved_finished: 22,

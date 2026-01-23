@@ -8,15 +8,15 @@ import {
   formatHours,
   getBreakdownCategories,
   getServiceName,
-  getLaborAdjustmentHours
+  getLaborAdjustmentHours,
 } from "../../utils/sectionBreakdownHelpers";
 
-const GenerateSectionBreakdownPdf = ({ 
+const GenerateSectionBreakdownPdf = ({
   sectionCalculations,
   section,
   projectName = "",
   taskName = "",
-  sectionName = ""
+  sectionName = "",
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const allServices = useSelector((state) => state.services.allServices);
@@ -31,7 +31,8 @@ const GenerateSectionBreakdownPdf = ({
       if (!window.pdfMake) {
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
-          script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js";
+          script.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js";
           script.onload = resolve;
           script.onerror = reject;
           document.head.appendChild(script);
@@ -39,7 +40,8 @@ const GenerateSectionBreakdownPdf = ({
 
         await new Promise((resolve, reject) => {
           const script = document.createElement("script");
-          script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js";
+          script.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js";
           script.onload = resolve;
           script.onerror = reject;
           document.head.appendChild(script);
@@ -48,13 +50,19 @@ const GenerateSectionBreakdownPdf = ({
 
       const today = new Date().toLocaleDateString();
       const serviceIds = sectionCalculations?.laborCosts?.costsByService
-        ? Object.keys(sectionCalculations.laborCosts.costsByService).map(Number).sort()
+        ? Object.keys(sectionCalculations.laborCosts.costsByService)
+            .map(Number)
+            .sort()
         : [];
 
       const breakdownCategories = getBreakdownCategories(sectionCalculations);
-      const activeCategories = breakdownCategories.filter(
-        (cat) => cat.cost > 0 || cat.count > 0
-      );
+
+      const activeCategories = breakdownCategories.filter((cat) => {
+        const hasHours =
+          cat.hoursByService &&
+          Object.values(cat.hoursByService).some((hours) => hours > 0);
+        return cat.cost > 0 || cat.count > 0 || hasHours;
+      });
 
       // Get labor adjustment hours from section.add_hours
       const laborAdjustmentHours = getLaborAdjustmentHours(section?.add_hours);
@@ -79,7 +87,12 @@ const GenerateSectionBreakdownPdf = ({
       if (laborAdjustmentHours) {
         const laborRow = [
           { text: "Labor Adds", style: "itemName", fillColor: "#e3f2fd" },
-          { text: "-", alignment: "right", color: "#999999", fillColor: "#e3f2fd" },
+          {
+            text: "-",
+            alignment: "right",
+            color: "#999999",
+            fillColor: "#e3f2fd",
+          },
         ];
 
         serviceIds.forEach((serviceId) => {
@@ -97,7 +110,7 @@ const GenerateSectionBreakdownPdf = ({
       }
 
       activeCategories.forEach((category) => {
-        const countDisplay = category.count > 0 ? ` (${category.count})` : '';
+        const countDisplay = category.count > 0 ? ` (${category.count})` : "";
         const row = [
           { text: `${category.title}${countDisplay}`, style: "itemName" },
           { text: formatCurrency(category.cost), alignment: "right" },
@@ -129,7 +142,8 @@ const GenerateSectionBreakdownPdf = ({
         },
       ];
       serviceIds.forEach((serviceId) => {
-        const serviceData = sectionCalculations?.laborCosts?.costsByService?.[serviceId];
+        const serviceData =
+          sectionCalculations?.laborCosts?.costsByService?.[serviceId];
         totalsRow.push({
           text: serviceData ? formatHours(serviceData.hours).toString() : "-",
           style: "totalsRow",
@@ -158,9 +172,21 @@ const GenerateSectionBreakdownPdf = ({
             columns: [
               {
                 stack: [
-                  projectName && { text: `Project: ${projectName}`, fontSize: 11, margin: [0, 0, 0, 4] },
-                  taskName && { text: `Room: ${taskName}`, fontSize: 11, margin: [0, 0, 0, 4] },
-                  sectionName && { text: `Section: ${sectionName}`, fontSize: 11, margin: [0, 0, 0, 4] },
+                  projectName && {
+                    text: `Project: ${projectName}`,
+                    fontSize: 11,
+                    margin: [0, 0, 0, 4],
+                  },
+                  taskName && {
+                    text: `Room: ${taskName}`,
+                    fontSize: 11,
+                    margin: [0, 0, 0, 4],
+                  },
+                  sectionName && {
+                    text: `Section: ${sectionName}`,
+                    fontSize: 11,
+                    margin: [0, 0, 0, 4],
+                  },
                 ].filter(Boolean),
                 width: "*",
               },
@@ -174,7 +200,8 @@ const GenerateSectionBreakdownPdf = ({
               body: tableBody,
             },
             layout: {
-              hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+              hLineWidth: (i, node) =>
+                i === 0 || i === 1 || i === node.table.body.length ? 1 : 0.5,
               vLineWidth: () => 0.5,
               hLineColor: () => "#cccccc",
               vLineColor: () => "#cccccc",
