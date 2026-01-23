@@ -82,6 +82,14 @@ const CabinetItemForm = ({
 
   const [errors, setErrors] = useState({});
 
+  // Helper to get the effective cabinet style ID (considers override)
+  const getEffectiveCabinetStyleId = () => {
+    if (formData.cabinet_style_override && formData.cabinet_style_override !== -1) {
+      return formData.cabinet_style_override;
+    }
+    return cabinetStyleId;
+  };
+
   // Sync rootReveals when cabinet_style_override is null and section style changes
   useEffect(() => {
     console.log('[EstimateCabinetManager] useEffect triggered - cabinetStyleId:', cabinetStyleId, 'override:', formData.cabinet_style_override);
@@ -358,7 +366,10 @@ const CabinetItemForm = ({
       newErrors.quantity = "Quantity must be at least 1";
     }
 
-    // Validate end panel nosing - if type 10 and depth > 0.75, at least one nosing must be selected
+    // Validate end panel nosing
+    // Rules:
+    // 1. If depth > 0.75, at least one nosing option must be selected
+    // 2. If cabinetStyleId !== 13, at least one nosing option must be selected
     if (formData.type === 10) {
       const hasNosing =
         formData.finished_top ||
@@ -366,13 +377,20 @@ const CabinetItemForm = ({
         formData.finished_left ||
         formData.finished_right;
 
-      if (!hasNosing && formData.depth > 0.75) {
-        newErrors.nosing =
-          "At least one nosing option must be selected when depth is greater than 0.75\"";
-      }
-      if (hasNosing && formData.depth <= .75) {
-        newErrors.nosing =
-          "Nosing can't be applied to end panels thinner than 0.75\"";
+      const effectiveStyleId = getEffectiveCabinetStyleId();
+      const requiresNosing = formData.depth > 0.75 || effectiveStyleId !== 13;
+
+      if (!hasNosing && requiresNosing) {
+        if (formData.depth > 0.75 && effectiveStyleId !== 13) {
+          newErrors.nosing =
+            "At least one nosing option must be selected (depth > 0.75\" and cabinet style requires nosing)";
+        } else if (formData.depth > 0.75) {
+          newErrors.nosing =
+            "At least one nosing option must be selected when depth is greater than 0.75\"";
+        } else {
+          newErrors.nosing =
+            "At least one nosing option must be selected for this cabinet style";
+        }
       }
     }
 
@@ -787,19 +805,61 @@ const CabinetItemForm = ({
       // Calculate nosing for end panels (type 10)
       let boxPartsList = [];
       if (itemType === ITEM_TYPES.END_PANEL.type) {
-        // For cabinetStyleId !== 13 and depth === 0.75, add nosing with width 0
-        if (cabinetStyleId !== 13 && d === 0.75) {
-          boxPartsList.push({
-            type: "nosing",
-            side: "edge_nosing",
-            width: 0,
-            height: roundTo16th(h),
-            area: 0,
-            quantity: 1,
-            finish: true,
-          });
+        // For depth === 0.75, add nosing with width 0 for selected edges
+        if (d === 0.75) {
+          // Top nosing with width 0
+          if (formData.finished_top) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "top_nosing",
+              width: 0,
+              height: roundTo16th(w),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Bottom nosing with width 0
+          if (formData.finished_bottom) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "bottom_nosing",
+              width: 0,
+              height: roundTo16th(w),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Left nosing with width 0
+          if (formData.finished_left) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "left_nosing",
+              width: 0,
+              height: roundTo16th(h),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Right nosing with width 0
+          if (formData.finished_right) {
+            boxPartsList.push({
+              type: "nosing",
+              side: "right_nosing",
+              width: 0,
+              height: roundTo16th(h),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
         }
-        // For depth > 0.75, add nosing with actual dimensions
+        // For depth > 0.75, add nosing with actual dimensions (main piece + return)
         else if (d > 0.75) {
           const returnWidth = 6; // Return piece width
 
@@ -1692,118 +1752,120 @@ const CabinetItemForm = ({
                   itemTypeConfig.features.finishedBottom ||
                   itemTypeConfig.features.finishedLeft ||
                   itemTypeConfig.features.finishedRight) && (
-                  <div className="grid grid-cols-3 gap-2 justify-between">
-                    <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
-                      {nosingOrFinish}:
+                  <>
+                    <div className="grid grid-cols-3 gap-2 justify-between">
+                      <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
+                        {nosingOrFinish}:
+                      </div>
+
+                      {/* Finished Top */}
+                      {itemTypeConfig.features.finishedTop && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_top"
+                            name="finished_top"
+                            checked={formData.finished_top}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_top"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Top
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Bottom */}
+                      {itemTypeConfig.features.finishedBottom && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_bottom"
+                            name="finished_bottom"
+                            checked={formData.finished_bottom}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_bottom"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Bottom
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Back */}
+                      {itemTypeConfig.features.finishedBack && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_back"
+                            name="finished_back"
+                            checked={formData.finished_back}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_back"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Back
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Left */}
+                      {itemTypeConfig.features.finishedLeft && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_left"
+                            name="finished_left"
+                            checked={formData.finished_left}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_left"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Left
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Right */}
+                      {itemTypeConfig.features.finishedRight && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_right"
+                            name="finished_right"
+                            checked={formData.finished_right}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_right"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Right
+                          </label>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Finished Top */}
-                    {itemTypeConfig.features.finishedTop && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_top"
-                          name="finished_top"
-                          checked={formData.finished_top}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_top"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Top
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Bottom */}
-                    {itemTypeConfig.features.finishedBottom && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_bottom"
-                          name="finished_bottom"
-                          checked={formData.finished_bottom}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_bottom"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Bottom
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Back */}
-                    {itemTypeConfig.features.finishedBack && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_back"
-                          name="finished_back"
-                          checked={formData.finished_back}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_back"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Back
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Left */}
-                    {itemTypeConfig.features.finishedLeft && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_left"
-                          name="finished_left"
-                          checked={formData.finished_left}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_left"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Left
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Right */}
-                    {itemTypeConfig.features.finishedRight && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_right"
-                          name="finished_right"
-                          checked={formData.finished_right}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_right"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Right
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Nosing error message */}
+                    {/* Nosing error message - below the grid */}
                     {errors.nosing && (
-                      <p className="text-red-500 text-xs mt-1 w-full">
+                      <p className="text-red-500 text-xs mt-1">
                         {errors.nosing}
                       </p>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
 
