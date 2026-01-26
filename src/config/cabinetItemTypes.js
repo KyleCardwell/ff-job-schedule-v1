@@ -11,11 +11,11 @@ import {
   FACE_NAMES,
   DOOR_FRONT_FACE_TYPES,
   DRAWER_FRONT_FACE_TYPES,
-} from '../utils/constants';
+} from "../utils/constants";
 
 export const CABINET_ITEM_TYPES = {
   cabinet: {
-    label: 'Cabinet',
+    label: "Cabinet",
     faceTypesArray: FACE_TYPES, // Use actual face type objects
     defaultFaceType: FACE_NAMES.DOOR,
     usesReveals: true,
@@ -41,7 +41,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   door_front: {
-    label: 'Door Front',
+    label: "Door Front",
     faceTypesArray: DOOR_FRONT_FACE_TYPES,
     defaultFaceType: FACE_NAMES.DOOR,
     usesReveals: false,
@@ -67,7 +67,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   drawer_front: {
-    label: 'Drawer Front',
+    label: "Drawer Front",
     faceTypesArray: DRAWER_FRONT_FACE_TYPES,
     defaultFaceType: FACE_NAMES.DRAWER_FRONT,
     usesReveals: false,
@@ -94,7 +94,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   filler: {
-    label: 'Filler',
+    label: "Filler",
     faceTypesArray: FILLER_FACE_TYPES,
     defaultFaceType: FACE_NAMES.PANEL,
     usesReveals: false,
@@ -120,7 +120,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   end_panel: {
-    label: 'End Panel',
+    label: "End Panel",
     faceTypesArray: END_PANEL_FACE_TYPES,
     defaultFaceType: FACE_NAMES.PANEL,
     // Conditional: use reveals if style is NOT 13 (face frame logic)
@@ -144,10 +144,20 @@ export const CABINET_ITEM_TYPES = {
       finishedBack: false,
       corner45: false,
     },
+    typeSpecificOptions: [
+      {
+        name: "shop_built",
+        type: "checkbox",
+        label: "Shop Built",
+        defaultValue: false,
+        description: "End panel is shop built",
+        serviceMultipliers: {},
+      },
+    ],
   },
 
   appliance_panel: {
-    label: 'Appliance Panel',
+    label: "Appliance Panel",
     faceTypesArray: END_PANEL_FACE_TYPES,
     defaultFaceType: FACE_NAMES.PANEL,
     // Conditional: use reveals if style is NOT 13 (face frame logic)
@@ -174,7 +184,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   drawer_box: {
-    label: 'Drawer Box',
+    label: "Drawer Box",
     faceTypesArray: [], // Not divisible
     defaultFaceType: FACE_NAMES.drawer_front,
     usesReveals: false,
@@ -200,7 +210,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   rollout: {
-    label: 'Rollout',
+    label: "Rollout",
     faceTypesArray: [], // Not divisible
     defaultFaceType: FACE_NAMES.rollout,
     usesReveals: false,
@@ -224,7 +234,7 @@ export const CABINET_ITEM_TYPES = {
     },
   },
   hood: {
-    label: 'Hood',
+    label: "Hood",
     faceTypesArray: [], // Not divisible
     defaultFaceType: FACE_NAMES.PANEL,
     usesReveals: false,
@@ -250,11 +260,11 @@ export const CABINET_ITEM_TYPES = {
     },
     typeSpecificOptions: [
       {
-        name: 'tapered',
-        type: 'checkbox',
-        label: 'Tapered Sides',
+        name: "tapered",
+        type: "checkbox",
+        label: "Tapered Sides",
         defaultValue: false,
-        description: 'Hood width narrows from bottom to top',
+        description: "Hood width narrows from bottom to top",
         serviceMultipliers: {
           2: 1.5, // Tapered hoods take 1.5x shop time (service_id 2)
         },
@@ -268,7 +278,7 @@ export const CABINET_ITEM_TYPES = {
  * @param {string} itemType - The type of cabinet item
  * @returns {object} The configuration object for that type
  */
-export const getItemTypeConfig = (itemType = 'cabinet') => {
+export const getItemTypeConfig = (itemType = "cabinet") => {
   return CABINET_ITEM_TYPES[itemType] || CABINET_ITEM_TYPES.cabinet;
 };
 
@@ -280,11 +290,11 @@ export const getItemTypeConfig = (itemType = 'cabinet') => {
  */
 export const shouldUseReveals = (itemType, styleId) => {
   const config = getItemTypeConfig(itemType);
-  
-  if (typeof config.usesReveals === 'function') {
+
+  if (typeof config.usesReveals === "function") {
     return config.usesReveals(styleId);
   }
-  
+
   return config.usesReveals;
 };
 
@@ -296,11 +306,11 @@ export const shouldUseReveals = (itemType, styleId) => {
  */
 export const shouldUseRootReveals = (itemType, styleId) => {
   const config = getItemTypeConfig(itemType);
-  
-  if (typeof config.usesRootReveals === 'function') {
+
+  if (typeof config.usesRootReveals === "function") {
     return config.usesRootReveals(styleId);
   }
-  
+
   return config.usesRootReveals;
 };
 

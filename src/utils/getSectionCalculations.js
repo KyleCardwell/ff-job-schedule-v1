@@ -62,7 +62,7 @@ const calculateFaceTotals = (section, context) => {
   const allFacesForHours = []; // For hour calculation
 
   section.cabinets.forEach((cabinet) => {
-    const quantity = Number(cabinet.quantity) || 1;
+    const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
     const cabinetStyleId =
       cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
 
@@ -120,6 +120,99 @@ const calculateFaceTotals = (section, context) => {
 
     // Handle end panel nosing (type 10) separately using boxPartsList
     if (cabinet.type === 10) {
+      // Check if shop_built flag is set
+      if (cabinet.type_specific_options?.shop_built) {
+        // Shop-built end panels: single slab_sheet panel, no face frame or reveals
+        const styleToUse = FACE_STYLE_VALUES.SLAB_SHEET; // Always slab_sheet for shop-built
+        
+        if (!facesByStyle[styleToUse]) {
+          facesByStyle[styleToUse] = [];
+        }
+        
+        const faceType = FACE_NAMES.PANEL;
+        
+        // Create faces array for both pricing and hours calculation
+        const shopBuiltFaces = [];
+        
+        // Add single panel using root dimensions (NOT multiplied - quantity handled later)
+        shopBuiltFaces.push({
+          width: cabinet.width,
+          height: cabinet.height,
+          area: cabinet.width * cabinet.height,
+          faceType,
+          cabinetId: cabinet.id || cabinet.temp_id,
+          isShopBuilt: true, // Mark for reference
+        });
+        
+        // Add to facesByStyle for pricing (multiplied by cabinet quantity)
+        for (let i = 0; i < quantity; i++) {
+          facesByStyle[styleToUse].push({
+            width: cabinet.width,
+            height: cabinet.height,
+            area: cabinet.width * cabinet.height,
+            faceType,
+            cabinetId: cabinet.id || cabinet.temp_id,
+            isShopBuilt: true,
+          });
+        }
+        
+        // Update face counts
+        totals.faceCounts[faceType] = (totals.faceCounts[faceType] || 0) + quantity;
+        
+        // Still process nosing if present (shop-built panels can have nosing)
+        if (cabinet.face_config?.boxSummary?.boxPartsList) {
+          const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
+          const nosingParts = boxPartsList.filter(
+            (part) => part.type === "nosing"
+          );
+
+          if (nosingParts.length > 0) {
+            // Process each nosing piece as a panel for pricing/hours
+            nosingParts.forEach((nosingPart) => {
+              // // Add to shopBuiltFaces for hours calculation (NOT multiplied)
+              // shopBuiltFaces.push({
+              //   width: nosingPart.width,
+              //   height: nosingPart.height,
+              //   area: nosingPart.area,
+              //   faceType,
+              //   cabinetId: cabinet.id || cabinet.temp_id,
+              //   isNosing: true,
+              // });
+              
+              // Add to facesByStyle for pricing (multiplied by cabinet quantity)
+              for (let i = 0; i < quantity; i++) {
+                facesByStyle[styleToUse].push({
+                  width: nosingPart.width,
+                  height: nosingPart.height,
+                  area: nosingPart.area,
+                  faceType,
+                  cabinetId: cabinet.id || cabinet.temp_id,
+                  isNosing: true, // Mark as nosing to exclude from counts
+                });
+              }
+              // Don't update face counts for nosing parts
+            });
+          }
+        }
+        
+        // Add to allFacesForHours for service hour calculation
+        // Shop-built panels should not get panel mod time
+        allFacesForHours.push({
+          faces: shopBuiltFaces,
+          faceType,
+          styleToUse,
+          cabinetStyleId,
+          // panelModId: effectiveValues.door_panel_mod_id,
+          panelModId: null, // No panel mod for shop-built
+          quantity,
+          cabinetTypeId: cabinet.type,
+        });
+        
+        // Skip faceSummary processing (no face frame or reveals for shop-built)
+        return;
+      }
+      
+      // Non-shop-built end panels: original logic
       // Only include nosing if door style is slab_sheet and boxPartsList exists
       if (effectiveValues.door_style !== FACE_STYLE_VALUES.SLAB_SHEET) {
         // Continue to regular processing for non-slab_sheet styles
@@ -603,7 +696,7 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
   section.cabinets.forEach((cabinet) => {
     if (!cabinet.face_config) return;
 
-    const quantity = Number(cabinet.quantity) || 1;
+    const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
 
     // Determine if section is face frame style
     const sectionStyle = cabinet.cabinet_style_override
@@ -756,7 +849,7 @@ const calculateFaceFramePrices = (section, context) => {
     if (!cabinet.cabinet_style_override && section.cabinet_style_id === 13)
       return;
 
-    const quantity = Number(cabinet.quantity) || 1;
+    const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
     const { frameParts, openingsCount } = cabinet.face_config?.boxSummary || {};
 
     const cabType = context.cabinetTypes?.find(
@@ -964,7 +1057,7 @@ const countHardware = (section, faceTotals, context) => {
   // Sum up hardware from all cabinets
   section.cabinets?.forEach((cabinet) => {
     if (cabinet.face_config?.boxSummary?.boxHardware) {
-      const qty = Number(cabinet.quantity) || 1;
+      const qty = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
       const {
         totalHinges: hinges,
         totalDoorPulls: doorPulls,
@@ -1176,14 +1269,14 @@ const calculateCabinetTotals = (section, context) => {
       // cabinet boxes
       if (CABINET_TYPES.includes(cabinet.type))
         return {
-          boxCount: count.boxCount + (Number(cabinet.quantity) || 1),
+          boxCount: count.boxCount + (cabinet.quantity != null ? Number(cabinet.quantity) : 1),
           fillerCount: count.fillerCount,
         };
       // Fillers
       if (cabinet.type === 5)
         return {
           boxCount: count.boxCount,
-          fillerCount: count.fillerCount + (Number(cabinet.quantity) || 1),
+          fillerCount: count.fillerCount + (cabinet.quantity != null ? Number(cabinet.quantity) : 1),
         };
       return count;
     },
@@ -1330,7 +1423,7 @@ const calculateLengthTotals = (items, context) => {
     );
     if (!lengthItem) return;
 
-    const quantity = Number(item.quantity) || 1;
+    const quantity = item.quantity != null ? Number(item.quantity) : 1;
     const lengthFeet = Number(item.length) || 0; // User inputs feet
     const lengthInches = lengthFeet * 12; // Convert to inches for calculations
     const miterCount = Number(item.miter_count) || 0;
@@ -1419,7 +1512,7 @@ const calculateAccessoriesTotal = (items, context, section) => {
   // Add accessories from cabinet face configs by traversing the tree
   if (section?.cabinets && Array.isArray(section.cabinets)) {
     section.cabinets.forEach((cabinet) => {
-      const quantity = Number(cabinet.quantity) || 1;
+      const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
       const faceConfig = cabinet.face_config;
       
       if (!faceConfig) return;
@@ -1802,7 +1895,7 @@ export const getSectionCalculations = (section, context = {}) => {
       (sectionProfit + sectionCommission + subTotalPrice - sectionDiscount) / 5
     ) * 5;
 
-  const totalPrice =  roundPriceUpTo5 * (section.quantity || 1);
+  const totalPrice =  roundPriceUpTo5 * (section.quantity != null ? section.quantity : 1);
 
   // Calculate total accessories count and price (including glass from faces)
   const accessoriesCount = Object.values(accessoriesTotal)

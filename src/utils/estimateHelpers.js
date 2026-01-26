@@ -317,7 +317,7 @@ export const calculateHoodPartsTime = (
 
   // Use 3D volume for hood calculation (width × height × depth)
   const volume = cabinet.width * cabinet.height * cabinet.depth;
-  const quantity = Number(cabinet.quantity) || 1;
+  const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
 
   // Collect all unique service IDs from anchors
   const allServiceIds = new Set();
@@ -458,7 +458,7 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
     }
 
     const area = part.width * part.height;
-    const quantity = part.quantity || 1;
+    const quantity = part.quantity != null ? part.quantity : 1;
 
     // Calculate time for each service
     allServiceIds.forEach((teamServiceId) => {
@@ -544,7 +544,7 @@ export const calculateBoxPartsTime = (section, context = {}) => {
   section.cabinets.forEach((cabinet) => {
     if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
 
-    const quantity = Number(cabinet.quantity) || 1;
+    const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
     const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
 
     // Separate parts by type
@@ -827,7 +827,7 @@ export const calculatePanelPartsTime = (
 
   // Use root dimensions for area calculation
   const area = cabinet.width * cabinet.height;
-  const quantity = Number(cabinet.quantity) || 1;
+  const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
 
   // Collect all unique service IDs from anchors
   const allServiceIds = new Set();
@@ -1642,55 +1642,55 @@ export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
 
 // --- Slab Door Hour Calculation ---
 
-const slabDoorHourAnchors = {
-  shop: [
-    { area: 768, hours: 0.5 },
-    { area: 1440, hours: 0.7 },
-    { area: 2304, hours: 1.0 },
-  ],
-  install: [
-    { area: 768, hours: 0.1 },
-    { area: 1440, hours: 0.15 },
-    { area: 2304, hours: 0.25 },
-  ],
-  finish: [
-    { area: 768, hours: 0.5 },
-    { area: 1440, hours: 0.6 },
-    { area: 2304, hours: 0.8 },
-  ],
-};
+// const slabDoorHourAnchors = {
+//   shop: [
+//     { area: 768, hours: 0.5 },
+//     { area: 1440, hours: 0.7 },
+//     { area: 2304, hours: 1.0 },
+//   ],
+//   install: [
+//     { area: 768, hours: 0.1 },
+//     { area: 1440, hours: 0.15 },
+//     { area: 2304, hours: 0.25 },
+//   ],
+//   finish: [
+//     { area: 768, hours: 0.5 },
+//     { area: 1440, hours: 0.6 },
+//     { area: 2304, hours: 0.8 },
+//   ],
+// };
 
-const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
-  const first = anchors[0];
-  const last = anchors[anchors.length - 1];
+// const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
+//   const first = anchors[0];
+//   const last = anchors[anchors.length - 1];
 
-  if (targetArea <= first.area) return first.hours;
-  if (targetArea >= last.area) return last.hours;
+//   if (targetArea <= first.area) return first.hours;
+//   if (targetArea >= last.area) return last.hours;
 
-  const upperIndex = anchors.findIndex((anchor) => anchor.area >= targetArea);
-  const upper = anchors[upperIndex];
-  const lower = anchors[upperIndex - 1];
+//   const upperIndex = anchors.findIndex((anchor) => anchor.area >= targetArea);
+//   const upper = anchors[upperIndex];
+//   const lower = anchors[upperIndex - 1];
 
-  const areaRange = upper.area - lower.area;
-  const hourRange = upper.hours - lower.hours;
-  const areaOffset = targetArea - lower.area;
+//   const areaRange = upper.area - lower.area;
+//   const hourRange = upper.hours - lower.hours;
+//   const areaOffset = targetArea - lower.area;
 
-  if (areaRange === 0) return lower.hours;
+//   if (areaRange === 0) return lower.hours;
 
-  const interpolated = lower.hours + (areaOffset / areaRange) * hourRange;
-  return roundToHundredth(interpolated);
-};
+//   const interpolated = lower.hours + (areaOffset / areaRange) * hourRange;
+//   return roundToHundredth(interpolated);
+// };
 
-export const calculateSlabDoorHours = (width, height) => {
-  const area = width * height;
-  return {
-    hoursByService: {
-      2: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area), // Shop
-      4: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area), // Install
-      3: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area), // Finish
-    },
-  };
-};
+// export const calculateSlabDoorHours = (width, height) => {
+//   const area = width * height;
+//   return {
+//     hoursByService: {
+//       2: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area), // Shop
+//       4: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area), // Install
+//       3: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area), // Finish
+//     },
+//   };
+// };
 
 /**
  * Calculate box sheet costs using maxrects-packer for optimal sheet layout
@@ -1750,7 +1750,7 @@ export const calculateBoxSheetsCNC = (
     // Only process cabinet boxes
     if (![...CABINET_TYPES].includes(cab.type)) return;
 
-    const qty = Number(cab.quantity) || 1;
+    const qty = cab.quantity != null ? Number(cab.quantity) : 1;
     const { boxSummary } = cab.face_config;
     const { boxPartsList, bandingLength, boxHardware, shelfDrillHoles } =
       boxSummary;
@@ -2089,9 +2089,10 @@ export const calculateBoxSheetsCNC = (
 /**
  * Generate a human-readable text summary of a cabinet's face configuration
  * @param {Object} faceConfig - The face_config object from a cabinet
+ * @param {Object} typeSpecificOptions - Optional type-specific options (e.g., shop_built flag)
  * @returns {string} - Text summary like "4 doors (2 glass panels), 5 shelves (2 glass)"
  */
-export const generateCabinetSummary = (faceConfig) => {
+export const generateCabinetSummary = (faceConfig, typeSpecificOptions = {}) => {
   if (!faceConfig) return "";
 
   const parts = [];
@@ -2181,9 +2182,9 @@ export const generateCabinetSummary = (faceConfig) => {
   // Count panels
   const panelNodes = allNodes.filter((node) => node.type === FACE_NAMES.PANEL);
   if (panelNodes.length > 0) {
-    parts.push(
-      `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`
-    );
+    const panelText = `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`;
+    const shopBuiltSuffix = typeSpecificOptions?.shop_built ? " (shop-built)" : "";
+    parts.push(panelText + shopBuiltSuffix);
   }
 
   // Count shelves and glass shelves
@@ -2242,7 +2243,7 @@ export const generateCabinetSummary = (faceConfig) => {
         if (!accessoryGroups[name]) {
           accessoryGroups[name] = 0;
         }
-        accessoryGroups[name] += accessory.quantity || 1;
+        accessoryGroups[name] += (accessory.quantity != null ? accessory.quantity : 1);
       });
     }
     

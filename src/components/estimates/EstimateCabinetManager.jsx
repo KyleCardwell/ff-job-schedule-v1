@@ -26,9 +26,9 @@ const CabinetItemForm = ({
   onDeleteItem,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
-  const cabinetAnchors = useSelector(
-    (state) => state.cabinetAnchors.itemsByType
-  );
+  // const cabinetAnchors = useSelector(
+  //   (state) => state.cabinetAnchors.itemsByType
+  // );
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
 
   // Get current item type configuration from cabinetTypeId
@@ -57,7 +57,7 @@ const CabinetItemForm = ({
     width: item.width || "",
     height: item.height || "",
     depth: item.depth || "",
-    quantity: item.quantity || 1,
+    quantity: item.quantity != null ? item.quantity : 1,
     face_config: getInitialFaceConfig(),
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
@@ -362,8 +362,8 @@ const CabinetItemForm = ({
       newErrors.depth = "Depth is required";
     }
 
-    if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = "Quantity must be at least 1";
+    if (formData.quantity === null || formData.quantity === undefined || formData.quantity < 0) {
+      newErrors.quantity = "Quantity must be 0 or greater";
     }
 
     // Validate end panel nosing
@@ -767,7 +767,7 @@ const CabinetItemForm = ({
     width,
     height,
     depth,
-    quantity = 1,
+    quantity = 0,
     faceConfig,
     cabinetStyleId,
     cabinetTypeId,
@@ -795,7 +795,8 @@ const CabinetItemForm = ({
       let frameParts = {};
       if (
         cabinetStyleId !== 13 &&
-        (itemType === ITEM_TYPES.END_PANEL.type || itemType === ITEM_TYPES.APPLIANCE_PANEL.type)
+        (itemType === ITEM_TYPES.END_PANEL.type || itemType === ITEM_TYPES.APPLIANCE_PANEL.type) &&
+        !formData.type_specific_options?.shop_built // Skip face frames for shop-built end panels
       ) {
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
       }
@@ -1714,7 +1715,7 @@ const CabinetItemForm = ({
                       name="quantity"
                       value={formData.quantity}
                       onChange={handleChange}
-                      min="1"
+                      min="0"
                       className={`w-full px-3 py-2 border ${
                         errors.quantity ? "border-red-500" : "border-slate-300"
                       } rounded-md text-sm max-w-[72px]`}

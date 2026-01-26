@@ -83,7 +83,7 @@ const SectionItemList = ({
 
   const generateTextSummary = (item) => {
     if (!item.face_config) return null;
-    const summary = generateCabinetSummary(item.face_config);
+    const summary = generateCabinetSummary(item.face_config, item.type_specific_options);
     return summary ? <span className="text-slate-400">{summary}</span> : null;
   };
 

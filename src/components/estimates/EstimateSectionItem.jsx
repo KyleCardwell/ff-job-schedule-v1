@@ -8,7 +8,7 @@ const EstimateSectionItem = ({ item = {}, onSave, onCancel, onDelete }) => {
     width: item.width || "",
     height: item.height || "",
     depth: item.depth || "",
-    quantity: item.quantity || 1,
+    quantity: item.quantity != null ? item.quantity : 1,
   });
 
   const [editing, setEditing] = useState(false);
@@ -59,8 +59,8 @@ const EstimateSectionItem = ({ item = {}, onSave, onCancel, onDelete }) => {
       newErrors.depth = "Depth is required";
     }
 
-    if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = "Quantity must be at least 1";
+    if (formData.quantity === null || formData.quantity === undefined || formData.quantity < 0) {
+      newErrors.quantity = "Quantity must be 0 or greater";
     }
 
     setErrors(newErrors);
@@ -202,7 +202,7 @@ const EstimateSectionItem = ({ item = {}, onSave, onCancel, onDelete }) => {
                 name="quantity"
                 value={formData.quantity}
                 onChange={handleChange}
-                min="1"
+                min="0"
                 className={`w-full px-3 py-2 border ${
                   errors.quantity ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
