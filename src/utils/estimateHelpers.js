@@ -1227,12 +1227,49 @@ export const calculateSlabSheetFacePriceBulk = (
 
   // Get the number of bins (sheets) used
   const sheetsUsed = packer.bins.length;
-  const roundedSheets = Math.max(sheetsUsed, 0.5);
-
+  
   // Calculate actual packing efficiency
   const totalSheetArea = sheetsUsed * sheetArea;
   const packingEfficiency =
     totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
+  
+  // Calculate rounded sheets based on actual utilization
+  // Find the sheet with the most unused space and apply fractional charging to it
+  let roundedSheets;
+  if (sheetsUsed === 0) {
+    roundedSheets = 0;
+  } else if (sheetsUsed === 1) {
+    // For single sheet, calculate fractional usage based on area (min 0.5 sheets)
+    const fractionalUsage = totalPartsArea / sheetArea;
+    roundedSheets = Math.max(fractionalUsage, 0.5);
+  } else {
+    // For multiple sheets, find the one with the most unused space
+    let maxFreeArea = 0;
+    let partialSheetIndex = -1;
+    
+    packer.bins.forEach((bin, index) => {
+      // Calculate total free area from all free rectangles in this bin
+      const totalFreeArea = bin.freeRectangles.reduce((sum, rect) => {
+        return sum + (rect.width * rect.height);
+      }, 0);
+      
+      if (totalFreeArea > maxFreeArea) {
+        maxFreeArea = totalFreeArea;
+        partialSheetIndex = index;
+      }
+    });
+    
+    // Calculate area used on the partial sheet
+    const partialSheetUsedArea = packer.bins[partialSheetIndex].rects.reduce((sum, rect) => {
+      return sum + rect.data.area;
+    }, 0);
+    
+    // Calculate fractional usage for the partial sheet (min 0.5)
+    const partialSheetFraction = Math.max(partialSheetUsedArea / sheetArea, 0.5);
+    
+    // Count all full sheets + fractional partial sheet
+    roundedSheets = (sheetsUsed - 1) + partialSheetFraction;
+  }
 
   // Calculate actual kerf waste based on packed parts
   let totalKerfWaste = 0;
