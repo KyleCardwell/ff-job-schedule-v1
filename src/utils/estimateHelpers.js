@@ -2139,6 +2139,10 @@ export const generateCabinetSummary = (faceConfig, typeSpecificOptions = {}) => 
 
   const parts = [];
 
+  if (typeSpecificOptions.corner_45) {
+    parts.push("45° Corner");
+  }
+
   // Helper to recursively collect all nodes
   const collectNodes = (node, collection = []) => {
     if (!node) return collection;

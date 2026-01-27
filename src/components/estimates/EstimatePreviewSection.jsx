@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
@@ -181,6 +182,71 @@ const EstimatePreviewSection = ({
       reededPanels = `${panelModName} on drawer fronts.`;
     }
 
+    // Determine door and drawer front material/finish notes
+    // Only include if they differ from the selected face material/finishes
+    const doorMatId = effectiveSection.door_mat || effectiveSection.face_mat;
+    const drawerFrontMatId = effectiveSection.drawer_front_mat || effectiveSection.face_mat;
+    const faceMatId = effectiveSection.face_mat;
+    
+    const doorMaterial = faceMaterials?.find((m) => m.id === doorMatId);
+    const drawerFrontMaterial = faceMaterials?.find((m) => m.id === drawerFrontMatId);
+    
+    const doorMaterialName = doorMaterial?.name || "";
+    const drawerFrontMaterialName = drawerFrontMaterial?.name || "";
+    
+    // Only include finish names if the material needs finish
+    const doorFinishNames = doorMaterial?.needs_finish
+      ? (effectiveSection.door_finish?.length > 0 
+          ? effectiveSection.door_finish 
+          : effectiveSection.face_finish)
+            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+            .filter(Boolean)
+            .join(", ") || ""
+      : "";
+    
+    const drawerFrontFinishNames = drawerFrontMaterial?.needs_finish
+      ? (effectiveSection.drawer_front_finish?.length > 0 
+          ? effectiveSection.drawer_front_finish 
+          : effectiveSection.face_finish)
+            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+            .filter(Boolean)
+            .join(", ") || ""
+      : "";
+    
+    // Check if door/drawer materials or finishes differ from face material/finishes
+    const doorDiffersFromFace = effectiveSection.door_mat && effectiveSection.door_mat !== faceMatId;
+    const doorFinishDiffersFromFace = effectiveSection.door_finish?.length > 0 && 
+      !isEqual(effectiveSection.door_finish, effectiveSection.face_finish);
+    const drawerFrontDiffersFromFace = effectiveSection.drawer_front_mat && effectiveSection.drawer_front_mat !== faceMatId;
+    const drawerFrontFinishDiffersFromFace = effectiveSection.drawer_front_finish?.length > 0 && 
+      !isEqual(effectiveSection.drawer_front_finish, effectiveSection.face_finish);
+    
+    const doorNeedsNote = hasDoors && (doorDiffersFromFace || doorFinishDiffersFromFace);
+    const drawerFrontNeedsNote = hasDrawerFronts && (drawerFrontDiffersFromFace || drawerFrontFinishDiffersFromFace);
+    
+    let doorDrawerMaterialNote = "";
+    if (doorNeedsNote && drawerFrontNeedsNote) {
+      // Both doors and drawer fronts differ from face material/finish
+      if (doorMatId === drawerFrontMatId && doorFinishNames === drawerFrontFinishNames) {
+        // Same material and finish
+        const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
+        doorDrawerMaterialNote = `Doors & Drawer Fronts: ${doorMaterialName}${finishPart}.`;
+      } else {
+        // Different materials or finishes
+        const doorFinishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
+        const drawerFinishPart = drawerFrontFinishNames ? ` (${drawerFrontFinishNames})` : "";
+        doorDrawerMaterialNote = `Doors: ${doorMaterialName}${doorFinishPart}. Drawer Fronts: ${drawerFrontMaterialName}${drawerFinishPart}.`;
+      }
+    } else if (doorNeedsNote) {
+      // Only doors differ
+      const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
+      doorDrawerMaterialNote = `Doors: ${doorMaterialName}${finishPart}.`;
+    } else if (drawerFrontNeedsNote) {
+      // Only drawer fronts differ
+      const finishPart = drawerFrontFinishNames ? ` (${drawerFrontFinishNames})` : "";
+      doorDrawerMaterialNote = `Drawer Fronts: ${drawerFrontMaterialName}${finishPart}.`;
+    }
+
     // Determine molding note based on door and drawer molding settings
     const hasDoorMolding =
       effectiveSection.door_inside_molding ||
@@ -205,8 +271,8 @@ const EstimatePreviewSection = ({
         // Clone the notes array
         processedNotes = [...section.notes];
 
-        // Prepend reeded panels and molding to notes[0]
-        const additionalNotes = [reededPanels, appliedMolding]
+        // Prepend door/drawer material, reeded panels, and molding to notes[0]
+        const additionalNotes = [doorDrawerMaterialNote, reededPanels, appliedMolding]
           .filter(Boolean)
           .join(" ");
         if (additionalNotes) {
@@ -218,7 +284,7 @@ const EstimatePreviewSection = ({
         }
       } else if (section.notes.trim()) {
         // Backward compatibility for string notes
-        const additionalNotes = [reededPanels, appliedMolding]
+        const additionalNotes = [doorDrawerMaterialNote, reededPanels, appliedMolding]
           .filter(Boolean)
           .join(" ");
         processedNotes = additionalNotes
@@ -226,8 +292,8 @@ const EstimatePreviewSection = ({
           : section.notes;
       }
     } else {
-      // No section notes, but we might have reeded/molding notes
-      const additionalNotes = [reededPanels, appliedMolding]
+      // No section notes, but we might have door/drawer material, reeded, or molding notes
+      const additionalNotes = [doorDrawerMaterialNote, reededPanels, appliedMolding]
         .filter(Boolean)
         .join(" ");
       if (additionalNotes) {
@@ -287,6 +353,7 @@ const EstimatePreviewSection = ({
         : "None",
       faceFinish: faceFinishNames,
       boxFinish: boxFinishNames,
+      doorMaterialNote: doorDrawerMaterialNote, // For PDF door/drawer material note
       notes: processedNotes, // Array format for PDF
       displayNotes: displayNotesLines, // Formatted lines for UI display
       // Calculation breakdown data for aggregation
@@ -304,6 +371,7 @@ const EstimatePreviewSection = ({
     sectionNumber,
     taskName,
     cabinetStyles,
+    faceMaterials,
     finishTypes,
     drawerBoxMaterials,
     context,

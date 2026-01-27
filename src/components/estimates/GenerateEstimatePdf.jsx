@@ -114,9 +114,9 @@ const GenerateEstimatePdf = ({
       if (contactInfo?.fax) {
         contactLines.push(`Fax: ${contactInfo.fax}`);
       }
-      
+
       // Height variables to control header/footer and page margins
-      const HEADER_HEIGHT =  209.75; // Increased if we have contact info
+      const HEADER_HEIGHT = 209.75; // Increased if we have contact info
       const FOOTER_HEIGHT = 65; // Fixed height for footer table
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
@@ -124,7 +124,6 @@ const GenerateEstimatePdf = ({
       const GROUP_HEADER_FONT_SIZE = 10;
       const GROUP_DATA_FONT_SIZE = 9;
       const QUANTITY_FONT_SIZE = 10;
-
 
       const GROUP_DATA_INDENT = 5;
 
@@ -152,7 +151,7 @@ const GenerateEstimatePdf = ({
 
       // Build all section rows - no borders, they'll be drawn via canvas
       const allRows = [];
-      
+
       // Add estimate notes at the beginning if any are selected
       if (selectedNotes && selectedNotes.length > 0) {
         // Add introductory line
@@ -177,7 +176,7 @@ const GenerateEstimatePdf = ({
           },
           {},
         ]);
-        
+
         // Add each note with minimal padding
         selectedNotes.forEach((noteText) => {
           allRows.push([
@@ -203,7 +202,7 @@ const GenerateEstimatePdf = ({
             {},
           ]);
         });
-        
+
         // Add a minimal separator row after notes section
         allRows.push([
           { text: " " },
@@ -237,8 +236,16 @@ const GenerateEstimatePdf = ({
         for (let i = 0; i < maxDetailRows; i++) {
           detailsStack.push({
             columns: [
-              { text: leftColumn[i] || "", width: "*", fontSize: GROUP_DATA_FONT_SIZE },
-              { text: rightColumn[i] || "", width: "*", fontSize: GROUP_DATA_FONT_SIZE },
+              {
+                text: leftColumn[i] || "",
+                width: "*",
+                fontSize: GROUP_DATA_FONT_SIZE,
+              },
+              {
+                text: rightColumn[i] || "",
+                width: "*",
+                fontSize: GROUP_DATA_FONT_SIZE,
+              },
             ],
             margin: [GROUP_DATA_INDENT, 0, 0, 4], // Left indent
           });
@@ -248,7 +255,7 @@ const GenerateEstimatePdf = ({
         if (section.notes) {
           if (Array.isArray(section.notes)) {
             const notesLabels = ["Notes:", "Includes:", "Does Not Include:"];
-            
+
             section.notes.forEach((note, index) => {
               if (note && note.trim()) {
                 detailsStack.push({
@@ -317,7 +324,7 @@ const GenerateEstimatePdf = ({
       if (estimate.line_items && Array.isArray(estimate.line_items)) {
         estimate.line_items.forEach((item, index) => {
           const parentKey = String(index);
-          
+
           // Add parent line item if selected
           if (selectedLineItems[parentKey]) {
             const itemTotal =
@@ -345,7 +352,8 @@ const GenerateEstimatePdf = ({
               },
               {},
               {
-                text: item.quantity && item.cost ? formatCurrency(itemTotal) : "",
+                text:
+                  item.quantity && item.cost ? formatCurrency(itemTotal) : "",
                 alignment: "right",
                 colSpan: 2,
                 fontSize: QUANTITY_FONT_SIZE,
@@ -362,12 +370,12 @@ const GenerateEstimatePdf = ({
           ) {
             item.subItems.forEach((subItem, subIndex) => {
               const childKey = `${index}-${subIndex}`;
-              
+
               // Skip if not selected
               if (!selectedLineItems[childKey]) {
                 return;
               }
-              
+
               const subTotal =
                 subItem.quantity && subItem.cost
                   ? parseFloat(subItem.quantity) * parseFloat(subItem.cost)
@@ -430,7 +438,10 @@ const GenerateEstimatePdf = ({
             paddingRight: () => 8,
             paddingTop: (i, node) => {
               // No padding for note rows (italics) or intro line (bold)
-              if (i > 0 && (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)) {
+              if (
+                i > 0 &&
+                (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)
+              ) {
                 return 0;
               }
               return 3;
@@ -440,7 +451,10 @@ const GenerateEstimatePdf = ({
                 return 4;
               }
               // Minimal padding for note rows and separator rows
-              if (i > 0 && (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)) {
+              if (
+                i > 0 &&
+                (node.table.body[i][1]?.italics || node.table.body[i][1]?.bold)
+              ) {
                 return 4;
               }
               // Very minimal for blank separator rows
@@ -528,7 +542,7 @@ const GenerateEstimatePdf = ({
                         {
                           // Left column: Logo and contact info stacked
                           stack: [
-                            logoDataUrl && logoDataUrl.startsWith('data:image/')
+                            logoDataUrl && logoDataUrl.startsWith("data:image/")
                               ? {
                                   // Actual logo - adjust fit dimensions to control size
                                   image: logoDataUrl,
@@ -787,11 +801,11 @@ const GenerateEstimatePdf = ({
                           alignment: "center",
                           width: "auto",
                           fontSize: 9,
-                          margin: [0, 2, 0, 0]
+                          margin: [0, 2, 0, 0],
                         },
                         {
                           text: `Pricing guaranteed until ${formatDate(
-                            guaranteeDate
+                            guaranteeDate,
                           )}`,
                           bold: true,
                           alignment: "right",
