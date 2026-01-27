@@ -644,7 +644,7 @@ export const calculateDoorPartsTime = (
   cabinetTypeId,
   context = {}
 ) => {
-  const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
+  const { partsListAnchors, selectedFaceMaterial, globalServices, effectiveMaterial } = context;
 
   if (!faces || faces.length === 0 || !partsListAnchors || !doorStyle) {
     return {};
@@ -660,7 +660,9 @@ export const calculateDoorPartsTime = (
     doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD
   ) {
     // Slab doors may or may not need finish based on material
-    const needsFinish = selectedFaceMaterial?.material?.needs_finish;
+    // Use effectiveMaterial if provided (door/drawer specific), otherwise fall back to face material
+    const materialToCheck = effectiveMaterial?.material   || selectedFaceMaterial?.material;
+    const needsFinish = materialToCheck?.needs_finish;
     partsListId = needsFinish
       ? PARTS_LIST_MAPPING.slab_door_finished
       : PARTS_LIST_MAPPING.slab_door_unfinished;
@@ -726,25 +728,28 @@ export const calculateDoorPartsTime = (
       let totalMinutes = minutesEach;
 
       // Apply multipliers based on service and material
+      // Use effectiveMaterial if provided (door/drawer specific), otherwise fall back to selectedFaceMaterial
+      const materialForMultipliers = effectiveMaterial || selectedFaceMaterial;
+      
       // For 5-piece doors, ALWAYS apply finish multipliers
       const shouldApplyMultipliers =
         doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
-        selectedFaceMaterial?.material?.needs_finish;
+        materialForMultipliers?.material?.needs_finish;
 
       if (shouldApplyMultipliers && globalServices) {
         const service = globalServices.find(
           (s) => s.team_service_id === parseInt(teamServiceId)
         );
         if (service) {
-          if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+          if (service.service_id === 2 && materialForMultipliers.shopMultiplier) {
             // Shop multiplier for service ID 2
-            totalMinutes *= selectedFaceMaterial.shopMultiplier;
+            totalMinutes *= materialForMultipliers.shopMultiplier;
           } else if (
             service.service_id === 3 &&
-            selectedFaceMaterial.finishMultiplier
+            materialForMultipliers.finishMultiplier
           ) {
             // Finish multiplier for service ID 3
-            totalMinutes *= selectedFaceMaterial.finishMultiplier;
+            totalMinutes *= materialForMultipliers.finishMultiplier;
           }
         }
       }
