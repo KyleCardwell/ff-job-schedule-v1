@@ -68,7 +68,6 @@ const CabinetItemForm = ({
     finished_bottom: item.finished_bottom,
     finished_back: item.finished_back,
     cabinet_style_override: item.cabinet_style_override,
-    corner_45: item.corner_45 || false,
     updated_at: item.updated_at,
     type_specific_options: item.type_specific_options || {},
   });
@@ -452,7 +451,7 @@ const CabinetItemForm = ({
           formData.finished_bottom,
           formData.finished_interior,
           formData.finished_back,
-          formData.corner_45
+          formData.type_specific_options?.corner_45 || false
         );
 
         finalFormData.face_config = {
@@ -1870,26 +1869,6 @@ const CabinetItemForm = ({
                 )}
               </div>
 
-              {/* Corner 45 Checkbox */}
-              {itemTypeConfig.features.corner45 && (
-                <div className="flex items-center gap-2 mt-4">
-                  <input
-                    type="checkbox"
-                    id="corner_45"
-                    name="corner_45"
-                    checked={formData.corner_45}
-                    onChange={handleChange}
-                    className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                  />
-                  <label
-                    htmlFor="corner_45"
-                    className="text-xs font-medium text-slate-700"
-                  >
-                    Corner 45°
-                  </label>
-                </div>
-              )}
-
               {/* Dynamic Type-Specific Options */}
               {itemTypeConfig.typeSpecificOptions?.map((option) => {
                 const optionValue = formData.type_specific_options?.[option.name] ?? option.defaultValue;
@@ -2007,7 +1986,7 @@ const CabinetItemForm = ({
                   htmlFor="width"
                   className="block text-xs font-medium text-slate-700 my-auto"
                 >
-                  {formData.corner_45 ? "Face Width" : "Width"}{" "}
+                  {formData.type_specific_options?.corner_45 ? "Face Width" : "Width"}{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -2066,7 +2045,7 @@ const CabinetItemForm = ({
                   htmlFor="depth"
                   className="block text-xs font-medium text-slate-700 my-auto"
                 >
-                  {formData.corner_45 ? "Side Depth" : "Depth"}{" "}
+                  {formData.type_specific_options?.corner_45 ? "Side Depth" : "Depth"}{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <input

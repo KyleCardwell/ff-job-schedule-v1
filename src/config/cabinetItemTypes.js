@@ -36,8 +36,17 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: true,
       finishedInterior: true,
       finishedBack: true,
-      corner45: true,
     },
+    typeSpecificOptions: [
+      {
+        name: "corner_45",
+        type: "checkbox",
+        label: "Corner 45°",
+        defaultValue: false,
+        description: "45-degree corner cabinet configuration",
+        serviceMultipliers: {},
+      },
+    ],
   },
 
   door_front: {
@@ -62,7 +71,6 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: false,
       finishedInterior: false,
       finishedBack: false,
-      corner45: false,
     },
   },
 
@@ -89,7 +97,6 @@ export const CABINET_ITEM_TYPES = {
       finishedInterior: false,
       finishedBack: false,
       drawerBox: true, // Drawer boxes need width, height, depth
-      corner45: false,
     },
   },
 
@@ -115,7 +122,6 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: false,
       finishedInterior: false,
       finishedSide: true, // Can have finished side
-      corner45: false,
     },
   },
 
@@ -142,7 +148,6 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: true,
       finishedInterior: false,
       finishedBack: false,
-      corner45: false,
     },
     typeSpecificOptions: [
       {
@@ -179,7 +184,6 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: false,
       finishedInterior: false,
       finishedBack: false,
-      corner45: false,
     },
   },
 
@@ -205,7 +209,6 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: false,
       finishedInterior: false,
       finishedBack: false,
-      corner45: false,
     },
   },
 
@@ -256,7 +259,6 @@ export const CABINET_ITEM_TYPES = {
       finishedInterior: false,
       finishedBack: false,
       autoScoop: true, // Automatically includes a scoop
-      corner45: false,
     },
     typeSpecificOptions: [
       {
