@@ -349,7 +349,22 @@ const calculateFaceTotals = (section, context) => {
 
     Object.entries(cabinet.face_config.faceSummary).forEach(
       ([faceType, faceData]) => {
-        // Exclude open, container, and reveal types
+        // Process glass first (before exclusion check) so open face types with glass shelves are included
+        if (faceData.glass) {
+          const { glass } = context?.accessories || {};
+
+          faceData.glass.forEach((piece) => {
+            const sqft = (piece.width * piece.height) / 144;
+            const price =
+              glass.find((g) => g.id === piece.accessoryCatalogId)
+                ?.default_price_per_unit || 0;
+            // Store glass count as quantity (number of pieces) not square footage
+            totals.glassCount += piece.quantity * quantity; // Multiply by cabinet quantity
+            totals.glassTotal += (sqft * price || 0) * piece.quantity * quantity;
+          });
+        }
+
+        // Exclude open, container, and reveal types from face processing
         if (["open", "container", "reveal"].includes(faceType)) return;
 
         const styleToUse =
@@ -400,21 +415,6 @@ const calculateFaceTotals = (section, context) => {
             panelModId,
             quantity,
             cabinetTypeId: cabinet.type,
-          });
-        }
-
-        // Glass faces are now tracked separately to be added to accessories total later
-        if (faceData.glass) {
-          const { glass } = context?.accessories || {};
-
-          faceData.glass.forEach((piece) => {
-            const sqft = (piece.width * piece.height) / 144;
-            const price =
-              glass.find((g) => g.id === piece.accessoryCatalogId)
-                ?.default_price_per_unit || 0;
-            // Store glass count as quantity (number of pieces) not square footage
-            totals.glassCount += piece.quantity;
-            totals.glassTotal += (sqft * price || 0) * piece.quantity;
           });
         }
 
@@ -479,11 +479,6 @@ const calculateFaceTotals = (section, context) => {
       const faceHours = result.hoursByService;
       const panelModHours = result.panelModHoursByService;
 
-      console.log(
-        `  Face batch ${index + 1}: faceType="${faceType}", quantity=${quantity}, faces=${faces?.length || 0}`,
-      );
-      console.log(`    Raw hours from calculateDoorPartsTime:`, faceHours);
-
       // Aggregate hours by service ID (multipliers already applied in calculateDoorPartsTime)
       if (faceHours) {
         Object.entries(faceHours).forEach(([teamServiceId, hours]) => {
@@ -504,10 +499,6 @@ const calculateFaceTotals = (section, context) => {
             hoursWithQuantity - panelModHoursForService,
           );
 
-          console.log(
-            `    Service ${serviceId}: ${hours} × ${quantity} = ${hoursWithQuantity} (face: ${faceOnlyHours}, panelMod: ${panelModHoursForService})`,
-          );
-
           // Add to aggregate total (includes both face and panel mod)
           if (!totals.hoursByService[serviceId]) {
             totals.hoursByService[serviceId] = 0;
@@ -523,10 +514,6 @@ const calculateFaceTotals = (section, context) => {
             totals.categoryHours[faceType][serviceId] = 0;
           }
           totals.categoryHours[faceType][serviceId] += faceOnlyHours;
-
-          console.log(
-            `    categoryHours.${faceType}[${serviceId}] now = ${totals.categoryHours[faceType][serviceId]}`,
-          );
         });
       }
 
@@ -553,10 +540,6 @@ const calculateFaceTotals = (section, context) => {
       }
     },
   );
-
-  console.log("🔵 Face hours calculation complete");
-  console.log("  Aggregate hoursByService:", totals.hoursByService);
-  console.log("  categoryHours breakdown:", totals.categoryHours);
 
   // Calculate prices by style using bulk functions
   Object.entries(facesByStyle).forEach(([styleToUse, faces]) => {

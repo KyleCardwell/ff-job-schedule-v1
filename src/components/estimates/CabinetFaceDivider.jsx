@@ -346,24 +346,6 @@ const CabinetFaceDivider = ({
 
       const revealsToUse = faceConfig?.rootReveals || typeConfigReveals;
 
-      console.log(
-        "[CabinetFaceDivider] Main useEffect - cabinetStyleId:",
-        cabinetStyleId,
-      );
-      console.log("[CabinetFaceDivider] type?.config:", typeConfigReveals);
-      console.log(
-        "[CabinetFaceDivider] faceConfig?.rootReveals:",
-        faceConfig?.rootReveals,
-      );
-      console.log(
-        "[CabinetFaceDivider] revealsToUse (priority):",
-        revealsToUse,
-      );
-      console.log(
-        "[CabinetFaceDivider] config.rootReveals:",
-        config.rootReveals,
-      );
-
       // Calculate expected dimensions based on revealsToUse
       const expectedWidth =
         cabinetWidth - revealsToUse.left - revealsToUse.right;
@@ -379,18 +361,7 @@ const CabinetFaceDivider = ({
 
       const needsUpdate = dimensionsChanged || revealsChanged;
 
-      console.log(
-        "[CabinetFaceDivider] dimensionsChanged:",
-        dimensionsChanged,
-        "revealsChanged:",
-        revealsChanged,
-        "needsUpdate:",
-        needsUpdate,
-      );
-
       if (needsUpdate) {
-        console.log("[CabinetFaceDivider] Updating config in main useEffect");
-
         // Update the ref to track current reveals
         revealsRef.current = revealsToUse;
 
@@ -401,9 +372,6 @@ const CabinetFaceDivider = ({
 
         // If reveals changed, normalize all reveal nodes in the tree
         if (revealsChanged) {
-          console.log(
-            "[CabinetFaceDivider] Reveals changed - normalizing reveal nodes",
-          );
           normalizeRevealDimensions(updatedConfig, revealsToUse);
         }
 
@@ -415,17 +383,12 @@ const CabinetFaceDivider = ({
 
         // If dimensions or reveals changed, update children proportionally
         if (dimensionsChanged || revealsChanged) {
-          console.log("[CabinetFaceDivider] Updating children proportionally");
           updateChildrenFromParent(updatedConfig);
         }
 
         // Force recalculation of layout
         const layoutConfig = calculateLayout(updatedConfig);
 
-        console.log(
-          "[CabinetFaceDivider] Setting config with rootReveals:",
-          layoutConfig.rootReveals,
-        );
         setConfig(layoutConfig);
       }
     }
@@ -1276,6 +1239,21 @@ const CabinetFaceDivider = ({
         delete node.drawerBoxDimensions;
       }
 
+      // Auto-adjust shelfNosing based on cabinet style and face type/width
+      if (cabinetStyleId !== 13 && newType === FACE_NAMES.OPEN) {
+        node.shelfNosing = 1.5;
+        setInputValues((prev) => ({
+          ...prev,
+          shelfNosing: 1.5,
+        }));
+      } else if (node.width > 36) {
+        node.shelfNosing = 1.5;
+        setInputValues((prev) => ({
+          ...prev,
+          shelfNosing: 1.5,
+        }));
+      }
+
       // Set default shelf quantity for supported types
       if (supportsShelves(newType)) {
         const standardShelfQty = calculateShelfQty(node.height);
@@ -1338,6 +1316,13 @@ const CabinetFaceDivider = ({
 
         // Calculate rollout dimensions for all nodes with rollouts
         const processNode = (node) => {
+          // Auto-adjust shelfNosing based on cabinet style and face type/width
+          if (cabinetStyleId !== 13 && node.type === FACE_NAMES.OPEN) {
+            node.shelfNosing = 1.5;
+          } else if (node.width > 36) {
+            node.shelfNosing = 1.5;
+          }
+
           // Calculate rollout dimensions if needed
           if (node.rollOutQty > 0) {
             node.rollOutDimensions = calculateRollOutDimensions(
@@ -1382,7 +1367,7 @@ const CabinetFaceDivider = ({
         previousConfigRef.current = configString;
       }
     }
-  }, [config, onSave, cabinetDepth, style]);
+  }, [config, onSave, cabinetDepth, style, cabinetStyleId]);
 
   const handleDragStart = (event, node, dimension) => {
     if (disabled) return;
@@ -1607,6 +1592,14 @@ const CabinetFaceDivider = ({
         [node.id]: newValue,
         [sibling.id]: newSiblingSize,
       }));
+
+      // Auto-adjust shelfNosing if width changed to > 36
+      if (dimension === "width" && newValue > 36 && node.shelfNosing !== 1.5) {
+        node.shelfNosing = 1.5;
+      }
+      if (dimension === "width" && newSiblingSize > 36 && sibling.shelfNosing !== 1.5) {
+        sibling.shelfNosing = 1.5;
+      }
     }
 
     // Update children of all affected nodes if they are containers
