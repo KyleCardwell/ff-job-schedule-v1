@@ -169,9 +169,9 @@ const FaceAccessories = ({
                     <input
                       type="number"
                       value={editValues.quantity}
-                      onChange={(e) => setEditValues({ ...editValues, quantity: parseFloat(e.target.value) || 1 })}
+                      onChange={(e) => setEditValues({ ...editValues, quantity: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                       className="flex-1 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                      min="1"
+                      min="0"
                       step="1"
                     />
                   </div>
@@ -247,9 +247,9 @@ const FaceAccessories = ({
               <input
                 type="number"
                 value={newAccessory.quantity}
-                onChange={(e) => setNewAccessory({ ...newAccessory, quantity: parseFloat(e.target.value) || 1 })}
+                onChange={(e) => setNewAccessory({ ...newAccessory, quantity: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                 className="flex-1 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                min="1"
+                min="0"
                 step="1"
               />
             </div>

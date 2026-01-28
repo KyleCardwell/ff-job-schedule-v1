@@ -19,7 +19,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const [formData, setFormData] = useState({
     length_catalog_id: item.length_catalog_id || "",
     length: item.length || "",
-    quantity: item.quantity || 1,
+    quantity: item.quantity != null ? item.quantity : 1,
     miter_count: item.miter_count || 0,
     cutout_count: item.cutout_count || 0,
     temp_id: item.temp_id || uuid(),
@@ -137,8 +137,8 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       newErrors.length = "Length must be greater than 0";
     }
 
-    if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = "Quantity must be at least 1";
+    if (formData.quantity === null || formData.quantity === undefined || formData.quantity < 0) {
+      newErrors.quantity = "Quantity must be 0 or greater";
     }
 
     setErrors(newErrors);
@@ -245,7 +245,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 name="quantity"
                 value={formData.quantity || ""}
                 onChange={handleChange}
-                min="1"
+                min="0"
                 step="1"
                 className={`w-full px-3 py-2 border ${
                   errors.quantity ? "border-red-500" : "border-slate-300"

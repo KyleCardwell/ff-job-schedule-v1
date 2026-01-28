@@ -5,6 +5,7 @@ import {
   FACE_NAMES,
   FACE_STYLE_VALUES,
   FACE_TYPES,
+  PART_NAMES,
   PARTS_LIST_MAPPING,
 } from "./constants";
 
@@ -317,7 +318,7 @@ export const calculateHoodPartsTime = (
 
   // Use 3D volume for hood calculation (width × height × depth)
   const volume = cabinet.width * cabinet.height * cabinet.depth;
-  const quantity = Number(cabinet.quantity) || 1;
+  const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
 
   // Collect all unique service IDs from anchors
   const allServiceIds = new Set();
@@ -458,7 +459,7 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
     }
 
     const area = part.width * part.height;
-    const quantity = part.quantity || 1;
+    const quantity = part.quantity != null ? part.quantity : 1;
 
     // Calculate time for each service
     allServiceIds.forEach((teamServiceId) => {
@@ -529,7 +530,7 @@ export const calculateBoxPartsTime = (section, context = {}) => {
     categoryHours: {
       boxes: {}, // Regular box parts
       fillers: {}, // Filler parts
-      endPanelNosing: {}, // End panel nosing parts
+      nosing: {}, // Nosing parts
     },
   };
 
@@ -544,13 +545,13 @@ export const calculateBoxPartsTime = (section, context = {}) => {
   section.cabinets.forEach((cabinet) => {
     if (!cabinet.face_config?.boxSummary?.boxPartsList) return;
 
-    const quantity = Number(cabinet.quantity) || 1;
+    const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
     const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
 
     // Separate parts by type
     const fillerParts = boxPartsList.filter(p => p.type === 'filler' || (cabinet.type === 5));
-    const nosingParts = boxPartsList.filter(p => p.type === 'end_panel_nosing');
-    const regularParts = boxPartsList.filter(p => p.type !== 'filler' && p.type !== 'end_panel_nosing' && cabinet.type !== 5);
+    const nosingParts = boxPartsList.filter(p => p.type === 'nosing');
+    const regularParts = boxPartsList.filter(p => p.type !== 'filler' && p.type !== 'nosing' && cabinet.type !== 5);
 
     // Calculate hours for regular box parts
     if (regularParts.length > 0) {
@@ -585,18 +586,41 @@ export const calculateBoxPartsTime = (section, context = {}) => {
     }
 
     // Calculate hours for nosing parts
+    // First, calculate material time for the parts (with multipliers)
+    // Then add nosing process time based on length (without multipliers)
     if (nosingParts.length > 0) {
-      const nosingHours = calculatePartsTimeForCabinet(nosingParts, context);
-      Object.entries(nosingHours).forEach(([teamServiceId, hours]) => {
+      // Calculate material hours (includes multipliers for the material itself)
+      const materialHours = calculatePartsTimeForCabinet(nosingParts, context);
+      Object.entries(materialHours).forEach(([teamServiceId, hours]) => {
         const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
         if (!service) return;
         
         const roundedHours = roundToHundredth(hours * quantity);
         if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
-        if (!totals.categoryHours.endPanelNosing[service.service_id]) totals.categoryHours.endPanelNosing[service.service_id] = 0;
+        if (!totals.categoryHours.nosing[service.service_id]) totals.categoryHours.nosing[service.service_id] = 0;
         
         totals.hoursByService[service.service_id] += roundedHours;
-        totals.categoryHours.endPanelNosing[service.service_id] += roundedHours;
+        totals.categoryHours.nosing[service.service_id] += roundedHours;
+      });
+
+      // Add nosing process time based on length (height) - NO multipliers
+      nosingParts.forEach((part) => {
+        const nosingLength = part.height; // Using height as the length for nosing
+        const nosingProcessHours = calculateNosingTime(nosingLength, context);
+        const partQuantity = part.quantity || 1; // Number of shelves with this nosing
+        
+        Object.entries(nosingProcessHours).forEach(([teamServiceId, hours]) => {
+          const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
+          if (!service) return;
+          
+          // Multiply by both part quantity (shelves) and cabinet quantity
+          const roundedHours = roundToHundredth(hours * partQuantity * quantity);
+          if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
+          if (!totals.categoryHours.nosing[service.service_id]) totals.categoryHours.nosing[service.service_id] = 0;
+          
+          totals.hoursByService[service.service_id] += roundedHours;
+          totals.categoryHours.nosing[service.service_id] += roundedHours;
+        });
       });
     }
   });
@@ -623,7 +647,7 @@ export const calculateDoorPartsTime = (
   cabinetTypeId,
   context = {}
 ) => {
-  const { partsListAnchors, selectedFaceMaterial, globalServices } = context;
+  const { partsListAnchors, selectedFaceMaterial, globalServices, effectiveMaterial } = context;
 
   if (!faces || faces.length === 0 || !partsListAnchors || !doorStyle) {
     return {};
@@ -639,7 +663,9 @@ export const calculateDoorPartsTime = (
     doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD
   ) {
     // Slab doors may or may not need finish based on material
-    const needsFinish = selectedFaceMaterial?.material?.needs_finish;
+    // Use effectiveMaterial if provided (door/drawer specific), otherwise fall back to face material
+    const materialToCheck = effectiveMaterial?.material || selectedFaceMaterial?.material;
+    const needsFinish = materialToCheck?.needs_finish;
     partsListId = needsFinish
       ? PARTS_LIST_MAPPING.slab_door_finished
       : PARTS_LIST_MAPPING.slab_door_unfinished;
@@ -681,10 +707,12 @@ export const calculateDoorPartsTime = (
   }
 
   const hoursByService = {};
+  const panelModHoursByService = {};
 
   // Initialize all services to 0
   allServiceIds.forEach((serviceId) => {
     hoursByService[serviceId] = 0;
+    panelModHoursByService[serviceId] = 0;
   });
 
   // Process each face
@@ -703,25 +731,28 @@ export const calculateDoorPartsTime = (
       let totalMinutes = minutesEach;
 
       // Apply multipliers based on service and material
+      // Use effectiveMaterial if provided (door/drawer specific), otherwise fall back to selectedFaceMaterial
+      const materialForMultipliers = effectiveMaterial || selectedFaceMaterial;
+      
       // For 5-piece doors, ALWAYS apply finish multipliers
       const shouldApplyMultipliers =
         doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
-        selectedFaceMaterial?.material?.needs_finish;
+        materialForMultipliers?.material?.needs_finish;
 
       if (shouldApplyMultipliers && globalServices) {
         const service = globalServices.find(
           (s) => s.team_service_id === parseInt(teamServiceId)
         );
         if (service) {
-          if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+          if (service.service_id === 2 && materialForMultipliers.shopMultiplier) {
             // Shop multiplier for service ID 2
-            totalMinutes *= selectedFaceMaterial.shopMultiplier;
+            totalMinutes *= materialForMultipliers.shopMultiplier;
           } else if (
             service.service_id === 3 &&
-            selectedFaceMaterial.finishMultiplier
+            materialForMultipliers.finishMultiplier
           ) {
             // Finish multiplier for service ID 3
-            totalMinutes *= selectedFaceMaterial.finishMultiplier;
+            totalMinutes *= materialForMultipliers.finishMultiplier;
           }
         }
       }
@@ -735,6 +766,8 @@ export const calculateDoorPartsTime = (
           teamServiceId,
           cabinetStyleId
         );
+        // Track panel mod hours separately
+        panelModHoursByService[teamServiceId] += panelModMinutes;
       }
 
       hoursByService[teamServiceId] += totalMinutes + panelModMinutes;
@@ -748,7 +781,16 @@ export const calculateDoorPartsTime = (
     );
   });
 
-  return hoursByService;
+  Object.keys(panelModHoursByService).forEach((serviceId) => {
+    panelModHoursByService[serviceId] = roundToHundredth(
+      panelModHoursByService[serviceId] / 60
+    );
+  });
+
+  return {
+    hoursByService,
+    panelModHoursByService,
+  };
 };
 
 /**
@@ -793,7 +835,7 @@ export const calculatePanelPartsTime = (
 
   // Use root dimensions for area calculation
   const area = cabinet.width * cabinet.height;
-  const quantity = Number(cabinet.quantity) || 1;
+  const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
 
   // Collect all unique service IDs from anchors
   const allServiceIds = new Set();
@@ -849,6 +891,142 @@ export const calculatePanelPartsTime = (
   Object.keys(hoursByService).forEach((serviceId) => {
     hoursByService[serviceId] = roundToHundredth(
       (hoursByService[serviceId] / 60) * quantity
+    );
+  });
+
+  return hoursByService;
+};
+
+/**
+ * Linear interpolation based on a single dimension (length/width)
+ * Used for nosing where time is per linear inch
+ * @param {Array} anchors - Array of anchor objects with dimensions and services
+ * @param {number} targetLength - The length to interpolate for
+ * @param {number} teamServiceId - The service ID to get time for
+ * @returns {number} - Interpolated time in minutes
+ */
+const interpolateTimeByLength = (anchors, targetLength, teamServiceId) => {
+  if (!anchors || anchors.length === 0) {
+    return 0;
+  }
+
+  // Build array of {length, minutes} for this service, filtering out missing services
+  const dataPoints = anchors
+    .map((anchor) => {
+      const service = anchor.services.find(
+        (s) => s.team_service_id === teamServiceId
+      );
+      if (!service) return null;
+
+      return {
+        length: anchor.height, // Use width as the length dimension
+        minutes: service.minutes || 0,
+      };
+    })
+    .filter(Boolean);
+
+  if (dataPoints.length === 0) {
+    return 0;
+  }
+
+  // Sort by length for interpolation
+  dataPoints.sort((a, b) => a.length - b.length);
+
+  // If only one data point, return its value
+  if (dataPoints.length === 1) {
+    return dataPoints[0].minutes;
+  }
+
+  // If target is below minimum, return minimum value
+  if (targetLength <= dataPoints[0].length) {
+    return dataPoints[0].minutes;
+  }
+
+  // Find the two points to interpolate between
+  for (let i = 0; i < dataPoints.length - 1; i++) {
+    const lower = dataPoints[i];
+    const upper = dataPoints[i + 1];
+
+    if (targetLength >= lower.length && targetLength <= upper.length) {
+      // Avoid division by zero
+      if (upper.length - lower.length === 0) {
+        return lower.minutes;
+      }
+
+      // Linear interpolation: minutes = m1 + (m2 - m1) * (length - l1) / (l2 - l1)
+      const ratio = (targetLength - lower.length) / (upper.length - lower.length);
+      const interpolatedMinutes =
+        lower.minutes + ratio * (upper.minutes - lower.minutes);
+
+      return roundToHundredth(interpolatedMinutes);
+    }
+  }
+
+  // If target is above maximum, extrapolate using the last two points
+  const lastTwo = dataPoints.slice(-2);
+  if (lastTwo.length === 2) {
+    const lower = lastTwo[0];
+    const upper = lastTwo[1];
+    const ratio = (targetLength - lower.length) / (upper.length - lower.length);
+    const extrapolatedMinutes =
+      lower.minutes + ratio * (upper.minutes - lower.minutes);
+    return roundToHundredth(extrapolatedMinutes);
+  }
+
+  // Fallback
+  return dataPoints[dataPoints.length - 1].minutes;
+};
+
+/**
+ * Calculate nosing time based on length (time per inch of nosing)
+ * Nosing is a process that can be applied to various parts (end panels, appliance panels, etc.)
+ * Does NOT apply shop or finish multipliers - it's a separate process
+ * @param {number} length - Length of the nosing edge in inches (typically height or width)
+ * @param {Object} context - Calculation context
+ * @param {Object} context.partsListAnchors - Redux state.partsListAnchors.itemsByPartsList
+ * @param {Array} context.globalServices - Global services array
+ * @returns {Object} - { serviceId: hours }
+ */
+export const calculateNosingTime = (length, context = {}) => {
+  const { partsListAnchors } = context;
+
+  if (!length || !partsListAnchors) {
+    return {};
+  }
+
+  const partsListId = PARTS_LIST_MAPPING[PART_NAMES.NOSING];
+  const anchors = partsListAnchors[partsListId];
+
+  if (!anchors || anchors.length === 0) {
+    return {};
+  }
+
+  // Collect all unique service IDs from anchors
+  const allServiceIds = new Set();
+  anchors.forEach((anchor) => {
+    anchor.services.forEach((service) => {
+      allServiceIds.add(service.team_service_id);
+    });
+  });
+
+  const hoursByService = {};
+
+  // Calculate time for each service based on length using linear interpolation
+  allServiceIds.forEach((teamServiceId) => {
+    const minutesBase = interpolateTimeByLength(
+      anchors,
+      length,
+      teamServiceId
+    );
+
+    // NO multipliers for nosing - it's a separate process
+    hoursByService[teamServiceId] = minutesBase;
+  });
+
+  // Convert minutes to hours for final output
+  Object.keys(hoursByService).forEach((serviceId) => {
+    hoursByService[serviceId] = roundToHundredth(
+      hoursByService[serviceId] / 60
     );
   });
 
@@ -1052,12 +1230,49 @@ export const calculateSlabSheetFacePriceBulk = (
 
   // Get the number of bins (sheets) used
   const sheetsUsed = packer.bins.length;
-  const roundedSheets = Math.max(sheetsUsed, 0.5);
-
+  
   // Calculate actual packing efficiency
   const totalSheetArea = sheetsUsed * sheetArea;
   const packingEfficiency =
     totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
+  
+  // Calculate rounded sheets based on actual utilization
+  // Find the sheet with the most unused space and apply fractional charging to it
+  let roundedSheets;
+  if (sheetsUsed === 0) {
+    roundedSheets = 0;
+  } else if (sheetsUsed === 1) {
+    // For single sheet, calculate fractional usage based on area (min 0.5 sheets)
+    const fractionalUsage = totalPartsArea / sheetArea;
+    roundedSheets = Math.max(fractionalUsage, 0.5);
+  } else {
+    // For multiple sheets, find the one with the most unused space
+    let maxFreeArea = 0;
+    let partialSheetIndex = -1;
+    
+    packer.bins.forEach((bin, index) => {
+      // Calculate total free area from all free rectangles in this bin
+      const totalFreeArea = bin.freeRectangles.reduce((sum, rect) => {
+        return sum + (rect.width * rect.height);
+      }, 0);
+      
+      if (totalFreeArea > maxFreeArea) {
+        maxFreeArea = totalFreeArea;
+        partialSheetIndex = index;
+      }
+    });
+    
+    // Calculate area used on the partial sheet
+    const partialSheetUsedArea = packer.bins[partialSheetIndex].rects.reduce((sum, rect) => {
+      return sum + rect.data.area;
+    }, 0);
+    
+    // Calculate fractional usage for the partial sheet (min 0.5)
+    const partialSheetFraction = Math.max(partialSheetUsedArea / sheetArea, 0.5);
+    
+    // Count all full sheets + fractional partial sheet
+    roundedSheets = (sheetsUsed - 1) + partialSheetFraction;
+  }
 
   // Calculate actual kerf waste based on packed parts
   let totalKerfWaste = 0;
@@ -1472,55 +1687,55 @@ export const calculate5PieceDoorHours = (width, height, thickness = 0.75) => {
 
 // --- Slab Door Hour Calculation ---
 
-const slabDoorHourAnchors = {
-  shop: [
-    { area: 768, hours: 0.5 },
-    { area: 1440, hours: 0.7 },
-    { area: 2304, hours: 1.0 },
-  ],
-  install: [
-    { area: 768, hours: 0.1 },
-    { area: 1440, hours: 0.15 },
-    { area: 2304, hours: 0.25 },
-  ],
-  finish: [
-    { area: 768, hours: 0.5 },
-    { area: 1440, hours: 0.6 },
-    { area: 2304, hours: 0.8 },
-  ],
-};
+// const slabDoorHourAnchors = {
+//   shop: [
+//     { area: 768, hours: 0.5 },
+//     { area: 1440, hours: 0.7 },
+//     { area: 2304, hours: 1.0 },
+//   ],
+//   install: [
+//     { area: 768, hours: 0.1 },
+//     { area: 1440, hours: 0.15 },
+//     { area: 2304, hours: 0.25 },
+//   ],
+//   finish: [
+//     { area: 768, hours: 0.5 },
+//     { area: 1440, hours: 0.6 },
+//     { area: 2304, hours: 0.8 },
+//   ],
+// };
 
-const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
-  const first = anchors[0];
-  const last = anchors[anchors.length - 1];
+// const calculateInterpolatedSlabDoorHours = (anchors, targetArea) => {
+//   const first = anchors[0];
+//   const last = anchors[anchors.length - 1];
 
-  if (targetArea <= first.area) return first.hours;
-  if (targetArea >= last.area) return last.hours;
+//   if (targetArea <= first.area) return first.hours;
+//   if (targetArea >= last.area) return last.hours;
 
-  const upperIndex = anchors.findIndex((anchor) => anchor.area >= targetArea);
-  const upper = anchors[upperIndex];
-  const lower = anchors[upperIndex - 1];
+//   const upperIndex = anchors.findIndex((anchor) => anchor.area >= targetArea);
+//   const upper = anchors[upperIndex];
+//   const lower = anchors[upperIndex - 1];
 
-  const areaRange = upper.area - lower.area;
-  const hourRange = upper.hours - lower.hours;
-  const areaOffset = targetArea - lower.area;
+//   const areaRange = upper.area - lower.area;
+//   const hourRange = upper.hours - lower.hours;
+//   const areaOffset = targetArea - lower.area;
 
-  if (areaRange === 0) return lower.hours;
+//   if (areaRange === 0) return lower.hours;
 
-  const interpolated = lower.hours + (areaOffset / areaRange) * hourRange;
-  return roundToHundredth(interpolated);
-};
+//   const interpolated = lower.hours + (areaOffset / areaRange) * hourRange;
+//   return roundToHundredth(interpolated);
+// };
 
-export const calculateSlabDoorHours = (width, height) => {
-  const area = width * height;
-  return {
-    hoursByService: {
-      2: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area), // Shop
-      4: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area), // Install
-      3: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area), // Finish
-    },
-  };
-};
+// export const calculateSlabDoorHours = (width, height) => {
+//   const area = width * height;
+//   return {
+//     hoursByService: {
+//       2: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.shop, area), // Shop
+//       4: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.install, area), // Install
+//       3: calculateInterpolatedSlabDoorHours(slabDoorHourAnchors.finish, area), // Finish
+//     },
+//   };
+// };
 
 /**
  * Calculate box sheet costs using maxrects-packer for optimal sheet layout
@@ -1580,7 +1795,7 @@ export const calculateBoxSheetsCNC = (
     // Only process cabinet boxes
     if (![...CABINET_TYPES].includes(cab.type)) return;
 
-    const qty = Number(cab.quantity) || 1;
+    const qty = cab.quantity != null ? Number(cab.quantity) : 1;
     const { boxSummary } = cab.face_config;
     const { boxPartsList, bandingLength, boxHardware, shelfDrillHoles } =
       boxSummary;
@@ -1919,12 +2134,17 @@ export const calculateBoxSheetsCNC = (
 /**
  * Generate a human-readable text summary of a cabinet's face configuration
  * @param {Object} faceConfig - The face_config object from a cabinet
+ * @param {Object} typeSpecificOptions - Optional type-specific options (e.g., shop_built flag)
  * @returns {string} - Text summary like "4 doors (2 glass panels), 5 shelves (2 glass)"
  */
-export const generateCabinetSummary = (faceConfig) => {
+export const generateCabinetSummary = (faceConfig, typeSpecificOptions = {}) => {
   if (!faceConfig) return "";
 
   const parts = [];
+
+  if (typeSpecificOptions.corner_45) {
+    parts.push("45° Corner");
+  }
 
   // Helper to recursively collect all nodes
   const collectNodes = (node, collection = []) => {
@@ -2011,9 +2231,9 @@ export const generateCabinetSummary = (faceConfig) => {
   // Count panels
   const panelNodes = allNodes.filter((node) => node.type === FACE_NAMES.PANEL);
   if (panelNodes.length > 0) {
-    parts.push(
-      `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`
-    );
+    const panelText = `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`;
+    const shopBuiltSuffix = typeSpecificOptions?.shop_built ? " (shop-built)" : "";
+    parts.push(panelText + shopBuiltSuffix);
   }
 
   // Count shelves and glass shelves
@@ -2072,7 +2292,7 @@ export const generateCabinetSummary = (faceConfig) => {
         if (!accessoryGroups[name]) {
           accessoryGroups[name] = 0;
         }
-        accessoryGroups[name] += accessory.quantity || 1;
+        accessoryGroups[name] += (accessory.quantity != null ? accessory.quantity : 1);
       });
     }
     

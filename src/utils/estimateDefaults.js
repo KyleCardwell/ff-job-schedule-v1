@@ -73,6 +73,17 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       estimate.default_drawer_box_mat,
       team.default_drawer_box_mat
     ),
+    // Door and drawer front materials (section-level only, fallback to face_mat)
+    door_mat: section.door_mat || getEffectiveValueOnly(
+      section.face_mat,
+      estimate.default_face_mat,
+      team.default_face_mat
+    ),
+    drawer_front_mat: section.drawer_front_mat || getEffectiveValueOnly(
+      section.face_mat,
+      estimate.default_face_mat,
+      team.default_face_mat
+    ),
     
     // Hardware
     hinge_id: getEffectiveValueOnly(
@@ -106,6 +117,17 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       section.box_finish,
       estimate.default_box_finish,
       team.default_box_finish
+    ),
+    // Door and drawer front finishes (section-level only, fallback to face_finish)
+    door_finish: section.door_finish || getEffectiveValueOnly(
+      section.face_finish,
+      estimate.default_face_finish,
+      team.default_face_finish
+    ),
+    drawer_front_finish: section.drawer_front_finish || getEffectiveValueOnly(
+      section.face_finish,
+      estimate.default_face_finish,
+      team.default_face_finish
     ),
     
     // Molding options (booleans)
@@ -199,12 +221,16 @@ export const DEFAULTS_FIELD_MAPPING = {
   boxMaterial: 'box_mat',
   faceMaterial: 'face_mat',
   drawer_box_mat: 'drawer_box_mat',
+  door_mat: 'door_mat',
+  drawer_front_mat: 'drawer_front_mat',
   hinge_id: 'hinge_id',
   slide_id: 'slide_id',
   door_pull_id: 'door_pull_id',
   drawer_pull_id: 'drawer_pull_id',
   faceFinish: 'face_finish',
   boxFinish: 'box_finish',
+  door_finish: 'door_finish',
+  drawer_front_finish: 'drawer_front_finish',
   doorInsideMolding: 'door_inside_molding',
   doorOutsideMolding: 'door_outside_molding',
   drawerInsideMolding: 'drawer_inside_molding',
@@ -233,6 +259,7 @@ export const getDefaultColumnName = (fieldName, level) => {
   }
   return fieldName;
 };
+
 
 /**
  * Determine if finish should be applied based on the effective material

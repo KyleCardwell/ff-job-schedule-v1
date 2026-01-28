@@ -156,7 +156,7 @@ export const DRAWER_BOX_MOD_BY_ID = {
 };
 
 // database cabinet types
-export const CABINET_TYPES = [1, 2, 3]
+export const CABINET_TYPES = [1, 2, 3];
 
 // Face style string constants for comparisons (maintainable single source of truth)
 export const FACE_STYLE_VALUES = {
@@ -164,15 +164,27 @@ export const FACE_STYLE_VALUES = {
   FIVE_PIECE_HARDWOOD_REEDED: "5_piece_hardwood_reeded",
   SLAB_HARDWOOD: "slab_hardwood",
   SLAB_SHEET: "slab_sheet",
-  SLAB_SHEET_REEDED: "slab_sheet_reeded"
+  SLAB_SHEET_REEDED: "slab_sheet_reeded",
 };
 
 // Face styles array (works for both UI dropdowns and database)
 export const FACE_STYLES = [
-  { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD, label: "5-Piece Hardwood", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD },
+  {
+    id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD,
+    label: "5-Piece Hardwood",
+    value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD,
+  },
   // { id: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED, label: "5-Piece Hardwood Reeded", value: FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED },
-  { id: FACE_STYLE_VALUES.SLAB_HARDWOOD, label: "Slab Hardwood", value: FACE_STYLE_VALUES.SLAB_HARDWOOD },
-  { id: FACE_STYLE_VALUES.SLAB_SHEET, label: "Slab Sheet", value: FACE_STYLE_VALUES.SLAB_SHEET },
+  {
+    id: FACE_STYLE_VALUES.SLAB_HARDWOOD,
+    label: "Slab Hardwood",
+    value: FACE_STYLE_VALUES.SLAB_HARDWOOD,
+  },
+  {
+    id: FACE_STYLE_VALUES.SLAB_SHEET,
+    label: "Slab Sheet",
+    value: FACE_STYLE_VALUES.SLAB_SHEET,
+  },
   // { id: FACE_STYLE_VALUES.SLAB_SHEET_REEDED, label: "Slab Sheet Reeded", value: FACE_STYLE_VALUES.SLAB_SHEET_REEDED }
 ];
 
@@ -223,10 +235,23 @@ export const PARTS_LIST_MAPPING = {
   panel_mod_reeded_finished: 15,
   end_panel_finished: 17,
   appliance_panel_finished: 18,
-  end_panel_nosing_finished: 19,
+  nosing: 19,
   face_frame_finished: 20,
   hood_finished: 21, // Hood cabinets - includes depth in calculation
   panel_mod_grooved_finished: 22,
+};
+
+export const PART_NAMES = {
+  NOSING: "nosing",
+  SIDE: "side",
+  TOP_BOTTOM: "topBottom",
+  BACK: "back",
+  PARTITION: "partition",
+  SHELF: "shelf",
+  RIGHT: "right",
+  LEFT: "left",
+  TOP: "top",
+  BOTTOM: "bottom",
 };
 
 // Display names for panel mods (used in estimates, PDFs, etc.)
@@ -235,5 +260,11 @@ export const PANEL_MOD_DISPLAY_NAMES = {
   22: "Grooved Panels",
   // Add more panel mods here as needed
 };
-  
-export const FIXED_AMOUNT = 'fixed_amount';
+
+export const FIXED_AMOUNT = "fixed_amount";
+
+export const EDIT_TYPES = {
+  TEAM: "team",
+  ESTIMATE: "estimate",
+  SECTION: "section",
+};

@@ -442,8 +442,8 @@ const EstimateLayout = () => {
             </div>
           </div>
         ) : showEstimateDefaultsForm ? (
-          <div className="px-6 overflow-y-auto h-full">
-            <div className="max-w-5xl mx-auto">
+          <div className="px-6 h-full">
+            <div className="max-w-5xl mx-auto h-full">
               <EstimateSectionForm
                 editType="estimate"
                 estimateData={currentEstimate}
@@ -475,8 +475,8 @@ const EstimateLayout = () => {
             </div>
           </div>
         ) : showSectionForm ? (
-          <div className="p-6 overflow-y-auto h-full">
-            <div className="max-w-5xl mx-auto">
+          <div className="p-6 h-full">
+            <div className="max-w-5xl mx-auto h-full">
               <EstimateSectionForm
                 taskId={selectedTaskId}
                 section={

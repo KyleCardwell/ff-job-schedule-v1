@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 
-import { FACE_STYLES, PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants";
+import { EDIT_TYPES, FACE_STYLES, PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants";
 import { getEffectiveValue as getEffectiveValueUtil } from "../../utils/estimateDefaults";
 
 const EstimateSectionInfo = ({
@@ -52,8 +52,8 @@ const EstimateSectionInfo = ({
 
   // Get color class based on source
   const getSourceColor = (source) => {
-    if (source === "section") return "text-amber-400";
-    if (source === "estimate") return "text-green-400";
+    if (source === EDIT_TYPES.SECTION) return "text-amber-400";
+    if (source === EDIT_TYPES.ESTIMATE) return "text-green-400";
     return "text-slate-400"; // team
   };
 
@@ -188,17 +188,17 @@ const EstimateSectionInfo = ({
         {(selectedTask || showEstimateDefaults) && (
           <div className="flex w-full justify-between text-xs text-slate-400">
             <div>
-              <span className={`${getSourceColor("team")}`}>●</span> Team
+              <span className={`${getSourceColor(EDIT_TYPES.TEAM)}`}>●</span> Team
               default
             </div>
             <div>
-              <span className={`${getSourceColor("estimate")}`}>●</span>{" "}
+              <span className={`${getSourceColor(EDIT_TYPES.ESTIMATE)}`}>●</span>{" "}
               Estimate
               {!showEstimateDefaults && " override"}
             </div>
             {!showEstimateDefaults && (
               <div>
-                <span className={`${getSourceColor("section")}`}>●</span>{" "}
+                <span className={`${getSourceColor(EDIT_TYPES.SECTION)}`}>●</span>{" "}
                 Section
               </div>
             )}
@@ -345,11 +345,11 @@ const EstimateSectionInfo = ({
                   doorOutsideMoldingSource,
                   doorPanelModIdSource,
                 ];
-                const source = sources.includes("section")
-                  ? "section"
-                  : sources.includes("estimate")
-                  ? "estimate"
-                  : "team";
+                const source = sources.includes(EDIT_TYPES.SECTION)
+                  ? EDIT_TYPES.SECTION
+                  : sources.includes(EDIT_TYPES.ESTIMATE)
+                  ? EDIT_TYPES.ESTIMATE
+                  : EDIT_TYPES.TEAM;
 
                 return (
                   <>
@@ -368,6 +368,36 @@ const EstimateSectionInfo = ({
                           {line}
                         </div>
                       ))}
+                    </div>
+                  </>
+                );
+              })()}
+              {/* Door Material Override - only show if set */}
+              {!showEstimateDefaults && section?.door_mat && (() => {
+                const doorMat = materials.faceMaterials?.find(m => m.id === section.door_mat);
+                return (
+                  <>
+                    <div className="text-slate-400 flex items-center gap-2">
+                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
+                      <span>Door Material:</span>
+                    </div>
+                    <div className="pl-5 mb-3">
+                      {doorMat?.name || 'Unknown'}
+                    </div>
+                  </>
+                );
+              })()}
+              {/* Door Finish Override - only show if set */}
+              {!showEstimateDefaults && section?.door_finish && section.door_finish.length > 0 && (() => {
+                const doorMat = materials.faceMaterials?.find(m => m.id === section.door_mat);
+                return (
+                  <>
+                    <div className="text-slate-400 flex items-center gap-2">
+                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
+                      <span>Door Finish:</span>
+                    </div>
+                    <div className="pl-5 mb-3">
+                      {getFaceFinishDisplay(doorMat?.id || section.face_mat, section.door_finish)}
                     </div>
                   </>
                 );
@@ -445,11 +475,11 @@ const EstimateSectionInfo = ({
                   drawerOutsideMoldingSource,
                   drawerPanelModIdSource,
                 ];
-                const source = drawerSources.includes("section")
-                  ? "section"
-                  : drawerSources.includes("estimate")
-                  ? "estimate"
-                  : "team";
+                const source = drawerSources.includes(EDIT_TYPES.SECTION)
+                  ? EDIT_TYPES.SECTION
+                  : drawerSources.includes(EDIT_TYPES.ESTIMATE)
+                  ? EDIT_TYPES.ESTIMATE
+                  : EDIT_TYPES.TEAM;
 
                 return (
                   <>
@@ -468,6 +498,36 @@ const EstimateSectionInfo = ({
                           {line}
                         </div>
                       ))}
+                    </div>
+                  </>
+                );
+              })()}
+              {/* Drawer Front Material Override - only show if set */}
+              {!showEstimateDefaults && section?.drawer_front_mat && (() => {
+                const drawerFrontMat = materials.faceMaterials?.find(m => m.id === section.drawer_front_mat);
+                return (
+                  <>
+                    <div className="text-slate-400 flex items-center gap-2">
+                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
+                      <span>Drawer Front Material:</span>
+                    </div>
+                    <div className="pl-5 mb-3">
+                      {drawerFrontMat?.name || 'Unknown'}
+                    </div>
+                  </>
+                );
+              })()}
+              {/* Drawer Front Finish Override - only show if set */}
+              {!showEstimateDefaults && section?.drawer_front_finish && section.drawer_front_finish.length > 0 && (() => {
+                const drawerFrontMat = materials.faceMaterials?.find(m => m.id === section.drawer_front_mat);
+                return (
+                  <>
+                    <div className="text-slate-400 flex items-center gap-2">
+                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
+                      <span>Drawer Front Finish:</span>
+                    </div>
+                    <div className="pl-5 mb-3">
+                      {getFaceFinishDisplay(drawerFrontMat?.id || section.face_mat, section.drawer_front_finish)}
                     </div>
                   </>
                 );

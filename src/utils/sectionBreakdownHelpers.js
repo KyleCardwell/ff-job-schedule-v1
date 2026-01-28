@@ -11,7 +11,7 @@ export const formatCurrency = (value) => {
  * Format hours value
  */
 export const formatHours = (hours) => {
-  if (!hours || hours === 0) return '-';
+  if (!hours || hours === 0) return "-";
   return Number(hours.toFixed(2));
 };
 
@@ -107,28 +107,28 @@ export const getBreakdownCategories = (sectionCalculations) => [
   {
     title: "Face Frame",
     cost: sectionCalculations?.faceFrameWoodTotal || 0,
-    count: sectionCalculations?.faceFrameWoodCount.toFixed(2) || 0,
+    count: roundToHundredth(sectionCalculations?.faceFrameWoodCount) || 0,
     unit: "bd ft",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.faceFrame),
   },
   {
     title: "Fillers",
     cost: sectionCalculations?.fillerWoodTotal || 0,
-    count: sectionCalculations?.fillerWoodCount.toFixed(2) || 0,
+    count: roundToHundredth(sectionCalculations?.fillerWoodCount) || 0,
     unit: "bd ft",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.fillers),
   },
   {
-    title: "End Panels/Nosing",
-    cost: sectionCalculations?.endPanelNosingWoodTotal || 0,
-    count: sectionCalculations?.endPanelNosingWoodCount.toFixed(2) || 0,
-    unit: "bd ft",
-    ...getHoursDisplay(sectionCalculations?.categoryHours?.endPanelNosing),
+    title: "Panel Mods",
+    cost: 0,
+    count: 0,
+    unit: "",
+    ...getHoursDisplay(sectionCalculations?.categoryHours?.panelMods),
   },
   {
     title: "Lengths",
     cost: sectionCalculations?.lengthsTotal || 0,
-    count: sectionCalculations?.lengthsCount.toFixed(2) || 0,
+    count: roundToHundredth(sectionCalculations?.lengthsCount) || 0,
     unit: "items",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.lengths),
   },
@@ -146,6 +146,13 @@ export const getBreakdownCategories = (sectionCalculations) => [
     unit: "items",
     skipHours: true,
   },
+  {
+    title: "Nosing",
+    cost: sectionCalculations?.endPanelNosingWoodTotal || 0,
+    count: roundToHundredth(sectionCalculations?.endPanelNosingWoodCount) || 0,
+    unit: "bd ft",
+    ...getHoursDisplay(sectionCalculations?.categoryHours?.nosing),
+  },
 ];
 
 /**
@@ -155,7 +162,7 @@ export const getServiceName = (serviceId, allServices) => {
   if (!allServices || allServices.length === 0) {
     return `Service ${serviceId}`;
   }
-  
+
   const service = allServices.find((s) => s.service_id === serviceId);
   return service?.service_name || `Service ${serviceId}`;
 };
@@ -165,7 +172,7 @@ export const getServiceName = (serviceId, allServices) => {
  * Returns hoursByService object with setup_hours added to service_id 4 (Install)
  */
 export const getLaborAdjustmentHours = (addHours) => {
-  if (!addHours || typeof addHours !== 'object') {
+  if (!addHours || typeof addHours !== "object") {
     return null;
   }
 
@@ -174,11 +181,11 @@ export const getLaborAdjustmentHours = (addHours) => {
 
   // Process service-specific hours (excluding setup_hours)
   Object.entries(addHours).forEach(([key, hours]) => {
-    if (key === 'setup_hours') return;
-    
+    if (key === "setup_hours") return;
+
     const serviceId = parseInt(key);
     const numericHours = parseFloat(hours) || 0;
-    
+
     if (numericHours > 0) {
       hoursByService[serviceId] = numericHours;
       hasAnyHours = true;

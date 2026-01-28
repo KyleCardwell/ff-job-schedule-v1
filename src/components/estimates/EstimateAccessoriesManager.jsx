@@ -394,7 +394,7 @@ const EstimateAccessoriesManager = ({
         width: item.width === "" || item.width === null || item.width === undefined ? null : Number(item.width),
         height: item.height === "" || item.height === null || item.height === undefined ? null : Number(item.height),
         depth: item.depth === "" || item.depth === null || item.depth === undefined ? null : Number(item.depth),
-        quantity: item.quantity === "" || item.quantity === null || item.quantity === undefined ? 1 : Number(item.quantity),
+        quantity: item.quantity != null ? Number(item.quantity) : 1,
       };
 
       const updatedItems = [...items];

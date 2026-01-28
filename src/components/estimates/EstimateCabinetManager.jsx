@@ -12,6 +12,7 @@ import {
   SPLIT_DIRECTIONS,
   CAN_BE_BEADED,
   ITEM_TYPES,
+  PART_NAMES,
 } from "../../utils/constants.js";
 // import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
@@ -26,22 +27,22 @@ const CabinetItemForm = ({
   onDeleteItem,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
-  const cabinetAnchors = useSelector(
-    (state) => state.cabinetAnchors.itemsByType
-  );
+  // const cabinetAnchors = useSelector(
+  //   (state) => state.cabinetAnchors.itemsByType
+  // );
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
 
   // Get current item type configuration from cabinetTypeId
   const currentCabinetType = cabinetTypes.find(
-    (t) => t.cabinet_type_id === item.type
+    (t) => t.cabinet_type_id === item.type,
   );
 
   const [nosingOrFinish, setNosingOrFinish] = useState(
-    currentCabinetType?.cabinet_type_id === 10 ? "Nosing" : "Finish"
+    currentCabinetType?.cabinet_type_id === 10 ? "Nosing" : "Finish",
   );
   const itemType = currentCabinetType?.item_type || "cabinet";
   const [itemTypeConfig, setItemTypeConfig] = useState(
-    getItemTypeConfig(itemType)
+    getItemTypeConfig(itemType),
   );
 
   // Initialize face_config with proper structure for new cabinets
@@ -57,7 +58,7 @@ const CabinetItemForm = ({
     width: item.width || "",
     height: item.height || "",
     depth: item.depth || "",
-    quantity: item.quantity || 1,
+    quantity: item.quantity != null ? item.quantity : 1,
     face_config: getInitialFaceConfig(),
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
@@ -68,7 +69,6 @@ const CabinetItemForm = ({
     finished_bottom: item.finished_bottom,
     finished_back: item.finished_back,
     cabinet_style_override: item.cabinet_style_override,
-    corner_45: item.corner_45 || false,
     updated_at: item.updated_at,
     type_specific_options: item.type_specific_options || {},
   });
@@ -82,9 +82,25 @@ const CabinetItemForm = ({
 
   const [errors, setErrors] = useState({});
 
+  // Helper to get the effective cabinet style ID (considers override)
+  const getEffectiveCabinetStyleId = () => {
+    if (
+      formData.cabinet_style_override &&
+      formData.cabinet_style_override !== -1
+    ) {
+      return formData.cabinet_style_override;
+    }
+    return cabinetStyleId;
+  };
+
   // Sync rootReveals when cabinet_style_override is null and section style changes
   useEffect(() => {
-    console.log('[EstimateCabinetManager] useEffect triggered - cabinetStyleId:', cabinetStyleId, 'override:', formData.cabinet_style_override);
+    console.log(
+      "[EstimateCabinetManager] useEffect triggered - cabinetStyleId:",
+      cabinetStyleId,
+      "override:",
+      formData.cabinet_style_override,
+    );
     // Only run if cabinet_style_override is null (using section default)
     if (
       (formData.cabinet_style_override === null ||
@@ -96,22 +112,34 @@ const CabinetItemForm = ({
     ) {
       // Find the style and type config for the section's style
       const style = cabinetStyles.find(
-        (s) => s.cabinet_style_id === cabinetStyleId
+        (s) => s.cabinet_style_id === cabinetStyleId,
       );
       const typeConfig = style?.types?.find(
-        (t) => t.cabinet_type_id === formData.type
+        (t) => t.cabinet_type_id === formData.type,
       );
 
-      console.log('[EstimateCabinetManager] Found typeConfig:', typeConfig?.config);
-      console.log('[EstimateCabinetManager] Current rootReveals:', formData.face_config?.rootReveals);
+      console.log(
+        "[EstimateCabinetManager] Found typeConfig:",
+        typeConfig?.config,
+      );
+      console.log(
+        "[EstimateCabinetManager] Current rootReveals:",
+        formData.face_config?.rootReveals,
+      );
 
       // Update rootReveals - CabinetFaceDivider will handle dimension recalculation
       // Only update if reveals are different to prevent infinite loop
-      if (typeConfig?.config && !isEqual(formData.face_config?.rootReveals, typeConfig.config)) {
-        console.log('[EstimateCabinetManager] Updating rootReveals to:', typeConfig.config);
-        console.log('----------------------------------------------')
-        console.log('----------------------------------------------')
-        console.log('----------------------------------------------')
+      if (
+        typeConfig?.config &&
+        !isEqual(formData.face_config?.rootReveals, typeConfig.config)
+      ) {
+        console.log(
+          "[EstimateCabinetManager] Updating rootReveals to:",
+          typeConfig.config,
+        );
+        console.log("----------------------------------------------");
+        console.log("----------------------------------------------");
+        console.log("----------------------------------------------");
         setFormData((prev) => ({
           ...prev,
           face_config: {
@@ -120,24 +148,31 @@ const CabinetItemForm = ({
           },
         }));
       } else {
-        console.log('[EstimateCabinetManager] Reveals already match - skipping update');
+        console.log(
+          "[EstimateCabinetManager] Reveals already match - skipping update",
+        );
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cabinetStyleId, formData.cabinet_style_override, formData.type, cabinetStyles])
+  }, [
+    cabinetStyleId,
+    formData.cabinet_style_override,
+    formData.type,
+    cabinetStyles,
+  ]);
 
   // Update itemTypeConfig when formData.type changes
   useEffect(() => {
     const selectedType = cabinetTypes.find(
-      (t) => t.cabinet_type_id === formData.type
+      (t) => t.cabinet_type_id === formData.type,
     );
     const derivedItemType = selectedType?.item_type || ITEM_TYPES.CABINET.type;
     const newCabinetTypeId = selectedType?.cabinet_type_id;
     const previousCabinetTypeId = currentCabinetType?.cabinet_type_id;
-    
+
     setItemTypeConfig(getItemTypeConfig(derivedItemType));
     setNosingOrFinish(newCabinetTypeId === 10 ? "Nosing" : "Finish");
-    
+
     // Clear finished fields when changing to or from type 10 (end panel)
     // Type 10 uses these fields for nosing, other types use them for finish
     if (
@@ -177,19 +212,19 @@ const CabinetItemForm = ({
                 ? cabinetStyleId
                 : numValue
               : formData.cabinet_style_override === -1 ||
-                !formData.cabinet_style_override
-              ? cabinetStyleId
-              : formData.cabinet_style_override;
+                  !formData.cabinet_style_override
+                ? cabinetStyleId
+                : formData.cabinet_style_override;
 
           // Determine which type to use
           const effectiveTypeId = name === "type" ? numValue : formData.type;
 
           // Find the style and type config
           const style = cabinetStyles.find(
-            (s) => s.cabinet_style_id === effectiveStyleId
+            (s) => s.cabinet_style_id === effectiveStyleId,
           );
           const typeConfig = style?.types?.find(
-            (t) => t.cabinet_type_id === effectiveTypeId
+            (t) => t.cabinet_type_id === effectiveTypeId,
           );
 
           // Build the updates object
@@ -199,7 +234,7 @@ const CabinetItemForm = ({
           // If type is changing, always set dimensions to defaults, reset face_config, and clear type_specific_options
           if (name === "type" && numValue) {
             const selectedType = cabinetTypes.find(
-              (t) => t.cabinet_type_id === numValue
+              (t) => t.cabinet_type_id === numValue,
             );
 
             if (selectedType) {
@@ -234,14 +269,23 @@ const CabinetItemForm = ({
             }
           } else if (name === "cabinet_style_override") {
             // For style changes only, update rootReveals - CabinetFaceDivider will handle dimensions
-            console.log('[EstimateCabinetManager] handleChange - cabinet_style_override changed to:', numValue);
-            console.log('[EstimateCabinetManager] typeConfig:', typeConfig?.config);
+            console.log(
+              "[EstimateCabinetManager] handleChange - cabinet_style_override changed to:",
+              numValue,
+            );
+            console.log(
+              "[EstimateCabinetManager] typeConfig:",
+              typeConfig?.config,
+            );
             if (
               typeConfig?.config &&
               formData.face_config &&
               formData.face_config.id
             ) {
-              console.log('[EstimateCabinetManager] Updating face_config.rootReveals to:', typeConfig.config);
+              console.log(
+                "[EstimateCabinetManager] Updating face_config.rootReveals to:",
+                typeConfig.config,
+              );
               updates.face_config = {
                 ...formData.face_config,
                 rootReveals: typeConfig.config,
@@ -354,11 +398,18 @@ const CabinetItemForm = ({
       newErrors.depth = "Depth is required";
     }
 
-    if (!formData.quantity || formData.quantity < 1) {
-      newErrors.quantity = "Quantity must be at least 1";
+    if (
+      formData.quantity === null ||
+      formData.quantity === undefined ||
+      formData.quantity < 0
+    ) {
+      newErrors.quantity = "Quantity must be 0 or greater";
     }
 
-    // Validate end panel nosing - if type 10 and depth > 0.75, at least one nosing must be selected
+    // Validate end panel nosing
+    // Rules:
+    // 1. If depth > 0.75, at least one nosing option must be selected
+    // 2. If cabinetStyleId !== 13, at least one nosing option must be selected
     if (formData.type === 10) {
       const hasNosing =
         formData.finished_top ||
@@ -366,13 +417,20 @@ const CabinetItemForm = ({
         formData.finished_left ||
         formData.finished_right;
 
-      if (!hasNosing && formData.depth > 0.75) {
-        newErrors.nosing =
-          "At least one nosing option must be selected when depth is greater than 0.75\"";
-      }
-      if (hasNosing && formData.depth <= .75) {
-        newErrors.nosing =
-          "Nosing can't be applied to end panels thinner than 0.75\"";
+      const effectiveStyleId = getEffectiveCabinetStyleId();
+      const requiresNosing = formData.depth > 0.75 || effectiveStyleId !== 13;
+
+      if (!hasNosing && requiresNosing) {
+        if (formData.depth > 0.75 && effectiveStyleId !== 13) {
+          newErrors.nosing =
+            'At least one nosing option must be selected (depth > 0.75" and cabinet style requires nosing)';
+        } else if (formData.depth > 0.75) {
+          newErrors.nosing =
+            'At least one nosing option must be selected when depth is greater than 0.75"';
+        } else {
+          newErrors.nosing =
+            "At least one nosing option must be selected for this cabinet style";
+        }
       }
     }
 
@@ -412,10 +470,11 @@ const CabinetItemForm = ({
       finalFormData.saved_style_id = effectiveStyleId;
 
       // Include type_specific_options in the saved data
-      finalFormData.type_specific_options = formData.type_specific_options || {};
+      finalFormData.type_specific_options =
+        formData.type_specific_options || {};
 
       const itemType = cabinetTypes.find(
-        (t) => t.cabinet_type_id === formData.type
+        (t) => t.cabinet_type_id === formData.type,
       );
 
       if (formData.face_config) {
@@ -434,7 +493,7 @@ const CabinetItemForm = ({
           formData.finished_bottom,
           formData.finished_interior,
           formData.finished_back,
-          formData.corner_45
+          formData.type_specific_options?.corner_45 || false,
         );
 
         finalFormData.face_config = {
@@ -444,7 +503,7 @@ const CabinetItemForm = ({
             itemType.item_type,
             formData.width,
             formData.height,
-            formData.depth
+            formData.depth,
           ),
           boxSummary: boxSummary,
         };
@@ -589,7 +648,7 @@ const CabinetItemForm = ({
             const partitionWidth = roundTo16th(
               node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
                 ? currentChild.height
-                : currentChild.width
+                : currentChild.width,
             );
 
             totalArea += partitionWidth * depth;
@@ -635,7 +694,7 @@ const CabinetItemForm = ({
     node,
     cabinetWidth,
     cabinetHeight,
-    isRoot = false
+    isRoot = false,
   ) => {
     let totalBoardFeet = 0;
     let holeCount = 0;
@@ -651,7 +710,7 @@ const CabinetItemForm = ({
         // Width: reveals.reveal, Height: cabinetHeight
         const partLength = cabinetHeight;
         framePieces.push({
-          type: "left",
+          type: PART_NAMES.LEFT,
           length: partLength,
           width: reveals.reveal,
         });
@@ -662,7 +721,7 @@ const CabinetItemForm = ({
         // Width: reveals.reveal, Height: cabinetHeight
         const partLength = cabinetHeight;
         framePieces.push({
-          type: "right",
+          type: PART_NAMES.RIGHT,
           length: partLength,
           width: reveals.reveal,
         });
@@ -675,7 +734,7 @@ const CabinetItemForm = ({
           cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         holeCount += 2;
         framePieces.push({
-          type: "top",
+          type: PART_NAMES.TOP,
           length: partLength,
           width: reveals.reveal,
         });
@@ -688,7 +747,7 @@ const CabinetItemForm = ({
           cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         holeCount += 2;
         framePieces.push({
-          type: "bottom",
+          type: PART_NAMES.BOTTOM,
           length: partLength,
           width: reveals.reveal,
         });
@@ -725,7 +784,7 @@ const CabinetItemForm = ({
           child,
           cabinetWidth,
           cabinetHeight,
-          false
+          false,
         );
         totalBoardFeet += childResult.totalBoardFeet;
         holeCount += childResult.holeCount;
@@ -749,7 +808,7 @@ const CabinetItemForm = ({
     width,
     height,
     depth,
-    quantity = 1,
+    quantity = 0,
     faceConfig,
     cabinetStyleId,
     cabinetTypeId,
@@ -758,7 +817,8 @@ const CabinetItemForm = ({
     finishedTop = false,
     finishedBottom = false,
     finishedInterior = false,
-    isCorner45 = false
+    finishedBack = false,
+    isCorner45 = false,
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -777,104 +837,163 @@ const CabinetItemForm = ({
       let frameParts = {};
       if (
         cabinetStyleId !== 13 &&
-        (itemType === ITEM_TYPES.END_PANEL.type || itemType === ITEM_TYPES.APPLIANCE_PANEL.type)
+        (itemType === ITEM_TYPES.END_PANEL.type ||
+          itemType === ITEM_TYPES.APPLIANCE_PANEL.type) &&
+        !formData.type_specific_options?.shop_built // Skip face frames for shop-built end panels
       ) {
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
       }
 
       const hardware = countFaceHardware(faceConfig, itemType);
 
-      // Calculate nosing for end panels (type 10) when depth > 0.75
+      // Calculate nosing for end panels (type 10)
       let boxPartsList = [];
-      if (itemType === ITEM_TYPES.END_PANEL.type && d > 0.75) {
-        const returnWidth = 6; // Return piece width
+      if (itemType === ITEM_TYPES.END_PANEL.type) {
+        // For depth === 0.75, add nosing with width 0 for selected edges
+        if (d === 0.75) {
+          // Top nosing with width 0
+          if (formData.finished_top) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "top_nosing",
+              width: 0,
+              height: roundTo16th(w),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
 
-        // Top nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_top) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "top_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(w),
-            area: roundTo16th(d * w),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "top_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(w),
-            area: roundTo16th(returnWidth * w),
-            quantity: 1,
-            finish: true,
-          });
+          // Bottom nosing with width 0
+          if (formData.finished_bottom) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "bottom_nosing",
+              width: 0,
+              height: roundTo16th(w),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Left nosing with width 0
+          if (formData.finished_left) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "left_nosing",
+              width: 0,
+              height: roundTo16th(h),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Right nosing with width 0
+          if (formData.finished_right) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "right_nosing",
+              width: 0,
+              height: roundTo16th(h),
+              area: 0,
+              quantity: 1,
+              finish: true,
+            });
+          }
         }
+        // For depth > 0.75, add nosing with actual dimensions (main piece + return)
+        else if (d > 0.75) {
+          const returnWidth = 6; // Return piece width
 
-        // Bottom nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_bottom) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "bottom_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(w),
-            area: roundTo16th(d * w),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "bottom_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(w),
-            area: roundTo16th(returnWidth * w),
-            quantity: 1,
-            finish: true,
-          });
-        }
+          // Top nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_top) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "top_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(w),
+              area: roundTo16th(d * w),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "top_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(w),
+              area: roundTo16th(returnWidth * w),
+              quantity: 1,
+              finish: true,
+            });
+          }
 
-        // Left nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_left) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "left_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(h),
-            area: roundTo16th(d * h),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "left_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(h),
-            area: roundTo16th(returnWidth * h),
-            quantity: 1,
-            finish: true,
-          });
-        }
+          // Bottom nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_bottom) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "bottom_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(w),
+              area: roundTo16th(d * w),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "bottom_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(w),
+              area: roundTo16th(returnWidth * w),
+              quantity: 1,
+              finish: true,
+            });
+          }
 
-        // Right nosing - main piece (depth width) + return (6" width)
-        if (formData.finished_right) {
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "right_nosing",
-            width: roundTo16th(d),
-            height: roundTo16th(h),
-            area: roundTo16th(d * h),
-            quantity: 1,
-            finish: true,
-          });
-          boxPartsList.push({
-            type: "end_panel_nosing",
-            side: "right_return",
-            width: roundTo16th(returnWidth),
-            height: roundTo16th(h),
-            area: roundTo16th(returnWidth * h),
-            quantity: 1,
-            finish: true,
-          });
+          // Left nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_left) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "left_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(h),
+              area: roundTo16th(d * h),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "left_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(h),
+              area: roundTo16th(returnWidth * h),
+              quantity: 1,
+              finish: true,
+            });
+          }
+
+          // Right nosing - main piece (depth width) + return (6" width)
+          if (formData.finished_right) {
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "right_nosing",
+              width: roundTo16th(d),
+              height: roundTo16th(h),
+              area: roundTo16th(d * h),
+              quantity: 1,
+              finish: true,
+            });
+            boxPartsList.push({
+              type: PART_NAMES.NOSING,
+              side: "right_return",
+              width: roundTo16th(returnWidth),
+              height: roundTo16th(h),
+              area: roundTo16th(returnWidth * h),
+              quantity: 1,
+              finish: true,
+            });
+          }
         }
       }
 
@@ -1012,7 +1131,7 @@ const CabinetItemForm = ({
       backPerimeterLength = roundTo16th(2 * 2 * (h + backWidth));
 
       boxPerimeterLength = roundTo16th(
-        sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength
+        sidePerimeterLength + topBottomPerimeterLength + backPerimeterLength,
       );
 
       boxPartsCount = 6; // 2 sides, 2 tops/bottoms, 2 backs
@@ -1130,8 +1249,8 @@ const CabinetItemForm = ({
 
     // Add left side
     boxPartsList.push({
-      type: "side",
-      side: "left",
+      type: PART_NAMES.SIDE,
+      side: PART_NAMES.LEFT,
       width: roundTo16th(d),
       height: roundTo16th(h),
       area: roundTo16th(sideArea),
@@ -1141,8 +1260,8 @@ const CabinetItemForm = ({
 
     // Add right side
     boxPartsList.push({
-      type: "side",
-      side: "right",
+      type: PART_NAMES.SIDE,
+      side: PART_NAMES.RIGHT,
       width: roundTo16th(d),
       height: roundTo16th(h),
       area: roundTo16th(sideArea),
@@ -1157,8 +1276,8 @@ const CabinetItemForm = ({
 
       // Add top
       boxPartsList.push({
-        type: "topBottom",
-        side: "top",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.TOP,
         width: roundTo16th(backWidth),
         height: roundTo16th(backWidth),
         area: roundTo16th(topBottomArea),
@@ -1169,8 +1288,8 @@ const CabinetItemForm = ({
 
       // Add bottom
       boxPartsList.push({
-        type: "topBottom",
-        side: "bottom",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.BOTTOM,
         width: roundTo16th(backWidth),
         height: roundTo16th(backWidth),
         area: roundTo16th(topBottomArea),
@@ -1181,8 +1300,8 @@ const CabinetItemForm = ({
     } else {
       // Add top
       boxPartsList.push({
-        type: "topBottom",
-        side: "top",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.TOP,
         width: roundTo16th(d),
         height: roundTo16th(w),
         area: roundTo16th(topBottomArea),
@@ -1192,8 +1311,8 @@ const CabinetItemForm = ({
 
       // Add bottom
       boxPartsList.push({
-        type: "topBottom",
-        side: "bottom",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.BOTTOM,
         width: roundTo16th(d),
         height: roundTo16th(w),
         area: roundTo16th(topBottomArea),
@@ -1207,21 +1326,21 @@ const CabinetItemForm = ({
       // Corner 45 has two back panels
       const backWidth = Math.ceil(d + w / Math.sqrt(2));
       boxPartsList.push({
-        type: "back",
+        type: PART_NAMES.BACK,
         width: roundTo16th(backWidth),
         height: roundTo16th(h),
         area: roundTo16th(backArea),
         quantity: 2, // Two backs for corner 45
-        finish: finishedInterior,
+        finish: finishedInterior || finishedBack,
       });
     } else {
       boxPartsList.push({
-        type: "back",
+        type: PART_NAMES.BACK,
         width: roundTo16th(w),
         height: roundTo16th(h),
         area: roundTo16th(backArea),
         quantity: 1,
-        finish: finishedInterior,
+        finish: finishedInterior || finishedBack,
       });
     }
 
@@ -1239,13 +1358,30 @@ const CabinetItemForm = ({
           const shelfArea = roundTo16th(shelfWidth * shelfDepth);
 
           shelves.push({
-            type: "shelf",
+            type: PART_NAMES.SHELF,
             width: shelfWidth,
             height: shelfDepth,
             area: shelfArea,
             quantity: node.shelfQty,
             finish: finishedInterior,
           });
+
+          // Add nosing parts if shelfNosing is specified and glassShelves is not set
+          // Only add nosing for box material shelves, not glass shelves
+          if (node.shelfNosing && node.shelfNosing > 0 && !node.glassShelves) {
+            const nosingWidth = roundTo16th(node.shelfNosing);
+            const nosingHeight = roundTo16th(node.shelfDimensions.height); // Same as shelf depth
+            const nosingArea = roundTo16th(nosingWidth * nosingHeight);
+
+            shelves.push({
+              type: PART_NAMES.NOSING,
+              width: nosingWidth,
+              height: nosingHeight,
+              area: nosingArea,
+              quantity: node.shelfQty,
+              finish: finishedInterior,
+            });
+          }
         }
 
         if (node.children) {
@@ -1288,7 +1424,7 @@ const CabinetItemForm = ({
                 const partitionWidth = roundTo16th(
                   node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
                     ? currentChild.height
-                    : currentChild.width
+                    : currentChild.width,
                 );
                 const partitionArea = roundTo16th(partitionWidth * d);
 
@@ -1302,7 +1438,7 @@ const CabinetItemForm = ({
                 localOpeningsCount++;
 
                 partitions.push({
-                  type: "partition",
+                  type: PART_NAMES.PARTITION,
                   width: roundTo16th(d),
                   height: partitionWidth,
                   area: partitionArea,
@@ -1352,7 +1488,7 @@ const CabinetItemForm = ({
     // Update accessory dimensions throughout the tree
     const updateAccessoryDimensions = (node) => {
       if (!node) return;
-      
+
       // Update accessories on this node with current node dimensions
       if (node.accessories && Array.isArray(node.accessories)) {
         node.accessories.forEach((accessory) => {
@@ -1367,13 +1503,13 @@ const CabinetItemForm = ({
           // depth comes from the accessory definition, not the face
         });
       }
-      
+
       // Recurse through children
       if (node.children && Array.isArray(node.children)) {
         node.children.forEach((child) => updateAccessoryDimensions(child));
       }
     };
-    
+
     // Update all accessory dimensions first
     updateAccessoryDimensions(node);
 
@@ -1507,24 +1643,44 @@ const CabinetItemForm = ({
   };
 
   const handleFaceConfigSave = useCallback((faceConfig) => {
-    console.log('[EstimateCabinetManager] handleFaceConfigSave called');
-    console.log('[EstimateCabinetManager] Incoming faceConfig.rootReveals:', faceConfig?.rootReveals);
-    console.log('[EstimateCabinetManager] Incoming faceConfig dimensions:', { width: faceConfig?.width, height: faceConfig?.height, x: faceConfig?.x, y: faceConfig?.y });
-    
+    console.log("[EstimateCabinetManager] handleFaceConfigSave called");
+    console.log(
+      "[EstimateCabinetManager] Incoming faceConfig.rootReveals:",
+      faceConfig?.rootReveals,
+    );
+    console.log("[EstimateCabinetManager] Incoming faceConfig dimensions:", {
+      width: faceConfig?.width,
+      height: faceConfig?.height,
+      x: faceConfig?.x,
+      y: faceConfig?.y,
+    });
+
     // Use functional update to avoid needing formData.face_config in dependencies
     setFormData((prevData) => {
-      console.log('[EstimateCabinetManager] Previous face_config.rootReveals:', prevData.face_config?.rootReveals);
-      console.log('[EstimateCabinetManager] Previous face_config dimensions:', { width: prevData.face_config?.width, height: prevData.face_config?.height, x: prevData.face_config?.x, y: prevData.face_config?.y });
-      
+      console.log(
+        "[EstimateCabinetManager] Previous face_config.rootReveals:",
+        prevData.face_config?.rootReveals,
+      );
+      console.log("[EstimateCabinetManager] Previous face_config dimensions:", {
+        width: prevData.face_config?.width,
+        height: prevData.face_config?.height,
+        x: prevData.face_config?.x,
+        y: prevData.face_config?.y,
+      });
+
       // Only update if the face_config has actually changed
       if (JSON.stringify(prevData.face_config) !== JSON.stringify(faceConfig)) {
-        console.log('[EstimateCabinetManager] face_config changed - updating formData');
+        console.log(
+          "[EstimateCabinetManager] face_config changed - updating formData",
+        );
         return {
           ...prevData,
           face_config: faceConfig,
         };
       } else {
-        console.log('[EstimateCabinetManager] face_config unchanged - skipping update');
+        console.log(
+          "[EstimateCabinetManager] face_config unchanged - skipping update",
+        );
         return prevData;
       }
     });
@@ -1639,7 +1795,7 @@ const CabinetItemForm = ({
                       name="quantity"
                       value={formData.quantity}
                       onChange={handleChange}
-                      min="1"
+                      min="0"
                       className={`w-full px-3 py-2 border ${
                         errors.quantity ? "border-red-500" : "border-slate-300"
                       } rounded-md text-sm max-w-[72px]`}
@@ -1677,155 +1833,145 @@ const CabinetItemForm = ({
                   itemTypeConfig.features.finishedBottom ||
                   itemTypeConfig.features.finishedLeft ||
                   itemTypeConfig.features.finishedRight) && (
-                  <div className="grid grid-cols-3 gap-2 justify-between">
-                    <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
-                      {nosingOrFinish}:
+                  <>
+                    <div className="grid grid-cols-3 gap-2 justify-between">
+                      <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
+                        {nosingOrFinish}:
+                      </div>
+
+                      {/* Finished Left */}
+                      {itemTypeConfig.features.finishedLeft && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_left"
+                            name="finished_left"
+                            checked={formData.finished_left}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_left"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Left
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Top */}
+                      {itemTypeConfig.features.finishedTop && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_top"
+                            name="finished_top"
+                            checked={formData.finished_top}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_top"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Top
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Back */}
+                      {itemTypeConfig.features.finishedBack && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_back"
+                            name="finished_back"
+                            checked={formData.finished_back}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_back"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Back
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Right */}
+                      {itemTypeConfig.features.finishedRight && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_right"
+                            name="finished_right"
+                            checked={formData.finished_right}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_right"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Right
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Finished Bottom */}
+                      {itemTypeConfig.features.finishedBottom && (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            id="finished_bottom"
+                            name="finished_bottom"
+                            checked={formData.finished_bottom}
+                            onChange={handleChange}
+                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                          />
+                          <label
+                            htmlFor="finished_bottom"
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Bottom
+                          </label>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Finished Top */}
-                    {itemTypeConfig.features.finishedTop && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_top"
-                          name="finished_top"
-                          checked={formData.finished_top}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_top"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Top
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Bottom */}
-                    {itemTypeConfig.features.finishedBottom && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_bottom"
-                          name="finished_bottom"
-                          checked={formData.finished_bottom}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_bottom"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Bottom
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Back */}
-                    {itemTypeConfig.features.finishedBack && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_back"
-                          name="finished_back"
-                          checked={formData.finished_back}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_back"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Back
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Left */}
-                    {itemTypeConfig.features.finishedLeft && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_left"
-                          name="finished_left"
-                          checked={formData.finished_left}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_left"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Left
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Finished Right */}
-                    {itemTypeConfig.features.finishedRight && (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          id="finished_right"
-                          name="finished_right"
-                          checked={formData.finished_right}
-                          onChange={handleChange}
-                          className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                        />
-                        <label
-                          htmlFor="finished_right"
-                          className="text-xs font-medium text-slate-700"
-                        >
-                          Right
-                        </label>
-                      </div>
-                    )}
-
-                    {/* Nosing error message */}
+                    {/* Nosing error message - below the grid */}
                     {errors.nosing && (
-                      <p className="text-red-500 text-xs mt-1 w-full">
+                      <p className="text-red-500 text-xs mt-1">
                         {errors.nosing}
                       </p>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
 
-              {/* Corner 45 Checkbox */}
-              {itemTypeConfig.features.corner45 && (
-                <div className="flex items-center gap-2 mt-4">
-                  <input
-                    type="checkbox"
-                    id="corner_45"
-                    name="corner_45"
-                    checked={formData.corner_45}
-                    onChange={handleChange}
-                    className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                  />
-                  <label
-                    htmlFor="corner_45"
-                    className="text-xs font-medium text-slate-700"
-                  >
-                    Corner 45°
-                  </label>
-                </div>
-              )}
-
               {/* Dynamic Type-Specific Options */}
               {itemTypeConfig.typeSpecificOptions?.map((option) => {
-                const optionValue = formData.type_specific_options?.[option.name] ?? option.defaultValue;
+                const optionValue =
+                  formData.type_specific_options?.[option.name] ??
+                  option.defaultValue;
 
                 if (option.type === "checkbox") {
                   return (
-                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                    <div
+                      key={option.name}
+                      className="flex items-center gap-2 mt-4"
+                    >
                       <input
                         type="checkbox"
                         id={option.name}
                         name={option.name}
                         checked={optionValue}
                         onChange={(e) =>
-                          handleTypeSpecificOptionChange(option.name, e.target.checked)
+                          handleTypeSpecificOptionChange(
+                            option.name,
+                            e.target.checked,
+                          )
                         }
                         className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
                       />
@@ -1840,7 +1986,10 @@ const CabinetItemForm = ({
                   );
                 } else if (option.type === "number") {
                   return (
-                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                    <div
+                      key={option.name}
+                      className="flex items-center gap-2 mt-4"
+                    >
                       <label
                         htmlFor={option.name}
                         className="text-xs font-medium text-slate-700"
@@ -1854,7 +2003,10 @@ const CabinetItemForm = ({
                         name={option.name}
                         value={optionValue}
                         onChange={(e) =>
-                          handleTypeSpecificOptionChange(option.name, Number(e.target.value))
+                          handleTypeSpecificOptionChange(
+                            option.name,
+                            Number(e.target.value),
+                          )
                         }
                         min={option.min ?? 0}
                         max={option.max}
@@ -1865,7 +2017,10 @@ const CabinetItemForm = ({
                   );
                 } else if (option.type === "select") {
                   return (
-                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                    <div
+                      key={option.name}
+                      className="flex items-center gap-2 mt-4"
+                    >
                       <label
                         htmlFor={option.name}
                         className="text-xs font-medium text-slate-700"
@@ -1878,7 +2033,10 @@ const CabinetItemForm = ({
                         name={option.name}
                         value={optionValue}
                         onChange={(e) =>
-                          handleTypeSpecificOptionChange(option.name, e.target.value)
+                          handleTypeSpecificOptionChange(
+                            option.name,
+                            e.target.value,
+                          )
                         }
                         className="px-2 py-1 border border-slate-300 rounded-md text-sm"
                       >
@@ -1892,7 +2050,10 @@ const CabinetItemForm = ({
                   );
                 } else if (option.type === "text") {
                   return (
-                    <div key={option.name} className="flex items-center gap-2 mt-4">
+                    <div
+                      key={option.name}
+                      className="flex items-center gap-2 mt-4"
+                    >
                       <label
                         htmlFor={option.name}
                         className="text-xs font-medium text-slate-700"
@@ -1906,7 +2067,10 @@ const CabinetItemForm = ({
                         name={option.name}
                         value={optionValue}
                         onChange={(e) =>
-                          handleTypeSpecificOptionChange(option.name, e.target.value)
+                          handleTypeSpecificOptionChange(
+                            option.name,
+                            e.target.value,
+                          )
                         }
                         className="px-2 py-1 border border-slate-300 rounded-md text-sm"
                       />
@@ -1929,7 +2093,9 @@ const CabinetItemForm = ({
                   htmlFor="width"
                   className="block text-xs font-medium text-slate-700 my-auto"
                 >
-                  {formData.corner_45 ? "Face Width" : "Width"}{" "}
+                  {formData.type_specific_options?.corner_45
+                    ? "Face Width"
+                    : "Width"}{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1988,7 +2154,9 @@ const CabinetItemForm = ({
                   htmlFor="depth"
                   className="block text-xs font-medium text-slate-700 my-auto"
                 >
-                  {formData.corner_45 ? "Side Depth" : "Depth"}{" "}
+                  {formData.type_specific_options?.corner_45
+                    ? "Side Depth"
+                    : "Depth"}{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <input

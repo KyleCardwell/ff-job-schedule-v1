@@ -647,6 +647,8 @@ export const addSection = (estimateId, taskId, sectionData) => {
         boxMaterial,
         faceMaterial,
         drawer_box_mat,
+        door_mat,
+        drawer_front_mat,
         style,
         hinge_id,
         slide_id,
@@ -654,6 +656,8 @@ export const addSection = (estimateId, taskId, sectionData) => {
         drawer_pull_id,
         faceFinish,
         boxFinish,
+        door_finish,
+        drawer_front_finish,
         quantity,
         profit,
         commission,
@@ -678,6 +682,9 @@ export const addSection = (estimateId, taskId, sectionData) => {
             face_mat: faceMaterial !== undefined && faceMaterial !== null ? +faceMaterial : null,
             drawer_box_mat:
               drawer_box_mat !== undefined && drawer_box_mat !== null ? +drawer_box_mat : null,
+            door_mat: door_mat !== undefined && door_mat !== null ? +door_mat : null,
+            drawer_front_mat:
+              drawer_front_mat !== undefined && drawer_front_mat !== null ? +drawer_front_mat : null,
             cabinet_style_id: style !== undefined && style !== null ? +style : null,
             hinge_id: hinge_id !== undefined && hinge_id !== null ? +hinge_id : null,
             slide_id: slide_id !== undefined && slide_id !== null ? +slide_id : null,
@@ -686,6 +693,9 @@ export const addSection = (estimateId, taskId, sectionData) => {
               drawer_pull_id !== undefined && drawer_pull_id !== null ? +drawer_pull_id : null,
             face_finish: faceFinish !== undefined && faceFinish.length ? faceFinish : null,
             box_finish: boxFinish !== undefined && boxFinish.length ? boxFinish : null,
+            door_finish: door_finish !== undefined && door_finish.length ? door_finish : null,
+            drawer_front_finish:
+              drawer_front_finish !== undefined && drawer_front_finish.length ? drawer_front_finish : null,
             quantity: quantity != null ? +quantity : 1,
             profit: profit != null ? +profit : null,
             commission: commission != null ? +commission : null,
@@ -754,6 +764,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         boxMaterial,
         faceMaterial,
         drawer_box_mat,
+        door_mat,
+        drawer_front_mat,
         style,
         hinge_id,
         slide_id,
@@ -761,6 +773,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         drawer_pull_id,
         faceFinish,
         boxFinish,
+        door_finish,
+        drawer_front_finish,
         quantity,
         profit,
         commission,
@@ -790,6 +804,12 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(drawer_box_mat !== undefined && {
           drawer_box_mat: drawer_box_mat !== null ? +drawer_box_mat : null,
         }),
+        ...(door_mat !== undefined && {
+          door_mat: door_mat !== null && door_mat !== "" ? +door_mat : null,
+        }),
+        ...(drawer_front_mat !== undefined && {
+          drawer_front_mat: drawer_front_mat !== null && drawer_front_mat !== "" ? +drawer_front_mat : null,
+        }),
         ...(hinge_id !== undefined && { hinge_id: hinge_id !== null ? +hinge_id : null }),
         ...(slide_id !== undefined && { slide_id: slide_id !== null ? +slide_id : null }),
         ...(door_pull_id !== undefined && { door_pull_id: door_pull_id !== null ? +door_pull_id : null }),
@@ -799,6 +819,8 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(style !== undefined && { cabinet_style_id: style !== null ? +style : null }),
         ...(faceFinish !== undefined && { face_finish: faceFinish.length ? faceFinish : null }),
         ...(boxFinish !== undefined && { box_finish: boxFinish.length ? boxFinish : null }),
+        ...(door_finish !== undefined && { door_finish: door_finish.length ? door_finish : null }),
+        ...(drawer_front_finish !== undefined && { drawer_front_finish: drawer_front_finish.length ? drawer_front_finish : null }),
         ...(quantity !== undefined && {
           quantity: quantity != null ? +quantity : 1,
         }),

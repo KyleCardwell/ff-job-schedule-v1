@@ -25,7 +25,10 @@ const EstimateSectionBreakdown = ({
   const breakdownCategories = getBreakdownCategories(sectionCalculations);
 
   const activeCategories = breakdownCategories.filter(
-    (cat) => cat.cost > 0 || cat.count > 0
+    (cat) => {
+      const hasHours = cat.hoursByService && Object.values(cat.hoursByService).some(hours => hours > 0);
+      return cat.cost > 0 || cat.count > 0 || hasHours;
+    }
   );
 
   // Get labor adjustment hours from section.add_hours
@@ -106,7 +109,7 @@ const EstimateSectionBreakdown = ({
               className="grid gap-3 py-3 px-4 border-b border-slate-700 hover:bg-slate-750 transition-colors"
               style={{ gridTemplateColumns: `2fr 1.5fr ${serviceIds.map(() => '1fr').join(' ')}` }}
             >
-              <div className="text-white font-medium text-sm">
+              <div className="text-white font-medium text-sm text-left">
                 {category.title}
                 <span className="text-slate-500 text-xs ml-1">{countDisplay}</span>
               </div>
