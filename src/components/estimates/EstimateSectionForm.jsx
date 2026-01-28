@@ -589,6 +589,8 @@ const EstimateSectionForm = ({
       "drawer_pull_id",
       "slide_id",
       "hinge_id",
+      "door_mat",
+      "drawer_front_mat",
     ];
 
     // Handle adjustment fields - convert to number but allow empty string to become null

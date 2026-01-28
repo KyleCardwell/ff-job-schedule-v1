@@ -21,25 +21,25 @@ const EstimatePreviewSection = ({
 }) => {
   // Get all necessary context data from Redux
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
-    (state) => state.materials
+    (state) => state.materials,
   );
   const finishTypes = useSelector((state) => state.finishes.finishes);
   const cabinetStyles = useSelector(
     (state) =>
-      state.cabinetStyles?.styles.filter((style) => style.is_active) || []
+      state.cabinetStyles?.styles.filter((style) => style.is_active) || [],
   );
 
   const cabinetTypes = useSelector(
-    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []
+    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || [],
   );
 
   const { hardware, accessories, lengths } = useSelector((state) => state);
 
   const partsListAnchors = useSelector(
-    (state) => state.partsListAnchors.itemsByPartsList
+    (state) => state.partsListAnchors.itemsByPartsList,
   );
   const cabinetAnchors = useSelector(
-    (state) => state.cabinetAnchors.itemsByType
+    (state) => state.cabinetAnchors.itemsByType,
   );
   const globalServices = useSelector((state) => state.services.allServices);
   const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
@@ -65,7 +65,7 @@ const EstimatePreviewSection = ({
     const { context, effectiveSection } = createSectionContext(
       section,
       estimate,
-      catalogData
+      catalogData,
     );
     const calculations = getSectionCalculations(effectiveSection, context);
 
@@ -107,7 +107,7 @@ const EstimatePreviewSection = ({
     // Get readable names for materials and styles
     const cabinetStyleName =
       cabinetStyles?.find(
-        (s) => s.cabinet_style_id === effectiveSection.cabinet_style_id
+        (s) => s.cabinet_style_id === effectiveSection.cabinet_style_id,
       )?.cabinet_style_name || "";
 
     // Check if there are doors (door + panel)
@@ -144,7 +144,7 @@ const EstimatePreviewSection = ({
     const drawerBoxMaterialName = hasDrawerBoxes
       ? `${
           drawerBoxMaterials?.find(
-            (m) => m.id === effectiveSection.drawer_box_mat
+            (m) => m.id === effectiveSection.drawer_box_mat,
           )?.name || ""
         }`
       : "None";
@@ -153,8 +153,8 @@ const EstimatePreviewSection = ({
     const displayName = section.section_name
       ? `${taskName} - ${section.section_name}`
       : sectionNumber
-      ? `${taskName} - Section ${sectionNumber}`
-      : taskName;
+        ? `${taskName} - Section ${sectionNumber}`
+        : taskName;
 
     // Determine panel mod note based on door and drawer panel mod settings
     // 0 = none, 15 = reeded, 22 = grooved, etc.
@@ -167,83 +167,111 @@ const EstimatePreviewSection = ({
     if (hasPanelModDoors && hasPanelModDrawers) {
       // Both have panel mods - check if they're the same
       if (doorPanelModId === drawerPanelModId) {
-        const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+        const panelModName =
+          PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
         reededPanels = `${panelModName} on doors and drawer fronts.`;
       } else {
-        const doorPanelName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
-        const drawerPanelName = PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
+        const doorPanelName =
+          PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+        const drawerPanelName =
+          PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
         reededPanels = `${doorPanelName} on doors, ${drawerPanelName} on drawer fronts.`;
       }
     } else if (hasPanelModDoors) {
-      const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+      const panelModName =
+        PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
       reededPanels = `${panelModName} on doors.`;
     } else if (hasPanelModDrawers) {
-      const panelModName = PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
+      const panelModName =
+        PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
       reededPanels = `${panelModName} on drawer fronts.`;
     }
 
     // Determine door and drawer front material/finish notes
     // Only include if they differ from the selected face material/finishes
     const doorMatId = effectiveSection.door_mat || effectiveSection.face_mat;
-    const drawerFrontMatId = effectiveSection.drawer_front_mat || effectiveSection.face_mat;
+    const drawerFrontMatId =
+      effectiveSection.drawer_front_mat || effectiveSection.face_mat;
     const faceMatId = effectiveSection.face_mat;
-    
+
     const doorMaterial = faceMaterials?.find((m) => m.id === doorMatId);
-    const drawerFrontMaterial = faceMaterials?.find((m) => m.id === drawerFrontMatId);
-    
+    const drawerFrontMaterial = faceMaterials?.find(
+      (m) => m.id === drawerFrontMatId,
+    );
+
     const doorMaterialName = doorMaterial?.name || "";
     const drawerFrontMaterialName = drawerFrontMaterial?.name || "";
-    
+
     // Only include finish names if the material needs finish
     const doorFinishNames = doorMaterial?.needs_finish
-      ? (effectiveSection.door_finish?.length > 0 
-          ? effectiveSection.door_finish 
-          : effectiveSection.face_finish)
-            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-            .filter(Boolean)
-            .join(", ") || ""
+      ? (effectiveSection.door_finish?.length > 0
+          ? effectiveSection.door_finish
+          : effectiveSection.face_finish
+        )
+          ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+          .filter(Boolean)
+          .join(", ") || ""
       : "";
-    
+
     const drawerFrontFinishNames = drawerFrontMaterial?.needs_finish
-      ? (effectiveSection.drawer_front_finish?.length > 0 
-          ? effectiveSection.drawer_front_finish 
-          : effectiveSection.face_finish)
-            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-            .filter(Boolean)
-            .join(", ") || ""
+      ? (effectiveSection.drawer_front_finish?.length > 0
+          ? effectiveSection.drawer_front_finish
+          : effectiveSection.face_finish
+        )
+          ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+          .filter(Boolean)
+          .join(", ") || ""
       : "";
-    
+
     // Check if door/drawer materials or finishes differ from face material/finishes
-    const doorDiffersFromFace = effectiveSection.door_mat && effectiveSection.door_mat !== faceMatId;
-    const doorFinishDiffersFromFace = effectiveSection.door_finish?.length > 0 && 
+    const doorDiffersFromFace =
+      effectiveSection.door_mat && effectiveSection.door_mat !== faceMatId;
+    const doorFinishDiffersFromFace =
+      effectiveSection.door_finish?.length > 0 &&
       !isEqual(effectiveSection.door_finish, effectiveSection.face_finish);
-    const drawerFrontDiffersFromFace = effectiveSection.drawer_front_mat && effectiveSection.drawer_front_mat !== faceMatId;
-    const drawerFrontFinishDiffersFromFace = effectiveSection.drawer_front_finish?.length > 0 && 
-      !isEqual(effectiveSection.drawer_front_finish, effectiveSection.face_finish);
-    
-    const doorNeedsNote = hasDoors && (doorDiffersFromFace || doorFinishDiffersFromFace);
-    const drawerFrontNeedsNote = hasDrawerFronts && (drawerFrontDiffersFromFace || drawerFrontFinishDiffersFromFace);
-    
+    const drawerFrontDiffersFromFace =
+      effectiveSection.drawer_front_mat &&
+      effectiveSection.drawer_front_mat !== faceMatId;
+    const drawerFrontFinishDiffersFromFace =
+      effectiveSection.drawer_front_finish?.length > 0 &&
+      !isEqual(
+        effectiveSection.drawer_front_finish,
+        effectiveSection.face_finish,
+      );
+
+    const doorNeedsNote =
+      hasDoors && (doorDiffersFromFace || doorFinishDiffersFromFace);
+    const drawerFrontNeedsNote =
+      hasDrawerFronts &&
+      (drawerFrontDiffersFromFace || drawerFrontFinishDiffersFromFace);
+
     let doorDrawerMaterialNote = "";
     if (doorNeedsNote && drawerFrontNeedsNote) {
       // Both doors and drawer fronts differ from face material/finish
-      if (doorMatId === drawerFrontMatId && doorFinishNames === drawerFrontFinishNames) {
+      if (
+        doorMatId === drawerFrontMatId &&
+        doorFinishNames === drawerFrontFinishNames
+      ) {
         // Same material and finish
         const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
         doorDrawerMaterialNote = `Doors & Drawer Fronts: ${doorMaterialName}${finishPart}.`;
       } else {
         // Different materials or finishes
         const doorFinishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
-        const drawerFinishPart = drawerFrontFinishNames ? ` (${drawerFrontFinishNames})` : "";
-        doorDrawerMaterialNote = `Doors: ${doorMaterialName}${doorFinishPart}. Drawer Fronts: ${drawerFrontMaterialName}${drawerFinishPart}.`;
+        const drawerFinishPart = drawerFrontFinishNames
+          ? ` (${drawerFrontFinishNames})`
+          : "";
+        doorDrawerMaterialNote = `Doors - ${doorMaterialName}${doorFinishPart}. Drawer Fronts - ${drawerFrontMaterialName}${drawerFinishPart}.`;
       }
     } else if (doorNeedsNote) {
       // Only doors differ
       const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
-      doorDrawerMaterialNote = `Doors: ${doorMaterialName}${finishPart}.`;
+      doorDrawerMaterialNote = `Doors - ${doorMaterialName}${finishPart}.`;
     } else if (drawerFrontNeedsNote) {
       // Only drawer fronts differ
-      const finishPart = drawerFrontFinishNames ? ` (${drawerFrontFinishNames})` : "";
+      const finishPart = drawerFrontFinishNames
+        ? ` (${drawerFrontFinishNames})`
+        : "";
       doorDrawerMaterialNote = `Drawer Fronts: ${drawerFrontMaterialName}${finishPart}.`;
     }
 
@@ -272,7 +300,11 @@ const EstimatePreviewSection = ({
         processedNotes = [...section.notes];
 
         // Prepend door/drawer material, reeded panels, and molding to notes[0]
-        const additionalNotes = [doorDrawerMaterialNote, reededPanels, appliedMolding]
+        const additionalNotes = [
+          doorDrawerMaterialNote,
+          reededPanels,
+          appliedMolding,
+        ]
           .filter(Boolean)
           .join(" ");
         if (additionalNotes) {
@@ -284,7 +316,11 @@ const EstimatePreviewSection = ({
         }
       } else if (section.notes.trim()) {
         // Backward compatibility for string notes
-        const additionalNotes = [doorDrawerMaterialNote, reededPanels, appliedMolding]
+        const additionalNotes = [
+          doorDrawerMaterialNote,
+          reededPanels,
+          appliedMolding,
+        ]
           .filter(Boolean)
           .join(" ");
         processedNotes = additionalNotes
@@ -293,7 +329,11 @@ const EstimatePreviewSection = ({
       }
     } else {
       // No section notes, but we might have door/drawer material, reeded, or molding notes
-      const additionalNotes = [doorDrawerMaterialNote, reededPanels, appliedMolding]
+      const additionalNotes = [
+        doorDrawerMaterialNote,
+        reededPanels,
+        appliedMolding,
+      ]
         .filter(Boolean)
         .join(" ");
       if (additionalNotes) {
@@ -494,25 +534,27 @@ const EstimatePreviewSection = ({
       {/* Labor Hours Breakdown */}
       {calculations.laborCosts?.costsByService &&
         Object.keys(calculations.laborCosts.costsByService).length > 0 && (
-          <div className="mb-4">
+          <div className="mb-4 mx-auto max-w-2xl flex flex-col items-center">
             <h4 className="text-sm font-semibold text-slate-300 mb-2">
-              Labor Hours:
+              Labor Hours
             </h4>
             <div className="space-y-1 text-sm">
               {Object.entries(calculations.laborCosts.costsByService).map(
                 ([serviceId, serviceData]) => (
                   <div
                     key={serviceId}
-                    className="flex justify-between text-slate-300"
+                    className="grid grid-cols-[2fr,2fr,3fr,2fr,3fr,2fr] text-slate-300"
                   >
-                    <span>{serviceData.name}:</span>
-                    <span>
-                      {formatNumber(serviceData.hours)} hrs @{" "}
-                      {formatCurrency(serviceData.rate)}/hr ={" "}
+                    <span className="text-right">{serviceData.name}:</span>
+                    <span>{formatNumber(serviceData.hours)} hrs</span>
+                    <span>x</span>
+                    <span>{formatCurrency(serviceData.rate)} / hr</span>
+                    <span>=</span>
+                    <span className="text-right">
                       {formatCurrency(serviceData.cost)}
                     </span>
                   </div>
-                )
+                ),
               )}
             </div>
           </div>
@@ -554,14 +596,18 @@ const EstimatePreviewSection = ({
             </div>
           )}
           {/* {section.quantity > 1 && ( */}
-            <div className={`flex justify-between ${section.quantity === 0 ? 'px-1 bg-amber-400 text-slate-900' : 'text-slate-300'}`}>
-              <span>Quantity:</span>
-              <span>× {section.quantity}</span>
-            </div>
+          <div
+            className={`flex justify-between ${section.quantity === 0 ? "px-1 bg-amber-400 text-slate-900" : "text-slate-300"}`}
+          >
+            <span>Quantity:</span>
+            <span>× {section.quantity}</span>
+          </div>
           {/* )} */}
           <div
             className={`${
-              section.quantity === 0 ? "px-1 bg-amber-400 text-slate-900" : "text-teal-400"
+              section.quantity === 0
+                ? "px-1 bg-amber-400 text-slate-900"
+                : "text-teal-400"
             } flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2`}
           >
             <span>Section Total</span>
@@ -569,7 +615,7 @@ const EstimatePreviewSection = ({
               {formatCurrency(
                 section.quantity === 0
                   ? sectionData.unitPrice
-                  : sectionData.totalPrice
+                  : sectionData.totalPrice,
               )}
             </span>
           </div>
