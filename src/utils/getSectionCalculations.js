@@ -10,6 +10,7 @@ import {
   FACE_STYLE_VALUES,
   ACCESSORY_TYPES,
   ITEM_TYPES,
+  PART_NAMES,
 } from "./constants";
 import { calculateDrawerBoxesPrice } from "./drawerBoxCalculations";
 import {
@@ -173,7 +174,7 @@ const calculateFaceTotals = (section, context) => {
         if (cabinet.face_config?.boxSummary?.boxPartsList) {
           const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
           const nosingParts = boxPartsList.filter(
-            (part) => part.type === "nosing",
+            (part) => part.type === PART_NAMES.NOSING,
           );
 
           if (nosingParts.length > 0) {
@@ -229,7 +230,7 @@ const calculateFaceTotals = (section, context) => {
       } else if (cabinet.face_config?.boxSummary?.boxPartsList) {
         const boxPartsList = cabinet.face_config.boxSummary.boxPartsList;
         const nosingParts = boxPartsList.filter(
-          (part) => part.type === "nosing",
+          (part) => part.type === PART_NAMES.NOSING,
         );
 
         if (nosingParts.length > 0) {
@@ -1155,7 +1156,7 @@ const calculateEndPanelNosingMaterials = (section, context) => {
   endPanelsWithNosing.forEach((endPanel) => {
     const { quantity = 1 } = endPanel;
     const boxPartsList = endPanel.face_config.boxSummary.boxPartsList;
-    const nosingParts = boxPartsList.filter((part) => part.type === "nosing");
+    const nosingParts = boxPartsList.filter((part) => part.type === PART_NAMES.NOSING);
 
     if (nosingParts.length === 0) return;
 

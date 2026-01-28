@@ -5,6 +5,7 @@ import {
   FACE_NAMES,
   FACE_STYLE_VALUES,
   FACE_TYPES,
+  PART_NAMES,
   PARTS_LIST_MAPPING,
 } from "./constants";
 
@@ -606,12 +607,14 @@ export const calculateBoxPartsTime = (section, context = {}) => {
       nosingParts.forEach((part) => {
         const nosingLength = part.height; // Using height as the length for nosing
         const nosingProcessHours = calculateNosingTime(nosingLength, context);
+        const partQuantity = part.quantity || 1; // Number of shelves with this nosing
         
         Object.entries(nosingProcessHours).forEach(([teamServiceId, hours]) => {
           const service = globalServices.find(s => s.team_service_id === parseInt(teamServiceId));
           if (!service) return;
           
-          const roundedHours = roundToHundredth(hours * quantity);
+          // Multiply by both part quantity (shelves) and cabinet quantity
+          const roundedHours = roundToHundredth(hours * partQuantity * quantity);
           if (!totals.hoursByService[service.service_id]) totals.hoursByService[service.service_id] = 0;
           if (!totals.categoryHours.nosing[service.service_id]) totals.categoryHours.nosing[service.service_id] = 0;
           
@@ -661,7 +664,7 @@ export const calculateDoorPartsTime = (
   ) {
     // Slab doors may or may not need finish based on material
     // Use effectiveMaterial if provided (door/drawer specific), otherwise fall back to face material
-    const materialToCheck = effectiveMaterial?.material   || selectedFaceMaterial?.material;
+    const materialToCheck = effectiveMaterial?.material || selectedFaceMaterial?.material;
     const needsFinish = materialToCheck?.needs_finish;
     partsListId = needsFinish
       ? PARTS_LIST_MAPPING.slab_door_finished
@@ -991,7 +994,7 @@ export const calculateNosingTime = (length, context = {}) => {
     return {};
   }
 
-  const partsListId = PARTS_LIST_MAPPING["nosing"];
+  const partsListId = PARTS_LIST_MAPPING[PART_NAMES.NOSING];
   const anchors = partsListAnchors[partsListId];
 
   if (!anchors || anchors.length === 0) {

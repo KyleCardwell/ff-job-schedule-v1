@@ -229,6 +229,19 @@ export const PARTS_LIST_MAPPING = {
   panel_mod_grooved_finished: 22,
 };
 
+export const PART_NAMES = {
+  NOSING: "nosing",
+  SIDE: "side",
+  TOP_BOTTOM: "topBottom",
+  BACK: "back",
+  PARTITION: "partition",
+  SHELF: "shelf",
+  RIGHT: "right",
+  LEFT: "left",
+  TOP: "top",
+  BOTTOM: "bottom",
+}
+
 // Display names for panel mods (used in estimates, PDFs, etc.)
 export const PANEL_MOD_DISPLAY_NAMES = {
   15: "Reeded Panels",

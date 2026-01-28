@@ -12,6 +12,7 @@ import {
   SPLIT_DIRECTIONS,
   CAN_BE_BEADED,
   ITEM_TYPES,
+  PART_NAMES,
 } from "../../utils/constants.js";
 // import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
@@ -709,7 +710,7 @@ const CabinetItemForm = ({
         // Width: reveals.reveal, Height: cabinetHeight
         const partLength = cabinetHeight;
         framePieces.push({
-          type: "left",
+          type: PART_NAMES.LEFT,
           length: partLength,
           width: reveals.reveal,
         });
@@ -720,7 +721,7 @@ const CabinetItemForm = ({
         // Width: reveals.reveal, Height: cabinetHeight
         const partLength = cabinetHeight;
         framePieces.push({
-          type: "right",
+          type: PART_NAMES.RIGHT,
           length: partLength,
           width: reveals.reveal,
         });
@@ -733,7 +734,7 @@ const CabinetItemForm = ({
           cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         holeCount += 2;
         framePieces.push({
-          type: "top",
+          type: PART_NAMES.TOP,
           length: partLength,
           width: reveals.reveal,
         });
@@ -746,7 +747,7 @@ const CabinetItemForm = ({
           cabinetWidth - (reveals.left || 0) - (reveals.right || 0);
         holeCount += 2;
         framePieces.push({
-          type: "bottom",
+          type: PART_NAMES.BOTTOM,
           length: partLength,
           width: reveals.reveal,
         });
@@ -853,7 +854,7 @@ const CabinetItemForm = ({
           // Top nosing with width 0
           if (formData.finished_top) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "top_nosing",
               width: 0,
               height: roundTo16th(w),
@@ -866,7 +867,7 @@ const CabinetItemForm = ({
           // Bottom nosing with width 0
           if (formData.finished_bottom) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "bottom_nosing",
               width: 0,
               height: roundTo16th(w),
@@ -879,7 +880,7 @@ const CabinetItemForm = ({
           // Left nosing with width 0
           if (formData.finished_left) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "left_nosing",
               width: 0,
               height: roundTo16th(h),
@@ -892,7 +893,7 @@ const CabinetItemForm = ({
           // Right nosing with width 0
           if (formData.finished_right) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "right_nosing",
               width: 0,
               height: roundTo16th(h),
@@ -909,7 +910,7 @@ const CabinetItemForm = ({
           // Top nosing - main piece (depth width) + return (6" width)
           if (formData.finished_top) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "top_nosing",
               width: roundTo16th(d),
               height: roundTo16th(w),
@@ -918,7 +919,7 @@ const CabinetItemForm = ({
               finish: true,
             });
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "top_return",
               width: roundTo16th(returnWidth),
               height: roundTo16th(w),
@@ -931,7 +932,7 @@ const CabinetItemForm = ({
           // Bottom nosing - main piece (depth width) + return (6" width)
           if (formData.finished_bottom) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "bottom_nosing",
               width: roundTo16th(d),
               height: roundTo16th(w),
@@ -940,7 +941,7 @@ const CabinetItemForm = ({
               finish: true,
             });
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "bottom_return",
               width: roundTo16th(returnWidth),
               height: roundTo16th(w),
@@ -953,7 +954,7 @@ const CabinetItemForm = ({
           // Left nosing - main piece (depth width) + return (6" width)
           if (formData.finished_left) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "left_nosing",
               width: roundTo16th(d),
               height: roundTo16th(h),
@@ -962,7 +963,7 @@ const CabinetItemForm = ({
               finish: true,
             });
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "left_return",
               width: roundTo16th(returnWidth),
               height: roundTo16th(h),
@@ -975,7 +976,7 @@ const CabinetItemForm = ({
           // Right nosing - main piece (depth width) + return (6" width)
           if (formData.finished_right) {
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "right_nosing",
               width: roundTo16th(d),
               height: roundTo16th(h),
@@ -984,7 +985,7 @@ const CabinetItemForm = ({
               finish: true,
             });
             boxPartsList.push({
-              type: "nosing",
+              type: PART_NAMES.NOSING,
               side: "right_return",
               width: roundTo16th(returnWidth),
               height: roundTo16th(h),
@@ -1248,8 +1249,8 @@ const CabinetItemForm = ({
 
     // Add left side
     boxPartsList.push({
-      type: "side",
-      side: "left",
+      type: PART_NAMES.SIDE,
+      side: PART_NAMES.LEFT,
       width: roundTo16th(d),
       height: roundTo16th(h),
       area: roundTo16th(sideArea),
@@ -1259,8 +1260,8 @@ const CabinetItemForm = ({
 
     // Add right side
     boxPartsList.push({
-      type: "side",
-      side: "right",
+      type: PART_NAMES.SIDE,
+      side: PART_NAMES.RIGHT,
       width: roundTo16th(d),
       height: roundTo16th(h),
       area: roundTo16th(sideArea),
@@ -1275,8 +1276,8 @@ const CabinetItemForm = ({
 
       // Add top
       boxPartsList.push({
-        type: "topBottom",
-        side: "top",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.TOP,
         width: roundTo16th(backWidth),
         height: roundTo16th(backWidth),
         area: roundTo16th(topBottomArea),
@@ -1287,8 +1288,8 @@ const CabinetItemForm = ({
 
       // Add bottom
       boxPartsList.push({
-        type: "topBottom",
-        side: "bottom",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.BOTTOM,
         width: roundTo16th(backWidth),
         height: roundTo16th(backWidth),
         area: roundTo16th(topBottomArea),
@@ -1299,8 +1300,8 @@ const CabinetItemForm = ({
     } else {
       // Add top
       boxPartsList.push({
-        type: "topBottom",
-        side: "top",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.TOP,
         width: roundTo16th(d),
         height: roundTo16th(w),
         area: roundTo16th(topBottomArea),
@@ -1310,8 +1311,8 @@ const CabinetItemForm = ({
 
       // Add bottom
       boxPartsList.push({
-        type: "topBottom",
-        side: "bottom",
+        type: PART_NAMES.TOP_BOTTOM,
+        side: PART_NAMES.BOTTOM,
         width: roundTo16th(d),
         height: roundTo16th(w),
         area: roundTo16th(topBottomArea),
@@ -1325,7 +1326,7 @@ const CabinetItemForm = ({
       // Corner 45 has two back panels
       const backWidth = Math.ceil(d + w / Math.sqrt(2));
       boxPartsList.push({
-        type: "back",
+        type: PART_NAMES.BACK,
         width: roundTo16th(backWidth),
         height: roundTo16th(h),
         area: roundTo16th(backArea),
@@ -1334,7 +1335,7 @@ const CabinetItemForm = ({
       });
     } else {
       boxPartsList.push({
-        type: "back",
+        type: PART_NAMES.BACK,
         width: roundTo16th(w),
         height: roundTo16th(h),
         area: roundTo16th(backArea),
@@ -1357,13 +1358,30 @@ const CabinetItemForm = ({
           const shelfArea = roundTo16th(shelfWidth * shelfDepth);
 
           shelves.push({
-            type: "shelf",
+            type: PART_NAMES.SHELF,
             width: shelfWidth,
             height: shelfDepth,
             area: shelfArea,
             quantity: node.shelfQty,
             finish: finishedInterior,
           });
+
+          // Add nosing parts if shelfNosing is specified and glassShelves is not set
+          // Only add nosing for box material shelves, not glass shelves
+          if (node.shelfNosing && node.shelfNosing > 0 && !node.glassShelves) {
+            const nosingWidth = roundTo16th(node.shelfNosing);
+            const nosingHeight = roundTo16th(node.shelfDimensions.height); // Same as shelf depth
+            const nosingArea = roundTo16th(nosingWidth * nosingHeight);
+
+            shelves.push({
+              type: PART_NAMES.NOSING,
+              width: nosingWidth,
+              height: nosingHeight,
+              area: nosingArea,
+              quantity: node.shelfQty,
+              finish: finishedInterior,
+            });
+          }
         }
 
         if (node.children) {
@@ -1420,7 +1438,7 @@ const CabinetItemForm = ({
                 localOpeningsCount++;
 
                 partitions.push({
-                  type: "partition",
+                  type: PART_NAMES.PARTITION,
                   width: roundTo16th(d),
                   height: partitionWidth,
                   area: partitionArea,

@@ -57,18 +57,18 @@ const CabinetFaceDivider = ({
   // Get available face types for this item type
   const availableFaceTypes = useMemo(
     () => getAvailableFaceTypes(itemType),
-    [itemType]
+    [itemType],
   );
 
   // Check if this item type should use reveals
   const usesReveals = useMemo(
     () => shouldUseReveals(itemType, cabinetStyleId),
-    [itemType, cabinetStyleId]
+    [itemType, cabinetStyleId],
   );
 
   const usesRootReveals = useMemo(
     () => shouldUseRootReveals(itemType, cabinetStyleId),
-    [itemType, cabinetStyleId]
+    [itemType, cabinetStyleId],
   );
 
   const [config, setConfig] = useState(faceConfig);
@@ -96,6 +96,7 @@ const CabinetFaceDivider = ({
     shelfQty: "",
     glassPanel: "",
     glassShelves: "",
+    shelfNosing: "",
   });
 
   // Apply focus trap to popups
@@ -113,12 +114,12 @@ const CabinetFaceDivider = ({
   const style = useMemo(
     () =>
       cabinetStyles.find((style) => style.cabinet_style_id === cabinetStyleId),
-    [cabinetStyles, cabinetStyleId]
+    [cabinetStyles, cabinetStyleId],
   );
 
   const type = useMemo(
     () => style?.types?.find((type) => type.cabinet_type_id === cabinetTypeId),
-    [style, cabinetTypeId]
+    [style, cabinetTypeId],
   );
 
   // Use rootReveals from config if available, otherwise fall back to type config
@@ -345,11 +346,23 @@ const CabinetFaceDivider = ({
 
       const revealsToUse = faceConfig?.rootReveals || typeConfigReveals;
 
-      console.log('[CabinetFaceDivider] Main useEffect - cabinetStyleId:', cabinetStyleId);
-      console.log('[CabinetFaceDivider] type?.config:', typeConfigReveals);
-      console.log('[CabinetFaceDivider] faceConfig?.rootReveals:', faceConfig?.rootReveals);
-      console.log('[CabinetFaceDivider] revealsToUse (priority):', revealsToUse);
-      console.log('[CabinetFaceDivider] config.rootReveals:', config.rootReveals);
+      console.log(
+        "[CabinetFaceDivider] Main useEffect - cabinetStyleId:",
+        cabinetStyleId,
+      );
+      console.log("[CabinetFaceDivider] type?.config:", typeConfigReveals);
+      console.log(
+        "[CabinetFaceDivider] faceConfig?.rootReveals:",
+        faceConfig?.rootReveals,
+      );
+      console.log(
+        "[CabinetFaceDivider] revealsToUse (priority):",
+        revealsToUse,
+      );
+      console.log(
+        "[CabinetFaceDivider] config.rootReveals:",
+        config.rootReveals,
+      );
 
       // Calculate expected dimensions based on revealsToUse
       const expectedWidth =
@@ -359,18 +372,25 @@ const CabinetFaceDivider = ({
 
       // Check what needs updating
       const dimensionsChanged =
-        config.width !== expectedWidth ||
-        config.height !== expectedHeight;
+        config.width !== expectedWidth || config.height !== expectedHeight;
 
-      const revealsChanged = !config.rootReveals || !isEqual(config.rootReveals, revealsToUse);
+      const revealsChanged =
+        !config.rootReveals || !isEqual(config.rootReveals, revealsToUse);
 
       const needsUpdate = dimensionsChanged || revealsChanged;
 
-      console.log('[CabinetFaceDivider] dimensionsChanged:', dimensionsChanged, 'revealsChanged:', revealsChanged, 'needsUpdate:', needsUpdate);
+      console.log(
+        "[CabinetFaceDivider] dimensionsChanged:",
+        dimensionsChanged,
+        "revealsChanged:",
+        revealsChanged,
+        "needsUpdate:",
+        needsUpdate,
+      );
 
       if (needsUpdate) {
-        console.log('[CabinetFaceDivider] Updating config in main useEffect');
-        
+        console.log("[CabinetFaceDivider] Updating config in main useEffect");
+
         // Update the ref to track current reveals
         revealsRef.current = revealsToUse;
 
@@ -381,7 +401,9 @@ const CabinetFaceDivider = ({
 
         // If reveals changed, normalize all reveal nodes in the tree
         if (revealsChanged) {
-          console.log('[CabinetFaceDivider] Reveals changed - normalizing reveal nodes');
+          console.log(
+            "[CabinetFaceDivider] Reveals changed - normalizing reveal nodes",
+          );
           normalizeRevealDimensions(updatedConfig, revealsToUse);
         }
 
@@ -393,19 +415,30 @@ const CabinetFaceDivider = ({
 
         // If dimensions or reveals changed, update children proportionally
         if (dimensionsChanged || revealsChanged) {
-          console.log('[CabinetFaceDivider] Updating children proportionally');
+          console.log("[CabinetFaceDivider] Updating children proportionally");
           updateChildrenFromParent(updatedConfig);
         }
 
         // Force recalculation of layout
         const layoutConfig = calculateLayout(updatedConfig);
 
-        console.log('[CabinetFaceDivider] Setting config with rootReveals:', layoutConfig.rootReveals);
+        console.log(
+          "[CabinetFaceDivider] Setting config with rootReveals:",
+          layoutConfig.rootReveals,
+        );
         setConfig(layoutConfig);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cabinetWidth, cabinetHeight, cabinetTypeId, cabinetStyleId, usesRootReveals, type, faceConfig?.rootReveals]);
+  }, [
+    cabinetWidth,
+    cabinetHeight,
+    cabinetTypeId,
+    cabinetStyleId,
+    usesRootReveals,
+    type,
+    faceConfig?.rootReveals,
+  ]);
 
   useEffect(() => {
     renderCabinet();
@@ -457,7 +490,7 @@ const CabinetFaceDivider = ({
         const popup = event.target.closest(".handle-editor-popup");
         // Check if the click is on a handle element
         const handle = event.target.closest(
-          '[cursor="ew-resize"], [cursor="ns-resize"]'
+          '[cursor="ew-resize"], [cursor="ns-resize"]',
         );
 
         if (!popup && !handle) {
@@ -512,7 +545,7 @@ const CabinetFaceDivider = ({
     y = node.y,
     width = node.width,
     height = node.height,
-    isRoot = true
+    isRoot = true,
   ) => {
     if (!node) return null;
 
@@ -558,7 +591,7 @@ const CabinetFaceDivider = ({
             newY,
             childWidth,
             newHeight,
-            false
+            false,
           );
           currentX += childWidth;
           return newChild;
@@ -582,7 +615,7 @@ const CabinetFaceDivider = ({
             currentY,
             newWidth,
             childHeight,
-            false
+            false,
           );
           currentY += childHeight;
           return newChild;
@@ -613,7 +646,7 @@ const CabinetFaceDivider = ({
     if (faces.length > 0) {
       const totalChildSize = faces.reduce(
         (sum, f) => sum + f[splitDimension],
-        0
+        0,
       );
       const revealSize = reveal ? reveal[splitDimension] : 0;
       const scaleFactor = (node[splitDimension] - revealSize) / totalChildSize;
@@ -655,14 +688,14 @@ const CabinetFaceDivider = ({
         "fill",
         node.type === FACE_NAMES.REVEAL
           ? "#E5E7EB"
-          : faceType?.color || "#6B7280"
+          : faceType?.color || "#6B7280",
       )
       .attr("fill-opacity", node.type === FACE_NAMES.CONTAINER ? 0.1 : 0.3)
       .attr("stroke", faceType?.color || "#6B7280")
       .attr("stroke-width", strokeWidth)
       .attr(
         "stroke-dasharray",
-        node.type === FACE_NAMES.CONTAINER ? "3,3" : "none"
+        node.type === FACE_NAMES.CONTAINER ? "3,3" : "none",
       )
       .attr("cursor", node.type === FACE_NAMES.REVEAL ? "pointer" : "pointer")
       .style("pointer-events", "all")
@@ -718,8 +751,8 @@ const CabinetFaceDivider = ({
         .attr("font-size", "10px")
         .text(
           `${truncateTrailingZeros(node.width)}" × ${truncateTrailingZeros(
-            node.height
-          )} ${node.rollOutQty > 0 ? ` - ${node.rollOutQty} RO` : ""}`
+            node.height,
+          )} ${node.rollOutQty > 0 ? ` - ${node.rollOutQty} RO` : ""}`,
         )
         .style("pointer-events", "none");
     }
@@ -812,7 +845,7 @@ const CabinetFaceDivider = ({
       .append("g")
       .attr(
         "transform",
-        `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`
+        `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`,
       );
 
     // Create a dedicated group for highlights, added last to be on top
@@ -820,7 +853,7 @@ const CabinetFaceDivider = ({
       .append("g")
       .attr(
         "transform",
-        `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`
+        `translate(${offsetX + cabinetOffsetX}, ${offsetY + cabinetOffsetY})`,
       );
 
     const strokeWidth = cabinetStyleId === 13 ? 0 : 2;
@@ -1084,7 +1117,7 @@ const CabinetFaceDivider = ({
 
   const glassPanelOptions = (nodeType) => {
     const glassOptions = accessories.glass.filter((glass) =>
-      glass.applies_to.includes(nodeType)
+      glass.applies_to.includes(nodeType),
     );
     return glassOptions;
   };
@@ -1137,6 +1170,35 @@ const CabinetFaceDivider = ({
     }
   };
 
+  // Handle shelf nosing change
+  const handleShelfNosingChange = (e) => {
+    const value = e.target.value;
+
+    // Allow empty string or positive numbers
+    if (value !== "" && (isNaN(value) || parseFloat(value) < 0)) {
+      return;
+    }
+
+    // Update input value state
+    setInputValues({ ...inputValues, shelfNosing: value });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // Store the shelf nosing value on the node (convert to number or null)
+      node.shelfNosing = value === "" ? null : parseFloat(value);
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        shelfNosing: value === "" ? null : parseFloat(value),
+      });
+    }
+  };
+
   // Handle accessories change
   const handleAccessoriesChange = (updatedAccessories) => {
     if (!selectedNode) return;
@@ -1168,7 +1230,7 @@ const CabinetFaceDivider = ({
     if (node.accessories && node.accessories.length > 0) {
       removedAccessories = node.accessories.filter((accessory) => {
         const accessoryCatalog = accessories?.catalog?.find(
-          (acc) => acc.id === +accessory.accessory_id
+          (acc) => acc.id === +accessory.accessory_id,
         );
         return !accessoryCatalog?.applies_to?.includes(newType);
       });
@@ -1199,7 +1261,7 @@ const CabinetFaceDivider = ({
       if (node.accessories && node.accessories.length > 0) {
         const compatibleAccessories = node.accessories.filter((accessory) => {
           const accessoryCatalog = accessories?.catalog?.find(
-            (acc) => acc.id === +accessory.accessory_id
+            (acc) => acc.id === +accessory.accessory_id,
           );
           return accessoryCatalog?.applies_to?.includes(newType);
         });
@@ -1248,7 +1310,7 @@ const CabinetFaceDivider = ({
     if (pendingTypeChange) {
       proceedWithTypeChange(
         pendingTypeChange.newType,
-        pendingTypeChange.nodeId
+        pendingTypeChange.nodeId,
       );
     }
     setShowConfirmModal(false);
@@ -1270,9 +1332,7 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
-        console.log('[CabinetFaceDivider] onSave useEffect - config changed, calling onSave');
-        console.log('[CabinetFaceDivider] config.rootReveals being saved:', config.rootReveals);
-        console.log('[CabinetFaceDivider] config dimensions being saved:', { x: config.x, y: config.y, width: config.width, height: config.height });
+
         // Create a copy of the config for saving
         const configForSave = cloneDeep(config);
 
@@ -1286,7 +1346,7 @@ const CabinetFaceDivider = ({
               cabinetDepth,
               node.height,
               node.type,
-              true // isRollout
+              true, // isRollout
             );
           }
 
@@ -1297,7 +1357,7 @@ const CabinetFaceDivider = ({
               cabinetDepth,
               node.height,
               node.type,
-              false // isRollout
+              false, // isRollout
             );
           }
 
@@ -1317,7 +1377,6 @@ const CabinetFaceDivider = ({
         // Process the entire tree
         processNode(configForSave);
 
-        console.log('[CabinetFaceDivider] Calling onSave with rootReveals:', configForSave.rootReveals);
         // Save the config with calculated dimensions
         onSave(configForSave);
         previousConfigRef.current = configString;
@@ -1334,7 +1393,7 @@ const CabinetFaceDivider = ({
     const parent = findParent(config, node.id);
     if (!parent) return;
     const sibling = parent.children.find(
-      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL,
     );
     if (!sibling) return;
 
@@ -1389,7 +1448,7 @@ const CabinetFaceDivider = ({
     if (!parent) return;
 
     const sibling = parent.children.find(
-      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL
+      (c) => c.id !== node.id && c.type !== FACE_NAMES.REVEAL,
     );
     if (!sibling) return;
 
@@ -1475,12 +1534,12 @@ const CabinetFaceDivider = ({
     if (node.type === FACE_NAMES.REVEAL) {
       // Logic for when a REVEAL is edited
       const siblings = parentNode.children.filter(
-        (c) => c.type !== FACE_NAMES.REVEAL
+        (c) => c.type !== FACE_NAMES.REVEAL,
       );
       if (siblings.length !== 2) return; // This logic only works for exactly 2 siblings
 
       const originalRevealNode = selectedHandle.parent.children.find(
-        (c) => c.id === childId
+        (c) => c.id === childId,
       );
       const oldRevealSize = originalRevealNode[dimension];
       const revealDelta = newValue - oldRevealSize;
@@ -1491,7 +1550,7 @@ const CabinetFaceDivider = ({
 
       if (newSibling1Size < minValue || newSibling2Size < minValue) {
         console.warn(
-          `Change rejected: Sibling size would be less than ${minValue}"`
+          `Change rejected: Sibling size would be less than ${minValue}"`,
         );
         setHandleInputValues((prev) => ({ ...prev, [childId]: oldRevealSize }));
         return;
@@ -1510,10 +1569,10 @@ const CabinetFaceDivider = ({
     } else {
       // Logic for when a regular FACE is edited
       const sibling = parentNode.children.find(
-        (c) => c.id !== childId && c.type !== FACE_NAMES.REVEAL
+        (c) => c.id !== childId && c.type !== FACE_NAMES.REVEAL,
       );
       const reveal = parentNode.children.find(
-        (c) => c.type === FACE_NAMES.REVEAL
+        (c) => c.type === FACE_NAMES.REVEAL,
       );
 
       if (!sibling || !reveal) return;
@@ -1524,13 +1583,13 @@ const CabinetFaceDivider = ({
 
       if (newSiblingSize < minValue) {
         console.warn(
-          `Change rejected: Sibling size would be less than ${minValue}"`
+          `Change rejected: Sibling size would be less than ${minValue}"`,
         );
         const originalNode = selectedHandle.parent.children.find(
-          (c) => c.id === childId
+          (c) => c.id === childId,
         );
         const originalSibling = selectedHandle.parent.children.find(
-          (c) => c.id === sibling.id
+          (c) => c.id === sibling.id,
         );
         setHandleInputValues((prev) => ({
           ...prev,
@@ -1600,7 +1659,7 @@ const CabinetFaceDivider = ({
       const otherSiblingsMinTotal = (siblings.length - 1) * minValue;
       const maxValue = Math.max(
         minValue,
-        containerDimension - otherSiblingsMinTotal
+        containerDimension - otherSiblingsMinTotal,
       );
       return { min: minValue, max: maxValue };
     } else {
@@ -1650,8 +1709,9 @@ const CabinetFaceDivider = ({
     if (disabled) return;
 
     const svgRect = svgRef.current.getBoundingClientRect();
+    const popupOffsetX = 350; // Offset to position popup to the left of click
     setSelectorPosition({
-      x: event.clientX - svgRect.left,
+      x: event.clientX - svgRect.left - popupOffsetX,
       y: event.clientY - svgRect.top,
     });
     setSelectedNode(node);
@@ -1668,6 +1728,7 @@ const CabinetFaceDivider = ({
           : node.shelfQty || "",
       glassPanel: node.glassPanel || "",
       glassShelves: node.glassShelves || "",
+      shelfNosing: node.shelfNosing || "",
     });
 
     setShowTypeSelector(true);
@@ -1812,24 +1873,24 @@ const CabinetFaceDivider = ({
         ? "width"
         : "height";
     const faces = containerNode.children.filter(
-      (c) => c.type !== FACE_NAMES.REVEAL
+      (c) => c.type !== FACE_NAMES.REVEAL,
     );
     const reveals = containerNode.children.filter(
-      (c) => c.type === FACE_NAMES.REVEAL
+      (c) => c.type === FACE_NAMES.REVEAL,
     );
 
     if (faces.length <= 1) return; // No siblings to equalize
 
     const totalRevealSize = reveals.reduce(
       (sum, r) => sum + r[splitDimension],
-      0
+      0,
     );
     const availableSize = containerNode[splitDimension] - totalRevealSize;
     const equalSize = availableSize / faces.length;
 
     if (equalSize < minValue) {
       console.warn(
-        `Equalize rejected: results in a size smaller than the minimum ${minValue}"`
+        `Equalize rejected: results in a size smaller than the minimum ${minValue}"`,
       );
       return;
     }
@@ -1861,7 +1922,7 @@ const CabinetFaceDivider = ({
       });
     } else {
       const nodeIndex = parent.children.findIndex(
-        (c) => c.id === selectedNode.id
+        (c) => c.id === selectedNode.id,
       );
       if (nodeIndex === -1) return;
 
@@ -1892,7 +1953,7 @@ const CabinetFaceDivider = ({
 
         if (grandParent) {
           const parentIndex = grandParent.children.findIndex(
-            (c) => c.id === parent.id
+            (c) => c.id === parent.id,
           );
           // Replace parent with the last child
           grandParent.children[parentIndex] = lastChild;
@@ -1919,11 +1980,11 @@ const CabinetFaceDivider = ({
             ? "width"
             : "height";
         const remainingFaces = parent.children.filter(
-          (c) => c.type !== FACE_NAMES.REVEAL
+          (c) => c.type !== FACE_NAMES.REVEAL,
         );
         const totalFaceSize = remainingFaces.reduce(
           (sum, f) => sum + f[dimension],
-          0
+          0,
         );
 
         remainingFaces.forEach((face) => {
@@ -2073,14 +2134,15 @@ const CabinetFaceDivider = ({
                   selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
                     ? handlePopupPosition.x - 180 // Position to the left of vertical handle
                     : handlePopupPosition.x,
-                  fixedDisplayWidth - 250
+                  fixedDisplayWidth - 250,
                 ),
                 top: Math.min(
                   selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
                     ? handlePopupPosition.y - 100
                     : handlePopupPosition.y,
-                  fixedDisplayHeight - 200
+                  fixedDisplayHeight - 200,
                 ),
+                filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 1))',
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
             >
@@ -2104,7 +2166,7 @@ const CabinetFaceDivider = ({
                     ? "width"
                     : "height";
                 const faceType = availableFaceTypes.find(
-                  (t) => t.value === child.type
+                  (t) => t.value === child.type,
                 );
                 const isReveal = child.type === FACE_NAMES.REVEAL;
 
@@ -2125,7 +2187,7 @@ const CabinetFaceDivider = ({
                         handleSiblingDimensionChange(
                           child.id,
                           dimension,
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       className="w-20 px-1 py-0.5 text-xs border border-slate-300 rounded"
@@ -2135,7 +2197,7 @@ const CabinetFaceDivider = ({
                 );
               })}
               {selectedHandle.parent.children.filter(
-                (c) => c.type !== FACE_NAMES.REVEAL
+                (c) => c.type !== FACE_NAMES.REVEAL,
               ).length > 1 && (
                 <button
                   onClick={handleEqualizeSiblings}
@@ -2151,10 +2213,11 @@ const CabinetFaceDivider = ({
           {showTypeSelector && selectedNode && !disabled && (
             <div
               ref={typeSelectorPopupRef}
-              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-2 z-10 flex space-x-2"
+              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg p-2 z-10 flex space-x-2"
               style={{
                 left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
                 top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
+                filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 1))',
               }}
             >
               <div>
@@ -2224,7 +2287,7 @@ const CabinetFaceDivider = ({
                       <div>
                         {supportsGlassPanel &&
                           glassPanelOptions(selectedNode.type).length > 0 && (
-                            <div className="flex-1 flex flex-col items-center space-x-1">
+                            <div className="flex-1 flex flex-col items-start space-x-1">
                               <label className="text-xs text-slate-600">
                                 Glass Panel:
                               </label>
@@ -2240,34 +2303,49 @@ const CabinetFaceDivider = ({
                                     <option key={glass.id} value={glass.id}>
                                       {glass.name}
                                     </option>
-                                  )
+                                  ),
                                 )}
                               </select>
                             </div>
                           )}
                       </div>
-                      <div>
-                        {supportsShelves(selectedNode.type) &&
-                          accessories.glass.length > 0 && (
-                            <div className="flex-1 flex flex-col items-center space-x-1">
-                              <label className="text-xs text-slate-600">
-                                Shelf material:
-                              </label>
-                              <select
-                                name="glassShelves"
-                                value={inputValues.glassShelves}
-                                onChange={(e) => handleGlassShelvesChange(e)}
-                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                              >
-                                <option value="">Box Material</option>
-                                {accessories.glass.map((glass) => (
-                                  <option key={glass.id} value={glass.id}>
-                                    {glass.name}
-                                  </option>
-                                ))}
-                              </select>
+                      <div className="text-xs text-slate-600">
+                        {supportsShelves(selectedNode.type) && (
+                          <>
+                            {accessories.glass.length > 0 && (
+                              <div className="flex-1 flex flex-col items-end space-x-1 mb-2">
+                                <label>Shelf material:</label>
+                                <select
+                                  name="glassShelves"
+                                  value={inputValues.glassShelves}
+                                  onChange={(e) => handleGlassShelvesChange(e)}
+                                  className="px-1 py-0.5 text-black border border-slate-300 rounded"
+                                >
+                                  <option value="">Box Material</option>
+                                  {accessories.glass.map((glass) => (
+                                    <option key={glass.id} value={glass.id}>
+                                      {glass.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            <div className="flex-1 flex flex-col items-end space-x-1">
+                              <label>Shelf Nosing:</label>
+                              <input
+                                type="number"
+                                name="shelfNosing"
+                                value={inputValues.shelfNosing}
+                                onChange={(e) => handleShelfNosingChange(e)}
+                                className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                                step="0.25"
+                                min="0"
+                                placeholder="0"
+                                disabled={inputValues.glassShelves !== ""}
+                              />
                             </div>
-                          )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2305,7 +2383,7 @@ const CabinetFaceDivider = ({
                         .filter(
                           (type) =>
                             type.value !== FACE_NAMES.CONTAINER &&
-                            type.value !== FACE_NAMES.REVEAL
+                            type.value !== FACE_NAMES.REVEAL,
                         )
                         .map((type) => (
                           <button
