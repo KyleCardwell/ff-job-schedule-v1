@@ -250,3 +250,9 @@ export const PANEL_MOD_DISPLAY_NAMES = {
 };
   
 export const FIXED_AMOUNT = 'fixed_amount';
+
+export const EDIT_TYPES = {
+  TEAM: "team",
+  ESTIMATE: "estimate",
+  SECTION: "section",
+};

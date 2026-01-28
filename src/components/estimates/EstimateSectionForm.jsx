@@ -16,7 +16,7 @@ import {
   updateEstimateDefaults,
 } from "../../redux/actions/estimates";
 import { updateTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
-import { FACE_STYLES, FACE_STYLE_VALUES } from "../../utils/constants";
+import { FACE_STYLES, FACE_STYLE_VALUES , EDIT_TYPES } from "../../utils/constants";
 import {
   getNewSectionDefaults,
   getEffectiveValue,
@@ -37,7 +37,7 @@ import CopyRoomDetailsModal from "./CopyRoomDetailsModal.jsx";
  * @param {function} onSave - Save callback
  */
 const EstimateSectionForm = ({
-  editType = "section",
+  editType = EDIT_TYPES.SECTION,
   section = {},
   estimateData = null,
   teamData = null,
@@ -93,15 +93,15 @@ const EstimateSectionForm = ({
 
   // Determine what data to use based on editType
   const editingData = useMemo(() => {
-    if (editType === "team") return teamData;
-    if (editType === "estimate") return estimateData || currentEstimate;
+    if (editType === EDIT_TYPES.TEAM) return teamData;
+    if (editType === EDIT_TYPES.ESTIMATE) return estimateData || currentEstimate;
     return section; // 'section' mode
   }, [editType, teamData, estimateData, currentEstimate, section]);
 
   // Get default values for new sections using fallback logic
   // Only use getNewSectionDefaults if we don't have template data (section is empty)
   const initialDefaults = useMemo(() => {
-    if (editType === "section" && isNewSection) {
+    if (editType === EDIT_TYPES.SECTION && isNewSection) {
       // Check if section has any template data (from copying last section)
       const hasTemplateData = Object.keys(section).some(
         (key) => key !== "est_section_id" && section[key] !== undefined,
@@ -121,7 +121,7 @@ const EstimateSectionForm = ({
 
   // Determine field name prefix (team and estimate use 'default_' prefix)
   const getFieldName = (baseName) => {
-    if (editType === "team" || editType === "estimate") {
+    if (editType === EDIT_TYPES.TEAM || editType === EDIT_TYPES.ESTIMATE) {
       return `default_${baseName}`;
     }
     return baseName;
@@ -129,9 +129,9 @@ const EstimateSectionForm = ({
 
   // Get placeholder text based on edit type
   const getPlaceholder = (itemName) => {
-    if (editType === "section") {
+    if (editType === EDIT_TYPES.SECTION) {
       return `Estimate Default`;
-    } else if (editType === "estimate") {
+    } else if (editType === EDIT_TYPES.ESTIMATE) {
       return `Team Default`;
     } else {
       return `Select ${itemName}`;
@@ -156,7 +156,7 @@ const EstimateSectionForm = ({
     fourthTierFallbackValue = null,
   ) => {
     // Don't show for team edit type
-    if (editType === "team") {
+    if (editType === EDIT_TYPES.TEAM) {
       return null;
     }
 
@@ -185,7 +185,7 @@ const EstimateSectionForm = ({
 
     // When in estimate editing mode, skip estimate tier to show team defaults
     const estimateValue =
-      editType === "estimate" ? null : currentEstimate?.[estimateKey];
+      editType === EDIT_TYPES.ESTIMATE ? null : currentEstimate?.[estimateKey];
     const teamValue = teamDefaults?.[teamDefaultKey];
     const { value, source } = getEffectiveValue(null, estimateValue, teamValue);
 
@@ -251,7 +251,7 @@ const EstimateSectionForm = ({
   // Get effective service rate display - uses existing getEffectiveValue with service-specific paths
   const getEffectiveServiceRateDisplay = (serviceId, service) => {
     // Don't show for team edit type
-    if (editType === "team") {
+    if (editType === EDIT_TYPES.TEAM) {
       return null;
     }
 
@@ -267,7 +267,7 @@ const EstimateSectionForm = ({
     // When in estimate editing mode, skip estimate tier to show team defaults
     const sectionValue = null; // We're in the form, so section override is what we're editing
     const estimateValue =
-      editType === "estimate"
+      editType === EDIT_TYPES.ESTIMATE
         ? null
         : currentEstimate?.default_service_price_overrides?.[serviceId];
     const teamValue = service?.hourly_rate; // Service default rate from services store
@@ -545,13 +545,13 @@ const EstimateSectionForm = ({
 
       // 4. Build tier values
       return {
-        section: editType === "section" ? formDataValue : null,
+        section: editType === EDIT_TYPES.SECTION ? formDataValue : null,
         estimate:
-          editType === "estimate"
+          editType === EDIT_TYPES.ESTIMATE
             ? formDataValue
             : (currentEstimate?.[estimateKey] ?? null),
         team:
-          editType === "team"
+          editType === EDIT_TYPES.TEAM
             ? formDataValue
             : (teamDefaults?.[estimateKey] ?? null),
       };
@@ -690,7 +690,7 @@ const EstimateSectionForm = ({
 
   const handleRestoreDefaults = () => {
     // Restore all fields to defaults based on editType
-    if (editType !== "team") {
+    if (editType !== EDIT_TYPES.TEAM) {
       // Reset to estimate defaults
       setFormData({
         style: "",
@@ -768,11 +768,16 @@ const EstimateSectionForm = ({
   };
 
   const validateForm = () => {
+    const ERROR_MESSAGES = {
+      ONE_FINISH: "At least one finish option is required",
+      COMPATIBLE_DOOR_STYLE: "Choose a compatible door style",
+      COMPATIBLE_DRAWER_FRONT_STYLE: "Choose a compatible drawer front style",
+    }
     const newErrors = {};
 
     // For estimate defaults and sections, most fields are optional (can use fallback)
     // But we still need to validate finish fields if the material needs finish
-    if (editType === "estimate" || editType === "section") {
+    if (editType === EDIT_TYPES.ESTIMATE || editType === EDIT_TYPES.SECTION) {
       // Check if face finish is needed using the same logic as useEffect
       const faceMaterialTiers = getTiers("faceMaterial");
       const faceFinishNeeded = shouldApplyFinish(
@@ -793,7 +798,7 @@ const EstimateSectionForm = ({
           !effectiveFaceFinish.value ||
           effectiveFaceFinish.value.length === 0
         ) {
-          newErrors.faceFinish = "At least one finish option is required";
+          newErrors.faceFinish = ERROR_MESSAGES.ONE_FINISH;
         }
       }
 
@@ -817,7 +822,7 @@ const EstimateSectionForm = ({
           !effectiveBoxFinish.value ||
           effectiveBoxFinish.value.length === 0
         ) {
-          newErrors.boxFinish = "At least one finish option is required";
+          newErrors.boxFinish = ERROR_MESSAGES.ONE_FINISH;
         }
       }
 
@@ -834,7 +839,31 @@ const EstimateSectionForm = ({
         teamDefaults?.default_door_style || null,
       );
 
-      if (effectiveFaceMaterialId && effectiveDoorStyle) {
+      // Check if door_mat is compatible with door style (if door_mat is set)
+      if (formData.door_mat && effectiveDoorStyle) {
+        const doorMaterial = FACE_MATERIAL_OPTIONS.find(
+          (mat) => mat.id === formData.door_mat,
+        );
+
+        if (doorMaterial) {
+          const isValidDoorMat =
+            (doorMaterial.five_piece === true &&
+              (effectiveDoorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+                effectiveDoorStyle ===
+                  FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
+            (doorMaterial.slab_door === true &&
+              (effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+                effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
+
+          if (!isValidDoorMat) {
+            newErrors.doorStyle = ERROR_MESSAGES.COMPATIBLE_DOOR_STYLE;
+          }
+        }
+      }
+
+      // Check if door style is compatible with face material (if no door_mat override)
+      if (!formData.door_mat && effectiveFaceMaterialId && effectiveDoorStyle) {
         const material = FACE_MATERIAL_OPTIONS.find(
           (mat) => mat.id === effectiveFaceMaterialId,
         );
@@ -852,7 +881,7 @@ const EstimateSectionForm = ({
                 effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
 
           if (!isValidDoorStyle) {
-            newErrors.doorStyle = "Choose a compatible door style";
+            newErrors.doorStyle = ERROR_MESSAGES.COMPATIBLE_DOOR_STYLE;
           }
         }
       }
@@ -864,7 +893,33 @@ const EstimateSectionForm = ({
         teamDefaults?.default_drawer_front_style || null,
       );
 
-      if (effectiveFaceMaterialId && effectiveDrawerFrontStyle) {
+      // Check if drawer_front_mat is compatible with drawer front style (if drawer_front_mat is set)
+      if (formData.drawer_front_mat && effectiveDrawerFrontStyle) {
+        const drawerFrontMaterial = FACE_MATERIAL_OPTIONS.find(
+          (mat) => mat.id === formData.drawer_front_mat,
+        );
+
+        if (drawerFrontMaterial) {
+          const isValidDrawerFrontMat =
+            (drawerFrontMaterial.five_piece === true &&
+              (effectiveDrawerFrontStyle ===
+                FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDrawerFrontStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
+                effectiveDrawerFrontStyle ===
+                  FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
+            (drawerFrontMaterial.slab_door === true &&
+              (effectiveDrawerFrontStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
+                effectiveDrawerFrontStyle ===
+                  FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
+
+          if (!isValidDrawerFrontMat) {
+            newErrors.drawerFrontStyle = ERROR_MESSAGES.COMPATIBLE_DRAWER_FRONT_STYLE;
+          }
+        }
+      }
+
+      // Check if drawer front style is compatible with face material (if no drawer_front_mat override)
+      if (!formData.drawer_front_mat && effectiveFaceMaterialId && effectiveDrawerFrontStyle) {
         const material = FACE_MATERIAL_OPTIONS.find(
           (mat) => mat.id === effectiveFaceMaterialId,
         );
@@ -885,7 +940,7 @@ const EstimateSectionForm = ({
 
           if (!isValidDrawerStyle) {
             newErrors.drawerFrontStyle =
-              "Choose a compatible drawer front style";
+              ERROR_MESSAGES.COMPATIBLE_DRAWER_FRONT_STYLE;
           }
         }
       }
@@ -895,7 +950,7 @@ const EstimateSectionForm = ({
     }
 
     // For team defaults, all fields are required (no fallback available)
-    if (editType === "team") {
+    if (editType === EDIT_TYPES.TEAM) {
       if (!formData.style) {
         newErrors.style = "Style is required";
       }
@@ -1005,7 +1060,7 @@ const EstimateSectionForm = ({
 
     if (validateForm()) {
       try {
-        if (editType === "team") {
+        if (editType === EDIT_TYPES.TEAM) {
           // Update team defaults using Redux action
           // Convert profit/commission/discount to numbers
           const updatePayload = {
@@ -1048,7 +1103,7 @@ const EstimateSectionForm = ({
           await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
           onSave?.();
           onCancel?.();
-        } else if (editType === "estimate") {
+        } else if (editType === EDIT_TYPES.ESTIMATE) {
           // Update estimate defaults using Redux action
           // Convert profit/commission/discount to numbers (nullable for estimates)
           const defaultsPayload = {
@@ -1394,7 +1449,7 @@ const EstimateSectionForm = ({
 
   // Sync textarea heights on mount and when notes change
   useEffect(() => {
-    if (editType === "section") {
+    if (editType === EDIT_TYPES.SECTION) {
       syncTextareaHeights();
     }
   }, [editType, formData.notes, syncTextareaHeights]);
@@ -1461,9 +1516,9 @@ const EstimateSectionForm = ({
 
   // Get appropriate title
   const formTitle =
-    editType === "team"
+    editType === EDIT_TYPES.TEAM
       ? "Team Defaults"
-      : editType === "estimate"
+      : editType === EDIT_TYPES.ESTIMATE
         ? "Estimate Defaults"
         : "Section Details";
 
@@ -1472,16 +1527,16 @@ const EstimateSectionForm = ({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Header */}
-        {editType !== "section" && editType !== "team" && (
+        {editType !== EDIT_TYPES.SECTION && editType !== EDIT_TYPES.TEAM && (
           <div className="mb-2">
             <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
-            {editType === "estimate" && (
+            {editType === EDIT_TYPES.ESTIMATE && (
               <p className="text-sm text-slate-200">
                 Use team defaults or set values to override for this estimate
                 only.
               </p>
             )}
-            {editType === "team" && (
+            {editType === EDIT_TYPES.TEAM && (
               <p className="text-sm text-slate-200">
                 These defaults will be used for all new estimates. All fields
                 are required.
@@ -1743,7 +1798,7 @@ const EstimateSectionForm = ({
               <div className="grid grid-cols-[1fr_9fr] gap-1 items-center">
                 <div className="h-full flex flex-col justify-center relative">
                   <h3 className={STYLES.sectionHeader}>Doors</h3>
-                  {editType === "section" && (
+                  {editType === EDIT_TYPES.SECTION && (
                     <button
                       type="button"
                       onClick={() =>
@@ -2086,7 +2141,7 @@ const EstimateSectionForm = ({
               <div className="grid grid-cols-[1fr_9fr] gap-1 items-center text-slate-700">
                 <div className="h-full flex flex-col justify-center relative">
                   <h3 className={STYLES.sectionHeader}>Drawer Fronts</h3>
-                  {editType === "section" && (
+                  {editType === EDIT_TYPES.SECTION && (
                     <button
                       type="button"
                       onClick={() =>
@@ -2493,7 +2548,7 @@ const EstimateSectionForm = ({
                     value={formData.quantity}
                     onChange={handleChange}
                     placeholder="1"
-                    disabled={editType !== "section"}
+                    disabled={editType !== EDIT_TYPES.SECTION}
                     className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
                   />
                 </div>
@@ -2501,7 +2556,7 @@ const EstimateSectionForm = ({
                 {/* Profit */}
                 <div className="flex flex-col gap-2 items-center">
                   <label htmlFor="profit" className={STYLES.label}>
-                    <span>Profit{editType === "team" ? " %" : ""}</span>
+                    <span>Profit{editType === EDIT_TYPES.TEAM ? " %" : ""}</span>
                     {getEffectiveDefaultDisplay(
                       formData.profit,
                       "default_profit",
@@ -2524,7 +2579,7 @@ const EstimateSectionForm = ({
                 {/* Commission */}
                 <div className="flex flex-col gap-2 items-center">
                   <label htmlFor="commission" className={STYLES.label}>
-                    <span>Commission{editType === "team" ? " %" : ""}</span>
+                    <span>Commission{editType === EDIT_TYPES.TEAM ? " %" : ""}</span>
                     {getEffectiveDefaultDisplay(
                       formData.commission,
                       "default_commission",
@@ -2547,7 +2602,7 @@ const EstimateSectionForm = ({
                 {/* Discount */}
                 <div className="flex flex-col gap-2 items-center">
                   <label htmlFor="discount" className={STYLES.label}>
-                    <span>Discount{editType === "team" ? " %" : ""}</span>
+                    <span>Discount{editType === EDIT_TYPES.TEAM ? " %" : ""}</span>
                     {getEffectiveDefaultDisplay(
                       formData.discount,
                       "default_discount",
@@ -2574,7 +2629,7 @@ const EstimateSectionForm = ({
                 </h3>
 
                 {/* Service Rate Overrides - only for estimate and section */}
-                {editType === "team"
+                {editType === EDIT_TYPES.TEAM
                   ? // Team mode: Display rates as read-only text
                     activeServices.map((service) => (
                       <div
@@ -2636,7 +2691,7 @@ const EstimateSectionForm = ({
           </div>
 
           {/* Notes Section - only for sections */}
-          {editType === "section" && (
+          {editType === EDIT_TYPES.SECTION && (
             <div className="grid grid-cols-3 gap-4 items-start text-slate-700 px-1">
               <div>
                 <label htmlFor="notes-0" className={STYLES.label}>
@@ -2693,7 +2748,7 @@ const EstimateSectionForm = ({
 
       {/* Form Actions - Fixed to Bottom */}
       <div className="flex justify-end space-x-2 bg-slate-800 py-4 px-4 border-t border-slate-600">
-        {editType !== "team" && (
+        {editType !== EDIT_TYPES.TEAM && (
           <div className="flex-1 flex justify-start space-x-2">
             <button
               type="button"
@@ -2703,7 +2758,7 @@ const EstimateSectionForm = ({
               <RiResetLeftFill className="mr-1" size={12} />
               Restore Defaults
             </button>
-            {editType === "section" && (
+            {editType === EDIT_TYPES.SECTION && (
               <button
                 type="button"
                 onClick={() => setIsCopyModalOpen(true)}
@@ -2729,16 +2784,16 @@ const EstimateSectionForm = ({
           className="px-3 py-1 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 flex items-center"
         >
           <FiSave className="mr-1" size={12} />
-          {editType === "team"
+          {editType === EDIT_TYPES.TEAM
             ? "Save Team Defaults"
-            : editType === "estimate"
+            : editType === EDIT_TYPES.ESTIMATE
               ? "Save Estimate Defaults"
               : "Save Section"}
         </button>
       </div>
 
       {/* Copy Room Details Modal */}
-      {editType === "section" && (
+      {editType === EDIT_TYPES.SECTION && (
         <CopyRoomDetailsModal
           isOpen={isCopyModalOpen}
           onClose={() => setIsCopyModalOpen(false)}
@@ -2752,7 +2807,7 @@ const EstimateSectionForm = ({
 };
 
 EstimateSectionForm.propTypes = {
-  editType: PropTypes.oneOf(["team", "estimate", "section"]),
+  editType: PropTypes.oneOf([EDIT_TYPES.TEAM, EDIT_TYPES.ESTIMATE, EDIT_TYPES.SECTION]),
   section: PropTypes.object,
   estimateData: PropTypes.object,
   teamData: PropTypes.object,
