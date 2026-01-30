@@ -216,16 +216,29 @@ export const LENGTH_TYPES = {
 /**
  * Map box part types to parts_list IDs based on type and finish status
  * These IDs are fixed and consistent across all teams
+ * 
+ * Note: topBottom, back, and partition parts use side anchor IDs (1 and 6)
+ * because those parts are inactive in the database and redirect to side anchors
+ * 
+ * ORIGINAL:
+ * side_unfinished: 1,  Box Side Unfinished
+ * side_finished: 6,    Box Side Finished
+ * topBottom_unfinished: 2, Box Top/Bottom Unfinished
+ * topBottom_finished: 7, Box Top/Bottom Finished
+ * back_unfinished: 3,  Box Back Unfinished
+ * back_finished: 8,    Box Back Finished
+ * partition_unfinished: 4, Box Partition Unfinished
+ * partition_finished: 9, Box Partition Finished
  */
 export const PARTS_LIST_MAPPING = {
   side_unfinished: 1,
   side_finished: 6,
-  topBottom_unfinished: 2,
-  topBottom_finished: 7,
-  back_unfinished: 3,
-  back_finished: 8,
-  partition_unfinished: 4,
-  partition_finished: 9,
+  topBottom_unfinished: 1,  // Uses side_unfinished anchors (part ID 2 is inactive)
+  topBottom_finished: 6,    // Uses side_finished anchors (part ID 7 is inactive)
+  back_unfinished: 1,       // Uses side_unfinished anchors (part ID 3 is inactive)
+  back_finished: 6,         // Uses side_finished anchors (part ID 8 is inactive)
+  partition_unfinished: 1,  // Uses side_unfinished anchors (part ID 4 is inactive)
+  partition_finished: 6,    // Uses side_finished anchors (part ID 9 is inactive)
   shelf_unfinished: 5,
   shelf_finished: 10,
   filler_finished: 11,

@@ -83,7 +83,7 @@ const getPartAnchors = (part, partNeedsFinish, partsListAnchors) => {
   }`;
   const fallbackKey = `${part.type}_finished`;
 
-  // Lookup parts list IDs
+  // Lookup parts list IDs (PARTS_LIST_MAPPING already redirects inactive parts to side anchors)
   const primaryId = PARTS_LIST_MAPPING[primaryKey];
   const fallbackId = PARTS_LIST_MAPPING[fallbackKey];
 
