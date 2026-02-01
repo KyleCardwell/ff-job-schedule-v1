@@ -6,6 +6,7 @@ import {
   forwardRef,
   useRef,
 } from "react";
+import { FiBarChart } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles";
@@ -14,9 +15,11 @@ import {
   fetchPartsListAnchors,
   savePartsListAnchors,
 } from "../../redux/actions/partsListAnchors";
+import { fetchServices } from "../../redux/actions/services.js";
 import ScrollableIndex from "../common/ScrollableIndex.jsx";
 
 import PartsListAnchorsTable from "./PartsListAnchorsTable.jsx";
+import PartsListTestCalculator from "./PartsListTestCalculator.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const PartsListSettings = forwardRef((props, ref) => {
@@ -37,6 +40,7 @@ const PartsListSettings = forwardRef((props, ref) => {
   const [originalAnchors, setOriginalAnchors] = useState({});
   const [anchorErrors, setAnchorErrors] = useState({});
   const [highlightedPartId, setHighlightedPartId] = useState(null);
+  const [showTestCalculator, setShowTestCalculator] = useState(false);
 
   // Refs for scrolling to sections
   const sectionRefs = useRef({});
@@ -45,6 +49,7 @@ const PartsListSettings = forwardRef((props, ref) => {
 
   useEffect(() => {
     dispatch(fetchPartsList());
+    dispatch(fetchServices())
     dispatch(fetchTeamCabinetStyles());
     if (teamId) {
       dispatch(fetchPartsListAnchors());
@@ -284,10 +289,18 @@ const PartsListSettings = forwardRef((props, ref) => {
 
       <div className="flex-1 flex flex-col items-center">
         <div className={`flex-1 ${maxWidthClass}`}>
-          <div className={`flex sticky top-0 z-10 bg-slate-800 py-4`}>
+          <div className={`flex sticky top-0 z-10 bg-slate-800 py-4 justify-between items-center`}>
             <h2 className="align-self-start text-lg font-bold text-slate-200">
               Manage Parts List Anchors - Time (minutes)
             </h2>
+            <button
+              onClick={() => setShowTestCalculator(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-md transition-colors"
+              title="Test parts time calculations"
+            >
+              <FiBarChart size={18} />
+              Test Calculator
+            </button>
           </div>
 
           <div className={`flex flex-1 gap-4`}>
@@ -341,6 +354,13 @@ const PartsListSettings = forwardRef((props, ref) => {
           </div>
         </div>
       </div>
+
+      {/* Test Calculator Modal */}
+      {showTestCalculator && (
+        <PartsListTestCalculator
+          onClose={() => setShowTestCalculator(false)}
+        />
+      )}
     </div>
   );
 });
