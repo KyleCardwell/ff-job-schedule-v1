@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   forwardRef,
   useRef,
+  useCallback,
 } from "react";
 import { FiBarChart } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
@@ -41,6 +42,20 @@ const PartsListSettings = forwardRef((props, ref) => {
   const [anchorErrors, setAnchorErrors] = useState({});
   const [highlightedPartId, setHighlightedPartId] = useState(null);
   const [showTestCalculator, setShowTestCalculator] = useState(false);
+
+  // Calculator form state (persists when calculator is closed)
+  const [calculatorForm, setCalculatorForm] = useState({
+    width: "24",
+    height: "30",
+    depth: "12",
+    selectedPartId: "",
+    cabinetStyleId: null,
+  });
+
+  // Unified handler for calculator form updates
+  const handleCalculatorFormChange = useCallback((field, value) => {
+    setCalculatorForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
   // Refs for scrolling to sections
   const sectionRefs = useRef({});
@@ -359,6 +374,8 @@ const PartsListSettings = forwardRef((props, ref) => {
       {showTestCalculator && (
         <PartsListTestCalculator
           onClose={() => setShowTestCalculator(false)}
+          formValues={calculatorForm}
+          onFormChange={handleCalculatorFormChange}
         />
       )}
     </div>

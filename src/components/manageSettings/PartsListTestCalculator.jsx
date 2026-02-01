@@ -1,16 +1,12 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import { interpolateTimeByArea, roundToHundredth } from "../../utils/estimateHelpers";
 
-const PartsListTestCalculator = ({ onClose }) => {
-  const [width, setWidth] = useState("24");
-  const [height, setHeight] = useState("30");
-  const [depth, setDepth] = useState("12");
-  const [selectedPartId, setSelectedPartId] = useState("");
-  const [cabinetStyleId, setCabinetStyleId] = useState(null);
+const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
+  const { width, height, depth, selectedPartId, cabinetStyleId } = formValues;
 
   const { items: partsList } = useSelector((state) => state.partsList);
   const { itemsByPartsList: anchorsByPartsList } = useSelector(
@@ -48,10 +44,10 @@ const PartsListTestCalculator = ({ onClose }) => {
     if (groupedParts.length > 0 && !selectedPartId) {
       const firstGroup = groupedParts[0];
       if (firstGroup.items.length > 0) {
-        setSelectedPartId(firstGroup.items[0].id.toString());
+        onFormChange("selectedPartId", firstGroup.items[0].id.toString());
       }
     }
-  }, [groupedParts, selectedPartId]);
+  }, [groupedParts, selectedPartId, onFormChange]);
   const selectedPart = partsList?.find((p) => p.id === parseInt(selectedPartId));
   const anchors = selectedPartId ? anchorsByPartsList[selectedPartId] || [] : [];
 
@@ -107,7 +103,7 @@ const PartsListTestCalculator = ({ onClose }) => {
   };
 
   // Determine if this is a box part that should show breakdown
-  const isBoxPart = selectedPart?.name?.toLowerCase().includes("box");
+  const isBoxPart = selectedPart?.name?.toLowerCase().includes("box part");
 
   // Calculate breakdown for box parts (2 sides, top, bottom, back)
   const getBoxBreakdown = () => {
@@ -200,7 +196,7 @@ const PartsListTestCalculator = ({ onClose }) => {
                 </label>
                 <select
                   value={selectedPartId}
-                  onChange={(e) => setSelectedPartId(e.target.value)}
+                  onChange={(e) => onFormChange("selectedPartId", e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   {groupedParts.map((group) => (
@@ -223,9 +219,9 @@ const PartsListTestCalculator = ({ onClose }) => {
                   </label>
                   <input
                     type="number"
-                    step="0.0625"
+                    step="0.25"
                     value={width}
-                    onChange={(e) => setWidth(e.target.value)}
+                    onChange={(e) => onFormChange("width", e.target.value)}
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
@@ -235,9 +231,9 @@ const PartsListTestCalculator = ({ onClose }) => {
                   </label>
                   <input
                     type="number"
-                    step="0.0625"
+                    step="0.25"
                     value={height}
-                    onChange={(e) => setHeight(e.target.value)}
+                    onChange={(e) => onFormChange("height", e.target.value)}
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
@@ -247,9 +243,9 @@ const PartsListTestCalculator = ({ onClose }) => {
                   </label>
                   <input
                     type="number"
-                    step="0.0625"
+                    step="0.25"
                     value={depth}
-                    onChange={(e) => setDepth(e.target.value)}
+                    onChange={(e) => onFormChange("depth", e.target.value)}
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
@@ -262,7 +258,7 @@ const PartsListTestCalculator = ({ onClose }) => {
                 <select
                   value={cabinetStyleId || ""}
                   onChange={(e) =>
-                    setCabinetStyleId(e.target.value || null)
+                    onFormChange("cabinetStyleId", e.target.value || null)
                   }
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -473,6 +469,14 @@ const PartsListTestCalculator = ({ onClose }) => {
 
 PartsListTestCalculator.propTypes = {
   onClose: PropTypes.func.isRequired,
+  formValues: PropTypes.shape({
+    width: PropTypes.string.isRequired,
+    height: PropTypes.string.isRequired,
+    depth: PropTypes.string.isRequired,
+    selectedPartId: PropTypes.string.isRequired,
+    cabinetStyleId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  }).isRequired,
+  onFormChange: PropTypes.func.isRequired,
 };
 
 export default PartsListTestCalculator;
