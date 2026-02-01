@@ -101,29 +101,31 @@ const TaskGroups = ({
         // Skip inactive tasks
         if (task.task_active === false) return acc;
 
+        // Determine if we're using filters
+        const hasEmployeeFilter = selectedEmployeeIds.length > 0;
+        const hasDateFilter = dateFilter.startDate || dateFilter.endDate;
+
         // Skip tasks that don't match any selected employee filter
-        if (
-          selectedEmployeeIds.length > 0 &&
-          !selectedEmployeeIds.includes(task.employee_id)
-        )
+        if (hasEmployeeFilter && !selectedEmployeeIds.includes(task.employee_id)) {
           return acc;
+        }
 
         // Apply date filter
-        const taskStartDate = normalizeDate(task.start_date);
-        const taskEndDate = normalizeDate(task.end_date);
-
-        let passesDateFilter = true;
-        if (dateFilter.startDate || dateFilter.endDate) {
+        // Unassigned employees (defaultEmployeeId) have inconsistent dates because they don't use sortAndAdjustDates
+        // Never apply date filtering to defaultEmployeeId tasks
+        if (hasDateFilter && task.employee_id !== defaultEmployeeId) {
+          const taskStartDate = normalizeDate(task.start_date);
+          const taskEndDate = normalizeDate(task.end_date);
           const filterStart = dateFilter.startDate || "-infinity";
           const filterEnd = dateFilter.endDate || "infinity";
 
-          passesDateFilter =
+          const passesDateFilter =
             taskEndDate > filterStart &&
             ((taskStartDate >= filterStart && taskStartDate <= filterEnd) ||
               (filterStart >= taskStartDate && filterStart <= filterEnd));
-        }
 
-        if (!passesDateFilter) return acc;
+          if (!passesDateFilter) return acc;
+        }
 
         // Calculate duration for all tasks
         if (
@@ -409,7 +411,8 @@ const TaskGroups = ({
           holidayMap,
           timeOffByBuilder,
           dayWidth,
-          chartStartDate
+          chartStartDate,
+          defaultEmployeeId
         );
         // Transition all jobs in the builder group
         const jobGroups = taskGroupsSvg
@@ -615,7 +618,8 @@ const TaskGroups = ({
           holidayMap,
           timeOffByBuilder,
           dayWidth,
-          chartStartDate
+          chartStartDate,
+          defaultEmployeeId
         );
 
         // Transition all jobs in the builder group

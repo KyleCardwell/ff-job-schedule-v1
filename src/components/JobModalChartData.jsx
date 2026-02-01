@@ -678,7 +678,8 @@ const JobModal = ({
             holidayMap,
             timeOffByBuilder,
             dayWidth,
-            chartStartDate
+            chartStartDate,
+            defaultEmployeeId
           );
 
         const { tasks: newBuilderTasks, conflicts: newBuilderConflicts } =
@@ -688,7 +689,8 @@ const JobModal = ({
             holidayMap,
             timeOffByBuilder,
             dayWidth,
-            chartStartDate
+            chartStartDate,
+            defaultEmployeeId
           );
 
         // Update conflicts for both builders
@@ -786,7 +788,8 @@ const JobModal = ({
         holidayMap,
         timeOffByBuilder,
         dayWidth,
-        chartStartDate
+        chartStartDate,
+        defaultEmployeeId
       );
 
       updatedBuilderArrays[employee_id] = sortedBuilderTasks;
@@ -1097,7 +1100,8 @@ const JobModal = ({
           holidayMap,
           timeOffByBuilder,
           dayWidth,
-          chartStartDate
+          chartStartDate,
+          defaultEmployeeId
         );
 
         // Store the updated builder array
