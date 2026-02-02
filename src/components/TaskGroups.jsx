@@ -555,6 +555,14 @@ const TaskGroups = ({
           .select("rect")
           .attr("width");
         d.resizeStartX = event.x;
+        
+        // Show hours calculation text and background
+        d3.select(this.parentNode)
+          .select(".hours-calculation-bg")
+          .style("display", "block");
+        d3.select(this.parentNode)
+          .select(".hours-calculation-text")
+          .style("display", "block");
       })
       .on("drag", function (event, d) {
         // Skip resize if:
@@ -569,6 +577,43 @@ const TaskGroups = ({
           parseFloat(d.resizeStartWidth) + dx
         );
         rect.attr("width", newWidth);
+        
+        // Calculate new hours based on current width
+        const newDuration = calculateAdjustedWidth(
+          d.start_date,
+          newWidth,
+          dayWidth,
+          holidayMap,
+          d.employee_id,
+          timeOffByBuilder,
+          workdayHours
+        );
+        
+        // Round to daily hours (workdayHours)
+        const dailyHours = Math.round(newDuration / workdayHours) * workdayHours;
+        const hoursLabel = `${dailyHours} hrs`;
+        
+        // Calculate text dimensions for background sizing
+        const textWidth = hoursLabel.length * 7; // Approximate width
+        const textHeight = 18;
+        const padding = 6;
+        
+        // Update hours calculation background
+        const hoursBg = d3.select(this.parentNode).select(".hours-calculation-bg");
+        hoursBg
+          .attr("x", d.xPosition + newWidth - textWidth - padding * 2 - 5)
+          .attr("y", rowHeight / 2 - textHeight / 2)
+          .attr("width", textWidth + padding * 2)
+          .attr("height", textHeight);
+        
+        // Update hours calculation text
+        const hoursText = d3.select(this.parentNode).select(".hours-calculation-text");
+        hoursText
+          .attr("x", d.xPosition + newWidth - 5 - padding)
+          .attr("y", rowHeight / 2)
+          .text(hoursLabel)
+          .style("text-anchor", "end");
+        
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
@@ -576,6 +621,14 @@ const TaskGroups = ({
         // - user doesn't have permission
         // - date filters are active
         if (cannotEdit) return;
+        
+        // Hide hours calculation text and background
+        d3.select(this.parentNode)
+          .select(".hours-calculation-bg")
+          .style("display", "none");
+        d3.select(this.parentNode)
+          .select(".hours-calculation-text")
+          .style("display", "none");
 
         const rect = d3.select(this.parentNode).select("rect");
         const newWidth = parseFloat(rect.attr("width"));
@@ -787,6 +840,31 @@ const TaskGroups = ({
       .attr("class", "bar-text")
       .attr("dy", ".35em")
       .style("pointer-events", "none");
+
+    // Add hours calculation background (only visible during resize)
+    enterGroups
+      .append("rect")
+      .attr("class", "hours-calculation-bg")
+      .attr("rx", 4)
+      .attr("ry", 4)
+      .attr("fill", "#000000")
+      .attr("opacity", 0.7)
+      .style("pointer-events", "none")
+      .style("display", "none"); // Hidden by default
+
+    // Add hours calculation text (only visible during resize)
+    enterGroups
+      .append("text")
+      .attr("class", "hours-calculation-text")
+      .attr("dy", ".35em")
+      .attr("fill", "#ffffff")
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("stroke", "#424242")
+      .attr("stroke-width", "2px")
+      .attr("paint-order", "stroke")
+      .style("pointer-events", "none")
+      .style("display", "none"); // Hidden by default
 
     // Add hard start date indicator
     enterGroups
