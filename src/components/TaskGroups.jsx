@@ -101,29 +101,31 @@ const TaskGroups = ({
         // Skip inactive tasks
         if (task.task_active === false) return acc;
 
+        // Determine if we're using filters
+        const hasEmployeeFilter = selectedEmployeeIds.length > 0;
+        const hasDateFilter = dateFilter.startDate || dateFilter.endDate;
+
         // Skip tasks that don't match any selected employee filter
-        if (
-          selectedEmployeeIds.length > 0 &&
-          !selectedEmployeeIds.includes(task.employee_id)
-        )
+        if (hasEmployeeFilter && !selectedEmployeeIds.includes(task.employee_id)) {
           return acc;
+        }
 
         // Apply date filter
-        const taskStartDate = normalizeDate(task.start_date);
-        const taskEndDate = normalizeDate(task.end_date);
-
-        let passesDateFilter = true;
-        if (dateFilter.startDate || dateFilter.endDate) {
+        // Unassigned employees (defaultEmployeeId) have inconsistent dates because they don't use sortAndAdjustDates
+        // Never apply date filtering to defaultEmployeeId tasks
+        if (hasDateFilter && task.employee_id !== defaultEmployeeId) {
+          const taskStartDate = normalizeDate(task.start_date);
+          const taskEndDate = normalizeDate(task.end_date);
           const filterStart = dateFilter.startDate || "-infinity";
           const filterEnd = dateFilter.endDate || "infinity";
 
-          passesDateFilter =
+          const passesDateFilter =
             taskEndDate > filterStart &&
             ((taskStartDate >= filterStart && taskStartDate <= filterEnd) ||
               (filterStart >= taskStartDate && filterStart <= filterEnd));
-        }
 
-        if (!passesDateFilter) return acc;
+          if (!passesDateFilter) return acc;
+        }
 
         // Calculate duration for all tasks
         if (
@@ -287,6 +289,44 @@ const TaskGroups = ({
 
     // Clear existing content
     taskGroupsSvg.selectAll("*").remove();
+    
+    // Helper function to show hours calculation display
+    const showHoursCalculation = (parentGroup, d, width) => {
+      // Calculate hours
+      const duration = calculateAdjustedWidth(
+        d.start_date,
+        width,
+        dayWidth,
+        holidayMap,
+        d.employee_id,
+        timeOffByBuilder,
+        workdayHours
+      );
+      
+      const dailyHours = Math.round(duration / workdayHours) * workdayHours;
+      const hoursLabel = `${dailyHours} hrs`;
+      
+      // Calculate text dimensions for background sizing
+      const textWidth = hoursLabel.length * 7;
+      const textHeight = 18;
+      const padding = 6;
+      
+      // Update hours calculation background
+      parentGroup.select(".hours-calculation-bg")
+        .style("display", "block")
+        .attr("x", d.xPosition + width - textWidth - padding * 2 - 5)
+        .attr("y", rowHeight / 2 - textHeight / 2)
+        .attr("width", textWidth + padding * 2)
+        .attr("height", textHeight);
+      
+      // Update hours calculation text
+      parentGroup.select(".hours-calculation-text")
+        .style("display", "block")
+        .attr("x", d.xPosition + width - 5 - padding)
+        .attr("y", rowHeight / 2)
+        .text(hoursLabel)
+        .style("text-anchor", "end");
+    };
     // Define drag behavior
     const drag = d3
       .drag()
@@ -409,7 +449,8 @@ const TaskGroups = ({
           holidayMap,
           timeOffByBuilder,
           dayWidth,
-          chartStartDate
+          chartStartDate,
+          defaultEmployeeId
         );
         // Transition all jobs in the builder group
         const jobGroups = taskGroupsSvg
@@ -552,6 +593,13 @@ const TaskGroups = ({
           .select("rect")
           .attr("width");
         d.resizeStartX = event.x;
+        
+        // Show hours calculation display
+        showHoursCalculation(
+          d3.select(this.parentNode),
+          d,
+          parseFloat(d3.select(this.parentNode).select("rect").attr("width"))
+        );
       })
       .on("drag", function (event, d) {
         // Skip resize if:
@@ -566,6 +614,10 @@ const TaskGroups = ({
           parseFloat(d.resizeStartWidth) + dx
         );
         rect.attr("width", newWidth);
+        
+        // Update hours calculation display
+        showHoursCalculation(d3.select(this.parentNode), d, newWidth);
+        
         handleAutoScroll(event);
       })
       .on("end", function (event, d) {
@@ -573,6 +625,14 @@ const TaskGroups = ({
         // - user doesn't have permission
         // - date filters are active
         if (cannotEdit) return;
+        
+        // Hide hours calculation text and background
+        d3.select(this.parentNode)
+          .select(".hours-calculation-bg")
+          .style("display", "none");
+        d3.select(this.parentNode)
+          .select(".hours-calculation-text")
+          .style("display", "none");
 
         const rect = d3.select(this.parentNode).select("rect");
         const newWidth = parseFloat(rect.attr("width"));
@@ -615,7 +675,8 @@ const TaskGroups = ({
           holidayMap,
           timeOffByBuilder,
           dayWidth,
-          chartStartDate
+          chartStartDate,
+          defaultEmployeeId
         );
 
         // Transition all jobs in the builder group
@@ -784,6 +845,31 @@ const TaskGroups = ({
       .attr("dy", ".35em")
       .style("pointer-events", "none");
 
+    // Add hours calculation background (only visible during resize)
+    enterGroups
+      .append("rect")
+      .attr("class", "hours-calculation-bg")
+      .attr("rx", 4)
+      .attr("ry", 4)
+      .attr("fill", "#000000")
+      .attr("opacity", 0.7)
+      .style("pointer-events", "none")
+      .style("display", "none"); // Hidden by default
+
+    // Add hours calculation text (only visible during resize)
+    enterGroups
+      .append("text")
+      .attr("class", "hours-calculation-text")
+      .attr("dy", ".35em")
+      .attr("fill", "#ffffff")
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("stroke", "#424242")
+      .attr("stroke-width", "2px")
+      .attr("paint-order", "stroke")
+      .style("pointer-events", "none")
+      .style("display", "none"); // Hidden by default
+
     // Add hard start date indicator
     enterGroups
       .append("path")
@@ -821,7 +907,11 @@ const TaskGroups = ({
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
       .style("cursor", cannotEdit ? "not-allowed" : "col-resize")
-      .style("fill", "transparent");
+      .style("fill", "transparent")
+      .on("mousedown", function(event, d) {
+        if (cannotEdit) return;
+        showHoursCalculation(d3.select(this.parentNode), d, d.subtask_width);
+      });
 
     // Update all elements (both new and existing)
     const allGroups = enterGroups.merge(jobGroups);
@@ -905,6 +995,11 @@ const TaskGroups = ({
     allGroups
       .select(".resize-handle")
       .attr("x", (d) => d.xPosition + d.subtask_width - 4)
+      .style("cursor", cannotEdit ? "not-allowed" : "col-resize")
+      .on("mousedown", function(event, d) {
+        if (cannotEdit) return;
+        showHoursCalculation(d3.select(this.parentNode), d, d.subtask_width);
+      })
       .call(resize);
 
     setIsLoading(false);
