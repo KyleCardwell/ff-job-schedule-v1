@@ -903,7 +903,49 @@ const TaskGroups = ({
         (d) => barMargin + (rowHeight - 2 * barMargin) * (d.yOffsetFactor || 0)
       )
       .style("cursor", cannotEdit ? "not-allowed" : "col-resize")
-      .style("fill", "transparent");
+      .style("fill", "transparent")
+      .on("mousedown", function(event, d) {
+        if (cannotEdit) return;
+        
+        // Show hours calculation immediately on click
+        const parentGroup = d3.select(this.parentNode);
+        parentGroup.select(".hours-calculation-bg").style("display", "block");
+        parentGroup.select(".hours-calculation-text").style("display", "block");
+        
+        // Calculate and display current hours
+        const currentWidth = d.subtask_width;
+        const currentDuration = d.duration || calculateAdjustedWidth(
+          d.start_date,
+          currentWidth,
+          dayWidth,
+          holidayMap,
+          d.employee_id,
+          timeOffByBuilder,
+          workdayHours
+        );
+        
+        const dailyHours = Math.round(currentDuration / workdayHours) * workdayHours;
+        const hoursLabel = `${dailyHours} hrs`;
+        
+        // Calculate text dimensions for background sizing
+        const textWidth = hoursLabel.length * 7;
+        const textHeight = 18;
+        const padding = 6;
+        
+        // Update hours calculation background
+        parentGroup.select(".hours-calculation-bg")
+          .attr("x", d.xPosition + currentWidth - textWidth - padding * 2 - 5)
+          .attr("y", rowHeight / 2 - textHeight / 2)
+          .attr("width", textWidth + padding * 2)
+          .attr("height", textHeight);
+        
+        // Update hours calculation text
+        parentGroup.select(".hours-calculation-text")
+          .attr("x", d.xPosition + currentWidth - 5 - padding)
+          .attr("y", rowHeight / 2)
+          .text(hoursLabel)
+          .style("text-anchor", "end");
+      });
 
     // Update all elements (both new and existing)
     const allGroups = enterGroups.merge(jobGroups);
@@ -987,6 +1029,49 @@ const TaskGroups = ({
     allGroups
       .select(".resize-handle")
       .attr("x", (d) => d.xPosition + d.subtask_width - 4)
+      .style("cursor", cannotEdit ? "not-allowed" : "col-resize")
+      .on("mousedown", function(event, d) {
+        if (cannotEdit) return;
+        
+        // Show hours calculation immediately on click
+        const parentGroup = d3.select(this.parentNode);
+        parentGroup.select(".hours-calculation-bg").style("display", "block");
+        parentGroup.select(".hours-calculation-text").style("display", "block");
+        
+        // Calculate and display current hours
+        const currentWidth = d.subtask_width;
+        const currentDuration = d.duration || calculateAdjustedWidth(
+          d.start_date,
+          currentWidth,
+          dayWidth,
+          holidayMap,
+          d.employee_id,
+          timeOffByBuilder,
+          workdayHours
+        );
+        
+        const dailyHours = Math.round(currentDuration / workdayHours) * workdayHours;
+        const hoursLabel = `${dailyHours} hrs`;
+        
+        // Calculate text dimensions for background sizing
+        const textWidth = hoursLabel.length * 7;
+        const textHeight = 18;
+        const padding = 6;
+        
+        // Update hours calculation background
+        parentGroup.select(".hours-calculation-bg")
+          .attr("x", d.xPosition + currentWidth - textWidth - padding * 2 - 5)
+          .attr("y", rowHeight / 2 - textHeight / 2)
+          .attr("width", textWidth + padding * 2)
+          .attr("height", textHeight);
+        
+        // Update hours calculation text
+        parentGroup.select(".hours-calculation-text")
+          .attr("x", d.xPosition + currentWidth - 5 - padding)
+          .attr("y", rowHeight / 2)
+          .text(hoursLabel)
+          .style("text-anchor", "end");
+      })
       .call(resize);
 
     setIsLoading(false);
