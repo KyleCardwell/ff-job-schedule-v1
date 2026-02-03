@@ -50,6 +50,8 @@ const PartsListSettings = forwardRef((props, ref) => {
     depth: "12",
     selectedPartId: "",
     cabinetStyleId: null,
+    partitionCount: "0",
+    shelfCount: "0",
   });
 
   // Unified handler for calculator form updates

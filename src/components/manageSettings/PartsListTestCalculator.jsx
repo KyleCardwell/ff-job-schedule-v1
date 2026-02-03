@@ -3,10 +3,15 @@ import { useEffect } from "react";
 import { FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
-import { interpolateTimeByArea, roundToHundredth } from "../../utils/estimateHelpers";
+import { 
+  interpolateTimeByArea, 
+  interpolateTimeByVolume,
+  interpolateTimeByLength,  
+  roundToHundredth 
+} from "../../utils/estimateHelpers";
 
 const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
-  const { width, height, depth, selectedPartId, cabinetStyleId } = formValues;
+  const { width, height, depth, selectedPartId, cabinetStyleId, partitionCount, shelfCount } = formValues;
 
   const { items: partsList } = useSelector((state) => state.partsList);
   const { itemsByPartsList: anchorsByPartsList } = useSelector(
@@ -60,6 +65,12 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
       )
     : anchors;
 
+  // Determine calculation type based on part name
+  const isHoodPart = selectedPart?.name?.toLowerCase().includes("hood");
+  const partNameLower = selectedPart?.name?.toLowerCase() || "";
+  const isLengthPart = partNameLower.includes("nosing") || partNameLower.includes("face frame");
+  const isNosingPart = partNameLower.includes("nosing");
+
   // Calculate time for each service
   const calculateTimes = () => {
     if (!selectedPartId || filteredAnchors.length === 0) {
@@ -68,7 +79,7 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
 
     const w = parseFloat(width) || 0;
     const h = parseFloat(height) || 0;
-    const area = w * h;
+    const d = parseFloat(depth) || 0;
 
     const timesByService = {};
 
@@ -80,14 +91,36 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
       });
     });
 
-    // Calculate time for each service
+    // Calculate time for each service based on part type
     allServiceIds.forEach((teamServiceId) => {
-      const minutes = interpolateTimeByArea(
-        filteredAnchors,
-        area,
-        teamServiceId,
-        cabinetStyleId ? parseInt(cabinetStyleId) : null
-      );
+      let minutes = 0;
+
+      if (isHoodPart) {
+        // Hoods use volume (width × height × depth)
+        const volume = w * h * d;
+        minutes = interpolateTimeByVolume(
+          filteredAnchors,
+          volume,
+          teamServiceId,
+          cabinetStyleId ? parseInt(cabinetStyleId) : null
+        );
+      } else if (isNosingPart) {
+        // Nosing uses length (height only)
+        minutes = interpolateTimeByLength(
+          filteredAnchors,
+          h,
+          teamServiceId
+        );
+      } else {
+        // Default: use area (width × height)
+        const area = w * h;
+        minutes = interpolateTimeByArea(
+          filteredAnchors,
+          area,
+          teamServiceId,
+          cabinetStyleId ? parseInt(cabinetStyleId) : null
+        );
+      }
 
       const service = services?.find((s) => s.team_service_id === teamServiceId);
       if (service) {
@@ -105,7 +138,7 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
   // Determine if this is a box part that should show breakdown
   const isBoxPart = selectedPart?.name?.toLowerCase().includes("box part");
 
-  // Calculate breakdown for box parts (2 sides, top, bottom, back)
+  // Calculate breakdown for box parts (2 sides, top, bottom, back, partitions, shelves)
   const getBoxBreakdown = () => {
     if (!isBoxPart) return null;
 
@@ -113,6 +146,8 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
     const w = parseFloat(width) || 0;
     const h = parseFloat(height) || 0;
     const d = parseFloat(depth) || 0;
+    const numPartitions = parseInt(partitionCount) || 0;
+    const numShelves = parseInt(shelfCount) || 0;
 
     const parts = [
       { name: "Side (Left)", width: d, height: h, quantity: 1 },
@@ -121,6 +156,26 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
       { name: "Bottom", width: w, height: d, quantity: 1 },
       { name: "Back", width: w, height: h, quantity: 1 },
     ];
+
+    // Add partitions if any (width = depth, height = cabinet height)
+    if (numPartitions > 0) {
+      parts.push({
+        name: `Partition${numPartitions > 1 ? "s" : ""}`,
+        width: d,
+        height: h,
+        quantity: numPartitions,
+      });
+    }
+
+    // Add shelves if any (width = cabinet width, height = cabinet depth)
+    if (numShelves > 0) {
+      parts.push({
+        name: `Fixed Shelf/Shelves`,
+        width: w,
+        height: d,
+        quantity: numShelves,
+      });
+    }
 
     return parts.map((part) => {
       const partArea = part.width * part.height;
@@ -227,7 +282,7 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Height (in)
+                    {isLengthPart ? "Length (in)" : "Height (in)"}
                   </label>
                   <input
                     type="number"
@@ -274,15 +329,69 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
                 </select>
               </div>
 
+              {/* Box Part Additional Inputs */}
+              {isBoxPart && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-slate-700/50 rounded-md border border-slate-600">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Partitions
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={partitionCount}
+                      onChange={(e) => onFormChange("partitionCount", e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      Width = depth, Height = cabinet height
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Fixed Shelves
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={shelfCount}
+                      onChange={(e) => onFormChange("shelfCount", e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      Width = cabinet width, Height = depth
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="p-4 bg-slate-700 rounded-md">
                 <div className="text-sm text-slate-300">
-                  <div>
-                    <span className="font-medium">Area:</span>{" "}
-                    {roundToHundredth(
-                      (parseFloat(width) || 0) * (parseFloat(height) || 0)
-                    )}{" "}
-                    sq in
-                  </div>
+                  {isHoodPart ? (
+                    <div>
+                      <span className="font-medium">Volume:</span>{" "}
+                      {roundToHundredth(
+                        (parseFloat(width) || 0) * (parseFloat(height) || 0) * (parseFloat(depth) || 0)
+                      )}{" "}
+                      cu in
+                    </div>
+                  ) : isLengthPart ? (
+                    <div>
+                      <span className="font-medium">Length:</span>{" "}
+                      {roundToHundredth(parseFloat(height) || 0)}{" "}
+                      in
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="font-medium">Area:</span>{" "}
+                      {roundToHundredth(
+                        (parseFloat(width) || 0) * (parseFloat(height) || 0)
+                      )}{" "}
+                      sq in
+                    </div>
+                  )}
                   <div>
                     <span className="font-medium">Anchors:</span>{" "}
                     {filteredAnchors.length} anchor
@@ -438,7 +547,7 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
               </li>
               <li>
                 • For box parts, the breakdown shows time for each individual
-                piece
+                piece (sides, top, bottom, back, partitions, shelves)
               </li>
               <li>
                 • Cabinet style filter shows only anchors matching that style
@@ -448,7 +557,11 @@ const PartsListTestCalculator = ({ onClose, formValues, onFormChange }) => {
                 • Times shown do NOT include material multipliers (those are
                 applied at the estimate level)
               </li>
-              <li>• All calculations use area (width × height) for interpolation</li>
+              <li>
+                • <strong>Calculation methods:</strong> Area (width × height) for most parts, 
+                Volume (width × height × depth) for hoods, 
+                Length (width only) for nosing
+              </li>
             </ul>
           </div>
         </div>
@@ -475,6 +588,8 @@ PartsListTestCalculator.propTypes = {
     depth: PropTypes.string.isRequired,
     selectedPartId: PropTypes.string.isRequired,
     cabinetStyleId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    partitionCount: PropTypes.string.isRequired,
+    shelfCount: PropTypes.string.isRequired,
   }).isRequired,
   onFormChange: PropTypes.func.isRequired,
 };

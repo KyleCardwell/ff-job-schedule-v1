@@ -905,7 +905,7 @@ export const calculatePanelPartsTime = (
  * @param {number} teamServiceId - The service ID to get time for
  * @returns {number} - Interpolated time in minutes
  */
-const interpolateTimeByLength = (anchors, targetLength, teamServiceId) => {
+export const interpolateTimeByLength = (anchors, targetLength, teamServiceId) => {
   if (!anchors || anchors.length === 0) {
     return 0;
   }
