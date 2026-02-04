@@ -360,7 +360,8 @@ const calculateFaceTotals = (section, context) => {
                 ?.default_price_per_unit || 0;
             // Store glass count as quantity (number of pieces) not square footage
             totals.glassCount += piece.quantity * quantity; // Multiply by cabinet quantity
-            totals.glassTotal += (sqft * price || 0) * piece.quantity * quantity;
+            totals.glassTotal +=
+              (sqft * price || 0) * piece.quantity * quantity;
           });
         }
 
@@ -963,8 +964,13 @@ const calculateFaceFramePrices = (section, context) => {
 
   section.cabinets.forEach((cabinet) => {
     // 13 is euro cabinets (no face frame)
-    if (cabinet.cabinet_style_override === 13) return;
-    if (!cabinet.cabinet_style_override && section.cabinet_style_id === 13)
+    // 16 is a face frame part
+    if (cabinet.cabinet_style_override === 13 && cabinet.type !== 16) return;
+    if (
+      !cabinet.cabinet_style_override &&
+      section.cabinet_style_id === 13 &&
+      cabinet.type !== 16
+    )
       return;
 
     const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
@@ -1124,22 +1130,24 @@ const calculateEndPanelNosingMaterials = (section, context) => {
   if (effectiveValues.door_style === FACE_STYLE_VALUES.SLAB_SHEET)
     return totals;
 
-  const endPanelsWithNosing = section.cabinets.filter((cabinet) => {
-    // Only include end panels (type 10) with nosing parts
+  const itemsWithNosing = section.cabinets.filter((cabinet) => {
+    // Include end panels (type 10) and face frames (type 16) with nosing parts
     return (
-      cabinet.type === 10 &&
+      (cabinet.type === 10 || cabinet.type === 16) &&
       cabinet.face_config?.boxSummary?.boxPartsList?.length > 0
     );
   });
 
-  if (endPanelsWithNosing.length === 0) return totals;
+  if (itemsWithNosing.length === 0) return totals;
 
   const { material } = selectedFaceMaterial;
 
-  endPanelsWithNosing.forEach((endPanel) => {
-    const { quantity = 1 } = endPanel;
-    const boxPartsList = endPanel.face_config.boxSummary.boxPartsList;
-    const nosingParts = boxPartsList.filter((part) => part.type === PART_NAMES.NOSING);
+  itemsWithNosing.forEach((item) => {
+    const { quantity = 1 } = item;
+    const boxPartsList = item.face_config.boxSummary.boxPartsList;
+    const nosingParts = boxPartsList.filter(
+      (part) => part.type === PART_NAMES.NOSING,
+    );
 
     if (nosingParts.length === 0) return;
 
@@ -1366,10 +1374,6 @@ const calculateCabinetTotals = (section, context) => {
 
   // Calculate face totals (counts, prices, and hours)
   const faceTotals = calculateFaceTotals(section, context);
-
-  console.log("🟢 calculateCabinetTotals - faceTotals received:");
-  console.log("  faceTotals.hoursByService:", faceTotals.hoursByService);
-  console.log("  faceTotals.categoryHours:", faceTotals.categoryHours);
 
   // Calculate hardware counts and totals
   const hardwareTotals = countHardware(section, faceTotals, context);

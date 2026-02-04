@@ -830,7 +830,9 @@ const CabinetFaceDivider = ({
       .attr("stroke-width", strokeWidth);
 
     // Add root reveals if item type supports them
-    if (usesRootReveals && cabinetStyleId !== 13 && reveals) {
+    // Face frames always show reveals regardless of cabinetStyleId
+    const isFaceFrame = itemType === ITEM_TYPES.FACE_FRAME.type;
+    if (usesRootReveals && (isFaceFrame || cabinetStyleId !== 13) && reveals) {
       const revealColor =
         availableFaceTypes.find((t) => t.value === FACE_NAMES.REVEAL)?.color ||
         "#6B7280";
@@ -853,7 +855,8 @@ const CabinetFaceDivider = ({
           y: 0,
         };
 
-        const xVal = cabinetTypeId === 10 ? 0 : -reveals.left;
+        // Face frames and end panels (type 10) should have x=0
+        const xVal = cabinetTypeId === 10 || isFaceFrame ? 0 : -reveals.left;
 
         cabinetGroup
           .append("rect")
@@ -1310,7 +1313,6 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
-
         // Create a copy of the config for saving
         const configForSave = cloneDeep(config);
 
@@ -1597,7 +1599,11 @@ const CabinetFaceDivider = ({
       if (dimension === "width" && newValue > 36 && node.shelfNosing !== 1.5) {
         node.shelfNosing = 1.5;
       }
-      if (dimension === "width" && newSiblingSize > 36 && sibling.shelfNosing !== 1.5) {
+      if (
+        dimension === "width" &&
+        newSiblingSize > 36 &&
+        sibling.shelfNosing !== 1.5
+      ) {
         sibling.shelfNosing = 1.5;
       }
     }
@@ -2135,7 +2141,7 @@ const CabinetFaceDivider = ({
                     : handlePopupPosition.y,
                   fixedDisplayHeight - 200,
                 ),
-                filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 1))',
+                filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
             >
@@ -2210,7 +2216,7 @@ const CabinetFaceDivider = ({
               style={{
                 left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
                 top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
-                filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 1))',
+                filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
             >
               <div>

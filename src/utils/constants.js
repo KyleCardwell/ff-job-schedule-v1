@@ -46,6 +46,8 @@ export const ITEM_TYPES = {
   DOOR_FRONT: { type: "door_front", title: "Door Front" },
   DRAWER_FRONT: { type: "drawer_front", title: "Drawer Front" },
   HOOD: { type: "hood", title: "Hood" },
+  DRAWER_BOX: { type: "drawer_box", title: "Drawer Box" },
+  FACE_FRAME: { type: "face_frame", title: "Face Frame" },
 };
 
 export const ITEM_FORM_WIDTHS = {
@@ -59,56 +61,77 @@ export const SPLIT_DIRECTIONS = {
   HORIZONTAL: "horizontal",
   VERTICAL: "vertical",
 };
-
-export const FACE_NAMES = {
-  DOOR: "door",
-  PAIR_DOOR: "pair_door",
-  DRAWER_FRONT: "drawer_front",
-  FALSE_FRONT: "false_front",
-  PANEL: "panel",
-  OPEN: "open",
-  CONTAINER: "container",
-  REVEAL: "reveal",
-  ROOT: "root",
+export const FACE_DETAILS = {
+  DOOR: { value: "door", label: "Door", color: "#3B82F6" },
+  PAIR_DOOR: { value: "pair_door", label: "Pair Door", color: "#8B5CF6" },
+  DRAWER_FRONT: {
+    value: "drawer_front",
+    label: "Drawer Front",
+    color: "#06885dff",
+  },
+  FALSE_FRONT: { value: "false_front", label: "False Front", color: "#a0c312b7" },
+  PANEL: { value: "panel", label: "Panel", color: "#6B7280" },
+  OPEN: { value: "open", label: "Open", color: "#F59E0B" },
+  CONTAINER: { value: "container", label: "Container", color: "#E5E7EB" },
+  REVEAL: { value: "reveal", label: "Reveal", color: "#e6e6e6ff" },
+  DRAWER_BOX: { value: "drawer_box", label: "Drawer Box", color: "#24ad10ff" },
+  ROOT: { value: "root", label: "Root", color: "#e6e6e6ff" },
 };
 
-// Default face types for standard cabinets
+export const FACE_NAMES = {
+  DOOR: FACE_DETAILS.DOOR.value,
+  PAIR_DOOR: FACE_DETAILS.PAIR_DOOR.value,
+  DRAWER_FRONT: FACE_DETAILS.DRAWER_FRONT.value,
+  FALSE_FRONT: FACE_DETAILS.FALSE_FRONT.value,
+  PANEL: FACE_DETAILS.PANEL.value,
+  OPEN: FACE_DETAILS.OPEN.value,
+  CONTAINER: FACE_DETAILS.CONTAINER.value,
+  REVEAL: FACE_DETAILS.REVEAL.value,
+  DRAWER_BOX: FACE_DETAILS.DRAWER_BOX.value,
+  ROOT: FACE_DETAILS.ROOT.value,
+};
+
+// Default face types for standard cabinets (CABINET FACE DIVIDER)
 export const FACE_TYPES = [
-  { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
-  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
-  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
-  { value: FACE_NAMES.FALSE_FRONT, label: "False Front", color: "#f54d0b" },
-  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
-  { value: FACE_NAMES.OPEN, label: "Open", color: "#F59E0B" },
-  { value: FACE_NAMES.CONTAINER, label: "Container", color: "#E5E7EB" },
-  { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
+  FACE_DETAILS.DOOR,
+  FACE_DETAILS.PAIR_DOOR,
+  FACE_DETAILS.DRAWER_FRONT,
+  FACE_DETAILS.FALSE_FRONT,
+  FACE_DETAILS.PANEL,
+  FACE_DETAILS.OPEN,
+  FACE_DETAILS.CONTAINER,
+  FACE_DETAILS.REVEAL,
 ];
 
 // Face types for door/drawer fronts and end panels (no reveals for door/drawer fronts)
 export const PANEL_FACE_TYPES = [
-  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+  FACE_DETAILS.PANEL,
+];
+
+export const DRAWER_BOX_FACE_TYPES = [
+  FACE_DETAILS.DRAWER_BOX,
 ];
 
 // Face types for drawer fronts (includes reveals)
 export const DRAWER_FRONT_FACE_TYPES = [
-  { value: FACE_NAMES.DRAWER_FRONT, label: "Drawer Front", color: "#10B981" },
-  { value: FACE_NAMES.FALSE_FRONT, label: "False Front", color: "#f54d0b" },
+  FACE_DETAILS.DRAWER_FRONT,
+  FACE_DETAILS.FALSE_FRONT,
 ];
 
 export const DOOR_FRONT_FACE_TYPES = [
-  { value: FACE_NAMES.DOOR, label: "Door", color: "#3B82F6" },
-  { value: FACE_NAMES.PAIR_DOOR, label: "Pair Door", color: "#8B5CF6" },
+  FACE_DETAILS.DOOR,
+  FACE_DETAILS.PAIR_DOOR,
 ];
 
 // Face types for end panels (includes reveals)
 export const END_PANEL_FACE_TYPES = [
-  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
-  { value: FACE_NAMES.REVEAL, label: "", color: "#E5E7EB" },
+  FACE_DETAILS.PANEL,
+  FACE_DETAILS.REVEAL,
 ];
 
 // Face types for fillers (just panel, not divisible)
 export const FILLER_FACE_TYPES = [
-  { value: FACE_NAMES.PANEL, label: "Panel", color: "#6B7280" },
+  FACE_DETAILS.PANEL,
 ];
 
 export const CAN_BE_BEADED = [
@@ -216,10 +239,10 @@ export const LENGTH_TYPES = {
 /**
  * Map box part types to parts_list IDs based on type and finish status
  * These IDs are fixed and consistent across all teams
- * 
+ *
  * Note: topBottom, back, and partition parts use side anchor IDs (1 and 6)
  * because those parts are inactive in the database and redirect to side anchors
- * 
+ *
  * ORIGINAL:
  * side_unfinished: 1,  Box Side Unfinished
  * side_finished: 6,    Box Side Finished
@@ -233,12 +256,12 @@ export const LENGTH_TYPES = {
 export const PARTS_LIST_MAPPING = {
   side_unfinished: 1,
   side_finished: 6,
-  topBottom_unfinished: 1,  // Uses side_unfinished anchors (part ID 2 is inactive)
-  topBottom_finished: 6,    // Uses side_finished anchors (part ID 7 is inactive)
-  back_unfinished: 1,       // Uses side_unfinished anchors (part ID 3 is inactive)
-  back_finished: 6,         // Uses side_finished anchors (part ID 8 is inactive)
-  partition_unfinished: 1,  // Uses side_unfinished anchors (part ID 4 is inactive)
-  partition_finished: 6,    // Uses side_finished anchors (part ID 9 is inactive)
+  topBottom_unfinished: 1, // Uses side_unfinished anchors (part ID 2 is inactive)
+  topBottom_finished: 6, // Uses side_finished anchors (part ID 7 is inactive)
+  back_unfinished: 1, // Uses side_unfinished anchors (part ID 3 is inactive)
+  back_finished: 6, // Uses side_finished anchors (part ID 8 is inactive)
+  partition_unfinished: 1, // Uses side_unfinished anchors (part ID 4 is inactive)
+  partition_finished: 6, // Uses side_finished anchors (part ID 9 is inactive)
   shelf_unfinished: 5,
   shelf_finished: 10,
   filler_finished: 11,

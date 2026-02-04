@@ -171,7 +171,11 @@ const CabinetItemForm = ({
     const previousCabinetTypeId = currentCabinetType?.cabinet_type_id;
 
     setItemTypeConfig(getItemTypeConfig(derivedItemType));
-    setNosingOrFinish(newCabinetTypeId === 10 ? "Nosing" : "Finish");
+    setNosingOrFinish(
+      newCabinetTypeId === 10 || derivedItemType === ITEM_TYPES.FACE_FRAME.type
+        ? "Nosing"
+        : "Finish",
+    );
 
     // Clear finished fields when changing to or from type 10 (end panel)
     // Type 10 uses these fields for nosing, other types use them for finish
@@ -269,23 +273,11 @@ const CabinetItemForm = ({
             }
           } else if (name === "cabinet_style_override") {
             // For style changes only, update rootReveals - CabinetFaceDivider will handle dimensions
-            console.log(
-              "[EstimateCabinetManager] handleChange - cabinet_style_override changed to:",
-              numValue,
-            );
-            console.log(
-              "[EstimateCabinetManager] typeConfig:",
-              typeConfig?.config,
-            );
             if (
               typeConfig?.config &&
               formData.face_config &&
               formData.face_config.id
             ) {
-              console.log(
-                "[EstimateCabinetManager] Updating face_config.rootReveals to:",
-                typeConfig.config,
-              );
               updates.face_config = {
                 ...formData.face_config,
                 rootReveals: typeConfig.config,
@@ -832,13 +824,17 @@ const CabinetItemForm = ({
       itemType === ITEM_TYPES.DOOR_FRONT.type ||
       itemType === ITEM_TYPES.DRAWER_FRONT.type ||
       itemType === ITEM_TYPES.END_PANEL.type ||
-      itemType === ITEM_TYPES.APPLIANCE_PANEL.type
+      itemType === ITEM_TYPES.APPLIANCE_PANEL.type ||
+      itemType === ITEM_TYPES.FACE_FRAME.type
     ) {
       let frameParts = {};
+      // Face frames always calculate frame parts regardless of cabinetStyleId
+      const isFaceFrame = itemType === ITEM_TYPES.FACE_FRAME.type;
       if (
-        cabinetStyleId !== 13 &&
-        (itemType === ITEM_TYPES.END_PANEL.type ||
-          itemType === ITEM_TYPES.APPLIANCE_PANEL.type) &&
+        (isFaceFrame ||
+          (cabinetStyleId !== 13 &&
+            (itemType === ITEM_TYPES.END_PANEL.type ||
+              itemType === ITEM_TYPES.APPLIANCE_PANEL.type))) &&
         !formData.type_specific_options?.shop_built // Skip face frames for shop-built end panels
       ) {
         frameParts = calculateFaceFrames(faceConfig, width, height, true);
@@ -848,7 +844,10 @@ const CabinetItemForm = ({
 
       // Calculate nosing for end panels (type 10)
       let boxPartsList = [];
-      if (itemType === ITEM_TYPES.END_PANEL.type) {
+      if (
+        itemType === ITEM_TYPES.END_PANEL.type ||
+        itemType === ITEM_TYPES.FACE_FRAME.type
+      ) {
         // For depth === 0.75, add nosing with width 0 for selected edges
         if (d === 0.75) {
           // Top nosing with width 0
@@ -918,15 +917,17 @@ const CabinetItemForm = ({
               quantity: 1,
               finish: true,
             });
-            boxPartsList.push({
-              type: PART_NAMES.NOSING,
-              side: "top_return",
-              width: roundTo16th(returnWidth),
-              height: roundTo16th(w),
-              area: roundTo16th(returnWidth * w),
-              quantity: 1,
-              finish: true,
-            });
+            if (itemType === ITEM_TYPES.END_PANEL.type) {
+              boxPartsList.push({
+                type: PART_NAMES.NOSING,
+                side: "top_return",
+                width: roundTo16th(returnWidth),
+                height: roundTo16th(w),
+                area: roundTo16th(returnWidth * w),
+                quantity: 1,
+                finish: true,
+              });
+            }
           }
 
           // Bottom nosing - main piece (depth width) + return (6" width)
@@ -940,15 +941,17 @@ const CabinetItemForm = ({
               quantity: 1,
               finish: true,
             });
-            boxPartsList.push({
-              type: PART_NAMES.NOSING,
-              side: "bottom_return",
-              width: roundTo16th(returnWidth),
-              height: roundTo16th(w),
-              area: roundTo16th(returnWidth * w),
-              quantity: 1,
-              finish: true,
-            });
+            if (itemType === ITEM_TYPES.END_PANEL.type) {
+              boxPartsList.push({
+                type: PART_NAMES.NOSING,
+                side: "bottom_return",
+                width: roundTo16th(returnWidth),
+                height: roundTo16th(w),
+                area: roundTo16th(returnWidth * w),
+                quantity: 1,
+                finish: true,
+              });
+            }
           }
 
           // Left nosing - main piece (depth width) + return (6" width)
@@ -962,15 +965,17 @@ const CabinetItemForm = ({
               quantity: 1,
               finish: true,
             });
-            boxPartsList.push({
-              type: PART_NAMES.NOSING,
-              side: "left_return",
-              width: roundTo16th(returnWidth),
-              height: roundTo16th(h),
-              area: roundTo16th(returnWidth * h),
-              quantity: 1,
-              finish: true,
-            });
+            if (itemType === ITEM_TYPES.END_PANEL.type) {
+              boxPartsList.push({
+                type: PART_NAMES.NOSING,
+                side: "left_return",
+                width: roundTo16th(returnWidth),
+                height: roundTo16th(h),
+                area: roundTo16th(returnWidth * h),
+                quantity: 1,
+                finish: true,
+              });
+            }
           }
 
           // Right nosing - main piece (depth width) + return (6" width)
@@ -984,15 +989,17 @@ const CabinetItemForm = ({
               quantity: 1,
               finish: true,
             });
-            boxPartsList.push({
-              type: PART_NAMES.NOSING,
-              side: "right_return",
-              width: roundTo16th(returnWidth),
-              height: roundTo16th(h),
-              area: roundTo16th(returnWidth * h),
-              quantity: 1,
-              finish: true,
-            });
+            if (itemType === ITEM_TYPES.END_PANEL.type) {
+              boxPartsList.push({
+                type: PART_NAMES.NOSING,
+                side: "right_return",
+                width: roundTo16th(returnWidth),
+                height: roundTo16th(h),
+                area: roundTo16th(returnWidth * h),
+                quantity: 1,
+                finish: true,
+              });
+            }
           }
         }
       }
