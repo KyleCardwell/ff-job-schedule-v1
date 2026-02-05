@@ -213,9 +213,13 @@ const EstimateLayout = () => {
     setIsNewTask(true);
   };
 
-  const handleTaskSaved = (taskId) => {
-    setSelectedTaskId(taskId);
+  const handleTaskSaved = (newTask) => {
+    setSelectedTaskId(newTask.est_task_id);
     setIsNewTask(false);
+    // Select the first section of the newly created task
+    if (newTask?.sections?.[0]) {
+      setSelectedSectionId(newTask.sections[0].est_section_id);
+    }
   };
 
   const handleTaskCanceled = () => {

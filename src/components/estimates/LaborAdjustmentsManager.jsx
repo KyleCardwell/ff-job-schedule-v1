@@ -165,7 +165,7 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
               id="setup-hours"
               type="number"
               min="0"
-              step="0.25"
+              step="1"
               value={setupHours}
               onChange={(e) => setSetupHours(e.target.value)}
               disabled={!isEditing}
