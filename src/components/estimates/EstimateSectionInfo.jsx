@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 
-import { EDIT_TYPES, FACE_STYLES, PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants";
+import { EDIT_TYPES, FACE_STYLES, NOT_SELECTED, PANEL_MOD_DISPLAY_NAMES, PRE_FINISHED } from "../../utils/constants";
 import { getEffectiveValue as getEffectiveValueUtil } from "../../utils/estimateDefaults";
 
 const EstimateSectionInfo = ({
@@ -24,8 +24,6 @@ const EstimateSectionInfo = ({
 
   // Determine if we should show estimate defaults (only when Project Information is selected)
   const showEstimateDefaults = showProjectInfo && !!currentEstimate;
-  const NOT_SELECTED = "Not Selected";
-  const NONE = "None";
 
   const { materials, hardware, finishes } = useSelector((state) => state);
 
@@ -81,7 +79,7 @@ const EstimateSectionInfo = ({
   const getBoxFinishDisplay = (boxMat, boxFinish) => {
     const boxMaterial = materials.boxMaterials.find((mat) => mat.id === boxMat);
     if (boxMaterial?.needs_finish === false) {
-      return NONE;
+      return PRE_FINISHED;
     }
     return boxFinish?.length
       ? boxFinish
@@ -99,7 +97,7 @@ const EstimateSectionInfo = ({
       (mat) => mat.id === faceMat
     );
     if (faceMaterial?.needs_finish === false) {
-      return NONE;
+      return PRE_FINISHED;
     }
     return faceFinish?.length
       ? faceFinish

@@ -57,6 +57,10 @@ export const ITEM_FORM_WIDTHS = {
   ACTIONS: "72px",
 };
 
+export const PRE_FINISHED = "Pre-Finished";
+export const NONE = "None";
+export const NOT_SELECTED = "Not Selected";
+
 export const SPLIT_DIRECTIONS = {
   HORIZONTAL: "horizontal",
   VERTICAL: "vertical",

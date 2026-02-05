@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
 
-import { PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants";
+import { NONE, PANEL_MOD_DISPLAY_NAMES, PRE_FINISHED } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import { formatDoorDrawerStyle } from "../../utils/helpers";
@@ -129,17 +129,29 @@ const EstimatePreviewSection = ({
     // Check if there are boxes
     const hasBoxes = (calculations.boxCount || 0) > 0;
 
+    // Look up face material to check if it needs finish
+    const faceMaterial = faceMaterials?.find(
+      (m) => m.id === effectiveSection.face_mat,
+    );
     const faceFinishNames =
-      effectiveSection.face_finish
-        ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-        .filter(Boolean)
-        .join(", ") || "None";
+      faceMaterial?.needs_finish === false
+        ? PRE_FINISHED
+        : effectiveSection.face_finish
+            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+            .filter(Boolean)
+            .join(", ") || NONE;
 
+    // Look up box material to check if it needs finish
+    const boxMaterial = boxMaterials?.find(
+      (m) => m.id === effectiveSection.box_mat,
+    );
     const boxFinishNames =
-      effectiveSection.box_finish
-        ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-        .filter(Boolean)
-        .join(", ") || "None";
+      boxMaterial?.needs_finish === false
+        ? PRE_FINISHED
+        : effectiveSection.box_finish
+            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+            .filter(Boolean)
+            .join(", ") || NONE;
 
     const drawerBoxMaterialName = hasDrawerBoxes
       ? `${
@@ -147,7 +159,7 @@ const EstimatePreviewSection = ({
             (m) => m.id === effectiveSection.drawer_box_mat,
           )?.name || ""
         }`
-      : "None";
+      : NONE;
 
     // Format display name for PDF: task name + section number if multiple sections
     const displayName = section.section_name
@@ -411,6 +423,7 @@ const EstimatePreviewSection = ({
     sectionNumber,
     taskName,
     cabinetStyles,
+    boxMaterials,
     faceMaterials,
     finishTypes,
     drawerBoxMaterials,
