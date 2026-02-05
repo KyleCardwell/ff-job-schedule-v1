@@ -199,7 +199,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
                 value={item.quantity}
                 onChange={(e) => updateLineItem(index, "quantity", e.target.value)}
                 placeholder="0"
-                step="0.01"
+                step="1"
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 placeholder-slate-500 text-center focus:outline-none focus:border-teal-500"
               />
 
@@ -209,7 +209,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
                 value={item.cost}
                 onChange={(e) => updateLineItem(index, "cost", e.target.value)}
                 placeholder="0.00"
-                step="0.01"
+                step="1"
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 placeholder-slate-500 text-center focus:outline-none focus:border-teal-500"
               />
 

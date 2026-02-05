@@ -76,6 +76,9 @@ const calculateFaceTotals = (section, context) => {
     const cabinetStyleId =
       cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
 
+    // Skip drawer boxes
+    if (cabinet.type === 15) return;
+
     // Handle fillers (type 5) separately using boxPartsList
     if (cabinet.type === 5) {
       // Only include fillers if door style is slab_sheet
@@ -828,6 +831,35 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
     const isFaceFrame =
       sectionStyle?.cabinet_style_name?.toLowerCase().includes("face frame") ||
       false;
+
+    // Handle drawer_box item type (cabinet.type === 15)
+    if (cabinet.type === 15) {
+      // Check if it has drawerBoxDimensions or rollOutDimensions at the root level
+      if (cabinet.face_config.drawerBoxDimensions) {
+        const { width, height, depth } = cabinet.face_config.drawerBoxDimensions;
+        allDrawerBoxes.push({
+          width,
+          height,
+          depth,
+          quantity,
+          rollOut: false,
+          isFaceFrame,
+        });
+        totals.drawerBoxCount += quantity;
+      } else if (cabinet.face_config.rollOutDimensions) {
+        const { width, height, depth } = cabinet.face_config.rollOutDimensions;
+        allRollOuts.push({
+          width,
+          height,
+          depth,
+          quantity,
+          rollOut: true,
+          isFaceFrame,
+        });
+        totals.rollOutCount += quantity;
+      }
+      return; // Skip tree traversal for drawer_box items
+    }
 
     const collectDrawerAndRollouts = (node) => {
       if (!node) return;

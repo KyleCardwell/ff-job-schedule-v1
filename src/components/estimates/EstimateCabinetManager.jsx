@@ -14,7 +14,6 @@ import {
   ITEM_TYPES,
   PART_NAMES,
 } from "../../utils/constants.js";
-// import { getCabinetHours } from "../../utils/estimateHelpers.js";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
@@ -470,13 +469,50 @@ const CabinetItemForm = ({
       );
 
       if (formData.face_config) {
+        // Handle drawer_box items (type 15) - convert dimensions based on rollout_scoop checkbox
+        if (formData.type === 15) {
+          const isRollout =
+            formData.type_specific_options?.rollout_scoop === true;
+          const style = cabinetStyles.find(
+            (s) => s.cabinet_style_id === effectiveStyleId,
+          );
+
+          if (isRollout) {
+            // Convert to rollOutDimensions
+            finalFormData.face_config = {
+              ...formData.face_config,
+              rollOutDimensions: {
+                width: formData.width,
+                height: formData.height,
+                depth: formData.depth,
+                rollOut: true,
+              },
+            };
+            // Remove drawerBoxDimensions if it exists
+            delete finalFormData.face_config.drawerBoxDimensions;
+          } else {
+            // Convert to drawerBoxDimensions
+            finalFormData.face_config = {
+              ...formData.face_config,
+              drawerBoxDimensions: {
+                width: formData.width,
+                height: formData.height,
+                depth: formData.depth,
+                rollOut: false,
+              },
+            };
+            // Remove rollOutDimensions if it exists
+            delete finalFormData.face_config.rollOutDimensions;
+          }
+        }
+
         const boxSummary = calculateBoxSummary(
           itemType.item_type,
           formData.width,
           formData.height,
           formData.depth,
           formData.quantity,
-          formData.face_config,
+          finalFormData.face_config || formData.face_config,
           effectiveStyleId,
           formData.type,
           formData.finished_left,
@@ -489,9 +525,9 @@ const CabinetItemForm = ({
         );
 
         finalFormData.face_config = {
-          ...formData.face_config,
+          ...(finalFormData.face_config || formData.face_config),
           faceSummary: calculateFaceSummary(
-            formData.face_config,
+            finalFormData.face_config || formData.face_config,
             itemType.item_type,
             formData.width,
             formData.height,
@@ -1063,7 +1099,14 @@ const CabinetItemForm = ({
 
     // Handle drawer_box and rollout - minimal data, counted separately
     if (itemType === "drawer_box" || itemType === "rollout") {
-      const boxHardware = countFaceHardware(faceConfig, itemType);
+      // Drawer boxes need 1 slide each
+      const boxHardware = {
+        totalHinges: 0,
+        totalDoorPulls: 0,
+        totalDrawerPulls: 0,
+        totalAppliancePulls: 0,
+        totalSlides: 1, // Each drawer box needs 1 slide
+      };
 
       return {
         pieces: { sides: 0, topBottom: 0, back: 0 },

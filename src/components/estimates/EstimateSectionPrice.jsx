@@ -349,6 +349,7 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
                   "pair_door",
                   "glassPanels",
                   "glassShelfFaces",
+                  "drawer_box"
                   // "accessories",
                 ].includes(type)
             )

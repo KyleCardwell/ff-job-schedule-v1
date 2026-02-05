@@ -232,7 +232,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 name="width"
                 value={formData.width || ""}
                 onChange={handleChange}
-                step="0.0625"
+                step="0.25"
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
               />
@@ -246,7 +246,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 name="height"
                 value={formData.height || ""}
                 onChange={handleChange}
-                step="0.0625"
+                step="0.25"
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
               />
@@ -260,7 +260,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 name="depth"
                 value={formData.depth || ""}
                 onChange={handleChange}
-                step="0.0625"
+                step="0.25"
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
               />

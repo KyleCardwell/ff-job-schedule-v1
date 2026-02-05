@@ -1337,15 +1337,21 @@ const CabinetFaceDivider = ({
             );
           }
 
+          // Handle drawer_front: only add drawerBoxDimensions if depth > 0.75
           if (node.type === FACE_NAMES.DRAWER_FRONT) {
-            node.drawerBoxDimensions = calculateRollOutDimensions(
-              style,
-              node.width,
-              cabinetDepth,
-              node.height,
-              node.type,
-              false, // isRollout
-            );
+            if (cabinetDepth > 0.75) {
+              node.drawerBoxDimensions = calculateRollOutDimensions(
+                style,
+                node.width,
+                cabinetDepth,
+                node.height,
+                node.type,
+                false, // isRollout
+              );
+            } else {
+              // Remove drawerBoxDimensions if depth is 0.75 or less
+              delete node.drawerBoxDimensions;
+            }
           }
 
           if (node.shelfQty > 0) {

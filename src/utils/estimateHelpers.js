@@ -1294,7 +1294,7 @@ export const calculateSlabSheetFacePriceBulk = (
 
     packer.bins.forEach((bin, index) => {
       // Calculate total free area from all free rectangles in this bin
-      const totalFreeArea = bin.freeRectangles.reduce((sum, rect) => {
+      const totalFreeArea = bin.freeRects.reduce((sum, rect) => {
         return sum + rect.width * rect.height;
       }, 0);
 
