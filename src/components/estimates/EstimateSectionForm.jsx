@@ -2544,7 +2544,9 @@ const EstimateSectionForm = ({
                     Quantity
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    step="1"
+                    min="0"
                     id="quantity"
                     name="quantity"
                     value={formData.quantity}
@@ -2568,7 +2570,9 @@ const EstimateSectionForm = ({
                     )}
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    step="1"
+                    min="0"
                     id="profit"
                     name="profit"
                     value={formData.profit}
@@ -2591,7 +2595,9 @@ const EstimateSectionForm = ({
                     )}
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    step="1"
+                    min="0"
                     id="commission"
                     name="commission"
                     value={formData.commission}
@@ -2614,7 +2620,9 @@ const EstimateSectionForm = ({
                     )}
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    step="1"
+                    min="0"
                     id="discount"
                     name="discount"
                     value={formData.discount}

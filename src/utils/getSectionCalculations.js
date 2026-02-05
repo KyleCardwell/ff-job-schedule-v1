@@ -2098,8 +2098,11 @@ export const getSectionCalculations = (section, context = {}) => {
       (sectionProfit + sectionCommission + subTotalPrice - sectionDiscount) / 5,
     ) * 5;
 
-  const totalPrice =
-    roundPriceUpTo5 * (section.quantity != null ? section.quantity : 1);
+  // If quantity is 0, calculate as if it's 1 (for display purposes)
+  // Otherwise use the actual quantity for multiplication
+  const effectiveQuantity = section.quantity > 0 ? section.quantity : 1;
+  const unitPrice = roundPriceUpTo5; // Price for one section
+  const totalPrice = roundPriceUpTo5 * effectiveQuantity;
 
   // Calculate total accessories count and price (including glass from faces)
   const accessoriesCount =
@@ -2120,6 +2123,7 @@ export const getSectionCalculations = (section, context = {}) => {
   }, 0);
 
   return {
+    unitPrice,
     totalPrice,
     subTotalPrice,
     partsTotalPrice,

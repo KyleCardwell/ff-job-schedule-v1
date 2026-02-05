@@ -8,7 +8,11 @@ import { roundToHundredth } from "../../utils/estimateHelpers";
 
 import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
 
-const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) => {
+const EstimateSectionPrice = ({
+  section,
+  sectionCalculations,
+  onSaveToggles,
+}) => {
   // sectionCalculations is now passed as a prop from EstimateLayout
 
   // Edit mode state for toggles
@@ -127,13 +131,19 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
 
   // Calculate display values for quantity 0 handling
   const displayValues = useMemo(() => {
-    if (!sectionCalculations) return { unitPrice: 0, displayTotal: 0, actualQuantity: 0, showUnitPrice: false };
-    
-    const actualQuantity = section.quantity;
-    const calculationQuantity = actualQuantity === 0 ? 1 : actualQuantity;
+    if (!sectionCalculations)
+      return {
+        unitPrice: 0,
+        displayTotal: 0,
+        actualQuantity: 0,
+        showAmberUnitPrice: false,
+        showTotalRow: false,
+      };
 
-    // Get the per-unit price (what it would cost for quantity 1)
-    const unitPrice = sectionCalculations.totalPrice / calculationQuantity;
+    const actualQuantity = section.quantity;
+
+    // unitPrice comes from sectionCalculations (price for one section)
+    const unitPrice = sectionCalculations.unitPrice;
 
     // Display total is 0 if quantity is 0, otherwise use calculated total
     const displayTotal =
@@ -143,7 +153,8 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
       unitPrice,
       displayTotal,
       actualQuantity,
-      showUnitPrice: actualQuantity === 0, // Show unit price when quantity is 0
+      showAmberUnitPrice: actualQuantity === 0, // Show amber when quantity is 0
+      showTotalRow: actualQuantity > 1, // Show "Total" row when quantity > 1
     };
   }, [section.quantity, sectionCalculations]);
 
@@ -176,16 +187,16 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
         </div>
         <div
           className={`text-xl font-bold ${
-            displayValues.showUnitPrice ? "text-amber-400" : "text-teal-400"
+            displayValues.showAmberUnitPrice ? "text-amber-400" : "text-teal-400"
           }`}
         >
           {formatCurrency(
-            displayValues.showUnitPrice
+            displayValues.showAmberUnitPrice
               ? displayValues.unitPrice
               : displayValues.displayTotal,
             {
               noCents: true,
-            }
+            },
           )}
         </div>
       </div>
@@ -229,26 +240,35 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
               {formatCurrency(sectionCalculations.discount)}
             </div>
           </div>
+          {displayValues.showTotalRow && (
+            <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+              <div className="text-sm text-slate-300 text-left">Total</div>
+              <div></div>
+              <div className="text-sm font-medium text-teal-400 text-right">
+                {formatCurrency(sectionCalculations.unitPrice)}
+              </div>
+            </div>
+          )}
           <div
             className={`grid grid-cols-[3fr,1fr,3fr] gap-1 ${
-              displayValues.showUnitPrice ? "bg-amber-400 px-1 text-white" : ""
+              displayValues.showAmberUnitPrice ? "bg-amber-400 px-1" : ""
             }`}
           >
             <div
-              className={`${
-                displayValues.showUnitPrice
-                  ? "text-lg text-slate-900 text-left font-bold"
-                  : "text-sm text-slate-300 text-left"
+              className={`text-left ${
+                displayValues.showAmberUnitPrice
+                  ? "text-lg font-bold text-slate-900"
+                  : "text-sm text-slate-300"
               }`}
             >
               Quantity
             </div>
             <div></div>
             <div
-              className={`${
-                displayValues.showUnitPrice
-                  ? "text-lg text-right font-bold text-slate-900"
-                  : "text-sm text-right font-bold text-teal-400"
+              className={`text-right font-bold ${
+                displayValues.showAmberUnitPrice
+                  ? "text-lg text-slate-900"
+                  : "text-sm text-teal-400"
               }`}
             >
               {sectionCalculations.quantity}
@@ -349,9 +369,9 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
                   "pair_door",
                   "glassPanels",
                   "glassShelfFaces",
-                  "drawer_box"
+                  "drawer_box",
                   // "accessories",
-                ].includes(type)
+                ].includes(type),
             )
             .map(([type, count]) => {
               const partKey = `facePrices.${type}`;
@@ -756,7 +776,7 @@ const EstimateSectionPrice = ({ section, sectionCalculations, onSaveToggles }) =
                   </span>
                 </div>
               );
-            }
+            },
           )}
 
           {/* Total Labor Cost */}

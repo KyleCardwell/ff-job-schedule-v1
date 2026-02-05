@@ -2157,7 +2157,7 @@ const CabinetItemForm = ({
                   onBlur={handleBlur}
                   onKeyDown={handleKeyDown}
                   min="0"
-                  step="0.125"
+                  step="1"
                   className={`w-full px-3 py-2 border ${
                     errors.width ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
@@ -2186,7 +2186,7 @@ const CabinetItemForm = ({
                   onBlur={handleBlur}
                   onKeyDown={handleKeyDown}
                   min="0"
-                  step="0.125"
+                  step="1"
                   className={`w-full px-3 py-2 border ${
                     errors.height ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
@@ -2218,7 +2218,7 @@ const CabinetItemForm = ({
                   onBlur={handleBlur}
                   onKeyDown={handleKeyDown}
                   min="0"
-                  step="0.125"
+                  step="1"
                   className={`w-full px-3 py-2 border ${
                     errors.depth ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
