@@ -14,6 +14,7 @@ import {
   updateSection,
   updateSectionItems,
   updateSectionItemOrder,
+  duplicateItem,
 } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
@@ -291,6 +292,29 @@ const EstimateSectionManager = ({
     dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
+  const handleDuplicateItem = async (type, itemIndex, targetTaskId, targetSectionId) => {
+    try {
+      // Get the item to duplicate from the current section data
+      const itemToDuplicate = sectionData[type]?.[itemIndex];
+      
+      if (!itemToDuplicate || !itemToDuplicate.id) {
+        console.error("Cannot duplicate item without an ID");
+        return;
+      }
+
+      const tableName = sectionTableMapping[type];
+      
+      // Call the Redux action to duplicate the item
+      await dispatch(
+        duplicateItem(tableName, sectionId, targetSectionId, itemToDuplicate.id)
+      );
+
+      console.log(`Successfully duplicated ${type} item to section ${targetSectionId}`);
+    } catch (error) {
+      console.error(`Error duplicating ${type} item:`, error);
+    }
+  };
+
   const handleSaveAddHours = async (data) => {
     // Update section metadata with add_hours
     await dispatch(
@@ -373,8 +397,13 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.CABINETS.type, itemIndex, targetTaskId, targetSectionId)
+          }
           cabinetStyleId={sectionData.style}
           cabinetTypes={cabinetTypes}
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -394,6 +423,11 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.LENGTHS.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.LENGTHS.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -413,6 +447,11 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.ACCESSORIES.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.ACCESSORIES.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -432,6 +471,11 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.OTHER.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.OTHER.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },

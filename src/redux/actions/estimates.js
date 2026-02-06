@@ -1341,3 +1341,76 @@ export const updateEstimateLineItems = (estimateId, lineItems) => {
     }
   };
 };
+
+// Duplicate an item within or across sections using Supabase RPC
+export const duplicateItem = (
+  tableName,
+  sourceSectionId,
+  targetSectionId,
+  itemId
+) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      // Call Supabase RPC function to duplicate the item
+      const { data: newItemId, error: rpcError } = await supabase.rpc(
+        "duplicate_section_item",
+        {
+          p_table_name: tableName,
+          p_item_id: itemId,
+          p_target_section_id: targetSectionId,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+
+      // Fetch the newly created item with all its data
+      const { data: newItem, error: fetchError } = await supabase
+        .from(tableName)
+        .select("*")
+        .eq("id", newItemId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update Redux state
+      const { currentEstimate } = getState().estimates;
+      const itemType = tableName.replace("estimate_", "");
+
+      // Find the target task and section
+      const updatedTasks = currentEstimate.tasks.map((task) => ({
+        ...task,
+        sections: task.sections.map((section) => {
+          if (section.est_section_id === targetSectionId) {
+            return {
+              ...section,
+              [itemType]: [...(section[itemType] || []), newItem],
+            };
+          }
+          return section;
+        }),
+      }));
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "task",
+          data: {
+            tasks: updatedTasks,
+            tasks_order: currentEstimate.tasks_order,
+          },
+        },
+      });
+
+      return newItem;
+    } catch (error) {
+      console.error(`Error duplicating item from ${tableName}:`, error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
