@@ -687,8 +687,8 @@ const CabinetFaceDivider = ({
       node.children.forEach((child) => renderNode(child, node));
     }
 
-    // Add text label for non-containers
-    if (node.type !== FACE_NAMES.CONTAINER) {
+    // Add text label for non-containers (excluding reveals)
+    if (node.type !== FACE_NAMES.CONTAINER && node.type !== FACE_NAMES.REVEAL) {
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
@@ -702,8 +702,8 @@ const CabinetFaceDivider = ({
         .text(faceType?.label || "");
     }
 
-    // Add dimensions text for leaf nodes
-    if (!node.children && width > 60 && height > 30) {
+    // Add dimensions text for leaf nodes (excluding reveals)
+    if (!node.children && node.type !== FACE_NAMES.REVEAL && width > 60 && height > 30) {
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
@@ -830,7 +830,9 @@ const CabinetFaceDivider = ({
       .attr("stroke-width", strokeWidth);
 
     // Add root reveals if item type supports them
-    if (usesRootReveals && cabinetStyleId !== 13 && reveals) {
+    // Face frames always show reveals regardless of cabinetStyleId
+    const isFaceFrame = itemType === ITEM_TYPES.FACE_FRAME.type;
+    if (usesRootReveals && (isFaceFrame || cabinetStyleId !== 13) && reveals) {
       const revealColor =
         availableFaceTypes.find((t) => t.value === FACE_NAMES.REVEAL)?.color ||
         "#6B7280";
@@ -853,7 +855,8 @@ const CabinetFaceDivider = ({
           y: 0,
         };
 
-        const xVal = cabinetTypeId === 10 ? 0 : -reveals.left;
+        // Face frames and end panels (type 10) should have x=0
+        const xVal = cabinetTypeId === 10 || isFaceFrame ? 0 : -reveals.left;
 
         cabinetGroup
           .append("rect")
@@ -1310,7 +1313,6 @@ const CabinetFaceDivider = ({
       const previousConfigString = previousConfigRef.current;
 
       if (configString !== previousConfigString) {
-
         // Create a copy of the config for saving
         const configForSave = cloneDeep(config);
 
@@ -1335,15 +1337,21 @@ const CabinetFaceDivider = ({
             );
           }
 
+          // Handle drawer_front: only add drawerBoxDimensions if depth > 0.75
           if (node.type === FACE_NAMES.DRAWER_FRONT) {
-            node.drawerBoxDimensions = calculateRollOutDimensions(
-              style,
-              node.width,
-              cabinetDepth,
-              node.height,
-              node.type,
-              false, // isRollout
-            );
+            if (cabinetDepth > 0.75) {
+              node.drawerBoxDimensions = calculateRollOutDimensions(
+                style,
+                node.width,
+                cabinetDepth,
+                node.height,
+                node.type,
+                false, // isRollout
+              );
+            } else {
+              // Remove drawerBoxDimensions if depth is 0.75 or less
+              delete node.drawerBoxDimensions;
+            }
           }
 
           if (node.shelfQty > 0) {
@@ -1597,7 +1605,11 @@ const CabinetFaceDivider = ({
       if (dimension === "width" && newValue > 36 && node.shelfNosing !== 1.5) {
         node.shelfNosing = 1.5;
       }
-      if (dimension === "width" && newSiblingSize > 36 && sibling.shelfNosing !== 1.5) {
+      if (
+        dimension === "width" &&
+        newSiblingSize > 36 &&
+        sibling.shelfNosing !== 1.5
+      ) {
         sibling.shelfNosing = 1.5;
       }
     }
@@ -1894,6 +1906,13 @@ const CabinetFaceDivider = ({
       newInputValues[face.id] = equalSize;
     });
 
+    // Update children of all affected faces if they are containers
+    faces.forEach((face) => {
+      if (face.children) {
+        updateChildrenFromParent(face);
+      }
+    });
+
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
     setHandleInputValues(newInputValues);
@@ -2135,7 +2154,7 @@ const CabinetFaceDivider = ({
                     : handlePopupPosition.y,
                   fixedDisplayHeight - 200,
                 ),
-                filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 1))',
+                filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
             >
@@ -2184,7 +2203,7 @@ const CabinetFaceDivider = ({
                         )
                       }
                       className="w-20 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                      step="0.0625"
+                      step="0.125"
                     />
                   </div>
                 );
@@ -2210,7 +2229,7 @@ const CabinetFaceDivider = ({
               style={{
                 left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
                 top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
-                filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 1))',
+                filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
             >
               <div>

@@ -50,7 +50,7 @@ const EstimateTask = ({
         const newTask = await dispatch(
           addTask(currentEstimate.estimate_id, taskName)
         );
-        onSave?.(newTask.est_task_id);
+        onSave?.(newTask);
       } else {
         await dispatch(
           updateTask(currentEstimate.estimate_id, task.est_task_id, {

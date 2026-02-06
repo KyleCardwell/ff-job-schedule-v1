@@ -334,7 +334,7 @@ const LengthsSettings = forwardRef((props, ref) => {
           {/* Regular time per foot */}
           <input
             type="number"
-            step="0.01"
+            step="1"
             min="0"
             value={getServiceTime(item.id, service.service_id, 'regular')}
             onChange={(e) => {
@@ -350,7 +350,7 @@ const LengthsSettings = forwardRef((props, ref) => {
           {item.requires_miters && (
             <input
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               value={getServiceTime(item.id, service.service_id, 'miter')}
               onChange={(e) => {
@@ -367,7 +367,7 @@ const LengthsSettings = forwardRef((props, ref) => {
           {item.requires_cutouts && (
             <input
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               value={getServiceTime(item.id, service.service_id, 'cutout')}
               onChange={(e) => {

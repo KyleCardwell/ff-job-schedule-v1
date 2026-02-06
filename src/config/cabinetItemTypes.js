@@ -11,6 +11,8 @@ import {
   FACE_NAMES,
   DOOR_FRONT_FACE_TYPES,
   DRAWER_FRONT_FACE_TYPES,
+  DRAWER_BOX_FACE_TYPES,
+  FACE_DETAILS,
 } from "../utils/constants";
 
 export const CABINET_ITEM_TYPES = {
@@ -75,7 +77,7 @@ export const CABINET_ITEM_TYPES = {
   },
 
   drawer_front: {
-    label: "Drawer Front",
+    label: FACE_DETAILS.DRAWER_FRONT.label,
     faceTypesArray: DRAWER_FRONT_FACE_TYPES,
     defaultFaceType: FACE_NAMES.DRAWER_FRONT,
     usesReveals: false,
@@ -188,9 +190,9 @@ export const CABINET_ITEM_TYPES = {
   },
 
   drawer_box: {
-    label: "Drawer Box",
-    faceTypesArray: [], // Not divisible
-    defaultFaceType: FACE_NAMES.drawer_front,
+    label: FACE_DETAILS.DRAWER_BOX.label,
+    faceTypesArray: DRAWER_BOX_FACE_TYPES, // Not divisible
+    defaultFaceType: FACE_NAMES.DRAWER_BOX,
     usesReveals: false,
     usesRootReveals: false,
     allowsSplitting: false,
@@ -210,32 +212,42 @@ export const CABINET_ITEM_TYPES = {
       finishedInterior: false,
       finishedBack: false,
     },
+    typeSpecificOptions: [
+      {
+        name: "rollout_scoop",
+        type: "checkbox",
+        label: "Rollout",
+        defaultValue: false,
+        description: "Drawer box has a rollout scoop",
+        serviceMultipliers: {},
+      },
+    ],
   },
 
-  rollout: {
-    label: "Rollout",
-    faceTypesArray: [], // Not divisible
-    defaultFaceType: FACE_NAMES.rollout,
-    usesReveals: false,
-    usesRootReveals: false,
-    allowsSplitting: false,
-    requiresStyleReveals: false,
-    isDivisible: false,
-    features: {
-      sides: false,
-      top: false,
-      bottom: false,
-      back: false,
-      shelves: false,
-      rollouts: false,
-      finishedTop: false,
-      finishedBottom: false,
-      finishedLeft: false,
-      finishedRight: false,
-      finishedInterior: false,
-      finishedBack: false,
-    },
-  },
+  // rollout: {
+  //   label: "Rollout",
+  //   faceTypesArray: [], // Not divisible
+  //   defaultFaceType: FACE_NAMES.rollout,
+  //   usesReveals: false,
+  //   usesRootReveals: false,
+  //   allowsSplitting: false,
+  //   requiresStyleReveals: false,
+  //   isDivisible: false,
+  //   features: {
+  //     sides: false,
+  //     top: false,
+  //     bottom: false,
+  //     back: false,
+  //     shelves: false,
+  //     rollouts: false,
+  //     finishedTop: false,
+  //     finishedBottom: false,
+  //     finishedLeft: false,
+  //     finishedRight: false,
+  //     finishedInterior: false,
+  //     finishedBack: false,
+  //   },
+  // },
   hood: {
     label: "Hood",
     faceTypesArray: [], // Not divisible
@@ -258,7 +270,6 @@ export const CABINET_ITEM_TYPES = {
       finishedRight: false,
       finishedInterior: false,
       finishedBack: false,
-      autoScoop: true, // Automatically includes a scoop
     },
     typeSpecificOptions: [
       {
@@ -272,6 +283,31 @@ export const CABINET_ITEM_TYPES = {
         },
       },
     ],
+  },
+
+  face_frame: {
+    label: "Face Frame",
+    faceTypesArray: [FACE_DETAILS.OPEN], // Not divisible
+    defaultFaceType: FACE_NAMES.OPEN,
+    usesReveals: true,
+    usesRootReveals: true,
+    allowsSplitting: true,
+    requiresStyleReveals: false,
+    isDivisible: false,
+    features: {
+      sides: false,
+      top: false,
+      bottom: false,
+      back: false,
+      shelves: false,
+      rollouts: false,
+      finishedTop: true,
+      finishedBottom: true,
+      finishedLeft: true,
+      finishedRight: true,
+      finishedInterior: false,
+      finishedBack: false,
+    },
   },
 };
 

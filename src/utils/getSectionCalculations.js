@@ -76,6 +76,9 @@ const calculateFaceTotals = (section, context) => {
     const cabinetStyleId =
       cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
 
+    // Skip drawer boxes
+    if (cabinet.type === 15) return;
+
     // Handle fillers (type 5) separately using boxPartsList
     if (cabinet.type === 5) {
       // Only include fillers if door style is slab_sheet
@@ -360,7 +363,8 @@ const calculateFaceTotals = (section, context) => {
                 ?.default_price_per_unit || 0;
             // Store glass count as quantity (number of pieces) not square footage
             totals.glassCount += piece.quantity * quantity; // Multiply by cabinet quantity
-            totals.glassTotal += (sqft * price || 0) * piece.quantity * quantity;
+            totals.glassTotal +=
+              (sqft * price || 0) * piece.quantity * quantity;
           });
         }
 
@@ -828,6 +832,35 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
       sectionStyle?.cabinet_style_name?.toLowerCase().includes("face frame") ||
       false;
 
+    // Handle drawer_box item type (cabinet.type === 15)
+    if (cabinet.type === 15) {
+      // Check if it has drawerBoxDimensions or rollOutDimensions at the root level
+      if (cabinet.face_config.drawerBoxDimensions) {
+        const { width, height, depth } = cabinet.face_config.drawerBoxDimensions;
+        allDrawerBoxes.push({
+          width,
+          height,
+          depth,
+          quantity,
+          rollOut: false,
+          isFaceFrame,
+        });
+        totals.drawerBoxCount += quantity;
+      } else if (cabinet.face_config.rollOutDimensions) {
+        const { width, height, depth } = cabinet.face_config.rollOutDimensions;
+        allRollOuts.push({
+          width,
+          height,
+          depth,
+          quantity,
+          rollOut: true,
+          isFaceFrame,
+        });
+        totals.rollOutCount += quantity;
+      }
+      return; // Skip tree traversal for drawer_box items
+    }
+
     const collectDrawerAndRollouts = (node) => {
       if (!node) return;
 
@@ -963,8 +996,13 @@ const calculateFaceFramePrices = (section, context) => {
 
   section.cabinets.forEach((cabinet) => {
     // 13 is euro cabinets (no face frame)
-    if (cabinet.cabinet_style_override === 13) return;
-    if (!cabinet.cabinet_style_override && section.cabinet_style_id === 13)
+    // 16 is a face frame part
+    if (cabinet.cabinet_style_override === 13 && cabinet.type !== 16) return;
+    if (
+      !cabinet.cabinet_style_override &&
+      section.cabinet_style_id === 13 &&
+      cabinet.type !== 16
+    )
       return;
 
     const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
@@ -1124,22 +1162,24 @@ const calculateEndPanelNosingMaterials = (section, context) => {
   if (effectiveValues.door_style === FACE_STYLE_VALUES.SLAB_SHEET)
     return totals;
 
-  const endPanelsWithNosing = section.cabinets.filter((cabinet) => {
-    // Only include end panels (type 10) with nosing parts
+  const itemsWithNosing = section.cabinets.filter((cabinet) => {
+    // Include end panels (type 10) and face frames (type 16) with nosing parts
     return (
-      cabinet.type === 10 &&
+      (cabinet.type === 10 || cabinet.type === 16) &&
       cabinet.face_config?.boxSummary?.boxPartsList?.length > 0
     );
   });
 
-  if (endPanelsWithNosing.length === 0) return totals;
+  if (itemsWithNosing.length === 0) return totals;
 
   const { material } = selectedFaceMaterial;
 
-  endPanelsWithNosing.forEach((endPanel) => {
-    const { quantity = 1 } = endPanel;
-    const boxPartsList = endPanel.face_config.boxSummary.boxPartsList;
-    const nosingParts = boxPartsList.filter((part) => part.type === PART_NAMES.NOSING);
+  itemsWithNosing.forEach((item) => {
+    const { quantity = 1 } = item;
+    const boxPartsList = item.face_config.boxSummary.boxPartsList;
+    const nosingParts = boxPartsList.filter(
+      (part) => part.type === PART_NAMES.NOSING,
+    );
 
     if (nosingParts.length === 0) return;
 
@@ -1366,10 +1406,6 @@ const calculateCabinetTotals = (section, context) => {
 
   // Calculate face totals (counts, prices, and hours)
   const faceTotals = calculateFaceTotals(section, context);
-
-  console.log("🟢 calculateCabinetTotals - faceTotals received:");
-  console.log("  faceTotals.hoursByService:", faceTotals.hoursByService);
-  console.log("  faceTotals.categoryHours:", faceTotals.categoryHours);
 
   // Calculate hardware counts and totals
   const hardwareTotals = countHardware(section, faceTotals, context);
@@ -2062,8 +2098,11 @@ export const getSectionCalculations = (section, context = {}) => {
       (sectionProfit + sectionCommission + subTotalPrice - sectionDiscount) / 5,
     ) * 5;
 
-  const totalPrice =
-    roundPriceUpTo5 * (section.quantity != null ? section.quantity : 1);
+  // If quantity is 0, calculate as if it's 1 (for display purposes)
+  // Otherwise use the actual quantity for multiplication
+  const effectiveQuantity = section.quantity > 0 ? section.quantity : 1;
+  const unitPrice = roundPriceUpTo5; // Price for one section
+  const totalPrice = roundPriceUpTo5 * effectiveQuantity;
 
   // Calculate total accessories count and price (including glass from faces)
   const accessoriesCount =
@@ -2084,6 +2123,7 @@ export const getSectionCalculations = (section, context = {}) => {
   }, 0);
 
   return {
+    unitPrice,
     totalPrice,
     subTotalPrice,
     partsTotalPrice,

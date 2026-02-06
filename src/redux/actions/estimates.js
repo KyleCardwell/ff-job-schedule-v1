@@ -491,13 +491,13 @@ export const addTask = (estimateId, taskName) => {
         ...(currentEstimate.tasks_order || []),
         newTask.est_task_id,
       ];
-      // await updateOrderArray(
-      //   'estimates',
-      //   'estimate_id',
-      //   estimateId,
-      //   'tasks_order',
-      //   newTasksOrder
-      // );
+      await updateOrderArray(
+        'estimates',
+        'estimate_id',
+        estimateId,
+        'tasks_order',
+        newTasksOrder
+      );
 
       // Fetch the task with sections using task_full_details view
       const { data: taskWithSections, error: fetchError } = await supabase

@@ -1,7 +1,8 @@
 import { supabase } from "../../utils/supabase";
 import { partsList } from "../actionTypes/partsList";
 
-// Fetch all parts list items (not team-specific, all teams see all parts)
+// Fetch all active parts list items (not team-specific, all teams see all parts)
+// Only fetches parts where is_active = true
 export const fetchPartsList = () => {
   return async (dispatch) => {
     try {
@@ -10,6 +11,7 @@ export const fetchPartsList = () => {
       const { data, error } = await supabase
         .from("parts_list")
         .select("*")
+        .eq("is_active", true);
         // .order("name", { ascending: true });
 
       if (error) throw error;
