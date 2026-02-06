@@ -687,8 +687,8 @@ const CabinetFaceDivider = ({
       node.children.forEach((child) => renderNode(child, node));
     }
 
-    // Add text label for non-containers
-    if (node.type !== FACE_NAMES.CONTAINER) {
+    // Add text label for non-containers (excluding reveals)
+    if (node.type !== FACE_NAMES.CONTAINER && node.type !== FACE_NAMES.REVEAL) {
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
@@ -702,8 +702,8 @@ const CabinetFaceDivider = ({
         .text(faceType?.label || "");
     }
 
-    // Add dimensions text for leaf nodes
-    if (!node.children && width > 60 && height > 30) {
+    // Add dimensions text for leaf nodes (excluding reveals)
+    if (!node.children && node.type !== FACE_NAMES.REVEAL && width > 60 && height > 30) {
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
@@ -1906,6 +1906,13 @@ const CabinetFaceDivider = ({
       newInputValues[face.id] = equalSize;
     });
 
+    // Update children of all affected faces if they are containers
+    faces.forEach((face) => {
+      if (face.children) {
+        updateChildrenFromParent(face);
+      }
+    });
+
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
     setHandleInputValues(newInputValues);
@@ -2196,7 +2203,7 @@ const CabinetFaceDivider = ({
                         )
                       }
                       className="w-20 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                      step="0.0625"
+                      step="0.125"
                     />
                   </div>
                 );
