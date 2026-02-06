@@ -1453,3 +1453,66 @@ export const moveItem = (tableName, itemId, targetSectionId) => {
     }
   };
 };
+
+// Duplicate a section with all its items using Supabase RPC
+// Optionally creates a new task first if isNewTask is true
+export const duplicateSection = (sourceSectionId, options = {}) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { currentEstimate } = getState().estimates;
+      let targetTaskId = options.targetTaskId;
+
+      let targetSectionId = null;
+
+      // If creating a new task, do that first
+      if (options.isNewTask) {
+        const newTask = await dispatch(addTask(currentEstimate.estimate_id, options.newTaskName));
+        targetTaskId = newTask.est_task_id;
+        
+        // Get the section ID created by the database trigger
+        // The addTask returns task with sections array from task_full_details view
+        if (newTask.sections && newTask.sections.length > 0) {
+          targetSectionId = newTask.sections[0].est_section_id;
+        }
+      }
+
+      if (!targetTaskId) {
+        throw new Error('Target task ID is required');
+      }
+
+      // Call Supabase RPC function to duplicate the section
+      // If targetSectionId is provided, it will use the existing section (from trigger)
+      // Otherwise, it will create a new section
+      const { data: newSectionId, error: rpcError } = await supabase.rpc("duplicate_section", {
+        p_source_section_id: sourceSectionId,
+        p_target_task_id: targetTaskId,
+        p_section_name: options.sectionName || null,
+        p_target_section_id: targetSectionId,
+      });
+
+      if (rpcError) throw rpcError;
+
+      // Refresh the estimate to get updated data
+      await dispatch(fetchEstimateById(currentEstimate.estimate_id));
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "section_duplicated",
+          data: { sourceSectionId, newSectionId, targetTaskId },
+        },
+      });
+
+      return newSectionId;
+    } catch (error) {
+      console.error("Error duplicating section:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};

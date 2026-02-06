@@ -271,7 +271,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 value={formData.length || ""}
                 onChange={handleChange}
                 min="0"
-                step="0.5"
+                step="1"
                 className={`w-full px-3 py-2 border ${
                   errors.length ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}

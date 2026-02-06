@@ -1,11 +1,12 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
+import { updateTask, deleteTask, addTask, duplicateSection } from "../../redux/actions/estimates";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
+import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
 
@@ -37,6 +38,8 @@ const EstimateTask = ({
   const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] = useState(false);
+  const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
 
   useEffect(() => {
     if (isNew) {
@@ -80,6 +83,18 @@ const EstimateTask = ({
     } else {
       setTaskName(task.est_task_name);
       setIsEditing(false);
+    }
+  };
+
+  const handleDuplicateSection = async (options) => {
+    try {
+      if (sectionToDuplicate) {
+        await dispatch(duplicateSection(sectionToDuplicate.est_section_id, options));
+        setIsDuplicateSectionModalOpen(false);
+        setSectionToDuplicate(null);
+      }
+    } catch (error) {
+      console.error("Error duplicating section:", error);
     }
   };
 
@@ -138,6 +153,18 @@ const EstimateTask = ({
               >
                 <FiEdit2 size={14} />
               </button>
+              {sections.length === 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSectionToDuplicate(sections[0]);
+                    setIsDuplicateSectionModalOpen(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-blue-400"
+                >
+                  <FiCopy size={14} />
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -212,6 +239,21 @@ const EstimateTask = ({
         cancelText="Cancel"
         confirmButtonClass="bg-red-500 hover:bg-red-600"
       />
+
+      {sectionToDuplicate && (
+        <DuplicateSectionModal
+          open={isDuplicateSectionModalOpen}
+          onClose={() => {
+            setIsDuplicateSectionModalOpen(false);
+            setSectionToDuplicate(null);
+          }}
+          onSave={handleDuplicateSection}
+          currentTaskId={task.est_task_id}
+          currentSectionId={sectionToDuplicate.est_section_id}
+          sectionName={sectionToDuplicate.section_name}
+          canMoveFromTask={task.sections?.length > 1}
+        />
+      )}
     </>
   );
 };
