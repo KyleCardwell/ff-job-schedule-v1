@@ -361,6 +361,7 @@ const EstimateLengthManager = ({
   onUpdateItems,
   onReorderItems,
   onDuplicateItem,
+  onMoveItem,
   onDeleteItem,
   currentTaskId,
   currentSectionId,
@@ -472,6 +473,7 @@ const EstimateLengthManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={LengthItemForm}
       getReorderItemName={getReorderItemName}
       listType="length"
@@ -486,6 +488,7 @@ EstimateLengthManager.propTypes = {
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
   onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   onDeleteItem: PropTypes.func.isRequired,
   currentTaskId: PropTypes.number,
   currentSectionId: PropTypes.number,

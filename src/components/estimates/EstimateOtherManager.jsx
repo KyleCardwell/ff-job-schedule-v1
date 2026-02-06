@@ -194,7 +194,7 @@ OtherItemForm.propTypes = {
   onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicateItem, onDeleteItem, currentTaskId, currentSectionId }) => {
+const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicateItem, onMoveItem, onDeleteItem, currentTaskId, currentSectionId }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -251,6 +251,7 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={OtherItemForm}
       listType="other"
       currentTaskId={currentTaskId}
@@ -264,6 +265,7 @@ EstimateOtherManager.propTypes = {
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func,
   onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   onDeleteItem: PropTypes.func.isRequired,
   currentTaskId: PropTypes.number,
   currentSectionId: PropTypes.number,

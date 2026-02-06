@@ -322,6 +322,7 @@ const EstimateAccessoriesManager = ({
   onUpdateItems,
   onReorderItems,
   onDuplicateItem,
+  onMoveItem,
   onDeleteItem,
   currentTaskId,
   currentSectionId,
@@ -437,6 +438,7 @@ const EstimateAccessoriesManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={AccessoryItemForm}
       listType="accessory"
       currentTaskId={currentTaskId}
@@ -450,6 +452,7 @@ EstimateAccessoriesManager.propTypes = {
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
   onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   onDeleteItem: PropTypes.func.isRequired,
   currentTaskId: PropTypes.number,
   currentSectionId: PropTypes.number,

@@ -2304,6 +2304,7 @@ const EstimateCabinetManager = ({
   onUpdateItems,
   onReorderItems,
   onDuplicateItem,
+  onMoveItem,
   cabinetStyleId,
   onDeleteItem,
   cabinetTypes,
@@ -2364,6 +2365,7 @@ const EstimateCabinetManager = ({
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={CabinetItemForm}
       formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes }}
       listType={ITEM_TYPES.CABINET.type}
@@ -2378,6 +2380,7 @@ EstimateCabinetManager.propTypes = {
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
   onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   cabinetStyleId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,

@@ -1414,3 +1414,42 @@ export const duplicateItem = (
     }
   };
 };
+
+// Move an item to a different section using Supabase RPC
+export const moveItem = (tableName, itemId, targetSectionId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      // Call Supabase RPC function to move the item
+      const { error: rpcError } = await supabase.rpc("move_section_item", {
+        p_table_name: tableName,
+        p_item_id: itemId,
+        p_target_section_id: targetSectionId,
+      });
+
+      if (rpcError) throw rpcError;
+
+      // Refresh the estimate to get updated data
+      const { currentEstimate } = getState().estimates;
+      await dispatch(fetchEstimateById(currentEstimate.estimate_id));
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "item_moved",
+          data: { itemId, targetSectionId },
+        },
+      });
+
+      return true;
+    } catch (error) {
+      console.error(`Error moving item from ${tableName}:`, error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
