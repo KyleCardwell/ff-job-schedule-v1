@@ -112,7 +112,7 @@ const EstimateSection = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-2 px-4 text-sm font-medium text-left flex items-center justify-between group/section
+              w-full py-2 pl-2 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] justify-between group/section
               ${
                 hasErrorState
                   ? isSelected
@@ -125,7 +125,7 @@ const EstimateSection = ({
             `}
           >
             <span>{displayName}</span>
-            <div className="invisible group-hover/section:visible space-x-2 flex">
+            <div className="invisible group-hover/section:visible pl-2 flex gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -180,6 +180,7 @@ const EstimateSection = ({
         currentSectionId={section.est_section_id}
         sectionName={displayName}
         canMoveFromTask={task.sections?.length > 1}
+        taskName={task.est_task_name}
       />
     </>
   );

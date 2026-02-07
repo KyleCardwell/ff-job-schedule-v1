@@ -88,13 +88,14 @@ const EstimateTask = ({
 
   const handleDuplicateSection = async (options) => {
     try {
-      if (sectionToDuplicate) {
-        await dispatch(duplicateSection(sectionToDuplicate.est_section_id, options));
-        setIsDuplicateSectionModalOpen(false);
-        setSectionToDuplicate(null);
+      // Duplicate all sections in the task
+      for (const section of sections) {
+        await dispatch(duplicateSection(section.est_section_id, options));
       }
+      setIsDuplicateSectionModalOpen(false);
+      setSectionToDuplicate(null);
     } catch (error) {
-      console.error("Error duplicating section:", error);
+      console.error("Error duplicating sections:", error);
     }
   };
 
@@ -130,7 +131,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 px-4 text-sm font-medium text-left flex items-center justify-between group/task
+              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] group/task
               ${
                 hasErrorState
                   ? isSelected && sections.length === 1
@@ -143,7 +144,7 @@ const EstimateTask = ({
             `}
           >
             <span>{task.est_task_name}</span>
-            <div className="invisible group-hover/task:visible space-x-2 flex">
+            <div className="invisible group-hover/task:visible pl-2 flex gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -153,18 +154,16 @@ const EstimateTask = ({
               >
                 <FiEdit2 size={14} />
               </button>
-              {sections.length === 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSectionToDuplicate(sections[0]);
-                    setIsDuplicateSectionModalOpen(true);
-                  }}
-                  className="p-1 text-slate-400 hover:text-blue-400"
-                >
-                  <FiCopy size={14} />
-                </button>
-              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSectionToDuplicate(sections[0]); // Still need to pass a section for modal context
+                  setIsDuplicateSectionModalOpen(true);
+                }}
+                className="p-1 text-slate-400 hover:text-blue-400"
+              >
+                <FiCopy size={14} />
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -252,6 +251,9 @@ const EstimateTask = ({
           currentSectionId={sectionToDuplicate.est_section_id}
           sectionName={sectionToDuplicate.section_name}
           canMoveFromTask={task.sections?.length > 1}
+          sectionCount={sections.length}
+          taskName={task.est_task_name}
+          isDuplicatingTask={true}
         />
       )}
     </>

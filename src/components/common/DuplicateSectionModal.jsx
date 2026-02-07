@@ -9,7 +9,10 @@ const DuplicateSectionModal = ({
   currentTaskId,
   currentSectionId,
   sectionName,
-  canMoveFromTask = true
+  canMoveFromTask = true,
+  sectionCount = 1,
+  taskName,
+  isDuplicatingTask = false
 }) => {
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   
@@ -19,14 +22,20 @@ const DuplicateSectionModal = ({
   const [newSectionName, setNewSectionName] = useState('');
 
   // Initialize with current task
+  // If duplicating entire task, default to creating new task
   useEffect(() => {
     if (open) {
-      setSelectedTaskId(currentTaskId);
-      setIsNewTask(false);
+      if (isDuplicatingTask) {
+        setIsNewTask(true);
+        setSelectedTaskId(null);
+      } else {
+        setSelectedTaskId(currentTaskId);
+        setIsNewTask(false);
+      }
       setNewTaskName('');
       setNewSectionName('');
     }
-  }, [open, currentTaskId]);
+  }, [open, currentTaskId, isDuplicatingTask]);
 
   const handleTaskChange = (e) => {
     const value = e.target.value;
@@ -73,7 +82,12 @@ const DuplicateSectionModal = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Duplicate Section</h2>
+        <h2 className="text-xl font-bold mb-4">
+          {sectionCount > 1 
+            ? `Duplicate: ${taskName} (${sectionCount} sections)`
+            : `Duplicate: ${taskName}${sectionName ? ` - ${sectionName}` : ''}`
+          }
+        </h2>
         
         <div className="space-y-4">
           {/* Task Selection */}
@@ -180,6 +194,9 @@ DuplicateSectionModal.propTypes = {
   currentSectionId: PropTypes.number.isRequired,
   sectionName: PropTypes.string,
   canMoveFromTask: PropTypes.bool,
+  sectionCount: PropTypes.number,
+  taskName: PropTypes.string.isRequired,
+  isDuplicatingTask: PropTypes.bool,
 };
 
 export default DuplicateSectionModal;
