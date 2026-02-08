@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowLeft, FiPlus, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiArrowLeft, FiPlus } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -8,6 +8,7 @@ import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 import { fetchTeamData, getTeamLogoSignedUrl } from "../../redux/actions/teams";
 
 import CustomNotesSection from "./CustomNotesSection.jsx";
+import EstimatePreviewBreakdown from "./EstimatePreviewBreakdown.jsx";
 import EstimatePreviewIndex from "./EstimatePreviewIndex.jsx";
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
 import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
@@ -47,9 +48,6 @@ const EstimatePreview = () => {
   const [editingCustomNoteId, setEditingCustomNoteId] = useState(null);
   const [selectedCustomNotes, setSelectedCustomNotes] = useState({});
   const customNotesInitialized = useRef(false);
-
-  // Track expanded breakdown state
-  const [isBreakdownExpanded, setIsBreakdownExpanded] = useState(false);
 
   // Refs for scrolling functionality
   const scrollContainerRef = useRef(null);
@@ -415,6 +413,28 @@ const EstimatePreview = () => {
     // Calculate detailed breakdown by aggregating from taskBreakdownMap
     const breakdown = {
       services: {},
+      parts: {
+        boxTotal: 0,
+        boxCount: 0,
+        facePrices: {},
+        faceCounts: {},
+        drawerBoxTotal: 0,
+        drawerBoxCount: 0,
+        rollOutTotal: 0,
+        rollOutCount: 0,
+        hingesTotal: 0,
+        hingesCount: 0,
+        slidesTotal: 0,
+        slidesCount: 0,
+        pullsTotal: 0,
+        pullsCount: 0,
+        woodTotal: 0,
+        woodCount: 0,
+        accessoriesTotal: 0,
+        accessoriesCount: 0,
+        otherTotal: 0,
+        otherCount: 0,
+      },
       partsTotal: 0,
       subtotal: 0,
       profit: 0,
@@ -439,6 +459,41 @@ const EstimatePreview = () => {
         });
       }
 
+      // Aggregate parts breakdown
+      if (taskBreakdown.parts) {
+        const parts = taskBreakdown.parts;
+        breakdown.parts.boxTotal += parts.boxTotal || 0;
+        breakdown.parts.boxCount += parts.boxCount || 0;
+        breakdown.parts.drawerBoxTotal += parts.drawerBoxTotal || 0;
+        breakdown.parts.drawerBoxCount += parts.drawerBoxCount || 0;
+        breakdown.parts.rollOutTotal += parts.rollOutTotal || 0;
+        breakdown.parts.rollOutCount += parts.rollOutCount || 0;
+        breakdown.parts.hingesTotal += parts.hingesTotal || 0;
+        breakdown.parts.hingesCount += parts.hingesCount || 0;
+        breakdown.parts.slidesTotal += parts.slidesTotal || 0;
+        breakdown.parts.slidesCount += parts.slidesCount || 0;
+        breakdown.parts.pullsTotal += parts.pullsTotal || 0;
+        breakdown.parts.pullsCount += parts.pullsCount || 0;
+        breakdown.parts.woodTotal += parts.woodTotal || 0;
+        breakdown.parts.woodCount += parts.woodCount || 0;
+        breakdown.parts.accessoriesTotal += parts.accessoriesTotal || 0;
+        breakdown.parts.accessoriesCount += parts.accessoriesCount || 0;
+        breakdown.parts.otherTotal += parts.otherTotal || 0;
+        breakdown.parts.otherCount += parts.otherCount || 0;
+        
+        // Aggregate face prices and counts
+        if (parts.facePrices) {
+          Object.entries(parts.facePrices).forEach(([type, price]) => {
+            breakdown.parts.facePrices[type] = (breakdown.parts.facePrices[type] || 0) + price;
+          });
+        }
+        if (parts.faceCounts) {
+          Object.entries(parts.faceCounts).forEach(([type, count]) => {
+            breakdown.parts.faceCounts[type] = (breakdown.parts.faceCounts[type] || 0) + count;
+          });
+        }
+      }
+      
       // Aggregate other totals
       breakdown.partsTotal += taskBreakdown.partsTotal || 0;
       breakdown.subtotal += taskBreakdown.subtotal || 0;
@@ -564,12 +619,6 @@ const EstimatePreview = () => {
     }).format(value || 0);
   };
 
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value || 0);
-  };
 
   // This should not render if currentEstimate is null due to the redirect above
   if (!currentEstimate) {
@@ -614,7 +663,7 @@ const EstimatePreview = () => {
       </div>
 
       {/* Main Content with Index */}
-      <div className="max-w-7xl mx-auto px-6 py-8 flex gap-6">
+      <div className="mx-auto px-6 pt-8 flex gap-6">
         {/* Left Index Panel */}
         <EstimatePreviewIndex
           taskDataMap={taskDataMap}
@@ -636,7 +685,7 @@ const EstimatePreview = () => {
         {/* Right Content Panel */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]"
+          className="flex-1 overflow-y-auto max-h-[calc(100vh-100px)]"
         >
           {/* Estimate Notes Section */}
           {(teamDefaults?.default_estimate_notes?.length > 0 ||
@@ -812,110 +861,14 @@ const EstimatePreview = () => {
               </div>
             )}
 
-          {/* Grand Total with Expandable Breakdown */}
-          <div className="bg-slate-800 rounded-lg p-6 sticky bottom-0 border-t-4 border-teal-500">
-            <div 
-              className="flex justify-between items-center cursor-pointer"
-              onClick={() => setIsBreakdownExpanded(!isBreakdownExpanded)}
-            >
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold">Total Estimate</h2>
-                {isBreakdownExpanded ? (
-                  <FiChevronDown className="text-teal-400" size={24} />
-                ) : (
-                  <FiChevronUp className="text-teal-400" size={24} />
-                )}
-              </div>
-              <p className="text-3xl font-bold text-teal-400">
-                {formatCurrency(grandTotal)}
-              </p>
-            </div>
-
-            {/* Expandable Breakdown */}
-            {isBreakdownExpanded && breakdown && (
-              <div className="mt-6 pt-6 border-t border-slate-700 space-y-4">
-                {/* Services Breakdown */}
-                {Object.keys(breakdown.services).length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-300 mb-3">Services</h3>
-                    <div className="space-y-2">
-                      {Object.entries(breakdown.services).map(([serviceId, data]) => (
-                        <div key={serviceId} className="flex justify-between items-center text-slate-300">
-                          <div className="flex items-center gap-2">
-                            <span>{data.name}</span>
-                            <span className="text-sm text-slate-500">
-                              ({formatNumber(data.hours)} hrs)
-                            </span>
-                          </div>
-                          <span className="font-medium">{formatCurrency(data.cost)}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-700 font-semibold text-slate-200">
-                        <span>Total Services</span>
-                        <span>
-                          {formatCurrency(
-                            Object.values(breakdown.services).reduce(
-                              (sum, s) => sum + s.cost,
-                              0
-                            )
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Parts Total */}
-                {breakdown.partsTotal > 0 && (
-                  <div className="flex justify-between items-center text-slate-200 font-semibold">
-                    <span>Parts Total</span>
-                    <span>{formatCurrency(breakdown.partsTotal)}</span>
-                  </div>
-                )}
-
-                {/* Subtotal */}
-                {breakdown.subtotal > 0 && (
-                  <div className="flex justify-between items-center pt-3 border-t border-slate-700 text-lg font-semibold text-slate-100">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(breakdown.subtotal)}</span>
-                  </div>
-                )}
-
-                {/* Profit */}
-                {breakdown.profit > 0 && (
-                  <div className="flex justify-between items-center text-green-400">
-                    <span>Profit</span>
-                    <span>+{formatCurrency(breakdown.profit)}</span>
-                  </div>
-                )}
-
-                {/* Commission */}
-                {breakdown.commission > 0 && (
-                  <div className="flex justify-between items-center text-blue-400">
-                    <span>Commission</span>
-                    <span>+{formatCurrency(breakdown.commission)}</span>
-                  </div>
-                )}
-
-                {/* Discount */}
-                {breakdown.discount > 0 && (
-                  <div className="flex justify-between items-center text-red-400">
-                    <span>Discount</span>
-                    <span>-{formatCurrency(breakdown.discount)}</span>
-                  </div>
-                )}
-
-                {/* Line Items (if present) */}
-                {lineItemsTotal > 0 && (
-                  <div className="flex justify-between items-center text-slate-200 font-semibold">
-                    <span>Additional Line Items</span>
-                    <span>{formatCurrency(lineItemsTotal)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
+
+        {/* Right Breakdown Panel */}
+        <EstimatePreviewBreakdown
+          breakdown={breakdown}
+          grandTotal={grandTotal}
+          lineItemsTotal={lineItemsTotal}
+        />
       </div>
     </div>
   );

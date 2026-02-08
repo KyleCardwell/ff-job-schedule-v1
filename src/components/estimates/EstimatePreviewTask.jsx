@@ -13,6 +13,28 @@ const EstimatePreviewTask = ({ task, estimate, onTaskDataChange, onTaskBreakdown
     const taskBreakdown = {
       taskId: task.est_task_id,
       services: {},
+      parts: {
+        boxTotal: 0,
+        boxCount: 0,
+        facePrices: {},
+        faceCounts: {},
+        drawerBoxTotal: 0,
+        drawerBoxCount: 0,
+        rollOutTotal: 0,
+        rollOutCount: 0,
+        hingesTotal: 0,
+        hingesCount: 0,
+        slidesTotal: 0,
+        slidesCount: 0,
+        pullsTotal: 0,
+        pullsCount: 0,
+        woodTotal: 0,
+        woodCount: 0,
+        accessoriesTotal: 0,
+        accessoriesCount: 0,
+        otherTotal: 0,
+        otherCount: 0,
+      },
       partsTotal: 0,
       subtotal: 0,
       profit: 0,
@@ -41,6 +63,49 @@ const EstimatePreviewTask = ({ task, estimate, onTaskDataChange, onTaskBreakdown
         });
       }
 
+      // Aggregate parts breakdown from section calculations
+      if (section.calculations) {
+        const calc = section.calculations;
+        
+        // Aggregate box data
+        taskBreakdown.parts.boxTotal += calc.boxTotal || 0;
+        taskBreakdown.parts.boxCount += calc.boxCount || 0;
+        
+        // Aggregate face prices and counts
+        if (calc.facePrices) {
+          Object.entries(calc.facePrices).forEach(([type, price]) => {
+            taskBreakdown.parts.facePrices[type] = (taskBreakdown.parts.facePrices[type] || 0) + price;
+          });
+        }
+        if (calc.faceCounts) {
+          Object.entries(calc.faceCounts).forEach(([type, count]) => {
+            taskBreakdown.parts.faceCounts[type] = (taskBreakdown.parts.faceCounts[type] || 0) + count;
+          });
+        }
+        
+        // Aggregate drawer boxes and rollouts
+        taskBreakdown.parts.drawerBoxTotal += calc.drawerBoxTotal || 0;
+        taskBreakdown.parts.drawerBoxCount += calc.drawerBoxCount || 0;
+        taskBreakdown.parts.rollOutTotal += calc.rollOutTotal || 0;
+        taskBreakdown.parts.rollOutCount += calc.rollOutCount || 0;
+        
+        // Aggregate hardware
+        taskBreakdown.parts.hingesTotal += calc.hingesTotal || 0;
+        taskBreakdown.parts.hingesCount += calc.hingesCount || 0;
+        taskBreakdown.parts.slidesTotal += calc.slidesTotal || 0;
+        taskBreakdown.parts.slidesCount += calc.slidesCount || 0;
+        taskBreakdown.parts.pullsTotal += calc.pullsTotal || 0;
+        taskBreakdown.parts.pullsCount += calc.pullsCount || 0;
+        
+        // Aggregate wood and accessories
+        taskBreakdown.parts.woodTotal += calc.woodTotal || 0;
+        taskBreakdown.parts.woodCount += calc.woodCount || 0;
+        taskBreakdown.parts.accessoriesTotal += calc.accessoriesTotal || 0;
+        taskBreakdown.parts.accessoriesCount += calc.accessoriesCount || 0;
+        taskBreakdown.parts.otherTotal += calc.otherTotal || 0;
+        taskBreakdown.parts.otherCount += calc.otherCount || 0;
+      }
+      
       // Aggregate other totals
       taskBreakdown.partsTotal += section.partsTotalPrice || 0;
       taskBreakdown.subtotal += section.subTotalPrice || 0;
