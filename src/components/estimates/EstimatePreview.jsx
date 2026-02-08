@@ -626,7 +626,7 @@ const EstimatePreview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200">
+    <div className="h-full bg-slate-900 text-slate-200 flex flex-col relative">
       {/* Header */}
       <GenerateEstimatePdf
         estimate={currentEstimate}
@@ -641,8 +641,8 @@ const EstimatePreview = () => {
           (allSections.length === 0 && lineItemsTotal === 0)
         }
       />
-      <div className="bg-slate-800 border-b border-slate-700 sticky top-12 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="bg-slate-800 border-b border-slate-700">
+        <div className="max-w-8xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -663,7 +663,7 @@ const EstimatePreview = () => {
       </div>
 
       {/* Main Content with Index */}
-      <div className="mx-auto px-6 pt-8 flex gap-6">
+      <div className="flex-1 px-6 flex gap-6 overflow-hidden">
         {/* Left Index Panel */}
         <EstimatePreviewIndex
           taskDataMap={taskDataMap}
@@ -685,7 +685,7 @@ const EstimatePreview = () => {
         {/* Right Content Panel */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto max-h-[calc(100vh-100px)]"
+          className="flex-1 py-8 overflow-y-auto"
         >
           {/* Estimate Notes Section */}
           {(teamDefaults?.default_estimate_notes?.length > 0 ||

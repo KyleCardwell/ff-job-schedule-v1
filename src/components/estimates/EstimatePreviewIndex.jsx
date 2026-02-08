@@ -144,7 +144,7 @@ const EstimatePreviewIndex = ({
 
   return (
     <div className={`w-64 flex-none ${className}`}>
-      <div className="sticky top-24 p-3 max-h-[calc(100vh-200px)] overflow-y-auto bg-slate-800 rounded-lg border border-slate-700">
+      <div className="mt-8 p-3 max-h-[calc(100vh-150px)] overflow-y-auto bg-slate-800 rounded-lg border border-slate-700">
         <div className="flex items-center justify-between mb-3 px-2">
           <h3 className="text-xs font-semibold text-slate-300 uppercase">
             Include in Estimate
