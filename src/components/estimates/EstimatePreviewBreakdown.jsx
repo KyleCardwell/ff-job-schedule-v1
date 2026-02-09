@@ -51,7 +51,7 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
 
   return (
     <div className="w-72 flex-shrink-0">
-      <div className="mt-8 max-h-[calc(100vh-150px)] overflow-y-auto bg-slate-800 rounded-lg p-4 space-y-4">
+      <div className="mt-8 max-h-[calc(100vh-150px)] overflow-y-auto bg-slate-800 rounded-lg p-4 space-y-4 border border-slate-600">
         {/* Grand Total */}
         <div className="pb-4 border-b-2 border-teal-500">
           <div className="text-sm text-slate-400">Estimate Total</div>

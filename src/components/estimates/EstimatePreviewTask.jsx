@@ -188,14 +188,14 @@ const EstimatePreviewTask = ({
   return (
     <div className="mb-8">
       {/* Task Header */}
-      <div className="bg-slate-800 rounded-t-lg px-4 pt-4">
+      <div className="bg-slate-800 rounded-t-lg px-4 pt-4 border-t border-l border-r border-slate-600">
         <h2 className="text-xl font-bold text-slate-200 mx-6 pb-2 border-b-2 border-teal-500">
           {task.est_task_name}
         </h2>
       </div>
 
       {/* Sections */}
-      <div className="bg-slate-800 rounded-b-lg p-4">
+      <div className="bg-slate-800 rounded-b-lg p-4 border-l border-r border-b border-slate-600">
         {task.sections && task.sections.length > 0 ? (
           task.sections.map((section, index) => (
             <EstimatePreviewSection

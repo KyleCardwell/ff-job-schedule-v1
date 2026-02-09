@@ -250,8 +250,8 @@ export const fetchEstimateById = (estimateId) => {
         default_discount: data.default_discount,
         default_service_price_overrides: data.default_service_price_overrides,
 
-        // Custom notes
-        custom_notes: data.custom_notes || [],
+        // Custom notes: { default_notes: {}, custom_notes: [] }
+        custom_notes: data.custom_notes || { default_notes: {}, custom_notes: [] },
 
         // Line items
         line_items: data.line_items,

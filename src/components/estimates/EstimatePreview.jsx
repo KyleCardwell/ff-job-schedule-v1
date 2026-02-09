@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowLeft, FiPlus } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { updateCustomNotes } from "../../redux/actions/estimates";
-import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 import { fetchTeamData, getTeamLogoSignedUrl } from "../../redux/actions/teams";
 
-import CustomNotesSection from "./CustomNotesSection.jsx";
+import EstimateNotesManager from "./EstimateNotesManager.jsx";
 import EstimatePreviewBreakdown from "./EstimatePreviewBreakdown.jsx";
 import EstimatePreviewIndex from "./EstimatePreviewIndex.jsx";
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
@@ -22,7 +20,6 @@ const EstimatePreview = () => {
     (state) => state.estimates.currentEstimate
   );
   const teamId = useSelector((state) => state.auth.teamId);
-  const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
   const { teamData } = useSelector((state) => state.teams);
 
   // Track all task data - children will report their complete data up
@@ -30,9 +27,8 @@ const EstimatePreview = () => {
   const [taskBreakdownMap, setTaskBreakdownMap] = useState({});
   const [logoDataUrl, setLogoDataUrl] = useState(null);
 
-  // Track selected notes: { noteId: { selected: bool, selectedOptionId: string|null } }
-  const [selectedNotes, setSelectedNotes] = useState({});
-  const notesInitialized = useRef(false);
+  // Selected notes text for PDF (driven by EstimateNotesManager callback)
+  const [selectedNotesForPdf, setSelectedNotesForPdf] = useState([]);
 
   // Track selected sections: { sectionId: boolean }
   const [selectedSections, setSelectedSections] = useState({});
@@ -41,13 +37,6 @@ const EstimatePreview = () => {
   // Track selected line items: { lineItemIndex: boolean }
   const [selectedLineItems, setSelectedLineItems] = useState({});
   const lineItemsInitialized = useRef(false);
-
-  // Track custom notes state
-  const [isEditingCustomNotes, setIsEditingCustomNotes] = useState(false);
-  const [customNotesText, setCustomNotesText] = useState("");
-  const [editingCustomNoteId, setEditingCustomNoteId] = useState(null);
-  const [selectedCustomNotes, setSelectedCustomNotes] = useState({});
-  const customNotesInitialized = useRef(false);
 
   // Refs for scrolling functionality
   const scrollContainerRef = useRef(null);
@@ -183,26 +172,6 @@ const EstimatePreview = () => {
     setTaskBreakdownMap((prev) => ({ ...prev, [taskBreakdown.taskId]: taskBreakdown }));
   }, []);
 
-  const handleNoteToggle = useCallback((noteId) => {
-    setSelectedNotes((prev) => ({
-      ...prev,
-      [noteId]: {
-        selected: !prev[noteId]?.selected,
-        selectedOptionId: prev[noteId]?.selectedOptionId ?? null,
-      },
-    }));
-  }, []);
-
-  const handleOptionChange = useCallback((noteId, optionId) => {
-    setSelectedNotes((prev) => ({
-      ...prev,
-      [noteId]: {
-        selected: prev[noteId]?.selected ?? true,
-        selectedOptionId: optionId,
-      },
-    }));
-  }, []);
-
   const handleToggleSection = useCallback((sectionId) => {
     setSelectedSections((prev) => ({
       ...prev,
@@ -247,115 +216,6 @@ const EstimatePreview = () => {
       return newSelection;
     });
   }, []);
-
-  const handleToggleCustomNote = useCallback((noteId) => {
-    setSelectedCustomNotes((prev) => ({
-      ...prev,
-      [noteId]: !prev[noteId],
-    }));
-  }, []);
-
-  const handleAddCustomNote = useCallback(() => {
-    setIsEditingCustomNotes(true);
-    setCustomNotesText("");
-    setEditingCustomNoteId(null);
-  }, []);
-
-  const handleEditCustomNote = useCallback((note) => {
-    setIsEditingCustomNotes(true);
-    setCustomNotesText(note.text);
-    setEditingCustomNoteId(note.id);
-  }, []);
-
-  const handleSaveCustomNote = useCallback(async () => {
-    if (!customNotesText.trim()) return;
-
-    const existingNotes = currentEstimate?.custom_notes || [];
-    let updatedNotes;
-
-    if (editingCustomNoteId) {
-      updatedNotes = existingNotes.map((note) =>
-        note.id === editingCustomNoteId
-          ? { ...note, text: customNotesText.trim() }
-          : note
-      );
-    } else {
-      const newNote = {
-        id: `custom_note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: customNotesText.trim(),
-      };
-      updatedNotes = [...existingNotes, newNote];
-      setSelectedCustomNotes((prev) => ({
-        ...prev,
-        [newNote.id]: true,
-      }));
-    }
-
-    try {
-      await dispatch(updateCustomNotes(currentEstimate.estimate_id, updatedNotes));
-      setIsEditingCustomNotes(false);
-      setCustomNotesText("");
-      setEditingCustomNoteId(null);
-    } catch (error) {
-      alert("Failed to save custom note. Please try again.");
-    }
-  }, [customNotesText, editingCustomNoteId, currentEstimate, dispatch]);
-
-  const handleCancelCustomNote = useCallback(() => {
-    setIsEditingCustomNotes(false);
-    setCustomNotesText("");
-    setEditingCustomNoteId(null);
-  }, []);
-
-  const handleDeleteCustomNote = useCallback(
-    async (noteId) => {
-      const existingNotes = currentEstimate?.custom_notes || [];
-      const updatedNotes = existingNotes.filter((note) => note.id !== noteId);
-
-      try {
-        await dispatch(updateCustomNotes(currentEstimate.estimate_id, updatedNotes));
-        setSelectedCustomNotes((prev) => {
-          const newSelection = { ...prev };
-          delete newSelection[noteId];
-          return newSelection;
-        });
-      } catch (error) {
-        alert("Failed to delete custom note. Please try again.");
-      }
-    },
-    [currentEstimate, dispatch]
-  );
-
-  // Build selected notes for PDF (including custom notes)
-  const selectedNotesForPdf = useMemo(() => {
-    const defaultNotes = [];
-    const customNotes = [];
-
-    if (teamDefaults?.default_estimate_notes) {
-      teamDefaults.default_estimate_notes.forEach((note) => {
-        const selection = selectedNotes[note.id];
-        if (selection?.selected) {
-          if (note.options && note.options.length > 0) {
-            const selectedOption = note.options.find(
-              (opt) => opt.id === selection.selectedOptionId
-            );
-            const text = selectedOption?.text || note.options[0]?.text;
-            if (text) defaultNotes.push(text);
-          }
-        }
-      });
-    }
-
-    if (currentEstimate?.custom_notes) {
-      currentEstimate.custom_notes.forEach((note) => {
-        if (selectedCustomNotes[note.id]) {
-          customNotes.push(note.text);
-        }
-      });
-    }
-
-    return [...defaultNotes, ...customNotes];
-  }, [teamDefaults, selectedNotes, currentEstimate, selectedCustomNotes]);
 
   // Calculate grand total from task data and prepare all sections for PDF
   // Use currentEstimate.tasks to maintain original order
@@ -512,40 +372,6 @@ const EstimatePreview = () => {
     }
   }, [currentEstimate, estimateId, navigate]);
 
-  // Fetch team defaults for estimate notes
-  useEffect(() => {
-    if (!teamDefaults) {
-      dispatch(fetchTeamDefaults());
-    }
-  }, [dispatch, teamDefaults]);
-
-  // Initialize all notes as selected when teamDefaults loads
-  useEffect(() => {
-    if (teamDefaults?.default_estimate_notes && !notesInitialized.current) {
-      const initialSelection = {};
-      teamDefaults.default_estimate_notes.forEach((note) => {
-        initialSelection[note.id] = {
-          selected: true,
-          selectedOptionId: note.options?.[0]?.id || null,
-        };
-      });
-      setSelectedNotes(initialSelection);
-      notesInitialized.current = true;
-    }
-  }, [teamDefaults]);
-
-  // Initialize all custom notes as selected when they load
-  useEffect(() => {
-    if (currentEstimate?.custom_notes && !customNotesInitialized.current) {
-      const initialSelection = {};
-      currentEstimate.custom_notes.forEach((note) => {
-        initialSelection[note.id] = true;
-      });
-      setSelectedCustomNotes(initialSelection);
-      customNotesInitialized.current = true;
-    }
-  }, [currentEstimate]);
-
   // Initialize all sections as selected when taskDataMap changes
   useEffect(() => {
     const allSectionIds = Object.values(taskDataMap).flatMap((task) =>
@@ -674,17 +500,13 @@ const EstimatePreview = () => {
           scrollContainerRef={scrollContainerRef}
           sectionRefs={sectionRefs}
           scrollOffset={150}
-          scrollOffsetSingleSection={167}
+          scrollOffsetSingleSection={168}
           lineItems={currentEstimate.line_items || []}
           selectedLineItems={selectedLineItems}
           onToggleLineItem={handleToggleLineItem}
           onToggleAllLineItems={handleToggleAllLineItems}
           onScrollToLineItems={scrollToLineItems}
-          hasEstimateNotes={
-            (teamDefaults?.default_estimate_notes?.length > 0 ||
-              currentEstimate?.custom_notes?.length > 0 ||
-              isEditingCustomNotes)
-          }
+          hasEstimateNotes={true}
         />
 
         {/* Middle Content Panel */}
@@ -693,81 +515,10 @@ const EstimatePreview = () => {
           className="w-[896px] py-8 overflow-y-auto"
         >
           {/* Estimate Notes Section */}
-          {(teamDefaults?.default_estimate_notes?.length > 0 ||
-            currentEstimate?.custom_notes?.length > 0 ||
-            isEditingCustomNotes) && (
-            <div className="bg-slate-800 rounded-lg p-6 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Estimate Notes</h2>
-                {!isEditingCustomNotes && (
-                  <button
-                    onClick={handleAddCustomNote}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded transition-colors"
-                  >
-                    <FiPlus className="w-4 h-4" />
-                    Add Custom Note
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {teamDefaults?.default_estimate_notes?.map((note) => {
-                  const hasMultipleOptions =
-                    note.options && note.options.length > 1;
-
-                  return (
-                    <div key={note.id} className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedNotes[note.id]?.selected || false}
-                        onChange={() => handleNoteToggle(note.id)}
-                        className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
-                      />
-                      <div className="flex-1 text-left">
-                        {hasMultipleOptions ? (
-                          <select
-                            value={
-                              selectedNotes[note.id]?.selectedOptionId ||
-                              note.options[0]?.id
-                            }
-                            onChange={(e) =>
-                              handleOptionChange(note.id, e.target.value)
-                            }
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-200 focus:outline-none focus:border-teal-500"
-                            disabled={!selectedNotes[note.id]?.selected}
-                          >
-                            {note.options.map((option) => (
-                              <option key={option.id} value={option.id}>
-                                {option.text}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="text-slate-300">
-                            {note.options?.[0]?.text || ""}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <CustomNotesSection
-                  customNotes={currentEstimate?.custom_notes}
-                  selectedCustomNotes={selectedCustomNotes}
-                  onToggleNote={handleToggleCustomNote}
-                  onEditNote={handleEditCustomNote}
-                  onDeleteNote={handleDeleteCustomNote}
-                  isEditingCustomNotes={isEditingCustomNotes}
-                  customNotesText={customNotesText}
-                  editingCustomNoteId={editingCustomNoteId}
-                  onCustomNotesTextChange={setCustomNotesText}
-                  onSaveCustomNote={handleSaveCustomNote}
-                  onCancelCustomNote={handleCancelCustomNote}
-                />
-              </div>
-            </div>
-          )}
+          <EstimateNotesManager
+            estimateId={currentEstimate.estimate_id}
+            onSelectedNotesChange={setSelectedNotesForPdf}
+          />
 
           {/* Tasks and Sections */}
           {currentEstimate.tasks && currentEstimate.tasks.length > 0 ? (
