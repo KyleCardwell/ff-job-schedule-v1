@@ -8,11 +8,10 @@ import {
   createEstimateProject,
   createEstimate,
   fetchEstimateById,
-  updateEstimateProject
+  updateEstimateProject,
 } from "../../redux/actions/estimates";
 
 import EstimateTaskForm from "./EstimateTaskForm.jsx";
-
 
 const STEPS = {
   PROJECT_INFO: 1,
@@ -23,7 +22,7 @@ const STEPS = {
 const NewEstimateForm = () => {
   const dispatch = useDispatch();
   const { estimateId } = useParams();
-  
+
   const [currentStep, setCurrentStep] = useState(STEPS.PROJECT_INFO);
   const [projectData, setProjectData] = useState({
     est_project_name: "",
@@ -33,21 +32,23 @@ const NewEstimateForm = () => {
     state: "",
     zip: "",
   });
-  
+
   const [errors, setErrors] = useState({});
   const [dataLoaded, setDataLoaded] = useState(false);
   const [userNavigatedToStep3, setUserNavigatedToStep3] = useState(false);
-  
-  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate,
+  );
   const loading = useSelector((state) => state.estimates.loading);
   const error = useSelector((state) => state.estimates.error);
-  
+
   useEffect(() => {
     if (estimateId && !dataLoaded) {
       loadEstimateData();
     }
   }, [estimateId, dataLoaded]);
-  
+
   const loadEstimateData = async () => {
     try {
       const estimate = await dispatch(fetchEstimateById(estimateId));
@@ -66,29 +67,29 @@ const NewEstimateForm = () => {
       console.error("Error loading estimate:", error);
     }
   };
-  
+
   const validateProjectInfo = () => {
     const newErrors = {};
-    
+
     if (!projectData.est_project_name.trim()) {
       newErrors.est_project_name = "Project name is required";
     }
-    
+
     if (!projectData.est_client_name.trim()) {
       newErrors.est_client_name = "Client name is required";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   const handleProjectDataChange = (e) => {
     const { name, value } = e.target;
     setProjectData({
       ...projectData,
       [name]: value,
     });
-    
+
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -96,15 +97,19 @@ const NewEstimateForm = () => {
       });
     }
   };
-  
+
   const handleContinue = async () => {
     if (currentStep === STEPS.PROJECT_INFO) {
       if (validateProjectInfo()) {
         try {
           if (!estimateId) {
             // Create new estimate project and estimate
-            const estimateProject = await dispatch(createEstimateProject(projectData));
-            const estimate = await dispatch(createEstimate(estimateProject.est_project_id));
+            const estimateProject = await dispatch(
+              createEstimateProject(projectData),
+            );
+            const estimate = await dispatch(
+              createEstimate(estimateProject.est_project_id),
+            );
             if (estimate) {
               setCurrentStep(STEPS.TASKS);
             }
@@ -121,10 +126,12 @@ const NewEstimateForm = () => {
 
             // Only update if data has changed
             if (!isEqual(originalProjectData, projectData)) {
-              await dispatch(updateEstimateProject(estimateId, {
-                ...projectData,
-                est_project_id: currentEstimate.est_project_id
-              }));
+              await dispatch(
+                updateEstimateProject(estimateId, {
+                  ...projectData,
+                  est_project_id: currentEstimate.est_project_id,
+                }),
+              );
             }
             setCurrentStep(STEPS.TASKS);
           }
@@ -137,46 +144,44 @@ const NewEstimateForm = () => {
       setUserNavigatedToStep3(true);
     }
   };
-  
+
   const handleBack = () => {
     if (currentStep > STEPS.PROJECT_INFO) {
       setCurrentStep(currentStep - 1);
     }
   };
-  
+
   if (loading) {
     return <div>Loading...</div>;
   }
-  
+
   if (error) {
     return <div>Error: {error}</div>;
   }
-  
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">
         {estimateId ? "Edit Estimate" : "New Estimate"}
       </h1>
-      
+
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex justify-between items-center">
-          {['Project Info', 'Tasks', 'Review'].map((stepName, index) => (
+          {["Project Info", "Tasks", "Review"].map((stepName, index) => (
             <div key={stepName} className="flex items-center">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   currentStep === index + 1
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-600"
                 }`}
               >
                 {index + 1}
               </div>
               <span
                 className={`ml-2 text-sm font-medium ${
-                  currentStep === index + 1
-                    ? 'text-blue-500'
-                    : 'text-gray-500'
+                  currentStep === index + 1 ? "text-blue-500" : "text-gray-500"
                 }`}
               >
                 {stepName}
@@ -185,58 +190,64 @@ const NewEstimateForm = () => {
           ))}
         </div>
       </div>
-      
+
       {/* Step Content */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         {currentStep === STEPS.PROJECT_INFO && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Project Information</h2>
-            
+
             <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label
-                  htmlFor="est_project_name"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  id="est_project_name"
-                  name="est_project_name"
-                  value={projectData.est_project_name}
-                  onChange={handleProjectDataChange}
-                  className={`w-full p-2 border border-gray-300 rounded-md ${
-                    errors.est_project_name ? "border-red-500" : ""
-                  }`}
-                />
-                {errors.est_project_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.est_project_name}</p>
-                )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="est_project_name"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Project Name
+                  </label>
+                  <input
+                    type="text"
+                    id="est_project_name"
+                    name="est_project_name"
+                    value={projectData.est_project_name}
+                    onChange={handleProjectDataChange}
+                    className={`p-2 border border-gray-300 rounded-md ${
+                      errors.est_project_name ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.est_project_name && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.est_project_name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="est_client_name"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Client Name
+                  </label>
+                  <input
+                    type="text"
+                    id="est_client_name"
+                    name="est_client_name"
+                    value={projectData.est_client_name}
+                    onChange={handleProjectDataChange}
+                    className={`p-2 border border-gray-300 rounded-md ${
+                      errors.est_client_name ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.est_client_name && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.est_client_name}
+                    </p>
+                  )}
+                </div>
               </div>
-              
-              <div>
-                <label
-                  htmlFor="est_client_name"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Client Name
-                </label>
-                <input
-                  type="text"
-                  id="est_client_name"
-                  name="est_client_name"
-                  value={projectData.est_client_name}
-                  onChange={handleProjectDataChange}
-                  className={`w-full p-2 border border-gray-300 rounded-md ${
-                    errors.est_client_name ? "border-red-500" : ""
-                  }`}
-                />
-                {errors.est_client_name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.est_client_name}</p>
-                )}
-              </div>
-              
+
               <div>
                 <label
                   htmlFor="street"
@@ -253,7 +264,7 @@ const NewEstimateForm = () => {
                   className="w-full p-2 border border-gray-300 rounded-md"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
@@ -271,7 +282,7 @@ const NewEstimateForm = () => {
                     className="w-full p-2 border border-gray-300 rounded-md"
                   />
                 </div>
-                
+
                 <div>
                   <label
                     htmlFor="state"
@@ -289,7 +300,7 @@ const NewEstimateForm = () => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label
                   htmlFor="zip"
@@ -309,14 +320,14 @@ const NewEstimateForm = () => {
             </div>
           </div>
         )}
-        
+
         {currentStep === STEPS.TASKS && (
           <EstimateTaskForm
             estimateId={estimateId || currentEstimate?.estimate_id}
             onSave={() => {}}
           />
         )}
-        
+
         {/* {currentStep === STEPS.REVIEW && (
           // <EstimateReview
           //   estimate={currentEstimate}
@@ -325,7 +336,7 @@ const NewEstimateForm = () => {
           // />
         )} */}
       </div>
-      
+
       {/* Navigation Buttons */}
       <div className="flex justify-between">
         <button
@@ -341,7 +352,7 @@ const NewEstimateForm = () => {
           <FiArrowLeft className="mr-2" />
           Back
         </button>
-        
+
         {currentStep < STEPS.REVIEW && (
           <button
             type="button"

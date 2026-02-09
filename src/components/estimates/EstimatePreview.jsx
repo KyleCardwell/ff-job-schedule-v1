@@ -663,7 +663,7 @@ const EstimatePreview = () => {
       </div>
 
       {/* Main Content with Index */}
-      <div className="flex-1 px-6 flex gap-6 overflow-hidden">
+      <div className="flex-1 px-6 flex gap-6 overflow-hidden mx-auto">
         {/* Left Index Panel */}
         <EstimatePreviewIndex
           taskDataMap={taskDataMap}
@@ -674,18 +674,23 @@ const EstimatePreview = () => {
           scrollContainerRef={scrollContainerRef}
           sectionRefs={sectionRefs}
           scrollOffset={150}
-          scrollOffsetSingleSection={220}
+          scrollOffsetSingleSection={167}
           lineItems={currentEstimate.line_items || []}
           selectedLineItems={selectedLineItems}
           onToggleLineItem={handleToggleLineItem}
           onToggleAllLineItems={handleToggleAllLineItems}
           onScrollToLineItems={scrollToLineItems}
+          hasEstimateNotes={
+            (teamDefaults?.default_estimate_notes?.length > 0 ||
+              currentEstimate?.custom_notes?.length > 0 ||
+              isEditingCustomNotes)
+          }
         />
 
-        {/* Right Content Panel */}
+        {/* Middle Content Panel */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 py-8 overflow-y-auto"
+          className="w-[896px] py-8 overflow-y-auto"
         >
           {/* Estimate Notes Section */}
           {(teamDefaults?.default_estimate_notes?.length > 0 ||

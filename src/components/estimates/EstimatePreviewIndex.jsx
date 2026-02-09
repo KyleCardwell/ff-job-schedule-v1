@@ -20,6 +20,7 @@ const EstimatePreviewIndex = ({
   onToggleLineItem,
   onToggleAllLineItems,
   onScrollToLineItems,
+  hasEstimateNotes = false,
   className = "",
 }) => {
   const [activeItemId, setActiveItemId] = useState(null);
@@ -29,21 +30,19 @@ const EstimatePreviewIndex = ({
     if (!tasksOrder || tasksOrder.length === 0) {
       return Object.values(taskDataMap);
     }
-    
-    return tasksOrder
-      .map((taskId) => taskDataMap[taskId])
-      .filter(Boolean); // Remove any undefined tasks
+
+    return tasksOrder.map((taskId) => taskDataMap[taskId]).filter(Boolean); // Remove any undefined tasks
   }, [taskDataMap, tasksOrder]);
 
   // Check if all sections are selected
   const allSectionsSelected = useMemo(() => {
     // Get all possible section IDs from taskDataMap
     const allPossibleSectionIds = orderedTasks.flatMap((task) =>
-      (task.sections || []).map((section) => section.sectionId)
+      (task.sections || []).map((section) => section.sectionId),
     );
-    
+
     if (allPossibleSectionIds.length === 0) return false;
-    
+
     // Check if every possible section is selected
     return allPossibleSectionIds.every((id) => selectedItems[id] === true);
   }, [selectedItems, orderedTasks]);
@@ -55,7 +54,7 @@ const EstimatePreviewIndex = ({
     lineItems.forEach((item, index) => {
       const parentKey = String(index);
       allPossibleLineItemKeys.push(parentKey);
-      
+
       // Add child keys
       if (item.subItems && Array.isArray(item.subItems)) {
         item.subItems.forEach((_, subIndex) => {
@@ -63,12 +62,14 @@ const EstimatePreviewIndex = ({
         });
       }
     });
-    
+
     // If no line items exist, return true (nothing to deselect)
     if (allPossibleLineItemKeys.length === 0) return true;
-    
+
     // Check if every possible line item is selected
-    return allPossibleLineItemKeys.every((key) => selectedLineItems[key] === true);
+    return allPossibleLineItemKeys.every(
+      (key) => selectedLineItems[key] === true,
+    );
   }, [selectedLineItems, lineItems]);
 
   // Check if everything is selected
@@ -99,7 +100,7 @@ const EstimatePreviewIndex = ({
         root: scrollContainerRef.current,
         threshold: [0, 0.25, 0.5, 0.75, 1],
         rootMargin: "-100px 0px -50% 0px",
-      }
+      },
     );
 
     Object.values(sectionRefs.current).forEach((ref) => {
@@ -127,10 +128,10 @@ const EstimatePreviewIndex = ({
       // Use scrollOffsetSingleSection if:
       // - Task has only 1 section (hasMultipleSections === false), OR
       // - Task has multiple sections AND this is the first section (isFirstSection === true)
-      const useHigherOffset = 
-        sectionInfo && 
+      const useHigherOffset =
+        sectionInfo &&
         (!sectionInfo.hasMultipleSections || sectionInfo.isFirstSection);
-      
+
       const offset = useHigherOffset ? scrollOffsetSingleSection : scrollOffset;
 
       container.scrollTo({
@@ -163,9 +164,32 @@ const EstimatePreviewIndex = ({
           </button>
         </div>
         <nav className="space-y-1">
+          {/* Estimate Notes Section */}
+          {hasEstimateNotes && (
+            <div className="flex items-center gap-2 px-2 py-1.5">
+              <div className="w-4 h-4 bg-slate-700 rounded"></div>
+              <button
+                onClick={() => {
+                  if (scrollContainerRef?.current) {
+                    scrollContainerRef.current.scrollTo({
+                      top: 0,
+                      behavior: "smooth",
+                    });
+                  }
+                }}
+                className={`flex-1 text-left px-2 py-1 rounded text-sm transition-all text-slate-300 hover:bg-slate-700 hover:text-white`}
+              >
+                Estimate Notes
+              </button>
+            </div>
+          )}
+
+          {/* Tasks/Sections */}
           {orderedTasks.map((taskData) => {
-            const hasSections = taskData.sections && taskData.sections.length > 0;
-            const hasMultipleSections = hasSections && taskData.sections.length > 1;
+            const hasSections =
+              taskData.sections && taskData.sections.length > 0;
+            const hasMultipleSections =
+              hasSections && taskData.sections.length > 1;
 
             return (
               <div key={taskData.taskId} className="">
@@ -174,12 +198,18 @@ const EstimatePreviewIndex = ({
                   <div className="flex items-center gap-2 px-2 py-1.5">
                     <input
                       type="checkbox"
-                      checked={selectedItems[taskData.sections[0].sectionId] || false}
-                      onChange={() => onToggleItem(taskData.sections[0].sectionId)}
+                      checked={
+                        selectedItems[taskData.sections[0].sectionId] || false
+                      }
+                      onChange={() =>
+                        onToggleItem(taskData.sections[0].sectionId)
+                      }
                       className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
                     />
                     <button
-                      onClick={() => scrollToSection(taskData.sections[0].sectionId)}
+                      onClick={() =>
+                        scrollToSection(taskData.sections[0].sectionId)
+                      }
                       className={`
                         flex-1 text-left px-2 py-1 rounded text-sm transition-all
                         ${
@@ -202,7 +232,10 @@ const EstimatePreviewIndex = ({
                     </h4>
                     <div className="space-y-1 ml-2">
                       {taskData.sections.map((section) => (
-                        <div key={section.sectionId} className="flex items-center gap-2 px-2 py-1.5">
+                        <div
+                          key={section.sectionId}
+                          className="flex items-center gap-2 px-2 py-1.5"
+                        >
                           <input
                             type="checkbox"
                             checked={selectedItems[section.sectionId] || false}
@@ -248,35 +281,48 @@ const EstimatePreviewIndex = ({
                       <input
                         type="checkbox"
                         checked={selectedLineItems[parentKey] || false}
-                        onChange={() => onToggleLineItem && onToggleLineItem(parentKey)}
+                        onChange={() =>
+                          onToggleLineItem && onToggleLineItem(parentKey)
+                        }
                         className="w-4 h-4 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
                       />
                       <button
-                        onClick={() => onScrollToLineItems && onScrollToLineItems()}
+                        onClick={() =>
+                          onScrollToLineItems && onScrollToLineItems()
+                        }
                         className="flex-1 text-left text-sm text-slate-300 hover:text-teal-400 transition-colors truncate"
                         title={item.title || `Line Item ${index + 1}`}
                       >
                         {item.title || `Line Item ${index + 1}`}
                       </button>
                     </div>
-                    
+
                     {/* Child Line Items */}
                     {item.subItems && item.subItems.length > 0 && (
                       <div className="ml-6 space-y-1">
                         {item.subItems.map((subItem, subIndex) => {
                           const childKey = `${index}-${subIndex}`;
                           return (
-                            <div key={subIndex} className="flex items-center gap-2 px-2 py-1">
+                            <div
+                              key={subIndex}
+                              className="flex items-center gap-2 px-2 py-1"
+                            >
                               <input
                                 type="checkbox"
                                 checked={selectedLineItems[childKey] || false}
-                                onChange={() => onToggleLineItem && onToggleLineItem(childKey)}
+                                onChange={() =>
+                                  onToggleLineItem && onToggleLineItem(childKey)
+                                }
                                 className="w-3.5 h-3.5 text-teal-600 bg-slate-700 border-slate-600 rounded focus:ring-teal-500 focus:ring-2 flex-shrink-0"
                               />
                               <button
-                                onClick={() => onScrollToLineItems && onScrollToLineItems()}
+                                onClick={() =>
+                                  onScrollToLineItems && onScrollToLineItems()
+                                }
                                 className="flex-1 text-left text-sm text-slate-300 hover:text-teal-400 transition-colors truncate"
-                                title={subItem.title || `Sub-item ${subIndex + 1}`}
+                                title={
+                                  subItem.title || `Sub-item ${subIndex + 1}`
+                                }
                               >
                                 {subItem.title || `Sub-item ${subIndex + 1}`}
                               </button>
@@ -311,6 +357,7 @@ EstimatePreviewIndex.propTypes = {
   onToggleLineItem: PropTypes.func,
   onToggleAllLineItems: PropTypes.func,
   onScrollToLineItems: PropTypes.func,
+  hasEstimateNotes: PropTypes.bool,
   className: PropTypes.string,
 };
 
