@@ -28,7 +28,7 @@ const EstimatesModal = ({
     sectionId,
     value,
     serviceId = null,
-    fieldName = "estimate"
+    fieldName = "estimate",
   ) => {
     // Store the input value as a string
     const key = serviceId
@@ -46,7 +46,7 @@ const EstimatesModal = ({
     sectionId,
     value,
     serviceId = null,
-    fieldName = "estimate"
+    fieldName = "estimate",
   ) => {
     // Convert to number or null if empty
     let numValue = null;
@@ -113,7 +113,7 @@ const EstimatesModal = ({
   const getDisplayValue = (
     sectionId,
     serviceId = null,
-    fieldName = "estimate"
+    fieldName = "estimate",
   ) => {
     const key = serviceId
       ? `${sectionId}-${serviceId}-${fieldName}`
@@ -180,7 +180,7 @@ const EstimatesModal = ({
   if (!isOpen) return null;
 
   const priceSections = localSections.filter(
-    (section) => section.id !== "hours"
+    (section) => section.id !== "hours",
   );
 
   const comissionAmount = subtotal * (adjustments.commission / 100);
@@ -188,17 +188,97 @@ const EstimatesModal = ({
   const discountAmount =
     (subtotal + profitAmount + comissionAmount) * (adjustments.discount / 100);
 
+  const adjustmentRows = [
+    {
+      key: "profit",
+      label: "Profit (%)",
+      type: "number",
+      placeholder: "0",
+      step: "1",
+      value: adjustments.profit || "",
+      onChange: (e) => onAdjustmentChange("profit", e.target.value),
+      displayValue: `$${formatCurrency((subtotal || 0) * ((adjustments.profit || 0) / 100))}`,
+    },
+    {
+      key: "commission",
+      label: "Commission (%)",
+      type: "number",
+      placeholder: "0",
+      step: "1",
+      value: adjustments.commission || "",
+      onChange: (e) => onAdjustmentChange("commission", e.target.value),
+      displayValue: `$${formatCurrency((subtotal || 0) * ((adjustments.commission || 0) / 100))}`,
+    },
+    {
+      key: "discount",
+      label: "Discount (%)",
+      type: "number",
+      placeholder: "0",
+      step: "1",
+      value: adjustments.discount || "",
+      onChange: (e) => onAdjustmentChange("discount", e.target.value),
+      displayValue: `$${formatCurrency(discountAmount)}`,
+    },
+    {
+      key: "quantity",
+      label: "Quantity",
+      type: "number",
+      placeholder: "1",
+      step: "1",
+      min: "1",
+      value: adjustments.quantity || "",
+      onChange: (e) => onAdjustmentChange("quantity", e.target.value),
+      displayValue: "",
+    },
+    {
+      key: "addToSubtotal",
+      label: "Add to Subtotal ($)",
+      type: "text",
+      inputMode: "decimal",
+      placeholder: "0",
+      value:
+        inputValues.addToSubtotal !== undefined
+          ? inputValues.addToSubtotal
+          : adjustments.addToSubtotal || "",
+      onChange: (e) =>
+        setInputValues((prev) => ({
+          ...prev,
+          addToSubtotal: e.target.value,
+        })),
+      onBlur: (e) => handleAddAmountBlur(e.target.value, "addToSubtotal"),
+      displayValue: `$${formatCurrency(adjustments.addToSubtotal || 0)}`,
+    },
+    {
+      key: "addToTotal",
+      label: "Add to Total ($)",
+      type: "text",
+      inputMode: "decimal",
+      placeholder: "0",
+      value:
+        inputValues.addToTotal !== undefined
+          ? inputValues.addToTotal
+          : adjustments.addToTotal || "",
+      onChange: (e) =>
+        setInputValues((prev) => ({
+          ...prev,
+          addToTotal: e.target.value,
+        })),
+      onBlur: (e) => handleAddAmountBlur(e.target.value, "addToTotal"),
+      displayValue: `$${formatCurrency(adjustments.addToTotal || 0)}`,
+    },
+  ];
+
   return (
     <div className={modalOverlayClass}>
-      <div className={modalContainerClass}>
+      <div className={`max-w-7xl ${modalContainerClass}`}>
         <div className="p-6">
-          <div className="flex gap-8">
-            <div className="flex flex-col justify-between gap-16 flex-1">
-              <div>
-                <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
+          <div className="">
+            <div className="flex flex-col justify-between gap-8 flex-1 grid grid-cols-[3fr,4fr,3fr]">
+              <div name="prices">
+                <h4 className="text-base font-semibold text-gray-800 border-b border-gray-500 pb-2">
                   Prices
                 </h4>
-                <div className="flex flex-row flex-wrap gap-x-12 gap-y-4 pt-4">
+                <div className="mt-4 px-6 grid grid-cols-2 gap-x-10 gap-y-4 items-center">
                   {priceSections.map((section) => (
                     <div key={section.id} className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
@@ -216,7 +296,7 @@ const EstimatesModal = ({
                             onBlur={(e) =>
                               handleBlur(section.id, e.target.value)
                             }
-                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
+                            className="max-w-[120px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-36"
                             placeholder="0"
                             pattern="^[0-9]*\.?[0-9]*$"
                           />
@@ -226,303 +306,188 @@ const EstimatesModal = ({
                   ))}
                 </div>
               </div>
-              <div className="">
-                <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
+              <div name="hours">
+                <h4 className="text-base font-semibold text-gray-800 border-b border-gray-500 pb-2">
                   Hours
                 </h4>
-                <div className="space-y-3 pt-4">
+                <div className="space-y-3 pt-4 flex flex-col items-center">
                   {services?.map((service) => {
                     return (
                       <div
                         key={service.service_id}
-                        className="flex items-center justify-end gap-4"
+                        className="grid grid-cols-[.75fr,1fr,1fr,1fr] gap-4 items-center"
                       >
-                        <h3 className="text-sm font-medium text-gray-700 capitalize w-16 text-right">
+                        <h3 className="text-sm font-medium text-gray-700 capitalize w-16 text-right items-center">
                           {service.service_name}
                         </h3>
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col items-end">
-                            <label className="text-xs text-gray-500">
-                              Hours
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={getDisplayValue(
+                        <div className="flex flex-col items-end">
+                          <label className="text-xs text-gray-500">
+                            Hours
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={getDisplayValue(
+                              "hours",
+                              service.service_id,
+                              "estimate",
+                            )}
+                            onChange={(e) =>
+                              handleEstimateChange(
                                 "hours",
+                                e.target.value,
                                 service.service_id,
-                                "estimate"
-                              )}
-                              onChange={(e) =>
-                                handleEstimateChange(
-                                  "hours",
-                                  e.target.value,
-                                  service.service_id,
-                                  "estimate"
-                                )
-                              }
-                              onBlur={(e) =>
-                                handleBlur(
-                                  "hours",
-                                  e.target.value,
-                                  service.service_id,
-                                  "estimate"
-                                )
-                              }
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
-                              placeholder="0"
-                              pattern="^[0-9]*\.?[0-9]*$"
-                            />
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <label className="text-xs text-gray-500">
-                              Fixed Amount
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={getDisplayValue(
+                                "estimate",
+                              )
+                            }
+                            onBlur={(e) =>
+                              handleBlur(
                                 "hours",
+                                e.target.value,
                                 service.service_id,
-                                "fixedAmount"
-                              )}
-                              onChange={(e) =>
-                                handleEstimateChange(
-                                  "hours",
-                                  e.target.value,
-                                  service.service_id,
-                                  "fixedAmount"
-                                )
-                              }
-                              onBlur={(e) =>
-                                handleBlur(
-                                  "hours",
-                                  e.target.value,
-                                  service.service_id,
-                                  "fixedAmount"
-                                )
-                              }
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
-                              placeholder="0"
-                              pattern="^[0-9]*\.?[0-9]*$"
-                            />
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <label className="text-xs text-gray-500">
-                              Rate Override
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={getDisplayValue(
+                                "estimate",
+                              )
+                            }
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+                            placeholder="0"
+                            pattern="^[0-9]*\.?[0-9]*$"
+                          />
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <label className="text-xs text-gray-500">
+                            Fixed Amount
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={getDisplayValue(
+                              "hours",
+                              service.service_id,
+                              "fixedAmount",
+                            )}
+                            onChange={(e) =>
+                              handleEstimateChange(
                                 "hours",
+                                e.target.value,
                                 service.service_id,
-                                "rateOverride"
-                              )}
-                              onChange={(e) =>
-                                handleEstimateChange(
-                                  "hours",
-                                  e.target.value,
-                                  service.service_id,
-                                  "rateOverride"
-                                )
-                              }
-                              onBlur={(e) =>
-                                handleBlur(
-                                  "hours",
-                                  e.target.value,
-                                  service.service_id,
-                                  "rateOverride"
-                                )
-                              }
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
-                              placeholder="Rate"
-                              pattern="^[0-9]*\.?[0-9]*$"
-                            />
-                          </div>
+                                "fixedAmount",
+                              )
+                            }
+                            onBlur={(e) =>
+                              handleBlur(
+                                "hours",
+                                e.target.value,
+                                service.service_id,
+                                "fixedAmount",
+                              )
+                            }
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+                            placeholder="0"
+                            pattern="^[0-9]*\.?[0-9]*$"
+                          />
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <label className="text-xs text-gray-500">
+                            Rate Override
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={getDisplayValue(
+                              "hours",
+                              service.service_id,
+                              "rateOverride",
+                            )}
+                            onChange={(e) =>
+                              handleEstimateChange(
+                                "hours",
+                                e.target.value,
+                                service.service_id,
+                                "rateOverride",
+                              )
+                            }
+                            onBlur={(e) =>
+                              handleBlur(
+                                "hours",
+                                e.target.value,
+                                service.service_id,
+                                "rateOverride",
+                              )
+                            }
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+                            placeholder="Rate"
+                            pattern="^[0-9]*\.?[0-9]*$"
+                          />
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            </div>
-
-            <div className="flex flex-col justify-between flex-1">
-              <div>
-                <h4 className="text-base font-semibold text-gray-800 border-b pb-2">
-                  Adjustments
-                </h4>
-                <div className="pt-4 px-6 space-y-3">
-                  {/* Profit Row */}
-                  <div className="flex items-center">
-                    <h3 className="text-sm font-medium text-gray-700 flex-1">
-                      Profit (%)
-                    </h3>
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        value={adjustments.profit || ""}
-                        onChange={(e) =>
-                          onAdjustmentChange("profit", e.target.value)
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder="0"
-                        step="1"
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      $
-                      {formatCurrency(
-                        (subtotal || 0) * ((adjustments.profit || 0) / 100)
-                      )}
-                    </span>
+              <div
+                className="flex flex-col justify-between flex-1"
+                name="adjustments"
+              >
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 border-b border-gray-500 pb-2">
+                    Adjustments
+                  </h4>
+                  <div className="pt-4 px-3 space-y-3">
+                    {adjustmentRows.map((row) => (
+                      <div
+                        key={row.key}
+                        className="grid grid-cols-[130px,96px,1fr] gap-2 items-center"
+                      >
+                        <h3 className="text-sm font-medium text-gray-700">
+                          {row.label}
+                        </h3>
+                        <input
+                          type={row.type}
+                          inputMode={row.inputMode}
+                          value={row.value}
+                          onChange={row.onChange}
+                          onBlur={row.onBlur}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder={row.placeholder}
+                          step={row.step}
+                          min={row.min}
+                        />
+                        <span className="text-sm text-gray-500 text-right ml-4">
+                          {row.displayValue}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-
-                  {/* Commission Row */}
-                  <div className="flex items-center">
-                    <h3 className="text-sm font-medium text-gray-700 flex-1">
-                      Commission (%)
-                    </h3>
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        value={adjustments.commission || ""}
-                        onChange={(e) =>
-                          onAdjustmentChange("commission", e.target.value)
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder="0"
-                        step="1"
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      $
-                      {formatCurrency(
-                        (subtotal || 0) * ((adjustments.commission || 0) / 100)
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Discount Row */}
-                  <div className="flex items-center">
-                    <h3 className="text-sm font-medium text-gray-700 flex-1">
-                      Discount (%)
-                    </h3>
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        value={adjustments.discount || ""}
-                        onChange={(e) =>
-                          onAdjustmentChange("discount", e.target.value)
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder="0"
-                        step="1"
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      ${formatCurrency(discountAmount)}
-                    </span>
-                  </div>
-
-                  {/* Quantity Row */}
-                  <div className="flex items-center">
-                    <h3 className="text-sm font-medium text-gray-700 flex-1">
-                      Quantity
-                    </h3>
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        value={adjustments.quantity || ""}
-                        onChange={(e) =>
-                          onAdjustmentChange("quantity", e.target.value)
-                        }
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder="1"
-                        min="1"
-                        step="1"
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      {/* Empty cell for alignment */}
-                    </span>
-                  </div>
-                  
-                  {/* Add Amount Row */}
-                  <div className="flex items-center">
-                    <h3 className="text-sm font-medium text-gray-700 flex-1">
-                      Add to Subtotal ($)
-                    </h3>
-                    <div className="w-20">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={inputValues.addToSubtotal !== undefined ? inputValues.addToSubtotal : (adjustments.addToSubtotal || "")}
-                        onChange={(e) =>
-                          setInputValues((prev) => ({ ...prev, addToSubtotal: e.target.value }))
-                        }
-                        onBlur={(e) => handleAddAmountBlur(e.target.value, "addToSubtotal")}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder="0"
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      ${formatCurrency(adjustments.addToSubtotal || 0)}
-                    </span>
-                  </div>
-                  {/* Add Amount Row */}
-                  <div className="flex items-center">
-                    <h3 className="text-sm font-medium text-gray-700 flex-1">
-                      Add to Total ($)
-                    </h3>
-                    <div className="w-20">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={inputValues.addToTotal !== undefined ? inputValues.addToTotal : (adjustments.addToTotal || "")}
-                        onChange={(e) =>
-                          setInputValues((prev) => ({ ...prev, addToTotal: e.target.value }))
-                        }
-                        onBlur={(e) => handleAddAmountBlur(e.target.value, "addToTotal")}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                        placeholder="0"
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 text-right ml-4 w-24">
-                      ${formatCurrency(adjustments.addToTotal || 0)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="border py-3 px-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">
-                    Subtotal:
-                  </span>
-                  <span className="text-sm font-medium">
-                    ${formatCurrency(subtotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-base font-semibold text-gray-800">
-                    Total:
-                  </span>
-                  <span className="text-base font-semibold">
-                    ${formatCurrency(total)}
-                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex justify-between items-end gap-3">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               Close
             </button>
+            <div className="border border-gray-500 py-3 px-6 mt-6 w-1/4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">
+                  Subtotal:
+                </span>
+                <span className="text-sm font-medium">
+                  ${formatCurrency(subtotal)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-base font-semibold text-gray-800">
+                  Total:
+                </span>
+                <span className="text-base font-semibold">
+                  ${formatCurrency(total)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
