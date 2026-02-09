@@ -240,7 +240,7 @@ const EstimateSectionPrice = ({
               {formatCurrency(sectionCalculations.discount)}
             </div>
           </div>
-          {displayValues.showTotalRow && (
+          {/* {displayValues.showTotalRow && ( */}
             <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
               <div className="text-sm text-slate-300 text-left">Total</div>
               <div></div>
@@ -248,7 +248,7 @@ const EstimateSectionPrice = ({
                 {formatCurrency(sectionCalculations.unitPrice)}
               </div>
             </div>
-          )}
+          {/* )} */}
           <div
             className={`grid grid-cols-[3fr,1fr,3fr] gap-1 ${
               displayValues.showAmberUnitPrice ? "bg-amber-400 px-1" : ""

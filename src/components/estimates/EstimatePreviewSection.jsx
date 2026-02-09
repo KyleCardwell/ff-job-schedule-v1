@@ -415,6 +415,8 @@ const EstimatePreviewSection = ({
       profit: calculations.profit,
       commission: calculations.commission,
       discount: calculations.discount,
+      // Include full calculations for parts breakdown
+      calculations: calculations,
     };
   }, [
     calculations,

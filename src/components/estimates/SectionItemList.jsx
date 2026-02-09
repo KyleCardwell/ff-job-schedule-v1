@@ -1,11 +1,13 @@
 import PropTypes from "prop-types";
 import { useState, useCallback, useEffect } from "react";
-import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
+import { RiSwapBoxLine } from "react-icons/ri";
 import { useSelector } from "react-redux";
 
 import { ITEM_TYPES } from "../../utils/constants.js";
 import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
+import DuplicateItemModal from "../common/DuplicateItemModal.jsx";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 const SectionItemList = ({
@@ -16,16 +18,24 @@ const SectionItemList = ({
   onSave,
   onDelete,
   onReorder,
+  onDuplicate,
+  onMove,
   ItemForm,
   hideAddButton = false,
   formProps = {},
   getReorderItemName,
   listType,
+  currentTaskId,
+  currentSectionId,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [duplicateItemIndex, setDuplicateItemIndex] = useState(-1);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [moveItemIndex, setMoveItemIndex] = useState(-1);
   const [recentlyClosedIndex, setRecentlyClosedIndex] = useState(-1);
 
   // Check if any form is currently active (adding or editing)
@@ -81,6 +91,40 @@ const SectionItemList = ({
     }
   };
 
+  const handleDuplicateClick = (itemIndex) => {
+    setDuplicateItemIndex(itemIndex);
+    setIsDuplicateModalOpen(true);
+  };
+
+  const handleDuplicateSave = async ({ targetTaskId, targetSectionId }) => {
+    try {
+      if (onDuplicate) {
+        await onDuplicate(duplicateItemIndex, targetTaskId, targetSectionId);
+      }
+      setIsDuplicateModalOpen(false);
+      setDuplicateItemIndex(-1);
+    } catch (error) {
+      console.error("Error duplicating item:", error);
+    }
+  };
+
+  const handleMoveClick = (itemIndex) => {
+    setMoveItemIndex(itemIndex);
+    setIsMoveModalOpen(true);
+  };
+
+  const handleMoveSave = async ({ targetTaskId, targetSectionId }) => {
+    try {
+      if (onMove) {
+        await onMove(moveItemIndex, targetTaskId, targetSectionId);
+      }
+      setIsMoveModalOpen(false);
+      setMoveItemIndex(-1);
+    } catch (error) {
+      console.error("Error moving item:", error);
+    }
+  };
+
   const generateTextSummary = (item) => {
     if (!item.face_config) return null;
     const summary = generateCabinetSummary(item.face_config, item.type_specific_options);
@@ -113,6 +157,42 @@ const SectionItemList = ({
           >
             <FiEdit2 size={16} />
           </button>
+          {onDuplicate && (
+            <button
+              onClick={() => {
+                if (!isFormActive) {
+                  handleDuplicateClick(index);
+                }
+              }}
+              disabled={isFormActive}
+              className={`p-1.5 ${
+                isFormActive
+                  ? "text-slate-600 cursor-not-allowed"
+                  : "text-slate-400 hover:text-teal-500"
+              } transition-colors`}
+              title="Duplicate item"
+            >
+              <FiCopy size={16} />
+            </button>
+          )}
+          {onMove && (
+            <button
+              onClick={() => {
+                if (!isFormActive) {
+                  handleMoveClick(index);
+                }
+              }}
+              disabled={isFormActive}
+              className={`p-1.5 ${
+                isFormActive
+                  ? "text-slate-600 cursor-not-allowed"
+                  : "text-slate-400 hover:text-purple-500"
+              } transition-colors`}
+              title="Move item to another section"
+            >
+              <RiSwapBoxLine size={18} />
+            </button>
+          )}
           <button
             onClick={() => {
               if (!isFormActive) {
@@ -147,7 +227,7 @@ const SectionItemList = ({
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="mx-auto">
       {/* Column Headers */}
       <div
         className="grid gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200 items-center"
@@ -304,6 +384,36 @@ const SectionItemList = ({
           title="Reorder Items"
         />
       )}
+
+      {onDuplicate && currentTaskId && currentSectionId && (
+        <DuplicateItemModal
+          open={isDuplicateModalOpen}
+          onClose={() => {
+            setIsDuplicateModalOpen(false);
+            setDuplicateItemIndex(-1);
+          }}
+          onSave={handleDuplicateSave}
+          currentTaskId={currentTaskId}
+          currentSectionId={currentSectionId}
+          itemType={listType || "item"}
+          mode="duplicate"
+        />
+      )}
+
+      {onMove && currentTaskId && currentSectionId && (
+        <DuplicateItemModal
+          open={isMoveModalOpen}
+          onClose={() => {
+            setIsMoveModalOpen(false);
+            setMoveItemIndex(-1);
+          }}
+          onSave={handleMoveSave}
+          currentTaskId={currentTaskId}
+          currentSectionId={currentSectionId}
+          itemType={listType || "item"}
+          mode="move"
+        />
+      )}
     </div>
   );
 };
@@ -322,11 +432,15 @@ SectionItemList.propTypes = {
   onSave: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   onReorder: PropTypes.func,
+  onDuplicate: PropTypes.func,
+  onMove: PropTypes.func,
   ItemForm: PropTypes.elementType.isRequired,
   hideAddButton: PropTypes.bool,
   formProps: PropTypes.object,
   getReorderItemName: PropTypes.func,
   listType: PropTypes.string,
+  currentTaskId: PropTypes.number,
+  currentSectionId: PropTypes.number,
 };
 
 export default SectionItemList;

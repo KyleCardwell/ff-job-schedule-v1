@@ -2303,9 +2303,13 @@ const EstimateCabinetManager = ({
   items,
   onUpdateItems,
   onReorderItems,
+  onDuplicateItem,
+  onMoveItem,
   cabinetStyleId,
   onDeleteItem,
   cabinetTypes,
+  currentTaskId,
+  currentSectionId,
 }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
@@ -2360,9 +2364,13 @@ const EstimateCabinetManager = ({
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
+      onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={CabinetItemForm}
       formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes }}
       listType={ITEM_TYPES.CABINET.type}
+      currentTaskId={currentTaskId}
+      currentSectionId={currentSectionId}
     />
   );
 };
@@ -2371,10 +2379,14 @@ EstimateCabinetManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
+  onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   cabinetStyleId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentTaskId: PropTypes.number,
+  currentSectionId: PropTypes.number,
 };
 
 export default EstimateCabinetManager;

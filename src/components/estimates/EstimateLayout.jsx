@@ -28,6 +28,7 @@ import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateLineItemsEditor from "./EstimateLineItemsEditor.jsx";
+import EstimateNotesManager from "./EstimateNotesManager.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
@@ -443,6 +444,12 @@ const EstimateLayout = () => {
           <div className="p-6 overflow-y-auto h-full">
             <div className="max-w-3xl mx-auto">
               <EstimateProjectForm estimate={currentEstimate} />
+              {currentEstimate && (
+                <EstimateNotesManager
+                  estimateId={currentEstimate.estimate_id}
+                  marginTop="mt-6"
+                />
+              )}
             </div>
           </div>
         ) : showEstimateDefaultsForm ? (

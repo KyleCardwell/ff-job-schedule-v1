@@ -5,7 +5,9 @@ export const modalOverlayClass =
   "modal-overlay fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[90]";
 
 export const modalContainerClass =
-  "bg-white p-5 rounded-lg max-w-5xl w-11/12 max-h-[90vh] relative z-50";
+  "bg-white p-5 rounded-lg w-11/12 max-h-[90vh] relative z-50";
+
+export const modalContainerWidth = "max-w-5xl w-11/12";
 
 export const headerButtonClass =
   "flex items-center px-6 py-3 border-l border-slate-200 z-30";

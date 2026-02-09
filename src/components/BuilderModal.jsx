@@ -1,5 +1,4 @@
 import { Switch } from "@headlessui/react";
-import { format , addDays, parseISO } from "date-fns";
 import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { GridLoader } from "react-spinners";
@@ -8,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   buttonClass,
   modalContainerClass,
+  modalContainerWidth,
   modalOverlayClass,
 } from "../assets/tailwindConstants";
 import {
@@ -467,7 +467,7 @@ const BuilderModal = ({
           </div>
         </div>
       ) : (
-        <div className={`${modalContainerClass} max-h-[90vh] flex flex-col`}>
+        <div className={`${modalContainerWidth} ${modalContainerClass} max-h-[90vh] flex flex-col`}>
           {isSaving && (
             <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
               <GridLoader color="maroon" size={15} />

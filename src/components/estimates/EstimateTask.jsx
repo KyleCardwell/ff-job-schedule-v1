@@ -1,11 +1,12 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { updateTask, deleteTask, addTask } from "../../redux/actions/estimates";
+import { updateTask, deleteTask, addTask, duplicateSection } from "../../redux/actions/estimates";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
+import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
 
@@ -37,6 +38,8 @@ const EstimateTask = ({
   const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] = useState(false);
+  const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
 
   useEffect(() => {
     if (isNew) {
@@ -83,6 +86,19 @@ const EstimateTask = ({
     }
   };
 
+  const handleDuplicateSection = async (options) => {
+    try {
+      // Duplicate all sections in the task
+      for (const section of sections) {
+        await dispatch(duplicateSection(section.est_section_id, options));
+      }
+      setIsDuplicateSectionModalOpen(false);
+      setSectionToDuplicate(null);
+    } catch (error) {
+      console.error("Error duplicating sections:", error);
+    }
+  };
+
   return (
     <>
       <div className={`group ${className}`}>
@@ -115,7 +131,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 px-4 text-sm font-medium text-left flex items-center justify-between group/task
+              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] group/task
               ${
                 hasErrorState
                   ? isSelected && sections.length === 1
@@ -128,7 +144,7 @@ const EstimateTask = ({
             `}
           >
             <span>{task.est_task_name}</span>
-            <div className="invisible group-hover/task:visible space-x-2 flex">
+            <div className="invisible group-hover/task:visible pl-2 flex gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -137,6 +153,16 @@ const EstimateTask = ({
                 className="p-1 text-slate-400 hover:text-teal-400"
               >
                 <FiEdit2 size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSectionToDuplicate(sections[0]); // Still need to pass a section for modal context
+                  setIsDuplicateSectionModalOpen(true);
+                }}
+                className="p-1 text-slate-400 hover:text-blue-400"
+              >
+                <FiCopy size={14} />
               </button>
               <button
                 onClick={(e) => {
@@ -212,6 +238,24 @@ const EstimateTask = ({
         cancelText="Cancel"
         confirmButtonClass="bg-red-500 hover:bg-red-600"
       />
+
+      {sectionToDuplicate && (
+        <DuplicateSectionModal
+          open={isDuplicateSectionModalOpen}
+          onClose={() => {
+            setIsDuplicateSectionModalOpen(false);
+            setSectionToDuplicate(null);
+          }}
+          onSave={handleDuplicateSection}
+          currentTaskId={task.est_task_id}
+          currentSectionId={sectionToDuplicate.est_section_id}
+          sectionName={sectionToDuplicate.section_name}
+          canMoveFromTask={task.sections?.length > 1}
+          sectionCount={sections.length}
+          taskName={task.est_task_name}
+          isDuplicatingTask={true}
+        />
+      )}
     </>
   );
 };

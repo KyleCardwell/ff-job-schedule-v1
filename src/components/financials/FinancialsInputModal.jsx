@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   buttonClass,
   modalContainerClass,
+  modalContainerWidth,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -291,7 +292,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
     <div className="relative">
       {isOpen && (
         <div className={modalOverlayClass}>
-          <div className={`${modalContainerClass} max-h-[90vh] flex flex-col`}>
+          <div className={`${modalContainerWidth} ${modalContainerClass} max-h-[90vh] flex flex-col`}>
             {loading ? (
               <div className="flex justify-center items-center h-[744px]">
                 <GridLoader color="maroon" size={15} />

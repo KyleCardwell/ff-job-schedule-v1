@@ -159,10 +159,10 @@ export const estimatesReducer = (state = initialState, action) => {
           ...state,
           currentEstimate: {
             ...state.currentEstimate,
-            custom_notes: data.custom_notes
+            custom_notes: data.custom_notes,
           },
           loading: false,
-          error: null
+          error: null,
         };
       }
       return state;

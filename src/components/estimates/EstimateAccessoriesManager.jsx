@@ -321,7 +321,11 @@ const EstimateAccessoriesManager = ({
   items,
   onUpdateItems,
   onReorderItems,
+  onDuplicateItem,
+  onMoveItem,
   onDeleteItem,
+  currentTaskId,
+  currentSectionId,
 }) => {
   const { catalog } = useSelector((state) => state.accessories);
 
@@ -433,7 +437,12 @@ const EstimateAccessoriesManager = ({
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
+      onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={AccessoryItemForm}
+      listType="accessory"
+      currentTaskId={currentTaskId}
+      currentSectionId={currentSectionId}
     />
   );
 };
@@ -442,7 +451,11 @@ EstimateAccessoriesManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
+  onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   onDeleteItem: PropTypes.func.isRequired,
+  currentTaskId: PropTypes.number,
+  currentSectionId: PropTypes.number,
 };
 
 export default EstimateAccessoriesManager;

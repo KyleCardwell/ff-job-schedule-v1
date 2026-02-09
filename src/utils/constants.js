@@ -54,7 +54,7 @@ export const ITEM_FORM_WIDTHS = {
   QUANTITY: "36px",
   DEFAULT: "1fr",
   THREE_FOURTHS: ".75fr",
-  ACTIONS: "72px",
+  ACTIONS: "1fr",
 };
 
 export const PRE_FINISHED = "Pre-Finished";

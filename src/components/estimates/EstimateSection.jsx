@@ -1,10 +1,11 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { deleteSection, updateSection } from "../../redux/actions/estimates";
+import { deleteSection, updateSection, duplicateSection } from "../../redux/actions/estimates";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
+import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
 
 const EstimateSection = ({
   task,
@@ -22,6 +23,7 @@ const EstimateSection = ({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [sectionName, setSectionName] = useState(section.section_name || "");
+  const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] = useState(false);
 
   useEffect(() => {
     setSectionName(section.section_name || "");
@@ -66,6 +68,15 @@ const EstimateSection = ({
     setIsEditing(false);
   };
 
+  const handleDuplicateSection = async (options) => {
+    try {
+      await dispatch(duplicateSection(section.est_section_id, options));
+      setIsDuplicateSectionModalOpen(false);
+    } catch (error) {
+      console.error("Error duplicating section:", error);
+    }
+  };
+
   // Display name: use custom name if exists, otherwise "Section #"
   const displayName = section.section_name || `Section ${sectionNumber}`;
 
@@ -101,7 +112,7 @@ const EstimateSection = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-2 px-4 text-sm font-medium text-left flex items-center justify-between group/section
+              w-full py-2 pl-2 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] justify-between group/section
               ${
                 hasErrorState
                   ? isSelected
@@ -114,7 +125,7 @@ const EstimateSection = ({
             `}
           >
             <span>{displayName}</span>
-            <div className="invisible group-hover/section:visible space-x-2 flex">
+            <div className="invisible group-hover/section:visible pl-2 flex gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -123,6 +134,15 @@ const EstimateSection = ({
                 className="p-1 text-slate-400 hover:text-teal-400"
               >
                 <FiEdit2 size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDuplicateSectionModalOpen(true);
+                }}
+                className="p-1 text-slate-400 hover:text-blue-400"
+              >
+                <FiCopy size={14} />
               </button>
               <button
                 onClick={(e) => {
@@ -151,6 +171,17 @@ const EstimateSection = ({
         cancelText="Cancel"
         confirmButtonClass="bg-red-500 hover:bg-red-600"
       />
+
+      <DuplicateSectionModal
+        open={isDuplicateSectionModalOpen}
+        onClose={() => setIsDuplicateSectionModalOpen(false)}
+        onSave={handleDuplicateSection}
+        currentTaskId={task.est_task_id}
+        currentSectionId={section.est_section_id}
+        sectionName={displayName}
+        canMoveFromTask={task.sections?.length > 1}
+        taskName={task.est_task_name}
+      />
     </>
   );
 };
@@ -159,6 +190,7 @@ EstimateSection.propTypes = {
   task: PropTypes.shape({
     est_task_id: PropTypes.number.isRequired,
     est_task_name: PropTypes.string.isRequired,
+    sections: PropTypes.array,
   }).isRequired,
   isSelected: PropTypes.bool,
   hasErrorState: PropTypes.bool,

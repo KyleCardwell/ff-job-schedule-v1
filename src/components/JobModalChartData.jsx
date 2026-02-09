@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   buttonClass,
   modalContainerClass,
+  modalContainerWidth,
   modalOverlayClass,
 } from "../assets/tailwindConstants";
 import { usePermissions } from "../hooks/usePermissions";
@@ -1259,7 +1260,7 @@ const JobModal = ({
     <div className={modalOverlayClass}>
       {!showCompleteConfirmation ? (
         <>
-          <div className={`${modalContainerClass} flex flex-col`}>
+          <div className={`${modalContainerWidth} ${modalContainerClass} flex flex-col`}>
             {isSaving && (
               <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
                 <GridLoader color="maroon" size={15} />

@@ -14,6 +14,8 @@ import {
   updateSection,
   updateSectionItems,
   updateSectionItemOrder,
+  duplicateItem,
+  moveItem,
 } from "../../redux/actions/estimates";
 import { SECTION_TYPES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
@@ -291,6 +293,50 @@ const EstimateSectionManager = ({
     dispatch(updateSectionItemOrder(sectionId, tableName, orderedIds));
   };
 
+  const handleDuplicateItem = async (type, itemIndex, targetTaskId, targetSectionId) => {
+    try {
+      // Get the item to duplicate from the current section data
+      const itemToDuplicate = sectionData[type]?.[itemIndex];
+      
+      if (!itemToDuplicate || !itemToDuplicate.id) {
+        console.error("Cannot duplicate item without an ID");
+        return;
+      }
+
+      const tableName = sectionTableMapping[type];
+      
+      // Call the Redux action to duplicate the item
+      await dispatch(
+        duplicateItem(tableName, sectionId, targetSectionId, itemToDuplicate.id)
+      );
+
+      console.log(`Successfully duplicated ${type} item to section ${targetSectionId}`);
+    } catch (error) {
+      console.error(`Error duplicating ${type} item:`, error);
+    }
+  };
+
+  const handleMoveItem = async (type, itemIndex, targetTaskId, targetSectionId) => {
+    try {
+      // Get the item to move from the current section data
+      const itemToMove = sectionData[type]?.[itemIndex];
+      
+      if (!itemToMove || !itemToMove.id) {
+        console.error("Cannot move item without an ID");
+        return;
+      }
+
+      const tableName = sectionTableMapping[type];
+      
+      // Call the Redux action to move the item
+      await dispatch(moveItem(tableName, itemToMove.id, targetSectionId));
+
+      console.log(`Successfully moved ${type} item to section ${targetSectionId}`);
+    } catch (error) {
+      console.error(`Error moving ${type} item:`, error);
+    }
+  };
+
   const handleSaveAddHours = async (data) => {
     // Update section metadata with add_hours
     await dispatch(
@@ -373,8 +419,16 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.CABINETS.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.CABINETS.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          onMoveItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleMoveItem(SECTION_TYPES.CABINETS.type, itemIndex, targetTaskId, targetSectionId)
+          }
           cabinetStyleId={sectionData.style}
           cabinetTypes={cabinetTypes}
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -384,7 +438,7 @@ const EstimateSectionManager = ({
       count: sectionData.lengths?.length,
       component: (
         <EstimateLengthManager
-          items={sectionData.lengths}
+          items={sectionData.lengths || []}
           onUpdateItems={(items) =>
             handleUpdateItems(SECTION_TYPES.LENGTHS.type, items)
           }
@@ -394,6 +448,14 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.LENGTHS.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.LENGTHS.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          onMoveItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleMoveItem(SECTION_TYPES.LENGTHS.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -403,7 +465,7 @@ const EstimateSectionManager = ({
       count: sectionData.accessories?.length,
       component: (
         <EstimateAccessoriesManager
-          items={sectionData.accessories}
+          items={sectionData.accessories || []}
           onUpdateItems={(items) =>
             handleUpdateItems(SECTION_TYPES.ACCESSORIES.type, items)
           }
@@ -413,6 +475,14 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.ACCESSORIES.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.ACCESSORIES.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          onMoveItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleMoveItem(SECTION_TYPES.ACCESSORIES.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -422,7 +492,7 @@ const EstimateSectionManager = ({
       count: sectionData.other?.length,
       component: (
         <EstimateOtherManager
-          items={sectionData.other}
+          items={sectionData.other || []}
           onUpdateItems={(items) =>
             handleUpdateItems(SECTION_TYPES.OTHER.type, items)
           }
@@ -432,6 +502,14 @@ const EstimateSectionManager = ({
           onReorderItems={(orderedIds) =>
             handleReorderItems(SECTION_TYPES.OTHER.type, orderedIds)
           }
+          onDuplicateItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleDuplicateItem(SECTION_TYPES.OTHER.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          onMoveItem={(itemIndex, targetTaskId, targetSectionId) =>
+            handleMoveItem(SECTION_TYPES.OTHER.type, itemIndex, targetTaskId, targetSectionId)
+          }
+          currentTaskId={taskId}
+          currentSectionId={sectionId}
         />
       ),
     },
@@ -469,7 +547,7 @@ const EstimateSectionManager = ({
   }
 
   return (
-    <div className="flex-1 max-w-3xl mx-auto space-y-4">
+    <div className="flex-1 max-w-4xl mx-auto space-y-4">
       {/* Section Items Accordions */}
       {sections.map(({ type, title, count, component }) => (
         <div key={type} className="border border-slate-200 rounded-lg">

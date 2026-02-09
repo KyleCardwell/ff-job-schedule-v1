@@ -271,7 +271,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 value={formData.length || ""}
                 onChange={handleChange}
                 min="0"
-                step="0.5"
+                step="1"
                 className={`w-full px-3 py-2 border ${
                   errors.length ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
@@ -360,7 +360,11 @@ const EstimateLengthManager = ({
   items,
   onUpdateItems,
   onReorderItems,
+  onDuplicateItem,
+  onMoveItem,
   onDeleteItem,
+  currentTaskId,
+  currentSectionId,
 }) => {
   const { catalog } = useSelector((state) => state.lengths);
 
@@ -468,8 +472,13 @@ const EstimateLengthManager = ({
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
+      onDuplicate={onDuplicateItem}
+      onMove={onMoveItem}
       ItemForm={LengthItemForm}
       getReorderItemName={getReorderItemName}
+      listType="length"
+      currentTaskId={currentTaskId}
+      currentSectionId={currentSectionId}
     />
   );
 };
@@ -478,7 +487,11 @@ EstimateLengthManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
+  onDuplicateItem: PropTypes.func,
+  onMoveItem: PropTypes.func,
   onDeleteItem: PropTypes.func.isRequired,
+  currentTaskId: PropTypes.number,
+  currentSectionId: PropTypes.number,
 };
 
 export default EstimateLengthManager;
