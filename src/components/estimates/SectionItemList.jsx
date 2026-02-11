@@ -9,6 +9,7 @@ import { ITEM_TYPES } from "../../utils/constants.js";
 import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
 import DuplicateItemModal from "../common/DuplicateItemModal.jsx";
 import ReorderModal from "../common/ReorderModal.jsx";
+import Tooltip from "../common/Tooltip.jsx";
 
 const SectionItemList = ({
   items,
@@ -141,73 +142,79 @@ const SectionItemList = ({
     if (col.key === "actions") {
       return (
         <div className="flex justify-center space-x-2">
-          <button
-            onClick={() => {
-              if (!isFormActive) {
-                setShowNewItem(false);
-                setEditingIndex(index);
-              }
-            }}
-            disabled={isFormActive}
-            className={`p-1.5 ${
-              isFormActive
-                ? "text-slate-600 cursor-not-allowed"
-                : "text-slate-400 hover:text-blue-500"
-            } transition-colors`}
-          >
-            <FiEdit2 size={16} />
-          </button>
-          {onDuplicate && (
+          <Tooltip text="Edit">
             <button
               onClick={() => {
                 if (!isFormActive) {
-                  handleDuplicateClick(index);
+                  setShowNewItem(false);
+                  setEditingIndex(index);
                 }
               }}
               disabled={isFormActive}
               className={`p-1.5 ${
                 isFormActive
                   ? "text-slate-600 cursor-not-allowed"
-                  : "text-slate-400 hover:text-teal-500"
+                  : "text-slate-400 hover:text-blue-500"
               } transition-colors`}
-              title="Duplicate item"
             >
-              <FiCopy size={16} />
+              <FiEdit2 size={16} />
             </button>
+          </Tooltip>
+          {onDuplicate && (
+            <Tooltip text="Duplicate">
+              <button
+                onClick={() => {
+                  if (!isFormActive) {
+                    handleDuplicateClick(index);
+                  }
+                }}
+                disabled={isFormActive}
+                className={`p-1.5 ${
+                  isFormActive
+                    ? "text-slate-600 cursor-not-allowed"
+                    : "text-slate-400 hover:text-teal-500"
+                } transition-colors`}
+              >
+                <FiCopy size={16} />
+              </button>
+            </Tooltip>
           )}
           {onMove && (
+            <Tooltip text="Move">
+              <button
+                onClick={() => {
+                  if (!isFormActive) {
+                    handleMoveClick(index);
+                  }
+                }}
+                disabled={isFormActive}
+                className={`p-1.5 ${
+                  isFormActive
+                    ? "text-slate-600 cursor-not-allowed"
+                    : "text-slate-400 hover:text-purple-500"
+                } transition-colors`}
+              >
+                <RiSwapBoxLine size={18} />
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip text="Delete">
             <button
               onClick={() => {
                 if (!isFormActive) {
-                  handleMoveClick(index);
+                  handleDeleteItem(index);
                 }
               }}
               disabled={isFormActive}
               className={`p-1.5 ${
                 isFormActive
                   ? "text-slate-600 cursor-not-allowed"
-                  : "text-slate-400 hover:text-purple-500"
+                  : "text-slate-400 hover:text-red-500"
               } transition-colors`}
-              title="Move item to another section"
             >
-              <RiSwapBoxLine size={18} />
+              <FiTrash2 size={16} />
             </button>
-          )}
-          <button
-            onClick={() => {
-              if (!isFormActive) {
-                handleDeleteItem(index);
-              }
-            }}
-            disabled={isFormActive}
-            className={`p-1.5 ${
-              isFormActive
-                ? "text-slate-600 cursor-not-allowed"
-                : "text-slate-400 hover:text-red-500"
-            } transition-colors`}
-          >
-            <FiTrash2 size={16} />
-          </button>
+          </Tooltip>
         </div>
       );
     }
@@ -321,18 +328,20 @@ const SectionItemList = ({
         <div className="my-2 relative">
           {onReorder && items.length > 1 && (
             <div className="flex justify-end absolute bottom-2 left-4">
-              <button
-                onClick={() => setIsReorderModalOpen(true)}
-                className={`text-slate-500 ${
-                  isFormActive
-                    ? "text-slate-600 cursor-not-allowed"
-                    : "hover:text-teal-500"
-                }`}
-                aria-label="Reorder items"
-                disabled={isFormActive}
-              >
-                <LuArrowDownUp size={20} />
-              </button>
+              <Tooltip text="Reorder">
+                <button
+                  onClick={() => setIsReorderModalOpen(true)}
+                  className={`text-slate-500 ${
+                    isFormActive
+                      ? "text-slate-600 cursor-not-allowed"
+                      : "hover:text-teal-500"
+                  }`}
+                  aria-label="Reorder items"
+                  disabled={isFormActive}
+                >
+                  <LuArrowDownUp size={20} />
+                </button>
+              </Tooltip>
             </div>
           )}
           <button

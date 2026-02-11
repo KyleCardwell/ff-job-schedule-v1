@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiCheckCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 
+import { finalizeEstimate } from "../../redux/actions/estimates";
 import { fetchTeamData, getTeamLogoSignedUrl } from "../../redux/actions/teams";
+import { ESTIMATE_STATUS } from "../../utils/constants";
 
 import EstimateNotesManager from "./EstimateNotesManager.jsx";
 import EstimatePreviewBreakdown from "./EstimatePreviewBreakdown.jsx";
@@ -14,13 +16,22 @@ import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
 const EstimatePreview = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { estimateId } = useParams();
+  const isFinalized = location.pathname.includes('/finalized');
 
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
   const teamId = useSelector((state) => state.auth.teamId);
   const { teamData } = useSelector((state) => state.teams);
+  const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector((state) => state.materials);
+  const finishTypes = useSelector((state) => state.finishes?.finishes || []);
+  const hardware = useSelector((state) => state.hardware);
+  const accessories = useSelector((state) => state.accessories);
+  const teamDefaults = useSelector((state) => state.teamEstimateDefaults?.teamDefaults);
+
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // Track all task data - children will report their complete data up
   const [taskDataMap, setTaskDataMap] = useState({});
@@ -368,9 +379,10 @@ const EstimatePreview = () => {
   // Redirect to edit page if no currentEstimate exists
   useEffect(() => {
     if (!currentEstimate && estimateId) {
-      navigate(`/estimates/in-progress/${estimateId}`);
+      const basePath = isFinalized ? '/estimates/finalized' : '/estimates/in-progress';
+      navigate(`${basePath}/${estimateId}`);
     }
-  }, [currentEstimate, estimateId, navigate]);
+  }, [currentEstimate, estimateId, navigate, isFinalized]);
 
   // Initialize all sections as selected when taskDataMap changes
   useEffect(() => {
@@ -437,6 +449,28 @@ const EstimatePreview = () => {
     }
   }, [currentEstimate]);
 
+  const handleFinalize = async () => {
+    if (!currentEstimate || isFinalizing) return;
+    setIsFinalizing(true);
+    try {
+      await dispatch(
+        finalizeEstimate(currentEstimate.estimate_id, {
+          boxMaterials,
+          faceMaterials,
+          drawerBoxMaterials,
+          finishTypes,
+          hardware,
+          accessories,
+          teamDefaults,
+        })
+      );
+    } catch (error) {
+      console.error("Error finalizing estimate:", error);
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -466,13 +500,30 @@ const EstimatePreview = () => {
           !currentEstimate ||
           (allSections.length === 0 && lineItemsTotal === 0)
         }
-      />
+      >
+        {currentEstimate?.status !== ESTIMATE_STATUS.FINALIZED && (
+          <button
+            onClick={handleFinalize}
+            disabled={isFinalizing || !currentEstimate || (allSections.length === 0 && lineItemsTotal === 0)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+          >
+            <FiCheckCircle className="w-4 h-4" />
+            {isFinalizing ? "Finalizing..." : "Finalize Estimate"}
+          </button>
+        )}
+        {currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white">
+            <FiCheckCircle className="w-4 h-4" />
+            Finalized
+          </div>
+        )}
+      </GenerateEstimatePdf>
       <div className="bg-slate-800 border-b border-slate-700">
         <div className="max-w-8xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate(`/estimates/in-progress/${estimateId}`)}
+                onClick={() => navigate(`/estimates/${isFinalized ? 'finalized' : 'in-progress'}/${estimateId}`)}
                 className="hover:text-teal-400 transition-colors"
                 aria-label="Back to estimate"
               >

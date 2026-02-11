@@ -1,12 +1,17 @@
+import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
-import { FiArrowLeft, FiEdit, FiTrash2, FiSearch, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiEdit, FiTrash2, FiSearch, FiX, FiRotateCcw } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { fetchEstimates, deleteEstimate, setCurrentEstimate } from "../../redux/actions/estimates";
+import { fetchEstimates, deleteEstimate, setCurrentEstimate, unfinalizeEstimate } from "../../redux/actions/estimates";
 import { PATHS, ESTIMATE_STATUS } from "../../utils/constants";
+import Tooltip from "../common/Tooltip.jsx";
 
-const InProgressEstimates = () => {
+const EstimatesList = ({ mode = "draft" }) => {
+  const isFinalized = mode === "finalized";
+  const statusFilter = isFinalized ? ESTIMATE_STATUS.FINALIZED : ESTIMATE_STATUS.DRAFT;
+  const basePath = isFinalized ? PATHS.FINALIZED_ESTIMATES : PATHS.IN_PROGRESS_ESTIMATES;
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { estimates, loading, error } = useSelector((state) => state.estimates);
@@ -14,19 +19,16 @@ const InProgressEstimates = () => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
 
   useEffect(() => {
-    // Only fetch if estimates array is empty
-    // if (!estimates || estimates.length === 0) {
-      dispatch(fetchEstimates({ status: ESTIMATE_STATUS.DRAFT }));
-    // }
-  }, []);
+    dispatch(fetchEstimates({ status: statusFilter }));
+  }, [statusFilter]);
 
-  // Filter for draft estimates only
-  const draftEstimates = estimates.filter(
-    (estimate) => estimate.status === ESTIMATE_STATUS.DRAFT
+  // Filter estimates by mode
+  const filteredByStatus = estimates.filter(
+    (estimate) => estimate.status === statusFilter
   );
 
   // Apply search filter
-  const filteredEstimates = draftEstimates.filter((estimate) => {
+  const filteredEstimates = filteredByStatus.filter((estimate) => {
     const projectName = estimate.est_project_name || "";
     const clientName = estimate.est_client_name || "";
     const searchLower = searchTerm.toLowerCase();
@@ -39,7 +41,7 @@ const InProgressEstimates = () => {
 
   const handleEditEstimate = (estimate) => {
     dispatch(setCurrentEstimate(estimate));
-    navigate(`${PATHS.IN_PROGRESS_ESTIMATES}/${estimate.estimate_id}`);
+    navigate(`${basePath}/${estimate.estimate_id}`);
   };
 
   const handleDeleteEstimate = async (estimateId) => {
@@ -48,6 +50,14 @@ const InProgressEstimates = () => {
       setShowConfirmDelete(null);
     } catch (error) {
       console.error("Failed to delete estimate:", error);
+    }
+  };
+
+  const handleUnfinalize = async (estimateId) => {
+    try {
+      await dispatch(unfinalizeEstimate(estimateId));
+    } catch (error) {
+      console.error("Failed to un-finalize estimate:", error);
     }
   };
 
@@ -82,7 +92,7 @@ const InProgressEstimates = () => {
               <FiArrowLeft size={24} />
             </button>
             <h1 className="text-2xl font-bold text-slate-800">
-              Estimates In Progress
+              {isFinalized ? "Finalized Estimates" : "Estimates In Progress"}
             </h1>
           </div>
 
@@ -122,14 +132,18 @@ const InProgressEstimates = () => {
               <p className="text-slate-500 mb-4">
                 {searchTerm
                   ? "No estimates found matching your search"
-                  : "No draft estimates found"}
+                  : isFinalized
+                    ? "No finalized estimates found"
+                    : "No draft estimates found"}
               </p>
-              <button
-                onClick={() => navigate(PATHS.NEW_ESTIMATE)}
-                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
-              >
-                Create New Estimate
-              </button>
+              {!isFinalized && (
+                <button
+                  onClick={() => navigate(PATHS.NEW_ESTIMATE)}
+                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                >
+                  Create New Estimate
+                </button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -163,21 +177,36 @@ const InProgressEstimates = () => {
                       <div className="text-sm text-slate-500">
                         {estimate.updated_by_name}
                       </div>
-                      <div className="text-sm font-medium">
-                        <button
-                          onClick={() => handleEditEstimate(estimate)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                          aria-label="Edit estimate"
-                        >
-                          <FiEdit />
-                        </button>
-                        <button
-                          onClick={() => setShowConfirmDelete(estimate.estimate_id)}
-                          className="text-red-600 hover:text-red-900"
-                          aria-label="Delete estimate"
-                        >
-                          <FiTrash2 />
-                        </button>
+                      <div className="text-sm font-medium flex items-center justify-between px-2">
+                        {isFinalized && (
+                          <Tooltip text="Revert to In-Progress">
+                            <button
+                              onClick={() => handleUnfinalize(estimate.estimate_id)}
+                              className="text-amber-600 hover:text-amber-800"
+                              aria-label="Revert Estimate to In-Progress"
+                            >
+                              <FiRotateCcw />
+                            </button>
+                          </Tooltip>
+                        )}
+                        <Tooltip text="Edit">
+                          <button
+                            onClick={() => handleEditEstimate(estimate)}
+                            className="text-blue-600 hover:text-blue-900"
+                            aria-label="Edit estimate"
+                          >
+                            <FiEdit />
+                          </button>
+                        </Tooltip>
+                        <Tooltip text="Delete">
+                          <button
+                            onClick={() => setShowConfirmDelete(estimate.estimate_id)}
+                            className="text-red-600 hover:text-red-900"
+                            aria-label="Delete estimate"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   ))}
@@ -219,4 +248,8 @@ const InProgressEstimates = () => {
   );
 };
 
-export default InProgressEstimates;
+EstimatesList.propTypes = {
+  mode: PropTypes.oneOf(["draft", "finalized"]),
+};
+
+export default EstimatesList;

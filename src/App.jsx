@@ -22,7 +22,7 @@ import CompletedProjectView from "./components/completedProjects/CompletedProjec
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout.jsx";
 import EstimatePreview from "./components/estimates/EstimatePreview.jsx";
-import InProgressEstimates from "./components/estimates/InProgressEstimates.jsx";
+import EstimatesList from "./components/estimates/InProgressEstimates.jsx";
 import MockAuth from "./mocks/mockAuth.js";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
@@ -234,10 +234,18 @@ const AppContent = () => {
                   }
                 />
                 <Route
-                  path={PATHS.IN_PROGRESS_ESTIMATES}
+                  path="in-progress"
                   element={
                     <ProtectedRoute>
-                      <InProgressEstimates />
+                      <EstimatesList mode="draft" />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="finalized"
+                  element={
+                    <ProtectedRoute>
+                      <EstimatesList mode="finalized" />
                     </ProtectedRoute>
                   }
                 />
@@ -259,6 +267,22 @@ const AppContent = () => {
                 />
                 <Route
                   path="in-progress/:estimateId/preview"
+                  element={
+                    <ProtectedRoute>
+                      <EstimatePreview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="finalized/:estimateId"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="finalized/:estimateId/preview"
                   element={
                     <ProtectedRoute>
                       <EstimatePreview />

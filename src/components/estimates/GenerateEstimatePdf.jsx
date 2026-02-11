@@ -18,6 +18,7 @@ const GenerateEstimatePdf = ({
   logoDataUrl,
   selectedLineItems = {},
   disabled,
+  children,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -858,6 +859,7 @@ const GenerateEstimatePdf = ({
 
   return (
     <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
+      {children}
       <button
         onClick={generatePdf}
         disabled={disabled || isGenerating}
@@ -879,6 +881,7 @@ GenerateEstimatePdf.propTypes = {
   logoDataUrl: PropTypes.string,
   selectedLineItems: PropTypes.object,
   disabled: PropTypes.bool,
+  children: PropTypes.node,
 };
 
 export default GenerateEstimatePdf;

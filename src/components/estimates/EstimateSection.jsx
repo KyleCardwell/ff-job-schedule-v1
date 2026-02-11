@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { deleteSection, updateSection, duplicateSection } from "../../redux/actions/estimates";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
+import Tooltip from "../common/Tooltip.jsx";
 
 const EstimateSection = ({
   task,
@@ -126,33 +127,39 @@ const EstimateSection = ({
           >
             <span>{displayName}</span>
             <div className="invisible group-hover/section:visible pl-2 flex gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}
-                className="p-1 text-slate-400 hover:text-teal-400"
-              >
-                <FiEdit2 size={14} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDuplicateSectionModalOpen(true);
-                }}
-                className="p-1 text-slate-400 hover:text-blue-400"
-              >
-                <FiCopy size={14} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirmation(true);
-                }}
-                className="p-1 text-slate-400 hover:text-red-400"
-              >
-                <FiTrash2 size={14} />
-              </button>
+              <Tooltip text="Edit" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-teal-400"
+                >
+                  <FiEdit2 size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip text="Duplicate" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDuplicateSectionModalOpen(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-blue-400"
+                >
+                  <FiCopy size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip text="Delete" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteConfirmation(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-red-400"
+                >
+                  <FiTrash2 size={14} />
+                </button>
+              </Tooltip>
             </div>
           </button>
         )}
