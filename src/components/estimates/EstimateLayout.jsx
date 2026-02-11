@@ -158,8 +158,9 @@ const EstimateLayout = () => {
       teamDefaults,
     };
 
-    const { context, effectiveSection } = createSectionContext(selectedSection, currentEstimate, catalogData);
-    return getSectionCalculations(effectiveSection, context);
+    const { context, effectiveSection, hasPriceOverrides } = createSectionContext(selectedSection, currentEstimate, catalogData);
+    const calcs = getSectionCalculations(effectiveSection, context);
+    return { ...calcs, hasPriceOverrides };
   }, [
     selectedSection,
     currentEstimate,
@@ -393,6 +394,7 @@ const EstimateLayout = () => {
         }}
         onEditEstimateDefaults={() => {
           setShowEstimateDefaultsForm(true);
+          setShowPriceOverrides(false);
           setShowProjectInfo(false);
         }}
         onEditLineItems={() => {
@@ -438,6 +440,7 @@ const EstimateLayout = () => {
             setShowSectionForm(true);
           }
         }}
+
       />
 
       {/* Main Content */}
@@ -563,6 +566,7 @@ const EstimateLayout = () => {
                     section={selectedSection}
                     sectionCalculations={sectionCalculations}
                     onSaveToggles={handleSaveToggles}
+                    hasPriceOverrides={sectionCalculations?.hasPriceOverrides}
                   />
                 </div>
               </div>

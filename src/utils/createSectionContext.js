@@ -4,6 +4,28 @@ import {
 } from "./estimateDefaults";
 
 /**
+ * Apply price overrides to an array of catalog items.
+ * Returns a new array with overridden price fields merged onto matching items.
+ * @param {Array} items - Array of catalog items (each must have an `id`)
+ * @param {Object} overridesMap - { [itemId]: { field: value, ... } }
+ * @returns {Array} New array with overridden items
+ */
+const applyOverrides = (items, overridesMap) => {
+  if (!items || !overridesMap || Object.keys(overridesMap).length === 0) {
+    return items;
+  }
+  return items.map((item) => {
+    const override = overridesMap[String(item.id)];
+    if (!override) return item;
+    // Only apply non-null/non-undefined values so defaults are preserved for unset fields
+    const filtered = Object.fromEntries(
+      Object.entries(override).filter(([, v]) => v != null)
+    );
+    return Object.keys(filtered).length > 0 ? { ...item, ...filtered } : item;
+  });
+};
+
+/**
  * Creates the context object needed for getSectionCalculations
  * Extracted from EstimateSectionPrice to be reusable across components
  * 
@@ -14,20 +36,37 @@ import {
  */
 export const createSectionContext = (section, estimate, catalogData) => {
   const {
-    boxMaterials,
-    faceMaterials,
-    drawerBoxMaterials,
-    finishTypes,
+    boxMaterials: rawBoxMaterials,
+    faceMaterials: rawFaceMaterials,
+    drawerBoxMaterials: rawDrawerBoxMaterials,
+    finishTypes: rawFinishTypes,
     cabinetStyles,
     cabinetTypes,
-    hardware,
+    hardware: rawHardware,
     partsListAnchors,
     cabinetAnchors,
     globalServices,
     lengthsCatalog,
-    accessories,
+    accessories: rawAccessories,
     teamDefaults,
   } = catalogData;
+
+  // Apply price overrides from the estimate
+  const po = estimate?.price_overrides || {};
+  const boxMaterials = applyOverrides(rawBoxMaterials, po.materials);
+  const faceMaterials = applyOverrides(rawFaceMaterials, po.materials);
+  const drawerBoxMaterials = applyOverrides(rawDrawerBoxMaterials, po.drawerBoxMaterials);
+  const finishTypes = applyOverrides(rawFinishTypes, po.finishes);
+  const hardware = {
+    ...rawHardware,
+    hinges: applyOverrides(rawHardware?.hinges, po.hardware?.hinges),
+    pulls: applyOverrides(rawHardware?.pulls, po.hardware?.pulls),
+    slides: applyOverrides(rawHardware?.slides, po.hardware?.slides),
+  };
+  const accessories = {
+    ...rawAccessories,
+    catalog: applyOverrides(rawAccessories?.catalog, po.accessories),
+  };
 
   // Get effective defaults and merge with section (three-tier fallback)
   const effectiveDefaults = getEffectiveDefaults(section, estimate, teamDefaults);
@@ -265,6 +304,68 @@ export const createSectionContext = (section, estimate, catalogData) => {
     team: teamDefaults,
   };
 
-  // Return both context and effectiveSection
-  return { context, effectiveSection };
+  // Check if this section uses any items that have price overrides
+  const hasPriceOverrides = (() => {
+    if (!po || Object.keys(po).length === 0) return false;
+
+    const has = (overridesMap, id) =>
+      overridesMap && id != null && String(id) in overridesMap;
+
+    // Materials (covers box_mat, face_mat, door_mat, drawer_front_mat)
+    if (po.materials) {
+      const matIds = [
+        effectiveSection.box_mat,
+        effectiveSection.face_mat,
+        effectiveSection.door_mat,
+        effectiveSection.drawer_front_mat,
+      ];
+      if (matIds.some((id) => has(po.materials, id))) return true;
+    }
+
+    // Drawer box materials
+    if (has(po.drawerBoxMaterials, effectiveSection.drawer_box_mat)) return true;
+
+    // Finishes
+    if (po.finishes) {
+      const finishIds = [
+        ...(effectiveSection.face_finish || []),
+        ...(effectiveSection.box_finish || []),
+        ...(effectiveSection.door_finish || []),
+        ...(effectiveSection.drawer_front_finish || []),
+      ];
+      if (finishIds.some((id) => has(po.finishes, id))) return true;
+    }
+
+    // Hardware
+    if (po.hardware) {
+      if (has(po.hardware.hinges, effectiveSection.hinge_id)) return true;
+      if (has(po.hardware.pulls, effectiveSection.door_pull_id)) return true;
+      if (has(po.hardware.pulls, effectiveSection.drawer_pull_id)) return true;
+      if (has(po.hardware.slides, effectiveSection.slide_id)) return true;
+    }
+
+    // Accessories (section-level and cabinet-embedded)
+    if (po.accessories) {
+      // Section-level accessories
+      if (section.accessories?.some((a) => has(po.accessories, a.accessory_catalog_id))) {
+        return true;
+      }
+      // Cabinet-embedded accessories from face configs
+      if (section.cabinets?.some((cab) => {
+        const checkNode = (node) => {
+          if (!node) return false;
+          if (node.accessories?.some((a) => has(po.accessories, a.accessory_id))) return true;
+          return node.children?.some((child) => checkNode(child)) || false;
+        };
+        return checkNode(cab.face_config);
+      })) {
+        return true;
+      }
+    }
+
+    return false;
+  })();
+
+  // Return context, effectiveSection, and whether overrides affect this section
+  return { context, effectiveSection, hasPriceOverrides };
 };

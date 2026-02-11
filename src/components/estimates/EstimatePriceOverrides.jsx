@@ -290,7 +290,7 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
     sectionBorder: "border rounded-lg border-slate-400 p-3",
     label: "text-left text-sm font-medium text-slate-200",
     input:
-      "block w-full rounded-md text-sm h-9 bg-slate-700 text-slate-200 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+      "block w-full rounded-md text-sm h-9 text-center bg-slate-700 text-slate-200 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
     select:
       "block w-full rounded-md text-sm h-9 bg-slate-700 text-slate-200 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
   };
