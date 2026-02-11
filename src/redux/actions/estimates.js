@@ -253,6 +253,10 @@ export const fetchEstimateById = (estimateId) => {
         // Custom notes: { default_notes: {}, custom_notes: [] }
         custom_notes: data.custom_notes || { default_notes: {}, custom_notes: [] },
 
+        // Price overrides
+        price_overrides: data.price_overrides || {},
+        finalized_on: data.finalized_on || null,
+
         // Line items
         line_items: data.line_items,
 
@@ -1239,6 +1243,10 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_discount: data.default_discount,
         default_service_price_overrides: data.default_service_price_overrides,
 
+        // Price overrides
+        price_overrides: data.price_overrides || {},
+        finalized_on: data.finalized_on || null,
+
         // Line items
         line_items: data.line_items,
 
@@ -1302,6 +1310,40 @@ export const updateCustomNotes = (estimateId, customNotes) => {
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
       });
+      throw error;
+    }
+  };
+};
+
+// Update estimate price overrides
+export const updateEstimatePriceOverrides = (estimateId, priceOverrides) => {
+  return async (dispatch, getState) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("estimates")
+        .update({
+          price_overrides: priceOverrides,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (updateError) throw updateError;
+
+      // Update the current estimate in state
+      const currentEstimate = getState().estimates.currentEstimate;
+      if (currentEstimate && currentEstimate.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            price_overrides: priceOverrides,
+          },
+        });
+      }
+
+      return priceOverrides;
+    } catch (error) {
+      console.error("Error updating estimate price overrides:", error);
       throw error;
     }
   };

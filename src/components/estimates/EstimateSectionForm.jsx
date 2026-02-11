@@ -16,7 +16,11 @@ import {
   updateEstimateDefaults,
 } from "../../redux/actions/estimates";
 import { updateTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
-import { FACE_STYLES, FACE_STYLE_VALUES , EDIT_TYPES } from "../../utils/constants";
+import {
+  FACE_STYLES,
+  FACE_STYLE_VALUES,
+  EDIT_TYPES,
+} from "../../utils/constants";
 import {
   getNewSectionDefaults,
   getEffectiveValue,
@@ -94,7 +98,8 @@ const EstimateSectionForm = ({
   // Determine what data to use based on editType
   const editingData = useMemo(() => {
     if (editType === EDIT_TYPES.TEAM) return teamData;
-    if (editType === EDIT_TYPES.ESTIMATE) return estimateData || currentEstimate;
+    if (editType === EDIT_TYPES.ESTIMATE)
+      return estimateData || currentEstimate;
     return section; // 'section' mode
   }, [editType, teamData, estimateData, currentEstimate, section]);
 
@@ -774,7 +779,7 @@ const EstimateSectionForm = ({
       ONE_FINISH: "At least one finish option is required",
       COMPATIBLE_DOOR_STYLE: "Choose a compatible door style",
       COMPATIBLE_DRAWER_FRONT_STYLE: "Choose a compatible drawer front style",
-    }
+    };
     const newErrors = {};
 
     // For estimate defaults and sections, most fields are optional (can use fallback)
@@ -915,13 +920,18 @@ const EstimateSectionForm = ({
                   FACE_STYLE_VALUES.SLAB_SHEET_REEDED));
 
           if (!isValidDrawerFrontMat) {
-            newErrors.drawerFrontStyle = ERROR_MESSAGES.COMPATIBLE_DRAWER_FRONT_STYLE;
+            newErrors.drawerFrontStyle =
+              ERROR_MESSAGES.COMPATIBLE_DRAWER_FRONT_STYLE;
           }
         }
       }
 
       // Check if drawer front style is compatible with face material (if no drawer_front_mat override)
-      if (!formData.drawer_front_mat && effectiveFaceMaterialId && effectiveDrawerFrontStyle) {
+      if (
+        !formData.drawer_front_mat &&
+        effectiveFaceMaterialId &&
+        effectiveDrawerFrontStyle
+      ) {
         const material = FACE_MATERIAL_OPTIONS.find(
           (mat) => mat.id === effectiveFaceMaterialId,
         );
@@ -1531,7 +1541,9 @@ const EstimateSectionForm = ({
         {/* Header */}
         {editType !== EDIT_TYPES.SECTION && editType !== EDIT_TYPES.TEAM && (
           <div className="mb-2">
-            <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
+            {editType !== EDIT_TYPES.ESTIMATE && (
+              <h2 className="text-xl font-bold text-slate-800">{formTitle}</h2>
+            )}
             {editType === EDIT_TYPES.ESTIMATE && (
               <p className="text-sm text-slate-200">
                 Use team defaults or set values to override for this estimate
@@ -2560,7 +2572,9 @@ const EstimateSectionForm = ({
                 {/* Profit */}
                 <div className="flex flex-col gap-2 items-center">
                   <label htmlFor="profit" className={STYLES.label}>
-                    <span>Profit{editType === EDIT_TYPES.TEAM ? " %" : ""}</span>
+                    <span>
+                      Profit{editType === EDIT_TYPES.TEAM ? " %" : ""}
+                    </span>
                     {getEffectiveDefaultDisplay(
                       formData.profit,
                       "default_profit",
@@ -2585,7 +2599,9 @@ const EstimateSectionForm = ({
                 {/* Commission */}
                 <div className="flex flex-col gap-2 items-center">
                   <label htmlFor="commission" className={STYLES.label}>
-                    <span>Commission{editType === EDIT_TYPES.TEAM ? " %" : ""}</span>
+                    <span>
+                      Commission{editType === EDIT_TYPES.TEAM ? " %" : ""}
+                    </span>
                     {getEffectiveDefaultDisplay(
                       formData.commission,
                       "default_commission",
@@ -2610,7 +2626,9 @@ const EstimateSectionForm = ({
                 {/* Discount */}
                 <div className="flex flex-col gap-2 items-center">
                   <label htmlFor="discount" className={STYLES.label}>
-                    <span>Discount{editType === EDIT_TYPES.TEAM ? " %" : ""}</span>
+                    <span>
+                      Discount{editType === EDIT_TYPES.TEAM ? " %" : ""}
+                    </span>
                     {getEffectiveDefaultDisplay(
                       formData.discount,
                       "default_discount",
@@ -2817,7 +2835,11 @@ const EstimateSectionForm = ({
 };
 
 EstimateSectionForm.propTypes = {
-  editType: PropTypes.oneOf([EDIT_TYPES.TEAM, EDIT_TYPES.ESTIMATE, EDIT_TYPES.SECTION]),
+  editType: PropTypes.oneOf([
+    EDIT_TYPES.TEAM,
+    EDIT_TYPES.ESTIMATE,
+    EDIT_TYPES.SECTION,
+  ]),
   section: PropTypes.object,
   estimateData: PropTypes.object,
   teamData: PropTypes.object,

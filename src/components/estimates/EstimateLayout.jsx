@@ -29,6 +29,7 @@ import ReorderModal from "../common/ReorderModal.jsx";
 
 import EstimateLineItemsEditor from "./EstimateLineItemsEditor.jsx";
 import EstimateNotesManager from "./EstimateNotesManager.jsx";
+import EstimatePriceOverrides from "./EstimatePriceOverrides.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
@@ -57,6 +58,7 @@ const EstimateLayout = () => {
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [showPriceOverrides, setShowPriceOverrides] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -453,20 +455,56 @@ const EstimateLayout = () => {
             </div>
           </div>
         ) : showEstimateDefaultsForm ? (
-          <div className="px-6 h-full">
-            <div className="max-w-5xl mx-auto h-full">
-              <EstimateSectionForm
-                editType="estimate"
-                estimateData={currentEstimate}
-                onCancel={() => {
-                  setShowEstimateDefaultsForm(false);
-                  setShowProjectInfo(true);
-                }}
-                onSave={() => {
-                  setShowEstimateDefaultsForm(false);
-                  setShowProjectInfo(true);
-                }}
-              />
+          <div className="px-6 h-full flex flex-col">
+            {/* Toggle between Defaults and Price Overrides */}
+            <div className="max-w-5xl mx-auto w-full pt-4">
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => setShowPriceOverrides(false)}
+                  className={`px-4 py-2 rounded-t text-sm font-medium transition-colors ${
+                    !showPriceOverrides
+                      ? "bg-slate-700 text-teal-200 border-b-2 border-teal-400"
+                      : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Estimate Defaults
+                </button>
+                <button
+                  onClick={() => setShowPriceOverrides(true)}
+                  className={`px-4 py-2 rounded-t text-sm font-medium transition-colors ${
+                    showPriceOverrides
+                      ? "bg-slate-700 text-teal-200 border-b-2 border-teal-400"
+                      : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Price Overrides
+                </button>
+              </div>
+            </div>
+            <div className="max-w-5xl mx-auto h-full w-full">
+              {showPriceOverrides ? (
+                <EstimatePriceOverrides
+                  estimate={currentEstimate}
+                  onSave={() => {
+                    setShowEstimateDefaultsForm(false);
+                    setShowPriceOverrides(false);
+                    setShowProjectInfo(true);
+                  }}
+                />
+              ) : (
+                <EstimateSectionForm
+                  editType="estimate"
+                  estimateData={currentEstimate}
+                  onCancel={() => {
+                    setShowEstimateDefaultsForm(false);
+                    setShowProjectInfo(true);
+                  }}
+                  onSave={() => {
+                    setShowEstimateDefaultsForm(false);
+                    setShowProjectInfo(true);
+                  }}
+                />
+              )}
             </div>
           </div>
         ) : showLineItemsEditor ? (
