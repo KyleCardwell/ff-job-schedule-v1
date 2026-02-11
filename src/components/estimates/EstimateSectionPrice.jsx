@@ -3,7 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
-import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
+import { FACE_STYLE_VALUES, FACE_TYPES, PRICE_OVERRIDES_ACTIVE } from "../../utils/constants";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 
 import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
@@ -187,7 +187,7 @@ const EstimateSectionPrice = ({
           <span className="text-sm font-medium">Section Total Price:</span>
           {hasPriceOverrides && (
             <div className="flex items-center bg-purple-600 p-1">
-              <span className="block text-xs text-white">Price Overrides Active</span>
+              <span className="block text-xs text-white">{PRICE_OVERRIDES_ACTIVE}</span>
             </div>
           )}
         </div>

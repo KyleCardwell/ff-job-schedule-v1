@@ -51,8 +51,8 @@ export const createSectionContext = (section, estimate, catalogData) => {
     teamDefaults,
   } = catalogData;
 
-  // Apply price overrides from the estimate
-  const po = estimate?.price_overrides || {};
+  // Apply price overrides from the estimate (skip if section opts out)
+  const po = section?.use_default_prices ? {} : (estimate?.price_overrides || {});
   const boxMaterials = applyOverrides(rawBoxMaterials, po.materials);
   const faceMaterials = applyOverrides(rawFaceMaterials, po.materials);
   const drawerBoxMaterials = applyOverrides(rawDrawerBoxMaterials, po.drawerBoxMaterials);

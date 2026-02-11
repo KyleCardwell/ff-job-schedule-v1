@@ -796,6 +796,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         parts_included,
         services_included,
         service_price_overrides,
+        use_default_prices,
       } = updates;
 
       // Prepare the update payload for Supabase
@@ -864,6 +865,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(parts_included !== undefined && { parts_included: parts_included || null }),
         ...(services_included !== undefined && { services_included: services_included || null }),
         ...(service_price_overrides !== undefined && { service_price_overrides: service_price_overrides || null }),
+        ...(use_default_prices !== undefined && { use_default_prices: !!use_default_prices }),
         updated_at: new Date(),
       };
 

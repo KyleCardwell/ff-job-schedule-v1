@@ -453,6 +453,7 @@ const EstimateSectionForm = ({
         data.service_price_overrides ??
         initialDefaults.service_price_overrides ??
         {},
+      use_default_prices: data.use_default_prices ?? false,
     };
   });
 
@@ -2796,6 +2797,25 @@ const EstimateSectionForm = ({
                 Copy Room Details
               </button>
             )}
+          </div>
+        )}
+        {editType === EDIT_TYPES.SECTION &&
+          Object.keys(currentEstimate?.price_overrides || {}).length > 0 && (
+          <div className="flex flex-1 items-center space-x-2">
+            <label className="flex items-center space-x-2 text-sm text-slate-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.use_default_prices || false}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    use_default_prices: e.target.checked,
+                  }))
+                }
+                className="w-5 h-5 rounded border-slate-400 bg-slate-700 text-purple-500 focus:ring-purple-500"
+              />
+              <span>Use Catalog Prices</span>
+            </label>
           </div>
         )}
         <button

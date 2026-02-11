@@ -16,7 +16,11 @@ const EXCLUDED_FACE_TYPES = [
   "drawer_box",
 ];
 
-const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => {
+const EstimatePreviewBreakdown = ({
+  breakdown,
+  grandTotal,
+  lineItemsTotal,
+}) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -37,7 +41,9 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
     return (
       <div className="w-72 flex-shrink-0">
         <div className="sticky top-0 bg-slate-800 rounded-lg p-4">
-          <h2 className="text-xl font-bold text-teal-400 mb-4">Estimate Total</h2>
+          <h2 className="text-xl font-bold text-teal-400 mb-4">
+            Estimate Total
+          </h2>
           <p className="text-slate-400 text-sm">No data yet</p>
         </div>
       </div>
@@ -46,7 +52,7 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
 
   const totalServices = Object.values(breakdown.services).reduce(
     (sum, s) => sum + s.cost,
-    0
+    0,
   );
 
   return (
@@ -62,130 +68,146 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
 
         {/* Parts Breakdown */}
         {breakdown.partsTotal > 0 && breakdown.parts && (
-          <div className="pb-3 border-b border-slate-700">
+          <div className="pb-3 border-b border-slate-700 text-sm">
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
               Parts
             </h3>
+            {/* Header row */}
+            <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+              <div className="text-xs font-medium text-slate-400">Type</div>
+              <div className="text-xs font-medium text-slate-400 text-center">
+                Qty
+              </div>
+              <div className="text-xs font-medium text-slate-400 text-right">
+                Price
+              </div>
+            </div>
             <div className="space-y-1">
               {breakdown.parts.boxCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Boxes <span className="text-slate-500">({breakdown.parts.boxCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Boxes</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.boxCount}
                   </span>
-                  <span className="text-slate-200">{formatCurrency(breakdown.parts.boxTotal)}</span>
+                  <span className="text-slate-200 text-right">
+                    {formatCurrency(breakdown.parts.boxTotal)}
+                  </span>
                 </div>
               )}
 
               {Object.entries(breakdown.parts.faceCounts || {})
                 .filter(
                   ([type, count]) =>
-                    count > 0 && !EXCLUDED_FACE_TYPES.includes(type)
+                    count > 0 && !EXCLUDED_FACE_TYPES.includes(type),
                 )
                 .map(([type, count]) => (
-                  <div key={type} className="flex justify-between text-sm">
-                    <span className="text-slate-300">
-                      {FACE_TYPE_LABELS[type] || type}{" "}
-                      <span className="text-slate-500">({count})</span>
+                  <div
+                    key={type}
+                    className="grid grid-cols-[3fr,1fr,2fr] gap-1"
+                  >
+                    <span className="text-slate-300 text-left">
+                      {FACE_TYPE_LABELS[type] || type}
                     </span>
-                    <span className="text-slate-200">
+                    <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                      {count}
+                    </span>
+                    <span className="text-slate-200 text-right">
                       {formatCurrency(breakdown.parts.facePrices[type] || 0)}
                     </span>
                   </div>
                 ))}
 
               {breakdown.parts.drawerBoxCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Drawer Boxes{" "}
-                    <span className="text-slate-500">({breakdown.parts.drawerBoxCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Drawer Boxes</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.drawerBoxCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.drawerBoxTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.rollOutCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Rollouts{" "}
-                    <span className="text-slate-500">({breakdown.parts.rollOutCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Rollouts</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.rollOutCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.rollOutTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.hingesCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Hinges{" "}
-                    <span className="text-slate-500">({breakdown.parts.hingesCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Hinges</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.hingesCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.hingesTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.slidesCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Slides{" "}
-                    <span className="text-slate-500">({breakdown.parts.slidesCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Slides</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.slidesCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.slidesTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.pullsCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Pulls{" "}
-                    <span className="text-slate-500">({breakdown.parts.pullsCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Pulls</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.pullsCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.pullsTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.woodCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Wood{" "}
-                    <span className="text-slate-500">({breakdown.parts.woodCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Wood</span>
+                  <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.woodCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.woodTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.accessoriesCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Accessories{" "}
-                    <span className="text-slate-500">
-                      ({breakdown.parts.accessoriesCount})
-                    </span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Accessories</span>
+                  <span className="font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.accessoriesCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.accessoriesTotal)}
                   </span>
                 </div>
               )}
 
               {breakdown.parts.otherCount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    Other{" "}
-                    <span className="text-slate-500">({breakdown.parts.otherCount})</span>
+                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                  <span className="text-slate-300 text-left">Other</span>
+                  <span className="font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {breakdown.parts.otherCount}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.otherTotal)}
                   </span>
                 </div>
@@ -203,20 +225,31 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
 
         {/* Services Breakdown */}
         {Object.keys(breakdown.services).length > 0 && (
-          <div className="pb-3 border-b border-slate-700">
+          <div className="pb-3 border-b border-slate-700 text-sm">
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
               Services
             </h3>
+            {/* Header row */}
+            <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+              <div className="text-xs font-medium text-slate-400">Category</div>
+              <div className="text-xs font-medium text-slate-400 text-center">
+                Hours
+              </div>
+              <div className="text-xs font-medium text-slate-400 text-right">
+                Cost
+              </div>
+            </div>
             <div className="space-y-1">
               {Object.entries(breakdown.services).map(([serviceId, data]) => (
-                <div key={serviceId} className="flex justify-between text-sm">
-                  <span className="text-slate-300">
-                    {data.name}{" "}
-                    <span className="text-slate-500">
-                      ({formatNumber(data.hours)} hrs)
-                    </span>
+                <div
+                  key={serviceId}
+                  className="grid grid-cols-[3fr,1fr,2fr] gap-1"
+                >
+                  <span className="text-slate-300 text-left">{data.name}</span>
+                  <span className="font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+                    {formatNumber(data.hours)}
                   </span>
-                  <span className="text-slate-200">
+                  <span className="text-slate-200 text-right">
                     {formatCurrency(data.cost)}
                   </span>
                 </div>
@@ -232,13 +265,13 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
         )}
 
         {/* Adjustments */}
-        <div className="pb-3 border-b border-slate-700">
+        <div className="pb-3 border-b border-slate-700 text-sm">
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
             Adjustments
           </h3>
           <div className="space-y-1">
             {breakdown.subtotal > 0 && (
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between">
                 <span className="text-slate-300">Subtotal</span>
                 <span className="text-slate-200">
                   {formatCurrency(breakdown.subtotal)}
@@ -274,7 +307,7 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
 
         {/* Line Items */}
         {lineItemsTotal > 0 && (
-          <div className="pb-3 border-b border-slate-700">
+          <div className="">
             <div className="flex justify-between text-sm font-semibold">
               <span className="text-slate-200">Line Items</span>
               <span className="text-teal-400">
@@ -285,14 +318,14 @@ const EstimatePreviewBreakdown = ({ breakdown, grandTotal, lineItemsTotal }) => 
         )}
 
         {/* Grand Total (repeated at bottom for easy reference) */}
-        <div className="pt-1">
+        {/* <div className="pt-1">
           <div className="flex justify-between items-center">
             <span className="text-lg font-bold text-slate-100">Total</span>
             <span className="text-lg font-bold text-teal-400">
               {formatCurrency(grandTotal)}
             </span>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

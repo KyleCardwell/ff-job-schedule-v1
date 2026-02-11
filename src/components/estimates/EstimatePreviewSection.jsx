@@ -3,7 +3,12 @@ import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
 import { useSelector } from "react-redux";
 
-import { NONE, PANEL_MOD_DISPLAY_NAMES, PRE_FINISHED } from "../../utils/constants";
+import {
+  NONE,
+  PANEL_MOD_DISPLAY_NAMES,
+  PRE_FINISHED,
+  PRICE_OVERRIDES_ACTIVE,
+} from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import { formatDoorDrawerStyle } from "../../utils/helpers";
@@ -45,8 +50,32 @@ const EstimatePreviewSection = ({
   const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
 
   // Create context and calculate section totals using extracted utility (only once!)
-  const { calculations, context, effectiveSection } = useMemo(() => {
-    const catalogData = {
+  const { calculations, context, effectiveSection, hasPriceOverrides } =
+    useMemo(() => {
+      const catalogData = {
+        boxMaterials,
+        faceMaterials,
+        drawerBoxMaterials,
+        finishTypes,
+        cabinetStyles,
+        cabinetTypes,
+        hardware,
+        partsListAnchors,
+        cabinetAnchors,
+        globalServices,
+        lengthsCatalog: lengths.catalog,
+        accessories,
+        teamDefaults,
+      };
+
+      const { context, effectiveSection, hasPriceOverrides } =
+        createSectionContext(section, estimate, catalogData);
+      const calculations = getSectionCalculations(effectiveSection, context);
+
+      return { calculations, context, effectiveSection, hasPriceOverrides };
+    }, [
+      section,
+      estimate,
       boxMaterials,
       faceMaterials,
       drawerBoxMaterials,
@@ -57,36 +86,10 @@ const EstimatePreviewSection = ({
       partsListAnchors,
       cabinetAnchors,
       globalServices,
-      lengthsCatalog: lengths.catalog,
+      lengths,
       accessories,
       teamDefaults,
-    };
-
-    const { context, effectiveSection } = createSectionContext(
-      section,
-      estimate,
-      catalogData,
-    );
-    const calculations = getSectionCalculations(effectiveSection, context);
-
-    return { calculations, context, effectiveSection };
-  }, [
-    section,
-    estimate,
-    boxMaterials,
-    faceMaterials,
-    drawerBoxMaterials,
-    finishTypes,
-    cabinetStyles,
-    cabinetTypes,
-    hardware,
-    partsListAnchors,
-    cabinetAnchors,
-    globalServices,
-    lengths,
-    accessories,
-    teamDefaults,
-  ]);
+    ]);
 
   // Track previous total to avoid calling callback with same value
   const prevTotalRef = useRef(null);
@@ -626,6 +629,13 @@ const EstimatePreviewSection = ({
             } flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2`}
           >
             <span>Section Total</span>
+            {hasPriceOverrides && (
+              <div className="flex items-center bg-purple-600 p-1">
+                <span className="block text-xs text-white">
+                  {PRICE_OVERRIDES_ACTIVE}
+                </span>
+              </div>
+            )}
             <span>
               {formatCurrency(
                 section.quantity === 0
