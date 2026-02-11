@@ -19,6 +19,7 @@ import {
 import { fetchServices } from "../../redux/actions/services.js";
 import ScrollableIndex from "../common/ScrollableIndex.jsx";
 
+import GeneratePartsListPdf from "./GeneratePartsListPdf.jsx";
 import PartsListAnchorsTable from "./PartsListAnchorsTable.jsx";
 import PartsListTestCalculator from "./PartsListTestCalculator.jsx";
 import SettingsSection from "./SettingsSection.jsx";
@@ -35,6 +36,12 @@ const PartsListSettings = forwardRef((props, ref) => {
     (state) => state.partsListAnchors
   ) || { itemsByPartsList: {} };
   const { teamId } = useSelector((state) => state.auth);
+  const allServices = useSelector(
+    (state) => state.services?.allServices?.filter((s) => s.is_active) || []
+  );
+  const cabinetStyles = useSelector(
+    (state) => state.cabinetStyles?.styles || []
+  ).filter((s) => s.is_active);
 
   // All state managed in parent
   const [localAnchors, setLocalAnchors] = useState({});
@@ -310,14 +317,22 @@ const PartsListSettings = forwardRef((props, ref) => {
             <h2 className="align-self-start text-lg font-bold text-slate-200">
               Manage Parts List Anchors - Time (minutes)
             </h2>
-            <button
-              onClick={() => setShowTestCalculator(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-md transition-colors"
-              title="Test parts time calculations"
-            >
-              <FiBarChart size={18} />
-              Test Calculator
-            </button>
+            <div className="flex items-center gap-2">
+              <GeneratePartsListPdf
+                groupedParts={groupedParts}
+                localAnchors={localAnchors}
+                services={allServices}
+                cabinetStyles={cabinetStyles}
+              />
+              <button
+                onClick={() => setShowTestCalculator(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-md transition-colors"
+                title="Test parts time calculations"
+              >
+                <FiBarChart size={18} />
+                Test Calculator
+              </button>
+            </div>
           </div>
 
           <div className={`flex flex-1 gap-4`}>
