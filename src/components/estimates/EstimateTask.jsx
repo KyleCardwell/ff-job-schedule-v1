@@ -7,6 +7,7 @@ import { updateTask, deleteTask, addTask, duplicateSection } from "../../redux/a
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
+import Tooltip from "../common/Tooltip.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
 
@@ -145,34 +146,40 @@ const EstimateTask = ({
           >
             <span>{task.est_task_name}</span>
             <div className="invisible group-hover/task:visible pl-2 flex gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}
-                className="p-1 text-slate-400 hover:text-teal-400"
-              >
-                <FiEdit2 size={14} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSectionToDuplicate(sections[0]); // Still need to pass a section for modal context
-                  setIsDuplicateSectionModalOpen(true);
-                }}
-                className="p-1 text-slate-400 hover:text-blue-400"
-              >
-                <FiCopy size={14} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirmation(true);
-                }}
-                className="p-1 text-slate-400 hover:text-red-400"
-              >
-                <FiTrash2 size={14} />
-              </button>
+              <Tooltip text="Edit" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-teal-400"
+                >
+                  <FiEdit2 size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip text="Duplicate" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSectionToDuplicate(sections[0]); // Still need to pass a section for modal context
+                    setIsDuplicateSectionModalOpen(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-blue-400"
+                >
+                  <FiCopy size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip text="Delete" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteConfirmation(true);
+                  }}
+                  className="p-1 text-slate-400 hover:text-red-400"
+                >
+                  <FiTrash2 size={14} />
+                </button>
+              </Tooltip>
             </div>
           </button>
         )}

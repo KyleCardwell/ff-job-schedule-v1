@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { FiArrowLeft } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 
 import { fetchAccessoriesCatalog, fetchAccessoryTimeAnchors } from "../../redux/actions/accessories.js";
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
@@ -26,9 +26,11 @@ import { createSectionContext } from "../../utils/createSectionContext";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import ReorderModal from "../common/ReorderModal.jsx";
+import Tooltip from "../common/Tooltip.jsx";
 
 import EstimateLineItemsEditor from "./EstimateLineItemsEditor.jsx";
 import EstimateNotesManager from "./EstimateNotesManager.jsx";
+import EstimatePriceOverrides from "./EstimatePriceOverrides.jsx";
 import EstimateProjectForm from "./EstimateProjectForm.jsx";
 import EstimateSectionForm from "./EstimateSectionForm.jsx";
 import EstimateSectionInfo from "./EstimateSectionInfo.jsx";
@@ -39,7 +41,11 @@ import EstimateTask from "./EstimateTask.jsx";
 const EstimateLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { estimateId } = useParams();
+  const isFinalized = location.pathname.includes('/finalized');
+  const basePath = isFinalized ? '/estimates/finalized' : '/estimates/in-progress';
+  const listPath = isFinalized ? PATHS.FINALIZED_ESTIMATES : PATHS.IN_PROGRESS_ESTIMATES;
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
@@ -57,6 +63,7 @@ const EstimateLayout = () => {
   const [isNewTask, setIsNewTask] = useState(false);
   const [initialData, setInitialData] = useState({});
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [showPriceOverrides, setShowPriceOverrides] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -73,20 +80,20 @@ const EstimateLayout = () => {
 
           const result = await dispatch(fetchEstimateById(estimateId));
           if (!result) {
-            navigate(PATHS.IN_PROGRESS_ESTIMATES);
+            navigate(listPath);
             return;
           }
         }
         setLoading(false);
       } catch (error) {
         console.error("Error loading estimate:", error);
-        navigate(PATHS.IN_PROGRESS_ESTIMATES);
+        navigate(listPath);
         setLoading(false);
       }
     };
 
     loadEstimate();
-  }, [dispatch, estimateId, navigate, estimates]);
+  }, [dispatch, estimateId, navigate, estimates, listPath]);
 
   useEffect(() => {
     dispatch(fetchTeamDefaults());
@@ -156,8 +163,9 @@ const EstimateLayout = () => {
       teamDefaults,
     };
 
-    const { context, effectiveSection } = createSectionContext(selectedSection, currentEstimate, catalogData);
-    return getSectionCalculations(effectiveSection, context);
+    const { context, effectiveSection, hasPriceOverrides } = createSectionContext(selectedSection, currentEstimate, catalogData);
+    const calcs = getSectionCalculations(effectiveSection, context);
+    return { ...calcs, hasPriceOverrides };
   }, [
     selectedSection,
     currentEstimate,
@@ -262,7 +270,7 @@ const EstimateLayout = () => {
       {currentEstimate && (
         <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
           <button
-            onClick={() => navigate(`/estimates/in-progress/${estimateId}/preview`)}
+            onClick={() => navigate(`${basePath}/${estimateId}/preview`)}
             className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors"
           >
             Estimate Preview
@@ -274,7 +282,7 @@ const EstimateLayout = () => {
       <div className="w-64 flex-none bg-slate-900 border-t border-slate-200 flex flex-col">
         <div className="flex items-center justify-center py-4 text-slate-200 text-lg font-semibold relative">
           <button
-            onClick={() => navigate(PATHS.IN_PROGRESS_ESTIMATES)}
+            onClick={() => navigate(listPath)}
             className="mr-4 hover:text-slate-300 left-[10px] absolute"
             aria-label="Go back"
           >
@@ -308,6 +316,7 @@ const EstimateLayout = () => {
               <div className="py-3 px-4 text-md font-medium text-slate-200 flex justify-between items-center border-b border-slate-200">
                 <span className="font-semibold">Rooms</span>
                 {currentEstimate?.tasks?.length > 1 && (
+                  <Tooltip text="Reorder Rooms">
                   <button
                     onClick={() => setIsReorderModalOpen(true)}
                     className="text-slate-400 hover:text-teal-400"
@@ -315,6 +324,7 @@ const EstimateLayout = () => {
                   >
                     <LuArrowDownUp size={20} />
                   </button>
+                  </Tooltip>
                 )}
               </div>
 
@@ -391,6 +401,7 @@ const EstimateLayout = () => {
         }}
         onEditEstimateDefaults={() => {
           setShowEstimateDefaultsForm(true);
+          setShowPriceOverrides(false);
           setShowProjectInfo(false);
         }}
         onEditLineItems={() => {
@@ -436,6 +447,7 @@ const EstimateLayout = () => {
             setShowSectionForm(true);
           }
         }}
+
       />
 
       {/* Main Content */}
@@ -453,20 +465,56 @@ const EstimateLayout = () => {
             </div>
           </div>
         ) : showEstimateDefaultsForm ? (
-          <div className="px-6 h-full">
-            <div className="max-w-5xl mx-auto h-full">
-              <EstimateSectionForm
-                editType="estimate"
-                estimateData={currentEstimate}
-                onCancel={() => {
-                  setShowEstimateDefaultsForm(false);
-                  setShowProjectInfo(true);
-                }}
-                onSave={() => {
-                  setShowEstimateDefaultsForm(false);
-                  setShowProjectInfo(true);
-                }}
-              />
+          <div className="px-6 h-full flex flex-col">
+            {/* Toggle between Defaults and Price Overrides */}
+            <div className="max-w-5xl mx-auto w-full pt-4">
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => setShowPriceOverrides(false)}
+                  className={`px-4 py-2 rounded-t text-sm font-medium transition-colors ${
+                    !showPriceOverrides
+                      ? "bg-slate-700 text-teal-200 border-b-2 border-teal-400"
+                      : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Estimate Defaults
+                </button>
+                <button
+                  onClick={() => setShowPriceOverrides(true)}
+                  className={`px-4 py-2 rounded-t text-sm font-medium transition-colors ${
+                    showPriceOverrides
+                      ? "bg-slate-700 text-teal-200 border-b-2 border-teal-400"
+                      : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Price Overrides
+                </button>
+              </div>
+            </div>
+            <div className="max-w-5xl mx-auto h-full w-full flex flex-col overflow-hidden">
+              {showPriceOverrides ? (
+                <EstimatePriceOverrides
+                  estimate={currentEstimate}
+                  onSave={() => {
+                    setShowEstimateDefaultsForm(false);
+                    setShowPriceOverrides(false);
+                    setShowProjectInfo(true);
+                  }}
+                />
+              ) : (
+                <EstimateSectionForm
+                  editType="estimate"
+                  estimateData={currentEstimate}
+                  onCancel={() => {
+                    setShowEstimateDefaultsForm(false);
+                    setShowProjectInfo(true);
+                  }}
+                  onSave={() => {
+                    setShowEstimateDefaultsForm(false);
+                    setShowProjectInfo(true);
+                  }}
+                />
+              )}
             </div>
           </div>
         ) : showLineItemsEditor ? (
@@ -525,6 +573,7 @@ const EstimateLayout = () => {
                     section={selectedSection}
                     sectionCalculations={sectionCalculations}
                     onSaveToggles={handleSaveToggles}
+                    hasPriceOverrides={sectionCalculations?.hasPriceOverrides}
                   />
                 </div>
               </div>

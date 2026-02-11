@@ -61,6 +61,8 @@ export const PRE_FINISHED = "Pre-Finished";
 export const NONE = "None";
 export const NOT_SELECTED = "Not Selected";
 
+export const PRICE_OVERRIDES_ACTIVE = "Price Overrides Active";
+
 export const SPLIT_DIRECTIONS = {
   HORIZONTAL: "horizontal",
   VERTICAL: "vertical",

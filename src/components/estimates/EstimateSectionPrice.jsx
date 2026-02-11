@@ -3,7 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
-import { FACE_STYLE_VALUES, FACE_TYPES } from "../../utils/constants";
+import { FACE_STYLE_VALUES, FACE_TYPES, PRICE_OVERRIDES_ACTIVE } from "../../utils/constants";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 
 import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
@@ -12,6 +12,7 @@ const EstimateSectionPrice = ({
   section,
   sectionCalculations,
   onSaveToggles,
+  hasPriceOverrides,
 }) => {
   // sectionCalculations is now passed as a prop from EstimateLayout
 
@@ -184,6 +185,11 @@ const EstimateSectionPrice = ({
       <div className="flex justify-between items-center pb-3">
         <div className="text-slate-300">
           <span className="text-sm font-medium">Section Total Price:</span>
+          {hasPriceOverrides && (
+            <div className="flex items-center bg-purple-600 p-1">
+              <span className="block text-xs text-white">{PRICE_OVERRIDES_ACTIVE}</span>
+            </div>
+          )}
         </div>
         <div
           className={`text-xl font-bold ${
@@ -799,6 +805,7 @@ EstimateSectionPrice.propTypes = {
   section: PropTypes.object.isRequired,
   sectionCalculations: PropTypes.object,
   onSaveToggles: PropTypes.func,
+  hasPriceOverrides: PropTypes.bool,
 };
 
 export default EstimateSectionPrice;

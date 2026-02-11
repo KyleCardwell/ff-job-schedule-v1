@@ -253,6 +253,10 @@ export const fetchEstimateById = (estimateId) => {
         // Custom notes: { default_notes: {}, custom_notes: [] }
         custom_notes: data.custom_notes || { default_notes: {}, custom_notes: [] },
 
+        // Price overrides
+        price_overrides: data.price_overrides || {},
+        finalized_on: data.finalized_on || null,
+
         // Line items
         line_items: data.line_items,
 
@@ -792,6 +796,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         parts_included,
         services_included,
         service_price_overrides,
+        use_default_prices,
       } = updates;
 
       // Prepare the update payload for Supabase
@@ -860,6 +865,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         ...(parts_included !== undefined && { parts_included: parts_included || null }),
         ...(services_included !== undefined && { services_included: services_included || null }),
         ...(service_price_overrides !== undefined && { service_price_overrides: service_price_overrides || null }),
+        ...(use_default_prices !== undefined && { use_default_prices: !!use_default_prices }),
         updated_at: new Date(),
       };
 
@@ -1239,6 +1245,10 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_discount: data.default_discount,
         default_service_price_overrides: data.default_service_price_overrides,
 
+        // Price overrides
+        price_overrides: data.price_overrides || {},
+        finalized_on: data.finalized_on || null,
+
         // Line items
         line_items: data.line_items,
 
@@ -1302,6 +1312,40 @@ export const updateCustomNotes = (estimateId, customNotes) => {
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
       });
+      throw error;
+    }
+  };
+};
+
+// Update estimate price overrides
+export const updateEstimatePriceOverrides = (estimateId, priceOverrides) => {
+  return async (dispatch, getState) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("estimates")
+        .update({
+          price_overrides: priceOverrides,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (updateError) throw updateError;
+
+      // Update the current estimate in state
+      const currentEstimate = getState().estimates.currentEstimate;
+      if (currentEstimate && currentEstimate.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            price_overrides: priceOverrides,
+          },
+        });
+      }
+
+      return priceOverrides;
+    } catch (error) {
+      console.error("Error updating estimate price overrides:", error);
       throw error;
     }
   };
@@ -1452,6 +1496,320 @@ export const moveItem = (tableName, itemId, targetSectionId) => {
       throw error;
     }
   };
+};
+
+// Finalize an estimate - freeze pricing by collecting all active prices into price_overrides
+export const finalizeEstimate = (estimateId, catalogData) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { session } = getState().auth;
+      const { currentEstimate } = getState().estimates;
+
+      if (!currentEstimate) throw new Error("No current estimate loaded");
+
+      const {
+        boxMaterials,
+        faceMaterials,
+        drawerBoxMaterials,
+        finishTypes,
+        hardware,
+        accessories,
+        teamDefaults,
+      } = catalogData;
+
+      // Collect all unique item IDs used across all sections
+      const usedMaterialIds = new Set();
+      const usedDrawerBoxMatIds = new Set();
+      const usedFinishIds = new Set();
+      const usedHingeIds = new Set();
+      const usedPullIds = new Set();
+      const usedSlideIds = new Set();
+      const usedAccessoryIds = new Set();
+
+      // Helper to resolve three-tier fallback (section → estimate → team)
+      const resolve = (sectionVal, estimateVal, teamVal) => {
+        if (sectionVal !== null && sectionVal !== undefined) return sectionVal;
+        if (estimateVal !== null && estimateVal !== undefined) return estimateVal;
+        return teamVal;
+      };
+
+      currentEstimate.tasks?.forEach((task) => {
+        task.sections?.forEach((section) => {
+          // Materials (box, face, door, drawer_front)
+          const boxMat = resolve(section.box_mat, currentEstimate.default_box_mat, teamDefaults?.default_box_mat);
+          const faceMat = resolve(section.face_mat, currentEstimate.default_face_mat, teamDefaults?.default_face_mat);
+          const doorMat = section.door_mat || faceMat;
+          const drawerFrontMat = section.drawer_front_mat || faceMat;
+          
+          [boxMat, faceMat, doorMat, drawerFrontMat].forEach((id) => {
+            if (id != null) usedMaterialIds.add(id);
+          });
+
+          // Drawer box material
+          const drawerBoxMat = resolve(section.drawer_box_mat, currentEstimate.default_drawer_box_mat, teamDefaults?.default_drawer_box_mat);
+          if (drawerBoxMat != null) usedDrawerBoxMatIds.add(drawerBoxMat);
+
+          // Finishes (face, box, door, drawer_front)
+          const faceFinish = resolve(section.face_finish, currentEstimate.default_face_finish, teamDefaults?.default_face_finish);
+          const boxFinish = resolve(section.box_finish, currentEstimate.default_box_finish, teamDefaults?.default_box_finish);
+          const doorFinish = section.door_finish || faceFinish;
+          const drawerFrontFinish = section.drawer_front_finish || faceFinish;
+
+          [faceFinish, boxFinish, doorFinish, drawerFrontFinish].forEach((finishArr) => {
+            if (Array.isArray(finishArr)) {
+              finishArr.forEach((id) => { if (id != null) usedFinishIds.add(id); });
+            }
+          });
+
+          // Hardware
+          const hingeId = resolve(section.hinge_id, currentEstimate.default_hinge_id, teamDefaults?.default_hinge_id);
+          const slideId = resolve(section.slide_id, currentEstimate.default_slide_id, teamDefaults?.default_slide_id);
+          const doorPullId = resolve(section.door_pull_id, currentEstimate.default_door_pull_id, teamDefaults?.default_door_pull_id);
+          const drawerPullId = resolve(section.drawer_pull_id, currentEstimate.default_drawer_pull_id, teamDefaults?.default_drawer_pull_id);
+
+          if (hingeId != null) usedHingeIds.add(hingeId);
+          if (slideId != null) usedSlideIds.add(slideId);
+          if (doorPullId != null) usedPullIds.add(doorPullId);
+          if (drawerPullId != null) usedPullIds.add(drawerPullId);
+
+          // Section-level accessories
+          section.accessories?.forEach((a) => {
+            if (a.accessory_catalog_id != null) usedAccessoryIds.add(a.accessory_catalog_id);
+          });
+
+          // Cabinet-embedded accessories from face configs
+          const collectAccessoriesFromNode = (node) => {
+            if (!node) return;
+            node.accessories?.forEach((a) => {
+              if (a.accessory_id != null) usedAccessoryIds.add(a.accessory_id);
+            });
+            node.children?.forEach(collectAccessoriesFromNode);
+          };
+          section.cabinets?.forEach((cab) => collectAccessoriesFromNode(cab.face_config));
+        });
+      });
+
+      // Build price_overrides from current catalog prices
+      const priceOverrides = {};
+
+      // Materials (deduplicated across box and face)
+      const allMats = [...(boxMaterials || []), ...(faceMaterials || [])];
+      const seenMats = new Set();
+      const materialsOverrides = {};
+      allMats.forEach((mat) => {
+        if (seenMats.has(mat.id)) return;
+        seenMats.add(mat.id);
+        if (usedMaterialIds.has(mat.id)) {
+          const prices = {};
+          if (mat.sheet_price != null) prices.sheet_price = mat.sheet_price;
+          if (mat.bd_ft_price != null) prices.bd_ft_price = mat.bd_ft_price;
+          if (Object.keys(prices).length > 0) materialsOverrides[String(mat.id)] = prices;
+        }
+      });
+      if (Object.keys(materialsOverrides).length > 0) priceOverrides.materials = materialsOverrides;
+
+      // Drawer box materials
+      const drawerBoxOverrides = {};
+      (drawerBoxMaterials || []).forEach((mat) => {
+        if (usedDrawerBoxMatIds.has(mat.id)) {
+          const prices = {};
+          if (mat.sheet_price != null) prices.sheet_price = mat.sheet_price;
+          if (Object.keys(prices).length > 0) drawerBoxOverrides[String(mat.id)] = prices;
+        }
+      });
+      if (Object.keys(drawerBoxOverrides).length > 0) priceOverrides.drawerBoxMaterials = drawerBoxOverrides;
+
+      // Finishes
+      const finishOverrides = {};
+      (finishTypes || []).forEach((ft) => {
+        if (usedFinishIds.has(ft.id)) {
+          const prices = {};
+          if (ft.shop_markup != null) prices.shop_markup = ft.shop_markup;
+          if (ft.finish_markup != null) prices.finish_markup = ft.finish_markup;
+          if (Object.keys(prices).length > 0) finishOverrides[String(ft.id)] = prices;
+        }
+      });
+      if (Object.keys(finishOverrides).length > 0) priceOverrides.finishes = finishOverrides;
+
+      // Hardware
+      const hardwareOverrides = {};
+      const buildHwOverrides = (items, usedIds) => {
+        const overrides = {};
+        (items || []).forEach((item) => {
+          if (usedIds.has(item.id)) {
+            const prices = {};
+            if (item.price != null) prices.price = item.price;
+            if (item.actual_cost != null) prices.actual_cost = item.actual_cost;
+            if (Object.keys(prices).length > 0) overrides[String(item.id)] = prices;
+          }
+        });
+        return overrides;
+      };
+
+      const hingesOverrides = buildHwOverrides(hardware?.hinges, usedHingeIds);
+      const pullsOverrides = buildHwOverrides(hardware?.pulls, usedPullIds);
+      const slidesOverrides = buildHwOverrides(hardware?.slides, usedSlideIds);
+
+      if (Object.keys(hingesOverrides).length > 0 || Object.keys(pullsOverrides).length > 0 || Object.keys(slidesOverrides).length > 0) {
+        hardwareOverrides.hinges = hingesOverrides;
+        hardwareOverrides.pulls = pullsOverrides;
+        hardwareOverrides.slides = slidesOverrides;
+        priceOverrides.hardware = hardwareOverrides;
+      }
+
+      // Accessories
+      const accessoryOverrides = {};
+      (accessories?.catalog || []).forEach((acc) => {
+        if (usedAccessoryIds.has(acc.id)) {
+          const prices = {};
+          if (acc.default_price_per_unit != null) prices.default_price_per_unit = acc.default_price_per_unit;
+          if (Object.keys(prices).length > 0) accessoryOverrides[String(acc.id)] = prices;
+        }
+      });
+      if (Object.keys(accessoryOverrides).length > 0) priceOverrides.accessories = accessoryOverrides;
+
+      // Merge with existing price_overrides (existing overrides take precedence - they were manually set)
+      const existingOverrides = currentEstimate.price_overrides || {};
+      const mergedOverrides = mergeOverrides(existingOverrides, priceOverrides);
+
+      const now = new Date().toISOString();
+
+      // Update the database
+      const { error: updateError } = await supabase
+        .from("estimates")
+        .update({
+          status: ESTIMATE_STATUS.FINALIZED,
+          finalized_on: now,
+          price_overrides: mergedOverrides,
+          updated_by: session.user.id,
+          updated_at: new Date(),
+        })
+        .eq("estimate_id", estimateId);
+
+      if (updateError) throw updateError;
+
+      // Update Redux state
+      const updatedEstimate = {
+        ...currentEstimate,
+        status: ESTIMATE_STATUS.FINALIZED,
+        finalized_on: now,
+        price_overrides: mergedOverrides,
+      };
+
+      dispatch({
+        type: Actions.estimates.SET_CURRENT_ESTIMATE,
+        payload: updatedEstimate,
+      });
+
+      // Also update in the estimates list
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATES_SUCCESS,
+        payload: getState().estimates.estimates.map((est) =>
+          est.estimate_id === estimateId
+            ? { ...est, status: ESTIMATE_STATUS.FINALIZED, finalized_on: now }
+            : est
+        ),
+      });
+
+      return updatedEstimate;
+    } catch (error) {
+      console.error("Error finalizing estimate:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Un-finalize an estimate: set finalized_on to null and status back to draft
+// Does NOT modify price_overrides
+export const unfinalizeEstimate = (estimateId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { data, error } = await supabase
+        .from("estimates")
+        .update({
+          finalized_on: null,
+          status: ESTIMATE_STATUS.DRAFT,
+        })
+        .eq("estimate_id", estimateId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      // Update currentEstimate if it matches
+      const { currentEstimate } = getState().estimates;
+      if (currentEstimate?.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            finalized_on: null,
+            status: ESTIMATE_STATUS.DRAFT,
+          },
+        });
+      }
+
+      // Update the estimates list
+      const { estimates } = getState().estimates;
+      const updatedEstimates = estimates.map((est) =>
+        est.estimate_id === estimateId
+          ? { ...est, finalized_on: null, status: ESTIMATE_STATUS.DRAFT }
+          : est
+      );
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATES_SUCCESS,
+        payload: updatedEstimates,
+      });
+
+      return data;
+    } catch (error) {
+      console.error("Error un-finalizing estimate:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Helper to merge price overrides - existing manual overrides take precedence
+const mergeOverrides = (existing, generated) => {
+  const merged = { ...generated };
+
+  Object.keys(existing).forEach((key) => {
+    if (key === "hardware") {
+      // Hardware is nested one level deeper
+      merged.hardware = merged.hardware || {};
+      Object.keys(existing.hardware || {}).forEach((hwKey) => {
+        merged.hardware[hwKey] = merged.hardware[hwKey] || {};
+        Object.keys(existing.hardware[hwKey] || {}).forEach((itemId) => {
+          merged.hardware[hwKey][itemId] = {
+            ...(merged.hardware[hwKey][itemId] || {}),
+            ...existing.hardware[hwKey][itemId],
+          };
+        });
+      });
+    } else {
+      merged[key] = merged[key] || {};
+      Object.keys(existing[key] || {}).forEach((itemId) => {
+        merged[key][itemId] = {
+          ...(merged[key][itemId] || {}),
+          ...existing[key][itemId],
+        };
+      });
+    }
+  });
+
+  return merged;
 };
 
 // Duplicate a section with all its items using Supabase RPC
