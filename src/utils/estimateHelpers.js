@@ -1304,6 +1304,11 @@ export const calculateSlabSheetFacePriceBulk = (
       }
     });
 
+    // If no bin had free space (all freeRects empty), default to the last bin
+    if (partialSheetIndex === -1) {
+      partialSheetIndex = sheetsUsed - 1;
+    }
+
     // Calculate area used on the partial sheet
     const partialSheetUsedArea = packer.bins[partialSheetIndex].rects.reduce(
       (sum, rect) => {
