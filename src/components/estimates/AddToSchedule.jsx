@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BsDashSquare } from "react-icons/bs";
 import { FiArrowLeft, FiCalendar, FiMenu, FiMove } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
@@ -585,10 +586,16 @@ const AddToSchedule = () => {
           });
         }
 
+        // Set the new group's name to the section's editable name
+        setGroupNames((prev) => ({
+          ...prev,
+          [newGroupId]: sectionNames[sectionId] || sectionCalcsMap[sectionId]?.sectionName || "Section",
+        }));
+
         return newGroups;
       });
     },
-    [selectedGroups],
+    [selectedGroups, sectionNames, sectionCalcsMap],
   );
 
   // ---------- Totals ----------
@@ -685,7 +692,7 @@ const AddToSchedule = () => {
               Select which sections to add to the schedule.
             </p>
             <p>
-              Click <strong>×</strong> to ungroup a section.
+              Click the <BsDashSquare className="inline text-lg text-red-400 bg-red-900/30"/> to ungroup a section.
             </p>
 
             </div>
@@ -811,7 +818,7 @@ const AddToSchedule = () => {
 
                           {/* Individual sections */}
                           <div
-                            className={isMulti ? "p-2 space-y-1" : "space-y-1"}
+                            className={isMulti ? "p-2 space-y-2" : "space-y-1"}
                           >
                             {group.sectionIds.map((sectionId) => {
                               const calc = sectionCalcsMap[sectionId];
@@ -911,10 +918,10 @@ const AddToSchedule = () => {
                                             group.groupId,
                                           )
                                         }
-                                        className="flex-shrink-0 text-xs text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded bg-red-900/30 hover:bg-red-900/50"
+                                        className="flex-shrink-0 text-lg text-red-400 hover:text-red-300 rounded bg-red-900/30 hover:bg-red-900/50"
                                         title="Ungroup this section"
                                       >
-                                        ×
+                                        <BsDashSquare/>
                                       </button>
                                     </div>
                                     {activeServices.map((service) => (
@@ -947,8 +954,8 @@ const AddToSchedule = () => {
               {activeId ? (
                 <div className="px-4 py-3 rounded-lg border border-teal-500 bg-slate-700 shadow-xl text-sm text-slate-200">
                   {activeId.startsWith("group-")
-                    ? `Group (${groups.find((g) => g.groupId === activeId)?.sectionIds.length || 0} sections)`
-                    : sectionCalcsMap[activeId]?.sectionName || "Section"}
+                    ? groupNames[activeId] || sectionCalcsMap[groups.find((g) => g.groupId === activeId)?.sectionIds[0]]?.taskName || "Group"
+                    : sectionNames[activeId] || sectionCalcsMap[activeId]?.sectionName || "Section"}
                 </div>
               ) : null}
             </DragOverlay>
