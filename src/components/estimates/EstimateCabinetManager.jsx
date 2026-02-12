@@ -14,6 +14,7 @@ import {
   ITEM_TYPES,
   PART_NAMES,
 } from "../../utils/constants.js";
+import { safeEvaluate, formatNumberValue, decimalToFraction, fractionToDecimal } from "../../utils/mathUtils";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
@@ -73,10 +74,11 @@ const CabinetItemForm = ({
   });
 
   // Temporary input values for dimensions that will only update formData on commit
+  // Display as fractions (nearest 1/16") for better UX
   const [inputValues, setInputValues] = useState({
-    width: item.width || "",
-    height: item.height || "",
-    depth: item.depth || "",
+    width: item.width ? decimalToFraction(item.width) : "",
+    height: item.height ? decimalToFraction(item.height) : "",
+    depth: item.depth ? decimalToFraction(item.depth) : "",
   });
 
   const [errors, setErrors] = useState({});
@@ -244,15 +246,15 @@ const CabinetItemForm = ({
               // Always set dimensions to defaults when type changes
               if (selectedType.default_width) {
                 updates.width = selectedType.default_width;
-                inputUpdates.width = String(selectedType.default_width);
+                inputUpdates.width = decimalToFraction(selectedType.default_width);
               }
               if (selectedType.default_height) {
                 updates.height = selectedType.default_height;
-                inputUpdates.height = String(selectedType.default_height);
+                inputUpdates.height = decimalToFraction(selectedType.default_height);
               }
               if (selectedType.default_depth) {
                 updates.depth = selectedType.default_depth;
-                inputUpdates.depth = String(selectedType.default_depth);
+                inputUpdates.depth = decimalToFraction(selectedType.default_depth);
               }
 
               // Reset face_config to null when type changes
@@ -336,10 +338,36 @@ const CabinetItemForm = ({
     }
   };
 
-  // Commit dimension value on blur or Enter key
+  // Commit dimension value on blur or Enter key - supports math expressions and fractions
   const commitDimensionValue = (name) => {
     const value = inputValues[name];
-    const numValue = value === "" ? "" : Number(value);
+    let numValue = "";
+
+    if (value !== "" && value !== undefined && value !== null) {
+      const strValue = String(value);
+
+      // First try safeEvaluate which handles math expressions AND mixed fractions
+      // via preprocessFractions (e.g., "26 3/8 + .5" → "26.375 + .5" → 26.875)
+      const evaluatedValue = safeEvaluate(strValue);
+      if (evaluatedValue !== null) {
+        numValue = formatNumberValue(evaluatedValue);
+      } else {
+        // Then try pure fractional input like "30 3/8" or "3/8"
+        const fractionResult = fractionToDecimal(strValue);
+        if (fractionResult !== null) {
+          numValue = formatNumberValue(fractionResult);
+        } else {
+          const parsed = parseFloat(strValue);
+          numValue = !isNaN(parsed) ? formatNumberValue(parsed) : "";
+        }
+      }
+    }
+
+    // Update the display value to show as fraction
+    setInputValues((prev) => ({
+      ...prev,
+      [name]: numValue !== "" ? decimalToFraction(numValue) : "",
+    }));
 
     setFormData((prev) => ({
       ...prev,
@@ -1840,12 +1868,12 @@ const CabinetItemForm = ({
                       Quantity <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       id="quantity"
                       name="quantity"
                       value={formData.quantity}
                       onChange={handleChange}
-                      min="0"
                       className={`w-full px-3 py-2 border ${
                         errors.quantity ? "border-red-500" : "border-slate-300"
                       } rounded-md text-sm max-w-[72px]`}
@@ -2149,15 +2177,14 @@ const CabinetItemForm = ({
                   <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   id="width"
                   name="width"
                   value={inputValues.width}
                   onChange={handleDimensionChange}
                   onBlur={handleBlur}
                   onKeyDown={handleKeyDown}
-                  min="0"
-                  step="1"
                   className={`w-full px-3 py-2 border ${
                     errors.width ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
@@ -2178,15 +2205,14 @@ const CabinetItemForm = ({
                   Height <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   id="height"
                   name="height"
                   value={inputValues.height}
                   onChange={handleDimensionChange}
                   onBlur={handleBlur}
                   onKeyDown={handleKeyDown}
-                  min="0"
-                  step="1"
                   className={`w-full px-3 py-2 border ${
                     errors.height ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
@@ -2210,15 +2236,14 @@ const CabinetItemForm = ({
                   <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   id="depth"
                   name="depth"
                   value={inputValues.depth}
                   onChange={handleDimensionChange}
                   onBlur={handleBlur}
                   onKeyDown={handleKeyDown}
-                  min="0"
-                  step="1"
                   className={`w-full px-3 py-2 border ${
                     errors.depth ? "border-red-500" : "border-slate-300"
                   } rounded-md text-sm`}
@@ -2319,9 +2344,9 @@ const EstimateCabinetManager = ({
       width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
     },
     { key: "type", label: "Type", width: ITEM_FORM_WIDTHS.DEFAULT },
-    { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT },
-    { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT },
-    { key: "depth", label: "Depth", width: ITEM_FORM_WIDTHS.DEFAULT },
+    { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT, render: (item) => item.width ? decimalToFraction(item.width) : "-" },
+    { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT, render: (item) => item.height ? decimalToFraction(item.height) : "-" },
+    { key: "depth", label: "Depth", width: ITEM_FORM_WIDTHS.DEFAULT, render: (item) => item.depth ? decimalToFraction(item.depth) : "-" },
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 

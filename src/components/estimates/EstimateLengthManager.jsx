@@ -4,6 +4,7 @@ import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
+import useMathInput from "../../hooks/useMathInput";
 import { fetchLengthsCatalog } from "../../redux/actions/lengths";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
@@ -17,7 +18,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
   const [selectedType, setSelectedType] = useState("");
   const [formData, setFormData] = useState({
-    length_catalog_id: item.length_catalog_id || "",
+    length_catalog_id: +item.length_catalog_id || "",
     length: item.length || "",
     quantity: item.quantity != null ? item.quantity : 1,
     miter_count: item.miter_count || 0,
@@ -28,6 +29,21 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
   const [errors, setErrors] = useState({});
   const [selectedLengthItem, setSelectedLengthItem] = useState(null);
+
+  const mathInput = useMathInput(
+    {
+      quantity: item.quantity != null ? item.quantity : 1,
+      length: item.length || "",
+      miter_count: item.miter_count || 0,
+      cutout_count: item.cutout_count || 0,
+    },
+    (fieldName, numValue) => {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: numValue,
+      }));
+    }
+  );
 
   // Set initial type if editing existing item
   useEffect(() => {
@@ -103,9 +119,19 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Handle numeric inputs
+    // Handle math-enabled numeric inputs
     if (["quantity", "length", "miter_count", "cutout_count"].includes(name)) {
-      const numValue = value === "" ? null : Number(value);
+      mathInput.handleChange(name, value);
+      // Clear error when field is updated
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: "",
+        });
+      }
+      return;
+    } else if (name === "length_catalog_id") {
+      const numValue = value === "" ? "" : Number(value);
       setFormData({
         ...formData,
         [name]: numValue,
@@ -240,13 +266,13 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 Qty <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 id="quantity"
                 name="quantity"
-                value={formData.quantity || ""}
+                value={mathInput.inputValues.quantity || ""}
                 onChange={handleChange}
-                min="0"
-                step="1"
+                onBlur={() => mathInput.handleBlur("quantity")}
                 className={`w-full px-3 py-2 border ${
                   errors.quantity ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
@@ -265,13 +291,13 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 Length (ft) <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 id="length"
                 name="length"
-                value={formData.length || ""}
+                value={mathInput.inputValues.length || ""}
                 onChange={handleChange}
-                min="0"
-                step="1"
+                onBlur={() => mathInput.handleBlur("length")}
                 className={`w-full px-3 py-2 border ${
                   errors.length ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
@@ -290,13 +316,13 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 Miters
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 id="miter_count"
                 name="miter_count"
-                value={formData.miter_count || ""}
+                value={mathInput.inputValues.miter_count || ""}
                 onChange={handleChange}
-                min="0"
-                step="1"
+                onBlur={() => mathInput.handleBlur("miter_count")}
                 disabled={!selectedLengthItem?.requires_miters}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               />
@@ -311,13 +337,13 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
                 Cutouts
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 id="cutout_count"
                 name="cutout_count"
-                value={formData.cutout_count || ""}
+                value={mathInput.inputValues.cutout_count || ""}
                 onChange={handleChange}
-                min="0"
-                step="1"
+                onBlur={() => mathInput.handleBlur("cutout_count")}
                 disabled={!selectedLengthItem?.requires_cutouts}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
               />
