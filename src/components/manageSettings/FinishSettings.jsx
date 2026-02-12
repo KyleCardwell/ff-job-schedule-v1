@@ -15,6 +15,7 @@ import {
   saveFinishes,
 } from "../../redux/actions/finishes";
 
+import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
@@ -217,6 +218,21 @@ const FinishSettings = forwardRef((props, ref) => {
             <h2 className="text-lg font-bold text-slate-200">
               Manage Finishes
             </h2>
+            <GenerateSettingsPdf
+              title="Finishes Settings"
+              fileName="Finishes Settings"
+              sections={[
+                {
+                  label: "Finishes",
+                  columns: [
+                    { field: "name", label: "Name", width: "*" },
+                    { field: "shop_markup", label: "Shop Markup (%)", width: 100, format: (v) => v != null ? `${v}%` : "-" },
+                    { field: "finish_markup", label: "Finish Markup (%)", width: 100, format: (v) => v != null ? `${v}%` : "-" },
+                  ],
+                  items: localFinishes,
+                },
+              ]}
+            />
           </div>
         </div>
 

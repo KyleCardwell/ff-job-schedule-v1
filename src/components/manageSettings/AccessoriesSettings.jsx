@@ -18,6 +18,7 @@ import {
 } from "../../redux/actions/accessories";
 import { ACCESSORY_APPLIES_TO_OPTIONS, ACCESSORY_UNITS, ACCESSORY_TYPES } from "../../utils/constants";
 
+import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
@@ -552,6 +553,28 @@ const AccessoriesSettings = forwardRef((props, ref) => {
             <h2 className="text-lg font-bold text-slate-200">
               Manage Accessories
             </h2>
+            <GenerateSettingsPdf
+              title="Accessories Settings"
+              fileName="Accessories Settings"
+              orientation="landscape"
+              sections={accessoryTypes.map((typeConfig) => ({
+                label: typeConfig.label,
+                columns: [
+                  { field: "name", label: "Name", width: "*" },
+                  { field: "calculation_type", label: "Calc Type", width: 70 },
+                  { field: "applies_to", label: "Applies To", width: 90, format: (v) => Array.isArray(v) && v.length > 0 ? v.join(", ") : "-" },
+                  { field: "width", label: "Width", width: 45 },
+                  { field: "height", label: "Height", width: 45 },
+                  { field: "depth", label: "Depth", width: 45 },
+                  { field: "default_price_per_unit", label: "Price/Unit", width: 60, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                  ...(typeConfig.value === "shop_built" ? [
+                    { field: "matches_room_material", label: "Match Room", width: 55 },
+                    { field: "material_waste_factor", label: "Waste", width: 45 },
+                  ] : []),
+                ],
+                items: getAccessoriesByType(typeConfig.value),
+              }))}
+            />
           </div>
         </div>
 

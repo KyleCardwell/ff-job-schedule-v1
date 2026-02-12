@@ -17,6 +17,7 @@ import {
   saveDrawerBoxMaterials,
 } from "../../redux/actions/materials";
 
+import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
@@ -540,6 +541,41 @@ const MaterialsSettings = forwardRef((props, ref) => {
             <h2 className="text-lg font-bold text-slate-200">
               Manage Materials
             </h2>
+            <GenerateSettingsPdf
+              title="Materials Settings"
+              fileName="Materials Settings"
+              orientation="landscape"
+              sections={[
+                {
+                  label: "Sheet Goods",
+                  columns: [
+                    { field: "name", label: "Name", width: "*" },
+                    { field: "width", label: "Width", width: 45 },
+                    { field: "height", label: "Height", width: 45 },
+                    { field: "thickness", label: "Thick", width: 40 },
+                    { field: "sheet_price", label: "Sheet $", width: 55, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    { field: "bd_ft_price", label: "Bd Ft $", width: 55, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    { field: "box_mat", label: "Box" , width: 35 },
+                    { field: "face_mat", label: "Face", width: 35 },
+                    { field: "five_piece", label: "5pc", width: 30 },
+                    { field: "slab_door", label: "Slab", width: 35 },
+                    { field: "needs_finish", label: "Finish", width: 40 },
+                  ],
+                  items: localSheetGoods,
+                },
+                {
+                  label: "Drawer Box Materials",
+                  columns: [
+                    { field: "name", label: "Name", width: "*" },
+                    { field: "width", label: "Width", width: 60 },
+                    { field: "height", label: "Height", width: 60 },
+                    { field: "thickness", label: "Thickness", width: 60 },
+                    { field: "sheet_price", label: "Sheet Price", width: 80, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                  ],
+                  items: localDrawerBoxMaterials,
+                },
+              ]}
+            />
           </div>
         </div>
 

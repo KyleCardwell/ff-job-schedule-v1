@@ -17,6 +17,7 @@ import {
 } from "../../redux/actions/lengths";
 import { LENGTH_TYPES } from "../../utils/constants";
 
+import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
@@ -457,6 +458,44 @@ const LengthsSettings = forwardRef((props, ref) => {
             <h2 className="text-lg font-bold text-slate-200">
               Manage Lengths
             </h2>
+            <GenerateSettingsPdf
+              title="Lengths Settings"
+              fileName="Lengths Settings"
+              orientation="auto"
+              sections={lengthTypes.map((typeConfig) => ({
+                label: typeConfig.label,
+                columns: [
+                  { field: "name", label: "Name", width: "*" },
+                  { field: "requires_miters", label: "Miters", width: 45 },
+                  { field: "requires_cutouts", label: "Cutouts", width: 50 },
+                  { field: "default_width", label: "Width (in)", width: 55 },
+                  { field: "default_thickness", label: "Thick (in)", width: 55 },
+                  ...activeServices.map((s) => ({
+                    field: `_service_${s.service_id}`,
+                    label: s.service_name,
+                    width: 70,
+                    format: (_, item) => {
+                      const regular = (item.services || []).find(
+                        (sv) => sv.service_id === s.service_id && !sv.is_miter_time && !sv.is_cutout_time
+                      );
+                      const miter = (item.services || []).find(
+                        (sv) => sv.service_id === s.service_id && sv.is_miter_time
+                      );
+                      const cutout = (item.services || []).find(
+                        (sv) => sv.service_id === s.service_id && sv.is_cutout_time
+                      );
+                      const parts = [];
+                      if (regular?.time_per_unit) parts.push(String(regular.time_per_unit));
+                      else parts.push("-");
+                      if (item.requires_miters) parts.push(`M:${miter?.time_per_unit || 0}`);
+                      if (item.requires_cutouts) parts.push(`C:${cutout?.time_per_unit || 0}`);
+                      return parts.join(" ");
+                    },
+                  })),
+                ],
+                items: getLengthsByType(typeConfig.value),
+              }))}
+            />
           </div>
         </div>
 

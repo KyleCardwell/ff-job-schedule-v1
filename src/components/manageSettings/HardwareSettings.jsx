@@ -21,6 +21,7 @@ import {
 } from "../../redux/actions/hardware";
 import { fetchServices } from "../../redux/actions/services";
 
+import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
@@ -673,6 +674,67 @@ const HardwareSettings = forwardRef((props, ref) => {
             <h2 className="text-lg font-bold text-slate-200">
               Manage Hardware
             </h2>
+            <GenerateSettingsPdf
+              title="Hardware Settings"
+              fileName="Hardware Settings"
+              orientation="auto"
+              sections={[
+                {
+                  label: "Hinges",
+                  columns: [
+                    { field: "name", label: "Name", width: "*" },
+                    { field: "price", label: "Price", width: 60, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    { field: "actual_cost", label: "Actual Cost", width: 70, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    ...activeServices.map((s) => ({
+                      field: `_service_${s.service_id}`,
+                      label: s.service_name,
+                      width: 60,
+                      format: (_, item) => {
+                        const svc = (item.services || []).find((sv) => sv.service_id === s.service_id);
+                        return svc?.time_per_unit ? String(svc.time_per_unit) : "-";
+                      },
+                    })),
+                  ],
+                  items: localHinges,
+                },
+                {
+                  label: "Pulls",
+                  columns: [
+                    { field: "name", label: "Name", width: "*" },
+                    { field: "price", label: "Price", width: 60, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    { field: "actual_cost", label: "Actual Cost", width: 70, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    ...activeServices.map((s) => ({
+                      field: `_service_${s.service_id}`,
+                      label: s.service_name,
+                      width: 60,
+                      format: (_, item) => {
+                        const svc = (item.services || []).find((sv) => sv.service_id === s.service_id);
+                        return svc?.time_per_unit ? String(svc.time_per_unit) : "-";
+                      },
+                    })),
+                  ],
+                  items: localPulls,
+                },
+                {
+                  label: "Slides",
+                  columns: [
+                    { field: "name", label: "Name", width: "*" },
+                    { field: "price", label: "Price", width: 60, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    { field: "actual_cost", label: "Actual Cost", width: 70, format: (v) => v != null ? `$${Number(v).toFixed(2)}` : "-" },
+                    ...activeServices.map((s) => ({
+                      field: `_service_${s.service_id}`,
+                      label: s.service_name,
+                      width: 60,
+                      format: (_, item) => {
+                        const svc = (item.services || []).find((sv) => sv.service_id === s.service_id);
+                        return svc?.time_per_unit ? String(svc.time_per_unit) : "-";
+                      },
+                    })),
+                  ],
+                  items: localSlides,
+                },
+              ]}
+            />
           </div>
         </div>
 
