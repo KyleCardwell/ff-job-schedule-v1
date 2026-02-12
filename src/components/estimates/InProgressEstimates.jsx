@@ -1,17 +1,26 @@
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
-import { FiArrowLeft, FiEdit, FiTrash2, FiSearch, FiX, FiRotateCcw } from "react-icons/fi";
+import { FiArrowLeft, FiEdit, FiTrash2, FiSearch, FiX, FiRotateCcw, FiArchive } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { fetchEstimates, deleteEstimate, setCurrentEstimate, unfinalizeEstimate } from "../../redux/actions/estimates";
+import { fetchEstimates, deleteEstimate, setCurrentEstimate, unfinalizeEstimate, archiveEstimate, unarchiveEstimate } from "../../redux/actions/estimates";
 import { PATHS, ESTIMATE_STATUS } from "../../utils/constants";
 import Tooltip from "../common/Tooltip.jsx";
 
 const EstimatesList = ({ mode = "draft" }) => {
   const isFinalized = mode === "finalized";
-  const statusFilter = isFinalized ? ESTIMATE_STATUS.FINALIZED : ESTIMATE_STATUS.DRAFT;
-  const basePath = isFinalized ? PATHS.FINALIZED_ESTIMATES : PATHS.IN_PROGRESS_ESTIMATES;
+  const isArchived = mode === "archived";
+  const statusFilter = isArchived
+    ? ESTIMATE_STATUS.ARCHIVED
+    : isFinalized
+      ? ESTIMATE_STATUS.FINALIZED
+      : ESTIMATE_STATUS.DRAFT;
+  const basePath = isArchived
+    ? PATHS.ARCHIVED_ESTIMATES
+    : isFinalized
+      ? PATHS.FINALIZED_ESTIMATES
+      : PATHS.IN_PROGRESS_ESTIMATES;
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { estimates, loading, error } = useSelector((state) => state.estimates);
@@ -61,6 +70,22 @@ const EstimatesList = ({ mode = "draft" }) => {
     }
   };
 
+  const handleArchive = async (estimateId) => {
+    try {
+      await dispatch(archiveEstimate(estimateId));
+    } catch (error) {
+      console.error("Failed to archive estimate:", error);
+    }
+  };
+
+  const handleUnarchive = async (estimateId) => {
+    try {
+      await dispatch(unarchiveEstimate(estimateId));
+    } catch (error) {
+      console.error("Failed to un-archive estimate:", error);
+    }
+  };
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
@@ -92,7 +117,11 @@ const EstimatesList = ({ mode = "draft" }) => {
               <FiArrowLeft size={24} />
             </button>
             <h1 className="text-2xl font-bold text-slate-800">
-              {isFinalized ? "Finalized Estimates" : "Estimates In Progress"}
+              {isArchived
+                ? "Archived Estimates"
+                : isFinalized
+                  ? "Finalized Estimates"
+                  : "Estimates In Progress"}
             </h1>
           </div>
 
@@ -132,11 +161,13 @@ const EstimatesList = ({ mode = "draft" }) => {
               <p className="text-slate-500 mb-4">
                 {searchTerm
                   ? "No estimates found matching your search"
-                  : isFinalized
-                    ? "No finalized estimates found"
-                    : "No draft estimates found"}
+                  : isArchived
+                    ? "No archived estimates found"
+                    : isFinalized
+                      ? "No finalized estimates found"
+                      : "No draft estimates found"}
               </p>
-              {!isFinalized && (
+              {!isFinalized && !isArchived && (
                 <button
                   onClick={() => navigate(PATHS.NEW_ESTIMATE)}
                   className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
@@ -148,7 +179,7 @@ const EstimatesList = ({ mode = "draft" }) => {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-full">
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_0.5fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Project</div>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Client</div>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Created</div>
@@ -160,7 +191,7 @@ const EstimatesList = ({ mode = "draft" }) => {
                   {filteredEstimates.map((estimate) => (
                     <div
                       key={estimate.estimate_id}
-                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_0.5fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
+                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
                     >
                       <div className="text-sm font-medium text-slate-900 truncate">
                         {estimate.est_project_name || "Unknown Project"}
@@ -178,6 +209,17 @@ const EstimatesList = ({ mode = "draft" }) => {
                         {estimate.updated_by_name}
                       </div>
                       <div className="text-sm font-medium flex items-center justify-between px-2">
+                        {isArchived && (
+                          <Tooltip text={`Restore to ${estimate.finalized_on ? "Finalized" : "In-Progress"}`}>
+                            <button
+                              onClick={() => handleUnarchive(estimate.estimate_id)}
+                              className="text-blue-600 hover:text-blue-800"
+                              aria-label="Restore Estimate to In-Progress"
+                            >
+                              <FiRotateCcw />
+                            </button>
+                          </Tooltip>
+                        )}
                         {isFinalized && (
                           <Tooltip text="Revert to In-Progress">
                             <button
@@ -189,15 +231,29 @@ const EstimatesList = ({ mode = "draft" }) => {
                             </button>
                           </Tooltip>
                         )}
-                        <Tooltip text="Edit">
-                          <button
-                            onClick={() => handleEditEstimate(estimate)}
-                            className="text-blue-600 hover:text-blue-900"
-                            aria-label="Edit estimate"
-                          >
-                            <FiEdit />
-                          </button>
-                        </Tooltip>
+                       
+                        {!isArchived && (
+                          <Tooltip text="Edit">
+                            <button
+                              onClick={() => handleEditEstimate(estimate)}
+                              className="text-blue-600 hover:text-blue-900"
+                              aria-label="Edit estimate"
+                            >
+                              <FiEdit />
+                            </button>
+                          </Tooltip>
+                        )}
+                         {!isArchived && (
+                          <Tooltip text="Archive">
+                            <button
+                              onClick={() => handleArchive(estimate.estimate_id)}
+                              className="text-slate-500 hover:text-slate-700"
+                              aria-label="Archive estimate"
+                            >
+                              <FiArchive />
+                            </button>
+                          </Tooltip>
+                        )}
                         <Tooltip text="Delete">
                           <button
                             onClick={() => setShowConfirmDelete(estimate.estimate_id)}
@@ -249,7 +305,7 @@ const EstimatesList = ({ mode = "draft" }) => {
 };
 
 EstimatesList.propTypes = {
-  mode: PropTypes.oneOf(["draft", "finalized"]),
+  mode: PropTypes.oneOf(["draft", "finalized", "archived"]),
 };
 
 export default EstimatesList;

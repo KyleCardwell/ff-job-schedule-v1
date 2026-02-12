@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { FiPlusCircle, FiEdit, FiCheckCircle } from "react-icons/fi";
+import { FiPlusCircle, FiEdit, FiCheckCircle, FiArchive } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -100,6 +100,23 @@ const EstimateDashboard = () => {
             .length
         : 0,
     },
+    {
+      id: "archived",
+      title: "Archived Estimates",
+      description:
+        "View archived estimates that are no longer active. Archived estimates can be restored to in-progress status if needed.",
+      icon: FiArchive,
+      buttonText: "View Archived Estimates",
+      path: PATHS.ARCHIVED_ESTIMATES,
+      bgColor: "bg-slate-50",
+      borderColor: "border-slate-200",
+      iconColor: "text-slate-500",
+      buttonColor: "bg-slate-500 hover:bg-slate-600",
+      count: estimates
+        ? estimates.filter((est) => est.status === ESTIMATE_STATUS.ARCHIVED)
+            .length
+        : 0,
+    },
   ];
 
   return (
@@ -111,7 +128,7 @@ const EstimateDashboard = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {sections.map((section) => (
             <EstimateDashboardCard
               key={section.id}
