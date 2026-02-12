@@ -3,6 +3,8 @@ import { useState } from "react";
 import { FiSave, FiX } from "react-icons/fi";
 import { v4 as uuid } from "uuid";
 
+import useMathInput from "../../hooks/useMathInput";
+
 import SectionItemList from "./SectionItemList.jsx";
 
 const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
@@ -16,16 +18,33 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
   const [errors, setErrors] = useState({});
 
+  const mathInput = useMathInput(
+    {
+      quantity: item.quantity ?? 1,
+      price: item.price ?? 0,
+    },
+    (fieldName, numValue) => {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: numValue !== null ? numValue : "",
+      }));
+    }
+  );
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Handle numeric inputs
+    // Handle math-enabled numeric inputs
     if (["quantity", "price"].includes(name)) {
-      const numValue = value === "" ? "" : Number(value);
-      setFormData({
-        ...formData,
-        [name]: numValue,
-      });
+      mathInput.handleChange(name, value);
+      // Clear error when field is updated
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: "",
+        });
+      }
+      return;
     } else {
       setFormData({
         ...formData,
@@ -89,13 +108,13 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
             Quantity <span className="text-red-500">*</span>
           </label>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             id="quantity"
             name="quantity"
-            value={formData.quantity}
+            value={mathInput.inputValues.quantity}
             onChange={handleChange}
-            min="0"
-            step="1"
+            onBlur={() => mathInput.handleBlur("quantity")}
             className={`w-full px-3 py-2 border ${
               errors.quantity ? "border-red-500" : "border-slate-300"
             } rounded-md text-sm`}
@@ -138,13 +157,13 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
             Cost <span className="text-red-500">*</span>
           </label>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             id="price"
             name="price"
-            value={formData.price}
+            value={mathInput.inputValues.price}
             onChange={handleChange}
-            min="0"
-            step="0.01"
+            onBlur={() => mathInput.handleBlur("price")}
             className={`w-full px-3 py-2 border ${
               errors.price ? "border-red-500" : "border-slate-300"
             } rounded-md text-sm`}

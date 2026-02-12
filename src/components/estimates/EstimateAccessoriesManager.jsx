@@ -4,9 +4,11 @@ import { FiSave, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
+import useMathInput from "../../hooks/useMathInput";
 import { fetchAccessoriesCatalog } from "../../redux/actions/accessories";
 import { getUnitLabel } from "../../utils/accessoryCalculations";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+import { decimalToFraction } from "../../utils/mathUtils";
 
 import SectionItemList from "./SectionItemList.jsx";
 
@@ -27,6 +29,22 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   });
 
   const [errors, setErrors] = useState({});
+
+  const mathInput = useMathInput(
+    {
+      width: item.width,
+      height: item.height,
+      depth: item.depth,
+      quantity: item.quantity !== undefined && item.quantity !== null ? item.quantity : 1,
+    },
+    (fieldName, numValue) => {
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: numValue !== null ? numValue : "",
+      }));
+    },
+    { fractionalFields: ["width", "height", "depth"] }
+  );
 
   useEffect(() => {
     dispatch(fetchAccessoriesCatalog());
@@ -81,14 +99,17 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Handle numeric inputs
+    // Handle math-enabled numeric inputs
     if (["quantity", "width", "height", "depth"].includes(name)) {
-      // Use empty string instead of null to avoid React controlled input warnings
-      const numValue = value === "" ? "" : Number(value);
-      setFormData({
-        ...formData,
-        [name]: numValue,
-      });
+      mathInput.handleChange(name, value);
+      // Clear error when field is updated
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: "",
+        });
+      }
+      return;
     } else if (name === "accessory_catalog_id") {
       // Convert accessory_catalog_id to number for consistency
       const numValue = value === "" ? "" : Number(value);
@@ -228,11 +249,12 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 Width (in)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="width"
-                value={formData.width || ""}
+                value={mathInput.inputValues.width || ""}
                 onChange={handleChange}
-                step="0.25"
+                onBlur={() => mathInput.handleBlur("width")}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
               />
@@ -242,11 +264,12 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 Height (in)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="height"
-                value={formData.height || ""}
+                value={mathInput.inputValues.height || ""}
                 onChange={handleChange}
-                step="0.25"
+                onBlur={() => mathInput.handleBlur("height")}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
               />
@@ -256,11 +279,12 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 Depth (in)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="depth"
-                value={formData.depth || ""}
+                value={mathInput.inputValues.depth || ""}
                 onChange={handleChange}
-                step="0.25"
+                onBlur={() => mathInput.handleBlur("depth")}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
               />
@@ -270,12 +294,12 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 Quantity <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="quantity"
-                value={formData.quantity}
+                value={mathInput.inputValues.quantity}
                 onChange={handleChange}
-                min="0"
-                step="1"
+                onBlur={() => mathInput.handleBlur("quantity")}
                 className={`w-full px-3 py-2 border ${
                   errors.quantity ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
@@ -373,19 +397,19 @@ const EstimateAccessoriesManager = ({
       key: "width",
       label: "W",
       width: "60px",
-      render: (item) => (item.width ? item.width : "-"),
+      render: (item) => (item.width ? decimalToFraction(item.width) : "-"),
     },
     {
       key: "height",
       label: "H",
       width: "60px",
-      render: (item) => (item.height ? item.height : "-"),
+      render: (item) => (item.height ? decimalToFraction(item.height) : "-"),
     },
     {
       key: "depth",
       label: "D",
       width: "60px",
-      render: (item) => (item.depth ? item.depth : "-"),
+      render: (item) => (item.depth ? decimalToFraction(item.depth) : "-"),
     },
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
