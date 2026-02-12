@@ -296,50 +296,70 @@ const AddToSchedule = () => {
     return map;
   }, [currentEstimate, catalogData, services]);
 
+  // Build an ordered list of section IDs based on tasks_order
+  // (Object.keys doesn't guarantee order for numeric-like keys)
+  const orderedSectionIds = useMemo(() => {
+    if (!currentEstimate?.tasks) return [];
+    const tasksOrder = currentEstimate.tasks_order || [];
+    const sortedTasks = [...currentEstimate.tasks].sort((a, b) => {
+      const aIdx = tasksOrder.indexOf(a.est_task_id);
+      const bIdx = tasksOrder.indexOf(b.est_task_id);
+      return (aIdx === -1 ? Infinity : aIdx) - (bIdx === -1 ? Infinity : bIdx);
+    });
+    const ids = [];
+    sortedTasks.forEach((task) => {
+      task.sections?.forEach((section) => {
+        ids.push(String(section.est_section_id));
+      });
+    });
+    return ids;
+  }, [currentEstimate]);
+
   // Initialize groups when sectionCalcsMap first populates
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
-    const sectionIds = Object.keys(sectionCalcsMap);
-    if (sectionIds.length > 0 && groups.length === 0) {
-      // Group sections by taskId, preserving tasks_order
-      const taskOrder = [];
-      const taskMap = {};
-      sectionIds.forEach((sectionId) => {
-        const calc = sectionCalcsMap[sectionId];
-        if (!calc) return;
-        if (!taskMap[calc.taskId]) {
-          taskMap[calc.taskId] = [];
-          taskOrder.push(calc.taskId);
-        }
-        taskMap[calc.taskId].push(sectionId);
-      });
+    if (orderedSectionIds.length === 0 || groups.length !== 0) return;
+    // Verify all sections have calcs
+    if (!orderedSectionIds.every((id) => sectionCalcsMap[id])) return;
 
-      const initialGroups = taskOrder.map((taskId) => ({
-        groupId: `group-task-${taskId}`,
-        sectionIds: taskMap[taskId],
-      }));
+    // Group sections by taskId, preserving tasks_order
+    const taskOrder = [];
+    const taskMap = {};
+    orderedSectionIds.forEach((sectionId) => {
+      const calc = sectionCalcsMap[sectionId];
+      if (!calc) return;
+      if (!taskMap[calc.taskId]) {
+        taskMap[calc.taskId] = [];
+        taskOrder.push(calc.taskId);
+      }
+      taskMap[calc.taskId].push(sectionId);
+    });
 
-      // Initialize editable section names from calc data
-      const initialSectionNames = {};
-      sectionIds.forEach((sectionId) => {
-        const calc = sectionCalcsMap[sectionId];
-        if (calc) initialSectionNames[sectionId] = calc.sectionName;
-      });
-      setSectionNames(initialSectionNames);
+    const initialGroups = taskOrder.map((taskId) => ({
+      groupId: `group-task-${taskId}`,
+      sectionIds: taskMap[taskId],
+    }));
 
-      // Initialize editable group names: default to first section's task name
-      const initialGroupNames = {};
-      initialGroups.forEach((group) => {
-        const firstCalc = sectionCalcsMap[group.sectionIds[0]];
-        initialGroupNames[group.groupId] = firstCalc?.taskName || "Group";
-      });
-      setGroupNames(initialGroupNames);
+    // Initialize editable section names from calc data
+    const initialSectionNames = {};
+    orderedSectionIds.forEach((sectionId) => {
+      const calc = sectionCalcsMap[sectionId];
+      if (calc) initialSectionNames[sectionId] = calc.sectionName;
+    });
+    setSectionNames(initialSectionNames);
 
-      setGroups(initialGroups);
-      // Select all by default
-      setSelectedGroups(new Set(initialGroups.map((g) => g.groupId)));
-    }
-  }, [sectionCalcsMap, groups.length]);
+    // Initialize editable group names: default to first section's task name
+    const initialGroupNames = {};
+    initialGroups.forEach((group) => {
+      const firstCalc = sectionCalcsMap[group.sectionIds[0]];
+      initialGroupNames[group.groupId] = firstCalc?.taskName || "Group";
+    });
+    setGroupNames(initialGroupNames);
+
+    setGroups(initialGroups);
+    // Select all by default
+    setSelectedGroups(new Set(initialGroups.map((g) => g.groupId)));
+  }, [sectionCalcsMap, orderedSectionIds, groups.length]);
 
   // Active services (for column headers)
   const activeServices = useMemo(
