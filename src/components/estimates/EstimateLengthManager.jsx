@@ -130,6 +130,12 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
         });
       }
       return;
+    } else if (name === "length_catalog_id") {
+      const numValue = value === "" ? "" : Number(value);
+      setFormData({
+        ...formData,
+        [name]: numValue,
+      });
     } else {
       setFormData({
         ...formData,
