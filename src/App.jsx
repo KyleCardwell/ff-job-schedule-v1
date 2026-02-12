@@ -250,6 +250,14 @@ const AppContent = () => {
                   }
                 />
                 <Route
+                  path="archived"
+                  element={
+                    <ProtectedRoute>
+                      <EstimatesList mode="archived" />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path={PATHS.NEW_ESTIMATE}
                   element={
                     <ProtectedRoute>

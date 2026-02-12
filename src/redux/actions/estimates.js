@@ -1781,6 +1781,124 @@ export const unfinalizeEstimate = (estimateId) => {
   };
 };
 
+// Archive an estimate: set archived_at timestamp and status to archived
+export const archiveEstimate = (estimateId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("estimates")
+        .update({
+          archived_at: now,
+          status: ESTIMATE_STATUS.ARCHIVED,
+        })
+        .eq("estimate_id", estimateId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      // Update currentEstimate if it matches
+      const { currentEstimate } = getState().estimates;
+      if (currentEstimate?.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            archived_at: now,
+            status: ESTIMATE_STATUS.ARCHIVED,
+          },
+        });
+      }
+
+      // Update the estimates list
+      const { estimates } = getState().estimates;
+      const updatedEstimates = estimates.map((est) =>
+        est.estimate_id === estimateId
+          ? { ...est, archived_at: now, status: ESTIMATE_STATUS.ARCHIVED }
+          : est
+      );
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATES_SUCCESS,
+        payload: updatedEstimates,
+      });
+
+      return data;
+    } catch (error) {
+      console.error("Error archiving estimate:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Un-archive an estimate: set archived_at to null, restore to finalized if finalized_on exists, otherwise draft
+export const unarchiveEstimate = (estimateId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      // Check if estimate was finalized before archiving
+      const { estimates } = getState().estimates;
+      const estimate = estimates.find((est) => est.estimate_id === estimateId);
+      const restoredStatus = estimate?.finalized_on
+        ? ESTIMATE_STATUS.FINALIZED
+        : ESTIMATE_STATUS.DRAFT;
+
+      const { data, error } = await supabase
+        .from("estimates")
+        .update({
+          archived_at: null,
+          status: restoredStatus,
+        })
+        .eq("estimate_id", estimateId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      // Update currentEstimate if it matches
+      const { currentEstimate } = getState().estimates;
+      if (currentEstimate?.estimate_id === estimateId) {
+        dispatch({
+          type: Actions.estimates.SET_CURRENT_ESTIMATE,
+          payload: {
+            ...currentEstimate,
+            archived_at: null,
+            status: restoredStatus,
+          },
+        });
+      }
+
+      // Update the estimates list
+      const updatedEstimates = getState().estimates.estimates.map((est) =>
+        est.estimate_id === estimateId
+          ? { ...est, archived_at: null, status: restoredStatus }
+          : est
+      );
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATES_SUCCESS,
+        payload: updatedEstimates,
+      });
+
+      return data;
+    } catch (error) {
+      console.error("Error un-archiving estimate:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
 // Helper to merge price overrides - existing manual overrides take precedence
 const mergeOverrides = (existing, generated) => {
   const merged = { ...generated };

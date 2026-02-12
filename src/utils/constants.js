@@ -23,12 +23,14 @@ export const PATHS = {
   NEW_ESTIMATE: "/estimates/new",
   IN_PROGRESS_ESTIMATES: "/estimates/in-progress",
   FINALIZED_ESTIMATES: "/estimates/finalized",
+  ARCHIVED_ESTIMATES: "/estimates/archived",
   ESTIMATE_PREVIEW: "/estimates/in-progress/:estimateId/preview",
 };
 
 export const ESTIMATE_STATUS = {
   DRAFT: "draft",
   FINALIZED: "finalized",
+  ARCHIVED: "archived",
 };
 
 export const SECTION_TYPES = {
