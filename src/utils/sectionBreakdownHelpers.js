@@ -169,7 +169,7 @@ export const getServiceName = (serviceId, allServices) => {
 
 /**
  * Get labor adjustment hours from section.add_hours
- * Returns hoursByService object with setup_hours added to service_id 4 (Install)
+ * Returns hoursByService object with install_setup_hours added to service_id 4 (Install)
  */
 export const getLaborAdjustmentHours = (addHours) => {
   if (!addHours || typeof addHours !== "object") {
@@ -179,9 +179,9 @@ export const getLaborAdjustmentHours = (addHours) => {
   const hoursByService = {};
   let hasAnyHours = false;
 
-  // Process service-specific hours (excluding setup_hours)
+  // Process service-specific hours (excluding install_setup_hours and finish_setup_hours)
   Object.entries(addHours).forEach(([key, hours]) => {
-    if (key === "setup_hours") return;
+    if (key === "install_setup_hours" || key === "finish_setup_hours") return;
 
     const serviceId = parseInt(key);
     const numericHours = parseFloat(hours) || 0;
@@ -192,13 +192,23 @@ export const getLaborAdjustmentHours = (addHours) => {
     }
   });
 
-  // Add setup_hours to service_id 4 (Install)
-  const setupHours = parseFloat(addHours.setup_hours) || 0;
+  // Add install_setup_hours to service_id 4 (Install)
+  const setupHours = parseFloat(addHours.install_setup_hours) || 0;
   if (setupHours > 0) {
     if (!hoursByService[4]) {
       hoursByService[4] = 0;
     }
     hoursByService[4] += setupHours;
+    hasAnyHours = true;
+  }
+
+  // Add finish_setup_hours to service_id 3 (Finish)
+  const finishSetupHours = parseFloat(addHours.finish_setup_hours) || 0;
+  if (finishSetupHours > 0) {
+    if (!hoursByService[3]) {
+      hoursByService[3] = 0;
+    }
+    hoursByService[3] += finishSetupHours;
     hasAnyHours = true;
   }
 

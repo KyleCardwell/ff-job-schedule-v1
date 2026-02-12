@@ -2016,8 +2016,8 @@ export const getSectionCalculations = (section, context = {}) => {
   // Add manually entered hours from add_hours field
   if (section.add_hours && typeof section.add_hours === "object") {
     Object.entries(section.add_hours).forEach(([serviceId, hours]) => {
-      // Skip setup_hours as it's handled separately below
-      if (serviceId === "setup_hours") return;
+      // Skip install_setup_hours and finish_setup_hours as they're handled separately below
+      if (serviceId === "install_setup_hours" || serviceId === "finish_setup_hours") return;
 
       const numericServiceId = parseInt(serviceId);
       const numericHours = parseFloat(hours) || 0;
@@ -2030,13 +2030,22 @@ export const getSectionCalculations = (section, context = {}) => {
       }
     });
 
-    // Add setup_hours to Install service (service_id 4)
-    const setupHours = parseFloat(section.add_hours.setup_hours) || 0;
+    // Add install_setup_hours to Install service (service_id 4)
+    const setupHours = parseFloat(section.add_hours.install_setup_hours) || 0;
     if (setupHours > 0) {
       if (!finalHoursByService[4]) {
         finalHoursByService[4] = 0;
       }
       finalHoursByService[4] += setupHours;
+    }
+
+    // Add finish_setup_hours to Finish service (service_id 3)
+    const finishSetupHours = parseFloat(section.add_hours.finish_setup_hours) || 0;
+    if (finishSetupHours > 0) {
+      if (!finalHoursByService[3]) {
+        finalHoursByService[3] = 0;
+      }
+      finalHoursByService[3] += finishSetupHours;
     }
   }
 

@@ -15,15 +15,22 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
-  const [setupHours, setSetupHours] = useState(1);
+  const [installSetupHours, setInstallSetupHours] = useState(1);
+  const [finishSetupHours, setFinishSetupHours] = useState(1);
 
   // Initialize form data from props
   useEffect(() => {
     // Initialize add hours
     if (addHours && typeof addHours === "object") {
-      // Extract setup_hours separately
-      const { setup_hours, ...otherHours } = addHours;
-      setSetupHours(setup_hours !== undefined ? setup_hours : 1);
+      // Extract install_setup_hours and finish_setup_hours separately
+      const { install_setup_hours, finish_setup_hours, ...otherHours } =
+        addHours;
+      setInstallSetupHours(
+        install_setup_hours !== undefined ? install_setup_hours : 1,
+      );
+      setFinishSetupHours(
+        finish_setup_hours !== undefined ? finish_setup_hours : 1,
+      );
       setFormData(otherHours);
     } else {
       const initialData = {};
@@ -31,7 +38,8 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
         initialData[service.service_id] = 0;
       });
       setFormData(initialData);
-      setSetupHours(1);
+      setInstallSetupHours(1);
+      setFinishSetupHours(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addHours]);
@@ -43,8 +51,14 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
   const handleCancel = () => {
     // Reset form data to original values
     if (addHours && typeof addHours === "object") {
-      const { setup_hours, ...otherHours } = addHours;
-      setSetupHours(setup_hours !== undefined ? setup_hours : 1);
+      const { install_setup_hours, finish_setup_hours, ...otherHours } =
+        addHours;
+      setInstallSetupHours(
+        install_setup_hours !== undefined ? install_setup_hours : 1,
+      );
+      setFinishSetupHours(
+        finish_setup_hours !== undefined ? finish_setup_hours : 1,
+      );
       setFormData(otherHours);
     } else {
       const initialData = {};
@@ -52,7 +66,8 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
         initialData[service.service_id] = 0;
       });
       setFormData(initialData);
-      setSetupHours(1);
+      setInstallSetupHours(1);
+      setFinishSetupHours(1);
     }
 
     setIsEditing(false);
@@ -68,10 +83,16 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
       }
     });
 
-    // Add setup_hours to the object
-    const numericSetupHours = parseFloat(setupHours);
+    // Add install_setup_hours to the object
+    const numericSetupHours = parseFloat(installSetupHours);
     if (!isNaN(numericSetupHours) && numericSetupHours >= 0) {
-      cleanedData.setup_hours = numericSetupHours;
+      cleanedData.install_setup_hours = numericSetupHours;
+    }
+
+    // Add finish_setup_hours to the object
+    const numericFinishSetupHours = parseFloat(finishSetupHours);
+    if (!isNaN(numericFinishSetupHours) && numericFinishSetupHours >= 0) {
+      cleanedData.finish_setup_hours = numericFinishSetupHours;
     }
 
     // Save all data to parent
@@ -95,13 +116,13 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
     }));
   };
 
-
   const getTotalHours = () => {
     const serviceHours = Object.values(formData).reduce((sum, hours) => {
       return sum + (parseFloat(hours) || 0);
     }, 0);
-    const setup = parseFloat(setupHours) || 0;
-    return serviceHours + setup;
+    const setup = parseFloat(installSetupHours) || 0;
+    const finishSetup = parseFloat(finishSetupHours) || 0;
+    return serviceHours + setup + finishSetup;
   };
 
   return (
@@ -146,28 +167,29 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
         </div>
       </div>
 
-      {/* Setup Hours Input */}
-      <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+      {/* Setup Hours Inputs */}
+      <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30 space-y-3">
+        {/* Finish Setup/Cleanup */}
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <label
-              htmlFor="setup-hours"
+              htmlFor="finish-setup-hours"
               className="text-sm font-medium text-white block mb-1"
             >
-              Setup/Cleanup Hours
+              Setup/Cleanup Hours - Finish
             </label>
             <p className="text-xs text-slate-300">
-              Added to Install hours. Defaults to 1 hour per section
+              Added to Finish hours. Defaults to 1 hour per section
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
             <input
-              id="setup-hours"
+              id="finish-setup-hours"
               type="number"
               min="0"
               step="1"
-              value={setupHours}
-              onChange={(e) => setSetupHours(e.target.value)}
+              value={finishSetupHours}
+              onChange={(e) => setFinishSetupHours(e.target.value)}
               disabled={!isEditing}
               className={`
                 w-24 px-2 py-1 text-sm border rounded
@@ -179,9 +201,53 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
               `}
               placeholder="1"
             />
-            {isEditing && parseFloat(setupHours) > 0 && (
+            {isEditing && parseFloat(finishSetupHours) > 0 && (
               <button
-                onClick={() => setSetupHours(0)}
+                onClick={() => setFinishSetupHours(0)}
+                className="text-slate-400 hover:text-red-500 transition-colors"
+                title="Clear finish setup hours"
+              >
+                <FiXCircle size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Install Setup/Cleanup */}
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <label
+              htmlFor="setup-hours"
+              className="text-sm font-medium text-white block mb-1"
+            >
+              Setup/Cleanup Hours - Install
+            </label>
+            <p className="text-xs text-slate-300">
+              Added to Install hours. Defaults to 1 hour per section
+            </p>
+          </div>
+          <div className="flex items-center gap-2 ml-4">
+            <input
+              id="setup-hours"
+              type="number"
+              min="0"
+              step="1"
+              value={installSetupHours}
+              onChange={(e) => setInstallSetupHours(e.target.value)}
+              disabled={!isEditing}
+              className={`
+                w-24 px-2 py-1 text-sm border rounded
+                ${
+                  isEditing
+                    ? "border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    : "border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
+                }
+              `}
+              placeholder="1"
+            />
+            {isEditing && parseFloat(installSetupHours) > 0 && (
+              <button
+                onClick={() => setInstallSetupHours(0)}
                 className="text-slate-400 hover:text-red-500 transition-colors"
                 title="Clear setup hours"
               >
