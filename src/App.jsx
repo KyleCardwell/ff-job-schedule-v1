@@ -19,6 +19,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute.jsx";
 import TeamJoin from "./components/common/TeamJoin.jsx";
 import CompletedJobsContainer from "./components/completedProjects/CompletedProjectsContainer.jsx";
 import CompletedProjectView from "./components/completedProjects/CompletedProjectView.jsx";
+import AddToSchedule from "./components/estimates/AddToSchedule.jsx";
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout.jsx";
 import EstimatePreview from "./components/estimates/EstimatePreview.jsx";
@@ -294,6 +295,14 @@ const AppContent = () => {
                   element={
                     <ProtectedRoute>
                       <EstimatePreview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="finalized/:estimateId/schedule"
+                  element={
+                    <ProtectedRoute>
+                      <AddToSchedule />
                     </ProtectedRoute>
                   }
                 />

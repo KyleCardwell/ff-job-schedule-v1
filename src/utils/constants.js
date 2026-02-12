@@ -25,6 +25,7 @@ export const PATHS = {
   FINALIZED_ESTIMATES: "/estimates/finalized",
   ARCHIVED_ESTIMATES: "/estimates/archived",
   ESTIMATE_PREVIEW: "/estimates/in-progress/:estimateId/preview",
+  ESTIMATE_SCHEDULE: "/estimates/finalized/:estimateId/schedule",
 };
 
 export const ESTIMATE_STATUS = {
