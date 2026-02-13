@@ -314,9 +314,11 @@ const AddToSchedule = () => {
     return map;
   }, [currentEstimate, catalogData, services]);
 
-  // Build ordered lists of section IDs, split into unscheduled and already-scheduled
-  const { unscheduledSectionIds, scheduledSectionIds } = useMemo(() => {
-    if (!currentEstimate?.tasks) return { unscheduledSectionIds: [], scheduledSectionIds: [] };
+  // Build ordered lists of section IDs, split into unscheduled and already-scheduled.
+  // Scheduled sections are grouped by shared scheduled_task_id so sections that were
+  // added together appear as a group in the "Already Scheduled" area.
+  const { unscheduledSectionIds, scheduledGroups } = useMemo(() => {
+    if (!currentEstimate?.tasks) return { unscheduledSectionIds: [], scheduledGroups: [] };
     const tasksOrder = currentEstimate.tasks_order || [];
     const sortedTasks = [...currentEstimate.tasks].sort((a, b) => {
       const aIdx = tasksOrder.indexOf(a.est_task_id);
@@ -324,27 +326,38 @@ const AddToSchedule = () => {
       return (aIdx === -1 ? Infinity : aIdx) - (bIdx === -1 ? Infinity : bIdx);
     });
     const unscheduled = [];
-    const scheduled = [];
+    const taskIdOrder = [];
+    const taskIdMap = {};
     sortedTasks.forEach((task) => {
       task.sections?.forEach((section) => {
         const id = String(section.est_section_id);
         if (section.scheduled_task_id) {
-          scheduled.push(id);
+          const tid = section.scheduled_task_id;
+          if (!taskIdMap[tid]) {
+            taskIdMap[tid] = [];
+            taskIdOrder.push(tid);
+          }
+          taskIdMap[tid].push(id);
         } else {
           unscheduled.push(id);
         }
       });
     });
-    return { unscheduledSectionIds: unscheduled, scheduledSectionIds: scheduled };
+    const grouped = taskIdOrder.map((tid) => ({
+      taskId: tid,
+      sectionIds: taskIdMap[tid],
+    }));
+    return { unscheduledSectionIds: unscheduled, scheduledGroups: grouped };
   }, [currentEstimate]);
 
   // Initialize groups from unscheduled sections only
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
-    if (unscheduledSectionIds.length === 0 && scheduledSectionIds.length === 0) return;
+    const allScheduledIds = scheduledGroups.flatMap((g) => g.sectionIds);
+    if (unscheduledSectionIds.length === 0 && allScheduledIds.length === 0) return;
     if (groups.length !== 0) return;
     // Verify all sections have calcs (both unscheduled and scheduled)
-    const allIds = [...unscheduledSectionIds, ...scheduledSectionIds];
+    const allIds = [...unscheduledSectionIds, ...allScheduledIds];
     if (!allIds.every((id) => sectionCalcsMap[id])) return;
 
     // Group only unscheduled sections by taskId, preserving tasks_order
@@ -384,7 +397,7 @@ const AddToSchedule = () => {
     setGroups(initialGroups);
     // Select all by default
     setSelectedGroups(new Set(initialGroups.map((g) => g.groupId)));
-  }, [sectionCalcsMap, unscheduledSectionIds, scheduledSectionIds, groups.length]);
+  }, [sectionCalcsMap, unscheduledSectionIds, scheduledGroups, groups.length]);
 
   // Active services (for column headers)
   const activeServices = useMemo(
@@ -684,11 +697,9 @@ const AddToSchedule = () => {
 
       // If sections from this estimate are already scheduled, find an
       // existing task_id so new tasks get added to the same project
-      let existingTaskId = null;
-      if (scheduledSectionIds.length > 0) {
-        const firstScheduledCalc = sectionCalcsMap[scheduledSectionIds[0]];
-        existingTaskId = firstScheduledCalc?.scheduledTaskId || null;
-      }
+      const existingTaskId = scheduledGroups.length > 0
+        ? scheduledGroups[0].taskId
+        : null;
 
       const result = await dispatch(
         addEstimateToSchedule({
@@ -728,7 +739,7 @@ const AddToSchedule = () => {
     groupNames,
     sectionNames,
     sectionCalcsMap,
-    scheduledSectionIds,
+    scheduledGroups,
     dispatch,
     currentEstimate,
     defaultEmployeeId,
@@ -1107,47 +1118,109 @@ const AddToSchedule = () => {
           </div>
 
           {/* Already-scheduled sections (grayed out, non-interactive) */}
-          {scheduledSectionIds.length > 0 && (
+          {scheduledGroups.length > 0 && (
             <div className="mt-8">
               <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
-                Already Scheduled ({scheduledSectionIds.length})
+                Already Scheduled (
+                {scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0)}
+                {" "}section
+                {scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0) !== 1 ? "s" : ""}
+                )
               </h3>
-              <div className="space-y-2 opacity-80 text-slate-300 font-mono text-xs font-medium">
-                {scheduledSectionIds.map((sectionId) => {
-                  const calc = sectionCalcsMap[sectionId];
-                  if (!calc) return null;
+              <div className="space-y-3 opacity-80 text-slate-300 font-mono text-xs font-medium">
+                {scheduledGroups.map((schGroup) => {
+                  const isMulti = schGroup.sectionIds.length > 1;
+                  const groupHours = getGroupHours(schGroup);
 
                   return (
                     <div
-                      key={sectionId}
-                      className="px-4 py-3 rounded-lg border bg-slate-800 border-slate-700"
+                      key={schGroup.taskId}
+                      className={`rounded-lg border-2 ${
+                        isMulti
+                          ? "border-slate-600/50 bg-slate-800/30"
+                          : "border-transparent"
+                      }`}
                     >
-                      <div
-                        className="grid gap-2 items-center text-sm"
-                        style={{
-                          gridTemplateColumns: `28px 28px ${sectionGridCols}`,
-                        }}
-                      >
-                        <div className="flex items-center justify-center">
-                          <FiCheck size={16} className="text-green-500" />
-                        </div>
-                        <div></div>
-                        <div className="min-w-0 truncate">
-                          {sectionNames[sectionId] || calc.sectionName}
-                        </div>
-                        {activeServices.map((service) => (
-                          <div
-                            key={service.service_id}
-                            className="text-center"
-                          >
-                            {calc.hoursByService[
-                              service.service_id
-                            ]?.toFixed(2) || "—"}
+                      {/* Group header for multi-section scheduled groups */}
+                      {isMulti && (
+                        <div
+                          className="grid gap-2 px-4 py-2 items-center text-sm font-semibold text-slate-400 border-b border-slate-600/30"
+                          style={{ gridTemplateColumns: headerGridCols }}
+                        >
+                          <div className="flex items-center justify-center">
+                            <FiCheck size={16} className="text-green-500" />
                           </div>
-                        ))}
-                        <div className="text-center">
-                          {calc.totalHours.toFixed(2)}
+                          <div></div>
+                          <div className="min-w-0 truncate">
+                            {sectionCalcsMap[schGroup.sectionIds[0]]?.taskName || "Group"}
+                          </div>
+                          {activeServices.map((service) => (
+                            <div
+                              key={service.service_id}
+                              className="text-center"
+                            >
+                              {groupHours.hoursByService[
+                                service.service_id
+                              ]?.toFixed(2) || "—"}
+                            </div>
+                          ))}
+                          <div className="text-center font-bold">
+                            {groupHours.totalHours.toFixed(2)}
+                          </div>
                         </div>
+                      )}
+
+                      {/* Individual sections */}
+                      <div className={isMulti ? "p-2 space-y-1" : "space-y-1"}>
+                        {schGroup.sectionIds.map((sectionId) => {
+                          const calc = sectionCalcsMap[sectionId];
+                          if (!calc) return null;
+
+                          return (
+                            <div
+                              key={sectionId}
+                              className={`px-4 py-3 rounded-lg border ${
+                                isMulti
+                                  ? "bg-slate-700/20 border-slate-700/50"
+                                  : "bg-slate-800 border-slate-700"
+                              }`}
+                            >
+                              <div
+                                className="grid gap-2 items-center text-sm"
+                                style={{
+                                  gridTemplateColumns: isMulti
+                                    ? sectionGridCols
+                                    : `28px 28px ${sectionGridCols}`,
+                                }}
+                              >
+                                {!isMulti && (
+                                  <>
+                                    <div className="flex items-center justify-center">
+                                      <FiCheck size={16} className="text-green-500" />
+                                    </div>
+                                    <div></div>
+                                  </>
+                                )}
+                                <div className="min-w-0 truncate">
+                                  {sectionNames[sectionId] || calc.sectionName}
+                                </div>
+                                {activeServices.map((service) => (
+                                  <div
+                                    key={service.service_id}
+                                    className="text-center"
+                                  >
+                                    {calc.hoursByService[
+                                      service.service_id
+                                    ]?.toFixed(2) || "—"}
+                                  </div>
+                                ))}
+                                <div className="text-center">
+                                  {calc.totalHours.toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
