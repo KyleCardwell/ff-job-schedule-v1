@@ -538,6 +538,7 @@ const EstimateLayout = () => {
             <div className="max-w-5xl mx-auto h-full">
               <EstimateSectionForm
                 taskId={selectedTaskId}
+                selectedTask={selectedTask}
                 section={
                   selectedTask?.sections?.find(
                     (s) => s.est_section_id === selectedSectionId
