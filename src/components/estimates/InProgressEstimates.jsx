@@ -107,7 +107,7 @@ const EstimatesList = ({ mode = "draft" }) => {
   return (
     <div className="bg-slate-800 min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-5xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-6 max-w-6xl mx-auto">
           <div className="flex items-center mb-6">
             <button
               onClick={() => navigate(PATHS.ESTIMATES)}

@@ -17,7 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BsDashSquare } from "react-icons/bs";
-import { FiArrowLeft, FiCalendar, FiMenu, FiMove } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiCheck, FiMenu, FiMove } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -45,9 +45,12 @@ import {
 } from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
+import { addEstimateToSchedule } from "../../redux/actions/projects.js";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
+import { selectSchedulableEmployees } from "../../redux/selectors";
 import { PATHS } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
+import { normalizeDate } from "../../utils/dateUtils";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
@@ -148,6 +151,16 @@ const AddToSchedule = () => {
     (state) => state.teamEstimateDefaults?.teamDefaults,
   );
 
+  // Schedule-related selectors
+  const employees = useSelector(selectSchedulableEmployees);
+  const defaultEmployeeId = employees[0]?.employee_id;
+  const {
+    chart_config_id: chartConfigId,
+    next_task_number: nextTaskNumber,
+  } = useSelector((state) => state.chartConfig);
+  const dayWidth = useSelector((state) => state.chartData.dayWidth);
+  const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
+
   // ---------- State ----------
   // groups: array of { groupId, sectionIds: [...] }
   // Each sectionId appears in exactly one group.
@@ -160,6 +173,9 @@ const AddToSchedule = () => {
   // Editable names: sectionId → string, groupId → string
   const [sectionNames, setSectionNames] = useState({});
   const [groupNames, setGroupNames] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // ---------- Fetch estimate + catalogs ----------
   useEffect(() => {
@@ -290,6 +306,7 @@ const AddToSchedule = () => {
           sectionName,
           taskName: task.est_task_name,
           taskId: task.est_task_id,
+          scheduledTaskId: section.scheduled_task_id || null,
         };
       });
     });
@@ -297,36 +314,43 @@ const AddToSchedule = () => {
     return map;
   }, [currentEstimate, catalogData, services]);
 
-  // Build an ordered list of section IDs based on tasks_order
-  // (Object.keys doesn't guarantee order for numeric-like keys)
-  const orderedSectionIds = useMemo(() => {
-    if (!currentEstimate?.tasks) return [];
+  // Build ordered lists of section IDs, split into unscheduled and already-scheduled
+  const { unscheduledSectionIds, scheduledSectionIds } = useMemo(() => {
+    if (!currentEstimate?.tasks) return { unscheduledSectionIds: [], scheduledSectionIds: [] };
     const tasksOrder = currentEstimate.tasks_order || [];
     const sortedTasks = [...currentEstimate.tasks].sort((a, b) => {
       const aIdx = tasksOrder.indexOf(a.est_task_id);
       const bIdx = tasksOrder.indexOf(b.est_task_id);
       return (aIdx === -1 ? Infinity : aIdx) - (bIdx === -1 ? Infinity : bIdx);
     });
-    const ids = [];
+    const unscheduled = [];
+    const scheduled = [];
     sortedTasks.forEach((task) => {
       task.sections?.forEach((section) => {
-        ids.push(String(section.est_section_id));
+        const id = String(section.est_section_id);
+        if (section.scheduled_task_id) {
+          scheduled.push(id);
+        } else {
+          unscheduled.push(id);
+        }
       });
     });
-    return ids;
+    return { unscheduledSectionIds: unscheduled, scheduledSectionIds: scheduled };
   }, [currentEstimate]);
 
-  // Initialize groups when sectionCalcsMap first populates
+  // Initialize groups from unscheduled sections only
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
-    if (orderedSectionIds.length === 0 || groups.length !== 0) return;
-    // Verify all sections have calcs
-    if (!orderedSectionIds.every((id) => sectionCalcsMap[id])) return;
+    if (unscheduledSectionIds.length === 0 && scheduledSectionIds.length === 0) return;
+    if (groups.length !== 0) return;
+    // Verify all sections have calcs (both unscheduled and scheduled)
+    const allIds = [...unscheduledSectionIds, ...scheduledSectionIds];
+    if (!allIds.every((id) => sectionCalcsMap[id])) return;
 
-    // Group sections by taskId, preserving tasks_order
+    // Group only unscheduled sections by taskId, preserving tasks_order
     const taskOrder = [];
     const taskMap = {};
-    orderedSectionIds.forEach((sectionId) => {
+    unscheduledSectionIds.forEach((sectionId) => {
       const calc = sectionCalcsMap[sectionId];
       if (!calc) return;
       if (!taskMap[calc.taskId]) {
@@ -341,9 +365,9 @@ const AddToSchedule = () => {
       sectionIds: taskMap[taskId],
     }));
 
-    // Initialize editable section names from calc data
+    // Initialize editable section names for ALL sections (unscheduled + scheduled)
     const initialSectionNames = {};
-    orderedSectionIds.forEach((sectionId) => {
+    allIds.forEach((sectionId) => {
       const calc = sectionCalcsMap[sectionId];
       if (calc) initialSectionNames[sectionId] = calc.sectionName;
     });
@@ -360,7 +384,7 @@ const AddToSchedule = () => {
     setGroups(initialGroups);
     // Select all by default
     setSelectedGroups(new Set(initialGroups.map((g) => g.groupId)));
-  }, [sectionCalcsMap, orderedSectionIds, groups.length]);
+  }, [sectionCalcsMap, unscheduledSectionIds, scheduledSectionIds, groups.length]);
 
   // Active services (for column headers)
   const activeServices = useMemo(
@@ -625,6 +649,95 @@ const AddToSchedule = () => {
     };
   }, [groups, selectedGroups, getGroupHours]);
 
+  // ---------- Add to Schedule handler ----------
+  const handleAddToSchedule = useCallback(async () => {
+    if (selectedGroups.size === 0 || isSaving) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      // Build the groups payload for the RPC
+      const selectedGroupsData = groups
+        .filter((group) => selectedGroups.has(group.groupId))
+        .map((group) => {
+          const groupHours = getGroupHours(group);
+          const shopHours = groupHours.hoursByService[2] || 0;
+
+          // Determine task name: use group name for multi-section groups,
+          // or section name for single-section groups
+          const name =
+            group.sectionIds.length > 1
+              ? groupNames[group.groupId] || "Group"
+              : sectionNames[group.sectionIds[0]] ||
+                sectionCalcsMap[group.sectionIds[0]]?.sectionName ||
+                "Section";
+
+          return {
+            name,
+            duration: shopHours,
+            section_ids: group.sectionIds.map((id) => parseInt(id, 10)),
+          };
+        });
+
+      const startDate = normalizeDate(new Date());
+
+      // If sections from this estimate are already scheduled, find an
+      // existing task_id so new tasks get added to the same project
+      let existingTaskId = null;
+      if (scheduledSectionIds.length > 0) {
+        const firstScheduledCalc = sectionCalcsMap[scheduledSectionIds[0]];
+        existingTaskId = firstScheduledCalc?.scheduledTaskId || null;
+      }
+
+      const result = await dispatch(
+        addEstimateToSchedule({
+          projectName: currentEstimate.est_project_name,
+          teamId: currentEstimate.team_id,
+          employeeId: defaultEmployeeId,
+          startDate,
+          dayWidth,
+          workdayHours,
+          nextTaskNumber,
+          chartConfigId,
+          groups: selectedGroupsData,
+          existingTaskId,
+        })
+      );
+
+      if (result.success) {
+        setSaveSuccess(true);
+        // Re-fetch estimate so scheduled_task_id values are up to date,
+        // then reset groups so the init effect re-runs with the new split
+        await dispatch(fetchEstimateById(currentEstimate.estimate_id));
+        setGroups([]);
+        setSelectedGroups(new Set());
+      } else {
+        setSaveError(result.error || "Failed to add to schedule");
+      }
+    } catch (error) {
+      setSaveError(error.message || "An unexpected error occurred");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    selectedGroups,
+    isSaving,
+    groups,
+    getGroupHours,
+    groupNames,
+    sectionNames,
+    sectionCalcsMap,
+    scheduledSectionIds,
+    dispatch,
+    currentEstimate,
+    defaultEmployeeId,
+    dayWidth,
+    workdayHours,
+    nextTaskNumber,
+    chartConfigId,
+  ]);
+
   // ---------- Column template helper ----------
   const serviceColumns = activeServices.map(() => "80px").join(" ");
   const headerGridCols = `40px 40px 1fr ${serviceColumns} 90px`;
@@ -671,13 +784,22 @@ const AddToSchedule = () => {
                 <p className="text-sm text-slate-400">Add to Schedule</p>
               </div>
             </div>
-            <button
-              disabled
-              className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-            >
-              <FiCalendar className="w-4 h-4" />
-              Add to Schedule
-            </button>
+            <div className="flex items-center gap-3">
+              {saveError && (
+                <span className="text-sm text-red-400">{saveError}</span>
+              )}
+              {saveSuccess && (
+                <span className="text-sm text-green-400">Added to schedule!</span>
+              )}
+              <button
+                onClick={handleAddToSchedule}
+                disabled={selectedGroups.size === 0 || isSaving || saveSuccess}
+                className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+              >
+                <FiCalendar className="w-4 h-4" />
+                {isSaving ? "Adding..." : saveSuccess ? "Added" : "Add to Schedule"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -983,6 +1105,56 @@ const AddToSchedule = () => {
               {selectedTotals.totalHours.toFixed(2)}
             </div>
           </div>
+
+          {/* Already-scheduled sections (grayed out, non-interactive) */}
+          {scheduledSectionIds.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
+                Already Scheduled ({scheduledSectionIds.length})
+              </h3>
+              <div className="space-y-2 opacity-80 text-slate-300 font-mono text-xs font-medium">
+                {scheduledSectionIds.map((sectionId) => {
+                  const calc = sectionCalcsMap[sectionId];
+                  if (!calc) return null;
+
+                  return (
+                    <div
+                      key={sectionId}
+                      className="px-4 py-3 rounded-lg border bg-slate-800 border-slate-700"
+                    >
+                      <div
+                        className="grid gap-2 items-center text-sm"
+                        style={{
+                          gridTemplateColumns: `28px 28px ${sectionGridCols}`,
+                        }}
+                      >
+                        <div className="flex items-center justify-center">
+                          <FiCheck size={16} className="text-green-500" />
+                        </div>
+                        <div></div>
+                        <div className="min-w-0 truncate">
+                          {sectionNames[sectionId] || calc.sectionName}
+                        </div>
+                        {activeServices.map((service) => (
+                          <div
+                            key={service.service_id}
+                            className="text-center"
+                          >
+                            {calc.hoursByService[
+                              service.service_id
+                            ]?.toFixed(2) || "—"}
+                          </div>
+                        ))}
+                        <div className="text-center">
+                          {calc.totalHours.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,7 +7,6 @@ import { Actions } from "../actions";
 
 import { updateNextTaskNumber } from "./chartConfig";
 
-
 export const fetchEarliestStartDate =
   (excludeEmployeeId) => async (dispatch) => {
     try {
@@ -131,7 +130,7 @@ export const fetchProjects =
           project.tasks.flatMap((task) => {
             // Sort subtasks by created_at before mapping
             const sortedSubtasks = [...task.subtasks].sort((a, b) =>
-              a.subtask_created_at.localeCompare(b.subtask_created_at)
+              a.subtask_created_at.localeCompare(b.subtask_created_at),
             );
 
             return sortedSubtasks.map((subTask, index) => ({
@@ -149,16 +148,16 @@ export const fetchProjects =
               needs_attention: project.needs_attention,
               est_duration: task.est_duration,
             }));
-          })
+          }),
         )
         .sort((a, b) => {
           const projectCompare = a.project_scheduled_at.localeCompare(
-            b.project_scheduled_at
+            b.project_scheduled_at,
           );
           if (projectCompare !== 0) return projectCompare;
 
           const taskCompare = a.task_created_at.localeCompare(
-            b.task_created_at
+            b.task_created_at,
           );
           if (taskCompare !== 0) return taskCompare;
 
@@ -323,7 +322,7 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
           acc[task.task_id] = taskData;
         }
         return acc;
-      }, {})
+      }, {}),
     );
 
     // Insert new tasks
@@ -360,12 +359,12 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
     updatedTasks.forEach((wp) => {
       const newTask = newTasks.find(
         (task) =>
-          task.task_id === wp.task_id || task.temp_task_id === wp.temp_task_id
+          task.task_id === wp.task_id || task.temp_task_id === wp.temp_task_id,
       );
 
       if (!newTask) {
         throw new Error(
-          `Could not find matching task for work period ${wp.task_name}`
+          `Could not find matching task for work period ${wp.task_name}`,
         );
       }
 
@@ -435,8 +434,8 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
     await dispatch(
       fetchProjects(
         state.builders.employees[0].employee_id,
-        fetchProjectsOptions.select
-      )
+        fetchProjectsOptions.select,
+      ),
     );
 
     dispatch({
@@ -545,5 +544,68 @@ export const fetchCompletedProjects =
         type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_ERROR,
         payload: error.message,
       });
+    }
+  };
+
+export const addEstimateToSchedule =
+  ({
+    projectName,
+    teamId,
+    employeeId,
+    startDate,
+    dayWidth,
+    workdayHours,
+    nextTaskNumber,
+    chartConfigId,
+    groups,
+    existingTaskId = null,
+  }) =>
+  async (dispatch, getState) => {
+    dispatch({ type: Actions.projects.ADD_TO_SCHEDULE_START });
+
+    try {
+      const { data, error } = await supabase.rpc("add_estimate_to_schedule", {
+        p_project_name: projectName,
+        p_team_id: teamId,
+        p_employee_id: employeeId,
+        p_start_date: startDate,
+        p_day_width: dayWidth,
+        p_workday_hours: workdayHours,
+        p_next_task_number: nextTaskNumber,
+        p_chart_config_id: chartConfigId,
+        p_groups: groups,
+        p_existing_task_id: existingTaskId,
+      });
+
+      if (error) throw error;
+
+      // Update next_task_number in Redux
+      dispatch({
+        type: Actions.chartConfig.UPDATE_NEXT_TASK_NUMBER,
+        payload: data.next_task_number,
+      });
+
+      // Refresh schedule data
+      const state = getState();
+      await dispatch(
+        fetchProjects(
+          state.builders.employees[0].employee_id,
+          fetchProjectsOptions.select,
+        ),
+      );
+
+      dispatch({
+        type: Actions.projects.ADD_TO_SCHEDULE_SUCCESS,
+        payload: data,
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error adding estimate to schedule:", error);
+      dispatch({
+        type: Actions.projects.ADD_TO_SCHEDULE_ERROR,
+        payload: error.message,
+      });
+      return { success: false, error: error.message };
     }
   };
