@@ -1,9 +1,14 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
-import { FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { updateTask, deleteTask, addTask, duplicateSection } from "../../redux/actions/estimates";
+import {
+  updateTask,
+  deleteTask,
+  addTask,
+  duplicateSection,
+} from "../../redux/actions/estimates";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
@@ -31,15 +36,16 @@ const EstimateTask = ({
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
-    (state) => state.estimates.currentEstimate
+    (state) => state.estimates.currentEstimate,
   );
   const teamDefaults = useSelector(
-    (state) => state.teamEstimateDefaults.teamDefaults
+    (state) => state.teamEstimateDefaults.teamDefaults,
   );
   const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] = useState(false);
+  const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] =
+    useState(false);
   const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
 
   useEffect(() => {
@@ -52,14 +58,14 @@ const EstimateTask = ({
     try {
       if (isNew) {
         const newTask = await dispatch(
-          addTask(currentEstimate.estimate_id, taskName)
+          addTask(currentEstimate.estimate_id, taskName),
         );
         onSave?.(newTask);
       } else {
         await dispatch(
           updateTask(currentEstimate.estimate_id, task.est_task_id, {
             est_task_name: taskName,
-          })
+          }),
         );
         setIsEditing(false);
       }
@@ -99,6 +105,10 @@ const EstimateTask = ({
       console.error("Error duplicating sections:", error);
     }
   };
+
+  const scheduled = task.sections.every(
+    (section) => section.scheduled_task_id !== null,
+  );
 
   return (
     <>
@@ -144,7 +154,10 @@ const EstimateTask = ({
               }
             `}
           >
-            <span>{task.est_task_name}</span>
+            <span>
+              {scheduled ? <FiCalendar size={14} className="inline" /> : ""}{" "}
+              {task.est_task_name}
+            </span>
             <div className="invisible group-hover/task:visible pl-2 flex gap-1">
               <Tooltip text="Edit" position="top">
                 <button
@@ -189,11 +202,12 @@ const EstimateTask = ({
           <div className="pl-6">
             {task.sections.map((section, index) => {
               // Calculate the effective style using three-tier fallback
-              const effectiveStyle = getEffectiveValueOnly(
-                section?.cabinet_style_id,
-                currentEstimate?.default_cabinet_style_id,
-                teamDefaults?.default_cabinet_style_id
-              ) || 13;
+              const effectiveStyle =
+                getEffectiveValueOnly(
+                  section?.cabinet_style_id,
+                  currentEstimate?.default_cabinet_style_id,
+                  teamDefaults?.default_cabinet_style_id,
+                ) || 13;
 
               // Check if this section has any cabinet errors
               const hasErrorCabinets = section.cabinets?.some((cabinet) => {
@@ -203,7 +217,7 @@ const EstimateTask = ({
                   cabinet.saved_style_id !== effectiveStyle
                 );
               });
-              
+
               return (
                 <EstimateSection
                   key={section.est_section_id}

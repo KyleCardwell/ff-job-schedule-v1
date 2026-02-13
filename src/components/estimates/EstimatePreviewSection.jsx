@@ -1,6 +1,7 @@
 import { isEqual } from "lodash";
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useRef } from "react";
+import { FiCalendar } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import {
@@ -386,6 +387,7 @@ const EstimatePreviewSection = ({
 
     return {
       sectionId: section.est_section_id,
+      scheduledTaskId: section.scheduled_task_id ?? null,
       sectionName: section.section_name || `Section ${sectionNumber || 1}`,
       sectionNameDisplay,
       taskName,
@@ -463,6 +465,8 @@ const EstimatePreviewSection = ({
     }).format(value || 0);
   };
 
+  const scheduled = section.scheduled_task_id !== null;
+
   // Don't render if sectionData is null
   if (!sectionData) {
     return null;
@@ -482,7 +486,7 @@ const EstimatePreviewSection = ({
       {hasMultipleSections && (
         <div className="border-b border-slate-600 pb-4 mb-4">
           <h3 className="text-lg font-semibold text-slate-200">
-            {taskName}
+            {scheduled ? <FiCalendar size={18} className="inline" /> : ""} {taskName}
             {sectionData.sectionNameDisplay}
           </h3>
           {sectionData.displayNotes &&
