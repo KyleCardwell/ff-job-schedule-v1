@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
+import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
 import { deleteSection, updateSection, duplicateSection } from "../../redux/actions/estimates";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
@@ -126,7 +127,7 @@ const EstimateSection = ({
               }
             `}
           >
-            <span>{scheduled ? <FiCalendar size={14} className="inline" /> : ""} {displayName}</span>
+            <span>{scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {displayName}</span>
             <div className="invisible group-hover/section:visible pl-2 flex gap-1">
               <Tooltip text="Edit" position="top">
                 <button

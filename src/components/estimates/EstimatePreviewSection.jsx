@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { FiCalendar } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
 import {
   NONE,
   PANEL_MOD_DISPLAY_NAMES,
@@ -486,7 +487,7 @@ const EstimatePreviewSection = ({
       {hasMultipleSections && (
         <div className="border-b border-slate-600 pb-4 mb-4">
           <h3 className="text-lg font-semibold text-slate-200">
-            {scheduled ? <FiCalendar size={18} className="inline" /> : ""} {taskName}
+            {scheduled ? <FiCalendar size={18} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {taskName}
             {sectionData.sectionNameDisplay}
           </h3>
           {sectionData.displayNotes &&

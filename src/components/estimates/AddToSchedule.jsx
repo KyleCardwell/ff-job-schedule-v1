@@ -792,7 +792,6 @@ const AddToSchedule = () => {
                 <h2 className="text-2xl font-bold">
                   {currentEstimate.est_project_name}
                 </h2>
-                <p className="text-sm text-slate-400">Add to Schedule</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

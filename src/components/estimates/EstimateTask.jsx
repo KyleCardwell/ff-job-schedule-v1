@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
+import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
 import {
   updateTask,
   deleteTask,
@@ -155,7 +156,7 @@ const EstimateTask = ({
             `}
           >
             <span>
-              {scheduled ? <FiCalendar size={14} className="inline" /> : ""}{" "}
+              {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""}{" "}
               {task.est_task_name}
             </span>
             <div className="invisible group-hover/task:visible pl-2 flex gap-1">

@@ -2,6 +2,8 @@ import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
 import { FiCalendar } from "react-icons/fi";
 
+import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
+
 /**
  * Index component for estimate preview with checkboxes to include/exclude tasks/sections
  * Similar to ScrollableIndex but with checkbox functionality for estimate preview
@@ -224,7 +226,7 @@ const EstimatePreviewIndex = ({
                         }
                       `}
                     >
-                      {scheduled ? <FiCalendar size={14} className="inline" /> : ""} {taskData.taskName}
+                      {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {taskData.taskName}
                     </button>
                   </div>
                 )}
@@ -233,7 +235,7 @@ const EstimatePreviewIndex = ({
                 {hasMultipleSections && (
                   <>
                     <h4 className="text-sm text-left font-semibold text-slate-300 mb-2 px-2">
-                      {scheduled ? <FiCalendar size={14} className="inline" /> : ""} {taskData.taskName}
+                      {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {taskData.taskName}
                     </h4>
                     <div className="space-y-1 ml-2">
                       {taskData.sections.map((section) => (
@@ -258,7 +260,7 @@ const EstimatePreviewIndex = ({
                               }
                             `}
                           >
-                            {section.scheduledTaskId !== null ? <FiCalendar size={12} className="inline" /> : ""} {section.sectionName}
+                            {section.scheduledTaskId !== null ? <FiCalendar size={12} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {section.sectionName}
                           </button>
                         </div>
                       ))}

@@ -15,5 +15,7 @@ export const headerButtonClass =
 export const headerButtonColor =
   "bg-slate-900 text-slate-300 hover:bg-slate-600 hover:text-slate-900 transition-colors";
 
-  export const sectionButtonColor =
+export const sectionButtonColor =
   "bg-slate-800 text-slate-300 hover:bg-slate-500 hover:text-slate-900 transition-colors";
+
+export const TASK_SCHEDULED_COLOR = "text-amber-400";
