@@ -107,8 +107,8 @@ const EstimateTask = ({
     }
   };
 
-  const scheduled = task.sections.every(
-    (section) => section.scheduled_task_id !== null,
+  const scheduled = task?.sections?.every(
+    (section) => section?.scheduled_task_id !== null,
   );
 
   return (
