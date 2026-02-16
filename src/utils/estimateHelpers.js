@@ -117,34 +117,46 @@ export const interpolateTimeByArea = (
     return 0;
   }
 
-  // Filter anchors by cabinet_style_id
-  // Include anchors where cabinet_style_id is null (applies to all) OR matches the target style
-  const filteredAnchors = anchors.filter((anchor) => {
-    return (
-      anchor.cabinet_style_id === null ||
-      anchor.cabinet_style_id == cabinetStyleId
-    );
-  });
+  const styleSpecificAnchors =
+    cabinetStyleId == null
+      ? []
+      : anchors.filter((anchor) => anchor.cabinet_style_id == cabinetStyleId);
+  const allStylesAnchors = anchors.filter(
+    (anchor) => anchor.cabinet_style_id === null,
+  );
 
-  if (filteredAnchors.length === 0) {
+  const styleAnchorsWithService = styleSpecificAnchors.filter((anchor) =>
+    anchor.services?.some(
+      (s) => s.team_service_id === teamServiceId && s.minutes != null,
+    ),
+  );
+  const allAnchorsWithService = allStylesAnchors.filter((anchor) =>
+    anchor.services?.some(
+      (s) => s.team_service_id === teamServiceId && s.minutes != null,
+    ),
+  );
+
+  const anchorsToUse =
+    styleAnchorsWithService.length > 0
+      ? styleAnchorsWithService
+      : allAnchorsWithService;
+
+  if (anchorsToUse.length === 0) {
     return 0;
   }
 
-  // Build array of {area, minutes} for this service, filtering out missing services
-  const dataPoints = filteredAnchors
-    .map((anchor) => {
-      const service = anchor.services.find(
-        (s) => s.team_service_id === teamServiceId,
-      );
-      if (!service) return null;
+  // Build array of {area, minutes} for this service
+  const dataPoints = anchorsToUse.map((anchor) => {
+    const service = anchor.services.find(
+      (s) => s.team_service_id === teamServiceId,
+    );
 
-      const area = anchor.width * anchor.height;
-      return {
-        area,
-        minutes: service.minutes || 0,
-      };
-    })
-    .filter(Boolean);
+    const area = anchor.width * anchor.height;
+    return {
+      area,
+      minutes: service?.minutes || 0,
+    };
+  });
 
   if (dataPoints.length === 0) {
     return 0;

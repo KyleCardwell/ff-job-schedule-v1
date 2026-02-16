@@ -1,4 +1,5 @@
 import isEqual from "lodash/isEqual";
+import PropTypes from "prop-types";
 import {
   useEffect,
   useState,
@@ -6,6 +7,7 @@ import {
   forwardRef,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import { FiBarChart } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,7 +27,7 @@ import PartsListTestCalculator from "./PartsListTestCalculator.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const PartsListSettings = forwardRef((props, ref) => {
-  const { maxWidthClass } = props;
+  const { maxWidthClass, onDirtyChange } = props;
   const dispatch = useDispatch();
   const {
     items: partsList,
@@ -49,6 +51,17 @@ const PartsListSettings = forwardRef((props, ref) => {
   const [anchorErrors, setAnchorErrors] = useState({});
   const [highlightedPartId, setHighlightedPartId] = useState(null);
   const [showTestCalculator, setShowTestCalculator] = useState(false);
+
+  const hasUnsavedChanges = useMemo(
+    () => !isEqual(localAnchors, originalAnchors),
+    [localAnchors, originalAnchors]
+  );
+
+  useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(hasUnsavedChanges);
+    }
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   // Calculator form state (persists when calculator is closed)
   const [calculatorForm, setCalculatorForm] = useState({
@@ -219,6 +232,7 @@ const PartsListSettings = forwardRef((props, ref) => {
   };
 
   const parseAnchorValues = (anchor) => {
+    const isAllStyles = anchor.cabinet_style_id == null || anchor.cabinet_style_id === "";
     const parseNumeric = (val) => {
       if (val === "" || val === null || val === undefined) {
         return null;
@@ -238,7 +252,9 @@ const PartsListSettings = forwardRef((props, ref) => {
           ...s,
           minutes:
             s.minutes === "" || s.minutes === null
-              ? 0
+              ? isAllStyles
+                ? 0
+                : null
               : parseInt(s.minutes) || 0,
         })) || [],
     };
@@ -437,5 +453,10 @@ const PartsListSettings = forwardRef((props, ref) => {
 });
 
 PartsListSettings.displayName = "PartsListSettings";
+
+PartsListSettings.propTypes = {
+  maxWidthClass: PropTypes.string,
+  onDirtyChange: PropTypes.func,
+};
 
 export default PartsListSettings;

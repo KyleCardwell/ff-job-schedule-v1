@@ -14,6 +14,8 @@ const AnchorRow = ({
   errors = {},
   gridCols,
 }) => {
+  const showServiceTooltip =
+    anchor.cabinet_style_id != null && anchor.cabinet_style_id !== "";
   const handleInputChange = (e, serviceId) => {
     const { name, value } = e.target;
 
@@ -152,16 +154,23 @@ const AnchorRow = ({
       {Array.isArray(services) &&
         services.map((s) => (
           <div key={s.team_service_id} className="p-2">
-            <input
-              type="number"
-              value={
-                anchor.services.find(
-                  (ans) => ans.team_service_id === s.team_service_id
-                )?.minutes || ""
-              }
-              onChange={(e) => handleInputChange(e, s.team_service_id)}
-              className="w-full p-1 rounded-md"
-            />
+            <div className="relative group">
+              <input
+                type="number"
+                value={
+                  anchor.services.find(
+                    (ans) => ans.team_service_id === s.team_service_id
+                  )?.minutes || ""
+                }
+                onChange={(e) => handleInputChange(e, s.team_service_id)}
+                className="w-full p-1 rounded-md"
+              />
+              {showServiceTooltip && (
+                <div className="pointer-events-none absolute left-1/2 bottom-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                  Leave blank to use All Styles value
+                </div>
+              )}
+            </div>
           </div>
         ))}
       <div className="p-2 text-right">

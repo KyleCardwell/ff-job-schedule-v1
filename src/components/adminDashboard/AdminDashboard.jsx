@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useSelector } from "react-redux";
 import {
   useNavigate,
@@ -34,146 +34,154 @@ import TeamSettings from "../manageSettings/TeamSettings.jsx";
 const SettingsWrapper = ({ component: Component, componentRef, ...props }) => {
   // Only pass ref if the component actually needs it (class components or forwardRef components)
   // For functional components without forwardRef, just pass props
-  return componentRef ? <Component ref={componentRef} {...props} /> : <Component {...props} />;
+  return componentRef ? (
+    <Component ref={componentRef} {...props} />
+  ) : (
+    <Component {...props} />
+  );
 };
 
 const AdminDashboard = () => {
   const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const activeComponentRef = useRef();
   const navigate = useNavigate();
   const location = useLocation();
 
   const { dayWidth, workday_hours: workdayHours } = useSelector(
-    (state) => state.chartConfig
+    (state) => state.chartConfig,
   );
   const { roleId, permissions } = useSelector((state) => state.auth);
   const featureToggles = useFeatureToggles();
 
   // Define all possible tabs
-  const allTabs = [
-    {
-      id: "services",
-      label: "Services",
-      path: PATHS.MANAGE_SERVICES,
-      component: ServiceSettings,
-      props: {maxWidthClass: "max-w-[720px]"},
-      requiresAdmin: true,
-    },
-    {
-      id: "employees",
-      label: "Employees",
-      path: PATHS.MANAGE_EMPLOYEES,
-      component: EmployeeSettings,
-      props: { workdayHours, dayWidth, maxWidthClass: "max-w-[720px]" },
-      requiresAdmin: true,
-    },
-    {
-      id: "team",
-      label: "Team",
-      path: PATHS.MANAGE_TEAM,
-      component: TeamSettings,
-      props: {maxWidthClass: "max-w-[1000px]"},
-      requiresAdmin: true,
-      requiresPermission: "can_manage_teams",
-    },
-    {
-      id: "chart",
-      label: "Chart",
-      path: PATHS.MANAGE_CHART,
-      component: ManageChartSettings,
-      props: {maxWidthClass: "max-w-[720px]"},
-      requiresAdmin: true,
-    },
-    {
-      id: "holidays",
-      label: "Holidays",
-      path: PATHS.MANAGE_HOLIDAYS,
-      component: HolidaySettings,
-      props: { workdayHours, dayWidth, maxWidthClass: "max-w-[720px]" },
-      requiresAdmin: true,
-    },
-    {
-      id: "cabinet-types",
-      label: "Cabinet Default Dimensions",
-      path: PATHS.MANAGE_CABINET_TYPES,
-      component: CabinetTypeSettings,
-      props: {maxWidthClass: "max-w-[720px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "cabinet-styles",
-      label: "Cabinet Style Reveals",
-      path: PATHS.MANAGE_CABINET_STYLES,
-      component: CabinetStyleSettings,
-      props: {maxWidthClass: "max-w-[720px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "parts-list",
-      label: "Parts Time",
-      path: PATHS.MANAGE_PARTS_LIST,
-      component: PartsListSettings,
-      props: {maxWidthClass: "max-w-[1000px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "materials",
-      label: "Materials",
-      path: PATHS.MANAGE_MATERIALS,
-      component: MaterialsSettings,
-      props: {maxWidthClass: "max-w-[1200px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "finishes",
-      label: "Finishes",
-      path: PATHS.MANAGE_FINISHES,
-      component: FinishSettings,
-      props: {maxWidthClass: "max-w-[720px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "hardware",
-      label: "Hardware",
-      path: PATHS.MANAGE_HARDWARE,
-      component: HardwareSettings,
-      props: {maxWidthClass: "max-w-[1200px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "accessories",
-      label: "Accessories",
-      path: PATHS.MANAGE_ACCESSORIES,
-      component: AccessoriesSettings,
-      props: {maxWidthClass: "max-w-[1300px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "lengths",
-      label: "Lengths",
-      path: PATHS.MANAGE_LENGTHS,
-      component: LengthsSettings,
-      props: {maxWidthClass: "max-w-[1200px]"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-    {
-      id: "estimate-defaults",
-      label: "Estimate Defaults",
-      path: PATHS.MANAGE_TEAM_ESTIMATE_DEFAULTS,
-      component: TeamEstimateDefaultsSettings,
-      props: {maxWidthClass: "max-w-5xl"},
-      requiresAdmin: true,
-      requiresFeatureToggle: "enable_estimates",
-    },
-  ];
+  const allTabs = useMemo(
+    () => [
+      {
+        id: "services",
+        label: "Services",
+        path: PATHS.MANAGE_SERVICES,
+        component: ServiceSettings,
+        props: { maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+      },
+      {
+        id: "employees",
+        label: "Employees",
+        path: PATHS.MANAGE_EMPLOYEES,
+        component: EmployeeSettings,
+        props: { workdayHours, dayWidth, maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+      },
+      {
+        id: "team",
+        label: "Team",
+        path: PATHS.MANAGE_TEAM,
+        component: TeamSettings,
+        props: { maxWidthClass: "max-w-[1000px]" },
+        requiresAdmin: true,
+        requiresPermission: "can_manage_teams",
+      },
+      {
+        id: "chart",
+        label: "Chart",
+        path: PATHS.MANAGE_CHART,
+        component: ManageChartSettings,
+        props: { maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+      },
+      {
+        id: "holidays",
+        label: "Holidays",
+        path: PATHS.MANAGE_HOLIDAYS,
+        component: HolidaySettings,
+        props: { workdayHours, dayWidth, maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+      },
+      {
+        id: "cabinet-types",
+        label: "Cabinet Default Dimensions",
+        path: PATHS.MANAGE_CABINET_TYPES,
+        component: CabinetTypeSettings,
+        props: { maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "cabinet-styles",
+        label: "Cabinet Style Reveals",
+        path: PATHS.MANAGE_CABINET_STYLES,
+        component: CabinetStyleSettings,
+        props: { maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "parts-list",
+        label: "Parts Time",
+        path: PATHS.MANAGE_PARTS_LIST,
+        component: PartsListSettings,
+        props: { maxWidthClass: "max-w-[1000px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "materials",
+        label: "Materials",
+        path: PATHS.MANAGE_MATERIALS,
+        component: MaterialsSettings,
+        props: { maxWidthClass: "max-w-[1200px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "finishes",
+        label: "Finishes",
+        path: PATHS.MANAGE_FINISHES,
+        component: FinishSettings,
+        props: { maxWidthClass: "max-w-[720px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "hardware",
+        label: "Hardware",
+        path: PATHS.MANAGE_HARDWARE,
+        component: HardwareSettings,
+        props: { maxWidthClass: "max-w-[1200px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "accessories",
+        label: "Accessories",
+        path: PATHS.MANAGE_ACCESSORIES,
+        component: AccessoriesSettings,
+        props: { maxWidthClass: "max-w-[1300px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "lengths",
+        label: "Lengths",
+        path: PATHS.MANAGE_LENGTHS,
+        component: LengthsSettings,
+        props: { maxWidthClass: "max-w-[1200px]" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+      {
+        id: "estimate-defaults",
+        label: "Estimate Defaults",
+        path: PATHS.MANAGE_TEAM_ESTIMATE_DEFAULTS,
+        component: TeamEstimateDefaultsSettings,
+        props: { maxWidthClass: "max-w-5xl" },
+        requiresAdmin: true,
+        requiresFeatureToggle: "enable_estimates",
+      },
+    ],
+    [workdayHours, dayWidth],
+  );
 
   // Filter tabs based on permissions and feature toggles
   const tabs = useMemo(() => {
@@ -203,7 +211,7 @@ const AdminDashboard = () => {
       // If all checks pass, show the tab
       return true;
     });
-  }, [roleId, permissions, featureToggles]);
+  }, [allTabs, roleId, permissions, featureToggles]);
 
   const handleSave = async () => {
     if (!activeComponentRef.current?.handleSave) return;
@@ -212,6 +220,7 @@ const AdminDashboard = () => {
     try {
       await activeComponentRef.current.handleSave();
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Error saving:", error);
     } finally {
       setIsSaving(false);
@@ -228,6 +237,10 @@ const AdminDashboard = () => {
     const path = location.pathname;
     return tabs.find((tab) => path.includes(tab.id))?.id || "employees";
   };
+
+  useEffect(() => {
+    setHasUnsavedChanges(false);
+  }, [location.pathname]);
 
   return (
     <div className="flex h-full bg-slate-800">
@@ -258,13 +271,21 @@ const AdminDashboard = () => {
         {/* Header with Save/Cancel */}
         <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
           <button
-            className={`${headerButtonClass} ${headerButtonColor}`}
+            className={`${headerButtonClass} ${
+              hasUnsavedChanges
+                ? "bg-red-500 text-white hover:bg-red-400"
+                : headerButtonColor
+            }`}
             onClick={handleCancel}
           >
             Cancel
           </button>
           <button
-            className={`${headerButtonClass} ${headerButtonColor}`}
+            className={`${headerButtonClass} ${
+              hasUnsavedChanges
+                ? "bg-teal-400 text-slate-900 hover:bg-teal-300"
+                : headerButtonColor
+            }`}
             onClick={handleSave}
           >
             {isSaving ? "Saving..." : "Save Changes"}
@@ -294,6 +315,7 @@ const AdminDashboard = () => {
                       <SettingsWrapper
                         component={component}
                         componentRef={activeComponentRef}
+                        onDirtyChange={setHasUnsavedChanges}
                         {...props}
                       />
                     }
