@@ -153,6 +153,7 @@ const EstimatePreviewTask = ({
           ...section,
           hasMultipleSections,
           isFirstSection: index === 0,
+          taskId: task.est_task_id,
         }));
 
         const taskData = {
