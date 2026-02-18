@@ -54,7 +54,7 @@ import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
 import { addEstimateToSchedule } from "../../redux/actions/projects.js";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
 import { selectSchedulableEmployees } from "../../redux/selectors";
-import { PATHS } from "../../utils/constants";
+import { DEFAULT_FINANCIAL_SECTIONS, PATHS } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { normalizeDate } from "../../utils/dateUtils";
 import { roundToHundredth } from "../../utils/estimateHelpers";
@@ -142,6 +142,9 @@ const normalizeEstimateSections = (sections = []) =>
     })
     .filter(Boolean);
 
+const normalizeSectionName = (value) =>
+  value?.toLowerCase?.().trim?.() || "";
+
 const getSectionCategoryCosts = (calculations = {}) => {
   const facePrices = calculations.facePrices || {};
   const doorCost =
@@ -179,10 +182,7 @@ const allocateUnmappedCosts = (categoryTotals, estimateSections = []) => {
       name.includes("slide") ||
       name.includes("pull"),
   );
-  const hasAccessories = names.some((name) => name.includes("accessor"));
-  const hasLengths = names.some(
-    (name) => name.includes("length") || name.includes("molding"),
-  );
+  const hasWood = names.some((name) => name.includes("wood"));
   const hasOther = names.some((name) => name.includes("other"));
   const hasCabinets = names.some(
     (name) =>
@@ -199,8 +199,7 @@ const allocateUnmappedCosts = (categoryTotals, estimateSections = []) => {
   moveToFallback("doors", !hasDoor);
   moveToFallback("drawers", !hasDrawer);
   moveToFallback("hardware", !hasHardware);
-  moveToFallback("accessories", !hasAccessories);
-  moveToFallback("lengths", !hasLengths);
+  moveToFallback("wood", !hasWood);
 
   if (!hasCabinets && fallbackKey !== "cabinets") {
     adjusted[fallbackKey] = (adjusted[fallbackKey] || 0) + adjusted.cabinets;
@@ -224,10 +223,7 @@ const getEstimateCostForSectionName = (sectionName, categoryTotals) => {
   }
   if (name.includes("door")) return categoryTotals.doors || 0;
   if (name.includes("drawer")) return categoryTotals.drawers || 0;
-  if (name.includes("accessor")) return categoryTotals.accessories || 0;
-  if (name.includes("length") || name.includes("molding")) {
-    return categoryTotals.lengths || 0;
-  }
+  if (name.includes("wood")) return categoryTotals.wood || 0;
   if (
     name.includes("cabinet") ||
     name.includes("box") ||
@@ -306,6 +302,17 @@ const AddToSchedule = () => {
     () => normalizeEstimateSections(estimateSections),
     [estimateSections],
   );
+  const financialSections = useMemo(() => {
+    const defaultIds = new Set(DEFAULT_FINANCIAL_SECTIONS.map((s) => s.id));
+    const defaultNames = new Set(
+      DEFAULT_FINANCIAL_SECTIONS.map((s) => normalizeSectionName(s.name)),
+    );
+    const extras = normalizedEstimateSections.filter(({ id, name }) => {
+      const normalizedName = normalizeSectionName(name);
+      return !defaultIds.has(id) && !defaultNames.has(normalizedName);
+    });
+    return [...DEFAULT_FINANCIAL_SECTIONS, ...extras];
+  }, [normalizedEstimateSections]);
 
   // ---------- Fetch estimate + catalogs ----------
   useEffect(() => {
@@ -438,6 +445,7 @@ const AddToSchedule = () => {
           taskId: task.est_task_id,
           scheduledTaskId: section.scheduled_task_id || null,
           calculations: calcs,
+          section: effectiveSection,
         };
       });
     });
@@ -575,25 +583,85 @@ const AddToSchedule = () => {
         doors: 0,
         drawers: 0,
         hardware: 0,
-        accessories: 0,
-        lengths: 0,
+        wood: 0,
         other: 0,
+      };
+      const hardwareCounts = {
+        hinges: new Map(),
+        pulls: new Map(),
+        slides: new Map(),
+      };
+
+      const addHardwareCount = (map, id, count) => {
+        if (!id || !count) return;
+        map.set(id, (map.get(id) || 0) + count);
       };
 
       group.sectionIds.forEach((sectionId) => {
-        const calculations = sectionCalcsMap[sectionId]?.calculations;
+        const sectionData = sectionCalcsMap[sectionId];
+        const calculations = sectionData?.calculations;
         if (!calculations) return;
         const costs = getSectionCategoryCosts(calculations);
         Object.keys(categoryTotals).forEach((key) => {
           categoryTotals[key] += costs[key] || 0;
         });
+
+        const section = sectionData?.section;
+        const { faceCounts = {}, hingesCount = 0, pullsCount = 0, slidesCount = 0 } =
+          calculations || {};
+        const drawerPullCount =
+          (faceCounts.drawer_front || 0) + (faceCounts.false_front || 0);
+        const doorPullCount = Math.max(pullsCount - drawerPullCount, 0);
+
+        addHardwareCount(hardwareCounts.hinges, section?.hinge_id, hingesCount);
+        addHardwareCount(hardwareCounts.slides, section?.slide_id, slidesCount);
+        addHardwareCount(
+          hardwareCounts.pulls,
+          section?.door_pull_id,
+          doorPullCount,
+        );
+        addHardwareCount(
+          hardwareCounts.pulls,
+          section?.drawer_pull_id,
+          drawerPullCount,
+        );
       });
 
       const adjustedTotals = allocateUnmappedCosts(
         categoryTotals,
-        normalizedEstimateSections,
+        financialSections,
       );
       const groupHours = getGroupHours(group);
+
+      const hardwareActuals = {
+        hinges: 0,
+        pulls: 0,
+        slides: 0,
+      };
+      hardwareCounts.hinges.forEach((count, hingeId) => {
+        const hinge = hardware?.hinges?.find((item) => item.id === hingeId);
+        hardwareActuals.hinges += (Number(hinge?.actual_cost) || 0) * count;
+      });
+      hardwareCounts.pulls.forEach((count, pullId) => {
+        const pull = hardware?.pulls?.find((item) => item.id === pullId);
+        hardwareActuals.pulls += (Number(pull?.actual_cost) || 0) * count;
+      });
+      hardwareCounts.slides.forEach((count, slideId) => {
+        const slide = hardware?.slides?.find((item) => item.id === slideId);
+        hardwareActuals.slides += (Number(slide?.actual_cost) || 0) * count;
+      });
+
+      const hardwareInputRows = [
+        { type: "hinges", cost: hardwareActuals.hinges },
+        { type: "pulls", cost: hardwareActuals.pulls },
+        { type: "slides", cost: hardwareActuals.slides },
+      ]
+        .filter((item) => item.cost)
+        .map((item) => ({
+          invoice: item.type,
+          cost: roundToHundredth(item.cost),
+          taxRate: "",
+        }));
 
       const hoursData = services
         .map((service) => {
@@ -619,19 +687,42 @@ const AddToSchedule = () => {
         },
       };
 
-      normalizedEstimateSections.forEach(({ id, name }) => {
+      financialSections.forEach(({ id, name }) => {
         const estimate = getEstimateCostForSectionName(name, adjustedTotals);
+        const isHardware = id === "hardware";
+        const isWood = id === "wood";
+        const inputRows = isHardware
+          ? hardwareInputRows
+          : isWood && estimate
+            ? [
+                {
+                  invoice: "wood",
+                  cost: roundToHundredth(estimate),
+                  taxRate: "",
+                },
+              ]
+            : [];
+        const actualCost = inputRows.reduce(
+          (sum, row) => sum + (Number(row.cost) || 0),
+          0,
+        );
         financialData[id] = {
           name: name.toLowerCase(),
           estimate: roundToHundredth(estimate),
-          actual_cost: 0,
-          data: [],
+          actual_cost: actualCost,
+          data: inputRows,
         };
       });
 
       return financialData;
     },
-    [sectionCalcsMap, normalizedEstimateSections, services, getGroupHours],
+    [
+      sectionCalcsMap,
+      financialSections,
+      services,
+      getGroupHours,
+      hardware,
+    ],
   );
 
   // ---------- Selection ----------

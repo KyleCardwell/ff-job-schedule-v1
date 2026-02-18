@@ -34,6 +34,33 @@ export const ESTIMATE_STATUS = {
   ARCHIVED: "archived",
 };
 
+export const DEFAULT_FINANCIAL_SECTIONS = [
+  { id: "cabinets", name: "Cabinets" },
+  { id: "doors", name: "Doors & Drawer Fronts" },
+  { id: "drawers", name: "Drawers" },
+  { id: "hardware", name: "Hardware" },
+  { id: "wood", name: "Wood" },
+  { id: "other", name: "Other" },
+];
+
+export const FINANCIAL_SECTION_ORDER = [
+  "hours",
+  "cabinets",
+  "doors",
+  "drawers",
+  "hardware",
+  "wood",
+  "other",
+];
+
+export const ADJUSTMENT_ORDER = [
+  "addToSubtotal",
+  "profit",
+  "commission",
+  "discount",
+  "addToTotal",
+];
+
 export const SECTION_TYPES = {
   CABINETS: { type: "cabinets", title: "Cabinets" },
   LENGTHS: { type: "lengths", title: "Lengths" },

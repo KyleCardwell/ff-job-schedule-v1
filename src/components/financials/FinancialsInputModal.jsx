@@ -14,6 +14,7 @@ import {
 } from "../../assets/tailwindConstants";
 import { usePermissions } from "../../hooks/usePermissions";
 import { saveProjectFinancials } from "../../redux/actions/financialsData";
+import { DEFAULT_FINANCIAL_SECTIONS } from "../../utils/constants.js";
 import { calculateFinancialTotals } from "../../utils/helpers";
 
 import EstimatesModal from "./EstimatesModal.jsx";
@@ -27,6 +28,9 @@ const DEFAULT_ADJUSTMENTS = {
   addToSubtotal: 0,
   addToTotal: 0,
 };
+
+const normalizeSectionName = (value) =>
+  value?.toLowerCase?.().trim?.() || "";
 
 const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const dispatch = useDispatch();
@@ -62,15 +66,21 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
       ...(financialSections.adjustments ?? {}),
     });
 
+    const chartSections = Array.isArray(chartConfig?.estimate_sections)
+      ? chartConfig.estimate_sections
+      : [];
+    const defaultIds = new Set(DEFAULT_FINANCIAL_SECTIONS.map((s) => s.id));
+    const defaultNames = new Set(
+      DEFAULT_FINANCIAL_SECTIONS.map((s) => normalizeSectionName(s.name)),
+    );
+    const extraSections = chartSections.filter(({ id, name }) => {
+      const normalizedName = normalizeSectionName(name);
+      return !defaultIds.has(id) && !defaultNames.has(normalizedName);
+    });
     const sectionTypes = [
       { id: "hours", name: "hours" },
-      ...chartConfig.estimate_sections,
-    ] || [
-      { id: "hours", name: "Hours" },
-      { id: "cabinets", name: "Cabinets" },
-      { id: "doors", name: "Doors" },
-      { id: "drawers", name: "Drawers" },
-      { id: "other", name: "Other" },
+      ...DEFAULT_FINANCIAL_SECTIONS,
+      ...extraSections,
     ];
 
     const financialData = financialSections.financial_data || {};

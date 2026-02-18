@@ -1,6 +1,42 @@
 import PropTypes from "prop-types";
 
-import { FIXED_AMOUNT } from "../../utils/constants";
+import {
+  FIXED_AMOUNT,
+  FINANCIAL_SECTION_ORDER,
+  ADJUSTMENT_ORDER,
+} from "../../utils/constants";
+
+const orderFinancialEntries = (entries) => {
+  const entryMap = new Map(entries);
+  const ordered = [];
+
+  FINANCIAL_SECTION_ORDER.forEach((id) => {
+    if (entryMap.has(id)) {
+      ordered.push([id, entryMap.get(id)]);
+      entryMap.delete(id);
+    }
+  });
+
+  entries.forEach(([id, data]) => {
+    if (!entryMap.has(id)) return;
+    if (ADJUSTMENT_ORDER.includes(id)) return;
+    ordered.push([id, data]);
+    entryMap.delete(id);
+  });
+
+  ADJUSTMENT_ORDER.forEach((id) => {
+    if (entryMap.has(id)) {
+      ordered.push([id, entryMap.get(id)]);
+      entryMap.delete(id);
+    }
+  });
+
+  entryMap.forEach((data, id) => {
+    ordered.push([id, data]);
+  });
+
+  return ordered;
+};
 
 const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   if (!task.financial_data) {
@@ -13,13 +49,14 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   if (adjustments?.length > 0) {
     sections.push(...adjustments);
   }
+  const orderedSections = orderFinancialEntries(sections);
 
   return (
     <div
       className={`${color} pb-5 transition-all duration-300 ease-in-out animate-in slide-in-from-top-2`}
     >
       <div className="">
-        {sections.map(([id, sectionData]) => {
+        {orderedSections.map(([id, sectionData]) => {
           if (id === "hours") {
             return (
               <div key={id} className="">
@@ -35,7 +72,7 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
 
                 {(sectionData.data || []).map((service) => {
                   const serviceInfo = services.find(
-                    (s) => s.team_service_id === service.team_service_id
+                    (s) => s.team_service_id === service.team_service_id,
                   );
                   const rate =
                     service.rateOverride ?? serviceInfo?.hourly_rate ?? 0;
@@ -49,7 +86,7 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                       const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
                       return sum + hoursValue;
                     },
-                    0
+                    0,
                   );
 
                   return (
@@ -86,22 +123,25 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                           estimate - service.actual_cost > 0
                             ? "text-green-600"
                             : estimate - service.actual_cost < 0
-                            ? "text-red-600"
-                            : "text-blue-600"
+                              ? "text-red-600"
+                              : "text-blue-600"
                         }`}
                       >
                         $
                         {(estimate - service.actual_cost).toLocaleString(
                           undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          },
                         )}
                         <div
                           className={`text-gray-500 ${
                             estimate - service.actual_cost > 0
                               ? "text-green-600"
                               : estimate - service.actual_cost < 0
-                              ? "text-red-600"
-                              : "text-blue-600"
+                                ? "text-red-600"
+                                : "text-blue-600"
                           }`}
                         >
                           ({(service.estimate - actualHours).toFixed(2)} hrs)
