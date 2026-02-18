@@ -17,7 +17,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BsDashSquare } from "react-icons/bs";
-import { FiArrowLeft, FiCalendar, FiCheck, FiMenu, FiMove } from "react-icons/fi";
+import {
+  FiArrowLeft,
+  FiCalendar,
+  FiCheck,
+  FiMenu,
+  FiMove,
+} from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -115,6 +121,124 @@ const DraggableSection = ({ id, children, isGrouped }) => {
   );
 };
 
+const normalizeEstimateSections = (sections = []) =>
+  sections
+    .map((section) => {
+      if (!section) return null;
+      if (typeof section === "string") {
+        const name = section.trim();
+        return {
+          id: name.toLowerCase().replace(/\s+/g, "_"),
+          name,
+        };
+      }
+      if (section.name && !section.id) {
+        return {
+          ...section,
+          id: section.name.toLowerCase().replace(/\s+/g, "_"),
+        };
+      }
+      return section;
+    })
+    .filter(Boolean);
+
+const getSectionCategoryCosts = (calculations = {}) => {
+  const facePrices = calculations.facePrices || {};
+  const doorCost =
+    (facePrices.door || 0) +
+    (facePrices.panel || 0) +
+    (facePrices.drawer_front || 0) +
+    (facePrices.false_front || 0);
+  const drawerCost =
+    (calculations.drawerBoxTotal || 0) + (calculations.rollOutTotal || 0);
+  const hardwareCost =
+    (calculations.hingesTotal || 0) +
+    (calculations.slidesTotal || 0) +
+    (calculations.pullsTotal || 0);
+
+  return {
+    cabinets: calculations.boxTotal || 0,
+    doors: doorCost,
+    drawers: drawerCost,
+    hardware: hardwareCost,
+    wood: calculations.woodTotal || 0,
+    other: (calculations.otherTotal || 0) + (calculations.accessoriesTotal || 0),
+  };
+};
+
+const allocateUnmappedCosts = (categoryTotals, estimateSections = []) => {
+  const names = estimateSections
+    .map((section) => section?.name?.toLowerCase?.() || "")
+    .filter(Boolean);
+  const hasDoor = names.some((name) => name.includes("door"));
+  const hasDrawer = names.some((name) => name.includes("drawer"));
+  const hasHardware = names.some(
+    (name) =>
+      name.includes("hardware") ||
+      name.includes("hinge") ||
+      name.includes("slide") ||
+      name.includes("pull"),
+  );
+  const hasAccessories = names.some((name) => name.includes("accessor"));
+  const hasLengths = names.some(
+    (name) => name.includes("length") || name.includes("molding"),
+  );
+  const hasOther = names.some((name) => name.includes("other"));
+  const hasCabinets = names.some(
+    (name) =>
+      name.includes("cabinet") || name.includes("box") || name.includes("case"),
+  );
+  const fallbackKey = hasOther ? "other" : "cabinets";
+  const adjusted = { ...categoryTotals };
+  const moveToFallback = (key, shouldMove) => {
+    if (!shouldMove || !adjusted[key]) return;
+    adjusted[fallbackKey] = (adjusted[fallbackKey] || 0) + adjusted[key];
+    adjusted[key] = 0;
+  };
+
+  moveToFallback("doors", !hasDoor);
+  moveToFallback("drawers", !hasDrawer);
+  moveToFallback("hardware", !hasHardware);
+  moveToFallback("accessories", !hasAccessories);
+  moveToFallback("lengths", !hasLengths);
+
+  if (!hasCabinets && fallbackKey !== "cabinets") {
+    adjusted[fallbackKey] = (adjusted[fallbackKey] || 0) + adjusted.cabinets;
+    adjusted.cabinets = 0;
+  }
+
+  return adjusted;
+};
+
+const getEstimateCostForSectionName = (sectionName, categoryTotals) => {
+  const name = sectionName?.toLowerCase?.() || "";
+  if (!name) return 0;
+  if (name.includes("hour") || name.includes("labor")) return 0;
+  if (
+    name.includes("hardware") ||
+    name.includes("hinge") ||
+    name.includes("slide") ||
+    name.includes("pull")
+  ) {
+    return categoryTotals.hardware || 0;
+  }
+  if (name.includes("door")) return categoryTotals.doors || 0;
+  if (name.includes("drawer")) return categoryTotals.drawers || 0;
+  if (name.includes("accessor")) return categoryTotals.accessories || 0;
+  if (name.includes("length") || name.includes("molding")) {
+    return categoryTotals.lengths || 0;
+  }
+  if (
+    name.includes("cabinet") ||
+    name.includes("box") ||
+    name.includes("case")
+  ) {
+    return categoryTotals.cabinets || 0;
+  }
+  if (name.includes("other")) return categoryTotals.other || 0;
+  return 0;
+};
+
 // ---------- Main Component ----------
 const AddToSchedule = () => {
   const dispatch = useDispatch();
@@ -154,10 +278,11 @@ const AddToSchedule = () => {
   // Schedule-related selectors
   const employees = useSelector(selectSchedulableEmployees);
   const defaultEmployeeId = employees[0]?.employee_id;
-  const {
-    chart_config_id: chartConfigId,
-    next_task_number: nextTaskNumber,
-  } = useSelector((state) => state.chartConfig);
+  const { chart_config_id: chartConfigId, next_task_number: nextTaskNumber } =
+    useSelector((state) => state.chartConfig);
+  const estimateSections = useSelector(
+    (state) => state.chartConfig.estimate_sections || [],
+  );
   const dayWidth = useSelector((state) => state.chartData.dayWidth);
   const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
 
@@ -176,6 +301,11 @@ const AddToSchedule = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const normalizedEstimateSections = useMemo(
+    () => normalizeEstimateSections(estimateSections),
+    [estimateSections],
+  );
 
   // ---------- Fetch estimate + catalogs ----------
   useEffect(() => {
@@ -307,6 +437,7 @@ const AddToSchedule = () => {
           taskName: task.est_task_name,
           taskId: task.est_task_id,
           scheduledTaskId: section.scheduled_task_id || null,
+          calculations: calcs,
         };
       });
     });
@@ -318,7 +449,8 @@ const AddToSchedule = () => {
   // Scheduled sections are grouped by shared scheduled_task_id so sections that were
   // added together appear as a group in the "Already Scheduled" area.
   const { unscheduledSectionIds, scheduledGroups } = useMemo(() => {
-    if (!currentEstimate?.tasks) return { unscheduledSectionIds: [], scheduledGroups: [] };
+    if (!currentEstimate?.tasks)
+      return { unscheduledSectionIds: [], scheduledGroups: [] };
     const tasksOrder = currentEstimate.tasks_order || [];
     const sortedTasks = [...currentEstimate.tasks].sort((a, b) => {
       const aIdx = tasksOrder.indexOf(a.est_task_id);
@@ -354,7 +486,8 @@ const AddToSchedule = () => {
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
     const allScheduledIds = scheduledGroups.flatMap((g) => g.sectionIds);
-    if (unscheduledSectionIds.length === 0 && allScheduledIds.length === 0) return;
+    if (unscheduledSectionIds.length === 0 && allScheduledIds.length === 0)
+      return;
     if (groups.length !== 0) return;
     // Verify all sections have calcs (both unscheduled and scheduled)
     const allIds = [...unscheduledSectionIds, ...allScheduledIds];
@@ -433,6 +566,72 @@ const AddToSchedule = () => {
       };
     },
     [sectionCalcsMap],
+  );
+
+  const buildGroupFinancialData = useCallback(
+    (group) => {
+      const categoryTotals = {
+        cabinets: 0,
+        doors: 0,
+        drawers: 0,
+        hardware: 0,
+        accessories: 0,
+        lengths: 0,
+        other: 0,
+      };
+
+      group.sectionIds.forEach((sectionId) => {
+        const calculations = sectionCalcsMap[sectionId]?.calculations;
+        if (!calculations) return;
+        const costs = getSectionCategoryCosts(calculations);
+        Object.keys(categoryTotals).forEach((key) => {
+          categoryTotals[key] += costs[key] || 0;
+        });
+      });
+
+      const adjustedTotals = allocateUnmappedCosts(
+        categoryTotals,
+        normalizedEstimateSections,
+      );
+      const groupHours = getGroupHours(group);
+
+      const hoursData = services
+        .map((service) => {
+          const hours = groupHours.hoursByService[service.service_id] || 0;
+          if (!hours) return null;
+          return {
+            team_service_id: service.team_service_id,
+            estimate: roundToHundredth(hours),
+            fixedAmount: 0,
+            rateOverride: null,
+            actual_cost: 0,
+            inputRows: [],
+          };
+        })
+        .filter(Boolean);
+
+      const financialData = {
+        hours: {
+          name: "hours",
+          estimate: 0,
+          actual_cost: 0,
+          data: hoursData,
+        },
+      };
+
+      normalizedEstimateSections.forEach(({ id, name }) => {
+        const estimate = getEstimateCostForSectionName(name, adjustedTotals);
+        financialData[id] = {
+          name: name.toLowerCase(),
+          estimate: roundToHundredth(estimate),
+          actual_cost: 0,
+          data: [],
+        };
+      });
+
+      return financialData;
+    },
+    [sectionCalcsMap, normalizedEstimateSections, services, getGroupHours],
   );
 
   // ---------- Selection ----------
@@ -626,7 +825,10 @@ const AddToSchedule = () => {
         // Set the new group's name to the section's editable name
         setGroupNames((prev) => ({
           ...prev,
-          [newGroupId]: sectionNames[sectionId] || sectionCalcsMap[sectionId]?.sectionName || "Section",
+          [newGroupId]:
+            sectionNames[sectionId] ||
+            sectionCalcsMap[sectionId]?.sectionName ||
+            "Section",
         }));
 
         return newGroups;
@@ -676,6 +878,7 @@ const AddToSchedule = () => {
         .map((group) => {
           const groupHours = getGroupHours(group);
           const shopHours = groupHours.hoursByService[2] || 0;
+          const financialData = buildGroupFinancialData(group);
 
           // Determine task name: use group name for multi-section groups,
           // or section name for single-section groups
@@ -690,6 +893,7 @@ const AddToSchedule = () => {
             name,
             duration: shopHours,
             section_ids: group.sectionIds.map((id) => parseInt(id, 10)),
+            financial_data: financialData,
           };
         });
 
@@ -697,9 +901,8 @@ const AddToSchedule = () => {
 
       // If sections from this estimate are already scheduled, find an
       // existing task_id so new tasks get added to the same project
-      const existingTaskId = scheduledGroups.length > 0
-        ? scheduledGroups[0].taskId
-        : null;
+      const existingTaskId =
+        scheduledGroups.length > 0 ? scheduledGroups[0].taskId : null;
 
       const result = await dispatch(
         addEstimateToSchedule({
@@ -713,7 +916,7 @@ const AddToSchedule = () => {
           chartConfigId,
           groups: selectedGroupsData,
           existingTaskId,
-        })
+        }),
       );
 
       if (result.success) {
@@ -736,6 +939,7 @@ const AddToSchedule = () => {
     isSaving,
     groups,
     getGroupHours,
+    buildGroupFinancialData,
     groupNames,
     sectionNames,
     sectionCalcsMap,
@@ -799,7 +1003,9 @@ const AddToSchedule = () => {
                 <span className="text-sm text-red-400">{saveError}</span>
               )}
               {saveSuccess && (
-                <span className="text-sm text-green-400">Added to schedule!</span>
+                <span className="text-sm text-green-400">
+                  Added to schedule!
+                </span>
               )}
               <button
                 onClick={handleAddToSchedule}
@@ -807,7 +1013,11 @@ const AddToSchedule = () => {
                 className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
               >
                 <FiCalendar className="w-4 h-4" />
-                {isSaving ? "Adding..." : saveSuccess ? "Added" : "Add to Schedule"}
+                {isSaving
+                  ? "Adding..."
+                  : saveSuccess
+                    ? "Added"
+                    : "Add to Schedule"}
               </button>
             </div>
           </div>
@@ -820,23 +1030,26 @@ const AddToSchedule = () => {
           {/* Instructions */}
           <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 flex gap-4">
             <div className="flex-1">
-            <p className="text-slate-300">
-              Select which sections to add to the schedule.
-            </p>
-            <p>
-              Click the <BsDashSquare className="inline text-lg text-red-400 bg-red-900/30"/> to ungroup a section.
-            </p>
-
+              <p className="text-slate-300">
+                Select which sections to add to the schedule.
+              </p>
+              <p>
+                Click the{" "}
+                <BsDashSquare className="inline text-lg text-red-400 bg-red-900/30" />{" "}
+                to ungroup a section.
+              </p>
             </div>
             <div className="flex-1">
-            <p>
-              Drag the <strong>☰</strong> handle to reorder groups.
-            </p>
-            <p>
-              Drag the <strong><FiMove className="inline"/></strong> handle on a section to merge it into
-              another group.
-            </p>
-
+              <p>
+                Drag the <strong>☰</strong> handle to reorder groups.
+              </p>
+              <p>
+                Drag the{" "}
+                <strong>
+                  <FiMove className="inline" />
+                </strong>{" "}
+                handle on a section to merge it into another group.
+              </p>
             </div>
           </div>
 
@@ -1053,7 +1266,7 @@ const AddToSchedule = () => {
                                         className="flex-shrink-0 text-lg text-red-400 hover:text-red-300 rounded bg-red-900/30 hover:bg-red-900/50"
                                         title="Ungroup this section"
                                       >
-                                        <BsDashSquare/>
+                                        <BsDashSquare />
                                       </button>
                                     </div>
                                     {activeServices.map((service) => (
@@ -1086,8 +1299,15 @@ const AddToSchedule = () => {
               {activeId ? (
                 <div className="px-4 py-3 rounded-lg border border-teal-500 bg-slate-700 shadow-xl text-sm text-slate-200">
                   {activeId.startsWith("group-")
-                    ? groupNames[activeId] || sectionCalcsMap[groups.find((g) => g.groupId === activeId)?.sectionIds[0]]?.taskName || "Group"
-                    : sectionNames[activeId] || sectionCalcsMap[activeId]?.sectionName || "Section"}
+                    ? groupNames[activeId] ||
+                      sectionCalcsMap[
+                        groups.find((g) => g.groupId === activeId)
+                          ?.sectionIds[0]
+                      ]?.taskName ||
+                      "Group"
+                    : sectionNames[activeId] ||
+                      sectionCalcsMap[activeId]?.sectionName ||
+                      "Section"}
                 </div>
               ) : null}
             </DragOverlay>
@@ -1121,9 +1341,14 @@ const AddToSchedule = () => {
             <div className="mt-8">
               <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
                 Already Scheduled (
-                {scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0)}
-                {" "}section
-                {scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0) !== 1 ? "s" : ""}
+                {scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0)}{" "}
+                section
+                {scheduledGroups.reduce(
+                  (n, g) => n + g.sectionIds.length,
+                  0,
+                ) !== 1
+                  ? "s"
+                  : ""}
                 )
               </h3>
               <div className="space-y-3 opacity-80 text-slate-300 font-mono text-xs font-medium">
@@ -1151,7 +1376,8 @@ const AddToSchedule = () => {
                           </div>
                           <div></div>
                           <div className="min-w-0 truncate">
-                            {sectionCalcsMap[schGroup.sectionIds[0]]?.taskName || "Group"}
+                            {sectionCalcsMap[schGroup.sectionIds[0]]
+                              ?.taskName || "Group"}
                           </div>
                           {activeServices.map((service) => (
                             <div
@@ -1195,7 +1421,10 @@ const AddToSchedule = () => {
                                 {!isMulti && (
                                   <>
                                     <div className="flex items-center justify-center">
-                                      <FiCheck size={16} className="text-green-500" />
+                                      <FiCheck
+                                        size={16}
+                                        className="text-green-500"
+                                      />
                                     </div>
                                     <div></div>
                                   </>

@@ -47,7 +47,7 @@ const CompletedProjectCard = ({
     try {
       dispatch({ type: Actions.financialsData.CLEAR_TASK_FINANCIALS });
       setIsFinancialsInputModalOpen(true);
-      dispatch(fetchTaskFinancials(taskId, project.project_id));
+      dispatch(fetchTaskFinancials(taskId));
       setSelectedTask({
         task_id: taskId,
         task_name: taskName,

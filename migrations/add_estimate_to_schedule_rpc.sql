@@ -12,7 +12,7 @@ CREATE OR REPLACE FUNCTION add_estimate_to_schedule(
   p_next_task_number INTEGER,
   p_chart_config_id BIGINT,
   p_groups JSONB,
-  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3] }
+  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "financial_data": { ... } }
   p_existing_task_id BIGINT DEFAULT NULL
   -- If sections from this estimate are already scheduled, pass one of their
   -- scheduled_task_id values so new tasks get added to the same project.
@@ -101,6 +101,32 @@ BEGIN
       v_now
     )
     RETURNING subtask_id INTO v_subtask_id;
+
+    -- Seed project_financials with initial estimate data (if provided)
+    INSERT INTO project_financials (
+      task_id,
+      team_id,
+      financial_data,
+      financials_created_at,
+      financials_updated_at
+    )
+    VALUES (
+      v_task_id,
+      p_team_id,
+      COALESCE(v_group->'financial_data', '{}'::jsonb),
+      v_now,
+      v_now
+    )
+    ON CONFLICT (task_id)
+    DO UPDATE SET
+      team_id = EXCLUDED.team_id,
+      financials_updated_at = EXCLUDED.financials_updated_at,
+      financial_data = CASE
+        WHEN project_financials.financial_data IS NULL
+          OR project_financials.financial_data = '{}'::jsonb
+        THEN EXCLUDED.financial_data
+        ELSE project_financials.financial_data
+      END;
 
     -- Validate: no section in this group is already scheduled
     IF EXISTS (
