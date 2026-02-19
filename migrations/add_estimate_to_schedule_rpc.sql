@@ -27,8 +27,10 @@ DECLARE
   v_subtask_id BIGINT;
   v_group JSONB;
   v_task_number INTEGER;
+  v_group_index INTEGER := 0;
   v_results JSONB := '[]'::JSONB;
   v_now TIMESTAMPTZ := now();
+  v_created_at TIMESTAMPTZ;
 BEGIN
   -- 1. Resolve or create the project
   IF p_existing_task_id IS NOT NULL THEN
@@ -62,6 +64,8 @@ BEGIN
   -- 2. Loop through each group to create tasks and subtasks
   FOR v_group IN SELECT * FROM jsonb_array_elements(p_groups)
   LOOP
+    v_group_index := v_group_index + 1;
+    v_created_at := v_now + (v_group_index * INTERVAL '5 milliseconds');
     -- Create task
     INSERT INTO tasks (
       project_id,
@@ -76,7 +80,7 @@ BEGIN
       v_task_number::TEXT,
       v_group->>'name',
       TRUE,
-      v_now,
+      v_created_at,
       (v_group->>'duration')::NUMERIC
     )
     RETURNING task_id INTO v_task_id;
@@ -98,7 +102,7 @@ BEGIN
       p_day_width,
       p_start_date,
       p_start_date + (CEIL((v_group->>'duration')::NUMERIC / p_workday_hours) * INTERVAL '1 day'),
-      v_now
+      v_created_at
     )
     RETURNING subtask_id INTO v_subtask_id;
 
@@ -114,8 +118,8 @@ BEGIN
       v_task_id,
       p_team_id,
       COALESCE(v_group->'financial_data', '{}'::jsonb),
-      v_now,
-      v_now
+      v_created_at,
+      v_created_at
     )
     ON CONFLICT (task_id)
     DO UPDATE SET

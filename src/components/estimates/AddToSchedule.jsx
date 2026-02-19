@@ -494,6 +494,9 @@ const AddToSchedule = () => {
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
     const allScheduledIds = scheduledGroups.flatMap((g) => g.sectionIds);
+    if (unscheduledSectionIds.length > 0) {
+      setSaveSuccess(false);
+    }
     if (unscheduledSectionIds.length === 0 && allScheduledIds.length === 0)
       return;
     if (groups.length !== 0) return;

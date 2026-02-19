@@ -341,7 +341,7 @@ const EstimateLayout = () => {
               }
             `}
           >
-            Project Information
+            Estimate Notes & Details
           </button>
 
           {currentEstimate && (
