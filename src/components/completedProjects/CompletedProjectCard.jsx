@@ -115,7 +115,7 @@ const CompletedProjectCard = ({
             )}
           </button>
         </div>
-        <div className="flex items-center justify-between px-8 h-full border-l border-gray-400 gap-2">
+        <div className="flex items-center justify-center px-8 h-full border-l border-gray-400 gap-8">
           {canViewProfitLoss && (
             <Tooltip text="View Profit/Loss">
               <button
@@ -126,7 +126,7 @@ const CompletedProjectCard = ({
               </button>
             </Tooltip>
           )}
-          {canEditSchedule && (
+          {/* {canEditSchedule && (
             <Tooltip text="Restore project to schedule">
               <button
                 onClick={(e) => {
@@ -139,7 +139,7 @@ const CompletedProjectCard = ({
                 <FiRotateCcw size={20} />
               </button>
             </Tooltip>
-          )}
+          )} */}
         </div>
       </div>
       <div
@@ -209,7 +209,7 @@ const CompletedProjectCard = ({
                           </button>
                         </Tooltip>
                       )}
-                      {canEditSchedule && (
+                      {/* {canEditSchedule && (
                         <Tooltip text="Restore task to schedule">
                           <button
                             onClick={() => onRestoreTask?.(project, task)}
@@ -219,7 +219,7 @@ const CompletedProjectCard = ({
                             <FiRotateCcw size={20} />
                           </button>
                         </Tooltip>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 );
