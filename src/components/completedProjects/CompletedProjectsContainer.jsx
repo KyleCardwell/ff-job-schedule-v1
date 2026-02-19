@@ -3,7 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { fetchCompletedProjects } from "../../redux/actions/projects";
+import { usePermissions } from "../../hooks/usePermissions.js";
+import {
+  fetchCompletedProjects,
+  restoreProjectToSchedule,
+  restoreTaskToSchedule,
+} from "../../redux/actions/projects";
+import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
 
 import CompletedProjectCard from "./CompletedProjectCard.jsx";
@@ -12,6 +18,7 @@ import PdfCompletedListComponent from "./PdfCompletedListComponent.jsx";
 import ProjectSearchFilter from "./ProjectSearchFilter.jsx";
 
 const CompletedProjectsContainer = () => {
+  const { canEditSchedule } = usePermissions();
   const dispatch = useDispatch();
   const { completedProjects, loading, error } = useSelector(
     (state) => state.completedProjects
@@ -24,6 +31,8 @@ const CompletedProjectsContainer = () => {
     key: "project",
     direction: "asc",
   });
+  const [restoreError, setRestoreError] = useState(null);
+  const [restoreTarget, setRestoreTarget] = useState(null);
 
   const handleFilterChange = (filters) => {
     dispatch(fetchCompletedProjects(filters));
@@ -35,6 +44,35 @@ const CompletedProjectsContainer = () => {
       direction = "desc";
     }
     setSortConfig({ key, direction });
+  };
+
+  const handleRestoreTask = (project, task) => {
+    setRestoreTarget({ type: "task", project, task });
+  };
+
+  const handleRestoreProject = (project) => {
+    setRestoreTarget({ type: "project", project });
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoreTarget) return;
+
+    setRestoreError(null);
+    const result =
+      restoreTarget.type === "project"
+        ? await dispatch(restoreProjectToSchedule(restoreTarget.project.project_id))
+        : await dispatch(
+            restoreTaskToSchedule({
+              projectId: restoreTarget.project.project_id,
+              taskId: restoreTarget.task.task_id,
+            }),
+          );
+
+    setRestoreTarget(null);
+
+    if (!result?.success) {
+      setRestoreError(result?.error || "Failed to restore task.");
+    }
   };
 
   const sortedProjects = useMemo(() => {
@@ -52,8 +90,8 @@ const CompletedProjectsContainer = () => {
             bValue = b.project_name?.toLowerCase() || "";
             break;
           case "completed":
-            aValue = new Date(a.project_completed_at);
-            bValue = new Date(b.project_completed_at);
+            aValue = new Date(a.completion_date || a.project_completed_at || 0);
+            bValue = new Date(b.completion_date || b.project_completed_at || 0);
             break;
           case "costing":
             // Sort by number of incomplete tasks
@@ -158,6 +196,8 @@ const CompletedProjectsContainer = () => {
             project={project}
             setIsFinancialsInputModalOpen={setIsFinancialsInputModalOpen}
             setSelectedTask={setSelectedTask}
+            onRestoreTask={handleRestoreTask}
+            onRestoreProject={handleRestoreProject}
             index={index}
           />
         ))}
@@ -168,6 +208,29 @@ const CompletedProjectsContainer = () => {
         onClose={() => setIsFinancialsInputModalOpen(false)}
         selectedTask={selectedTask}
       />
+      <ConfirmationModal
+        isOpen={Boolean(restoreTarget)}
+        title={
+          restoreTarget?.type === "project"
+            ? "Restore Project"
+            : "Restore Task"
+        }
+        message={
+          restoreTarget?.type === "project"
+            ? [
+                `Restore ${restoreTarget.project.project_name} back to the schedule?`,
+                "This will clear completion dates for all rooms in the project.",
+              ]
+            : `Restore ${restoreTarget?.task?.task_name} back to the schedule?`
+        }
+        confirmText="Restore"
+        confirmButtonClass="bg-amber-600 hover:bg-amber-700"
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setRestoreTarget(null)}
+      />
+      {restoreError && (
+        <div className="text-center text-red-500 py-2">{restoreError}</div>
+      )}
     </div>
   );
 };

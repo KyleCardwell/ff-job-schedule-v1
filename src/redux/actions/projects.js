@@ -39,6 +39,81 @@ export const fetchEarliestStartDate =
     }
   };
 
+export const restoreTaskToSchedule =
+  ({ projectId, taskId }) =>
+  async (dispatch, getState) => {
+    try {
+      const { error: taskError } = await supabase
+        .from("tasks")
+        .update({ task_completed_at: null, task_active: true })
+        .eq("task_id", taskId);
+
+      if (taskError) {
+        throw taskError;
+      }
+
+      const { error: projectError } = await supabase
+        .from("projects")
+        .update({ project_completed_at: null })
+        .eq("project_id", projectId);
+
+      if (projectError) {
+        throw projectError;
+      }
+
+      const state = getState();
+      await dispatch(
+        fetchProjects(
+          state.builders.employees[0].employee_id,
+          fetchProjectsOptions.select,
+        ),
+      );
+      await dispatch(fetchCompletedProjects());
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error restoring task to schedule:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+export const restoreProjectToSchedule =
+  (projectId) => async (dispatch, getState) => {
+    try {
+      const { error: tasksError } = await supabase
+        .from("tasks")
+        .update({ task_completed_at: null, task_active: true })
+        .eq("project_id", projectId);
+
+      if (tasksError) {
+        throw tasksError;
+      }
+
+      const { error: projectError } = await supabase
+        .from("projects")
+        .update({ project_completed_at: null })
+        .eq("project_id", projectId);
+
+      if (projectError) {
+        throw projectError;
+      }
+
+      const state = getState();
+      await dispatch(
+        fetchProjects(
+          state.builders.employees[0].employee_id,
+          fetchProjectsOptions.select,
+        ),
+      );
+      await dispatch(fetchCompletedProjects());
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error restoring project to schedule:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
 export const fetchEarliestAndLatestDates =
   (excludeEmployeeId) => async (dispatch) => {
     try {
@@ -90,7 +165,12 @@ export const fetchProjectsOptions = {
 
 export const fetchCompletedProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, project_financials (costing_complete))",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_completed_at, task_created_at, est_duration, project_financials (costing_complete))",
+};
+
+const fetchPartiallyCompletedProjectsOptions = {
+  select:
+    "*, tasks!inner (task_id, project_id, task_number, task_name, task_active, task_completed_at, task_created_at, est_duration, project_financials (costing_complete))",
 };
 
 export const fetchProjects =
@@ -128,6 +208,10 @@ export const fetchProjects =
       const flattenedResult = result
         .flatMap((project) =>
           project.tasks.flatMap((task) => {
+            if (!task.task_active || task.task_completed_at) {
+              return [];
+            }
+
             // Sort subtasks by created_at before mapping
             const sortedSubtasks = [...task.subtasks].sort((a, b) =>
               a.subtask_created_at.localeCompare(b.subtask_created_at),
@@ -487,56 +571,123 @@ export const fetchCompletedProjects =
     });
 
     try {
-      let query = supabase
+      let completedProjectsQuery = supabase
         .from("projects")
         .select(fetchCompletedProjectsOptions.select)
         .not("project_completed_at", "is", null)
         .order("project_name", { ascending: true });
 
+      let partialProjectsQuery = supabase
+        .from("projects")
+        .select(fetchPartiallyCompletedProjectsOptions.select)
+        .is("project_completed_at", null)
+        .not("tasks.task_completed_at", "is", null)
+        .order("project_name", { ascending: true });
+
       // Add search filter if searchTerm is provided
       if (searchTerm) {
-        query = query.ilike("project_name", `%${searchTerm}%`);
-      }
-
-      // Add date range filters if provided
-      if (dateRange.start) {
-        query = query.gte("project_completed_at", dateRange.start);
-      }
-      if (dateRange.end) {
-        // Add one day to include the end date fully
-        const endDate = new Date(dateRange.end);
-        endDate.setDate(endDate.getDate() + 1);
-        query = query.lt("project_completed_at", endDate.toISOString());
+        completedProjectsQuery = completedProjectsQuery.ilike(
+          "project_name",
+          `%${searchTerm}%`,
+        );
+        partialProjectsQuery = partialProjectsQuery.ilike(
+          "project_name",
+          `%${searchTerm}%`,
+        );
       }
 
       // Add category filters if provided
       if (categories.length > 0) {
-        query = query.contains("categories", categories);
+        completedProjectsQuery = completedProjectsQuery.contains(
+          "categories",
+          categories,
+        );
+        partialProjectsQuery = partialProjectsQuery.contains(
+          "categories",
+          categories,
+        );
       }
 
-      // Always order by completion date
-      query = query.order("project_completed_at", { ascending: false });
+      const [completedProjectsResponse, partialProjectsResponse] =
+        await Promise.all([completedProjectsQuery, partialProjectsQuery]);
 
-      const { data: result, error } = await query;
+      if (completedProjectsResponse.error) {
+        throw completedProjectsResponse.error;
+      }
+      if (partialProjectsResponse.error) {
+        throw partialProjectsResponse.error;
+      }
 
-      if (error) throw error;
+      const mergedProjects = new Map();
+      completedProjectsResponse.data?.forEach((project) => {
+        mergedProjects.set(project.project_id, project);
+      });
+      partialProjectsResponse.data?.forEach((project) => {
+        if (!mergedProjects.has(project.project_id)) {
+          mergedProjects.set(project.project_id, project);
+        }
+      });
+      const result = Array.from(mergedProjects.values());
 
-      // Filter tasks client-side if there's a search term
-      const processedResult = result.map((project) => ({
-        ...project,
-        tasks: project.tasks
-          .sort((a, b) => a.task_created_at.localeCompare(b.task_created_at))
-          .map((task) => ({
-            task_id: task.task_id,
-            task_number: task.task_number,
-            task_name: task.task_name,
-            costing_complete: task.project_financials?.costing_complete || null,
-          })),
-      }));
+      const processedResult = result.map((project) => {
+        const filteredTasks = project.project_completed_at
+          ? project.tasks
+          : project.tasks.filter((task) => task.task_completed_at);
+        const latestTaskCompletion = filteredTasks.reduce((latest, task) => {
+          if (!task.task_completed_at) return latest;
+          if (!latest) return task.task_completed_at;
+          return task.task_completed_at > latest
+            ? task.task_completed_at
+            : latest;
+        }, null);
+        const completionDate = project.project_completed_at || latestTaskCompletion;
+
+        return {
+          ...project,
+          completion_date: completionDate,
+          tasks: filteredTasks
+            .sort((a, b) => a.task_created_at.localeCompare(b.task_created_at))
+            .map((task) => ({
+              task_id: task.task_id,
+              task_number: task.task_number,
+              task_name: task.task_name,
+              task_completed_at: task.task_completed_at,
+              costing_complete:
+                task.project_financials?.costing_complete || null,
+            })),
+        };
+      });
+
+      const filteredByDate = processedResult.filter((project) => {
+        if (!dateRange.start && !dateRange.end) {
+          return true;
+        }
+
+        if (!project.completion_date) {
+          return false;
+        }
+
+        const completionDate = new Date(project.completion_date);
+        if (dateRange.start) {
+          const startDate = new Date(dateRange.start);
+          if (completionDate < startDate) {
+            return false;
+          }
+        }
+        if (dateRange.end) {
+          const endDate = new Date(dateRange.end);
+          endDate.setDate(endDate.getDate() + 1);
+          if (completionDate >= endDate) {
+            return false;
+          }
+        }
+
+        return true;
+      });
 
       dispatch({
         type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_SUCCESS,
-        payload: processedResult,
+        payload: filteredByDate,
       });
     } catch (error) {
       console.error("Error fetching completed projects:", error);

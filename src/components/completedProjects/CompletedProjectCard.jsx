@@ -6,6 +6,7 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiEdit,
+  FiRotateCcw,
   FiX,
 } from "react-icons/fi";
 import { useDispatch } from "react-redux";
@@ -17,16 +18,20 @@ import {
   fetchProjectFinancials,
   fetchTaskFinancials,
 } from "../../redux/actions/financialsData";
+import Tooltip from "../common/Tooltip.jsx";
 
 const CompletedProjectCard = ({
   project,
   setIsFinancialsInputModalOpen,
   setSelectedTask,
+  onRestoreTask,
+  onRestoreProject,
   index,
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { canEditFinancials, canViewProfitLoss } = usePermissions();
+  const { canEditFinancials, canViewProfitLoss, canEditSchedule } =
+    usePermissions();
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoveredProjectId, setHoveredProjectId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -35,12 +40,14 @@ const CompletedProjectCard = ({
   const bgHoverColor = index % 2 === 0 ? "bg-teal-200" : "bg-teal-100";
 
   const jobName = project.project_name;
-  const completedDate = new Date(
-    project.project_completed_at
-  ).toLocaleDateString();
+  const completedDateSource =
+    project.completion_date || project.project_completed_at;
+  const completedDate = completedDateSource
+    ? new Date(completedDateSource).toLocaleDateString()
+    : "";
 
   const incompleteTasksCount = project.tasks.filter(
-    (task) => !task.costing_complete
+    (task) => !task.costing_complete,
   ).length;
 
   const handleEditClick = (taskId, taskName, taskNumber) => {
@@ -78,8 +85,8 @@ const CompletedProjectCard = ({
               ? "bg-teal-200"
               : "bg-teal-100"
             : index % 2 === 0
-            ? "bg-gray-200"
-            : "bg-white"
+              ? "bg-gray-200"
+              : "bg-white"
         }`}
         onMouseEnter={() => setHoveredProjectId(project.project_id)}
         onMouseLeave={() => setHoveredProjectId(null)}
@@ -108,15 +115,31 @@ const CompletedProjectCard = ({
             )}
           </button>
         </div>
-        <div className="flex items-center justify-center h-full border-l border-gray-400">
-          <button
-            onClick={handleViewClick}
-            className={`text-gray-600 hover:text-blue-900 mx-auto ${
-              !canViewProfitLoss ? "hidden" : ""
-            }`}
-          >
-            <FaEye size={20} />
-          </button>
+        <div className="flex items-center justify-between px-8 h-full border-l border-gray-400 gap-2">
+          {canViewProfitLoss && (
+            <Tooltip text="View Profit/Loss">
+              <button
+                onClick={handleViewClick}
+                className={`text-gray-600 hover:text-blue-900 mx-auto`}
+              >
+                <FaEye size={20} />
+              </button>
+            </Tooltip>
+          )}
+          {canEditSchedule && (
+            <Tooltip text="Restore project to schedule">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRestoreProject?.(project);
+                }}
+                className={`text-amber-600 hover:text-amber-800 mx-auto`}
+                aria-label="Restore project to schedule"
+              >
+                <FiRotateCcw size={20} />
+              </button>
+            </Tooltip>
+          )}
         </div>
       </div>
       <div
@@ -165,23 +188,38 @@ const CompletedProjectCard = ({
                       )}
                     </div>
                     <div
-                      className={`${taskBgColor} ${taskBgHoverColor} flex justify-center items-center`}
+                      className={`${taskBgColor} ${taskBgHoverColor} flex justify-center px-8 items-center gap-8`}
                     >
-                      <button
-                        onClick={() =>
-                          handleEditClick(
-                            task.task_id,
-                            task.task_name,
-                            task.task_number
-                          )
-                        }
-                        className={`text-blue-600 hover:text-blue-900 mx-auto ${
-                          !canEditFinancials ? "hidden" : ""
-                        }`}
-                        aria-label="Edit estimate"
-                      >
-                        <FiEdit size={20} />
-                      </button>
+                      {canEditFinancials && (
+                        <Tooltip text="Edit Job Costing">
+                          <button
+                            onClick={() =>
+                              handleEditClick(
+                                task.task_id,
+                                task.task_name,
+                                task.task_number,
+                              )
+                            }
+                            className={`text-blue-600 hover:text-blue-900 ${
+                              !canEditFinancials ? "invisible" : ""
+                            }`}
+                            aria-label="Edit Job Costing"
+                          >
+                            <FiEdit size={20} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      {canEditSchedule && (
+                        <Tooltip text="Restore task to schedule">
+                          <button
+                            onClick={() => onRestoreTask?.(project, task)}
+                            className="text-amber-600 hover:text-amber-800"
+                            aria-label="Restore task to schedule"
+                          >
+                            <FiRotateCcw size={20} />
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 );
@@ -198,6 +236,8 @@ CompletedProjectCard.propTypes = {
   project: PropTypes.object.isRequired,
   setIsFinancialsInputModalOpen: PropTypes.func.isRequired,
   setSelectedTask: PropTypes.func.isRequired,
+  onRestoreTask: PropTypes.func,
+  onRestoreProject: PropTypes.func,
   index: PropTypes.number.isRequired,
 };
 

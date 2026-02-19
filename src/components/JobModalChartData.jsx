@@ -64,9 +64,9 @@ const JobModal = ({
   const unchangedTasks = useSelector((state) => state.taskData.tasks);
 
   const projectData = useSelector((state) =>
-    jobData && jobData[0] ? state.projects?.data[jobData[0]?.project_id] : null
+    jobData && jobData[0] ? state.projects?.data[jobData[0]?.project_id] : null,
   );
-  const { holidayMap } = useSelector(state => state.holidays)
+  const { holidayMap } = useSelector((state) => state.holidays);
   const [jobName, setJobName] = useState("");
   const [depositDate, setDepositDate] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -80,8 +80,11 @@ const JobModal = ({
   const [removedWorkPeriods, setRemovedWorkPeriods] = useState([]);
   const [showCompleteConfirmation, setShowCompleteConfirmation] =
     useState(false);
+  const [selectedRoomsToComplete, setSelectedRoomsToComplete] = useState(
+    new Set(),
+  );
   const [completedSubTasksToDelete, setCompletedSubTasksToDelete] = useState(
-    new Set()
+    new Set(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -147,6 +150,7 @@ const JobModal = ({
       setLocalJobsByBuilder(subTasksByEmployee);
       setNextJobNumber(jobNumberNext);
       setErrors({});
+      setSelectedRoomsToComplete(new Set());
     }
     setChangedTaskIds(new Set());
     if (jobNameInputRef.current) {
@@ -186,15 +190,15 @@ const JobModal = ({
   const calculateNextAvailableDate = (employee_id) => {
     const builderJobs = localJobsByBuilder[employee_id] || [];
     const sortedBuilderJobs = builderJobs.sort((a, b) =>
-      a.start_date.localeCompare(b.start_date)
+      a.start_date.localeCompare(b.start_date),
     );
 
     let lastJobEndDate = new Date(
       Date.UTC(
         new Date().getUTCFullYear(),
         new Date().getUTCMonth(),
-        new Date().getUTCDate()
-      )
+        new Date().getUTCDate(),
+      ),
     );
     if (sortedBuilderJobs.length > 0) {
       const lastJob = sortedBuilderJobs[sortedBuilderJobs.length - 1];
@@ -205,11 +209,11 @@ const JobModal = ({
           workdayHours,
           holidayMap,
           employee_id,
-          timeOffByBuilder
+          timeOffByBuilder,
         ) / workdayHours;
 
       lastJobEndDate = normalizeDate(
-        addDays(parseISO(lastJob.start_date), lastJobDuration)
+        addDays(parseISO(lastJob.start_date), lastJobDuration),
       );
     }
 
@@ -217,7 +221,7 @@ const JobModal = ({
       lastJobEndDate,
       holidayMap,
       employee_id,
-      timeOffByBuilder
+      timeOffByBuilder,
     );
   };
 
@@ -230,7 +234,7 @@ const JobModal = ({
   }) => {
     const defaultBuilderId = employee_id || employees[0].employee_id;
     const newStartDate = normalizeDate(
-      start_date || calculateNextAvailableDate(defaultBuilderId)
+      start_date || calculateNextAvailableDate(defaultBuilderId),
     );
     const createdAt = new Date().toISOString();
 
@@ -301,6 +305,11 @@ const JobModal = ({
 
   const handleInactiveRoom = (task_id) => {
     const completedAt = new Date().toISOString();
+    setSelectedRoomsToComplete((prev) => {
+      const next = new Set(prev);
+      next.delete(task_id);
+      return next;
+    });
     setLocalRooms((prevRooms) =>
       prevRooms.map((room) =>
         room.task_id === task_id
@@ -314,8 +323,8 @@ const JobModal = ({
                 task_completed_at: completedAt,
               })),
             }
-          : room
-      )
+          : room,
+      ),
     );
 
     // Find the room and mark all its work periods as changed
@@ -340,7 +349,7 @@ const JobModal = ({
                 task_active: false,
                 task_completed_at: completedAt,
               }
-            : job
+            : job,
         );
       });
       return updatedJobsByBuilder;
@@ -350,6 +359,11 @@ const JobModal = ({
   };
 
   const handleCancelNewRoom = (task_id) => {
+    setSelectedRoomsToComplete((prev) => {
+      const next = new Set(prev);
+      next.delete(task_id);
+      return next;
+    });
     // Find the room first to get all its work periods
     const roomToRemove = localRooms.find((room) => room.task_id === task_id);
 
@@ -361,7 +375,7 @@ const JobModal = ({
 
       // Remove the room from localRooms
       setLocalRooms((prevRooms) =>
-        prevRooms.filter((room) => room.task_id !== task_id)
+        prevRooms.filter((room) => room.task_id !== task_id),
       );
 
       // Remove all work periods from localJobsByBuilder
@@ -393,8 +407,8 @@ const JobModal = ({
       // Remove all work periods from removedWorkPeriods
       setRemovedWorkPeriods((prev) =>
         prev.filter(
-          (id) => !roomToRemove.workPeriods.some((wp) => wp.subtask_id === id)
-        )
+          (id) => !roomToRemove.workPeriods.some((wp) => wp.subtask_id === id),
+        ),
       );
     }
   };
@@ -404,7 +418,7 @@ const JobModal = ({
       prevRooms.map((room) => {
         if (room.task_id === task_id) {
           const newStartDate = normalizeDate(
-            calculateNextAvailableDate(prevBuilderId)
+            calculateNextAvailableDate(prevBuilderId),
           );
           const newWorkPeriod = {
             subtask_id: uuidv4(),
@@ -448,7 +462,7 @@ const JobModal = ({
             [prevBuilderId]: (prev[prevBuilderId] || []).map((job) =>
               job.task_id === task_id
                 ? { ...job, workPeriods: updatedWorkPeriods }
-                : job
+                : job,
             ),
           }));
 
@@ -467,7 +481,7 @@ const JobModal = ({
           };
         }
         return room;
-      })
+      }),
     );
   };
 
@@ -480,7 +494,7 @@ const JobModal = ({
               if (wp.subtask_id === workPeriodId) {
                 // Track the builder who lost the work period
                 setChangedBuilderIds(
-                  (prev) => new Set([...prev, wp.employee_id])
+                  (prev) => new Set([...prev, wp.employee_id]),
                 );
                 return false;
               }
@@ -497,7 +511,7 @@ const JobModal = ({
             [room.employee_id]: (prev[room.employee_id] || []).map((job) =>
               job.task_id === task_id
                 ? { ...job, workPeriods: updatedWorkPeriods }
-                : job
+                : job,
             ),
           }));
 
@@ -518,7 +532,7 @@ const JobModal = ({
           };
         }
         return room;
-      })
+      }),
     );
   };
 
@@ -526,7 +540,7 @@ const JobModal = ({
     task_id,
     workPeriodId,
     changes,
-    oldBuilderId
+    oldBuilderId,
   ) => {
     setLocalRooms((prevRooms) => {
       return prevRooms.map((room) => {
@@ -535,7 +549,7 @@ const JobModal = ({
             if (wp.subtask_id === workPeriodId) {
               const updatedWp = { ...wp, ...changes };
               setChangedBuilderIds(
-                (prev) => new Set([...prev, wp.employee_id])
+                (prev) => new Set([...prev, wp.employee_id]),
               );
 
               // If employee_id is changed, update the start_date
@@ -544,7 +558,7 @@ const JobModal = ({
                 changes.employee_id !== wp.employee_id
               ) {
                 const newStartDate = normalizeDate(
-                  calculateNextAvailableDate(changes.employee_id)
+                  calculateNextAvailableDate(changes.employee_id),
                 );
                 updatedWp.start_date = normalizeDate(newStartDate);
               }
@@ -654,15 +668,15 @@ const JobModal = ({
 
     if (changes.employee_id && oldBuilderId) {
       setChangedBuilderIds(
-        (prev) => new Set([...prev, oldBuilderId, changes.employee_id])
+        (prev) => new Set([...prev, oldBuilderId, changes.employee_id]),
       );
       setLocalJobsByBuilder((prev) => {
         const workPeriod = prev[oldBuilderId].find(
-          (wp) => wp.subtask_id === workPeriodId
+          (wp) => wp.subtask_id === workPeriodId,
         );
         const newBuilderId = changes.employee_id;
         const newStartDate = normalizeDate(
-          calculateNextAvailableDate(newBuilderId)
+          calculateNextAvailableDate(newBuilderId),
         );
 
         const updatedWorkPeriod = {
@@ -680,7 +694,7 @@ const JobModal = ({
             timeOffByBuilder,
             dayWidth,
             chartStartDate,
-            defaultEmployeeId
+            defaultEmployeeId,
           );
 
         const { tasks: newBuilderTasks, conflicts: newBuilderConflicts } =
@@ -691,7 +705,7 @@ const JobModal = ({
             timeOffByBuilder,
             dayWidth,
             chartStartDate,
-            defaultEmployeeId
+            defaultEmployeeId,
           );
 
         // Update conflicts for both builders
@@ -711,6 +725,11 @@ const JobModal = ({
   };
 
   const handleRestoreRoom = (task_id) => {
+    setSelectedRoomsToComplete((prev) => {
+      const next = new Set(prev);
+      next.delete(task_id);
+      return next;
+    });
     setLocalRooms((prevRooms) => {
       const roomToRestore = prevRooms.find((room) => room.task_id === task_id);
       if (!roomToRestore) return prevRooms;
@@ -726,7 +745,7 @@ const JobModal = ({
                 workPeriods: room.workPeriods.map((wp) => {
                   setChangedTaskIds((prev) => new Set(prev).add(wp.subtask_id));
                   setChangedBuilderIds(
-                    (prev) => new Set([...prev, wp.employee_id])
+                    (prev) => new Set([...prev, wp.employee_id]),
                   );
                   return {
                     ...wp,
@@ -735,7 +754,7 @@ const JobModal = ({
                   };
                 }),
               }
-            : room
+            : room,
         )
         .sort((a, b) => a.task_created_at.localeCompare(b.task_created_at));
 
@@ -755,7 +774,7 @@ const JobModal = ({
                 task_active: true,
                 task_completed_at: null,
               }
-            : job
+            : job,
         );
       });
       return updatedJobsByBuilder;
@@ -767,20 +786,20 @@ const JobModal = ({
   const sortAndAdjustBuilderTasks = (
     tasks,
     buildersToUpdate,
-    removedWorkPeriods
+    removedWorkPeriods,
   ) => {
     const updatedBuilderArrays = {};
 
     // Filter out removed work periods first
     const filteredTasks = tasks.filter(
-      (task) => !removedWorkPeriods.includes(task.subtask_id)
+      (task) => !removedWorkPeriods.includes(task.subtask_id),
     );
 
     const updatedTasks = [...filteredTasks];
 
     buildersToUpdate.forEach((employee_id) => {
       const builderTasks = filteredTasks.filter(
-        (task) => task.employee_id === employee_id && task.task_active
+        (task) => task.employee_id === employee_id && task.task_active,
       );
 
       const { tasks: sortedBuilderTasks, conflicts } = sortAndAdjustDates(
@@ -790,14 +809,14 @@ const JobModal = ({
         timeOffByBuilder,
         dayWidth,
         chartStartDate,
-        defaultEmployeeId
+        defaultEmployeeId,
       );
 
       updatedBuilderArrays[employee_id] = sortedBuilderTasks;
 
       sortedBuilderTasks.forEach((sortedTask) => {
         const index = updatedTasks.findIndex(
-          (task) => task.subtask_id === sortedTask.subtask_id
+          (task) => task.subtask_id === sortedTask.subtask_id,
         );
         if (index !== -1) {
           updatedTasks[index] = sortedTask;
@@ -815,6 +834,18 @@ const JobModal = ({
     return { updatedTasks, updatedBuilderArrays };
   };
 
+  const toggleRoomCompletionSelection = (taskId) => {
+    setSelectedRoomsToComplete((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
+
   const handleCompleteJob = () => {
     setShowCompleteConfirmation(true);
   };
@@ -827,70 +858,77 @@ const JobModal = ({
       setIsLoading(true);
       setIsSaving(true);
 
-      const projectCompletedAt = new Date().toISOString();
+      const completionTimestamp = new Date().toISOString();
+      const hasSelectedRooms = selectedRoomsToComplete.size > 0;
+      const roomsToComplete = hasSelectedRooms
+        ? localRooms.filter((room) => selectedRoomsToComplete.has(room.task_id))
+        : localRooms;
+      const completedTaskIds = new Set(
+        roomsToComplete.map((room) => room.task_id),
+      );
+      const allTasksCompleted = localRooms.every(
+        (room) => room.task_completed_at || completedTaskIds.has(room.task_id),
+      );
+      const projectCompletedAt = allTasksCompleted ? completionTimestamp : null;
 
       // Format the tasks that will be completed - only task table fields
-      const completedTasks = localRooms.map((task) => ({
+      const completedTasks = roomsToComplete.map((task) => ({
         task_id: task.task_id,
         project_id: task.project_id,
         task_number: task.task_number,
         task_name: task.task_name,
         task_active: task.task_active,
         task_created_at: task.task_created_at,
-        task_completed_at: task.task_completed_at || projectCompletedAt,
+        task_completed_at: task.task_completed_at || completionTimestamp,
       }));
 
       // Get all tasks for the completed job
-      const completedProjectTasks = localRooms.flatMap(
-        (room) => room.workPeriods
+      const completedProjectTasks = roomsToComplete.flatMap(
+        (room) => room.workPeriods,
       );
 
       // Get unique builders involved in this job
       const buildersInvolvedInJob = new Set(
-        completedProjectTasks.map((task) => task.employee_id)
+        completedProjectTasks.map((task) => task.employee_id),
       );
 
-      // Get all tasks (including those not in this job)
-      const allTasks = Object.values(localJobsByBuilder).flat();
-
-      // Remove completed job tasks and mark tasks after completed ones as hard start
+      // Remove completed tasks and mark tasks after completed ones as hard start
       const remainingTasks = [];
-      for (let i = 0; i < allTasks.length; i++) {
-        const currentTask = allTasks[i];
-        const prevTask = allTasks[i - 1];
+      Object.entries(localJobsByBuilder).forEach(
+        ([employee_id, builderTasks]) => {
+          let prevWasCompleted = false;
+          builderTasks.forEach((currentTask) => {
+            const isCompletedTask = completedTaskIds.has(currentTask.task_id);
+            if (isCompletedTask) {
+              prevWasCompleted = true;
+              return;
+            }
 
-        if (currentTask.project_id === localRooms[0].project_id) {
-          continue; // Skip this task as it's from completed project
-        }
+            let updatedTask = currentTask;
+            if (prevWasCompleted && Number(employee_id) !== defaultEmployeeId) {
+              updatedTask = {
+                ...currentTask,
+                hard_start_date: true,
+              };
+            }
 
-        // If previous task exists, is same employee, but from completed project,
-        // mark current task as hard start
-        if (
-          prevTask &&
-          currentTask.employee_id !== defaultEmployeeId &&
-          prevTask.employee_id === currentTask.employee_id &&
-          prevTask.project_id === localRooms[0].project_id
-        ) {
-          remainingTasks.push({
-            ...currentTask,
-            hard_start_date: true,
+            remainingTasks.push(updatedTask);
+            prevWasCompleted = false;
           });
-        } else {
-          remainingTasks.push(currentTask);
-        }
-      }
+        },
+      );
 
       // Sort and adjust dates for affected builders
       const { updatedTasks } = sortAndAdjustBuilderTasks(
         remainingTasks,
         buildersInvolvedInJob,
-        [...completedSubTasksToDelete]
+        [...completedSubTasksToDelete],
       );
 
       // Filter out unchanged tasks
       const tasksToUpdate = updatedTasks.filter((task) => {
         const originalTask = unchangedTasks.find(
-          (t) => t.subtask_id === task.subtask_id
+          (t) => t.subtask_id === task.subtask_id,
         );
         if (!originalTask) {
           return true; // Keep new tasks
@@ -922,7 +960,7 @@ const JobModal = ({
           projectCompletedAt,
           needsAttention: false,
           completedTasks,
-        })
+        }),
       );
 
       // Check if the result has an error property
@@ -930,9 +968,11 @@ const JobModal = ({
         throw new Error(result.error?.message || "Failed to complete project");
       }
 
-      await dispatch(
-        createProjectFinancials(jobData[0].project_id, localRooms)
-      );
+      if (projectCompletedAt) {
+        await dispatch(
+          createProjectFinancials(jobData[0].project_id, localRooms),
+        );
+      }
 
       onClose();
     } catch (error) {
@@ -961,7 +1001,7 @@ const JobModal = ({
       jobData?.map((task, index) => [
         task.task_id,
         { ...task, originalIndex: index },
-      ])
+      ]),
     );
 
     // Check for blank job name
@@ -983,7 +1023,7 @@ const JobModal = ({
     // Check for all potential errors in rooms and work periods
     localRooms.forEach((room) => {
       const isRoomChanged = room.workPeriods.some((wp) =>
-        changedTaskIds.has(wp.subtask_id)
+        changedTaskIds.has(wp.subtask_id),
       );
       const isNewRoom = !originalTasksMap.has(room.workPeriods[0].subtask_id);
 
@@ -1061,12 +1101,12 @@ const JobModal = ({
           ...wp,
           task_active: room.task_active,
           project_name: jobName,
-        }))
+        })),
       );
 
       const updatedBuilderArrays = {};
 
-      const conflictsToSave = pendingConflicts
+      const conflictsToSave = pendingConflicts;
 
       changedBuilderIds.forEach((builderId) => {
         updatedBuilderArrays[builderId] = localJobsByBuilder[builderId];
@@ -1077,12 +1117,12 @@ const JobModal = ({
         // Combine updated tasks with existing tasks from localJobsByBuilder
         const existingBuilderTasks = localJobsByBuilder[employee_id] || [];
         const updatedBuilderTasks = updatedTasks.filter(
-          (task) => task.employee_id === employee_id
+          (task) => task.employee_id === employee_id,
         );
 
         // Create a set of updated task IDs for efficient lookup
         const updatedTaskIds = new Set(
-          updatedBuilderTasks.map((task) => task.subtask_id)
+          updatedBuilderTasks.map((task) => task.subtask_id),
         );
 
         // Combine tasks, replacing existing tasks with updated ones, and filter out removed work periods
@@ -1090,7 +1130,7 @@ const JobModal = ({
           ...existingBuilderTasks.filter(
             (task) =>
               !updatedTaskIds.has(task.subtask_id) &&
-              !removedWorkPeriods.includes(task.subtask_id)
+              !removedWorkPeriods.includes(task.subtask_id),
           ),
           ...updatedBuilderTasks,
         ];
@@ -1102,7 +1142,7 @@ const JobModal = ({
           timeOffByBuilder,
           dayWidth,
           chartStartDate,
-          defaultEmployeeId
+          defaultEmployeeId,
         );
 
         // Store the updated builder array
@@ -1130,7 +1170,7 @@ const JobModal = ({
       // Filter out unchanged tasks
       const tasksToUpdate = updatedTasks.filter((task) => {
         const originalTask = unchangedTasks.find(
-          (t) => t.subtask_id === task.subtask_id
+          (t) => t.subtask_id === task.subtask_id,
         );
         if (!originalTask) {
           return true; // Keep new tasks
@@ -1166,7 +1206,7 @@ const JobModal = ({
           removedWorkPeriods,
           nextJobNumber,
           chartConfigId,
-        })
+        }),
       );
 
       // Check if the result has an error property
@@ -1197,7 +1237,7 @@ const JobModal = ({
   // Function to map employee_name to employee_id
   const getEmployeeIdByName = (employeeName) => {
     const employee = employees.find(
-      (emp) => emp.employee_name === employeeName
+      (emp) => emp.employee_name === employeeName,
     );
     return employee ? employee.employee_id : employees[0].employee_id;
   };
@@ -1255,12 +1295,24 @@ const JobModal = ({
 
   const activeRooms = localRooms.filter((room) => room.task_active);
   const inactiveRooms = localRooms.filter((room) => !room.task_active);
+  const hasSelectedRooms = selectedRoomsToComplete.size > 0;
+  const selectedRoomsForCompletion = hasSelectedRooms
+    ? localRooms.filter((room) => selectedRoomsToComplete.has(room.task_id))
+    : [];
+  const completeActionLabel = hasSelectedRooms
+    ? "Complete Selected Rooms"
+    : "Complete Job";
+  const completeConfirmationLabel = hasSelectedRooms
+    ? "complete the selected rooms for the"
+    : "complete the";
 
   return (
     <div className={modalOverlayClass}>
       {!showCompleteConfirmation ? (
         <>
-          <div className={`${modalContainerWidth} ${modalContainerClass} flex flex-col`}>
+          <div
+            className={`${modalContainerWidth} ${modalContainerClass} flex flex-col`}
+          >
             {isSaving && (
               <div className="loading-overlay absolute inset-0 bg-gray-200 bg-opacity-80 flex flex-col justify-center items-center z-[120]">
                 <GridLoader color="maroon" size={15} />
@@ -1306,7 +1358,7 @@ const JobModal = ({
                     ${buttonClass} bg-gray-800`}
                   onClick={handleCompleteJob}
                 >
-                  Complete Job
+                  {completeActionLabel}
                 </button>
               </div>
             </div>
@@ -1314,13 +1366,13 @@ const JobModal = ({
               <div className="md:w-1/4">
                 <label htmlFor="depositDate">Deposit Date</label>
                 {canEditSchedule ? (
-                <input
-                  id="depositDate"
-                  type="date"
-                  value={depositDate}
-                  onChange={(e) => setDepositDate(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded"
-                />
+                  <input
+                    id="depositDate"
+                    type="date"
+                    value={depositDate}
+                    onChange={(e) => setDepositDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  />
                 ) : (
                   <div className="w-full pl-1 h-8 text-sm flex items-center justify-center">
                     {depositDate || ""}
@@ -1332,22 +1384,22 @@ const JobModal = ({
                 <label htmlFor="jobName">Job Name</label>
                 {canEditSchedule ? (
                   <input
-                  id="jobName"
-                  type="text"
-                  value={jobName}
-                  onChange={(e) => {
-                    setErrors((prevErrors) => ({
-                      ...prevErrors,
-                      jobName: undefined,
-                    }));
-                    setJobName(e.target.value);
-                  }}
-                  placeholder="Job Name"
-                  className={`w-full p-2 border ${
-                    errors.jobName ? "border-red-500" : "border-gray-300"
-                  } rounded`}
-                  ref={jobNameInputRef}
-                />
+                    id="jobName"
+                    type="text"
+                    value={jobName}
+                    onChange={(e) => {
+                      setErrors((prevErrors) => ({
+                        ...prevErrors,
+                        jobName: undefined,
+                      }));
+                      setJobName(e.target.value);
+                    }}
+                    placeholder="Job Name"
+                    className={`w-full p-2 border ${
+                      errors.jobName ? "border-red-500" : "border-gray-300"
+                    } rounded`}
+                    ref={jobNameInputRef}
+                  />
                 ) : (
                   <div className="w-full pl-1 h-8 text-sm flex items-center justify-center">
                     {jobName || ""}
@@ -1359,12 +1411,12 @@ const JobModal = ({
                 <label htmlFor="deliveryDate">Delivery Date</label>
                 {canEditSchedule ? (
                   <input
-                  id="deliveryDate"
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded"
-                />
+                    id="deliveryDate"
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  />
                 ) : (
                   <div className="w-full pl-1 h-8 text-sm flex items-center justify-center">
                     {deliveryDate || ""}
@@ -1380,16 +1432,14 @@ const JobModal = ({
                     disabled={!canEditSchedule}
                     className={`group relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
                       !canEditSchedule
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'cursor-pointer'
-                    } ${
-                      needsAttention ? 'bg-indigo-600' : 'bg-gray-200'
-                    }`}
+                        ? "cursor-not-allowed opacity-50"
+                        : "cursor-pointer"
+                    } ${needsAttention ? "bg-indigo-600" : "bg-gray-200"}`}
                   >
                     <span
                       aria-hidden="true"
                       className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        needsAttention ? 'translate-x-5' : 'translate-x-0'
+                        needsAttention ? "translate-x-5" : "translate-x-0"
                       }`}
                     />
                   </Switch>
@@ -1420,7 +1470,7 @@ const JobModal = ({
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
               <div className="sticky top-0 bg-white">
                 <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
-                <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.25fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
+                <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.5fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
                   <span>Job</span>
                   <span>Room Name</span>
                   <span>Hours</span>
@@ -1441,7 +1491,7 @@ const JobModal = ({
                   {room.workPeriods.map((workPeriod, subTaskIndex) => (
                     <div
                       key={workPeriod.subtask_id || subTaskIndex}
-                      className={`flex flex-col md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.25fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
+                      className={`flex flex-col md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.5fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
                         subTaskIndex !== 0 &&
                         "border border-gray-500 md:border-none"
                       }`}
@@ -1458,7 +1508,7 @@ const JobModal = ({
                                 workPeriod.subtask_id,
                                 {
                                   task_number: e.target.value,
-                                }
+                                },
                               )
                             }
                             placeholder="Job Number"
@@ -1500,7 +1550,7 @@ const JobModal = ({
                                 workPeriod.subtask_id,
                                 {
                                   task_name: e.target.value,
-                                }
+                                },
                               )
                             }
                             placeholder="Room Name"
@@ -1515,8 +1565,8 @@ const JobModal = ({
                               clickedTask?.subtask_id === workPeriod.subtask_id
                                 ? clickedTaskRef
                                 : subTaskIndex === 0
-                                ? newTaskNameRef
-                                : null
+                                  ? newTaskNameRef
+                                  : null
                             }
                           />
                         ) : (
@@ -1541,7 +1591,7 @@ const JobModal = ({
                               workPeriod.subtask_id,
                               {
                                 duration: parseFloat(e.target.value).toFixed(2),
-                              }
+                              },
                             );
                           }}
                           placeholder="Hours"
@@ -1577,7 +1627,7 @@ const JobModal = ({
                                   employee_id: Number(e.target.value),
                                   hard_start_date: false,
                                 },
-                                selectedEmployeeInput.previousValue
+                                selectedEmployeeInput.previousValue,
                               );
                             } else {
                               handleWorkPeriodChange(
@@ -1586,7 +1636,7 @@ const JobModal = ({
                                 {
                                   employee_id: Number(e.target.value),
                                 },
-                                selectedEmployeeInput.previousValue
+                                selectedEmployeeInput.previousValue,
                               );
                             }
                           }}
@@ -1610,7 +1660,7 @@ const JobModal = ({
                       ) : (
                         <div className="w-full pl-1 h-8 text-sm flex items-center">
                           {employees.find(
-                            (e) => e.employee_id === workPeriod.employee_id
+                            (e) => e.employee_id === workPeriod.employee_id,
                           )?.employee_name || ""}
                         </div>
                       )}
@@ -1625,7 +1675,7 @@ const JobModal = ({
                               workPeriod.subtask_id,
                               {
                                 start_date: e.target.value,
-                              }
+                              },
                             )
                           }
                           className={`date-input w-full p-2 h-8 text-sm border ${
@@ -1652,7 +1702,7 @@ const JobModal = ({
                               workPeriod.subtask_id,
                               {
                                 hard_start_date: e.target.checked,
-                              }
+                              },
                             )
                           }
                           className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mx-auto"
@@ -1670,12 +1720,26 @@ const JobModal = ({
                             !canEditSchedule ? "hidden" : ""
                           }`}
                         >
+                          {/* {canEditSchedule && (
+                            <label className="flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedRoomsToComplete.has(room.task_id)}
+                                onChange={() =>
+                                  toggleRoomCompletionSelection(room.task_id)
+                                }
+                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                disabled={room.taskIsNew || room.task_completed_at}
+                              />
+                              Complete
+                            </label>
+                          )} */}
                           {!room.taskIsNew && (
                             <button
                               onClick={() =>
                                 handleAddWorkPeriod(
                                   room.task_id,
-                                  room.workPeriods[0]?.employee_id
+                                  room.workPeriods[0]?.employee_id,
                                 )
                               }
                               className={`${buttonClass} bg-green-500`}
@@ -1698,6 +1762,24 @@ const JobModal = ({
                               - Room
                             </button>
                           )}
+                          {canEditSchedule && (
+                            <label className="flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedRoomsToComplete.has(
+                                  room.task_id,
+                                )}
+                                onChange={() =>
+                                  toggleRoomCompletionSelection(room.task_id)
+                                }
+                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                disabled={
+                                  room.taskIsNew || room.task_completed_at
+                                }
+                              />
+                              Complete
+                            </label>
+                          )}
                         </div>
                       ) : (
                         <div className="flex flex-col gap-2 w-full md:flex-row justify-between">
@@ -1705,7 +1787,7 @@ const JobModal = ({
                             onClick={() =>
                               handleRemoveWorkPeriod(
                                 room.task_id,
-                                workPeriod.subtask_id
+                                workPeriod.subtask_id,
                               )
                             }
                             className={`${buttonClass} bg-red-500 ${
@@ -1797,10 +1879,25 @@ const JobModal = ({
       ) : (
         <div className={`${modalContainerClass} w-5/12`}>
           <h3 className="text-lg font-bold mb-2">
-            Are you sure you want to complete the <br />{" "}
+            Are you sure you want to <br /> {completeConfirmationLabel}{" "}
             {jobData[0].project_name} project?
           </h3>
-          <p className="mb-5">If yes, it will be removed from the schedule.</p>
+          <p className="mb-5">
+            If yes, {hasSelectedRooms ? "these rooms" : "the entire project"}{" "}
+            will be removed from the schedule.
+          </p>
+          {hasSelectedRooms && (
+            <div className="mb-5">
+              <p className="font-semibold">Rooms to complete:</p>
+              <ul className="list-disc list-inside text-sm text-gray-700">
+                {selectedRoomsForCompletion.map((room) => (
+                  <li key={room.task_id}>
+                    {room.task_number} - {room.task_name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="flex justify-between">
             <button
               className={`${buttonClass} bg-red-500`}
@@ -1812,7 +1909,7 @@ const JobModal = ({
               className={`${buttonClass} bg-green-500`}
               onClick={confirmCompleteJob}
             >
-              Yes, Complete Job
+              Yes, {completeActionLabel}
             </button>
           </div>
         </div>

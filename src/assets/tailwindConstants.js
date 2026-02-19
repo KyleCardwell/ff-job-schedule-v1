@@ -7,7 +7,7 @@ export const modalOverlayClass =
 export const modalContainerClass =
   "bg-white p-5 rounded-lg w-11/12 max-h-[90vh] relative z-50";
 
-export const modalContainerWidth = "max-w-5xl w-11/12";
+export const modalContainerWidth = "max-w-6xl w-11/12";
 
 export const headerButtonClass =
   "flex items-center px-6 py-3 border-l border-slate-200 z-30";
