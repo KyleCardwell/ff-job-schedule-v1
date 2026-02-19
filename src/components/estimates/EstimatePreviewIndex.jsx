@@ -1,5 +1,8 @@
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
+import { FiCalendar } from "react-icons/fi";
+
+import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
 
 /**
  * Index component for estimate preview with checkboxes to include/exclude tasks/sections
@@ -190,6 +193,10 @@ const EstimatePreviewIndex = ({
               taskData.sections && taskData.sections.length > 0;
             const hasMultipleSections =
               hasSections && taskData.sections.length > 1;
+            
+            const scheduled = taskData.sections.every(
+              (section) => section.scheduledTaskId !== null,
+            );
 
             return (
               <div key={taskData.taskId} className="">
@@ -219,7 +226,7 @@ const EstimatePreviewIndex = ({
                         }
                       `}
                     >
-                      {taskData.taskName}
+                      {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {taskData.taskName}
                     </button>
                   </div>
                 )}
@@ -228,7 +235,7 @@ const EstimatePreviewIndex = ({
                 {hasMultipleSections && (
                   <>
                     <h4 className="text-sm text-left font-semibold text-slate-300 mb-2 px-2">
-                      {taskData.taskName}
+                      {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {taskData.taskName}
                     </h4>
                     <div className="space-y-1 ml-2">
                       {taskData.sections.map((section) => (
@@ -253,7 +260,7 @@ const EstimatePreviewIndex = ({
                               }
                             `}
                           >
-                            {section.sectionName}
+                            {section.scheduledTaskId !== null ? <FiCalendar size={12} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {section.sectionName}
                           </button>
                         </div>
                       ))}

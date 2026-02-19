@@ -6,6 +6,8 @@ import {
   FiCopy,
   FiChevronDown,
   FiChevronUp,
+  FiPlusCircle,
+  FiEdit,
 } from "react-icons/fi";
 import { RiResetLeftFill } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
@@ -48,6 +50,7 @@ const EstimateSectionForm = ({
   onCancel,
   onSave,
   taskId,
+  selectedTask = null,
 }) => {
   const dispatch = useDispatch();
   const currentEstimate = useSelector(
@@ -1537,9 +1540,44 @@ const EstimateSectionForm = ({
 
   return (
     <div className="flex flex-col h-full mt-0">
+      {/* Sticky Header */}
+      {editType === EDIT_TYPES.SECTION && (
+        <div
+          className={`sticky top-0 z-10 px-4 py-2 rounded-lg flex items-center gap-2 mb-0 ${
+            isNewSection
+              ? "bg-emerald-600/20 border border-emerald-500/40"
+              : "bg-blue-600/20 border border-blue-500/40"
+          }`}
+        >
+          {isNewSection ? (
+            <FiPlusCircle className="text-emerald-400" size={18} />
+          ) : (
+            <FiEdit className="text-blue-400" size={18} />
+          )}
+          <h2
+            className={`text-lg font-semibold ${
+              isNewSection ? "text-emerald-300" : "text-blue-300"
+            }`}
+          >
+            {isNewSection
+              ? `Add Section to ${selectedTask?.est_task_name || "Task"}`
+              : selectedTask?.sections?.length <= 1
+                ? `Edit ${selectedTask?.est_task_name || "Section"}`
+                : (() => {
+                    const sectionIndex = selectedTask?.sections?.findIndex(
+                      (s) => s.est_section_id === section?.est_section_id
+                    );
+                    const sectionName =
+                      section?.section_name ||
+                      `Section ${(sectionIndex ?? -1) + 1}`;
+                    return `Edit ${selectedTask?.est_task_name} - ${sectionName}`;
+                  })()}
+          </h2>
+        </div>
+      )}
+
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Header */}
+      <div className="flex-1 overflow-y-auto pt-3">
         {editType !== EDIT_TYPES.SECTION && editType !== EDIT_TYPES.TEAM && (
           <div className="mb-2">
             {editType !== EDIT_TYPES.ESTIMATE && (
@@ -2836,7 +2874,9 @@ const EstimateSectionForm = ({
             ? "Save Team Defaults"
             : editType === EDIT_TYPES.ESTIMATE
               ? "Save Estimate Defaults"
-              : "Save Section"}
+              : isNewSection
+                ? "Add Section"
+                : "Save Section"}
         </button>
       </div>
 
@@ -2864,6 +2904,7 @@ EstimateSectionForm.propTypes = {
   estimateData: PropTypes.object,
   teamData: PropTypes.object,
   taskId: PropTypes.number,
+  selectedTask: PropTypes.object,
   onCancel: PropTypes.func,
   onSave: PropTypes.func,
 };

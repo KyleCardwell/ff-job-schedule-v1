@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowLeft, FiCheckCircle } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiCheckCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -509,6 +509,17 @@ const EstimatePreview = () => {
           >
             <FiCheckCircle className="w-4 h-4" />
             {isFinalizing ? "Finalizing..." : "Finalize Estimate"}
+          </button>
+        )}
+        {currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && (
+          <button
+            onClick={() =>
+              navigate(`/estimates/finalized/${currentEstimate.estimate_id}/schedule`)
+            }
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+          >
+            <FiCalendar className="w-4 h-4" />
+            Add to Schedule
           </button>
         )}
         {currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && (

@@ -7,7 +7,6 @@ import { Actions } from "../actions";
 
 import { updateNextTaskNumber } from "./chartConfig";
 
-
 export const fetchEarliestStartDate =
   (excludeEmployeeId) => async (dispatch) => {
     try {
@@ -37,6 +36,81 @@ export const fetchEarliestStartDate =
       }
     } catch (error) {
       console.error("Error fetching earliest start date:", error);
+    }
+  };
+
+export const restoreTaskToSchedule =
+  ({ projectId, taskId }) =>
+  async (dispatch, getState) => {
+    try {
+      const { error: taskError } = await supabase
+        .from("tasks")
+        .update({ task_completed_at: null, task_active: true })
+        .eq("task_id", taskId);
+
+      if (taskError) {
+        throw taskError;
+      }
+
+      const { error: projectError } = await supabase
+        .from("projects")
+        .update({ project_completed_at: null })
+        .eq("project_id", projectId);
+
+      if (projectError) {
+        throw projectError;
+      }
+
+      const state = getState();
+      await dispatch(
+        fetchProjects(
+          state.builders.employees[0].employee_id,
+          fetchProjectsOptions.select,
+        ),
+      );
+      await dispatch(fetchCompletedProjects());
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error restoring task to schedule:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+export const restoreProjectToSchedule =
+  (projectId) => async (dispatch, getState) => {
+    try {
+      const { error: tasksError } = await supabase
+        .from("tasks")
+        .update({ task_completed_at: null, task_active: true })
+        .eq("project_id", projectId);
+
+      if (tasksError) {
+        throw tasksError;
+      }
+
+      const { error: projectError } = await supabase
+        .from("projects")
+        .update({ project_completed_at: null })
+        .eq("project_id", projectId);
+
+      if (projectError) {
+        throw projectError;
+      }
+
+      const state = getState();
+      await dispatch(
+        fetchProjects(
+          state.builders.employees[0].employee_id,
+          fetchProjectsOptions.select,
+        ),
+      );
+      await dispatch(fetchCompletedProjects());
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error restoring project to schedule:", error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -91,7 +165,12 @@ export const fetchProjectsOptions = {
 
 export const fetchCompletedProjectsOptions = {
   select:
-    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_created_at, est_duration, project_financials (costing_complete))",
+    "*, tasks (task_id, project_id, task_number, task_name, task_active, task_completed_at, task_created_at, est_duration, project_financials (costing_complete))",
+};
+
+const fetchPartiallyCompletedProjectsOptions = {
+  select:
+    "*, tasks!inner (task_id, project_id, task_number, task_name, task_active, task_completed_at, task_created_at, est_duration, project_financials (costing_complete))",
 };
 
 export const fetchProjects =
@@ -129,9 +208,13 @@ export const fetchProjects =
       const flattenedResult = result
         .flatMap((project) =>
           project.tasks.flatMap((task) => {
+            if (!task.task_active || task.task_completed_at) {
+              return [];
+            }
+
             // Sort subtasks by created_at before mapping
             const sortedSubtasks = [...task.subtasks].sort((a, b) =>
-              a.subtask_created_at.localeCompare(b.subtask_created_at)
+              a.subtask_created_at.localeCompare(b.subtask_created_at),
             );
 
             return sortedSubtasks.map((subTask, index) => ({
@@ -149,16 +232,16 @@ export const fetchProjects =
               needs_attention: project.needs_attention,
               est_duration: task.est_duration,
             }));
-          })
+          }),
         )
         .sort((a, b) => {
           const projectCompare = a.project_scheduled_at.localeCompare(
-            b.project_scheduled_at
+            b.project_scheduled_at,
           );
           if (projectCompare !== 0) return projectCompare;
 
           const taskCompare = a.task_created_at.localeCompare(
-            b.task_created_at
+            b.task_created_at,
           );
           if (taskCompare !== 0) return taskCompare;
 
@@ -323,7 +406,7 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
           acc[task.task_id] = taskData;
         }
         return acc;
-      }, {})
+      }, {}),
     );
 
     // Insert new tasks
@@ -360,12 +443,12 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
     updatedTasks.forEach((wp) => {
       const newTask = newTasks.find(
         (task) =>
-          task.task_id === wp.task_id || task.temp_task_id === wp.temp_task_id
+          task.task_id === wp.task_id || task.temp_task_id === wp.temp_task_id,
       );
 
       if (!newTask) {
         throw new Error(
-          `Could not find matching task for work period ${wp.task_name}`
+          `Could not find matching task for work period ${wp.task_name}`,
         );
       }
 
@@ -435,8 +518,8 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
     await dispatch(
       fetchProjects(
         state.builders.employees[0].employee_id,
-        fetchProjectsOptions.select
-      )
+        fetchProjectsOptions.select,
+      ),
     );
 
     dispatch({
@@ -488,56 +571,123 @@ export const fetchCompletedProjects =
     });
 
     try {
-      let query = supabase
+      let completedProjectsQuery = supabase
         .from("projects")
         .select(fetchCompletedProjectsOptions.select)
         .not("project_completed_at", "is", null)
         .order("project_name", { ascending: true });
 
+      let partialProjectsQuery = supabase
+        .from("projects")
+        .select(fetchPartiallyCompletedProjectsOptions.select)
+        .is("project_completed_at", null)
+        .not("tasks.task_completed_at", "is", null)
+        .order("project_name", { ascending: true });
+
       // Add search filter if searchTerm is provided
       if (searchTerm) {
-        query = query.ilike("project_name", `%${searchTerm}%`);
-      }
-
-      // Add date range filters if provided
-      if (dateRange.start) {
-        query = query.gte("project_completed_at", dateRange.start);
-      }
-      if (dateRange.end) {
-        // Add one day to include the end date fully
-        const endDate = new Date(dateRange.end);
-        endDate.setDate(endDate.getDate() + 1);
-        query = query.lt("project_completed_at", endDate.toISOString());
+        completedProjectsQuery = completedProjectsQuery.ilike(
+          "project_name",
+          `%${searchTerm}%`,
+        );
+        partialProjectsQuery = partialProjectsQuery.ilike(
+          "project_name",
+          `%${searchTerm}%`,
+        );
       }
 
       // Add category filters if provided
       if (categories.length > 0) {
-        query = query.contains("categories", categories);
+        completedProjectsQuery = completedProjectsQuery.contains(
+          "categories",
+          categories,
+        );
+        partialProjectsQuery = partialProjectsQuery.contains(
+          "categories",
+          categories,
+        );
       }
 
-      // Always order by completion date
-      query = query.order("project_completed_at", { ascending: false });
+      const [completedProjectsResponse, partialProjectsResponse] =
+        await Promise.all([completedProjectsQuery, partialProjectsQuery]);
 
-      const { data: result, error } = await query;
+      if (completedProjectsResponse.error) {
+        throw completedProjectsResponse.error;
+      }
+      if (partialProjectsResponse.error) {
+        throw partialProjectsResponse.error;
+      }
 
-      if (error) throw error;
+      const mergedProjects = new Map();
+      completedProjectsResponse.data?.forEach((project) => {
+        mergedProjects.set(project.project_id, project);
+      });
+      partialProjectsResponse.data?.forEach((project) => {
+        if (!mergedProjects.has(project.project_id)) {
+          mergedProjects.set(project.project_id, project);
+        }
+      });
+      const result = Array.from(mergedProjects.values());
 
-      // Filter tasks client-side if there's a search term
-      const processedResult = result.map((project) => ({
-        ...project,
-        tasks: project.tasks
-          .sort((a, b) => a.task_created_at.localeCompare(b.task_created_at))
-          .map((task) => ({
-            task_id: task.task_id,
-            task_number: task.task_number,
-            task_name: task.task_name,
-            costing_complete: task.project_financials?.costing_complete || null,
-          })),
-      }));
+      const processedResult = result.map((project) => {
+        const filteredTasks = project.project_completed_at
+          ? project.tasks
+          : project.tasks.filter((task) => task.task_completed_at);
+        const latestTaskCompletion = filteredTasks.reduce((latest, task) => {
+          if (!task.task_completed_at) return latest;
+          if (!latest) return task.task_completed_at;
+          return task.task_completed_at > latest
+            ? task.task_completed_at
+            : latest;
+        }, null);
+        const completionDate = project.project_completed_at || latestTaskCompletion;
+
+        return {
+          ...project,
+          completion_date: completionDate,
+          tasks: filteredTasks
+            .sort((a, b) => a.task_created_at.localeCompare(b.task_created_at))
+            .map((task) => ({
+              task_id: task.task_id,
+              task_number: task.task_number,
+              task_name: task.task_name,
+              task_completed_at: task.task_completed_at,
+              costing_complete:
+                task.project_financials?.costing_complete || null,
+            })),
+        };
+      });
+
+      const filteredByDate = processedResult.filter((project) => {
+        if (!dateRange.start && !dateRange.end) {
+          return true;
+        }
+
+        if (!project.completion_date) {
+          return false;
+        }
+
+        const completionDate = new Date(project.completion_date);
+        if (dateRange.start) {
+          const startDate = new Date(dateRange.start);
+          if (completionDate < startDate) {
+            return false;
+          }
+        }
+        if (dateRange.end) {
+          const endDate = new Date(dateRange.end);
+          endDate.setDate(endDate.getDate() + 1);
+          if (completionDate >= endDate) {
+            return false;
+          }
+        }
+
+        return true;
+      });
 
       dispatch({
         type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_SUCCESS,
-        payload: processedResult,
+        payload: filteredByDate,
       });
     } catch (error) {
       console.error("Error fetching completed projects:", error);
@@ -545,5 +695,68 @@ export const fetchCompletedProjects =
         type: Actions.completedProjects.FETCH_COMPLETED_PROJECTS_ERROR,
         payload: error.message,
       });
+    }
+  };
+
+export const addEstimateToSchedule =
+  ({
+    projectName,
+    teamId,
+    employeeId,
+    startDate,
+    dayWidth,
+    workdayHours,
+    nextTaskNumber,
+    chartConfigId,
+    groups,
+    existingTaskId = null,
+  }) =>
+  async (dispatch, getState) => {
+    dispatch({ type: Actions.projects.ADD_TO_SCHEDULE_START });
+
+    try {
+      const { data, error } = await supabase.rpc("add_estimate_to_schedule", {
+        p_project_name: projectName,
+        p_team_id: teamId,
+        p_employee_id: employeeId,
+        p_start_date: startDate,
+        p_day_width: dayWidth,
+        p_workday_hours: workdayHours,
+        p_next_task_number: nextTaskNumber,
+        p_chart_config_id: chartConfigId,
+        p_groups: groups,
+        p_existing_task_id: existingTaskId,
+      });
+
+      if (error) throw error;
+
+      // Update next_task_number in Redux
+      dispatch({
+        type: Actions.chartConfig.UPDATE_NEXT_TASK_NUMBER,
+        payload: data.next_task_number,
+      });
+
+      // Refresh schedule data
+      const state = getState();
+      await dispatch(
+        fetchProjects(
+          state.builders.employees[0].employee_id,
+          fetchProjectsOptions.select,
+        ),
+      );
+
+      dispatch({
+        type: Actions.projects.ADD_TO_SCHEDULE_SUCCESS,
+        payload: data,
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error adding estimate to schedule:", error);
+      dispatch({
+        type: Actions.projects.ADD_TO_SCHEDULE_ERROR,
+        payload: error.message,
+      });
+      return { success: false, error: error.message };
     }
   };

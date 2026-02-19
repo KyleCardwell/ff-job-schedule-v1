@@ -153,6 +153,24 @@ const GenerateEstimatePdf = ({
       // Build all section rows - no borders, they'll be drawn via canvas
       const allRows = [];
 
+      // Aggregate totals by task so multi-section tasks show pricing once
+      const taskSummaries = new Map();
+      allSections.forEach((section, index) => {
+        const taskKey = section.taskId ?? section.taskName ?? `task-${index}`;
+        const sectionKey = section.sectionId ?? index;
+        if (!taskSummaries.has(taskKey)) {
+          taskSummaries.set(taskKey, {
+            totalPrice: 0,
+            sectionCount: 0,
+            firstSectionKey: sectionKey,
+          });
+        }
+
+        const summary = taskSummaries.get(taskKey);
+        summary.totalPrice += section.totalPrice || 0;
+        summary.sectionCount += 1;
+      });
+
       // Add estimate notes at the beginning if any are selected
       if (selectedNotes && selectedNotes.length > 0) {
         // Add introductory line
@@ -215,7 +233,16 @@ const GenerateEstimatePdf = ({
         ]);
       }
 
-      allSections.forEach((section) => {
+      allSections.forEach((section, index) => {
+        const taskKey = section.taskId ?? section.taskName ?? `task-${index}`;
+        const sectionKey = section.sectionId ?? index;
+        const summary = taskSummaries.get(taskKey);
+        const hasMultipleSections = summary?.sectionCount > 1;
+        const isFirstSection = summary?.firstSectionKey === sectionKey;
+        const shouldShowPricing = !hasMultipleSections || isFirstSection;
+        const totalPrice = hasMultipleSections
+          ? summary.totalPrice
+          : section.totalPrice;
         const leftColumn = [];
         const rightColumn = [];
 
@@ -281,7 +308,7 @@ const GenerateEstimatePdf = ({
         // Single row with all section content - mark for page break avoidance
         allRows.push([
           {
-            text: section.quantity.toString(),
+            text: section.quantity?.toString() ?? "",
             alignment: "center",
             rowSpan: 1,
           },
@@ -297,13 +324,13 @@ const GenerateEstimatePdf = ({
             ],
           },
           {
-            text: formatCurrency(section.unitPrice),
+            text: shouldShowPricing ? formatCurrency(totalPrice) : "",
             alignment: "right",
             colSpan: 2,
           },
           {},
           {
-            text: formatCurrency(section.totalPrice),
+            text: shouldShowPricing ? formatCurrency(totalPrice) : "",
             alignment: "right",
             colSpan: 2,
           },

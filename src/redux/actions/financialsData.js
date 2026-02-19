@@ -12,19 +12,42 @@ export const setError = (error) => ({
   payload: error,
 });
 
-export const createProjectFinancials = (projectId, tasks) => {
+export const createProjectFinancials = (_projectId, tasks) => {
   return async (dispatch, getState) => {
     dispatch(setLoading(true));
     try {
       const { teamId } = getState().auth;
 
-      const projectFinancialsData = tasks.map((task) => ({
-        project_id: projectId,
-        task_id: task.task_id,
-        team_id: teamId,
-      }));
+      const taskIds = tasks.map((task) => task.task_id);
+      const { data: existingRows, error: existingError } = await supabase
+        .from("project_financials")
+        .select("task_id")
+        .in("task_id", taskIds);
 
-      const { data, error } = await supabase
+      if (existingError) {
+        if (existingError.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to view financial records"
+          );
+        }
+        throw existingError;
+      }
+
+      const existingTaskIds = new Set(
+        (existingRows || []).map((row) => row.task_id)
+      );
+      const projectFinancialsData = tasks
+        .filter((task) => !existingTaskIds.has(task.task_id))
+        .map((task) => ({
+          task_id: task.task_id,
+          team_id: teamId,
+        }));
+
+      if (projectFinancialsData.length === 0) {
+        return "project financials already exist";
+      }
+
+      const { error } = await supabase
         .from("project_financials")
         .insert(projectFinancialsData);
 
@@ -47,7 +70,7 @@ export const createProjectFinancials = (projectId, tasks) => {
   };
 };
 
-export const fetchTaskFinancials = (taskId, projectId) => {
+export const fetchTaskFinancials = (taskId) => {
   return async (dispatch, getState) => {
     dispatch(setLoading(true));
     try {
@@ -72,7 +95,6 @@ export const fetchTaskFinancials = (taskId, projectId) => {
             .from("project_financials")
             .insert({
               task_id: taskId,
-              project_id: projectId,
               team_id: teamId,
             })
             .select()
@@ -167,14 +189,17 @@ export const fetchProjectFinancials = (projectId) => {
         .select(
           `
           *,
-          tasks:task_id (
+          tasks:task_id!inner (
             task_name,
             task_number,
-            task_created_at
+            task_created_at,
+            project_id,
+            task_completed_at
           )
         `
         )
-        .eq("project_id", projectId)
+        .eq("tasks.project_id", projectId)
+        .not("tasks.task_completed_at", "is", null)
         .order("tasks(task_created_at)", { ascending: true });
 
       if (error) {
@@ -197,6 +222,7 @@ export const fetchProjectFinancials = (projectId) => {
       // Extract task info and keep array structure
       const processedData = data.map((record) => ({
         ...record,
+        project_id: record.tasks?.project_id ?? projectId,
         task_name: record.tasks?.task_name,
         task_number: record.tasks?.task_number,
         project_name: projectData.project_name,
@@ -300,7 +326,9 @@ export const saveProjectFinancials = (
         .from("project_financials")
         .update(financialData)
         .eq("financials_id", financialsId)
-        .select("project_id, task_id, costing_complete")
+        .select(
+          "task_id, costing_complete, tasks:task_id (project_id)"
+        )
         .single();
 
       if (error) {
@@ -319,12 +347,14 @@ export const saveProjectFinancials = (
 
       dispatch({
         type: Actions.completedProjects.UPDATE_SINGLE_COMPLETED_TASK,
-        payload: data,
+        payload: {
+          ...data,
+          project_id: data.tasks?.project_id ?? null,
+        },
       });
 
       return { success: true };
     } catch (error) {
-      console.error("Error saving project financials:", error);
       dispatch({
         type: Actions.financialsData.SAVE_TASK_FINANCIALS_ERROR,
         payload: error.message,

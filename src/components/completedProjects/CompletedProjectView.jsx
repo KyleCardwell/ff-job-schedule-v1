@@ -5,11 +5,44 @@ import { useParams, useNavigate } from "react-router-dom";
 
 import { buttonClass } from "../../assets/tailwindConstants";
 import { fetchProjectFinancials } from "../../redux/actions/financialsData";
+import { ADJUSTMENT_ORDER, FINANCIAL_SECTION_ORDER } from "../../utils/constants.js";
 import { calculateFinancialTotals } from "../../utils/helpers";
 import GeneratePdfButton from "../common/GeneratePdfButton.jsx";
 import FinancialsInputModal from "../financials/FinancialsInputModal.jsx";
 
 import TaskFinancialsBreakdown from "./TaskFinancialsBreakdown.jsx";
+
+const orderFinancialEntries = (entries) => {
+  const entryMap = new Map(entries);
+  const ordered = [];
+
+  FINANCIAL_SECTION_ORDER.forEach((id) => {
+    if (entryMap.has(id)) {
+      ordered.push([id, entryMap.get(id)]);
+      entryMap.delete(id);
+    }
+  });
+
+  entries.forEach(([id, data]) => {
+    if (!entryMap.has(id)) return;
+    if (ADJUSTMENT_ORDER.includes(id)) return;
+    ordered.push([id, data]);
+    entryMap.delete(id);
+  });
+
+  ADJUSTMENT_ORDER.forEach((id) => {
+    if (entryMap.has(id)) {
+      ordered.push([id, entryMap.get(id)]);
+      entryMap.delete(id);
+    }
+  });
+
+  entryMap.forEach((data, id) => {
+    ordered.push([id, data]);
+  });
+
+  return ordered;
+};
 
 const CompletedProjectView = () => {
   const { projectId } = useParams();
@@ -148,6 +181,11 @@ const CompletedProjectView = () => {
       profit: totals.estimate - totals.actual,
     };
   }, [projectFinancials, services]);
+
+  const orderedProjectSections = useMemo(
+    () => orderFinancialEntries(Object.entries(projectTotals.sections || {})),
+    [projectTotals.sections],
+  );
 
   // Get the most recent update date from all task financials
   const dateUpdated = useMemo(() => {
@@ -316,7 +354,7 @@ const CompletedProjectView = () => {
               </div>
 
               {/* Section rows */}
-              {Object.entries(projectTotals.sections || {}).map(
+              {orderedProjectSections.map(
                 ([sectionId, sectionData]) => {
                   const profit =
                     (sectionData.estimate || 0) -

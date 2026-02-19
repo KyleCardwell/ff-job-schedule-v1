@@ -1,7 +1,11 @@
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useState } from "react";
+import { FiCalendar } from "react-icons/fi";
+
+import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
 
 import EstimatePreviewSection from "./EstimatePreviewSection.jsx";
+
 
 const EstimatePreviewTask = ({
   task,
@@ -149,6 +153,7 @@ const EstimatePreviewTask = ({
           ...section,
           hasMultipleSections,
           isFirstSection: index === 0,
+          taskId: task.est_task_id,
         }));
 
         const taskData = {
@@ -185,12 +190,14 @@ const EstimatePreviewTask = ({
     }
   }, [selectedSections, calculateBreakdown, sectionDataMap]);
 
+  const scheduled = task.sections.every(section => section.scheduled_task_id !== null);
+
   return (
     <div className="mb-8">
       {/* Task Header */}
       <div className="bg-slate-800 rounded-t-lg px-4 pt-4 border-t border-l border-r border-slate-600">
         <h2 className="text-xl font-bold text-slate-200 mx-6 pb-2 border-b-2 border-teal-500">
-          {task.est_task_name}
+          {scheduled ? <FiCalendar size={18} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {task.est_task_name}
         </h2>
       </div>
 

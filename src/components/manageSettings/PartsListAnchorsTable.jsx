@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { FiPlus, FiTrash2, FiEdit, FiX } from "react-icons/fi";
+import PropTypes from "prop-types";
+import React from "react";
+import { FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,14 +10,12 @@ const AnchorRow = ({
   cabinetStyles,
   onDelete,
   onUndo,
-  isNew,
-  onCancelNew,
   onChange,
   errors = {},
   gridCols,
 }) => {
-  const [isEditing, setIsEditing] = useState(isNew);
-
+  const showServiceTooltip =
+    anchor.cabinet_style_id != null && anchor.cabinet_style_id !== "";
   const handleInputChange = (e, serviceId) => {
     const { name, value } = e.target;
 
@@ -49,15 +48,6 @@ const AnchorRow = ({
       updatedAnchor = { ...anchor, [name]: value };
     }
     onChange(updatedAnchor);
-  };
-
-  const handleCancel = () => {
-    if (isNew) {
-      onCancelNew(anchor.id);
-    } else {
-      onChange(null, anchor.id); // Signal parent to revert this anchor's changes
-      setIsEditing(false);
-    }
   };
 
   if (anchor.markedForDeletion) {
@@ -105,66 +95,66 @@ const AnchorRow = ({
     );
   }
 
-  if (isEditing) {
-    return (
-      <div
-        className="grid border-b border-slate-700/50 pb-2"
-        style={{ gridTemplateColumns: gridCols }}
-      >
-        <div className="p-2">
-          <input
-            type="number"
-            name="width"
-            value={anchor.width}
-            onChange={handleInputChange}
-            className={`w-full p-1 rounded-md ${
-              errors && errors.width ? "border border-red-500" : ""
-            }`}
-          />
-        </div>
-        <div className="p-2">
-          <input
-            type="number"
-            name="height"
-            value={anchor.height}
-            onChange={handleInputChange}
-            className={`w-full p-1 rounded-md ${
-              errors && errors.height ? "border border-red-500" : ""
-            }`}
-          />
-        </div>
-        <div className="p-2">
-          <input
-            type="number"
-            name="depth"
-            value={anchor.depth}
-            onChange={handleInputChange}
-            className={`w-full p-1 rounded-md ${
-              errors && errors.depth ? "border border-red-500" : ""
-            }`}
-          />
-        </div>
-        <div className="p-2">
-          <select
-            name="cabinet_style_id"
-            value={anchor.cabinet_style_id || ""}
-            onChange={handleInputChange}
-            className="w-full p-1 rounded-md bg-slate-600 text-white"
-          >
-            <option value="">All Styles</option>
-            {cabinetStyles.map((style) => (
-              <option
-                key={style.cabinet_style_id}
-                value={style.cabinet_style_id}
-              >
-                {style.cabinet_style_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {Array.isArray(services) &&
-          services.map((s) => (
-            <div key={s.team_service_id} className="p-2">
+  return (
+    <div
+      className="grid border-b border-slate-700/50 pb-2"
+      style={{ gridTemplateColumns: gridCols }}
+    >
+      <div className="p-2">
+        <input
+          type="number"
+          name="width"
+          value={anchor.width}
+          onChange={handleInputChange}
+          className={`w-full p-1 rounded-md ${
+            errors && errors.width ? "border border-red-500" : ""
+          }`}
+        />
+      </div>
+      <div className="p-2">
+        <input
+          type="number"
+          name="height"
+          value={anchor.height}
+          onChange={handleInputChange}
+          className={`w-full p-1 rounded-md ${
+            errors && errors.height ? "border border-red-500" : ""
+          }`}
+        />
+      </div>
+      <div className="p-2">
+        <input
+          type="number"
+          name="depth"
+          value={anchor.depth}
+          onChange={handleInputChange}
+          className={`w-full p-1 rounded-md ${
+            errors && errors.depth ? "border border-red-500" : ""
+          }`}
+        />
+      </div>
+      <div className="p-2">
+        <select
+          name="cabinet_style_id"
+          value={anchor.cabinet_style_id || ""}
+          onChange={handleInputChange}
+          className="w-full p-1 rounded-md bg-slate-600 text-white"
+        >
+          <option value="">All Styles</option>
+          {cabinetStyles.map((style) => (
+            <option
+              key={style.cabinet_style_id}
+              value={style.cabinet_style_id}
+            >
+              {style.cabinet_style_name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {Array.isArray(services) &&
+        services.map((s) => (
+          <div key={s.team_service_id} className="p-2">
+            <div className="relative group">
               <input
                 type="number"
                 value={
@@ -175,52 +165,15 @@ const AnchorRow = ({
                 onChange={(e) => handleInputChange(e, s.team_service_id)}
                 className="w-full p-1 rounded-md"
               />
+              {showServiceTooltip && (
+                <div className="pointer-events-none absolute left-1/2 bottom-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                  Leave blank to use All Styles value
+                </div>
+              )}
             </div>
-          ))}
-        <div className="p-2 text-right">
-          <button
-            onClick={() => setIsEditing(false)}
-            className="p-2 text-green-400"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="grid border-b border-slate-700/50 pb-2 hover:bg-slate-600/50 text-slate-200"
-      style={{ gridTemplateColumns: gridCols }}
-    >
-      <div className="px-4 py-2 rounded-l-md flex items-center">
-        {anchor.width}
-      </div>
-      <div className="px-4 py-2 flex items-center">{anchor.height}</div>
-      <div className="px-4 py-2 flex items-center">{anchor.depth}</div>
-      <div className="px-4 py-2 flex items-center">
-        {anchor.cabinet_style_id
-          ? cabinetStyles.find(
-              (s) => s.cabinet_style_id === parseInt(anchor.cabinet_style_id)
-            )?.cabinet_style_name || "All"
-          : "All"}
-      </div>
-      {Array.isArray(services) &&
-        services.map((s) => (
-          <div key={s.team_service_id} className="px-4 py-2 flex items-center">
-            {anchor.services.find(
-              (ans) => ans.team_service_id === s.team_service_id
-            )?.minutes || 0}
           </div>
         ))}
-      <div className="px-4 py-2 text-right rounded-r-md">
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-2 text-slate-200 hover:text-teal-400"
-        >
-          <FiEdit />
-        </button>
+      <div className="p-2 text-right">
         {anchor.isNew ? (
           <button
             onClick={() => onDelete(anchor.id)}
@@ -281,17 +234,11 @@ const PartsListAnchorsTable = ({
     onAnchorsChange([...anchors, newAnchor]);
   };
 
-  const handleRowChange = (updatedAnchor, anchorIdToRevert) => {
-    if (updatedAnchor === null) {
-      // Revert changes - this would need original data from parent
-      // For now, just keep the current anchor unchanged
-      return;
-    } else {
-      const updatedAnchors = anchors.map((a) =>
-        a.id === updatedAnchor.id ? updatedAnchor : a
-      );
-      onAnchorsChange(updatedAnchors);
-    }
+  const handleRowChange = (updatedAnchor) => {
+    const updatedAnchors = anchors.map((a) =>
+      a.id === updatedAnchor.id ? updatedAnchor : a
+    );
+    onAnchorsChange(updatedAnchors);
   };
 
   const handleMarkForDeletion = (idToDelete) => {
@@ -314,11 +261,6 @@ const PartsListAnchorsTable = ({
     const updatedAnchors = anchors.map((a) =>
       a.id === idToUndo ? { ...a, markedForDeletion: false } : a
     );
-    onAnchorsChange(updatedAnchors);
-  };
-
-  const handleCancelNew = (id) => {
-    const updatedAnchors = anchors.filter((a) => a.id !== id);
     onAnchorsChange(updatedAnchors);
   };
 
@@ -419,8 +361,6 @@ const PartsListAnchorsTable = ({
                 cabinetStyles={cabinetStyles}
                 onDelete={handleMarkForDeletion}
                 onUndo={handleUndoDelete}
-                isNew={anchor.isNew}
-                onCancelNew={handleCancelNew}
                 onChange={handleRowChange}
                 errors={errors[anchor.id]}
                 gridCols={gridCols}
@@ -440,3 +380,57 @@ const PartsListAnchorsTable = ({
 };
 
 export default PartsListAnchorsTable;
+
+AnchorRow.propTypes = {
+  anchor: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    height: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    depth: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    cabinet_style_id: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.number,
+    ]),
+    services: PropTypes.arrayOf(
+      PropTypes.shape({
+        team_service_id: PropTypes.oneOfType([
+          PropTypes.string,
+          PropTypes.number,
+        ]).isRequired,
+        minutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      })
+    ),
+    markedForDeletion: PropTypes.bool,
+    isNew: PropTypes.bool,
+  }).isRequired,
+  services: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      team_service_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+        .isRequired,
+      service_name: PropTypes.string,
+    })
+  ),
+  cabinetStyles: PropTypes.arrayOf(
+    PropTypes.shape({
+      cabinet_style_id: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.number,
+      ]).isRequired,
+      cabinet_style_name: PropTypes.string,
+    })
+  ),
+  onDelete: PropTypes.func.isRequired,
+  onUndo: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired,
+  errors: PropTypes.object,
+  gridCols: PropTypes.string.isRequired,
+};
+
+PartsListAnchorsTable.propTypes = {
+  partsListId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+    .isRequired,
+  anchors: PropTypes.arrayOf(PropTypes.object).isRequired,
+  errors: PropTypes.object,
+  onAnchorsChange: PropTypes.func.isRequired,
+};

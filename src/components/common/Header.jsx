@@ -9,22 +9,51 @@ import { PATHS } from "../../utils/constants";
 const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
   const location = useLocation();
   const { company_name } = useSelector((state) => state.chartConfig);
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate,
+  );
 
   // Map routes to page titles
   const getPageTitle = () => {
+    const estimateProjectId = currentEstimate?.est_project_id
+      ? String(currentEstimate.est_project_id)
+      : null;
+    const isEstimateDetailPath =
+      estimateProjectId &&
+      location.pathname.includes("/estimates") &&
+      location.pathname.includes(estimateProjectId);
+    const estimateTitleSuffix =
+      isEstimateDetailPath && currentEstimate?.est_project_name
+        ? ` - ${currentEstimate.est_project_name}`
+        : "";
+
     if (location.pathname.includes("/preview")) {
-      return "Estimate Preview";
+      return `Estimate Preview${estimateTitleSuffix}`;
     }
-    if (location.pathname.includes("/estimates")) {
+    if (location.pathname.startsWith("/estimates")) {
+      if (location.pathname.endsWith("/new")) {
+        return `New Estimate${estimateTitleSuffix}`;
+      }
+      if (location.pathname.endsWith("/schedule")) {
+        return `Estimate - Add to Schedule${estimateTitleSuffix}`;
+      }
+      if (isEstimateDetailPath) {
+        return `Estimate${estimateTitleSuffix}`;
+      }
       return "Estimates";
     }
+
+    if (location.pathname.startsWith(PATHS.MANAGE)) {
+      return "Manage Settings";
+    }
+
+    if (location.pathname.startsWith("/completed")) {
+      return "Completed Projects";
+    }
+
     switch (location.pathname) {
       case PATHS.HOME:
         return `${company_name} Schedule`;
-      case PATHS.MANAGE:
-        return "Manage Settings";
-      case PATHS.COMPLETED:
-        return "Completed Projects";
       default:
         return "";
     }

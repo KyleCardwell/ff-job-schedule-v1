@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
-import { FiArrowLeft, FiEdit, FiTrash2, FiSearch, FiX, FiRotateCcw, FiArchive } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiEdit, FiTrash2, FiSearch, FiX, FiRotateCcw, FiArchive } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -107,7 +107,7 @@ const EstimatesList = ({ mode = "draft" }) => {
   return (
     <div className="bg-slate-800 min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-5xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-6 max-w-6xl mx-auto">
           <div className="flex items-center mb-6">
             <button
               onClick={() => navigate(PATHS.ESTIMATES)}
@@ -217,6 +217,20 @@ const EstimatesList = ({ mode = "draft" }) => {
                               aria-label="Restore Estimate to In-Progress"
                             >
                               <FiRotateCcw />
+                            </button>
+                          </Tooltip>
+                        )}
+                        {isFinalized && (
+                          <Tooltip text="Add to Schedule">
+                            <button
+                              onClick={() => {
+                                dispatch(setCurrentEstimate(estimate));
+                                navigate(`/estimates/finalized/${estimate.estimate_id}/schedule`);
+                              }}
+                              className="text-teal-600 hover:text-teal-800"
+                              aria-label="Add to Schedule"
+                            >
+                              <FiCalendar />
                             </button>
                           </Tooltip>
                         )}

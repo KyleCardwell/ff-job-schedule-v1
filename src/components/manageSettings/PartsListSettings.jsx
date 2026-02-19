@@ -1,4 +1,5 @@
 import isEqual from "lodash/isEqual";
+import PropTypes from "prop-types";
 import {
   useEffect,
   useState,
@@ -6,6 +7,7 @@ import {
   forwardRef,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import { FiBarChart } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,7 +27,7 @@ import PartsListTestCalculator from "./PartsListTestCalculator.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const PartsListSettings = forwardRef((props, ref) => {
-  const { maxWidthClass } = props;
+  const { maxWidthClass, onDirtyChange } = props;
   const dispatch = useDispatch();
   const {
     items: partsList,
@@ -49,6 +51,17 @@ const PartsListSettings = forwardRef((props, ref) => {
   const [anchorErrors, setAnchorErrors] = useState({});
   const [highlightedPartId, setHighlightedPartId] = useState(null);
   const [showTestCalculator, setShowTestCalculator] = useState(false);
+
+  const hasUnsavedChanges = useMemo(
+    () => !isEqual(localAnchors, originalAnchors),
+    [localAnchors, originalAnchors]
+  );
+
+  useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(hasUnsavedChanges);
+    }
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   // Calculator form state (persists when calculator is closed)
   const [calculatorForm, setCalculatorForm] = useState({
@@ -125,12 +138,81 @@ const PartsListSettings = forwardRef((props, ref) => {
     setOriginalAnchors(originalProcessed);
   }, [anchorsByPartsList]);
 
+  const getAnchorErrorsForPart = (anchors) => {
+    const partErrors = {};
+    const normalizeStyleId = (value) => (value === "" ? null : value);
+    const validAnchors = anchors.filter(
+      (anchor) =>
+        !anchor.markedForDeletion &&
+        (anchor.width !== "" ||
+          anchor.height !== "" ||
+          anchor.depth !== "" ||
+          normalizeStyleId(anchor.cabinet_style_id) !== null)
+    );
+
+    if (validAnchors.length > 0) {
+      const styleCounts = validAnchors.reduce((acc, anchor) => {
+        const styleKey = normalizeStyleId(anchor.cabinet_style_id) ?? "all";
+        acc[styleKey] = (acc[styleKey] || 0) + 1;
+        return acc;
+      }, {});
+
+      const allStylesCount = styleCounts.all || 0;
+      const invalidStyleIds = Object.entries(styleCounts)
+        .filter(([styleKey, count]) => styleKey !== "all" && count < 2)
+        .map(([styleKey]) => styleKey);
+
+      if (allStylesCount < 2 || invalidStyleIds.length > 0) {
+        partErrors["_general"] = {
+          message:
+            "Each part needs at least 2 \"All Styles\" anchors. Every additional style used must also have at least 2 anchors.",
+        };
+      }
+    }
+
+    anchors.forEach((anchor) => {
+      if (anchor.markedForDeletion) return;
+
+      const anchorErrors = {};
+      if (anchor.width === "" || anchor.width === null)
+        anchorErrors.width = "Required";
+      if (anchor.height === "" || anchor.height === null)
+        anchorErrors.height = "Required";
+      if (anchor.depth === "" || anchor.depth === null)
+        anchorErrors.depth = "Required";
+
+      if (Object.keys(anchorErrors).length > 0) {
+        partErrors[anchor.id] = anchorErrors;
+      }
+    });
+
+    return partErrors;
+  };
+
   // Anchor management functions
   const handleAnchorChange = (partsListId, anchors) => {
     setLocalAnchors((prev) => ({
       ...prev,
       [partsListId]: anchors,
     }));
+
+    setAnchorErrors((prev) => {
+      if (!prev[partsListId]) {
+        return prev;
+      }
+
+      const partErrors = getAnchorErrorsForPart(anchors);
+      if (Object.keys(partErrors).length === 0) {
+        const rest = { ...prev };
+        delete rest[partsListId];
+        return rest;
+      }
+
+      return {
+        ...prev,
+        [partsListId]: partErrors,
+      };
+    });
   };
 
   const validateAllAnchors = () => {
@@ -138,43 +220,11 @@ const PartsListSettings = forwardRef((props, ref) => {
     let hasAnchorErrors = false;
 
     Object.entries(localAnchors).forEach(([partsListId, anchors]) => {
-      // Count valid anchors (not marked for deletion and not empty)
-      const validAnchors = anchors.filter(
-        (anchor) =>
-          !anchor.markedForDeletion &&
-          (anchor.width !== "" ||
-            anchor.height !== "" ||
-            anchor.depth !== "" ||
-            anchor.cabinet_style_id !== null)
-      );
-
-      // Check if there's exactly 1 anchor - must have at least 2 for interpolation
-      if (validAnchors.length === 1) {
-        if (!newAnchorErrors[partsListId]) newAnchorErrors[partsListId] = {};
-        newAnchorErrors[partsListId]["_general"] = {
-          message:
-            "Must have at least 2 anchors (a min and a larger one). Add another anchor or remove this one.",
-        };
+      const partErrors = getAnchorErrorsForPart(anchors);
+      if (Object.keys(partErrors).length > 0) {
+        newAnchorErrors[partsListId] = partErrors;
         hasAnchorErrors = true;
       }
-
-      anchors.forEach((anchor) => {
-        if (anchor.markedForDeletion) return;
-
-        const anchorErrors = {};
-        if (anchor.width === "" || anchor.width === null)
-          anchorErrors.width = "Required";
-        if (anchor.height === "" || anchor.height === null)
-          anchorErrors.height = "Required";
-        if (anchor.depth === "" || anchor.depth === null)
-          anchorErrors.depth = "Required";
-
-        if (Object.keys(anchorErrors).length > 0) {
-          if (!newAnchorErrors[partsListId]) newAnchorErrors[partsListId] = {};
-          newAnchorErrors[partsListId][anchor.id] = anchorErrors;
-          hasAnchorErrors = true;
-        }
-      });
     });
 
     setAnchorErrors(newAnchorErrors);
@@ -182,6 +232,7 @@ const PartsListSettings = forwardRef((props, ref) => {
   };
 
   const parseAnchorValues = (anchor) => {
+    const isAllStyles = anchor.cabinet_style_id == null || anchor.cabinet_style_id === "";
     const parseNumeric = (val) => {
       if (val === "" || val === null || val === undefined) {
         return null;
@@ -201,7 +252,9 @@ const PartsListSettings = forwardRef((props, ref) => {
           ...s,
           minutes:
             s.minutes === "" || s.minutes === null
-              ? 0
+              ? isAllStyles
+                ? 0
+                : null
               : parseInt(s.minutes) || 0,
         })) || [],
     };
@@ -400,5 +453,10 @@ const PartsListSettings = forwardRef((props, ref) => {
 });
 
 PartsListSettings.displayName = "PartsListSettings";
+
+PartsListSettings.propTypes = {
+  maxWidthClass: PropTypes.string,
+  onDirtyChange: PropTypes.func,
+};
 
 export default PartsListSettings;

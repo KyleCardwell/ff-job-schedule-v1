@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
 import {
   FiCalendar,
-  FiUsers,
   FiCheckSquare,
   FiLogOut,
   FiDollarSign,
 } from "react-icons/fi";
+import { GoGear } from "react-icons/go";
 import { useSelector , useDispatch } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -29,7 +29,7 @@ const Navigation = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const navItems = [
     ...(canAccessManage
-      ? [{ icon: FiUsers, label: "Manage", path: PATHS.MANAGE }]
+      ? [{ icon: GoGear, label: "Manage", path: PATHS.MANAGE }]
       : []),
     ...(canCreateEstimates && enable_estimates
       ? [{ icon: FiDollarSign, label: "Estimates", path: PATHS.ESTIMATES }]

@@ -25,6 +25,7 @@ export const PATHS = {
   FINALIZED_ESTIMATES: "/estimates/finalized",
   ARCHIVED_ESTIMATES: "/estimates/archived",
   ESTIMATE_PREVIEW: "/estimates/in-progress/:estimateId/preview",
+  ESTIMATE_SCHEDULE: "/estimates/finalized/:estimateId/schedule",
 };
 
 export const ESTIMATE_STATUS = {
@@ -32,6 +33,33 @@ export const ESTIMATE_STATUS = {
   FINALIZED: "finalized",
   ARCHIVED: "archived",
 };
+
+export const DEFAULT_FINANCIAL_SECTIONS = [
+  { id: "cabinets", name: "Cabinets" },
+  { id: "doors", name: "Doors & Drawer Fronts" },
+  { id: "drawers", name: "Drawers" },
+  { id: "hardware", name: "Hardware" },
+  { id: "wood", name: "Wood" },
+  { id: "other", name: "Other" },
+];
+
+export const FINANCIAL_SECTION_ORDER = [
+  "hours",
+  "cabinets",
+  "doors",
+  "drawers",
+  "hardware",
+  "wood",
+  "other",
+];
+
+export const ADJUSTMENT_ORDER = [
+  "addToSubtotal",
+  "profit",
+  "commission",
+  "discount",
+  "addToTotal",
+];
 
 export const SECTION_TYPES = {
   CABINETS: { type: "cabinets", title: "Cabinets" },

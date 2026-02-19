@@ -4,7 +4,10 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 
-import { fetchAccessoriesCatalog, fetchAccessoryTimeAnchors } from "../../redux/actions/accessories.js";
+import {
+  fetchAccessoriesCatalog,
+  fetchAccessoryTimeAnchors,
+} from "../../redux/actions/accessories.js";
 import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
@@ -15,9 +18,16 @@ import {
   updateSection,
 } from "../../redux/actions/estimates";
 import { fetchFinishes } from "../../redux/actions/finishes.js";
-import { fetchHinges, fetchPulls, fetchSlides } from "../../redux/actions/hardware.js";
+import {
+  fetchHinges,
+  fetchPulls,
+  fetchSlides,
+} from "../../redux/actions/hardware.js";
 import { fetchLengthsCatalog } from "../../redux/actions/lengths.js";
-import { fetchDrawerBoxMaterials, fetchSheetGoods } from "../../redux/actions/materials.js";
+import {
+  fetchDrawerBoxMaterials,
+  fetchSheetGoods,
+} from "../../redux/actions/materials.js";
 import { fetchPartsList } from "../../redux/actions/partsList.js";
 import { fetchPartsListAnchors } from "../../redux/actions/partsListAnchors.js";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults.js";
@@ -43,21 +53,26 @@ const EstimateLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { estimateId } = useParams();
-  const isFinalized = location.pathname.includes('/finalized');
-  const basePath = isFinalized ? '/estimates/finalized' : '/estimates/in-progress';
-  const listPath = isFinalized ? PATHS.FINALIZED_ESTIMATES : PATHS.IN_PROGRESS_ESTIMATES;
+  const isFinalized = location.pathname.includes("/finalized");
+  const basePath = isFinalized
+    ? "/estimates/finalized"
+    : "/estimates/in-progress";
+  const listPath = isFinalized
+    ? PATHS.FINALIZED_ESTIMATES
+    : PATHS.IN_PROGRESS_ESTIMATES;
   const currentEstimate = useSelector(
-    (state) => state.estimates.currentEstimate
+    (state) => state.estimates.currentEstimate,
   );
   const teamDefaults = useSelector(
-    (state) => state.teamEstimateDefaults.teamDefaults
+    (state) => state.teamEstimateDefaults.teamDefaults,
   );
   const estimates = useSelector((state) => state.estimates.estimates);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [showProjectInfo, setShowProjectInfo] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
-  const [showEstimateDefaultsForm, setShowEstimateDefaultsForm] = useState(false);
+  const [showEstimateDefaultsForm, setShowEstimateDefaultsForm] =
+    useState(false);
   const [showLineItemsEditor, setShowLineItemsEditor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isNewTask, setIsNewTask] = useState(false);
@@ -70,7 +85,7 @@ const EstimateLayout = () => {
       try {
         if (estimateId) {
           const existingEstimate = estimates.find(
-            (est) => est.est_project_id === estimateId
+            (est) => est.est_project_id === estimateId,
           );
           if (existingEstimate) {
             dispatch(setCurrentEstimate(existingEstimate));
@@ -99,18 +114,18 @@ const EstimateLayout = () => {
     dispatch(fetchTeamDefaults());
     dispatch(fetchSheetGoods());
     dispatch(fetchDrawerBoxMaterials());
-    dispatch(fetchHinges())
-    dispatch(fetchPulls())
-    dispatch(fetchSlides())
+    dispatch(fetchHinges());
+    dispatch(fetchPulls());
+    dispatch(fetchSlides());
     dispatch(fetchCabinetTypes());
-    dispatch(fetchCabinetAnchors())
-    dispatch(fetchTeamCabinetStyles())
-    dispatch(fetchPartsList())
-    dispatch(fetchPartsListAnchors())
-    dispatch(fetchFinishes())
-    dispatch(fetchAccessoriesCatalog())
+    dispatch(fetchCabinetAnchors());
+    dispatch(fetchTeamCabinetStyles());
+    dispatch(fetchPartsList());
+    dispatch(fetchPartsListAnchors());
+    dispatch(fetchFinishes());
+    dispatch(fetchAccessoriesCatalog());
     dispatch(fetchAccessoryTimeAnchors());
-    dispatch(fetchLengthsCatalog())
+    dispatch(fetchLengthsCatalog());
   }, []);
 
   useEffect(() => {
@@ -123,25 +138,36 @@ const EstimateLayout = () => {
   // Memoize the selected task and section to avoid recalculating on every render
   const selectedTask = useMemo(() => {
     return currentEstimate?.tasks?.find(
-      (task) => task.est_task_id === selectedTaskId
+      (task) => task.est_task_id === selectedTaskId,
     );
   }, [currentEstimate?.tasks, selectedTaskId]);
 
   const selectedSection = useMemo(() => {
     return selectedTask?.sections?.find(
-      (section) => section.est_section_id === selectedSectionId
+      (section) => section.est_section_id === selectedSectionId,
     );
   }, [selectedTask?.sections, selectedSectionId]);
 
   // Get all catalog data from Redux
-  const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector((state) => state.materials);
+  const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
+    (state) => state.materials,
+  );
   const services = useSelector((state) => state.services?.allServices || []);
   const finishTypes = useSelector((state) => state.finishes?.finishes || []);
-  const cabinetStyles = useSelector((state) => state.cabinetStyles?.styles.filter((style) => style.is_active) || []);
-  const cabinetTypes = useSelector((state) => state.cabinetTypes?.types.filter((type) => type.is_active) || []);
+  const cabinetStyles = useSelector(
+    (state) =>
+      state.cabinetStyles?.styles.filter((style) => style.is_active) || [],
+  );
+  const cabinetTypes = useSelector(
+    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || [],
+  );
   const { hardware, accessories, lengths } = useSelector((state) => state);
-  const partsListAnchors = useSelector((state) => state.partsListAnchors?.itemsByPartsList || []);
-  const cabinetAnchors = useSelector((state) => state.cabinetAnchors?.itemsByType || []);
+  const partsListAnchors = useSelector(
+    (state) => state.partsListAnchors?.itemsByPartsList || [],
+  );
+  const cabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors?.itemsByType || [],
+  );
 
   // Calculate section calculations for the selected section
   const sectionCalculations = useMemo(() => {
@@ -163,7 +189,8 @@ const EstimateLayout = () => {
       teamDefaults,
     };
 
-    const { context, effectiveSection, hasPriceOverrides } = createSectionContext(selectedSection, currentEstimate, catalogData);
+    const { context, effectiveSection, hasPriceOverrides } =
+      createSectionContext(selectedSection, currentEstimate, catalogData);
     const calcs = getSectionCalculations(effectiveSection, context);
     return { ...calcs, hasPriceOverrides };
   }, [
@@ -188,15 +215,16 @@ const EstimateLayout = () => {
   // Use three-tier fallback for style comparison: section → estimate → team
   const tasksWithErrors = useMemo(() => {
     const errorTaskIds = new Set();
-    
+
     currentEstimate?.tasks?.forEach((task) => {
       task.sections?.forEach((section) => {
         // Calculate the effective style using three-tier fallback
-        const effectiveStyle = getEffectiveValueOnly(
-          section?.cabinet_style_id,
-          currentEstimate?.default_cabinet_style_id,
-          teamDefaults?.default_cabinet_style_id
-        ) || 13;
+        const effectiveStyle =
+          getEffectiveValueOnly(
+            section?.cabinet_style_id,
+            currentEstimate?.default_cabinet_style_id,
+            teamDefaults?.default_cabinet_style_id,
+          ) || 13;
 
         // Check if any cabinets in this section have error state
         const hasErrorCabinets = section.cabinets?.some((cabinet) => {
@@ -206,15 +234,19 @@ const EstimateLayout = () => {
             cabinet.saved_style_id !== effectiveStyle
           );
         });
-        
+
         if (hasErrorCabinets) {
           errorTaskIds.add(task.est_task_id);
         }
       });
     });
-    
+
     return errorTaskIds;
-  }, [currentEstimate?.tasks, currentEstimate?.default_cabinet_style_id, teamDefaults?.default_cabinet_style_id]);
+  }, [
+    currentEstimate?.tasks,
+    currentEstimate?.default_cabinet_style_id,
+    teamDefaults?.default_cabinet_style_id,
+  ]);
 
   const handleAddTask = () => {
     setSelectedTaskId(null);
@@ -250,8 +282,8 @@ const EstimateLayout = () => {
           {
             parts_included: data.parts_included,
             services_included: data.services_included,
-          }
-        )
+          },
+        ),
       );
     }
   };
@@ -280,15 +312,17 @@ const EstimateLayout = () => {
 
       {/* Sidebar */}
       <div className="w-64 flex-none bg-slate-900 border-t border-slate-200 flex flex-col">
-        <div className="flex items-center justify-center py-4 text-slate-200 text-lg font-semibold relative">
+        <div className="flex items-center pl-2 py-4 text-slate-200 text-md font-semibold relative">
           <button
             onClick={() => navigate(listPath)}
-            className="mr-4 hover:text-slate-300 left-[10px] absolute"
+            className="mr-1 hover:text-slate-300"
             aria-label="Go back"
           >
-            <FiArrowLeft size={24} />
+            <FiArrowLeft size={20} className="inline"/>
+            {location.pathname.includes("/finalized")
+              ? "Finalized Estimates"
+              : "Estimates In Progress"}
           </button>
-          {currentEstimate?.est_project_name || "New Estimate"}
         </div>
         <nav className="flex flex-col flex-1 overflow-hidden">
           {/* Project Info Button */}
@@ -307,7 +341,7 @@ const EstimateLayout = () => {
               }
             `}
           >
-            Project Information
+            Estimate Notes & Details
           </button>
 
           {currentEstimate && (
@@ -317,13 +351,13 @@ const EstimateLayout = () => {
                 <span className="font-semibold">Rooms</span>
                 {currentEstimate?.tasks?.length > 1 && (
                   <Tooltip text="Reorder Rooms">
-                  <button
-                    onClick={() => setIsReorderModalOpen(true)}
-                    className="text-slate-400 hover:text-teal-400"
-                    aria-label="Reorder rooms"
-                  >
-                    <LuArrowDownUp size={20} />
-                  </button>
+                    <button
+                      onClick={() => setIsReorderModalOpen(true)}
+                      className="text-slate-400 hover:text-teal-400"
+                      aria-label="Reorder rooms"
+                    >
+                      <LuArrowDownUp size={20} />
+                    </button>
                   </Tooltip>
                 )}
               </div>
@@ -339,7 +373,7 @@ const EstimateLayout = () => {
                       onSelect={() => {
                         setSelectedTaskId(task.est_task_id);
                         setSelectedSectionId(
-                          task.sections?.[0]?.est_section_id
+                          task.sections?.[0]?.est_section_id,
                         );
                         setShowProjectInfo(false);
                         setShowSectionForm(false);
@@ -430,7 +464,8 @@ const EstimateLayout = () => {
                   door_outside_molding: templateSection.door_outside_molding,
                   door_panel_mod_id: templateSection.door_panel_mod_id,
                   drawer_inside_molding: templateSection.drawer_inside_molding,
-                  drawer_outside_molding: templateSection.drawer_outside_molding,
+                  drawer_outside_molding:
+                    templateSection.drawer_outside_molding,
                   drawer_panel_mod_id: templateSection.drawer_panel_mod_id,
                   profit: templateSection.profit,
                   commission: templateSection.commission,
@@ -447,7 +482,6 @@ const EstimateLayout = () => {
             setShowSectionForm(true);
           }
         }}
-
       />
 
       {/* Main Content */}
@@ -538,9 +572,10 @@ const EstimateLayout = () => {
             <div className="max-w-5xl mx-auto h-full">
               <EstimateSectionForm
                 taskId={selectedTaskId}
+                selectedTask={selectedTask}
                 section={
                   selectedTask?.sections?.find(
-                    (s) => s.est_section_id === selectedSectionId
+                    (s) => s.est_section_id === selectedSectionId,
                   ) ||
                   initialData ||
                   {}
@@ -569,7 +604,7 @@ const EstimateLayout = () => {
                   />
                 </div>
                 <div className="w-80 p-6 overflow-y-auto border-l border-slate-700">
-                  <EstimateSectionPrice 
+                  <EstimateSectionPrice
                     section={selectedSection}
                     sectionCalculations={sectionCalculations}
                     onSaveToggles={handleSaveToggles}
