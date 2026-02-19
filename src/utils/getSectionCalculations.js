@@ -948,25 +948,27 @@ const tapeTimeMinutes = ({
   openingsCount = 0,
   overheadPerOpeningMin = 2,
   perInchRate = null,
-  minMinutes = 8,
+  minMinutes = 9,
 }) => {
-  // Reference: one 22.5" x 29" opening = 20 min
-  const refPerimeter = 103; // 22.5 + 29 repeated twice
+  // Reference: one 22.5" x 29" opening
+  const refPerimeter = 103;
   const refMinutes = 20;
+  const refOpenings = 1;
 
-  // Compute per-inch rate if not provided
   if (perInchRate === null) {
-    perInchRate = (refMinutes - overheadPerOpeningMin) / refPerimeter;
+    const refVariableMinutes =
+      refMinutes - refOpenings * overheadPerOpeningMin;
+
+    perInchRate = refVariableMinutes / refPerimeter;
   }
 
   let minutes =
-    openingsCount * overheadPerOpeningMin + beadLengthIn * perInchRate;
+    openingsCount * overheadPerOpeningMin +
+    beadLengthIn * perInchRate;
 
-  // Apply floor
-  minutes = Math.max(minutes, minMinutes);
-
-  return minutes;
+  return Math.max(minutes, minMinutes);
 };
+
 
 /**
  * Calculate face frame finish tape time using interpolation
