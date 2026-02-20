@@ -1,10 +1,28 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
-import { FiArrowLeft, FiCalendar, FiEdit, FiTrash2, FiSearch, FiX, FiRotateCcw, FiArchive } from "react-icons/fi";
+import { useEffect, useMemo, useState } from "react";
+import {
+  FiArchive,
+  FiArrowLeft,
+  FiCalendar,
+  FiChevronDown,
+  FiChevronUp,
+  FiEdit,
+  FiRotateCcw,
+  FiSearch,
+  FiTrash2,
+  FiX,
+} from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { fetchEstimates, deleteEstimate, setCurrentEstimate, unfinalizeEstimate, archiveEstimate, unarchiveEstimate } from "../../redux/actions/estimates";
+import {
+  archiveEstimate,
+  deleteEstimate,
+  fetchEstimates,
+  setCurrentEstimate,
+  unarchiveEstimate,
+  unfinalizeEstimate,
+} from "../../redux/actions/estimates";
 import { PATHS, ESTIMATE_STATUS } from "../../utils/constants";
 import Tooltip from "../common/Tooltip.jsx";
 
@@ -26,10 +44,14 @@ const EstimatesList = ({ mode = "draft" }) => {
   const { estimates, loading, error } = useSelector((state) => state.estimates);
   const [searchTerm, setSearchTerm] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
+  const [sortConfig, setSortConfig] = useState({
+    key: "updated_at",
+    direction: "desc",
+  });
 
   useEffect(() => {
     dispatch(fetchEstimates({ status: statusFilter }));
-  }, [statusFilter]);
+  }, [dispatch, statusFilter]);
 
   // Filter estimates by mode
   const filteredByStatus = estimates.filter(
@@ -41,12 +63,73 @@ const EstimatesList = ({ mode = "draft" }) => {
     const projectName = estimate.est_project_name || "";
     const clientName = estimate.est_client_name || "";
     const searchLower = searchTerm.toLowerCase();
-    
+
     return (
       projectName.toLowerCase().includes(searchLower) ||
       clientName.toLowerCase().includes(searchLower)
     );
   });
+
+  const sortedEstimates = useMemo(() => {
+    const estimatesToSort = [...filteredEstimates];
+
+    const getSortValue = (estimate, key) => {
+      switch (key) {
+        case "est_project_name":
+          return (estimate.est_project_name || "").toLowerCase();
+        case "est_client_name":
+          return (estimate.est_client_name || "").toLowerCase();
+        case "created_at":
+          return estimate.created_at ? new Date(estimate.created_at).getTime() : 0;
+        case "created_by_name":
+          return (estimate.created_by_name || "").toLowerCase();
+        case "updated_at":
+          return estimate.updated_at ? new Date(estimate.updated_at).getTime() : 0;
+        case "updated_by_name":
+          return (estimate.updated_by_name || "").toLowerCase();
+        default:
+          return "";
+      }
+    };
+
+    estimatesToSort.sort((a, b) => {
+      const aValue = getSortValue(a, sortConfig.key);
+      const bValue = getSortValue(b, sortConfig.key);
+
+      if (aValue < bValue) {
+        return sortConfig.direction === "asc" ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return estimatesToSort;
+  }, [filteredEstimates, sortConfig]);
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return { key, direction: "asc" };
+    });
+  };
+
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return null;
+
+    return sortConfig.direction === "asc" ? (
+      <FiChevronUp size={14} />
+    ) : (
+      <FiChevronDown size={14} />
+    );
+  };
 
   const handleEditEstimate = (estimate) => {
     dispatch(setCurrentEstimate(estimate));
@@ -179,28 +262,68 @@ const EstimatesList = ({ mode = "draft" }) => {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-full">
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Project</div>
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Client</div>
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Created</div>
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Last Updated</div>
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Updated By</div>
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
+                  <button
+                    onClick={() => handleSort("est_project_name")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Project
+                    {renderSortIcon("est_project_name")}
+                  </button>
+                  <button
+                    onClick={() => handleSort("est_client_name")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Client
+                    {renderSortIcon("est_client_name")}
+                  </button>
+                  <button
+                    onClick={() => handleSort("created_at")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Created
+                    {renderSortIcon("created_at")}
+                  </button>
+                  <button
+                    onClick={() => handleSort("created_by_name")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Created By
+                    {renderSortIcon("created_by_name")}
+                  </button>
+                  <button
+                    onClick={() => handleSort("updated_at")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Last Updated
+                    {renderSortIcon("updated_at")}
+                  </button>
+                  <button
+                    onClick={() => handleSort("updated_by_name")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Updated By
+                    {renderSortIcon("updated_by_name")}
+                  </button>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</div>
                 </div>
                 <div className="bg-white divide-y divide-slate-200">
-                  {filteredEstimates.map((estimate) => (
+                  {sortedEstimates.map((estimate) => (
                     <div
                       key={estimate.estimate_id}
-                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
+                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
                     >
                       <div className="text-sm font-medium text-slate-900 truncate">
                         {estimate.est_project_name || "Unknown Project"}
                       </div>
                       <div className="text-sm text-slate-500 truncate">
-                        {estimate.est_client_name || "N/A"}
+                        {estimate.est_client_name || ""}
                       </div>
                       <div className="text-sm text-slate-500">
                         {formatDate(estimate.created_at)}
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        {estimate.created_by_name}
                       </div>
                       <div className="text-sm text-slate-500">
                         {formatDate(estimate.updated_at)}

@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { FiPlus, FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { RiSwapBoxLine } from "react-icons/ri";
@@ -38,6 +38,13 @@ const SectionItemList = ({
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [moveItemIndex, setMoveItemIndex] = useState(-1);
   const [recentlyClosedIndex, setRecentlyClosedIndex] = useState(-1);
+  const [animateEditOpen, setAnimateEditOpen] = useState(false);
+  const [animateNewOpen, setAnimateNewOpen] = useState(false);
+  const editFormRefs = useRef({});
+  const newFormRef = useRef(null);
+  const closeEditTimeoutRef = useRef(null);
+  const closeNewTimeoutRef = useRef(null);
+  const transitionDurationMs = 300;
 
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
@@ -52,26 +59,124 @@ const SectionItemList = ({
     }
   }, [recentlyClosedIndex]);
 
-  const handleCancelEdit = useCallback((itemIndex) => {
-    setEditingIndex(-1);
-    setRecentlyClosedIndex(itemIndex);
+  useEffect(() => {
+    return () => {
+      if (closeEditTimeoutRef.current) {
+        clearTimeout(closeEditTimeoutRef.current);
+      }
+      if (closeNewTimeoutRef.current) {
+        clearTimeout(closeNewTimeoutRef.current);
+      }
+    };
   }, []);
 
-  const handleCancelNew = useCallback(() => {
-    setShowNewItem(false);
+  const scrollFormIntoView = useCallback((element) => {
+    if (!element) return;
+
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+      inline: "nearest",
+    });
   }, []);
+
+  useEffect(() => {
+    if (editingIndex === -1) {
+      setAnimateEditOpen(false);
+      return;
+    }
+
+    const animationFrame = requestAnimationFrame(() => {
+      setAnimateEditOpen(true);
+      scrollFormIntoView(editFormRefs.current[editingIndex]);
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [editingIndex, scrollFormIntoView]);
+
+  useEffect(() => {
+    if (!showNewItem) {
+      setAnimateNewOpen(false);
+      return;
+    }
+
+    const animationFrame = requestAnimationFrame(() => {
+      setAnimateNewOpen(true);
+      scrollFormIntoView(newFormRef.current);
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [showNewItem, scrollFormIntoView]);
+
+  const openEditForm = useCallback(
+    (index) => {
+      if (isFormActive) return;
+      setShowNewItem(false);
+      setAnimateNewOpen(false);
+      setEditingIndex(index);
+      setAnimateEditOpen(false);
+    },
+    [isFormActive],
+  );
+
+  const openNewItemForm = useCallback(() => {
+    if (isFormActive) return;
+    setEditingIndex(-1);
+    setAnimateEditOpen(false);
+    setShowNewItem(true);
+    setAnimateNewOpen(false);
+  }, [isFormActive]);
+
+  const closeEditForm = useCallback(
+    (itemIndex = -1) => {
+      setAnimateEditOpen(false);
+
+      if (closeEditTimeoutRef.current) {
+        clearTimeout(closeEditTimeoutRef.current);
+      }
+
+      closeEditTimeoutRef.current = setTimeout(() => {
+        setEditingIndex(-1);
+        if (itemIndex !== -1) {
+          setRecentlyClosedIndex(itemIndex);
+        }
+        closeEditTimeoutRef.current = null;
+      }, transitionDurationMs);
+    },
+    [transitionDurationMs],
+  );
+
+  const closeNewItemForm = useCallback(() => {
+    setAnimateNewOpen(false);
+
+    if (closeNewTimeoutRef.current) {
+      clearTimeout(closeNewTimeoutRef.current);
+    }
+
+    closeNewTimeoutRef.current = setTimeout(() => {
+      setShowNewItem(false);
+      closeNewTimeoutRef.current = null;
+    }, transitionDurationMs);
+  }, [transitionDurationMs]);
+
+  const handleCancelEdit = useCallback((itemIndex) => {
+    closeEditForm(itemIndex);
+  }, [closeEditForm]);
+
+  const handleCancelNew = useCallback(() => {
+    closeNewItemForm();
+  }, [closeNewItemForm]);
 
   const handleSaveItem = async (item, itemIndex = -1) => {
     try {
       await onSave(item, itemIndex);
       if (itemIndex === -1) {
-        setShowNewItem(false);
+        closeNewItemForm();
       } else {
-        setEditingIndex(-1);
-        setRecentlyClosedIndex(itemIndex);
+        closeEditForm(itemIndex);
       }
     } catch (error) {
-      console.error("Error saving item:", error);
+      void error;
     }
   };
 
@@ -79,7 +184,7 @@ const SectionItemList = ({
     try {
       await onDelete(itemIndex);
     } catch (error) {
-      console.error("Error deleting item:", error);
+      void error;
     }
   };
 
@@ -88,7 +193,7 @@ const SectionItemList = ({
       await onReorder(orderedIds);
       setIsReorderModalOpen(false);
     } catch (error) {
-      console.error("Error saving order:", error);
+      void error;
     }
   };
 
@@ -105,7 +210,7 @@ const SectionItemList = ({
       setIsDuplicateModalOpen(false);
       setDuplicateItemIndex(-1);
     } catch (error) {
-      console.error("Error duplicating item:", error);
+      void error;
     }
   };
 
@@ -122,7 +227,7 @@ const SectionItemList = ({
       setIsMoveModalOpen(false);
       setMoveItemIndex(-1);
     } catch (error) {
-      console.error("Error moving item:", error);
+      void error;
     }
   };
 
@@ -144,12 +249,7 @@ const SectionItemList = ({
         <div className="flex justify-center space-x-2">
           <Tooltip text="Edit">
             <button
-              onClick={() => {
-                if (!isFormActive) {
-                  setShowNewItem(false);
-                  setEditingIndex(index);
-                }
-              }}
+              onClick={() => openEditForm(index)}
               disabled={isFormActive}
               className={`p-1.5 ${
                 isFormActive
@@ -256,13 +356,27 @@ const SectionItemList = ({
       <div className="">
         {items.map((item, index) =>
           editingIndex === index ? (
-            <div key={index} className="p-4">
-              <ItemForm
-                item={item}
-                onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
-                onCancel={() => handleCancelEdit(index)}
-                {...formProps}
-              />
+            <div
+              key={index}
+              ref={(el) => {
+                if (el) {
+                  editFormRefs.current[index] = el;
+                } else {
+                  delete editFormRefs.current[index];
+                }
+              }}
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                animateEditOpen ? "max-h-[2200px] opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="p-4">
+                <ItemForm
+                  item={item}
+                  onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
+                  onCancel={() => handleCancelEdit(index)}
+                  {...formProps}
+                />
+              </div>
             </div>
           ) : (
             <div
@@ -309,12 +423,19 @@ const SectionItemList = ({
 
       {/* New Item Form */}
       {showNewItem && (
-        <div className="p-4">
-          <ItemForm
-            onSave={(item) => handleSaveItem(item)}
-            onCancel={handleCancelNew}
-            {...formProps}
-          />
+        <div
+          ref={newFormRef}
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            animateNewOpen ? "max-h-[2200px] opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="p-4">
+            <ItemForm
+              onSave={(item) => handleSaveItem(item)}
+              onCancel={handleCancelNew}
+              {...formProps}
+            />
+          </div>
         </div>
       )}
 
@@ -345,12 +466,7 @@ const SectionItemList = ({
             </div>
           )}
           <button
-            onClick={() => {
-              if (!isFormActive) {
-                setShowNewItem(true);
-                setEditingIndex(-1);
-              }
-            }}
+            onClick={openNewItemForm}
             disabled={isFormActive}
             className={`mx-auto py-3 px-4 text-sm font-medium ${
               isFormActive

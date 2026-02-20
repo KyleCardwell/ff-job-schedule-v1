@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { getCabinetFacePresets } from "../../config/cabinetFacePresets";
 import {
   getItemTypeConfig,
   getAvailableFaceTypes,
@@ -60,6 +61,11 @@ const CabinetFaceDivider = ({
     [itemType],
   );
 
+  const availablePresets = useMemo(
+    () => getCabinetFacePresets(itemType),
+    [itemType],
+  );
+
   // Check if this item type should use reveals
   const usesReveals = useMemo(
     () => shouldUseReveals(itemType, cabinetStyleId),
@@ -98,6 +104,27 @@ const CabinetFaceDivider = ({
     glassShelves: "",
     shelfNosing: "",
   });
+
+  const clampPopupPosition = useCallback((position, popupElement) => {
+    if (!popupElement) return position;
+
+    const popupViewportMargin = 12;
+
+    const rect = popupElement.getBoundingClientRect();
+    const maxX = Math.max(
+      popupViewportMargin,
+      window.innerWidth - rect.width - popupViewportMargin,
+    );
+    const maxY = Math.max(
+      popupViewportMargin,
+      window.innerHeight - rect.height - popupViewportMargin,
+    );
+
+    return {
+      x: Math.min(Math.max(position.x, popupViewportMargin), maxX),
+      y: Math.min(Math.max(position.y, popupViewportMargin), maxY),
+    };
+  }, []);
 
   // Apply focus trap to popups
   useFocusTrap(typeSelectorPopupRef, showTypeSelector);
@@ -470,6 +497,66 @@ const CabinetFaceDivider = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showHandlePopup]);
+
+  useEffect(() => {
+    if (!showTypeSelector) return;
+
+    const reposition = () => {
+      setSelectorPosition((currentPosition) => {
+        const clamped = clampPopupPosition(
+          currentPosition,
+          typeSelectorPopupRef.current,
+        );
+
+        if (
+          clamped.x === currentPosition.x &&
+          clamped.y === currentPosition.y
+        ) {
+          return currentPosition;
+        }
+
+        return clamped;
+      });
+    };
+
+    const animationFrame = requestAnimationFrame(reposition);
+    window.addEventListener("resize", reposition);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [showTypeSelector, clampPopupPosition]);
+
+  useEffect(() => {
+    if (!showHandlePopup) return;
+
+    const reposition = () => {
+      setHandlePopupPosition((currentPosition) => {
+        const clamped = clampPopupPosition(
+          currentPosition,
+          handleEditorPopupRef.current,
+        );
+
+        if (
+          clamped.x === currentPosition.x &&
+          clamped.y === currentPosition.y
+        ) {
+          return currentPosition;
+        }
+
+        return clamped;
+      });
+    };
+
+    const animationFrame = requestAnimationFrame(reposition);
+    window.addEventListener("resize", reposition);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [showHandlePopup, clampPopupPosition]);
 
   // Store the original config only once when component first mounts
   useEffect(() => {
@@ -1486,10 +1573,10 @@ const CabinetFaceDivider = ({
   const handleHandleClick = (event, parentNode, splitDirection) => {
     if (disabled) return;
 
-    const svgRect = svgRef.current.getBoundingClientRect();
+    const popupOffset = 12;
     setHandlePopupPosition({
-      x: event.clientX - svgRect.left,
-      y: event.clientY - svgRect.top,
+      x: event.clientX + popupOffset,
+      y: event.clientY + popupOffset,
     });
     setSelectedHandle({ parent: parentNode, splitDirection });
 
@@ -1713,11 +1800,10 @@ const CabinetFaceDivider = ({
   const handleNodeClick = (event, node) => {
     if (disabled) return;
 
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const popupOffsetX = 350; // Offset to position popup to the left of click
+    const popupOffset = 12;
     setSelectorPosition({
-      x: event.clientX - svgRect.left - popupOffsetX,
-      y: event.clientY - svgRect.top,
+      x: event.clientX + popupOffset,
+      y: event.clientY + popupOffset,
     });
     setSelectedNode(node);
 
@@ -2011,6 +2097,190 @@ const CabinetFaceDivider = ({
     setShowTypeSelector(false);
   };
 
+  const resolvePresetDimension = (
+    dimensionConfig,
+    dimension,
+    splitDirection,
+    dividerSize,
+  ) => {
+    if (typeof dimensionConfig === "number") {
+      return dimensionConfig;
+    }
+
+    if (!dimensionConfig || typeof dimensionConfig !== "object") {
+      return null;
+    }
+
+    const styleSpecificValue =
+      dimensionConfig.byCabinetStyleId?.[cabinetStyleId] ?? null;
+    const baseValue =
+      typeof styleSpecificValue === "number"
+        ? styleSpecificValue
+        : typeof dimensionConfig.default === "number"
+          ? dimensionConfig.default
+          : null;
+
+    if (typeof baseValue !== "number") {
+      return null;
+    }
+
+    const multiplier =
+      typeof dimensionConfig.multiply === "number" ? dimensionConfig.multiply : 1;
+    const additive =
+      typeof dimensionConfig.add === "number" ? dimensionConfig.add : 0;
+
+    let resolvedValue = baseValue * multiplier + additive;
+
+    const splitDimension =
+      splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "width" : "height";
+    const revealGapsToAdd =
+      typeof dimensionConfig.addRevealGaps === "number"
+        ? dimensionConfig.addRevealGaps
+        : 0;
+
+    if (dimension === splitDimension && revealGapsToAdd > 0) {
+      resolvedValue += revealGapsToAdd * dividerSize;
+    }
+
+    return resolvedValue;
+  };
+
+  const buildPresetNode = (layoutNode, nodeId, width, height) => {
+    const childLayouts = layoutNode?.children;
+    const hasChildren =
+      Array.isArray(childLayouts) &&
+      childLayouts.length > 0 &&
+      layoutNode?.direction;
+
+    if (!hasChildren) {
+      const nodeType = layoutNode?.type || itemConfig.defaultFaceType;
+      const canHaveShelves = supportsShelves(nodeType);
+
+      return {
+        id: nodeId,
+        type: nodeType,
+        width,
+        height,
+        rollOutQty: null,
+        shelfQty: canHaveShelves ? calculateShelfQty(height) : null,
+        children: null,
+        accessories: [],
+      };
+    }
+
+    const splitDirection = layoutNode.direction;
+    const isHorizontal = splitDirection === SPLIT_DIRECTIONS.HORIZONTAL;
+    const dividerSize = usesReveals ? (reveals?.reveal || 0) : 0;
+    const dividerCount = usesReveals ? Math.max(childLayouts.length - 1, 0) : 0;
+    const splitDimension = isHorizontal ? "width" : "height";
+    const parentDimension = isHorizontal ? width : height;
+    const availableDimension = Math.max(
+      0,
+      parentDimension - dividerCount * dividerSize,
+    );
+
+    let requestedChildDimensions = childLayouts.map((childLayout) =>
+      resolvePresetDimension(
+        childLayout?.[splitDimension],
+        splitDimension,
+        splitDirection,
+        dividerSize,
+      ),
+    );
+
+    const requestedTotal = requestedChildDimensions.reduce(
+      (sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0),
+      0,
+    );
+
+    if (requestedTotal > availableDimension && requestedTotal > 0) {
+      const scaleFactor = availableDimension / requestedTotal;
+      requestedChildDimensions = requestedChildDimensions.map((value) =>
+        typeof value === "number" && value > 0 ? value * scaleFactor : value,
+      );
+    }
+
+    const normalizedRequestedTotal = requestedChildDimensions.reduce(
+      (sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0),
+      0,
+    );
+    const unspecifiedCount = requestedChildDimensions.filter(
+      (value) => typeof value !== "number" || value <= 0,
+    ).length;
+    const remainder = Math.max(0, availableDimension - normalizedRequestedTotal);
+    const fallbackDimension =
+      unspecifiedCount > 0 ? remainder / unspecifiedCount : 0;
+
+    const children = [];
+    let childSlotIndex = 0;
+
+    childLayouts.forEach((childLayout, index) => {
+      const childId = generateId(nodeId, childSlotIndex);
+      const childDimension =
+        typeof requestedChildDimensions[index] === "number" &&
+        requestedChildDimensions[index] > 0
+          ? requestedChildDimensions[index]
+          : fallbackDimension;
+      const childWidth = isHorizontal ? childDimension : width;
+      const childHeight = isHorizontal ? height : childDimension;
+
+      children.push(buildPresetNode(childLayout, childId, childWidth, childHeight));
+      childSlotIndex += 1;
+
+      if (usesReveals && index < childLayouts.length - 1) {
+        const revealId = generateId(nodeId, childSlotIndex);
+        children.push({
+          id: revealId,
+          type: FACE_NAMES.REVEAL,
+          width: isHorizontal ? dividerSize : width,
+          height: isHorizontal ? height : dividerSize,
+          accessories: [],
+        });
+        childSlotIndex += 1;
+      }
+    });
+
+    return {
+      id: nodeId,
+      type: FACE_NAMES.CONTAINER,
+      width,
+      height,
+      splitDirection,
+      children,
+      rollOutQty: 0,
+      shelfQty: 0,
+      accessories: [],
+    };
+  };
+
+  const handleApplyPreset = (preset) => {
+    if (disabled || !preset?.layout) return;
+
+    const presetWidth = cabinetWidth - reveals.left - reveals.right;
+    const presetHeight = cabinetHeight - reveals.top - reveals.bottom;
+    const presetTree = buildPresetNode(
+      preset.layout,
+      FACE_NAMES.ROOT,
+      presetWidth,
+      presetHeight,
+    );
+
+    setConfig({
+      ...presetTree,
+      id: FACE_NAMES.ROOT,
+      width: presetWidth,
+      height: presetHeight,
+      x: reveals.left,
+      y: reveals.top,
+      rootReveals: reveals,
+      accessories: presetTree.accessories || [],
+    });
+
+    setSelectedNode(null);
+    setShowTypeSelector(false);
+    setShowHandlePopup(false);
+  };
+
   const handleReset = () => {
     if (disabled) return;
 
@@ -2103,15 +2373,28 @@ const CabinetFaceDivider = ({
             <FiX className="mr-1" />
             Cancel Changes
           </button>
-          <button
-            onClick={handleReset}
-            className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Reset to default single door"
-            disabled={disabled}
-          >
-            <FiRotateCcw className="mr-1" />
-            Default
-          </button>
+          <div className="flex items-center gap-1 flex-wrap justify-end">
+            {availablePresets.map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => handleApplyPreset(preset)}
+                className="px-2 py-1 text-xs text-slate-600 border border-slate-300 rounded hover:text-slate-800 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={preset.description || `Apply ${preset.label} preset`}
+                disabled={disabled}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              onClick={handleReset}
+              className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 border border-slate-300 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Reset to default single door"
+              disabled={disabled}
+            >
+              <FiRotateCcw className="mr-1" />
+              Default
+            </button>
+          </div>
         </div>
 
         <div className="relative flex justify-center">
@@ -2140,20 +2423,12 @@ const CabinetFaceDivider = ({
           {showHandlePopup && selectedHandle && !disabled && (
             <div
               ref={handleEditorPopupRef}
-              className="handle-editor-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
+              className="handle-editor-popup fixed bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
               style={{
-                left: Math.min(
-                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
-                    ? handlePopupPosition.x - 180 // Position to the left of vertical handle
-                    : handlePopupPosition.x,
-                  fixedDisplayWidth - 250,
-                ),
-                top: Math.min(
-                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
-                    ? handlePopupPosition.y - 100
-                    : handlePopupPosition.y,
-                  fixedDisplayHeight - 200,
-                ),
+                left: handlePopupPosition.x,
+                top: handlePopupPosition.y,
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
                 filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
@@ -2225,10 +2500,12 @@ const CabinetFaceDivider = ({
           {showTypeSelector && selectedNode && !disabled && (
             <div
               ref={typeSelectorPopupRef}
-              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg p-2 z-10 flex space-x-2"
+              className="type-selector-popup fixed bg-white border border-slate-300 rounded-lg p-2 z-10 flex space-x-2"
               style={{
-                left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
-                top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
+                left: selectorPosition.x,
+                top: selectorPosition.y,
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
                 filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
             >
