@@ -2017,6 +2017,54 @@ const CabinetFaceDivider = ({
     setShowTypeSelector(false);
   };
 
+  const resolvePresetDimension = (
+    dimensionConfig,
+    dimension,
+    splitDirection,
+    dividerSize,
+  ) => {
+    if (typeof dimensionConfig === "number") {
+      return dimensionConfig;
+    }
+
+    if (!dimensionConfig || typeof dimensionConfig !== "object") {
+      return null;
+    }
+
+    const styleSpecificValue =
+      dimensionConfig.byCabinetStyleId?.[cabinetStyleId] ?? null;
+    const baseValue =
+      typeof styleSpecificValue === "number"
+        ? styleSpecificValue
+        : typeof dimensionConfig.default === "number"
+          ? dimensionConfig.default
+          : null;
+
+    if (typeof baseValue !== "number") {
+      return null;
+    }
+
+    const multiplier =
+      typeof dimensionConfig.multiply === "number" ? dimensionConfig.multiply : 1;
+    const additive =
+      typeof dimensionConfig.add === "number" ? dimensionConfig.add : 0;
+
+    let resolvedValue = baseValue * multiplier + additive;
+
+    const splitDimension =
+      splitDirection === SPLIT_DIRECTIONS.HORIZONTAL ? "width" : "height";
+    const revealGapsToAdd =
+      typeof dimensionConfig.addRevealGaps === "number"
+        ? dimensionConfig.addRevealGaps
+        : 0;
+
+    if (dimension === splitDimension && revealGapsToAdd > 0) {
+      resolvedValue += revealGapsToAdd * dividerSize;
+    }
+
+    return resolvedValue;
+  };
+
   const buildPresetNode = (layoutNode, nodeId, width, height) => {
     const childLayouts = layoutNode?.children;
     const hasChildren =
@@ -2044,18 +2092,55 @@ const CabinetFaceDivider = ({
     const isHorizontal = splitDirection === SPLIT_DIRECTIONS.HORIZONTAL;
     const dividerSize = usesReveals ? (reveals?.reveal || 0) : 0;
     const dividerCount = usesReveals ? Math.max(childLayouts.length - 1, 0) : 0;
+    const splitDimension = isHorizontal ? "width" : "height";
     const parentDimension = isHorizontal ? width : height;
     const availableDimension = Math.max(
       0,
       parentDimension - dividerCount * dividerSize,
     );
-    const childDimension = availableDimension / childLayouts.length;
+
+    let requestedChildDimensions = childLayouts.map((childLayout) =>
+      resolvePresetDimension(
+        childLayout?.[splitDimension],
+        splitDimension,
+        splitDirection,
+        dividerSize,
+      ),
+    );
+
+    const requestedTotal = requestedChildDimensions.reduce(
+      (sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0),
+      0,
+    );
+
+    if (requestedTotal > availableDimension && requestedTotal > 0) {
+      const scaleFactor = availableDimension / requestedTotal;
+      requestedChildDimensions = requestedChildDimensions.map((value) =>
+        typeof value === "number" && value > 0 ? value * scaleFactor : value,
+      );
+    }
+
+    const normalizedRequestedTotal = requestedChildDimensions.reduce(
+      (sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0),
+      0,
+    );
+    const unspecifiedCount = requestedChildDimensions.filter(
+      (value) => typeof value !== "number" || value <= 0,
+    ).length;
+    const remainder = Math.max(0, availableDimension - normalizedRequestedTotal);
+    const fallbackDimension =
+      unspecifiedCount > 0 ? remainder / unspecifiedCount : 0;
 
     const children = [];
     let childSlotIndex = 0;
 
     childLayouts.forEach((childLayout, index) => {
       const childId = generateId(nodeId, childSlotIndex);
+      const childDimension =
+        typeof requestedChildDimensions[index] === "number" &&
+        requestedChildDimensions[index] > 0
+          ? requestedChildDimensions[index]
+          : fallbackDimension;
       const childWidth = isHorizontal ? childDimension : width;
       const childHeight = isHorizontal ? height : childDimension;
 
