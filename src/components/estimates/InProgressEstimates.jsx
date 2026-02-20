@@ -15,6 +15,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   archiveEstimate,
   deleteEstimate,
@@ -41,6 +42,7 @@ const EstimatesList = ({ mode = "draft" }) => {
       : PATHS.IN_PROGRESS_ESTIMATES;
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { canEditSchedule } = usePermissions();
   const { estimates, loading, error } = useSelector((state) => state.estimates);
   const [searchTerm, setSearchTerm] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
@@ -343,7 +345,7 @@ const EstimatesList = ({ mode = "draft" }) => {
                             </button>
                           </Tooltip>
                         )}
-                        {isFinalized && (
+                        {isFinalized && canEditSchedule && (
                           <Tooltip text="Add to Schedule">
                             <button
                               onClick={() => {

@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
   // Check if user has view profit/loss permission
   // PATHS.COMPLETED_PROJECT is "/completed/:projectId", so we check if the path starts with "/completed/"
   if (location.pathname.startsWith("/completed/")) {
-    const canViewFinancials = roleId === 1 || permissions?.can_view_profit_loss;
+    const canViewFinancials = permissions?.can_view_profit_loss;
     if (!canViewFinancials) {
       return <Navigate to={PATHS.COMPLETED} replace />;
     }
@@ -22,9 +22,16 @@ const ProtectedRoute = ({ children }) => {
   // Check if user has create estimates permission
   if (location.pathname.startsWith(PATHS.ESTIMATES)) {
     const canCreateEstimates =
-      roleId === 1 || permissions?.can_create_estimates;
+      permissions?.can_create_estimates;
     if (!canCreateEstimates || !enable_estimates) {
       return <Navigate to={PATHS.HOME} replace />;
+    }
+  }
+
+  if (location.pathname.endsWith('/schedule')) {
+    const canEditSchedule = permissions?.can_edit_schedule;
+    if (!canEditSchedule) {
+      return <Navigate to={PATHS.ESTIMATES} replace />;
     }
   }
 

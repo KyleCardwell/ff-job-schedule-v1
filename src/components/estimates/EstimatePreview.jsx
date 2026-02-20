@@ -3,6 +3,7 @@ import { FiArrowLeft, FiCalendar, FiCheckCircle } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
+import { usePermissions } from "../../hooks/usePermissions";
 import { finalizeEstimate } from "../../redux/actions/estimates";
 import { fetchTeamData, getTeamLogoSignedUrl } from "../../redux/actions/teams";
 import { ESTIMATE_STATUS } from "../../utils/constants";
@@ -15,6 +16,7 @@ import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
 
 const EstimatePreview = () => {
   const dispatch = useDispatch();
+  const { canEditSchedule } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const { estimateId } = useParams();
@@ -511,7 +513,7 @@ const EstimatePreview = () => {
             {isFinalizing ? "Finalizing..." : "Finalize Estimate"}
           </button>
         )}
-        {currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && (
+        {currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && canEditSchedule && (
           <button
             onClick={() =>
               navigate(`/estimates/finalized/${currentEstimate.estimate_id}/schedule`)

@@ -27,6 +27,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   fetchAccessoriesCatalog,
   fetchAccessoryTimeAnchors,
@@ -142,8 +143,7 @@ const normalizeEstimateSections = (sections = []) =>
     })
     .filter(Boolean);
 
-const normalizeSectionName = (value) =>
-  value?.toLowerCase?.().trim?.() || "";
+const normalizeSectionName = (value) => value?.toLowerCase?.().trim?.() || "";
 
 const getSectionCategoryCosts = (calculations = {}) => {
   const facePrices = calculations.facePrices || {};
@@ -165,7 +165,8 @@ const getSectionCategoryCosts = (calculations = {}) => {
     drawers: drawerCost,
     hardware: hardwareCost,
     wood: calculations.woodTotal || 0,
-    other: (calculations.otherTotal || 0) + (calculations.accessoriesTotal || 0),
+    other:
+      (calculations.otherTotal || 0) + (calculations.accessoriesTotal || 0),
   };
 };
 
@@ -237,6 +238,8 @@ const getEstimateCostForSectionName = (sectionName, categoryTotals) => {
 
 // ---------- Main Component ----------
 const AddToSchedule = () => {
+  const { canEditSchedule } = usePermissions();
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { estimateId } = useParams();
@@ -610,8 +613,12 @@ const AddToSchedule = () => {
         });
 
         const section = sectionData?.section;
-        const { faceCounts = {}, hingesCount = 0, pullsCount = 0, slidesCount = 0 } =
-          calculations || {};
+        const {
+          faceCounts = {},
+          hingesCount = 0,
+          pullsCount = 0,
+          slidesCount = 0,
+        } = calculations || {};
         const drawerPullCount =
           (faceCounts.drawer_front || 0) + (faceCounts.false_front || 0);
         const doorPullCount = Math.max(pullsCount - drawerPullCount, 0);
@@ -719,13 +726,7 @@ const AddToSchedule = () => {
 
       return financialData;
     },
-    [
-      sectionCalcsMap,
-      financialSections,
-      services,
-      getGroupHours,
-      hardware,
-    ],
+    [sectionCalcsMap, financialSections, services, getGroupHours, hardware],
   );
 
   // ---------- Selection ----------
@@ -1101,18 +1102,22 @@ const AddToSchedule = () => {
                   Added to schedule!
                 </span>
               )}
-              <button
-                onClick={handleAddToSchedule}
-                disabled={selectedGroups.size === 0 || isSaving || saveSuccess}
-                className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-              >
-                <FiCalendar className="w-4 h-4" />
-                {isSaving
-                  ? "Adding..."
-                  : saveSuccess
-                    ? "Added"
-                    : "Add to Schedule"}
-              </button>
+              {canEditSchedule && (
+                <button
+                  onClick={handleAddToSchedule}
+                  disabled={
+                    selectedGroups.size === 0 || isSaving || saveSuccess
+                  }
+                  className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                >
+                  <FiCalendar className="w-4 h-4" />
+                  {isSaving
+                    ? "Adding..."
+                    : saveSuccess
+                      ? "Added"
+                      : "Add to Schedule"}
+                </button>
+              )}
             </div>
           </div>
         </div>
