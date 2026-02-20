@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { FiRotateCcw, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { getCabinetFacePresets } from "../../config/cabinetFacePresets";
 import {
   getItemTypeConfig,
   getAvailableFaceTypes,
@@ -57,6 +58,11 @@ const CabinetFaceDivider = ({
   // Get available face types for this item type
   const availableFaceTypes = useMemo(
     () => getAvailableFaceTypes(itemType),
+    [itemType],
+  );
+
+  const availablePresets = useMemo(
+    () => getCabinetFacePresets(itemType),
     [itemType],
   );
 
@@ -2011,6 +2017,105 @@ const CabinetFaceDivider = ({
     setShowTypeSelector(false);
   };
 
+  const buildPresetNode = (layoutNode, nodeId, width, height) => {
+    const childLayouts = layoutNode?.children;
+    const hasChildren =
+      Array.isArray(childLayouts) &&
+      childLayouts.length > 0 &&
+      layoutNode?.direction;
+
+    if (!hasChildren) {
+      const nodeType = layoutNode?.type || itemConfig.defaultFaceType;
+      const canHaveShelves = supportsShelves(nodeType);
+
+      return {
+        id: nodeId,
+        type: nodeType,
+        width,
+        height,
+        rollOutQty: null,
+        shelfQty: canHaveShelves ? calculateShelfQty(height) : null,
+        children: null,
+        accessories: [],
+      };
+    }
+
+    const splitDirection = layoutNode.direction;
+    const isHorizontal = splitDirection === SPLIT_DIRECTIONS.HORIZONTAL;
+    const dividerSize = usesReveals ? (reveals?.reveal || 0) : 0;
+    const dividerCount = usesReveals ? Math.max(childLayouts.length - 1, 0) : 0;
+    const parentDimension = isHorizontal ? width : height;
+    const availableDimension = Math.max(
+      0,
+      parentDimension - dividerCount * dividerSize,
+    );
+    const childDimension = availableDimension / childLayouts.length;
+
+    const children = [];
+    let childSlotIndex = 0;
+
+    childLayouts.forEach((childLayout, index) => {
+      const childId = generateId(nodeId, childSlotIndex);
+      const childWidth = isHorizontal ? childDimension : width;
+      const childHeight = isHorizontal ? height : childDimension;
+
+      children.push(buildPresetNode(childLayout, childId, childWidth, childHeight));
+      childSlotIndex += 1;
+
+      if (usesReveals && index < childLayouts.length - 1) {
+        const revealId = generateId(nodeId, childSlotIndex);
+        children.push({
+          id: revealId,
+          type: FACE_NAMES.REVEAL,
+          width: isHorizontal ? dividerSize : width,
+          height: isHorizontal ? height : dividerSize,
+          accessories: [],
+        });
+        childSlotIndex += 1;
+      }
+    });
+
+    return {
+      id: nodeId,
+      type: FACE_NAMES.CONTAINER,
+      width,
+      height,
+      splitDirection,
+      children,
+      rollOutQty: 0,
+      shelfQty: 0,
+      accessories: [],
+    };
+  };
+
+  const handleApplyPreset = (preset) => {
+    if (disabled || !preset?.layout) return;
+
+    const presetWidth = cabinetWidth - reveals.left - reveals.right;
+    const presetHeight = cabinetHeight - reveals.top - reveals.bottom;
+    const presetTree = buildPresetNode(
+      preset.layout,
+      FACE_NAMES.ROOT,
+      presetWidth,
+      presetHeight,
+    );
+
+    setConfig({
+      ...presetTree,
+      id: FACE_NAMES.ROOT,
+      width: presetWidth,
+      height: presetHeight,
+      x: reveals.left,
+      y: reveals.top,
+      rootReveals: reveals,
+      accessories: presetTree.accessories || [],
+    });
+
+    setSelectedNode(null);
+    setShowTypeSelector(false);
+    setShowHandlePopup(false);
+  };
+
   const handleReset = () => {
     if (disabled) return;
 
@@ -2103,15 +2208,28 @@ const CabinetFaceDivider = ({
             <FiX className="mr-1" />
             Cancel Changes
           </button>
-          <button
-            onClick={handleReset}
-            className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Reset to default single door"
-            disabled={disabled}
-          >
-            <FiRotateCcw className="mr-1" />
-            Default
-          </button>
+          <div className="flex items-center gap-1 flex-wrap justify-end">
+            {availablePresets.map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => handleApplyPreset(preset)}
+                className="px-2 py-1 text-xs text-slate-600 border border-slate-300 rounded hover:text-slate-800 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={preset.description || `Apply ${preset.label} preset`}
+                disabled={disabled}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              onClick={handleReset}
+              className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 border border-slate-300 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Reset to default single door"
+              disabled={disabled}
+            >
+              <FiRotateCcw className="mr-1" />
+              Default
+            </button>
+          </div>
         </div>
 
         <div className="relative flex justify-center">
