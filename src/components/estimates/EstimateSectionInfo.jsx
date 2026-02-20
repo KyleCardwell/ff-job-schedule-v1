@@ -1,7 +1,13 @@
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 
-import { EDIT_TYPES, FACE_STYLES, NOT_SELECTED, PANEL_MOD_DISPLAY_NAMES, PRE_FINISHED } from "../../utils/constants";
+import {
+  EDIT_TYPES,
+  FACE_STYLES,
+  NOT_SELECTED,
+  PANEL_MOD_DISPLAY_NAMES,
+  PRE_FINISHED,
+} from "../../utils/constants";
 import { getEffectiveValue as getEffectiveValueUtil } from "../../utils/estimateDefaults";
 
 const EstimateSectionInfo = ({
@@ -16,11 +22,11 @@ const EstimateSectionInfo = ({
 }) => {
   const section = selectedSectionId
     ? selectedTask?.sections?.find(
-        (s) => s.est_section_id === selectedSectionId
+        (s) => s.est_section_id === selectedSectionId,
       )
     : selectedTask?.sections?.length > 0
-    ? selectedTask.sections[selectedTask.sections.length - 1]
-    : null;
+      ? selectedTask.sections[selectedTask.sections.length - 1]
+      : null;
 
   // Determine if we should show estimate defaults (only when Project Information is selected)
   const showEstimateDefaults = showProjectInfo && !!currentEstimate;
@@ -29,21 +35,21 @@ const EstimateSectionInfo = ({
 
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const teamDefaults = useSelector(
-    (state) => state.teamEstimateDefaults.teamDefaults
+    (state) => state.teamEstimateDefaults.teamDefaults,
   );
 
   // Helper to get the effective value and source for a section field (with three-tier fallback)
   const getSectionEffectiveValue = (
     sectionValue,
     estimateKey,
-    teamDefaultKey
+    teamDefaultKey,
   ) => {
     const estimateValue = currentEstimate?.[estimateKey];
     const teamValue = teamDefaults?.[teamDefaultKey];
     const result = getEffectiveValueUtil(
       sectionValue,
       estimateValue,
-      teamValue
+      teamValue,
     );
     return result; // { value, source: 'section' | 'estimate' | 'team' }
   };
@@ -61,7 +67,7 @@ const EstimateSectionInfo = ({
     if (selectedTask.sections?.length <= 1)
       return `${selectedTask.est_task_name} Details`;
     const sectionIndex = selectedTask.sections.findIndex(
-      (s) => s.est_section_id === selectedSectionId
+      (s) => s.est_section_id === selectedSectionId,
     );
     const section = selectedTask.sections[sectionIndex];
     const sectionNumber = sectionIndex + 1;
@@ -86,7 +92,7 @@ const EstimateSectionInfo = ({
           .map(
             (f) =>
               finishes?.finishes?.find((fin) => fin.id === f)?.name ||
-              NOT_SELECTED
+              NOT_SELECTED,
           )
           .join(", ")
       : NOT_SELECTED;
@@ -94,7 +100,7 @@ const EstimateSectionInfo = ({
 
   const getFaceFinishDisplay = (faceMat, faceFinish) => {
     const faceMaterial = materials.faceMaterials.find(
-      (mat) => mat.id === faceMat
+      (mat) => mat.id === faceMat,
     );
     if (faceMaterial?.needs_finish === false) {
       return PRE_FINISHED;
@@ -104,7 +110,7 @@ const EstimateSectionInfo = ({
           .map(
             (f) =>
               finishes?.finishes?.find((fin) => fin.id === f)?.name ||
-              NOT_SELECTED
+              NOT_SELECTED,
           )
           .join(", ")
       : NOT_SELECTED;
@@ -126,7 +132,7 @@ const EstimateSectionInfo = ({
     id,
     doorInsideMolding,
     doorOutsideMolding,
-    doorPanelModId
+    doorPanelModId,
   ) => {
     const baseName =
       FACE_STYLES.find((s) => s.id === id)?.label || NOT_SELECTED;
@@ -153,7 +159,7 @@ const EstimateSectionInfo = ({
     id,
     drawerInsideMolding,
     drawerOutsideMolding,
-    drawerPanelModId
+    drawerPanelModId,
   ) => {
     const baseName =
       FACE_STYLES.find((s) => s.id === id)?.label || NOT_SELECTED;
@@ -185,21 +191,28 @@ const EstimateSectionInfo = ({
         <h2 className="text-lg font-semibold text-slate-200">{getTitle()}</h2>
         {(selectedTask || showEstimateDefaults) && (
           <div className="flex w-full justify-between text-xs text-slate-400">
-            <div>
-              <span className={`${getSourceColor(EDIT_TYPES.TEAM)}`}>●</span> Team
-              default
+            <div className="pr-2">
+              <span className={`${getSourceColor(EDIT_TYPES.TEAM)}`}>●</span>{" "}
+              Team default
             </div>
-            <div>
-              <span className={`${getSourceColor(EDIT_TYPES.ESTIMATE)}`}>●</span>{" "}
-              Estimate
-              {!showEstimateDefaults && " override"}
-            </div>
-            {!showEstimateDefaults && (
-              <div>
-                <span className={`${getSourceColor(EDIT_TYPES.SECTION)}`}>●</span>{" "}
-                Section
+            <div className="flex-1 border-l-2 border-slate-600 pl-2 flex w-full">
+              <div>Override:</div>
+              <div className="pl-2">
+                <span className={`${getSourceColor(EDIT_TYPES.ESTIMATE)}`}>
+                  ●
+                </span>{" "}
+                Estimate
+                {!showEstimateDefaults}
               </div>
-            )}
+              {!showEstimateDefaults && (
+                <div className="pl-2">
+                  <span className={`${getSourceColor(EDIT_TYPES.SECTION)}`}>
+                    ●
+                  </span>{" "}
+                  Section
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -212,7 +225,7 @@ const EstimateSectionInfo = ({
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.cabinet_style_id,
                   "default_cabinet_style_id",
-                  "default_cabinet_style_id"
+                  "default_cabinet_style_id",
                 );
                 return (
                   <>
@@ -228,7 +241,7 @@ const EstimateSectionInfo = ({
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.box_mat,
                   "default_box_mat",
-                  "default_box_mat"
+                  "default_box_mat",
                 );
                 return (
                   <>
@@ -244,12 +257,12 @@ const EstimateSectionInfo = ({
                 const boxMat = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.box_mat,
                   "default_box_mat",
-                  "default_box_mat"
+                  "default_box_mat",
                 );
                 const { value: boxFinish, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.box_finish,
                   "default_box_finish",
-                  "default_box_finish"
+                  "default_box_finish",
                 );
                 return (
                   <>
@@ -267,7 +280,7 @@ const EstimateSectionInfo = ({
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.face_mat,
                   "default_face_mat",
-                  "default_face_mat"
+                  "default_face_mat",
                 );
                 return (
                   <>
@@ -285,12 +298,12 @@ const EstimateSectionInfo = ({
                 const faceMat = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.face_mat,
                   "default_face_mat",
-                  "default_face_mat"
+                  "default_face_mat",
                 );
                 const { value: faceFinish, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.face_finish,
                   "default_face_finish",
-                  "default_face_finish"
+                  "default_face_finish",
                 );
                 return (
                   <>
@@ -309,7 +322,7 @@ const EstimateSectionInfo = ({
                   getSectionEffectiveValue(
                     showEstimateDefaults ? null : section?.door_style,
                     "default_door_style",
-                    "default_door_style"
+                    "default_door_style",
                   );
                 const {
                   value: doorInsideMoldingValue,
@@ -317,7 +330,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.door_inside_molding,
                   "default_door_inside_molding",
-                  "default_door_inside_molding"
+                  "default_door_inside_molding",
                 );
                 const {
                   value: doorOutsideMoldingValue,
@@ -325,7 +338,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.door_outside_molding,
                   "default_door_outside_molding",
-                  "default_door_outside_molding"
+                  "default_door_outside_molding",
                 );
                 const {
                   value: doorPanelModIdValue,
@@ -333,7 +346,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.door_panel_mod_id,
                   "default_door_panel_mod_id",
-                  "default_door_panel_mod_id"
+                  "default_door_panel_mod_id",
                 );
 
                 // Determine most specific source (section > estimate > team)
@@ -346,8 +359,8 @@ const EstimateSectionInfo = ({
                 const source = sources.includes(EDIT_TYPES.SECTION)
                   ? EDIT_TYPES.SECTION
                   : sources.includes(EDIT_TYPES.ESTIMATE)
-                  ? EDIT_TYPES.ESTIMATE
-                  : EDIT_TYPES.TEAM;
+                    ? EDIT_TYPES.ESTIMATE
+                    : EDIT_TYPES.TEAM;
 
                 return (
                   <>
@@ -360,7 +373,7 @@ const EstimateSectionInfo = ({
                         doorStyle,
                         doorInsideMoldingValue,
                         doorOutsideMoldingValue,
-                        doorPanelModIdValue
+                        doorPanelModIdValue,
                       ).map((line, i) => (
                         <div key={i} className="">
                           {line}
@@ -371,40 +384,56 @@ const EstimateSectionInfo = ({
                 );
               })()}
               {/* Door Material Override - only show if set */}
-              {!showEstimateDefaults && section?.door_mat && (() => {
-                const doorMat = materials.faceMaterials?.find(m => m.id === section.door_mat);
-                return (
-                  <>
-                    <div className="text-slate-400 flex items-center gap-2">
-                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
-                      <span>Door Material:</span>
-                    </div>
-                    <div className="pl-5 mb-3">
-                      {doorMat?.name || 'Unknown'}
-                    </div>
-                  </>
-                );
-              })()}
+              {!showEstimateDefaults &&
+                section?.door_mat &&
+                (() => {
+                  const doorMat = materials.faceMaterials?.find(
+                    (m) => m.id === section.door_mat,
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(EDIT_TYPES.SECTION)}>
+                          ●
+                        </span>
+                        <span>Door Material:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {doorMat?.name || "Unknown"}
+                      </div>
+                    </>
+                  );
+                })()}
               {/* Door Finish Override - only show if set */}
-              {!showEstimateDefaults && section?.door_finish && section.door_finish.length > 0 && (() => {
-                const doorMat = materials.faceMaterials?.find(m => m.id === section.door_mat);
-                return (
-                  <>
-                    <div className="text-slate-400 flex items-center gap-2">
-                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
-                      <span>Door Finish:</span>
-                    </div>
-                    <div className="pl-5 mb-3">
-                      {getFaceFinishDisplay(doorMat?.id || section.face_mat, section.door_finish)}
-                    </div>
-                  </>
-                );
-              })()}
+              {!showEstimateDefaults &&
+                section?.door_finish &&
+                section.door_finish.length > 0 &&
+                (() => {
+                  const doorMat = materials.faceMaterials?.find(
+                    (m) => m.id === section.door_mat,
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(EDIT_TYPES.SECTION)}>
+                          ●
+                        </span>
+                        <span>Door Finish:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getFaceFinishDisplay(
+                          doorMat?.id || section.face_mat,
+                          section.door_finish,
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               {(() => {
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.hinge_id,
                   "default_hinge_id",
-                  "default_hinge_id"
+                  "default_hinge_id",
                 );
                 return (
                   <>
@@ -420,7 +449,7 @@ const EstimateSectionInfo = ({
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.door_pull_id,
                   "default_door_pull_id",
-                  "default_door_pull_id"
+                  "default_door_pull_id",
                 );
                 return (
                   <>
@@ -439,7 +468,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_front_style,
                   "default_drawer_front_style",
-                  "default_drawer_front_style"
+                  "default_drawer_front_style",
                 );
                 const {
                   value: drawerInsideMoldingValue,
@@ -447,7 +476,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_inside_molding,
                   "default_drawer_inside_molding",
-                  "default_drawer_inside_molding"
+                  "default_drawer_inside_molding",
                 );
                 const {
                   value: drawerOutsideMoldingValue,
@@ -455,7 +484,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_outside_molding,
                   "default_drawer_outside_molding",
-                  "default_drawer_outside_molding"
+                  "default_drawer_outside_molding",
                 );
                 const {
                   value: drawerPanelModIdValue,
@@ -463,7 +492,7 @@ const EstimateSectionInfo = ({
                 } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_panel_mod_id,
                   "default_drawer_panel_mod_id",
-                  "default_drawer_panel_mod_id"
+                  "default_drawer_panel_mod_id",
                 );
 
                 // Determine most specific source (section > estimate > team)
@@ -476,8 +505,8 @@ const EstimateSectionInfo = ({
                 const source = drawerSources.includes(EDIT_TYPES.SECTION)
                   ? EDIT_TYPES.SECTION
                   : drawerSources.includes(EDIT_TYPES.ESTIMATE)
-                  ? EDIT_TYPES.ESTIMATE
-                  : EDIT_TYPES.TEAM;
+                    ? EDIT_TYPES.ESTIMATE
+                    : EDIT_TYPES.TEAM;
 
                 return (
                   <>
@@ -490,7 +519,7 @@ const EstimateSectionInfo = ({
                         drawerFrontStyle,
                         drawerInsideMoldingValue,
                         drawerOutsideMoldingValue,
-                        drawerPanelModIdValue
+                        drawerPanelModIdValue,
                       ).map((line, i) => (
                         <div key={i} className="">
                           {line}
@@ -501,40 +530,56 @@ const EstimateSectionInfo = ({
                 );
               })()}
               {/* Drawer Front Material Override - only show if set */}
-              {!showEstimateDefaults && section?.drawer_front_mat && (() => {
-                const drawerFrontMat = materials.faceMaterials?.find(m => m.id === section.drawer_front_mat);
-                return (
-                  <>
-                    <div className="text-slate-400 flex items-center gap-2">
-                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
-                      <span>Drawer Front Material:</span>
-                    </div>
-                    <div className="pl-5 mb-3">
-                      {drawerFrontMat?.name || 'Unknown'}
-                    </div>
-                  </>
-                );
-              })()}
+              {!showEstimateDefaults &&
+                section?.drawer_front_mat &&
+                (() => {
+                  const drawerFrontMat = materials.faceMaterials?.find(
+                    (m) => m.id === section.drawer_front_mat,
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(EDIT_TYPES.SECTION)}>
+                          ●
+                        </span>
+                        <span>Drawer Front Material:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {drawerFrontMat?.name || "Unknown"}
+                      </div>
+                    </>
+                  );
+                })()}
               {/* Drawer Front Finish Override - only show if set */}
-              {!showEstimateDefaults && section?.drawer_front_finish && section.drawer_front_finish.length > 0 && (() => {
-                const drawerFrontMat = materials.faceMaterials?.find(m => m.id === section.drawer_front_mat);
-                return (
-                  <>
-                    <div className="text-slate-400 flex items-center gap-2">
-                      <span className={getSourceColor(EDIT_TYPES.SECTION)}>●</span>
-                      <span>Drawer Front Finish:</span>
-                    </div>
-                    <div className="pl-5 mb-3">
-                      {getFaceFinishDisplay(drawerFrontMat?.id || section.face_mat, section.drawer_front_finish)}
-                    </div>
-                  </>
-                );
-              })()}
+              {!showEstimateDefaults &&
+                section?.drawer_front_finish &&
+                section.drawer_front_finish.length > 0 &&
+                (() => {
+                  const drawerFrontMat = materials.faceMaterials?.find(
+                    (m) => m.id === section.drawer_front_mat,
+                  );
+                  return (
+                    <>
+                      <div className="text-slate-400 flex items-center gap-2">
+                        <span className={getSourceColor(EDIT_TYPES.SECTION)}>
+                          ●
+                        </span>
+                        <span>Drawer Front Finish:</span>
+                      </div>
+                      <div className="pl-5 mb-3">
+                        {getFaceFinishDisplay(
+                          drawerFrontMat?.id || section.face_mat,
+                          section.drawer_front_finish,
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               {(() => {
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_box_mat,
                   "default_drawer_box_mat",
-                  "default_drawer_box_mat"
+                  "default_drawer_box_mat",
                 );
                 return (
                   <>
@@ -550,7 +595,7 @@ const EstimateSectionInfo = ({
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.slide_id,
                   "default_slide_id",
-                  "default_slide_id"
+                  "default_slide_id",
                 );
                 return (
                   <>
@@ -566,7 +611,7 @@ const EstimateSectionInfo = ({
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_pull_id,
                   "default_drawer_pull_id",
-                  "default_drawer_pull_id"
+                  "default_drawer_pull_id",
                 );
                 return (
                   <>

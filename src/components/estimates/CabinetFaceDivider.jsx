@@ -105,6 +105,27 @@ const CabinetFaceDivider = ({
     shelfNosing: "",
   });
 
+  const clampPopupPosition = useCallback((position, popupElement) => {
+    if (!popupElement) return position;
+
+    const popupViewportMargin = 12;
+
+    const rect = popupElement.getBoundingClientRect();
+    const maxX = Math.max(
+      popupViewportMargin,
+      window.innerWidth - rect.width - popupViewportMargin,
+    );
+    const maxY = Math.max(
+      popupViewportMargin,
+      window.innerHeight - rect.height - popupViewportMargin,
+    );
+
+    return {
+      x: Math.min(Math.max(position.x, popupViewportMargin), maxX),
+      y: Math.min(Math.max(position.y, popupViewportMargin), maxY),
+    };
+  }, []);
+
   // Apply focus trap to popups
   useFocusTrap(typeSelectorPopupRef, showTypeSelector);
   useFocusTrap(handleEditorPopupRef, showHandlePopup);
@@ -476,6 +497,66 @@ const CabinetFaceDivider = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showHandlePopup]);
+
+  useEffect(() => {
+    if (!showTypeSelector) return;
+
+    const reposition = () => {
+      setSelectorPosition((currentPosition) => {
+        const clamped = clampPopupPosition(
+          currentPosition,
+          typeSelectorPopupRef.current,
+        );
+
+        if (
+          clamped.x === currentPosition.x &&
+          clamped.y === currentPosition.y
+        ) {
+          return currentPosition;
+        }
+
+        return clamped;
+      });
+    };
+
+    const animationFrame = requestAnimationFrame(reposition);
+    window.addEventListener("resize", reposition);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [showTypeSelector, clampPopupPosition]);
+
+  useEffect(() => {
+    if (!showHandlePopup) return;
+
+    const reposition = () => {
+      setHandlePopupPosition((currentPosition) => {
+        const clamped = clampPopupPosition(
+          currentPosition,
+          handleEditorPopupRef.current,
+        );
+
+        if (
+          clamped.x === currentPosition.x &&
+          clamped.y === currentPosition.y
+        ) {
+          return currentPosition;
+        }
+
+        return clamped;
+      });
+    };
+
+    const animationFrame = requestAnimationFrame(reposition);
+    window.addEventListener("resize", reposition);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [showHandlePopup, clampPopupPosition]);
 
   // Store the original config only once when component first mounts
   useEffect(() => {
@@ -1492,10 +1573,10 @@ const CabinetFaceDivider = ({
   const handleHandleClick = (event, parentNode, splitDirection) => {
     if (disabled) return;
 
-    const svgRect = svgRef.current.getBoundingClientRect();
+    const popupOffset = 12;
     setHandlePopupPosition({
-      x: event.clientX - svgRect.left,
-      y: event.clientY - svgRect.top,
+      x: event.clientX + popupOffset,
+      y: event.clientY + popupOffset,
     });
     setSelectedHandle({ parent: parentNode, splitDirection });
 
@@ -1719,11 +1800,10 @@ const CabinetFaceDivider = ({
   const handleNodeClick = (event, node) => {
     if (disabled) return;
 
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const popupOffsetX = 350; // Offset to position popup to the left of click
+    const popupOffset = 12;
     setSelectorPosition({
-      x: event.clientX - svgRect.left - popupOffsetX,
-      y: event.clientY - svgRect.top,
+      x: event.clientX + popupOffset,
+      y: event.clientY + popupOffset,
     });
     setSelectedNode(node);
 
@@ -2343,20 +2423,12 @@ const CabinetFaceDivider = ({
           {showHandlePopup && selectedHandle && !disabled && (
             <div
               ref={handleEditorPopupRef}
-              className="handle-editor-popup absolute bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
+              className="handle-editor-popup fixed bg-white border border-slate-300 rounded-lg shadow-lg p-3 z-20"
               style={{
-                left: Math.min(
-                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
-                    ? handlePopupPosition.x - 180 // Position to the left of vertical handle
-                    : handlePopupPosition.x,
-                  fixedDisplayWidth - 250,
-                ),
-                top: Math.min(
-                  selectedHandle.splitDirection === SPLIT_DIRECTIONS.VERTICAL
-                    ? handlePopupPosition.y - 100
-                    : handlePopupPosition.y,
-                  fixedDisplayHeight - 200,
-                ),
+                left: handlePopupPosition.x,
+                top: handlePopupPosition.y,
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
                 filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
@@ -2428,10 +2500,12 @@ const CabinetFaceDivider = ({
           {showTypeSelector && selectedNode && !disabled && (
             <div
               ref={typeSelectorPopupRef}
-              className="type-selector-popup absolute bg-white border border-slate-300 rounded-lg p-2 z-10 flex space-x-2"
+              className="type-selector-popup fixed bg-white border border-slate-300 rounded-lg p-2 z-10 flex space-x-2"
               style={{
-                left: Math.min(selectorPosition.x, fixedDisplayWidth - 200),
-                top: Math.min(selectorPosition.y, fixedDisplayHeight - 200),
+                left: selectorPosition.x,
+                top: selectorPosition.y,
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
                 filter: "drop-shadow(0 10px 25px rgba(0, 0, 0, 1))",
               }}
             >
