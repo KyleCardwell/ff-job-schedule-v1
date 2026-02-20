@@ -1,9 +1,11 @@
+import PropTypes from "prop-types";
 import { forwardRef, useState, useImperativeHandle, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 
 import {
   fetchTeamMembers,
   fetchUserRoles,
+  inviteTeamMember,
   updateTeamMembers,
 } from "../../redux/actions/teamMembers";
 import { fetchTeamData } from "../../redux/actions/teams";
@@ -24,6 +26,10 @@ const TeamSettings = forwardRef((props, ref) => {
   const [localTeamMembers, setLocalTeamMembers] = useState([]);
   const [originalTeamMembers, setOriginalTeamMembers] = useState([]); // Store original state
   const [adminError, setAdminError] = useState(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRoleId, setInviteRoleId] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteFeedback, setInviteFeedback] = useState(null);
 
   // Get all possible permissions from the first role's permissions object
   const permissionTypes = userRoles?.[0]?.permissions
@@ -119,6 +125,15 @@ const TeamSettings = forwardRef((props, ref) => {
     }
   }, [teamMembers, userRoles]);
 
+  useEffect(() => {
+    if (!inviteRoleId && userRoles?.length) {
+      const viewerRole = userRoles.find((role) =>
+        role.role_name?.toLowerCase().includes("viewer")
+      );
+      setInviteRoleId(String(viewerRole?.role_id || userRoles[0].role_id));
+    }
+  }, [inviteRoleId, userRoles]);
+
   const handlePermissionChange = (memberId, newPermissions) => {
     setLocalTeamMembers((members) =>
       members.map((member) =>
@@ -127,6 +142,48 @@ const TeamSettings = forwardRef((props, ref) => {
           : member
       )
     );
+  };
+
+  const handleInviteSubmit = async (event) => {
+    event.preventDefault();
+    setInviteFeedback(null);
+
+    const normalizedEmail = inviteEmail.trim().toLowerCase();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      setInviteFeedback({ type: "error", message: "Please enter a valid email address." });
+      return;
+    }
+
+    if (!inviteRoleId) {
+      setInviteFeedback({ type: "error", message: "Please select a role for the invite." });
+      return;
+    }
+
+    try {
+      setInviteLoading(true);
+
+      const result = await inviteTeamMember({
+        email: normalizedEmail,
+        roleId: Number(inviteRoleId),
+        redirectTo: window.location.origin,
+      });
+
+      const successMessage = result?.emailSent
+        ? `Invite sent to ${normalizedEmail}.`
+        : `Invite saved for ${normalizedEmail}. Have them sign in with that email to join.`;
+
+      setInviteFeedback({ type: "success", message: successMessage });
+      setInviteEmail("");
+    } catch (error) {
+      setInviteFeedback({
+        type: "error",
+        message: error?.message || "Failed to send invite. Please try again.",
+      });
+    } finally {
+      setInviteLoading(false);
+    }
   };
 
   const handleRoleChange = (memberId, newRoleId) => {
@@ -163,6 +220,73 @@ const TeamSettings = forwardRef((props, ref) => {
         <h3 className="text-lg font-semibold mb-4 text-slate-200">
           Manage Team Members
         </h3>
+
+        <div className="bg-slate-700 p-4 rounded-lg shadow mb-4">
+          <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-200 mb-3">
+            Invite Team Member
+          </h4>
+          <form
+            className="grid grid-cols-1 md:grid-cols-[1fr_200px_auto] gap-3 items-end"
+            onSubmit={handleInviteSubmit}
+          >
+            <div>
+              <label
+                htmlFor="invite-email"
+                className="block text-xs font-medium text-slate-300 mb-1"
+              >
+                Email
+              </label>
+              <input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="new.member@company.com"
+                className="w-full rounded border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="invite-role"
+                className="block text-xs font-medium text-slate-300 mb-1"
+              >
+                Role
+              </label>
+              <select
+                id="invite-role"
+                value={inviteRoleId}
+                onChange={(event) => setInviteRoleId(event.target.value)}
+                className="w-full rounded border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              >
+                {userRoles?.map((role) => (
+                  <option key={role.role_id} value={role.role_id}>
+                    {role.role_name.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={inviteLoading}
+              className="h-[38px] rounded bg-teal-400 px-4 text-sm font-semibold text-slate-900 hover:bg-teal-300 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {inviteLoading ? "Sending..." : "Send Invite"}
+            </button>
+          </form>
+
+          {inviteFeedback && (
+            <p
+              className={`mt-3 text-sm ${
+                inviteFeedback.type === "error" ? "text-red-300" : "text-emerald-300"
+              }`}
+            >
+              {inviteFeedback.message}
+            </p>
+          )}
+        </div>
 
         <div className="bg-slate-700 p-4 rounded-lg shadow relative">
           {/* Fade out effect - moved outside the scroll container */}
@@ -218,5 +342,9 @@ const TeamSettings = forwardRef((props, ref) => {
 });
 
 TeamSettings.displayName = "TeamSettings";
+
+TeamSettings.propTypes = {
+  maxWidthClass: PropTypes.string,
+};
 
 export default TeamSettings;
