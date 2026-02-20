@@ -12,6 +12,7 @@ import GridLoader from "react-spinners/GridLoader";
 
 import AdminDashboard from "./components/adminDashboard/AdminDashboard.jsx";
 import { ChartContainer } from "./components/ChartContainerGrid.jsx";
+import CompleteInviteProfile from "./components/common/CompleteInviteProfile.jsx";
 import ErrorBoundary from "./components/common/ErrorBoundary.jsx";
 import Header from "./components/common/Header.jsx";
 import Navigation from "./components/common/Navigation.jsx";
@@ -31,6 +32,7 @@ import { fetchFeatureToggles } from "./redux/actions/featureToggles";
 import { fetchOverheadRate } from "./redux/actions/financialsData.js";
 import { fetchServices } from "./redux/actions/services.js";
 import {
+  acceptPendingTeamInvite,
   fetchTeamMemberData,
   fetchTeamMemberRole,
 } from "./redux/actions/teamMembers.js";
@@ -38,6 +40,7 @@ import {
   setSession,
   clearAuth,
   setUserTeam,
+  setUserProfile,
   setLoading,
 } from "./redux/authSlice";
 import store from "./redux/store";
@@ -54,7 +57,9 @@ const authContainerStyle = {
 
 const AppContent = () => {
   const dispatch = useDispatch();
-  const { session, teamId } = useSelector((state) => state.auth);
+  const { session, teamId, teamMemberId, userName } = useSelector(
+    (state) => state.auth
+  );
   const { company_name, loading: configLoading } = useSelector(
     (state) => state.chartConfig
   );
@@ -89,12 +94,34 @@ const AppContent = () => {
 
       try {
         dispatch(setLoading(true));
-        const { teamMemberData, error: teamMemberError } =
+        let { teamMemberData, error: teamMemberError } =
           await fetchTeamMemberData(dispatch, currentSession.user.id);
 
         if (teamMemberError && teamMemberError.code === "PGRST116") {
-          dispatch(setSession(currentSession));
-          return;
+          try {
+            const inviteResult = await acceptPendingTeamInvite();
+            if (inviteResult?.accepted) {
+              const invitedResult = await fetchTeamMemberData(
+                dispatch,
+                currentSession.user.id
+              );
+
+              teamMemberData = invitedResult.teamMemberData;
+              teamMemberError = invitedResult.error;
+            }
+          } catch (inviteError) {
+            // eslint-disable-next-line no-console
+            console.error("Error accepting pending invite:", inviteError);
+          }
+
+          if (teamMemberError && teamMemberError.code === "PGRST116") {
+            dispatch(setSession(currentSession));
+            return;
+          }
+        }
+
+        if (teamMemberError) {
+          throw teamMemberError;
         }
 
         const roleData = await fetchTeamMemberRole(
@@ -106,6 +133,8 @@ const AppContent = () => {
           setUserTeam({
             teamId: teamMemberData.team_id,
             teamName: teamMemberData.team_name,
+            teamMemberId: teamMemberData.team_member_id,
+            userName: teamMemberData.user_name,
             roleId: teamMemberData.role_id,
             permissions: roleData,
             customPermissions: teamMemberData.custom_permissions,
@@ -204,6 +233,20 @@ const AppContent = () => {
     return (
       <Router>
         <TeamJoin />
+      </Router>
+    );
+  }
+
+  if (!userName?.trim()) {
+    return (
+      <Router>
+        <CompleteInviteProfile
+          teamMemberId={teamMemberId}
+          userId={session?.user?.id}
+          onComplete={(firstName) => {
+            dispatch(setUserProfile({ userName: firstName }));
+          }}
+        />
       </Router>
     );
   }

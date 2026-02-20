@@ -158,3 +158,57 @@ export const fetchTeamMemberRole = async (dispatch, roleId) => {
     throw error;
   }
 };
+
+export const inviteTeamMember = async ({ email, roleId, redirectTo }) => {
+  const trimmedEmail = email?.trim().toLowerCase();
+
+  if (!trimmedEmail) {
+    throw new Error("Email is required");
+  }
+
+  const { data, error } = await supabase.functions.invoke("invite-team-member", {
+    body: {
+      email: trimmedEmail,
+      roleId,
+      redirectTo,
+    },
+  });
+
+  if (error) {
+    const functionUnavailable =
+      error.message?.includes("Failed to send a request to the Edge Function") ||
+      error.message?.includes("Edge Function returned a non-2xx status code");
+
+    if (functionUnavailable) {
+      throw new Error(
+        "Invite service is not available yet. Deploy the invite-team-member Supabase Edge Function first."
+      );
+    }
+
+    throw new Error(error.message || "Failed to send team invite");
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.error || "Failed to send team invite");
+  }
+
+  return data;
+};
+
+export const acceptPendingTeamInvite = async () => {
+  const { data, error } = await supabase.rpc("accept_team_invite");
+
+  if (error) {
+    const functionMissing =
+      error.code === "PGRST202" ||
+      error.message?.toLowerCase().includes("could not find the function");
+
+    if (functionMissing) {
+      return { accepted: false, reason: "accept_invite_rpc_missing" };
+    }
+
+    throw error;
+  }
+
+  return data || { accepted: false };
+};
