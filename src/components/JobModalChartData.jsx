@@ -1720,20 +1720,6 @@ const JobModal = ({
                             !canEditSchedule ? "hidden" : ""
                           }`}
                         >
-                          {/* {canEditSchedule && (
-                            <label className="flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap">
-                              <input
-                                type="checkbox"
-                                checked={selectedRoomsToComplete.has(room.task_id)}
-                                onChange={() =>
-                                  toggleRoomCompletionSelection(room.task_id)
-                                }
-                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                                disabled={room.taskIsNew || room.task_completed_at}
-                              />
-                              Complete
-                            </label>
-                          )} */}
                           {!room.taskIsNew && (
                             <button
                               onClick={() =>

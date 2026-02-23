@@ -334,6 +334,8 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
       throw new Error("No team found for user");
     }
 
+    const defaultEmployeeId = getState().builders.employees?.[0]?.employee_id;
+
     // 1. Create or update project
     let newProject;
     if (projectId) {
@@ -496,6 +498,32 @@ export const saveProject = (projectData) => async (dispatch, getState) => {
         if (error)
           throw new Error(`Error updating subtask ${subtask_id}: ${error}`);
         newSubtasks.push(data[0]);
+      }
+    }
+
+    if (completedTasks.length > 0) {
+      if (defaultEmployeeId == null) {
+        throw new Error("Default employee not found for completed subtasks");
+      }
+
+      const completedTaskIds = [
+        ...new Set(completedTasks.map((task) => task.task_id).filter(Boolean)),
+      ];
+
+      if (completedTaskIds.length > 0) {
+        const { error: completedSubtasksError } = await supabase
+          .from("subtasks")
+          .update({
+            employee_id: defaultEmployeeId,
+            hard_start_date: false,
+          })
+          .in("task_id", completedTaskIds);
+
+        if (completedSubtasksError) {
+          throw new Error(
+            `Error updating completed subtasks: ${completedSubtasksError}`,
+          );
+        }
       }
     }
 

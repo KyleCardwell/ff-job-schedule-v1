@@ -61,6 +61,8 @@ import { normalizeDate } from "../../utils/dateUtils";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 
+const EMPTY_ARRAY = [];
+
 // ---------- Sortable group wrapper (for reordering groups) ----------
 const SortableGroup = ({ id, children }) => {
   // eslint-disable-line react/prop-types
@@ -254,22 +256,30 @@ const AddToSchedule = () => {
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
     (state) => state.materials,
   );
-  const services = useSelector((state) => state.services?.allServices || []);
-  const finishTypes = useSelector((state) => state.finishes?.finishes || []);
-  const cabinetStyles = useSelector(
-    (state) =>
-      state.cabinetStyles?.styles.filter((style) => style.is_active) || [],
+  const servicesRaw = useSelector((state) => state.services?.allServices);
+  const services = servicesRaw || EMPTY_ARRAY;
+  const finishTypesRaw = useSelector((state) => state.finishes?.finishes);
+  const finishTypes = finishTypesRaw || EMPTY_ARRAY;
+  const cabinetStylesRaw = useSelector((state) => state.cabinetStyles?.styles);
+  const cabinetStyles = useMemo(
+    () =>
+      (cabinetStylesRaw || EMPTY_ARRAY).filter((style) => style.is_active),
+    [cabinetStylesRaw],
   );
-  const cabinetTypes = useSelector(
-    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || [],
+  const cabinetTypesRaw = useSelector((state) => state.cabinetTypes?.types);
+  const cabinetTypes = useMemo(
+    () => (cabinetTypesRaw || EMPTY_ARRAY).filter((type) => type.is_active),
+    [cabinetTypesRaw],
   );
   const { hardware, accessories, lengths } = useSelector((state) => state);
-  const partsListAnchors = useSelector(
-    (state) => state.partsListAnchors?.itemsByPartsList || [],
+  const partsListAnchorsRaw = useSelector(
+    (state) => state.partsListAnchors?.itemsByPartsList,
   );
-  const cabinetAnchors = useSelector(
-    (state) => state.cabinetAnchors?.itemsByType || [],
+  const partsListAnchors = partsListAnchorsRaw || EMPTY_ARRAY;
+  const cabinetAnchorsRaw = useSelector(
+    (state) => state.cabinetAnchors?.itemsByType,
   );
+  const cabinetAnchors = cabinetAnchorsRaw || EMPTY_ARRAY;
   const teamDefaults = useSelector(
     (state) => state.teamEstimateDefaults?.teamDefaults,
   );
@@ -279,9 +289,10 @@ const AddToSchedule = () => {
   const defaultEmployeeId = employees[0]?.employee_id;
   const { chart_config_id: chartConfigId, next_task_number: nextTaskNumber } =
     useSelector((state) => state.chartConfig);
-  const estimateSections = useSelector(
-    (state) => state.chartConfig.estimate_sections || [],
+  const estimateSectionsRaw = useSelector(
+    (state) => state.chartConfig.estimate_sections,
   );
+  const estimateSections = estimateSectionsRaw || EMPTY_ARRAY;
   const dayWidth = useSelector((state) => state.chartData.dayWidth);
   const workdayHours = useSelector((state) => state.chartConfig.workday_hours);
 
@@ -364,6 +375,8 @@ const AddToSchedule = () => {
   }, []);
 
   // ---------- Calculate section hours ----------
+  const lengthsCatalog = useMemo(() => lengths?.catalog || EMPTY_ARRAY, [lengths]);
+
   const catalogData = useMemo(
     () => ({
       boxMaterials,
@@ -376,7 +389,7 @@ const AddToSchedule = () => {
       partsListAnchors,
       cabinetAnchors,
       globalServices: services,
-      lengthsCatalog: lengths?.catalog || [],
+      lengthsCatalog,
       accessories,
       teamDefaults,
     }),
@@ -391,7 +404,7 @@ const AddToSchedule = () => {
       partsListAnchors,
       cabinetAnchors,
       services,
-      lengths,
+      lengthsCatalog,
       accessories,
       teamDefaults,
     ],
@@ -500,8 +513,9 @@ const AddToSchedule = () => {
     if (unscheduledSectionIds.length > 0) {
       setSaveSuccess(false);
     }
-    if (unscheduledSectionIds.length === 0 && allScheduledIds.length === 0)
-      return;
+    // No unscheduled sections means there is nothing to initialize/select.
+    // Returning here prevents repeatedly setting [] / {} state and re-rendering forever.
+    if (unscheduledSectionIds.length === 0) return;
     if (groups.length !== 0) return;
     // Verify all sections have calcs (both unscheduled and scheduled)
     const allIds = [...unscheduledSectionIds, ...allScheduledIds];
