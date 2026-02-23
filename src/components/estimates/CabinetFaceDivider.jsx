@@ -62,8 +62,8 @@ const CabinetFaceDivider = ({
   );
 
   const availablePresets = useMemo(
-    () => getCabinetFacePresets(itemType),
-    [itemType],
+    () => getCabinetFacePresets(itemType, cabinetTypeId),
+    [itemType, cabinetTypeId],
   );
 
   // Check if this item type should use reveals
@@ -2155,13 +2155,17 @@ const CabinetFaceDivider = ({
     if (!hasChildren) {
       const nodeType = layoutNode?.type || itemConfig.defaultFaceType;
       const canHaveShelves = supportsShelves(nodeType);
+      const canHaveRollouts = supportsRollouts(nodeType);
+      const presetRollOutQty = Number.isFinite(layoutNode?.rollOutQty)
+        ? Math.max(0, Math.trunc(layoutNode.rollOutQty))
+        : null;
 
       return {
         id: nodeId,
         type: nodeType,
         width,
         height,
-        rollOutQty: null,
+        rollOutQty: canHaveRollouts ? presetRollOutQty : null,
         shelfQty: canHaveShelves ? calculateShelfQty(height) : null,
         children: null,
         accessories: [],
@@ -2363,8 +2367,8 @@ const CabinetFaceDivider = ({
         Cabinet Face Designer
       </h4>
       <div className="bg-white border border-slate-200 rounded-lg p-2">
-        <div className="flex justify-between items-center mb-2">
-          <button
+        <div className="flex justify-end items-center mb-2">
+          {/* <button
             onClick={handleCancelChanges}
             className="invisible px-2 py-1 text-xs text-slate-600 hover:text-slate-800 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             title="Cancel changes and revert to original"
@@ -2372,8 +2376,8 @@ const CabinetFaceDivider = ({
           >
             <FiX className="mr-1" />
             Cancel Changes
-          </button>
-          <div className="flex items-center gap-1 flex-wrap justify-end">
+          </button> */}
+          <div className="flex items-center gap-1 flex-wrap justify-end gap-2">
             {availablePresets.map((preset) => (
               <button
                 key={preset.key}
@@ -2387,7 +2391,7 @@ const CabinetFaceDivider = ({
             ))}
             <button
               onClick={handleReset}
-              className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 border border-slate-300 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 py-1 text-xs text-slate-600 hover:text-slate-800 border border-slate-300 rounded hover:bg-slate-50 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               title="Reset to default single door"
               disabled={disabled}
             >
