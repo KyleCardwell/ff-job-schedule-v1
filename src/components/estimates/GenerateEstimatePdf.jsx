@@ -875,7 +875,45 @@ const GenerateEstimatePdf = ({
       const fileName = `${
         estimate.est_project_name || ""
       } Estimate ${formatDateShort(today)}.pdf`;
-      window.pdfMake.createPdf(docDefinition).download(fileName);
+      const pdfDoc = window.pdfMake.createPdf(docDefinition);
+
+      if (typeof window.showSaveFilePicker === "function") {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [
+              {
+                description: "PDF Document",
+                accept: {
+                  "application/pdf": [".pdf"],
+                },
+              },
+            ],
+          });
+
+          const pdfBlob = await new Promise((resolve, reject) => {
+            pdfDoc.getBlob((blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error("Unable to generate PDF blob."));
+              }
+            });
+          });
+
+          const writable = await fileHandle.createWritable();
+          await writable.write(pdfBlob);
+          await writable.close();
+        } catch (saveError) {
+          if (saveError?.name === "AbortError") {
+            return;
+          }
+
+          pdfDoc.download(fileName);
+        }
+      } else {
+        pdfDoc.download(fileName);
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("There was an error generating the PDF. Please try again.");

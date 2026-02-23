@@ -1,5 +1,7 @@
 import PropTypes from "prop-types";
 
+import { roundToHundredth } from "../../utils/estimateHelpers";
+
 const FACE_TYPE_LABELS = {
   door: "Doors",
   drawer_front: "Drawer Fronts",
@@ -56,10 +58,10 @@ const EstimatePreviewBreakdown = ({
   );
 
   return (
-    <div className="w-72 flex-shrink-0">
+    <div className="w-72 flex-shrink-0 relative">
       <div className="mt-8 max-h-[calc(100vh-150px)] overflow-y-auto bg-slate-800 rounded-lg p-4 space-y-4 border border-slate-600">
         {/* Grand Total */}
-        <div className="pb-4 border-b-2 border-teal-500">
+        <div className="pb-4 border-b-2 border-teal-500 sticky top-0 z-10 bg-slate-800">
           <div className="text-sm text-slate-400">Estimate Total</div>
           <div className="text-3xl font-bold text-teal-400">
             {formatCurrency(grandTotal)}
@@ -181,7 +183,7 @@ const EstimatePreviewBreakdown = ({
                 <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
                   <span className="text-slate-300 text-left">Wood</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
-                    {breakdown.parts.woodCount}
+                    {roundToHundredth(breakdown.parts.woodCount)}
                   </span>
                   <span className="text-slate-200 text-right">
                     {formatCurrency(breakdown.parts.woodTotal)}
