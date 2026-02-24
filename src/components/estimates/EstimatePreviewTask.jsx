@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiCalendar } from "react-icons/fi";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
@@ -192,6 +192,29 @@ const EstimatePreviewTask = ({
 
   const scheduled = task.sections.every(section => section.scheduled_task_id !== null);
 
+  const { selectedRoomTotal, selectedSectionCount } = useMemo(() => {
+    const sections = Object.values(sectionDataMap);
+    const selectedSectionsForTask = sections.filter(
+      (sectionData) => selectedSections?.[sectionData.sectionId],
+    );
+
+    return {
+      selectedRoomTotal: selectedSectionsForTask.reduce(
+        (sum, sectionData) => sum + (sectionData.totalPrice || 0),
+        0,
+      ),
+      selectedSectionCount: selectedSectionsForTask.length,
+    };
+  }, [sectionDataMap, selectedSections]);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(value || 0);
+  };
+
   return (
     <div className="mb-8">
       {/* Task Header */}
@@ -204,24 +227,39 @@ const EstimatePreviewTask = ({
       {/* Sections */}
       <div className="bg-slate-800 rounded-b-lg p-4 border-l border-r border-b border-slate-600">
         {task.sections && task.sections.length > 0 ? (
-          task.sections.map((section, index) => (
-            <EstimatePreviewSection
-              key={section.est_section_id}
-              section={section}
-              sectionNumber={task.sections.length > 1 ? index + 1 : null}
-              taskName={task.est_task_name}
-              estimate={estimate}
-              onTotalCalculated={handleSectionData}
-              hasMultipleSections={task.sections.length > 1}
-              isFirstSection={index === 0}
-              isSelected={selectedSections?.[section.est_section_id] || false}
-              sectionRef={(el) => {
-                if (sectionRefs?.current && el) {
-                  sectionRefs.current[section.est_section_id] = el;
-                }
-              }}
-            />
-          ))
+          <>
+            {task.sections.map((section, index) => (
+              <EstimatePreviewSection
+                key={section.est_section_id}
+                section={section}
+                sectionNumber={task.sections.length > 1 ? index + 1 : null}
+                taskName={task.est_task_name}
+                estimate={estimate}
+                onTotalCalculated={handleSectionData}
+                hasMultipleSections={task.sections.length > 1}
+                isFirstSection={index === 0}
+                isSelected={selectedSections?.[section.est_section_id] || false}
+                sectionRef={(el) => {
+                  if (sectionRefs?.current && el) {
+                    sectionRefs.current[section.est_section_id] = el;
+                  }
+                }}
+              />
+            ))}
+
+            {task.sections.length > 1 && (
+              <div className="border-t border-slate-600 pt-4 mt-2">
+                <div
+                  className={`flex justify-between text-lg font-semibold ${
+                    selectedSectionCount === 0 ? "text-slate-400" : "text-teal-400"
+                  }`}
+                >
+                  <span>Room Total</span>
+                  <span>{formatCurrency(selectedRoomTotal)}</span>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <p className="text-slate-400 text-center py-8">
             No sections in this room

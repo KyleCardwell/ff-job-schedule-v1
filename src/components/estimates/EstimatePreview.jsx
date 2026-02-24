@@ -611,62 +611,85 @@ const EstimatePreview = () => {
                   Additional Line Items
                 </h2>
                 <div className="space-y-1">
-                  {currentEstimate.line_items.map((item, index) => (
-                    <div key={index}>
-                      {/* Parent Line Item */}
-                      <div className="grid grid-cols-[1fr_80px_120px_120px] gap-4 items-center py-2 border-b border-slate-700">
-                        <div className="font-medium text-slate-200 text-left">
-                          {item.title || "Untitled Item"}
-                        </div>
-                        <div className="text-slate-300 text-right">
-                          {item.quantity || "-"}
-                        </div>
-                        <div className="text-slate-300 text-right">
-                          {item.cost ? formatCurrency(item.cost) : "-"}
-                        </div>
-                        <div className="text-lg font-semibold text-slate-200 text-right">
-                          {item.quantity && item.cost
-                            ? formatCurrency(
-                                parseFloat(item.quantity) *
-                                  parseFloat(item.cost)
-                              )
-                            : "-"}
-                        </div>
-                      </div>
+                  {currentEstimate.line_items.map((item, index) => {
+                    const parentKey = String(index);
+                    const parentIsInactive =
+                      lineItemsInitialized.current && !selectedLineItems[parentKey];
 
-                      {/* Sub Items */}
-                      {item.subItems && item.subItems.length > 0 && (
-                        <div className="ml-8 border-l-2 border-slate-700 text-md">
-                          {item.subItems.map((subItem, subIndex) => (
-                            <div
-                              key={subIndex}
-                              className="grid grid-cols-[1fr_80px_120px_120px] gap-4 items-center py-2 pl-4 border-b border-slate-700/50"
-                            >
-                              <div className="text-slate-300 text-left">
-                                {subItem.title || "Untitled Sub-item"}
-                              </div>
-                              <div className="text-slate-400 text-right">
-                                {subItem.quantity || "-"}
-                              </div>
-                              <div className="text-slate-400 text-right">
-                                {subItem.cost
-                                  ? formatCurrency(subItem.cost)
-                                  : "-"}
-                              </div>
-                              <div className="font-medium text-slate-300 text-right">
-                                {subItem.quantity && subItem.cost
-                                  ? formatCurrency(
-                                      parseFloat(subItem.quantity) *
-                                        parseFloat(subItem.cost)
-                                    )
-                                  : "-"}
-                              </div>
-                            </div>
-                          ))}
+                    return (
+                      <div key={index}>
+                        {/* Parent Line Item */}
+                        <div
+                          className={`grid grid-cols-[1fr_80px_120px_120px] gap-4 items-center py-2 border-b border-slate-700 ${
+                            parentIsInactive
+                              ? "bg-slate-950 rounded-md opacity-60"
+                              : ""
+                          }`}
+                        >
+                          <div className="font-medium text-slate-200 text-left">
+                            {item.title || "Untitled Item"}
+                          </div>
+                          <div className="text-slate-300 text-right">
+                            {item.quantity || "-"}
+                          </div>
+                          <div className="text-slate-300 text-right">
+                            {item.cost ? formatCurrency(item.cost) : "-"}
+                          </div>
+                          <div className="text-lg font-semibold text-slate-200 text-right">
+                            {item.quantity && item.cost
+                              ? formatCurrency(
+                                  parseFloat(item.quantity) *
+                                    parseFloat(item.cost)
+                                )
+                              : "-"}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {/* Sub Items */}
+                        {item.subItems && item.subItems.length > 0 && (
+                          <div className="ml-8 border-l-2 border-slate-700 text-md">
+                            {item.subItems.map((subItem, subIndex) => {
+                              const childKey = `${index}-${subIndex}`;
+                              const childIsInactive =
+                                lineItemsInitialized.current &&
+                                !selectedLineItems[childKey];
+
+                              return (
+                                <div
+                                  key={subIndex}
+                                  className={`grid grid-cols-[1fr_80px_120px_120px] gap-4 items-center py-2 pl-4 border-b border-slate-700/50 ${
+                                    childIsInactive
+                                      ? "bg-slate-950 rounded-md opacity-60"
+                                      : ""
+                                  }`}
+                                >
+                                  <div className="text-slate-300 text-left">
+                                    {subItem.title || "Untitled Sub-item"}
+                                  </div>
+                                  <div className="text-slate-400 text-right">
+                                    {subItem.quantity || "-"}
+                                  </div>
+                                  <div className="text-slate-400 text-right">
+                                    {subItem.cost
+                                      ? formatCurrency(subItem.cost)
+                                      : "-"}
+                                  </div>
+                                  <div className="font-medium text-slate-300 text-right">
+                                    {subItem.quantity && subItem.cost
+                                      ? formatCurrency(
+                                          parseFloat(subItem.quantity) *
+                                            parseFloat(subItem.cost)
+                                        )
+                                      : "-"}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="mt-4 pt-4 border-t-2 border-slate-600 grid grid-cols-[80px_1fr_120px_120px] gap-4 items-center">
                   <div></div>
