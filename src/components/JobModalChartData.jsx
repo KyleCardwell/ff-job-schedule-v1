@@ -106,17 +106,16 @@ const JobModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      if (projectData && jobData && jobData.length > 0) {
-        // Assuming all work periods have the same project_name
+      if (projectData) {
         setJobName(projectData.project_name || "");
         setDepositDate(formatDateForInput(projectData.deposit_date) || "");
         setDeliveryDate(formatDateForInput(projectData.delivery_date) || "");
         setProjectNotes(projectData.project_notes || "");
         setNeedsAttention(projectData.needs_attention || false);
 
-        // Group work periods by task_id
+        // Group active work periods by task_id
         const roomMap = {};
-        jobData.forEach((wp) => {
+        (jobData || []).forEach((wp) => {
           if (!roomMap[wp.task_id]) {
             roomMap[wp.task_id] = {
               task_id: wp.task_id,
@@ -134,8 +133,19 @@ const JobModal = ({
           roomMap[wp.task_id].workPeriods.push(wp);
         });
 
-        // Convert the room map to an array of projects
-        const localProjects = Object.values(roomMap);
+        // Include persisted inactive rooms so they remain visible after save/refresh
+        (projectData.inactive_rooms || []).forEach((inactiveRoom) => {
+          if (!roomMap[inactiveRoom.task_id]) {
+            roomMap[inactiveRoom.task_id] = {
+              ...inactiveRoom,
+              workPeriods: [...(inactiveRoom.workPeriods || [])],
+            };
+          }
+        });
+
+        const localProjects = Object.values(roomMap).sort((a, b) =>
+          (a.task_created_at || "").localeCompare(b.task_created_at || ""),
+        );
         setLocalRooms(localProjects);
       } else {
         // Reset state for a new job
@@ -156,7 +166,7 @@ const JobModal = ({
     if (jobNameInputRef.current) {
       jobNameInputRef.current.focus();
     }
-  }, [jobData, isOpen, subTasksByEmployee, jobNumberNext]);
+  }, [jobData, isOpen, subTasksByEmployee, jobNumberNext, projectData]);
 
   useEffect(() => {
     if (isOpen && clickedTask) {
@@ -336,7 +346,6 @@ const JobModal = ({
   };
 
   const handleInactiveRoom = (task_id) => {
-    const completedAt = new Date().toISOString();
     setSelectedRoomsToComplete((prev) => {
       const next = new Set(prev);
       next.delete(task_id);
@@ -348,11 +357,11 @@ const JobModal = ({
           ? {
               ...room,
               task_active: false,
-              task_completed_at: completedAt,
+              task_completed_at: null,
               workPeriods: room.workPeriods.map((wp) => ({
                 ...wp,
                 task_active: false,
-                task_completed_at: completedAt,
+                task_completed_at: null,
               })),
             }
           : room,
@@ -379,7 +388,7 @@ const JobModal = ({
             ? {
                 ...job,
                 task_active: false,
-                task_completed_at: completedAt,
+                task_completed_at: null,
               }
             : job,
         );
@@ -1330,7 +1339,31 @@ const JobModal = ({
   if (!isOpen) return null;
 
   const activeRooms = localRooms.filter((room) => room.task_active);
-  const inactiveRooms = localRooms.filter((room) => !room.task_active);
+  const persistedCompletedRooms = projectData?.completed_rooms || [];
+  const inactiveRooms = localRooms.filter(
+    (room) => !room.task_active && !room.task_completed_at,
+  );
+  const completedRooms = [
+    ...localRooms
+      .filter((room) => room.task_completed_at)
+      .map((room) => ({
+        task_id: room.task_id,
+        task_number: room.task_number,
+        task_name: room.task_name,
+        task_completed_at: room.task_completed_at,
+      })),
+    ...persistedCompletedRooms,
+  ]
+    .filter((room, index, allRooms) => {
+      return (
+        index === allRooms.findIndex((otherRoom) => otherRoom.task_id === room.task_id)
+      );
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.task_completed_at || 0).getTime() -
+        new Date(a.task_completed_at || 0).getTime(),
+    );
   const hasSelectedRooms = selectedRoomsToComplete.size > 0;
   const selectedRoomsForCompletion = hasSelectedRooms
     ? localRooms.filter((room) => selectedRoomsToComplete.has(room.task_id))
@@ -1847,6 +1880,33 @@ const JobModal = ({
                       >
                         Restore
                       </button>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {completedRooms.length > 0 && (
+                <>
+                  <h3 className="text-lg font-bold mb-2 mt-5">Completed Rooms</h3>
+                  <div className="hidden md:grid grid-cols-[60px_1fr_160px] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
+                    <span>Job</span>
+                    <span>Room Name</span>
+                    <span>Completed</span>
+                  </div>
+                  {completedRooms.map((room, completedRoomIndex) => (
+                    <div
+                      key={`completed-${room.task_id || completedRoomIndex}`}
+                      className={`${
+                        completedRoomIndex % 2 === 0 ? "bg-white" : "bg-gray-200"
+                      } grid grid-cols-[60px_1fr_160px] gap-2 p-2 rounded mb-1`}
+                    >
+                      <span>{room.task_number}</span>
+                      <span>{room.task_name}</span>
+                      <span>
+                        {room.task_completed_at
+                          ? formatDateForDisplay(room.task_completed_at)
+                          : "—"}
+                      </span>
                     </div>
                   ))}
                 </>

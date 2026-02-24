@@ -74,14 +74,22 @@ export const projectsReducer = (state = initialState, action) => {
       };
 
     case Actions.projects.SAVE_PROJECT_SUCCESS:
+      {
+        const projectId = action.payload.project_id;
+        const existingProject = state.data[projectId] || {};
+
       return {
         ...state,
         loading: false,
         data: {
           ...state.data,
-          [action.payload.project_id]: action.payload,
+          [projectId]: {
+            ...existingProject,
+            ...action.payload,
+          },
         },
       };
+      }
 
     case Actions.projects.SAVE_PROJECT_ERROR:
       return {
