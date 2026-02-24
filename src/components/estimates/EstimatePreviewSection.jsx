@@ -633,7 +633,7 @@ const EstimatePreviewSection = ({
                 : "text-teal-400"
             } flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2`}
           >
-            <span>Section Total</span>
+            <span>{hasMultipleSections ? `Section ${sectionNumber}` : "Room"} Total</span>
             {hasPriceOverrides && (
               <div className="flex items-center bg-purple-600 p-1">
                 <span className="block text-xs text-white">
