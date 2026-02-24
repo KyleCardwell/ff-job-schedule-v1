@@ -225,6 +225,33 @@ const JobModal = ({
     );
   };
 
+  const buildWorkPeriodDates = (requestedStartDate, duration, employeeId) => {
+    const startDate = normalizeDate(
+      getNextWorkday(
+        requestedStartDate,
+        holidayMap,
+        employeeId,
+        timeOffByBuilder,
+      ),
+    );
+
+    const jobHours = totalJobHours(
+      startDate,
+      duration,
+      workdayHours,
+      holidayMap,
+      employeeId,
+      timeOffByBuilder,
+    );
+
+    return {
+      startDate,
+      endDate: normalizeDate(
+        addDays(parseISO(startDate), Math.ceil(jobHours / workdayHours)),
+      ),
+    };
+  };
+
   const handleAddRoom = ({
     task_name,
     employee_id,
@@ -233,9 +260,13 @@ const JobModal = ({
     task_number,
   }) => {
     const defaultBuilderId = employee_id || employees[0].employee_id;
-    const newStartDate = normalizeDate(
-      start_date || calculateNextAvailableDate(defaultBuilderId),
-    );
+    const taskDuration = duration || workdayHours;
+    const { startDate: newStartDate, endDate: newEndDate } =
+      buildWorkPeriodDates(
+        start_date || calculateNextAvailableDate(defaultBuilderId),
+        taskDuration,
+        defaultBuilderId,
+      );
     const createdAt = new Date().toISOString();
 
     const newWorkPeriod = {
@@ -247,7 +278,8 @@ const JobModal = ({
       project_name: jobName,
       employee_id: defaultBuilderId,
       start_date: normalizeDate(newStartDate),
-      duration: duration || workdayHours,
+      end_date: newEndDate,
+      duration: taskDuration,
       subtask_width: dayWidth,
       task_number: task_number || nextJobNumber.toString(),
       task_name: task_name || "",
@@ -417,9 +449,12 @@ const JobModal = ({
     setLocalRooms((prevRooms) =>
       prevRooms.map((room) => {
         if (room.task_id === task_id) {
-          const newStartDate = normalizeDate(
-            calculateNextAvailableDate(prevBuilderId),
-          );
+          const { startDate: newStartDate, endDate: newEndDate } =
+            buildWorkPeriodDates(
+              calculateNextAvailableDate(prevBuilderId),
+              workdayHours,
+              prevBuilderId,
+            );
           const newWorkPeriod = {
             subtask_id: uuidv4(),
             project_id: room.project_id,
@@ -431,6 +466,7 @@ const JobModal = ({
             temp_subtask_id: uuidv4(),
             employee_id: prevBuilderId,
             start_date: normalizeDate(newStartDate),
+            end_date: newEndDate,
             duration: workdayHours,
             task_active: true,
             task_completed_at: null,

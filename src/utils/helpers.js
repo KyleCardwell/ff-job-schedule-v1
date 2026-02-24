@@ -284,7 +284,11 @@ export const sortAndAdjustDates = (
 ) => {
   // Skip date calculations for unassigned (defaultEmployee) tasks
   // They don't need sequential date calculations and this prevents performance lag
-  if (defaultEmployeeId && jobsArray.length > 0 && jobsArray[0].employee_id === defaultEmployeeId) {
+  if (
+    defaultEmployeeId &&
+    jobsArray.length > 0 &&
+    jobsArray[0].employee_id === defaultEmployeeId
+  ) {
     return { tasks: jobsArray, conflicts: [] };
   }
 
