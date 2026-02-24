@@ -2024,7 +2024,7 @@ export const getSectionCalculations = (section, context = {}) => {
       const numericServiceId = parseInt(serviceId);
       const numericHours = parseFloat(hours) || 0;
 
-      if (numericHours > 0) {
+      if (numericHours !== 0) {
         if (!finalHoursByService[numericServiceId]) {
           finalHoursByService[numericServiceId] = 0;
         }
@@ -2034,7 +2034,7 @@ export const getSectionCalculations = (section, context = {}) => {
 
     // Add install_setup_hours to Install service (service_id 4)
     const setupHours = parseFloat(section.add_hours.install_setup_hours) || 0;
-    if (setupHours > 0) {
+    if (setupHours !== 0) {
       if (!finalHoursByService[4]) {
         finalHoursByService[4] = 0;
       }
@@ -2043,7 +2043,7 @@ export const getSectionCalculations = (section, context = {}) => {
 
     // Add finish_setup_hours to Finish service (service_id 3)
     const finishSetupHours = parseFloat(section.add_hours.finish_setup_hours) || 0;
-    if (finishSetupHours > 0) {
+    if (finishSetupHours !== 0) {
       if (!finalHoursByService[3]) {
         finalHoursByService[3] = 0;
       }

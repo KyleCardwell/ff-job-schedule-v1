@@ -2624,7 +2624,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="1"
+                    step="0.25"
                     min="0"
                     id="profit"
                     name="profit"
@@ -2651,7 +2651,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="1"
+                    step="0.25"
                     min="0"
                     id="commission"
                     name="commission"
@@ -2678,7 +2678,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="1"
+                    step="0.25"
                     min="0"
                     id="discount"
                     name="discount"
@@ -2731,7 +2731,7 @@ const EstimateSectionForm = ({
                           type="number"
                           id={`service-rate-${service.service_id}`}
                           min="0"
-                          step="1"
+                          step="0.25"
                           value={
                             formData.service_price_overrides?.[
                               service.service_id
