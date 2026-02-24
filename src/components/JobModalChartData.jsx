@@ -18,7 +18,7 @@ import {
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
 import { createProjectFinancials } from "../redux/actions/financialsData";
-import { saveProject } from "../redux/actions/projects";
+import { completeProjectTasks, saveProject } from "../redux/actions/projects";
 import { selectSchedulableEmployees } from "../redux/selectors";
 import {
   formatDateForInput,
@@ -983,7 +983,7 @@ const JobModal = ({
       });
 
       const result = await dispatch(
-        saveProject({
+        completeProjectTasks({
           jobName: jobData[0].project_name,
           projectId: jobData[0].project_id,
           newProjectCreatedAt: jobData[0].project_created_at,
