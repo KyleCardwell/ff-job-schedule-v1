@@ -186,7 +186,7 @@ export const getLaborAdjustmentHours = (addHours) => {
     const serviceId = parseInt(key);
     const numericHours = parseFloat(hours) || 0;
 
-    if (numericHours > 0) {
+    if (numericHours !== 0) {
       hoursByService[serviceId] = numericHours;
       hasAnyHours = true;
     }
@@ -194,7 +194,7 @@ export const getLaborAdjustmentHours = (addHours) => {
 
   // Add install_setup_hours to service_id 4 (Install)
   const setupHours = parseFloat(addHours.install_setup_hours) || 0;
-  if (setupHours > 0) {
+  if (setupHours !== 0) {
     if (!hoursByService[4]) {
       hoursByService[4] = 0;
     }
@@ -204,7 +204,7 @@ export const getLaborAdjustmentHours = (addHours) => {
 
   // Add finish_setup_hours to service_id 3 (Finish)
   const finishSetupHours = parseFloat(addHours.finish_setup_hours) || 0;
-  if (finishSetupHours > 0) {
+  if (finishSetupHours !== 0) {
     if (!hoursByService[3]) {
       hoursByService[3] = 0;
     }

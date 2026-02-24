@@ -78,20 +78,20 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
     const cleanedData = {};
     Object.entries(formData).forEach(([serviceId, hours]) => {
       const numericHours = parseFloat(hours) || 0;
-      if (numericHours > 0) {
+      if (numericHours !== 0) {
         cleanedData[serviceId] = numericHours;
       }
     });
 
     // Add install_setup_hours to the object
     const numericSetupHours = parseFloat(installSetupHours);
-    if (!isNaN(numericSetupHours) && numericSetupHours >= 0) {
+    if (!isNaN(numericSetupHours)) {
       cleanedData.install_setup_hours = numericSetupHours;
     }
 
     // Add finish_setup_hours to the object
     const numericFinishSetupHours = parseFloat(finishSetupHours);
-    if (!isNaN(numericFinishSetupHours) && numericFinishSetupHours >= 0) {
+    if (!isNaN(numericFinishSetupHours)) {
       cleanedData.finish_setup_hours = numericFinishSetupHours;
     }
 
@@ -183,10 +183,18 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
+            {isEditing && parseFloat(finishSetupHours) !== 0 && (
+              <button
+                onClick={() => setFinishSetupHours(0)}
+                className="text-slate-400 hover:text-red-500 transition-colors"
+                title="Clear finish setup hours"
+              >
+                <FiXCircle size={14} />
+              </button>
+            )}
             <input
               id="finish-setup-hours"
               type="number"
-              min="0"
               step="1"
               value={finishSetupHours}
               onChange={(e) => setFinishSetupHours(e.target.value)}
@@ -201,15 +209,6 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
               `}
               placeholder="1"
             />
-            {isEditing && parseFloat(finishSetupHours) > 0 && (
-              <button
-                onClick={() => setFinishSetupHours(0)}
-                className="text-slate-400 hover:text-red-500 transition-colors"
-                title="Clear finish setup hours"
-              >
-                <FiXCircle size={14} />
-              </button>
-            )}
           </div>
         </div>
 
@@ -227,10 +226,18 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
+            {isEditing && parseFloat(installSetupHours) !== 0 && (
+              <button
+                onClick={() => setInstallSetupHours(0)}
+                className="text-slate-400 hover:text-red-500 transition-colors"
+                title="Clear setup hours"
+              >
+                <FiXCircle size={14} />
+              </button>
+            )}
             <input
               id="setup-hours"
               type="number"
-              min="0"
               step="1"
               value={installSetupHours}
               onChange={(e) => setInstallSetupHours(e.target.value)}
@@ -245,15 +252,6 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
               `}
               placeholder="1"
             />
-            {isEditing && parseFloat(installSetupHours) > 0 && (
-              <button
-                onClick={() => setInstallSetupHours(0)}
-                className="text-slate-400 hover:text-red-500 transition-colors"
-                title="Clear setup hours"
-              >
-                <FiXCircle size={14} />
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -286,11 +284,20 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
 
             {/* Add Hours Input */}
             <div className="flex items-center gap-2">
+              {isEditing &&
+                parseFloat(formData[service.service_id] || 0) !== 0 && (
+                  <button
+                    onClick={() => handleClearInput(service.service_id)}
+                    className="text-slate-400 hover:text-red-500 transition-colors"
+                    title="Clear hours"
+                  >
+                    <FiXCircle size={14} />
+                  </button>
+                )}
               <input
                 id={`hours-${service.service_id}`}
                 type="number"
-                min="0"
-                step="0.25"
+                step="1"
                 value={formData[service.service_id] || 0}
                 onChange={(e) =>
                   handleInputChange(service.service_id, e.target.value)
@@ -306,16 +313,6 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
                 `}
                 placeholder="0"
               />
-              {isEditing &&
-                parseFloat(formData[service.service_id] || 0) > 0 && (
-                  <button
-                    onClick={() => handleClearInput(service.service_id)}
-                    className="text-slate-400 hover:text-red-500 transition-colors"
-                    title="Clear hours"
-                  >
-                    <FiXCircle size={14} />
-                  </button>
-                )}
             </div>
           </div>
         ))}

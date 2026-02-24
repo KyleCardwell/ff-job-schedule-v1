@@ -7,6 +7,8 @@ const ConfirmationModal = ({
   onConfirm, 
   onCancel,
   confirmText = 'Confirm',
+  confirmLoadingText = 'Working...',
+  isConfirmLoading = false,
   cancelText = 'Cancel',
   confirmButtonClass = 'bg-blue-500 hover:bg-blue-600',
   cancelButtonClass = 'bg-gray-500 hover:bg-gray-600'
@@ -28,16 +30,28 @@ const ConfirmationModal = ({
         </div>
         <div className="flex justify-end space-x-3">
           <button
-            className={`px-4 py-2 text-white rounded ${cancelButtonClass}`}
+            className={`px-4 py-2 text-white rounded ${cancelButtonClass} ${
+              isConfirmLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
             onClick={onCancel}
+            disabled={isConfirmLoading}
           >
             {cancelText}
           </button>
           <button
-            className={`px-4 py-2 text-white rounded ${confirmButtonClass}`}
+            className={`px-4 py-2 text-white rounded inline-flex items-center gap-2 ${confirmButtonClass} ${
+              isConfirmLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
             onClick={onConfirm}
+            disabled={isConfirmLoading}
           >
-            {confirmText}
+            {isConfirmLoading && (
+              <span
+                className="inline-block h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                aria-hidden="true"
+              />
+            )}
+            <span>{isConfirmLoading ? confirmLoadingText : confirmText}</span>
           </button>
         </div>
       </div>
@@ -55,6 +69,8 @@ ConfirmationModal.propTypes = {
   onConfirm: PropTypes.func,
   onCancel: PropTypes.func,
   confirmText: PropTypes.string,
+  confirmLoadingText: PropTypes.string,
+  isConfirmLoading: PropTypes.bool,
   cancelText: PropTypes.string,
   confirmButtonClass: PropTypes.string,
   cancelButtonClass: PropTypes.string,

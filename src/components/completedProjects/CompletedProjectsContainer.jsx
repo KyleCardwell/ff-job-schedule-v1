@@ -33,6 +33,7 @@ const CompletedProjectsContainer = () => {
   });
   const [restoreError, setRestoreError] = useState(null);
   const [restoreTarget, setRestoreTarget] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const handleFilterChange = (filters) => {
     dispatch(fetchCompletedProjects(filters));
@@ -55,23 +56,29 @@ const CompletedProjectsContainer = () => {
   };
 
   const handleConfirmRestore = async () => {
-    if (!restoreTarget) return;
+    if (!restoreTarget || isRestoring) return;
 
     setRestoreError(null);
-    const result =
-      restoreTarget.type === "project"
-        ? await dispatch(restoreProjectToSchedule(restoreTarget.project.project_id))
-        : await dispatch(
-            restoreTaskToSchedule({
-              projectId: restoreTarget.project.project_id,
-              taskId: restoreTarget.task.task_id,
-            }),
-          );
+    setIsRestoring(true);
+    try {
+      const result =
+        restoreTarget.type === "project"
+          ? await dispatch(restoreProjectToSchedule(restoreTarget.project.project_id))
+          : await dispatch(
+              restoreTaskToSchedule({
+                projectId: restoreTarget.project.project_id,
+                taskId: restoreTarget.task.task_id,
+              }),
+            );
 
-    setRestoreTarget(null);
+      if (!result?.success) {
+        setRestoreError(result?.error || "Failed to restore task.");
+        return;
+      }
 
-    if (!result?.success) {
-      setRestoreError(result?.error || "Failed to restore task.");
+      setRestoreTarget(null);
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -224,9 +231,15 @@ const CompletedProjectsContainer = () => {
             : `Restore ${restoreTarget?.task?.task_name} back to the schedule?`
         }
         confirmText="Restore"
+        confirmLoadingText="Restoring..."
+        isConfirmLoading={isRestoring}
         confirmButtonClass="bg-amber-600 hover:bg-amber-700"
         onConfirm={handleConfirmRestore}
-        onCancel={() => setRestoreTarget(null)}
+        onCancel={() => {
+          if (!isRestoring) {
+            setRestoreTarget(null);
+          }
+        }}
       />
       {restoreError && (
         <div className="text-center text-red-500 py-2">{restoreError}</div>
