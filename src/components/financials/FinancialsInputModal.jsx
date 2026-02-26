@@ -15,10 +15,17 @@ import {
 import { usePermissions } from "../../hooks/usePermissions";
 import { saveProjectFinancials } from "../../redux/actions/financialsData";
 import { DEFAULT_FINANCIAL_SECTIONS } from "../../utils/constants.js";
+import {
+  applyCsvRowToAdjustments,
+  applyCsvRowToSections,
+  normalizeSectionName,
+  parseCsvRows,
+} from "../../utils/financialsCsvImport";
 import { calculateFinancialTotals } from "../../utils/helpers";
 
 import EstimatesModal from "./EstimatesModal.jsx";
 import FinancialsAccordion from "./FinancialsAccordion.jsx";
+import FinancialsCsvRowSelectorModal from "./FinancialsCsvRowSelectorModal.jsx";
 
 const DEFAULT_ADJUSTMENTS = {
   profit: 20,
@@ -28,9 +35,6 @@ const DEFAULT_ADJUSTMENTS = {
   addToSubtotal: 0,
   addToTotal: 0,
 };
-
-const normalizeSectionName = (value) =>
-  value?.toLowerCase?.().trim?.() || "";
 
 const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const dispatch = useDispatch();
@@ -54,6 +58,11 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const [isEstimatesOpen, setIsEstimatesOpen] = useState(false);
   const [adjustments, setAdjustments] = useState(DEFAULT_ADJUSTMENTS);
   const [isTaskCostingComplete, setIsTaskCostingComplete] = useState(false);
+  const [csvRows, setCsvRows] = useState([]);
+  const [isCsvSelectorOpen, setIsCsvSelectorOpen] = useState(false);
+  const [selectedCsvRowIndex, setSelectedCsvRowIndex] = useState(null);
+  const [csvImportError, setCsvImportError] = useState(null);
+  const [uploadedCsvFileName, setUploadedCsvFileName] = useState("");
 
   useEffect(() => {
     if (!financialSections) {
@@ -263,7 +272,41 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
     );
   };
 
-  const handleOnFileLoad = () => {};
+  const handleImportRow = (row) => {
+    setLocalSections((prevSections) => applyCsvRowToSections(prevSections, row));
+    setAdjustments((prev) => applyCsvRowToAdjustments(prev, row));
+  };
+
+  const handleImportSelectedCsvRow = () => {
+    if (selectedCsvRowIndex === null || !csvRows[selectedCsvRowIndex]) return;
+
+    handleImportRow(csvRows[selectedCsvRowIndex]);
+    setIsCsvSelectorOpen(false);
+  };
+
+  const handleOnFileLoad = ({ data }, file) => {
+    const parsedRows = parseCsvRows(data);
+
+    if (parsedRows.length === 0) {
+      setCsvImportError("No CSV rows were found to import.");
+      setCsvRows([]);
+      setSelectedCsvRowIndex(null);
+      setIsCsvSelectorOpen(false);
+      return;
+    }
+
+    setCsvImportError(null);
+    setCsvRows(parsedRows);
+    setUploadedCsvFileName(file?.name || "");
+
+    const normalizedTaskName = normalizeSectionName(selectedTask?.task_name);
+    const firstTaskMatchIndex = parsedRows.findIndex(
+      (row) => normalizeSectionName(row.task_name) === normalizedTaskName,
+    );
+
+    setSelectedCsvRowIndex(firstTaskMatchIndex >= 0 ? firstTaskMatchIndex : 0);
+    setIsCsvSelectorOpen(true);
+  };
 
   const handleSave = async () => {
     try {
@@ -322,12 +365,11 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                     <CSVReader onUploadAccepted={handleOnFileLoad}>
                       {({ getRootProps, acceptedFile }) => (
                         <button
+                          type="button"
                           {...getRootProps()}
-                          className={`${buttonClass} bg-blue-500 hover:bg-blue-700 opacity-50 cursor-not-allowed`}
-                          disabled
-                          onClick={(e) => e.preventDefault()}
+                          className={`${buttonClass} bg-blue-500 hover:bg-blue-700`}
                         >
-                          Upload CSV
+                          {acceptedFile?.name ? "Replace CSV" : "Upload CSV"}
                         </button>
                       )}
                     </CSVReader>
@@ -346,6 +388,14 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                       Estimates
                     </button>
                   </div>
+                  {uploadedCsvFileName && (
+                    <div className="text-xs text-gray-500 mb-2">
+                      CSV: {uploadedCsvFileName}
+                    </div>
+                  )}
+                  {csvImportError && (
+                    <div className="text-sm text-red-600 mb-2">{csvImportError}</div>
+                  )}
 
                   <div className="flex gap-4">
                     <div className="flex-1 flex justify-end items-center mb-4 bg-gray-50 p-4 rounded-lg">
@@ -460,6 +510,16 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           total={calculateTotals.total}
         />
       )}
+
+      <FinancialsCsvRowSelectorModal
+        isOpen={isCsvSelectorOpen}
+        csvRows={csvRows}
+        selectedTaskName={selectedTask?.task_name}
+        selectedCsvRowIndex={selectedCsvRowIndex}
+        onSelectRow={setSelectedCsvRowIndex}
+        onClose={() => setIsCsvSelectorOpen(false)}
+        onImportSelectedRow={handleImportSelectedCsvRow}
+      />
     </div>
   );
 };

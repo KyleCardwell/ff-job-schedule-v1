@@ -618,14 +618,12 @@ const EstimatePreviewSection = ({
               <span>-{formatCurrency(calculations.discount)}</span>
             </div>
           )}
-          {/* {section.quantity > 1 && ( */}
           <div
             className={`flex justify-between ${section.quantity === 0 ? "px-1 bg-amber-400 text-slate-900" : "text-slate-300"}`}
           >
             <span>Quantity:</span>
             <span>× {section.quantity}</span>
           </div>
-          {/* )} */}
           <div
             className={`${
               section.quantity === 0
