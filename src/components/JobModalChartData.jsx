@@ -1299,7 +1299,10 @@ const JobModal = ({
 
   // Function to map employee_name to employee_id
   const getEmployeeIdByName = (employeeName) => {
-    const normalizedEmployeeName = employeeName?.toString().trim().toLowerCase();
+    const normalizedEmployeeName = employeeName
+      ?.toString()
+      .trim()
+      .toLowerCase();
     const employee = employees.find(
       (emp) =>
         emp.employee_name?.toString().trim().toLowerCase() ===
@@ -1328,7 +1331,10 @@ const JobModal = ({
     }
 
     for (const rowObject of rowsToImport) {
-      const employeeName = getJobCsvText(rowObject, ["employee_name", "employee"]);
+      const employeeName = getJobCsvText(rowObject, [
+        "employee_name",
+        "employee",
+      ]);
       const employeeId = getEmployeeIdByName(employeeName);
       const rowTaskNumber = getJobCsvText(rowObject, [
         "task_number",
@@ -1347,7 +1353,11 @@ const JobModal = ({
         task_name: getJobCsvText(rowObject, ["task_name", "room_name", "task"]),
         employee_id: employeeId,
         start_date: getJobCsvText(rowObject, ["start_date", "start"], ""),
-        duration: getJobCsvNumber(rowObject, ["duration", "hours"], workdayHours),
+        duration: getJobCsvNumber(
+          rowObject,
+          ["duration", "hours"],
+          workdayHours,
+        ),
         task_number: rowTaskNumber || currentTaskNumber?.toString?.(),
         project_name: rowProjectName,
         hard_start_date: false,
@@ -1431,7 +1441,8 @@ const JobModal = ({
   ]
     .filter((room, index, allRooms) => {
       return (
-        index === allRooms.findIndex((otherRoom) => otherRoom.task_id === room.task_id)
+        index ===
+        allRooms.findIndex((otherRoom) => otherRoom.task_id === room.task_id)
       );
     })
     .sort(
@@ -1474,7 +1485,7 @@ const JobModal = ({
                         !canEditSchedule ? "hidden" : ""
                       }`}
                     >
-                      {acceptedFile?.name ? "Replace CSV" : "Import CSV"}
+                      Import CSV
                     </button>
                   </div>
                 )}
@@ -1970,7 +1981,9 @@ const JobModal = ({
 
               {completedRooms.length > 0 && (
                 <>
-                  <h3 className="text-lg font-bold mb-2 mt-5">Completed Rooms</h3>
+                  <h3 className="text-lg font-bold mb-2 mt-5">
+                    Completed Rooms
+                  </h3>
                   <div className="hidden md:grid grid-cols-[60px_1fr_160px] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
                     <span>Job</span>
                     <span>Room Name</span>
@@ -1980,7 +1993,9 @@ const JobModal = ({
                     <div
                       key={`completed-${room.task_id || completedRoomIndex}`}
                       className={`${
-                        completedRoomIndex % 2 === 0 ? "bg-white" : "bg-gray-200"
+                        completedRoomIndex % 2 === 0
+                          ? "bg-white"
+                          : "bg-gray-200"
                       } grid grid-cols-[60px_1fr_160px] gap-2 p-2 rounded mb-1`}
                     >
                       <span>{room.task_number}</span>
