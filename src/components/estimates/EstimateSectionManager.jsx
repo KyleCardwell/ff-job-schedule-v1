@@ -530,6 +530,7 @@ const EstimateSectionManager = ({
       component: (
         <SectionNotesManager
           notes={section?.notes}
+          section={section}
           onSave={handleSaveNotes}
         />
       ),
