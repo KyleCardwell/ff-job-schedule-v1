@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   FiSave,
   FiX,
@@ -441,7 +441,6 @@ const EstimateSectionForm = ({
           : Array.isArray(initialDefaults.drawer_front_finish)
             ? initialDefaults.drawer_front_finish
             : [],
-      notes: Array.isArray(data.notes) ? data.notes : ["", "", ""],
       quantity: data.quantity ?? 1,
       profit: data[profitField] ?? data.profit ?? initialDefaults.profit ?? "",
       commission:
@@ -486,30 +485,6 @@ const EstimateSectionForm = ({
         formData.drawer_front_finish.length > 0)
     );
   }, [formData.drawer_front_mat, formData.drawer_front_finish]);
-
-  // Refs for synchronized textarea heights
-  const notesTextareaRefs = useRef([]);
-
-  // Function to synchronize textarea heights
-  const syncTextareaHeights = useCallback(() => {
-    const textareas = notesTextareaRefs.current.filter(Boolean);
-    if (textareas.length === 0) return;
-
-    // Reset heights to auto to get natural height
-    textareas.forEach((textarea) => {
-      textarea.style.height = "auto";
-    });
-
-    // Find the maximum scroll height
-    const maxHeight = Math.max(
-      ...textareas.map((textarea) => textarea.scrollHeight),
-    );
-
-    // Set all textareas to the maximum height
-    textareas.forEach((textarea) => {
-      textarea.style.height = `${maxHeight}px`;
-    });
-  }, []);
 
   const clearFinishes = useCallback(
     (section) => {
@@ -569,24 +544,7 @@ const EstimateSectionForm = ({
   );
 
   const handleChange = (e) => {
-    const { name, value, dataset } = e.target;
-    const notesIndex = dataset.notesIndex;
-
-    // Handle notes array separately
-    if (name === "notes" && notesIndex !== undefined) {
-      const newNotes = [...formData.notes];
-      newNotes[parseInt(notesIndex)] = value;
-      setFormData({
-        ...formData,
-        notes: newNotes,
-      });
-
-      // Synchronize textarea heights
-      setTimeout(() => {
-        syncTextareaHeights();
-      }, 0);
-      return;
-    }
+    const { name, value } = e.target;
 
     // Convert to number for fields that should have numerical values
     const numericFields = [
@@ -726,7 +684,6 @@ const EstimateSectionForm = ({
         door_finish: [],
         drawer_front_mat: "",
         drawer_front_finish: [],
-        notes: "",
         quantity: 1,
         profit: "",
         commission: "",
@@ -768,8 +725,6 @@ const EstimateSectionForm = ({
       commission: sourceSection.commission ?? "",
       discount: sourceSection.discount ?? "",
       service_price_overrides: sourceSection.service_price_overrides || {},
-      // Don't copy notes - keep the current notes
-      notes: formData.notes,
       // Don't copy quantity - keep the current quantity
       quantity: formData.quantity,
     });
@@ -1462,13 +1417,6 @@ const EstimateSectionForm = ({
       return false;
     });
   }, [selectedFaceMaterial, DOOR_STYLE_OPTIONS]);
-
-  // Sync textarea heights on mount and when notes change
-  useEffect(() => {
-    if (editType === EDIT_TYPES.SECTION) {
-      syncTextareaHeights();
-    }
-  }, [editType, formData.notes, syncTextareaHeights]);
 
   useEffect(() => {
     // Check if effective door style is valid for the current material
@@ -2757,59 +2705,6 @@ const EstimateSectionForm = ({
             </div>
           </div>
 
-          {/* Notes Section - only for sections */}
-          {editType === EDIT_TYPES.SECTION && (
-            <div className="grid grid-cols-3 gap-4 items-start text-slate-700 px-1">
-              <div>
-                <label htmlFor="notes-0" className={STYLES.label}>
-                  Notes
-                </label>
-                <textarea
-                  ref={(el) => (notesTextareaRefs.current[0] = el)}
-                  id="notes-0"
-                  name="notes"
-                  data-notes-index="0"
-                  value={formData.notes[0] || ""}
-                  onChange={handleChange}
-                  rows={2}
-                  className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
-                  placeholder="Any special notes..."
-                />
-              </div>
-              <div>
-                <label htmlFor="notes-1" className={STYLES.label}>
-                  Includes
-                </label>
-                <textarea
-                  ref={(el) => (notesTextareaRefs.current[1] = el)}
-                  id="notes-1"
-                  name="notes"
-                  data-notes-index="1"
-                  value={formData.notes[1] || ""}
-                  onChange={handleChange}
-                  rows={2}
-                  className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
-                  placeholder="What's included..."
-                />
-              </div>
-              <div>
-                <label htmlFor="notes-2" className={STYLES.label}>
-                  Does Not Include
-                </label>
-                <textarea
-                  ref={(el) => (notesTextareaRefs.current[2] = el)}
-                  id="notes-2"
-                  name="notes"
-                  data-notes-index="2"
-                  value={formData.notes[2] || ""}
-                  onChange={handleChange}
-                  rows={2}
-                  className="mt-1 p-2 block w-full rounded-md border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none overflow-hidden"
-                  placeholder="What's not included..."
-                />
-              </div>
-            </div>
-          )}
         </form>
       </div>
 

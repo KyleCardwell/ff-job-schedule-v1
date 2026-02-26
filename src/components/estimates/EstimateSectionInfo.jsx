@@ -623,12 +623,7 @@ const EstimateSectionInfo = ({
                   </>
                 );
               })()}
-              {section?.notes && (
-                <>
-                  <div className="text-slate-400">Notes:</div>
-                  <div className="pl-5 mb-3 text-sm">{section.notes}</div>
-                </>
-              )}
+
             </div>
           </div>
 

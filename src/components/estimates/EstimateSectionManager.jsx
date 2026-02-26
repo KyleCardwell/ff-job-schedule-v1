@@ -27,6 +27,7 @@ import EstimateLengthManager from "./EstimateLengthManager.jsx";
 import EstimateOtherManager from "./EstimateOtherManager.jsx";
 import EstimateSectionBreakdown from "./EstimateSectionBreakdown.jsx";
 import LaborAdjustmentssManager from "./LaborAdjustmentsManager.jsx";
+import SectionNotesManager from "./SectionNotesManager.jsx";
 
 const EstimateSectionManager = ({
   taskId,
@@ -60,6 +61,7 @@ const EstimateSectionManager = ({
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const NOTES_SECTION_TYPE = "notes";
   const [openSectionType, setOpenSectionType] = useState(
     SECTION_TYPES.CABINETS.type,
   );
@@ -346,6 +348,14 @@ const EstimateSectionManager = ({
     );
   };
 
+  const handleSaveNotes = async (notes) => {
+    await dispatch(
+      updateSection(currentEstimate.estimate_id, taskId, sectionId, {
+        notes,
+      }),
+    );
+  };
+
   // Add errorState flag to cabinet items based on saved_style_id comparison
   // Use effective style with three-tier fallback for accurate comparison
   const cabinetsWithErrorState = useMemo(() => {
@@ -513,6 +523,17 @@ const EstimateSectionManager = ({
         />
       ),
     },
+    {
+      type: NOTES_SECTION_TYPE,
+      title: "Notes",
+      count: null,
+      component: (
+        <SectionNotesManager
+          notes={section?.notes}
+          onSave={handleSaveNotes}
+        />
+      ),
+    },
   ];
 
   // Render breakdown view if active
@@ -572,9 +593,11 @@ const EstimateSectionManager = ({
               )}
             </div>
             <span className="text-slate-400 flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-700">
-                {count} item{count === 1 ? "" : "s"}
-              </span>
+              {typeof count === "number" && (
+                <span className="text-sm font-medium text-slate-700">
+                  {count} item{count === 1 ? "" : "s"}
+                </span>
+              )}
               {openSectionType === type ? (
                 <FiChevronDown size={20} />
               ) : (

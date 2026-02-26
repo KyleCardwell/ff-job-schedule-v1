@@ -257,6 +257,16 @@ const GenerateEstimatePdf = ({
         rightColumn.push(`Wood: ${section.faceMaterial}`);
         rightColumn.push(`Finish: ${section.faceFinish}`);
 
+        // leftColumn.push({ text: [{ text: "Style: ", bold: true }, { text: section.cabinetStyle }] });
+        // leftColumn.push({ text: [{ text: "Drawer Boxes: ", bold: true }, { text: section.drawerBoxMaterial }] });
+        // leftColumn.push({ text: [{ text: "Cabinets: ", bold: true }, { text: section.boxMaterial }] });
+        // leftColumn.push({ text: [{ text: "Finish: ", bold: true }, { text: section.boxFinish }] });
+
+        // rightColumn.push({ text: [{ text: "Doors: ", bold: true }, { text: section.doorStyle }] });
+        // rightColumn.push({ text: [{ text: "Drawer Fronts: ", bold: true }, { text: section.drawerFrontStyle }] });
+        // rightColumn.push({ text: [{ text: "Wood: ", bold: true }, { text: section.faceMaterial }] });
+        // rightColumn.push({ text: [{ text: "Finish: ", bold: true }, { text: section.faceFinish }] });
+
         const maxDetailRows = Math.max(leftColumn.length, rightColumn.length);
 
         // Build details stack for the description column
@@ -287,8 +297,11 @@ const GenerateEstimatePdf = ({
             section.notes.forEach((note, index) => {
               if (note && note.trim()) {
                 detailsStack.push({
-                  text: `${notesLabels[index]} ${note}`,
                   italics: true,
+                  text: [
+                    { text: `${notesLabels[index]} `, bold: true },
+                    { text: note },
+                  ],
                   fontSize: GROUP_DATA_FONT_SIZE,
                   margin: [GROUP_DATA_INDENT, 0, 0, 4], // Left indent with top margin for new line
                 });
@@ -297,8 +310,8 @@ const GenerateEstimatePdf = ({
           } else if (section.notes.trim()) {
             // Backward compatibility for string notes
             detailsStack.push({
-              text: `Notes: ${section.notes}`,
               italics: true,
+              text: [{ text: "Notes: ", bold: true }, { text: section.notes }],
               fontSize: GROUP_DATA_FONT_SIZE,
               margin: [GROUP_DATA_INDENT, 0, 0, 4],
             });

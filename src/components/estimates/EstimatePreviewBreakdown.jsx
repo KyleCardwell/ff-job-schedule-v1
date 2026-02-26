@@ -57,6 +57,9 @@ const EstimatePreviewBreakdown = ({
     0,
   );
 
+  const PARTS_GRID = "grid grid-cols-[4fr,1fr,3fr] gap-1";
+  const SERVICES_GRID = "grid grid-cols-[2fr,1fr,2fr] gap-1";
+
   return (
     <div className="w-72 flex-shrink-0 relative">
       <div className="mt-8 max-h-[calc(100vh-150px)] overflow-y-auto bg-slate-800 rounded-lg p-4 space-y-4 border border-slate-600">
@@ -75,8 +78,8 @@ const EstimatePreviewBreakdown = ({
               Parts
             </h3>
             {/* Header row */}
-            <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
-              <div className="text-xs font-medium text-slate-400">Type</div>
+            <div className={`${PARTS_GRID} pb-1 mb-2 border-b border-gray-700`}>
+              <div className="text-xs font-medium text-slate-400 text-left">Type</div>
               <div className="text-xs font-medium text-slate-400 text-center">
                 Qty
               </div>
@@ -86,7 +89,7 @@ const EstimatePreviewBreakdown = ({
             </div>
             <div className="space-y-1">
               {breakdown.parts.boxCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Boxes</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.boxCount}
@@ -105,7 +108,7 @@ const EstimatePreviewBreakdown = ({
                 .map(([type, count]) => (
                   <div
                     key={type}
-                    className="grid grid-cols-[3fr,1fr,2fr] gap-1"
+                    className={PARTS_GRID}
                   >
                     <span className="text-slate-300 text-left">
                       {FACE_TYPE_LABELS[type] || type}
@@ -120,7 +123,7 @@ const EstimatePreviewBreakdown = ({
                 ))}
 
               {breakdown.parts.drawerBoxCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Drawer Boxes</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.drawerBoxCount}
@@ -132,7 +135,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.rollOutCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Rollouts</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.rollOutCount}
@@ -144,7 +147,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.hingesCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Hinges</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.hingesCount}
@@ -156,7 +159,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.slidesCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Slides</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.slidesCount}
@@ -168,7 +171,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.pullsCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Pulls</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.pullsCount}
@@ -180,7 +183,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.woodCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Wood</span>
                   <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {roundToHundredth(breakdown.parts.woodCount)}
@@ -192,7 +195,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.accessoriesCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Accessories</span>
                   <span className="font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.accessoriesCount}
@@ -204,7 +207,7 @@ const EstimatePreviewBreakdown = ({
               )}
 
               {breakdown.parts.otherCount > 0 && (
-                <div className="grid grid-cols-[3fr,1fr,2fr] gap-1">
+                <div className={PARTS_GRID}>
                   <span className="text-slate-300 text-left">Other</span>
                   <span className="font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
                     {breakdown.parts.otherCount}
@@ -232,8 +235,8 @@ const EstimatePreviewBreakdown = ({
               Services
             </h3>
             {/* Header row */}
-            <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
-              <div className="text-xs font-medium text-slate-400">Category</div>
+            <div className={`${SERVICES_GRID} pb-1 mb-2 border-b border-gray-700`}>
+              <div className="text-xs font-medium text-slate-400 text-left">Category</div>
               <div className="text-xs font-medium text-slate-400 text-center">
                 Hours
               </div>
@@ -245,7 +248,7 @@ const EstimatePreviewBreakdown = ({
               {Object.entries(breakdown.services).map(([serviceId, data]) => (
                 <div
                   key={serviceId}
-                  className="grid grid-cols-[3fr,1fr,2fr] gap-1"
+                  className={SERVICES_GRID}
                 >
                   <span className="text-slate-300 text-left">{data.name}</span>
                   <span className="font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
