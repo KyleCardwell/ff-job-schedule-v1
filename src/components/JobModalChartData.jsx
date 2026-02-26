@@ -1421,6 +1421,82 @@ const JobModal = ({
     setIsCsvTaskSelectorOpen(true);
   };
 
+  const escapeCsvValue = (value) => {
+    const stringValue = value == null ? "" : String(value);
+    if (/[",\n]/.test(stringValue)) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
+  const formatBusybusyProjectName = (task, fallbackProjectName) => {
+    const projectName = (task.project_name || fallbackProjectName || "").trim();
+    const taskNumber = (task.task_number || "").toString().trim();
+    const taskName = (task.task_name || "").trim();
+    const taskDescriptor = `${taskNumber} ${taskName}`.trim();
+
+    return `${projectName} - ${taskDescriptor}`.trim();
+  };
+
+  const buildBusybusyCsvFileName = (projectName) => {
+    const safeName = (projectName || "project")
+      .toString()
+      .trim()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase();
+
+    return `busybusy-${safeName || "project"}.csv`;
+  };
+
+  const handleExportBusybusyCsv = () => {
+    const fallbackProjectName = (jobName || projectData?.project_name || "").trim();
+    const tasksById = new Map();
+
+    localRooms.forEach((room) => {
+      tasksById.set(room.task_id, {
+        task_id: room.task_id,
+        project_name: room.project_name,
+        task_number: room.task_number,
+        task_name: room.task_name,
+      });
+    });
+
+    (projectData?.completed_rooms || []).forEach((room) => {
+      if (!tasksById.has(room.task_id)) {
+        tasksById.set(room.task_id, {
+          task_id: room.task_id,
+          project_name: fallbackProjectName,
+          task_number: room.task_number,
+          task_name: room.task_name,
+        });
+      }
+    });
+
+    const tasksForExport = Array.from(tasksById.values());
+    if (!tasksForExport.length) return;
+
+    const csvRows = [
+      "Project Name",
+      ...tasksForExport.map((task) =>
+        escapeCsvValue(formatBusybusyProjectName(task, fallbackProjectName)),
+      ),
+    ];
+
+    const blob = new Blob([`${csvRows.join("\n")}\n`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.setAttribute("download", buildBusybusyCsvFileName(fallbackProjectName));
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   if (!isOpen) return null;
 
   const activeRooms = localRooms.filter((room) => room.task_active);
@@ -1477,7 +1553,7 @@ const JobModal = ({
             <div className="flex justify-center mb-4">
               <CSVReader onUploadAccepted={handleOnFileLoad}>
                 {({ getRootProps, acceptedFile }) => (
-                  <div className="csv-import-container absolute left-5">
+                  <div className="csv-import-container absolute left-5 flex gap-2">
                     <button
                       type="button"
                       {...getRootProps()}
@@ -1486,6 +1562,22 @@ const JobModal = ({
                       }`}
                     >
                       Import CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportBusybusyCsv}
+                      disabled={
+                        !localRooms.length && !(projectData?.completed_rooms?.length > 0)
+                      }
+                      className={`${buttonClass} bg-emerald-600 ${
+                        !canEditSchedule ? "hidden" : ""
+                      } ${
+                        !localRooms.length && !(projectData?.completed_rooms?.length > 0)
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    >
+                      Busybusy CSV
                     </button>
                   </div>
                 )}
