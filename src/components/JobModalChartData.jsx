@@ -30,8 +30,14 @@ import {
   sortAndAdjustDates,
   totalJobHours,
 } from "../utils/helpers";
+import {
+  getJobCsvNumber,
+  getJobCsvText,
+  parseJobCsvRows,
+} from "../utils/jobCsvImport";
 
 import GenerateJobSchedulePdf from "./GenerateJobSchedulePdf.jsx";
+import JobCsvTaskSelectorModal from "./JobCsvTaskSelectorModal.jsx";
 
 const JobModal = ({
   isOpen,
@@ -89,6 +95,11 @@ const JobModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState({});
+  const [csvRows, setCsvRows] = useState([]);
+  const [isCsvTaskSelectorOpen, setIsCsvTaskSelectorOpen] = useState(false);
+  const [selectedCsvRowIndexes, setSelectedCsvRowIndexes] = useState(new Set());
+  const [csvImportError, setCsvImportError] = useState(null);
+  const [uploadedCsvFileName, setUploadedCsvFileName] = useState("");
 
   const [selectedEmployeeInput, setSelectedEmployeeInput] = useState({
     workPeriodId: null,
@@ -161,6 +172,11 @@ const JobModal = ({
       setNextJobNumber(jobNumberNext);
       setErrors({});
       setSelectedRoomsToComplete(new Set());
+      setCsvRows([]);
+      setIsCsvTaskSelectorOpen(false);
+      setSelectedCsvRowIndexes(new Set());
+      setCsvImportError(null);
+      setUploadedCsvFileName("");
     }
     setChangedTaskIds(new Set());
     if (jobNameInputRef.current) {
@@ -268,9 +284,11 @@ const JobModal = ({
     start_date,
     duration,
     task_number,
+    project_name,
   }) => {
     const defaultBuilderId = employee_id || employees[0].employee_id;
     const taskDuration = duration || workdayHours;
+    const taskProjectName = project_name || jobName;
     const { startDate: newStartDate, endDate: newEndDate } =
       buildWorkPeriodDates(
         start_date || calculateNextAvailableDate(defaultBuilderId),
@@ -285,7 +303,7 @@ const JobModal = ({
       task_id: uuidv4(),
       temp_task_id: uuidv4(),
       temp_subtask_id: uuidv4(),
-      project_name: jobName,
+      project_name: taskProjectName,
       employee_id: defaultBuilderId,
       start_date: normalizeDate(newStartDate),
       end_date: newEndDate,
@@ -311,7 +329,7 @@ const JobModal = ({
       task_id: newWorkPeriod.task_id,
       temp_task_id: newWorkPeriod.temp_task_id,
       project_id: newWorkPeriod.project_id,
-      project_name: newWorkPeriod.project_name,
+      project_name: taskProjectName,
       task_number: newWorkPeriod.task_number,
       task_name: newWorkPeriod.task_name,
       task_active: newWorkPeriod.task_active,
@@ -1281,59 +1299,116 @@ const JobModal = ({
 
   // Function to map employee_name to employee_id
   const getEmployeeIdByName = (employeeName) => {
+    const normalizedEmployeeName = employeeName?.toString().trim().toLowerCase();
     const employee = employees.find(
-      (emp) => emp.employee_name === employeeName,
+      (emp) =>
+        emp.employee_name?.toString().trim().toLowerCase() ===
+        normalizedEmployeeName,
     );
-    return employee ? employee.employee_id : employees[0].employee_id;
+    return employee ? employee.employee_id : defaultEmployeeId;
   };
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const handleOnFileLoad = async ({ data }) => {
-    if (data.length === 0) return;
+  const importCsvRows = async (rowsToImport = []) => {
+    if (!rowsToImport.length) return;
 
-    const headers = data[0]; // Extract headers from the first row
-    const rows = data.slice(1); // Extract the rest of the rows
+    let currentTaskNumber = nextJobNumber;
 
-    let currentTaskNumber = nextJobNumber; // Use a local variable to track the task number
-    let jobNameChanged = false;
+    if (!jobName?.trim()) {
+      const importedProjectName = rowsToImport
+        .map((row) =>
+          getJobCsvText(row, ["project_name", "project", "job_name"], ""),
+        )
+        .find((value) => Boolean(value?.trim()));
 
-    for (const row of rows) {
-      const rowData = row;
+      if (importedProjectName) {
+        setJobName(importedProjectName);
+      }
+    }
 
-      if (rowData.length === 1) continue;
-
-      const rowObject = headers.reduce((acc, header, index) => {
-        acc[header] = rowData[index];
-        return acc;
-      }, {});
-
-      const employeeId = getEmployeeIdByName(rowObject.employee_name);
+    for (const rowObject of rowsToImport) {
+      const employeeName = getJobCsvText(rowObject, ["employee_name", "employee"]);
+      const employeeId = getEmployeeIdByName(employeeName);
+      const rowTaskNumber = getJobCsvText(rowObject, [
+        "task_number",
+        "job_number",
+        "task_no",
+      ]);
+      const rowProjectName = getJobCsvText(rowObject, [
+        "project_name",
+        "project",
+        "job_name",
+      ]);
 
       setChangedBuilderIds((prev) => new Set([...prev, employeeId]));
 
-      // Use the local variable for task_number
       await handleAddRoom({
-        task_name: rowObject.task_name,
+        task_name: getJobCsvText(rowObject, ["task_name", "room_name", "task"]),
         employee_id: employeeId,
-        start_date: rowObject.start_date,
-        duration: parseFloat(rowObject.duration),
-        task_number: rowObject.task_number || currentTaskNumber.toString(), // Use the current task number
+        start_date: getJobCsvText(rowObject, ["start_date", "start"], ""),
+        duration: getJobCsvNumber(rowObject, ["duration", "hours"], workdayHours),
+        task_number: rowTaskNumber || currentTaskNumber?.toString?.(),
+        project_name: rowProjectName,
         hard_start_date: false,
       });
 
-      if (!rowObject.task_number) {
-        currentTaskNumber += 1; // Increment the local task number
+      if (!rowTaskNumber) {
+        currentTaskNumber += 1;
       }
 
-      if (!jobNameChanged && jobName === "") {
-        setJobName(rowObject.project_name);
-        jobNameChanged = true;
-      }
-
-      // Pause for a few milliseconds
-      await sleep(5); // Adjust the milliseconds as needed
+      await sleep(5);
     }
+  };
+
+  const handleToggleCsvRow = (rowIndex) => {
+    setSelectedCsvRowIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowIndex)) {
+        next.delete(rowIndex);
+      } else {
+        next.add(rowIndex);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleAllCsvRows = (isChecked) => {
+    if (isChecked) {
+      setSelectedCsvRowIndexes(new Set(csvRows.map((_, index) => index)));
+      return;
+    }
+
+    setSelectedCsvRowIndexes(new Set());
+  };
+
+  const handleImportSelectedCsvRows = async () => {
+    const rowsToImport = csvRows.filter((_, index) =>
+      selectedCsvRowIndexes.has(index),
+    );
+
+    if (!rowsToImport.length) return;
+
+    await importCsvRows(rowsToImport);
+    setIsCsvTaskSelectorOpen(false);
+  };
+
+  const handleOnFileLoad = ({ data }, file) => {
+    const parsedRows = parseJobCsvRows(data);
+
+    if (parsedRows.length === 0) {
+      setCsvImportError("No CSV rows were found to import.");
+      setCsvRows([]);
+      setSelectedCsvRowIndexes(new Set());
+      setIsCsvTaskSelectorOpen(false);
+      return;
+    }
+
+    setCsvImportError(null);
+    setCsvRows(parsedRows);
+    setUploadedCsvFileName(file?.name || "");
+    setSelectedCsvRowIndexes(new Set(parsedRows.map((_, index) => index)));
+    setIsCsvTaskSelectorOpen(true);
   };
 
   if (!isOpen) return null;
@@ -1399,7 +1474,7 @@ const JobModal = ({
                         !canEditSchedule ? "hidden" : ""
                       }`}
                     >
-                      Import CSV
+                      {acceptedFile?.name ? "Replace CSV" : "Import CSV"}
                     </button>
                   </div>
                 )}
@@ -1431,6 +1506,14 @@ const JobModal = ({
                 </button>
               </div>
             </div>
+            {uploadedCsvFileName && (
+              <div className="text-xs text-gray-500 mb-2">
+                CSV: {uploadedCsvFileName}
+              </div>
+            )}
+            {csvImportError && (
+              <div className="text-sm text-red-600 mb-2">{csvImportError}</div>
+            )}
             <div className={`flex gap-8 items-center mb-5 justify-center`}>
               <div className="md:w-1/4">
                 <label htmlFor="depositDate">Deposit Date</label>
@@ -1996,6 +2079,16 @@ const JobModal = ({
           </div>
         </div>
       )}
+
+      <JobCsvTaskSelectorModal
+        isOpen={isCsvTaskSelectorOpen}
+        csvRows={csvRows}
+        selectedRowIndexes={selectedCsvRowIndexes}
+        onToggleRow={handleToggleCsvRow}
+        onToggleAllRows={handleToggleAllCsvRows}
+        onClose={() => setIsCsvTaskSelectorOpen(false)}
+        onImportSelected={handleImportSelectedCsvRows}
+      />
     </div>
   );
 };
