@@ -384,6 +384,8 @@ LengthItemForm.propTypes = {
 
 const EstimateLengthManager = ({
   items,
+  approxBaseLengthFeet = 0,
+  approxCrownLengthFeet = 0,
   onUpdateItems,
   onReorderItems,
   onDuplicateItem,
@@ -490,27 +492,34 @@ const EstimateLengthManager = ({
   };
 
   return (
-    <SectionItemList
-      items={items}
-      columns={columns}
-      addButtonText="Add Length Item"
-      emptyStateText="No length items added yet. Click the button below to add one."
-      onSave={handleSaveItem}
-      onDelete={handleDeleteItem}
-      onReorder={handleReorderItems}
-      onDuplicate={onDuplicateItem}
-      onMove={onMoveItem}
-      ItemForm={LengthItemForm}
-      getReorderItemName={getReorderItemName}
-      listType="length"
-      currentTaskId={currentTaskId}
-      currentSectionId={currentSectionId}
-    />
+    <>
+      <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
+        Approx. molding coverage (rounded up): Base {approxBaseLengthFeet} ft | Crown {approxCrownLengthFeet} ft
+      </div>
+      <SectionItemList
+        items={items}
+        columns={columns}
+        addButtonText="Add Length Item"
+        emptyStateText="No length items added yet. Click the button below to add one."
+        onSave={handleSaveItem}
+        onDelete={handleDeleteItem}
+        onReorder={handleReorderItems}
+        onDuplicate={onDuplicateItem}
+        onMove={onMoveItem}
+        ItemForm={LengthItemForm}
+        getReorderItemName={getReorderItemName}
+        listType="length"
+        currentTaskId={currentTaskId}
+        currentSectionId={currentSectionId}
+      />
+    </>
   );
 };
 
 EstimateLengthManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  approxBaseLengthFeet: PropTypes.number,
+  approxCrownLengthFeet: PropTypes.number,
   onUpdateItems: PropTypes.func.isRequired,
   onReorderItems: PropTypes.func.isRequired,
   onDuplicateItem: PropTypes.func,

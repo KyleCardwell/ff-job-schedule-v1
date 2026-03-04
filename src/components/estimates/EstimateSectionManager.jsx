@@ -449,6 +449,8 @@ const EstimateSectionManager = ({
       component: (
         <EstimateLengthManager
           items={sectionData.lengths || []}
+          approxBaseLengthFeet={sectionCalculations?.approxBaseLengthFeet || 0}
+          approxCrownLengthFeet={sectionCalculations?.approxCrownLengthFeet || 0}
           onUpdateItems={(items) =>
             handleUpdateItems(SECTION_TYPES.LENGTHS.type, items)
           }

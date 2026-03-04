@@ -48,6 +48,22 @@ export const CABINET_ITEM_TYPES = {
         description: "45-degree corner cabinet configuration",
         serviceMultipliers: {},
       },
+      // {
+      //   name: "base_mold",
+      //   type: "checkbox",
+      //   label: "Base Mold",
+      //   defaultValue: true,
+      //   description: "Add base molding to cabinet",
+      //   serviceMultipliers: {},
+      // },
+      // {
+      //   name: "top_mold",
+      //   type: "checkbox",
+      //   label: "Top Mold",
+      //   defaultValue: false,
+      //   description: "Add top molding to cabinet",
+      //   serviceMultipliers: {},
+      // },
     ],
   },
 

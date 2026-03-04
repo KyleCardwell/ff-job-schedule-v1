@@ -29,6 +29,9 @@ import {
   interpolateTimeByArea,
 } from "./estimateHelpers";
 
+const BASE_MOLDING_TYPE_IDS = new Set([1, 3, 5, 11]);
+const CROWN_MOLDING_TYPE_IDS = new Set([2, 3, 5, 14]);
+
 // Calculate face counts and prices for all cabinets in a section
 // Aggregates faces across all cabinets by style for efficient bulk calculation
 const calculateFaceTotals = (section, context) => {
@@ -40,6 +43,8 @@ const calculateFaceTotals = (section, context) => {
     glassTotal: 0,
     glassCount: 0,
     hoodCount: 0,
+    approxBaseLengthFeet: 0,
+    approxCrownLengthFeet: 0,
   };
 
   FACE_TYPES.forEach((type) => {
@@ -70,13 +75,37 @@ const calculateFaceTotals = (section, context) => {
   // Structure: { doorStyle: { slab_sheet: [faces...], 5_piece_hardwood: [faces...] } }
   const facesByStyle = {};
   const allFacesForHours = []; // For hour calculation
+  let approxBaseLengthInches = 0;
+  let approxCrownLengthInches = 0;
 
   section.cabinets.forEach((cabinet) => {
     const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
+    const cabinetTypeId = Number(cabinet.type);
+    const cabinetHeight = Number(cabinet.height) || 0;
+    const cabinetWidthByQuantity = (Number(cabinet.width) || 0) * quantity;
     const cabinetStyleId =
       cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
 
-    // Skip drawer boxes
+    if (cabinetWidthByQuantity > 0) {
+      const countsTowardBase =
+        BASE_MOLDING_TYPE_IDS.has(cabinetTypeId) ||
+        (cabinetTypeId === 10 && (cabinetHeight <= 36 || cabinetHeight >= 72));
+
+      const countsTowardCrown =
+        CROWN_MOLDING_TYPE_IDS.has(cabinetTypeId) ||
+        (cabinetTypeId === 10 && cabinetHeight >= 36) ||
+        (cabinetTypeId === 11 && cabinetHeight >= 36);
+
+      if (countsTowardBase) {
+        approxBaseLengthInches += cabinetWidthByQuantity;
+      }
+
+      if (countsTowardCrown) {
+        approxCrownLengthInches += cabinetWidthByQuantity;
+      }
+    }
+
+    // Skip drawer boxes (type 15)
     if (cabinet.type === 15) return;
 
     // Handle fillers (type 5) separately using boxPartsList
@@ -427,6 +456,9 @@ const calculateFaceTotals = (section, context) => {
       },
     );
   });
+
+  totals.approxBaseLengthFeet = Math.ceil(approxBaseLengthInches / 12);
+  totals.approxCrownLengthFeet = Math.ceil(approxCrownLengthInches / 12);
 
   // Log what's in facesByStyle for comparison
   console.log("📊 facesByStyle summary:");
@@ -1496,6 +1528,8 @@ const calculateCabinetTotals = (section, context) => {
     faceCounts: faceTotals.faceCounts,
     facePrices: faceTotals.facePrices,
     hoodCount: faceTotals.hoodCount || 0,
+    approxBaseLengthFeet: faceTotals.approxBaseLengthFeet || 0,
+    approxCrownLengthFeet: faceTotals.approxCrownLengthFeet || 0,
     drawerBoxTotal: drawerRolloutTotals.drawerBoxTotal,
     drawerBoxCount: drawerRolloutTotals.drawerBoxCount,
     rollOutCount: drawerRolloutTotals.rollOutCount,
@@ -1912,6 +1946,8 @@ export const getSectionCalculations = (section, context = {}) => {
       fillerCount: 0,
       glassCount: 0,
       glassTotal: 0,
+      approxBaseLengthFeet: 0,
+      approxCrownLengthFeet: 0,
       quantity: 0,
       profit: 0,
       commission: 0,
@@ -2142,6 +2178,8 @@ export const getSectionCalculations = (section, context = {}) => {
     facePrices: cabinetTotals.facePrices,
     boxTotal: cabinetTotals.boxPrice,
     boxCount: cabinetTotals.boxCount,
+    approxBaseLengthFeet: cabinetTotals.approxBaseLengthFeet || 0,
+    approxCrownLengthFeet: cabinetTotals.approxCrownLengthFeet || 0,
     hoodCount: cabinetTotals.hoodCount || 0,
     laborCosts,
     drawerBoxCount: cabinetTotals.drawerBoxCount,
