@@ -49,9 +49,9 @@ export const calculateMoldingCost = (
   // const insideMoldingPricePerFoot = 7.90;
   // const outsideMoldingPricePerFoot = 8.25;
   const insideMoldingPricePerFoot =
-    5 + (material.bd_ft_price ? material.bd_ft_price : 3);
+    3 + (material.bd_ft_price ? material.bd_ft_price : 3);
   const outsideMoldingPricePerFoot =
-    5 + (material.bd_ft_price ? material.bd_ft_price : 3.5);
+    3 + (material.bd_ft_price ? material.bd_ft_price : 3.5);
 
   let cost = 0;
   if (insideMolding) {
