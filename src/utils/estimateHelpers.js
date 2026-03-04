@@ -2214,8 +2214,31 @@ export const generateCabinetSummary = (
 
   const parts = [];
 
+  if (typeSpecificOptions?.cabinetStyleOverride) {
+    parts.push(typeSpecificOptions.cabinetStyleOverride);
+  }
+
   if (typeSpecificOptions.corner_45) {
     parts.push("45° Corner");
+  }
+
+  const sideLabels = [
+    { key: "finishedTop", label: "top" },
+    { key: "finishedBottom", label: "bottom" },
+    { key: "finishedLeft", label: "left" },
+    { key: "finishedRight", label: "right" },
+    { key: "finishedBack", label: "back" },
+  ];
+  const finishedSides = sideLabels
+    .filter(({ key }) => typeSpecificOptions?.[key])
+    .map(({ label }) => label);
+
+  if (finishedSides.length > 0) {
+    parts.push(
+      `${finishedSides.length} finished side${
+        finishedSides.length !== 1 ? "s" : ""
+      } (${finishedSides.join(", ")})`,
+    );
   }
 
   // Helper to recursively collect all nodes

@@ -294,7 +294,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 Quantity <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
+                type="number"
                 inputMode="decimal"
                 name="quantity"
                 value={mathInput.inputValues.quantity}

@@ -108,7 +108,7 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
             Quantity <span className="text-red-500">*</span>
           </label>
           <input
-            type="text"
+            type="number"
             inputMode="decimal"
             id="quantity"
             name="quantity"

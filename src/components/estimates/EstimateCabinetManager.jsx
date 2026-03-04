@@ -119,28 +119,12 @@ const CabinetItemForm = ({
         (t) => t.cabinet_type_id === formData.type,
       );
 
-      console.log(
-        "[EstimateCabinetManager] Found typeConfig:",
-        typeConfig?.config,
-      );
-      console.log(
-        "[EstimateCabinetManager] Current rootReveals:",
-        formData.face_config?.rootReveals,
-      );
-
       // Update rootReveals - CabinetFaceDivider will handle dimension recalculation
       // Only update if reveals are different to prevent infinite loop
       if (
         typeConfig?.config &&
         !isEqual(formData.face_config?.rootReveals, typeConfig.config)
       ) {
-        console.log(
-          "[EstimateCabinetManager] Updating rootReveals to:",
-          typeConfig.config,
-        );
-        console.log("----------------------------------------------");
-        console.log("----------------------------------------------");
-        console.log("----------------------------------------------");
         setFormData((prev) => ({
           ...prev,
           face_config: {
@@ -148,10 +132,6 @@ const CabinetItemForm = ({
             rootReveals: typeConfig.config,
           },
         }));
-      } else {
-        console.log(
-          "[EstimateCabinetManager] Reveals already match - skipping update",
-        );
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

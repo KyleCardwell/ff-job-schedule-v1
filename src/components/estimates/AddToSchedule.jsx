@@ -8,6 +8,7 @@ import {
   DragOverlay,
   useDraggable,
 } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -1197,6 +1198,7 @@ const AddToSchedule = () => {
 
           {/* Groups list with DnD */}
           <DndContext
+            modifiers={[restrictToVerticalAxis]}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}

@@ -148,12 +148,6 @@ const calculateFaceTotals = (section, context) => {
             cabinetId: cabinet.id || cabinet.temp_id,
           });
         }
-
-        // Update face counts
-        if (!totals.faceCounts[faceType]) {
-          totals.faceCounts[faceType] = 0;
-        }
-        totals.faceCounts[faceType] += quantity;
       }
 
       // Skip the rest of the processing for fillers (no faceSummary processing, no hours)

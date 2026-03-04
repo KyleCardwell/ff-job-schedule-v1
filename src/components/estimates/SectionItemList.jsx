@@ -30,6 +30,7 @@ const SectionItemList = ({
   currentSectionId,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
+  const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
@@ -233,7 +234,22 @@ const SectionItemList = ({
 
   const generateTextSummary = (item) => {
     if (!item.face_config) return null;
-    const summary = generateCabinetSummary(item.face_config, item.type_specific_options);
+    const styleOverrideName = item.cabinet_style_override
+      ? cabinetStyles.find(
+          (style) => style.cabinet_style_id === item.cabinet_style_override,
+        )?.cabinet_style_name || ""
+      : "";
+
+    const summary = generateCabinetSummary(item.face_config, {
+      ...item.type_specific_options,
+      cabinetStyleOverride: styleOverrideName,
+      finishedLeft: item.finished_left,
+      finishedRight: item.finished_right,
+      finishedTop: item.finished_top,
+      finishedBottom: item.finished_bottom,
+      finishedBack: item.finished_back,
+      quantity: item.quantity,
+    });
     return summary ? <span className="text-slate-400">{summary}</span> : null;
   };
 
