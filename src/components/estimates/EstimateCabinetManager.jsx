@@ -14,10 +14,87 @@ import {
   ITEM_TYPES,
   PART_NAMES,
 } from "../../utils/constants.js";
-import { safeEvaluate, formatNumberValue, decimalToFraction, fractionToDecimal } from "../../utils/mathUtils";
+import {
+  safeEvaluate,
+  formatNumberValue,
+  decimalToFraction,
+  fractionToDecimal,
+} from "../../utils/mathUtils";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
 import SectionItemList from "./SectionItemList.jsx";
+
+const MOLDING_OPTION_NAMES = {
+  top: "count_top_molding",
+  base: "count_base_molding",
+};
+
+const MOLDING_OPTION_NAME_SET = new Set(Object.values(MOLDING_OPTION_NAMES));
+
+const MAIN_CABINET_TYPE_MOLDING_DEFAULTS = {
+  1: {
+    [MOLDING_OPTION_NAMES.base]: true,
+    [MOLDING_OPTION_NAMES.top]: false,
+  },
+  2: {
+    [MOLDING_OPTION_NAMES.base]: false,
+    [MOLDING_OPTION_NAMES.top]: true,
+  },
+  3: {
+    [MOLDING_OPTION_NAMES.base]: true,
+    [MOLDING_OPTION_NAMES.top]: true,
+  },
+};
+
+const normalizeTypeSpecificOptions = (options = {}) => {
+  const normalized = { ...options };
+
+  if (
+    normalized[MOLDING_OPTION_NAMES.top] === undefined &&
+    normalized.top_molding !== undefined
+  ) {
+    normalized[MOLDING_OPTION_NAMES.top] = Boolean(normalized.top_molding);
+  }
+
+  if (
+    normalized[MOLDING_OPTION_NAMES.base] === undefined &&
+    normalized.base_molding !== undefined
+  ) {
+    normalized[MOLDING_OPTION_NAMES.base] = Boolean(normalized.base_molding);
+  }
+
+  delete normalized.top_molding;
+  delete normalized.base_molding;
+
+  return normalized;
+};
+
+const getDefaultTypeSpecificOptions = (
+  typeSpecificOptions = [],
+  cabinetTypeId = null,
+) => {
+  const defaults = typeSpecificOptions.reduce((acc, option) => {
+    if (option?.name !== undefined) {
+      acc[option.name] = option.defaultValue;
+    }
+    return acc;
+  }, {});
+
+  const typeSpecificMoldingDefaults =
+    MAIN_CABINET_TYPE_MOLDING_DEFAULTS[Number(cabinetTypeId)];
+
+  if (!typeSpecificMoldingDefaults) {
+    return defaults;
+  }
+
+  Object.entries(typeSpecificMoldingDefaults).forEach(([optionName, value]) => {
+    if (typeSpecificOptions.some((option) => option.name === optionName)) {
+      defaults[optionName] = value;
+    }
+  });
+
+  return defaults;
+};
 
 const CabinetItemForm = ({
   item = {},
@@ -70,7 +147,9 @@ const CabinetItemForm = ({
     finished_back: item.finished_back,
     cabinet_style_override: item.cabinet_style_override,
     updated_at: item.updated_at,
-    type_specific_options: item.type_specific_options || {},
+    type_specific_options: normalizeTypeSpecificOptions(
+      item.type_specific_options || {},
+    ),
   });
 
   // Temporary input values for dimensions that will only update formData on commit
@@ -226,23 +305,35 @@ const CabinetItemForm = ({
               // Always set dimensions to defaults when type changes
               if (selectedType.default_width) {
                 updates.width = selectedType.default_width;
-                inputUpdates.width = decimalToFraction(selectedType.default_width);
+                inputUpdates.width = decimalToFraction(
+                  selectedType.default_width,
+                );
               }
               if (selectedType.default_height) {
                 updates.height = selectedType.default_height;
-                inputUpdates.height = decimalToFraction(selectedType.default_height);
+                inputUpdates.height = decimalToFraction(
+                  selectedType.default_height,
+                );
               }
               if (selectedType.default_depth) {
                 updates.depth = selectedType.default_depth;
-                inputUpdates.depth = decimalToFraction(selectedType.default_depth);
+                inputUpdates.depth = decimalToFraction(
+                  selectedType.default_depth,
+                );
               }
 
               // Reset face_config to null when type changes
               // CabinetFaceDivider will reinitialize it with the correct defaultFaceType
               updates.face_config = null;
 
-              // Clear type_specific_options when type changes
-              updates.type_specific_options = {};
+              // Reset type_specific_options to config defaults when type changes
+              const selectedItemTypeConfig = getItemTypeConfig(
+                selectedType.item_type || ITEM_TYPES.CABINET.type,
+              );
+              updates.type_specific_options = getDefaultTypeSpecificOptions(
+                selectedItemTypeConfig.typeSpecificOptions || [],
+                selectedType.cabinet_type_id,
+              );
             }
 
             // Update inputValues with dimension defaults
@@ -469,8 +560,9 @@ const CabinetItemForm = ({
       finalFormData.saved_style_id = effectiveStyleId;
 
       // Include type_specific_options in the saved data
-      finalFormData.type_specific_options =
-        formData.type_specific_options || {};
+      finalFormData.type_specific_options = normalizeTypeSpecificOptions(
+        formData.type_specific_options || {},
+      );
 
       const itemType = cabinetTypes.find(
         (t) => t.cabinet_type_id === formData.type,
@@ -1753,9 +1845,38 @@ const CabinetItemForm = ({
     !errors.height &&
     !errors.depth;
 
+  const typeSpecificOptions = itemTypeConfig.typeSpecificOptions || [];
+  const defaultTypeSpecificOptions = getDefaultTypeSpecificOptions(
+    typeSpecificOptions,
+    formData.type,
+  );
+  const hasTopMoldingOption = typeSpecificOptions.some(
+    (option) => option.name === MOLDING_OPTION_NAMES.top,
+  );
+  const hasBaseMoldingOption = typeSpecificOptions.some(
+    (option) => option.name === MOLDING_OPTION_NAMES.base,
+  );
+  const hasMoldingOptions = hasTopMoldingOption || hasBaseMoldingOption;
+  const countTopMolding =
+    formData.type_specific_options?.[MOLDING_OPTION_NAMES.top] ??
+    defaultTypeSpecificOptions[MOLDING_OPTION_NAMES.top] ??
+    false;
+  const countBaseMolding =
+    formData.type_specific_options?.[MOLDING_OPTION_NAMES.base] ??
+    defaultTypeSpecificOptions[MOLDING_OPTION_NAMES.base] ??
+    false;
+  const filteredTypeSpecificOptions = typeSpecificOptions.filter(
+    (option) => !MOLDING_OPTION_NAME_SET.has(option.name),
+  );
+  const hasNosingOrFinish =
+    itemTypeConfig.features.finishedTop ||
+    itemTypeConfig.features.finishedBottom ||
+    itemTypeConfig.features.finishedLeft ||
+    itemTypeConfig.features.finishedRight;
+
   return (
     <div className="bg-white border border-slate-200 rounded-md p-4">
-      <div className="flex gap-6">
+      <div className="flex gap-4">
         {/* Left side - Form (Narrower) */}
         <div className="w-64 flex flex-col">
           <h4 className="text-sm font-medium text-slate-700 mb-4">
@@ -1886,130 +2007,195 @@ const CabinetItemForm = ({
                   )}
                 </div>
 
-                {/* Finish options - Conditionally show based on item type */}
-                {(itemTypeConfig.features.finishedTop ||
-                  itemTypeConfig.features.finishedBottom ||
-                  itemTypeConfig.features.finishedLeft ||
-                  itemTypeConfig.features.finishedRight) && (
-                  <>
-                    <div className="grid grid-cols-3 gap-2 justify-between">
-                      <div className="col-span-3 text-xs font-medium text-slate-700 text-left">
-                        {nosingOrFinish}:
+                <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-4">
+                  <div className="min-w-0">
+                    {/* Finish options - Conditionally show based on item type */}
+                    {hasNosingOrFinish ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-2 justify-between">
+                          <div className="col-span-2 text-xs font-medium text-slate-700 text-left">
+                            {nosingOrFinish}:
+                          </div>
+
+                          {/* Finished Left */}
+                          {itemTypeConfig.features.finishedLeft && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                id="finished_left"
+                                name="finished_left"
+                                checked={formData.finished_left}
+                                onChange={handleChange}
+                                className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                              />
+                              <label
+                                htmlFor="finished_left"
+                                className="text-xs font-medium text-slate-700"
+                              >
+                                Left
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Finished Top */}
+                          {itemTypeConfig.features.finishedTop && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                id="finished_top"
+                                name="finished_top"
+                                checked={formData.finished_top}
+                                onChange={handleChange}
+                                className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                              />
+                              <label
+                                htmlFor="finished_top"
+                                className="text-xs font-medium text-slate-700"
+                              >
+                                Top
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Finished Right */}
+                          {itemTypeConfig.features.finishedRight && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                id="finished_right"
+                                name="finished_right"
+                                checked={formData.finished_right}
+                                onChange={handleChange}
+                                className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                              />
+                              <label
+                                htmlFor="finished_right"
+                                className="text-xs font-medium text-slate-700"
+                              >
+                                Right
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Finished Bottom */}
+                          {itemTypeConfig.features.finishedBottom && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                id="finished_bottom"
+                                name="finished_bottom"
+                                checked={formData.finished_bottom}
+                                onChange={handleChange}
+                                className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                              />
+                              <label
+                                htmlFor="finished_bottom"
+                                className="text-xs font-medium text-slate-700"
+                              >
+                                Bottom
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Finished Back */}
+                          {itemTypeConfig.features.finishedBack && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                id="finished_back"
+                                name="finished_back"
+                                checked={formData.finished_back}
+                                onChange={handleChange}
+                                className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                              />
+                              <label
+                                htmlFor="finished_back"
+                                className="text-xs font-medium text-slate-700"
+                              >
+                                Back
+                              </label>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Nosing error message - below the grid */}
+                        {errors.nosing && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.nosing}
+                          </p>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+
+                  <div className="justify-self-end">
+                    {hasMoldingOptions ? (
+                      <div className={hasNosingOrFinish ? "border-l border-slate-300 pl-4" : ""}>
+                        <div className="text-xs font-medium text-slate-700 text-left">
+                          Count Molding:
+                        </div>
+                        {hasTopMoldingOption && (
+                          <div
+                            key={MOLDING_OPTION_NAMES.top}
+                            className="flex items-center gap-2 mt-2"
+                          >
+                            <input
+                              type="checkbox"
+                              id={MOLDING_OPTION_NAMES.top}
+                              name={MOLDING_OPTION_NAMES.top}
+                              checked={countTopMolding}
+                              onChange={(e) =>
+                                handleTypeSpecificOptionChange(
+                                  MOLDING_OPTION_NAMES.top,
+                                  e.target.checked,
+                                )
+                              }
+                              className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                            />
+                            <label
+                              htmlFor={MOLDING_OPTION_NAMES.top}
+                              className="text-xs font-medium text-slate-700"
+                              title="Top Molding"
+                            >
+                              Top
+                            </label>
+                          </div>
+                        )}
+                        {hasBaseMoldingOption && (
+                          <div
+                            key={MOLDING_OPTION_NAMES.base}
+                            className="flex items-center gap-2 mt-2"
+                          >
+                            <input
+                              type="checkbox"
+                              id={MOLDING_OPTION_NAMES.base}
+                              name={MOLDING_OPTION_NAMES.base}
+                              checked={countBaseMolding}
+                              onChange={(e) =>
+                                handleTypeSpecificOptionChange(
+                                  MOLDING_OPTION_NAMES.base,
+                                  e.target.checked,
+                                )
+                              }
+                              className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
+                            />
+                            <label
+                              htmlFor={MOLDING_OPTION_NAMES.base}
+                              className="text-xs font-medium text-slate-700"
+                              title="Base Molding"
+                            >
+                              Base
+                            </label>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Finished Left */}
-                      {itemTypeConfig.features.finishedLeft && (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            id="finished_left"
-                            name="finished_left"
-                            checked={formData.finished_left}
-                            onChange={handleChange}
-                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                          />
-                          <label
-                            htmlFor="finished_left"
-                            className="text-xs font-medium text-slate-700"
-                          >
-                            Left
-                          </label>
-                        </div>
-                      )}
-
-                      {/* Finished Top */}
-                      {itemTypeConfig.features.finishedTop && (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            id="finished_top"
-                            name="finished_top"
-                            checked={formData.finished_top}
-                            onChange={handleChange}
-                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                          />
-                          <label
-                            htmlFor="finished_top"
-                            className="text-xs font-medium text-slate-700"
-                          >
-                            Top
-                          </label>
-                        </div>
-                      )}
-
-                      {/* Finished Back */}
-                      {itemTypeConfig.features.finishedBack && (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            id="finished_back"
-                            name="finished_back"
-                            checked={formData.finished_back}
-                            onChange={handleChange}
-                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                          />
-                          <label
-                            htmlFor="finished_back"
-                            className="text-xs font-medium text-slate-700"
-                          >
-                            Back
-                          </label>
-                        </div>
-                      )}
-
-                      {/* Finished Right */}
-                      {itemTypeConfig.features.finishedRight && (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            id="finished_right"
-                            name="finished_right"
-                            checked={formData.finished_right}
-                            onChange={handleChange}
-                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                          />
-                          <label
-                            htmlFor="finished_right"
-                            className="text-xs font-medium text-slate-700"
-                          >
-                            Right
-                          </label>
-                        </div>
-                      )}
-
-                      {/* Finished Bottom */}
-                      {itemTypeConfig.features.finishedBottom && (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            id="finished_bottom"
-                            name="finished_bottom"
-                            checked={formData.finished_bottom}
-                            onChange={handleChange}
-                            className="w-5 h-5 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-                          />
-                          <label
-                            htmlFor="finished_bottom"
-                            className="text-xs font-medium text-slate-700"
-                          >
-                            Bottom
-                          </label>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Nosing error message - below the grid */}
-                    {errors.nosing && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.nosing}
-                      </p>
-                    )}
-                  </>
-                )}
+                    ) : null}
+                  </div>
+                </div>
               </div>
 
               {/* Dynamic Type-Specific Options */}
-              {itemTypeConfig.typeSpecificOptions?.map((option) => {
+              {filteredTypeSpecificOptions.map((option) => {
                 const optionValue =
                   formData.type_specific_options?.[option.name] ??
                   option.defaultValue;
@@ -2257,7 +2443,7 @@ const CabinetItemForm = ({
         </div>
 
         {/* Right side - Face Divider (More space) */}
-        <div className="flex-1 border-l border-slate-200 pl-6">
+        <div className="flex-1 border-l border-slate-200 pl-4">
           {canEditFaces ? (
             <CabinetFaceDivider
               cabinetWidth={formData.width}
@@ -2324,9 +2510,24 @@ const EstimateCabinetManager = ({
       width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
     },
     { key: "type", label: "Type", width: ITEM_FORM_WIDTHS.DEFAULT },
-    { key: "width", label: "Width", width: ITEM_FORM_WIDTHS.DEFAULT, render: (item) => item.width ? decimalToFraction(item.width) : "-" },
-    { key: "height", label: "Height", width: ITEM_FORM_WIDTHS.DEFAULT, render: (item) => item.height ? decimalToFraction(item.height) : "-" },
-    { key: "depth", label: "Depth", width: ITEM_FORM_WIDTHS.DEFAULT, render: (item) => item.depth ? decimalToFraction(item.depth) : "-" },
+    {
+      key: "width",
+      label: "Width",
+      width: ITEM_FORM_WIDTHS.DEFAULT,
+      render: (item) => (item.width ? decimalToFraction(item.width) : "-"),
+    },
+    {
+      key: "height",
+      label: "Height",
+      width: ITEM_FORM_WIDTHS.DEFAULT,
+      render: (item) => (item.height ? decimalToFraction(item.height) : "-"),
+    },
+    {
+      key: "depth",
+      label: "Depth",
+      width: ITEM_FORM_WIDTHS.DEFAULT,
+      render: (item) => (item.depth ? decimalToFraction(item.depth) : "-"),
+    },
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 

@@ -48,22 +48,22 @@ export const CABINET_ITEM_TYPES = {
         description: "45-degree corner cabinet configuration",
         serviceMultipliers: {},
       },
-      // {
-      //   name: "base_mold",
-      //   type: "checkbox",
-      //   label: "Base Mold",
-      //   defaultValue: true,
-      //   description: "Add base molding to cabinet",
-      //   serviceMultipliers: {},
-      // },
-      // {
-      //   name: "top_mold",
-      //   type: "checkbox",
-      //   label: "Top Mold",
-      //   defaultValue: false,
-      //   description: "Add top molding to cabinet",
-      //   serviceMultipliers: {},
-      // },
+      {
+        name: "count_base_molding",
+        type: "checkbox",
+        label: "Base",
+        defaultValue: false,
+        description: "Count this cabinet toward base molding coverage",
+        serviceMultipliers: {},
+      },
+      {
+        name: "count_top_molding",
+        type: "checkbox",
+        label: "Top",
+        defaultValue: false,
+        description: "Count this cabinet toward top/crown molding coverage",
+        serviceMultipliers: {},
+      },
     ],
   },
 
@@ -141,6 +141,24 @@ export const CABINET_ITEM_TYPES = {
       finishedInterior: false,
       finishedSide: true, // Can have finished side
     },
+    typeSpecificOptions: [
+      {
+        name: "count_base_molding",
+        type: "checkbox",
+        label: "Base",
+        defaultValue: true,
+        description: "Add base molding to cabinet",
+        serviceMultipliers: {},
+      },
+      {
+        name: "count_top_molding",
+        type: "checkbox",
+        label: "Top",
+        defaultValue: true,
+        description: "Add top molding to cabinet",
+        serviceMultipliers: {},
+      },
+    ],
   },
 
   end_panel: {
@@ -176,6 +194,22 @@ export const CABINET_ITEM_TYPES = {
         description: "End panel is shop built",
         serviceMultipliers: {},
       },
+      {
+        name: "count_base_molding",
+        type: "checkbox",
+        label: "Base",
+        defaultValue: true,
+        description: "Add base molding to cabinet",
+        serviceMultipliers: {},
+      },
+      {
+        name: "count_top_molding",
+        type: "checkbox",
+        label: "Top",
+        defaultValue: false,
+        description: "Add top molding to cabinet",
+        serviceMultipliers: {},
+      },
     ],
   },
 
@@ -203,6 +237,24 @@ export const CABINET_ITEM_TYPES = {
       finishedInterior: false,
       finishedBack: false,
     },
+    typeSpecificOptions: [
+      {
+        name: "count_base_molding",
+        type: "checkbox",
+        label: "Base",
+        defaultValue: true,
+        description: "Add base molding to cabinet",
+        serviceMultipliers: {},
+      },
+      {
+        name: "count_top_molding",
+        type: "checkbox",
+        label: "Top",
+        defaultValue: false,
+        description: "Add top molding to cabinet",
+        serviceMultipliers: {},
+      },
+    ],
   },
 
   drawer_box: {
@@ -297,6 +349,22 @@ export const CABINET_ITEM_TYPES = {
         serviceMultipliers: {
           2: 1.5, // Tapered hoods take 1.5x shop time (service_id 2)
         },
+      },
+      {
+        name: "count_base_molding",
+        type: "checkbox",
+        label: "Base",
+        defaultValue: false,
+        description: "Add base molding to cabinet",
+        serviceMultipliers: {},
+      },
+      {
+        name: "count_top_molding",
+        type: "checkbox",
+        label: "Top",
+        defaultValue: true,
+        description: "Add top molding to cabinet",
+        serviceMultipliers: {},
       },
     ],
   },

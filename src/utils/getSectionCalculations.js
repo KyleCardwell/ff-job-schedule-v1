@@ -29,8 +29,31 @@ import {
   interpolateTimeByArea,
 } from "./estimateHelpers";
 
-const BASE_MOLDING_TYPE_IDS = new Set([1, 3, 5, 11]);
-const CROWN_MOLDING_TYPE_IDS = new Set([2, 3, 5, 14]);
+const getMoldingCountOverride = (cabinet, optionNames) => {
+  for (const optionName of optionNames) {
+    const value = cabinet?.type_specific_options?.[optionName];
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    // Backward compatibility for any stringified legacy payloads
+    if (value === "true") {
+      return true;
+    }
+    if (value === "false") {
+      return false;
+    }
+  }
+
+  return false;
+};
+
+const getEffectiveMoldingCount = (cabinet, optionName, legacyOptionName) => {
+  return getMoldingCountOverride(cabinet, [
+    optionName,
+    legacyOptionName,
+  ]);
+};
 
 // Calculate face counts and prices for all cabinets in a section
 // Aggregates faces across all cabinets by style for efficient bulk calculation
@@ -80,21 +103,24 @@ const calculateFaceTotals = (section, context) => {
 
   section.cabinets.forEach((cabinet) => {
     const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
-    const cabinetTypeId = Number(cabinet.type);
-    const cabinetHeight = Number(cabinet.height) || 0;
-    const cabinetWidthByQuantity = (Number(cabinet.width) || 0) * quantity;
+    let cabinetWidthByQuantity = (Number(cabinet.width) || 0) * quantity;
+    if (cabinet.type === 14) {
+      cabinetWidthByQuantity = Number(cabinet.width + (2 * Number(cabinet.depth)) || 0) * quantity;
+    }
     const cabinetStyleId =
       cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
 
     if (cabinetWidthByQuantity > 0) {
-      const countsTowardBase =
-        BASE_MOLDING_TYPE_IDS.has(cabinetTypeId) ||
-        (cabinetTypeId === 10 && (cabinetHeight <= 36 || cabinetHeight >= 72));
-
-      const countsTowardCrown =
-        CROWN_MOLDING_TYPE_IDS.has(cabinetTypeId) ||
-        (cabinetTypeId === 10 && cabinetHeight >= 36) ||
-        (cabinetTypeId === 11 && cabinetHeight >= 36);
+      const countsTowardBase = getEffectiveMoldingCount(
+        cabinet,
+        "count_base_molding",
+        "base_molding",
+      );
+      const countsTowardCrown = getEffectiveMoldingCount(
+        cabinet,
+        "count_top_molding",
+        "top_molding",
+      );
 
       if (countsTowardBase) {
         approxBaseLengthInches += cabinetWidthByQuantity;
