@@ -667,15 +667,25 @@ const calculateFaceTotals = (section, context) => {
         }) => {
           if (materialFaces.length === 0) return;
 
+          const slabPricingOptions = {
+            doorInsideMolding,
+            doorOutsideMolding,
+            drawerInsideMolding,
+            drawerOutsideMolding,
+            ...(section.horizontal_grain
+              ? {
+                  cutPricePerFoot: 7.5,
+                  edgeBandPricePerFoot: 2,
+                  setupCostPerSheet: 35,
+                  kerfWidth: 3,
+                }
+              : {}),
+          };
+
           const result = calculateSlabSheetFacePriceBulk(
             materialFaces,
             material,
-            {
-              doorInsideMolding,
-              doorOutsideMolding,
-              drawerInsideMolding,
-              drawerOutsideMolding,
-            },
+            slabPricingOptions,
           );
 
           // Distribute cost proportionally across face types
