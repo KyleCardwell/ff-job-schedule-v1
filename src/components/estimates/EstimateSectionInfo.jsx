@@ -239,6 +239,22 @@ const EstimateSectionInfo = ({
               })()}
               {(() => {
                 const { value, source } = getSectionEffectiveValue(
+                  showEstimateDefaults ? null : section?.horizontal_grain,
+                  "default_horizontal_grain",
+                  "default_horizontal_grain",
+                );
+                return value ? (
+                  <>
+                    <div className="text-slate-400 flex items-center gap-2">
+                      <span className={getSourceColor(source)}>●</span>
+                      <span>Wood Grain</span>
+                    </div>
+                    <div className="pl-5 mb-3">Horizontal</div>
+                  </>
+                ) : null;
+              })()}
+              {(() => {
+                const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.box_mat,
                   "default_box_mat",
                   "default_box_mat",

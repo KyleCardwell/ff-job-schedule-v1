@@ -126,6 +126,7 @@ export const createSectionContext = (section, estimate, catalogData) => {
     door_outside_molding: effectiveDefaults.door_outside_molding,
     drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
     drawer_outside_molding: effectiveDefaults.drawer_outside_molding,
+    horizontal_grain: effectiveDefaults.horizontal_grain,
     door_panel_mod_id: effectiveDefaults.door_panel_mod_id,
     drawer_panel_mod_id: effectiveDefaults.drawer_panel_mod_id,
     door_style: effectiveDefaults.door_style,

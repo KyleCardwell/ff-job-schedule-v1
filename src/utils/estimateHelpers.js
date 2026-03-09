@@ -1239,8 +1239,8 @@ export const calculateSlabSheetFacePriceBulk = (
     };
   }
 
-  const sheetWidth = selectedMaterial.width || 48;
-  const sheetHeight = selectedMaterial.height || 96;
+  const sheetWidth = selectedMaterial.width || 49;
+  const sheetHeight = selectedMaterial.height || 97;
   const sheetArea = sheetWidth * sheetHeight;
   const sheetPrice = selectedMaterial.sheet_price || 0;
 

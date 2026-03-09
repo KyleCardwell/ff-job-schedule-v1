@@ -241,6 +241,7 @@ export const fetchEstimateById = (estimateId) => {
         default_door_outside_molding: data.default_door_outside_molding,
         default_drawer_inside_molding: data.default_drawer_inside_molding,
         default_drawer_outside_molding: data.default_drawer_outside_molding,
+        default_horizontal_grain: data.default_horizontal_grain,
         default_door_panel_mod_id: data.default_door_panel_mod_id,
         default_drawer_panel_mod_id: data.default_drawer_panel_mod_id,
         default_door_style: data.default_door_style,
@@ -670,6 +671,7 @@ export const addSection = (estimateId, taskId, sectionData) => {
         doorOutsideMolding,
         drawerInsideMolding,
         drawerOutsideMolding,
+        horizontalGrain,
         notes,
         doorPanelModId,
         drawerPanelModId,
@@ -712,6 +714,8 @@ export const addSection = (estimateId, taskId, sectionData) => {
               drawerInsideMolding !== undefined ? drawerInsideMolding : null,
             drawer_outside_molding:
               drawerOutsideMolding !== undefined ? drawerOutsideMolding : null,
+            horizontal_grain:
+              horizontalGrain !== undefined ? horizontalGrain : null,
             notes: notes || null,
             door_panel_mod_id:
               doorPanelModId !== undefined ? doorPanelModId : null,
@@ -787,6 +791,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         doorOutsideMolding,
         drawerInsideMolding,
         drawerOutsideMolding,
+        horizontalGrain,
         notes,
         doorPanelModId,
         drawerPanelModId,
@@ -849,6 +854,9 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         }),
         ...(drawerOutsideMolding !== undefined && {
           drawer_outside_molding: drawerOutsideMolding,
+        }),
+        ...(horizontalGrain !== undefined && {
+          horizontal_grain: horizontalGrain,
         }),
         ...(notes !== undefined && { notes: notes || null }),
         ...(doorPanelModId !== undefined && {
@@ -1175,6 +1183,8 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
           defaults.default_drawer_inside_molding ?? null,
         default_drawer_outside_molding:
           defaults.default_drawer_outside_molding ?? null,
+        default_horizontal_grain:
+          defaults.default_horizontal_grain ?? null,
         default_door_panel_mod_id: defaults.default_door_panel_mod_id ?? null,
         default_drawer_panel_mod_id:
           defaults.default_drawer_panel_mod_id ?? null,
@@ -1236,6 +1246,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_door_outside_molding: data.default_door_outside_molding,
         default_drawer_inside_molding: data.default_drawer_inside_molding,
         default_drawer_outside_molding: data.default_drawer_outside_molding,
+        default_horizontal_grain: data.default_horizontal_grain,
         default_door_panel_mod_id: data.default_door_panel_mod_id,
         default_drawer_panel_mod_id: data.default_drawer_panel_mod_id,
         default_door_style: data.default_door_style,

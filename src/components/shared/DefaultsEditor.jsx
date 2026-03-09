@@ -67,6 +67,7 @@ const DefaultsEditor = ({
     door_outside_molding: data.door_outside_molding ?? data.default_door_outside_molding ?? false,
     drawer_inside_molding: data.drawer_inside_molding ?? data.default_drawer_inside_molding ?? false,
     drawer_outside_molding: data.drawer_outside_molding ?? data.default_drawer_outside_molding ?? false,
+    horizontal_grain: data.horizontal_grain ?? data.default_horizontal_grain ?? false,
     door_panel_mod_id: data.door_panel_mod_id ?? data.default_door_panel_mod_id ?? "",
     drawer_panel_mod_id: data.drawer_panel_mod_id ?? data.default_drawer_panel_mod_id ?? "",
     hinge_id: data.hinge_id || data.default_hinge_id || "",

@@ -149,6 +149,13 @@ export const buildAppliedMoldingNote = (effectiveSection = {}) => {
   return "";
 };
 
+export const buildHorizontalGrainNote = (effectiveSection = {}) => {
+  if (effectiveSection.horizontal_grain) {
+    return "Horizontal Grain.";
+  }
+  return "";
+};
+
 export const buildAdditionalSectionNotesText = ({
   effectiveSection,
   hasDoors,
@@ -156,6 +163,7 @@ export const buildAdditionalSectionNotesText = ({
   faceMaterials,
   finishTypes,
 }) => {
+  const horizontalGrainNote = buildHorizontalGrainNote(effectiveSection);
   const doorDrawerMaterialNote = buildDoorDrawerMaterialNote({
     effectiveSection,
     hasDoors,
@@ -168,10 +176,11 @@ export const buildAdditionalSectionNotesText = ({
   const appliedMoldingNote = buildAppliedMoldingNote(effectiveSection);
 
   return {
+    horizontalGrainNote,
     doorDrawerMaterialNote,
     panelModNote,
     appliedMoldingNote,
-    additionalNotesText: [doorDrawerMaterialNote, panelModNote, appliedMoldingNote]
+    additionalNotesText: [horizontalGrainNote, doorDrawerMaterialNote, panelModNote, appliedMoldingNote]
       .filter(Boolean)
       .join(" "),
   };

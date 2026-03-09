@@ -31,6 +31,7 @@ SELECT
     e.default_drawer_reeded_panel,
     e.default_door_style,
     e.default_drawer_front_style,
+    e.default_horizontal_grain,
 
     -- Estimate pricing defaults
     e.default_profit,

@@ -323,6 +323,7 @@ const EstimateSectionForm = ({
     const doorOutsideMoldingField = getFieldName("door_outside_molding");
     const drawerInsideMoldingField = getFieldName("drawer_inside_molding");
     const drawerOutsideMoldingField = getFieldName("drawer_outside_molding");
+    const horizontalGrainField = getFieldName("horizontal_grain");
     const doorPanelModField = getFieldName("door_panel_mod_id");
     const drawerPanelModField = getFieldName("drawer_panel_mod_id");
     const hingeField = getFieldName("hinge_id");
@@ -390,6 +391,11 @@ const EstimateSectionForm = ({
         data[drawerOutsideMoldingField] ??
         data.drawer_outside_molding ??
         initialDefaults.drawer_outside_molding ??
+        null,
+      horizontalGrain:
+        data[horizontalGrainField] ??
+        data.horizontal_grain ??
+        initialDefaults.horizontal_grain ??
         null,
       doorPanelModId:
         data[doorPanelModField] ??
@@ -569,6 +575,7 @@ const EstimateSectionForm = ({
       "doorOutsideMolding",
       "drawerInsideMolding",
       "drawerOutsideMolding",
+      "horizontalGrain",
     ];
 
     // Handle panel mod ID fields (foreign keys)
@@ -674,6 +681,7 @@ const EstimateSectionForm = ({
         doorPanelModId: "",
         drawerInsideMolding: null,
         drawerOutsideMolding: null,
+        horizontalGrain: null,
         drawerPanelModId: "",
         hinge_id: "",
         slide_id: "",
@@ -714,6 +722,7 @@ const EstimateSectionForm = ({
       doorOutsideMolding: sourceSection.door_outside_molding ?? null,
       drawerInsideMolding: sourceSection.drawer_inside_molding ?? null,
       drawerOutsideMolding: sourceSection.drawer_outside_molding ?? null,
+      horizontalGrain: sourceSection.horizontal_grain ?? null,
       doorPanelModId: sourceSection.door_panel_mod_id ?? "",
       drawerPanelModId: sourceSection.drawer_panel_mod_id ?? "",
       hinge_id: sourceSection.hinge_id || "",
@@ -1046,6 +1055,7 @@ const EstimateSectionForm = ({
             default_door_outside_molding: formData.doorOutsideMolding,
             default_drawer_inside_molding: formData.drawerInsideMolding,
             default_drawer_outside_molding: formData.drawerOutsideMolding,
+            default_horizontal_grain: formData.horizontalGrain,
             default_door_panel_mod_id:
               formData.doorPanelModId === "" ? null : formData.doorPanelModId,
             default_drawer_panel_mod_id:
@@ -1092,6 +1102,8 @@ const EstimateSectionForm = ({
             default_drawer_inside_molding: formData.drawerInsideMolding || null,
             default_drawer_outside_molding:
               formData.drawerOutsideMolding || null,
+            default_horizontal_grain:
+              formData.horizontalGrain || null,
             default_door_panel_mod_id:
               formData.doorPanelModId === "" ? null : formData.doorPanelModId,
             default_drawer_panel_mod_id:
@@ -1567,7 +1579,7 @@ const EstimateSectionForm = ({
               <div className="grid grid-cols-[1fr_9fr] gap-1 items-center text-slate-200">
                 <h3 className={STYLES.sectionHeader}>Cabinet Style</h3>
                 <div className={STYLES.sectionBorder}>
-                  <div className="grid grid-cols-[2fr_3fr] gap-2 items-center">
+                  <div className="grid grid-cols-[2fr_3fr_2fr] gap-2 items-center">
                     <div className="grid items-center">
                       <label htmlFor="style" className={STYLES.label}>
                         <span>Style</span>
@@ -1600,6 +1612,30 @@ const EstimateSectionForm = ({
                       {errors.style && (
                         <p className={STYLES.errorText}>{errors.style}</p>
                       )}
+                    </div>
+                    <div></div>
+                    <div className="grid items-center">
+                      <label className={STYLES.label}>
+                        <span>Horizontal Grain</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.horizontalGrain,
+                          "default_horizontal_grain",
+                          "default_horizontal_grain",
+                          formatBoolean,
+                        )}
+                      </label>
+                      <select
+                        name="horizontalGrain"
+                        value={getBooleanSelectValue(
+                          formData.horizontalGrain,
+                        )}
+                        onChange={handleChange}
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                      >
+                        <option value="">{getPlaceholder("...")}</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
                     </div>
                   </div>
                 </div>

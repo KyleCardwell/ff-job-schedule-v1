@@ -151,6 +151,13 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       estimate.default_drawer_outside_molding,
       team.default_drawer_outside_molding
     ),
+
+    // Horizontal grain (boolean)
+    horizontal_grain: getEffectiveValueOnly(
+      section.horizontal_grain,
+      estimate.default_horizontal_grain,
+      team.default_horizontal_grain
+    ),
     
     // Panel mods (foreign key to parts_list, NULL = none)
     door_panel_mod_id: getEffectiveValueOnly(
@@ -235,6 +242,7 @@ export const DEFAULTS_FIELD_MAPPING = {
   doorOutsideMolding: 'door_outside_molding',
   drawerInsideMolding: 'drawer_inside_molding',
   drawerOutsideMolding: 'drawer_outside_molding',
+  horizontalGrain: 'horizontal_grain',
   doorPanelModId: 'door_panel_mod_id',
   drawerPanelModId: 'drawer_panel_mod_id',
   doorStyle: 'door_style',
