@@ -399,7 +399,7 @@ export const ChartContainer = () => {
 
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: "#ffffff",
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
         width: exportWidthPx,
