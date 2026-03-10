@@ -9,7 +9,7 @@ const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
   const handleEmployeeClick = (employeeId) => {
     if (selectedEmployeeIds.includes(employeeId)) {
       // Remove if already selected
-      onEmployeeFilter(selectedEmployeeIds.filter(id => id !== employeeId));
+      onEmployeeFilter(selectedEmployeeIds.filter((id) => id !== employeeId));
     } else {
       // Add to selection
       const newSelection = [...selectedEmployeeIds, employeeId];
@@ -35,7 +35,9 @@ const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
         <div
           key={employee.employee_id}
           className={`flex items-center mt-[5px] mr-5 cursor-pointer hover:opacity-80 ${
-            selectedEmployeeIds.includes(employee.employee_id) ? 'ring-2 ring-blue-500 rounded px-1' : ''
+            selectedEmployeeIds.includes(employee.employee_id)
+              ? "ring-2 ring-blue-500 rounded px-1"
+              : ""
           }`}
           onClick={() => handleEmployeeClick(employee.employee_id)}
         >
@@ -48,7 +50,7 @@ const BuilderLegend = ({ onEmployeeFilter, selectedEmployeeIds = [] }) => {
               MozPrintColorAdjust: "exact",
             }}
           ></div>
-          <span>{employee.employee_name}</span>
+          <span data-employee-name="true">{employee.employee_name}</span>
         </div>
       ))}
     </div>

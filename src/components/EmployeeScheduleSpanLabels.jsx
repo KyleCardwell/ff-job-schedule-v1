@@ -26,7 +26,10 @@ const EmployeeScheduleSpanLabels = ({
         MozPrintColorAdjust: "exact",
       }}
     >
-      <div className="flex flex-1 items-center justify-end pr-2 font-bold">
+      <div
+        className="flex flex-1 items-center justify-end pr-2 font-bold"
+        data-dates-scheduled="true"
+      >
         Dates Scheduled
       </div>
       <div className="flex flex-col h-full w-1/6">
