@@ -21,6 +21,10 @@ import { fetchProjects } from "../redux/actions/projects";
 import { Actions } from "../redux/actions.js";
 import { normalizeDate } from "../utils/dateUtils";
 import { calculateXPosition } from "../utils/helpers";
+import {
+  serializeScheduleHtml,
+  generatePlaywrightPdf,
+} from "../utils/scheduleHtmlSerializer";
 
 import BuilderLegend from "./BuilderLegend.jsx";
 import ErrorToast from "./common/ErrorToast.jsx";
@@ -327,69 +331,31 @@ export const ChartContainer = () => {
     console.error("Database error:", error);
   };
 
-  const handleExportSchedulePdf = useCallback(async () => {
-    if (isExportingPdf || !activeRoomsData?.length) {
-      return;
-    }
+  const handleExportPdf = useCallback(async () => {
+    if (isExportingPdf || !activeRoomsData?.length) return;
 
     const exportContainer = exportContainerRef.current;
     const scrollableContainer = scrollableRef.current;
-
-    if (!exportContainer || !scrollableContainer) {
-      return;
-    }
+    if (!exportContainer || !scrollableContainer) return;
 
     try {
       setIsExportingPdf(true);
 
-      const ensureScript = (id, src, isReady) => {
-        if (isReady()) {
-          return Promise.resolve();
-        }
+      const html = serializeScheduleHtml({
+        exportContainer,
+        scrollableContainer,
+        dayWidth,
+        leftColumnWidth,
+        printVisibleDays,
+        numDays,
+        chartHeight,
+        employeesScheduledHeight,
+        headerHeight,
+      });
 
-        const existingScript = document.getElementById(id);
-        if (existingScript) {
-          return new Promise((resolve, reject) => {
-            existingScript.addEventListener("load", resolve, { once: true });
-            existingScript.addEventListener("error", reject, { once: true });
-          });
-        }
-
-        return new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.id = id;
-          script.src = src;
-          script.async = true;
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
-      };
-
-      await ensureScript(
-        "html2canvas-cdn",
-        "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
-        () => Boolean(window.html2canvas)
-      );
-
-      await ensureScript(
-        "jspdf-cdn",
-        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
-        () => Boolean(window.jspdf?.jsPDF)
-      );
-
-      const html2canvas = window.html2canvas;
-      const jsPDF = window.jspdf?.jsPDF;
-
-      if (!html2canvas || !jsPDF) {
-        throw new Error("Failed to load PDF export libraries.");
+      if (!html) {
+        throw new Error("Failed to serialize schedule HTML");
       }
-
-      const scrollLeft = scrollableContainer.scrollLeft || 0;
-      const snappedScrollLeft = Math.max(
-        0,
-        Math.floor(scrollLeft / dayWidth) * dayWidth
-      );
 
       const calendarWidthPx = dayWidth * printVisibleDays;
       const exportWidthPx = leftColumnWidth + calendarWidthPx;
@@ -397,255 +363,41 @@ export const ChartContainer = () => {
       const footerHeight = 48;
       const exportHeightPx = fullContentHeight + footerHeight;
 
-      const canvas = await html2canvas(exportContainer, {
-        backgroundColor: "#ffffff",
-        scale: 3,
-        useCORS: true,
-        logging: false,
-        width: exportWidthPx,
-        height: exportHeightPx,
-        windowWidth: exportWidthPx + 100,
-        windowHeight: exportHeightPx + 100,
-        scrollX: 0,
-        scrollY: 0,
-        x: 0,
-        y: 0,
-        onclone: (clonedDocument) => {
-          // 1. Remove ALL sticky positioning — this is why the left column was missing.
-          //    html2canvas cannot render sticky elements at their visual position.
-          const allSticky = clonedDocument.querySelectorAll("*");
-          allSticky.forEach((el) => {
-            const computed = el.ownerDocument.defaultView.getComputedStyle(el);
-            if (computed.position === "sticky") {
-              el.style.position = "relative";
-            }
-          });
-
-          // 2. Remove ALL overflow restrictions so full content is rendered
-          const clonedExportRoot = clonedDocument.querySelector(
-            "[data-schedule-export-root='true']"
-          );
-          if (clonedExportRoot) {
-            clonedExportRoot.style.width = `${exportWidthPx}px`;
-            clonedExportRoot.style.height = `${exportHeightPx}px`;
-            clonedExportRoot.style.maxHeight = "none";
-            clonedExportRoot.style.overflow = "visible";
-            clonedExportRoot.style.display = "block";
-          }
-
-          const clonedViewport = clonedDocument.querySelector(
-            "[data-schedule-export-viewport='true']"
-          );
-          if (clonedViewport) {
-            clonedViewport.style.overflow = "visible";
-            clonedViewport.style.maxHeight = "none";
-            clonedViewport.style.height = `${fullContentHeight}px`;
-            clonedViewport.style.flexGrow = "0";
-          }
-
-          // 3. Fix the grid: remove transform, set exact size, no scroll
-          const clonedScrollable = clonedDocument.querySelector(
-            "[data-schedule-scrollable='true']"
-          );
-          if (clonedScrollable) {
-            clonedScrollable.style.transform = "none";
-            clonedScrollable.style.width = `${exportWidthPx}px`;
-            clonedScrollable.style.maxWidth = `${exportWidthPx}px`;
-            clonedScrollable.style.height = `${fullContentHeight}px`;
-            clonedScrollable.style.maxHeight = "none";
-            clonedScrollable.style.overflow = "hidden";
-            clonedScrollable.style.display = "grid";
-            clonedScrollable.style.gridTemplateColumns =
-              `${leftColumnWidth}px ${calendarWidthPx}px`;
-          }
-
-          // 4. Fix left column elements — remove margin-left hacks, position normally
-          const clonedLeftHeader = clonedDocument.querySelector(
-            "[data-schedule-left-header='true']"
-          );
-          if (clonedLeftHeader) {
-            clonedLeftHeader.style.position = "relative";
-            clonedLeftHeader.style.marginLeft = "0";
-            clonedLeftHeader.style.removeProperty("--print-margin-left");
-            clonedLeftHeader.style.width = `${leftColumnWidth}px`;
-          }
-
-          const clonedLeftColumn = clonedDocument.querySelector(
-            "[data-schedule-left-column='true']"
-          );
-
-          const clonedDatesScheduled = clonedDocument.querySelector(
-            "[data-dates-scheduled='true']"
-          );
-          if(clonedDatesScheduled) {
-            clonedDatesScheduled.style.marginTop = "-15px"
-          }
-          if (clonedLeftColumn) {
-            clonedLeftColumn.style.position = "relative";
-            clonedLeftColumn.style.marginLeft = "0";
-            clonedLeftColumn.style.removeProperty("--print-margin-left");
-            clonedLeftColumn.style.width = `${leftColumnWidth}px`;
-          }
-
-          // 5. Clip ALL right-side SVGs to the visible 10-week window using viewBox.
-          //    Some SVGs use HTML width/height attributes (D3-rendered), others use
-          //    inline style (e.g. TaskGroups SVG). Check both sources.
-          //    Do NOT change position — absolute SVGs must stay absolute to overlay correctly.
-          if (clonedScrollable) {
-            clonedScrollable.querySelectorAll("svg").forEach((svg) => {
-              const attrW = parseFloat(svg.getAttribute("width"));
-              const styleW = parseFloat(svg.style.width);
-              const svgWidth = attrW || styleW || 0;
-
-              const attrH = parseFloat(svg.getAttribute("height"));
-              const styleH = parseFloat(svg.style.height);
-              const svgHeight = attrH || styleH || 0;
-
-              if (svgWidth > leftColumnWidth && svgHeight > 0) {
-                svg.setAttribute(
-                  "viewBox",
-                  `${snappedScrollLeft} 0 ${calendarWidthPx} ${svgHeight}`
-                );
-                svg.setAttribute("width", calendarWidthPx);
-                svg.setAttribute("height", svgHeight);
-                svg.style.width = `${calendarWidthPx}px`;
-                svg.style.height = `${svgHeight}px`;
-              }
-            });
-          }
-
-          // 6. Clip month header row to the visible date range.
-          //    The right grid column is narrower than the full chart width, which
-          //    causes the flex month row to shrink its children. Fix by setting an
-          //    explicit full-width on the month row and preventing flex-shrink,
-          //    then use translateX + overflow:hidden to show the correct slice.
-          const fullChartWidth = numDays * dayWidth;
-          const rightHeaderCell = clonedDocument.querySelector(
-            "[data-schedule-right-header='true']"
-          );
-          if (rightHeaderCell) {
-            rightHeaderCell.style.overflow = "hidden";
-            rightHeaderCell.style.width = `${calendarWidthPx}px`;
-            rightHeaderCell.style.top = "0";
-            rightHeaderCell.style.alignSelf = "start";
-
-            // The month header is the first child element — a flex div containing month divs
-            const monthRow = rightHeaderCell.firstElementChild;
-            if (monthRow && monthRow.tagName !== "SVG") {
-              // Prevent flex shrink: set explicit full width so month divs keep their sizes
-              monthRow.style.width = `${fullChartWidth}px`;
-              monthRow.style.minWidth = `${fullChartWidth}px`;
-              monthRow.style.flexShrink = "0";
-              monthRow.style.transform =
-                `translateX(-${snappedScrollLeft}px)`;
-
-              // Each month div child: prevent shrink
-              Array.from(monthRow.children).forEach((monthDiv) => {
-                monthDiv.style.flexShrink = "0";
-              });
-              
-              // Fix sticky inner labels: remove sticky positioning and left offset
-              // Each month div has a sticky child with left: leftColumnWidth
-              monthRow.querySelectorAll(".sticky").forEach((stickyLabel) => {
-                stickyLabel.style.position = "static";
-                stickyLabel.style.left = "auto";
-                stickyLabel.style.marginTop = "-15px";
-              });
-            }
-          }
-
-          // 7. Handle the chart cell (div.relative.z-10) — set explicit size and clip
-          const chartCell = clonedDocument.querySelector(
-            "[data-schedule-scrollable='true'] > .relative.z-10"
-          );
-          if (chartCell) {
-            chartCell.style.overflow = "hidden";
-            chartCell.style.width = `${calendarWidthPx}px`;
-            chartCell.style.height = `${chartHeight}px`;
-          }
-
-          // 8. Footer: make static, constrain width
-          const clonedFooter = clonedDocument.querySelector(".gantt-footer");
-          if (clonedFooter) {
-            clonedFooter.style.position = "static";
-            clonedFooter.style.width = `${exportWidthPx}px`;
-            clonedFooter.style.boxShadow = "none";
-          }
-
-          const clonedEmployeeNames = clonedDocument.querySelectorAll(
-            "[data-employee-name='true']"
-          );
-          if (clonedEmployeeNames) {
-            clonedEmployeeNames.forEach((employeeName) => {
-              employeeName.style.marginTop = "-15px";
-            });
-          }
-
-          // 9. Hide elements not needed in export
-          const clonedDateFilter = clonedDocument.querySelector(
-            "[data-schedule-date-filter='true']"
-          );
-          if (clonedDateFilter) {
-            clonedDateFilter.style.display = "none";
-          }
-
-          const clonedLoadingOverlay = clonedDocument.querySelector(
-            "[data-schedule-loading-overlay='true']"
-          );
-          if (clonedLoadingOverlay) {
-            clonedLoadingOverlay.style.display = "none";
-          }
-        },
-      });
-
-      // Build PDF: 24" wide, height based on aspect ratio of captured content
-      const pdfWidthInches = printPaperWidthInches;
       const pdfMarginInches = 0.25;
-      const drawableWidth = pdfWidthInches - pdfMarginInches * 2;
-      const aspectRatio = canvas.height / canvas.width;
-      const drawableHeight = Number((drawableWidth * aspectRatio).toFixed(2));
-      const finalPdfHeight = Math.max(
+      const pdfWidthInches = printPaperWidthInches;
+      const drawableWidthInches = pdfWidthInches - pdfMarginInches * 2;
+      const aspectRatio = exportHeightPx / exportWidthPx;
+      const drawableHeightInches = drawableWidthInches * aspectRatio;
+      const pdfHeightInches = Math.max(
         pdfWidthInches + 0.01,
-        Number((drawableHeight + pdfMarginInches * 2).toFixed(2))
-      );
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "in",
-        format: [pdfWidthInches, finalPdfHeight],
-        compress: true,
-      });
-
-      const imageData = canvas.toDataURL("image/png");
-      pdf.addImage(
-        imageData,
-        "PNG",
-        pdfMarginInches,
-        pdfMarginInches,
-        drawableWidth,
-        drawableHeight,
-        undefined,
-        "FAST"
+        drawableHeightInches + pdfMarginInches * 2
       );
 
       const fileName = `schedule-${format(new Date(), "MM-dd-yyyy")}.pdf`;
-      pdf.save(fileName);
-    } catch {
-      alert("Unable to export schedule PDF. Please try again.");
+
+      await generatePlaywrightPdf({
+        html,
+        pdfWidthInches,
+        pdfHeightInches,
+        fileName,
+      });
+    } catch (error) {
+      console.error("PDF export error:", error);
+      alert(`Unable to export PDF: ${error.message}`);
     } finally {
       setIsExportingPdf(false);
     }
   }, [
     activeRoomsData,
-    dayWidth,
     isExportingPdf,
+    dayWidth,
     leftColumnWidth,
-    numDays,
-    printPaperWidthInches,
     printVisibleDays,
+    numDays,
     chartHeight,
     employeesScheduledHeight,
     headerHeight,
+    printPaperWidthInches,
   ]);
 
   useEffect(() => {
@@ -1177,7 +929,7 @@ export const ChartContainer = () => {
       <div className="fixed right-0 top-0 h-[50px] z-[100] flex print:hidden">
         <button
           className={`${headerButtonClass} ${headerButtonColor}`}
-          onClick={handleExportSchedulePdf}
+          onClick={handleExportPdf}
           disabled={isExportingPdf || !activeRoomsData?.length}
         >
           {isExportingPdf ? "Exporting..." : "Export PDF"}
