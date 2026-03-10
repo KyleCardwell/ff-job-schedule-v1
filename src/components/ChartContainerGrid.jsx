@@ -61,8 +61,8 @@ export const ChartContainer = () => {
   });
 
   const dayWidth = 30;
-  const printVisibleWeeks = 10;
-  const printVisibleDays = printVisibleWeeks * 7;
+  const printVisibleWeeks = 9;
+  const printVisibleDays = printVisibleWeeks * 7 + 5;
   const printPaperWidthInches = 24;
 
   useEffect(() => {
@@ -399,7 +399,7 @@ export const ChartContainer = () => {
 
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: "#ffffff",
-        scale: 1,
+        scale: 2,
         useCORS: true,
         logging: false,
         width: exportWidthPx,
@@ -473,6 +473,13 @@ export const ChartContainer = () => {
           const clonedLeftColumn = clonedDocument.querySelector(
             "[data-schedule-left-column='true']"
           );
+
+          const clonedDatesScheduled = clonedDocument.querySelector(
+            "[data-dates-scheduled='true']"
+          );
+          if(clonedDatesScheduled) {
+            clonedDatesScheduled.style.marginTop = "-15px"
+          }
           if (clonedLeftColumn) {
             clonedLeftColumn.style.position = "relative";
             clonedLeftColumn.style.marginLeft = "0";
@@ -508,20 +515,42 @@ export const ChartContainer = () => {
           }
 
           // 6. Clip month header row to the visible date range.
-          //    Target the right-header cell via data attribute, then shift only the
-          //    month header flex row (first child). SVGs handle their own offset via viewBox.
+          //    The right grid column is narrower than the full chart width, which
+          //    causes the flex month row to shrink its children. Fix by setting an
+          //    explicit full-width on the month row and preventing flex-shrink,
+          //    then use translateX + overflow:hidden to show the correct slice.
+          const fullChartWidth = numDays * dayWidth;
           const rightHeaderCell = clonedDocument.querySelector(
             "[data-schedule-right-header='true']"
           );
           if (rightHeaderCell) {
             rightHeaderCell.style.overflow = "hidden";
             rightHeaderCell.style.width = `${calendarWidthPx}px`;
+            rightHeaderCell.style.top = "0";
+            rightHeaderCell.style.alignSelf = "start";
 
             // The month header is the first child element — a flex div containing month divs
             const monthRow = rightHeaderCell.firstElementChild;
-            if (monthRow && monthRow.tagName !== "svg") {
+            if (monthRow && monthRow.tagName !== "SVG") {
+              // Prevent flex shrink: set explicit full width so month divs keep their sizes
+              monthRow.style.width = `${fullChartWidth}px`;
+              monthRow.style.minWidth = `${fullChartWidth}px`;
+              monthRow.style.flexShrink = "0";
               monthRow.style.transform =
                 `translateX(-${snappedScrollLeft}px)`;
+
+              // Each month div child: prevent shrink
+              Array.from(monthRow.children).forEach((monthDiv) => {
+                monthDiv.style.flexShrink = "0";
+              });
+              
+              // Fix sticky inner labels: remove sticky positioning and left offset
+              // Each month div has a sticky child with left: leftColumnWidth
+              monthRow.querySelectorAll(".sticky").forEach((stickyLabel) => {
+                stickyLabel.style.position = "static";
+                stickyLabel.style.left = "auto";
+                stickyLabel.style.marginTop = "-15px";
+              });
             }
           }
 
@@ -541,6 +570,15 @@ export const ChartContainer = () => {
             clonedFooter.style.position = "static";
             clonedFooter.style.width = `${exportWidthPx}px`;
             clonedFooter.style.boxShadow = "none";
+          }
+
+          const clonedEmployeeNames = clonedDocument.querySelectorAll(
+            "[data-employee-name='true']"
+          );
+          if (clonedEmployeeNames) {
+            clonedEmployeeNames.forEach((employeeName) => {
+              employeeName.style.marginTop = "-15px";
+            });
           }
 
           // 9. Hide elements not needed in export
@@ -578,10 +616,10 @@ export const ChartContainer = () => {
         compress: true,
       });
 
-      const imageData = canvas.toDataURL("image/jpeg", 0.92);
+      const imageData = canvas.toDataURL("image/png");
       pdf.addImage(
         imageData,
-        "JPEG",
+        "PNG",
         pdfMarginInches,
         pdfMarginInches,
         drawableWidth,
@@ -602,6 +640,7 @@ export const ChartContainer = () => {
     dayWidth,
     isExportingPdf,
     leftColumnWidth,
+    numDays,
     printPaperWidthInches,
     printVisibleDays,
     chartHeight,
