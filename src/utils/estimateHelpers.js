@@ -2409,7 +2409,7 @@ export const generateCabinetSummary = (
   // Create summary strings for each accessory type
   if (Object.keys(accessoryGroups).length > 0) {
     Object.entries(accessoryGroups).forEach(([name, count]) => {
-      parts.push(`${count} ${name}`);
+      parts.push(`${count} ${name}${count !== 1 ? "s" : ""}`);
     });
   }
 

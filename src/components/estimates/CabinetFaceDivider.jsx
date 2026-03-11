@@ -1878,6 +1878,7 @@ const CabinetFaceDivider = ({
       ];
       node.splitDirection = SPLIT_DIRECTIONS.HORIZONTAL;
       node.type = FACE_NAMES.CONTAINER;
+      node.accessories = [];
       node.rollOutQty = 0;
       node.drawerBoxDimensions = null;
       node.shelfQty = 0;
@@ -1941,6 +1942,7 @@ const CabinetFaceDivider = ({
       ];
       node.splitDirection = SPLIT_DIRECTIONS.VERTICAL;
       node.type = FACE_NAMES.CONTAINER;
+      node.accessories = [];
       node.rollOutQty = 0;
       node.shelfQty = 0;
       node.drawerBoxDimensions = null;
