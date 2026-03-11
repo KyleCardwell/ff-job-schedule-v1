@@ -2218,6 +2218,10 @@ export const generateCabinetSummary = (
     parts.push(typeSpecificOptions.cabinetStyleOverride);
   }
 
+  if (typeSpecificOptions?.blind) {
+    parts.push(`Blind ${typeSpecificOptions.blind}`);
+  }
+
   if (typeSpecificOptions.corner_45) {
     parts.push("45° Corner");
   }

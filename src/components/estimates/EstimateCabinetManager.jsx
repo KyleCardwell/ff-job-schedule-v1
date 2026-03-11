@@ -31,6 +31,50 @@ const MOLDING_OPTION_NAMES = {
 
 const MOLDING_OPTION_NAME_SET = new Set(Object.values(MOLDING_OPTION_NAMES));
 
+const BLIND_OPTION_NAMES = {
+  side: "blind",
+  width: "blind_width",
+};
+
+const BLIND_SIDE_VALUES = {
+  none: "none",
+  left: "left",
+  right: "right",
+};
+
+const normalizeBlindWidth = (blindWidth) => {
+  const parsed = Number(blindWidth);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+
+  return parsed;
+};
+
+const applyBlindWidthToReveals = (baseReveals = {}, typeSpecificOptions = {}) => {
+  const reveals = {
+    top: Number(baseReveals.top) || 0,
+    bottom: Number(baseReveals.bottom) || 0,
+    left: Number(baseReveals.left) || 0,
+    right: Number(baseReveals.right) || 0,
+    reveal: Number(baseReveals.reveal) || 0,
+  };
+
+  const blindSide = typeSpecificOptions?.[BLIND_OPTION_NAMES.side];
+  const blindWidth = normalizeBlindWidth(
+    typeSpecificOptions?.[BLIND_OPTION_NAMES.width],
+  );
+
+  if (blindSide === BLIND_SIDE_VALUES.left) {
+    reveals.left += blindWidth;
+  } else if (blindSide === BLIND_SIDE_VALUES.right) {
+    reveals.right += blindWidth;
+  }
+
+  return reveals;
+};
+
 const MAIN_CABINET_TYPE_MOLDING_DEFAULTS = {
   1: {
     [MOLDING_OPTION_NAMES.base]: true,
@@ -173,52 +217,61 @@ const CabinetItemForm = ({
     return cabinetStyleId;
   };
 
+  const getRootRevealsForState = useCallback(
+    (styleId, typeId, typeSpecificOptions = {}) => {
+      if (!styleId || !typeId) {
+        return null;
+      }
+
+      const style = cabinetStyles.find((s) => s.cabinet_style_id === styleId);
+      const typeConfig = style?.types?.find((t) => t.cabinet_type_id === typeId);
+
+      if (!typeConfig?.config) {
+        return null;
+      }
+
+      return applyBlindWidthToReveals(typeConfig.config, typeSpecificOptions);
+    },
+    [cabinetStyles],
+  );
+
   // Sync rootReveals when cabinet_style_override is null and section style changes
   useEffect(() => {
-    console.log(
-      "[EstimateCabinetManager] useEffect triggered - cabinetStyleId:",
-      cabinetStyleId,
-      "override:",
-      formData.cabinet_style_override,
-    );
-    // Only run if cabinet_style_override is null (using section default)
-    if (
-      (formData.cabinet_style_override === null ||
-        formData.cabinet_style_override === undefined) &&
-      formData.face_config &&
-      formData.type &&
-      cabinetStyles.length > 0 &&
-      cabinetStyleId
-    ) {
-      // Find the style and type config for the section's style
-      const style = cabinetStyles.find(
-        (s) => s.cabinet_style_id === cabinetStyleId,
-      );
-      const typeConfig = style?.types?.find(
-        (t) => t.cabinet_type_id === formData.type,
-      );
-
-      // Update rootReveals - CabinetFaceDivider will handle dimension recalculation
-      // Only update if reveals are different to prevent infinite loop
-      if (
-        typeConfig?.config &&
-        !isEqual(formData.face_config?.rootReveals, typeConfig.config)
-      ) {
-        setFormData((prev) => ({
-          ...prev,
-          face_config: {
-            ...prev.face_config,
-            rootReveals: typeConfig.config,
-          },
-        }));
-      }
+    if (!formData.face_config || !formData.type || cabinetStyles.length === 0) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    const effectiveStyleId =
+      formData.cabinet_style_override && formData.cabinet_style_override !== -1
+        ? formData.cabinet_style_override
+        : cabinetStyleId;
+
+    const nextRootReveals = getRootRevealsForState(
+      effectiveStyleId,
+      formData.type,
+      formData.type_specific_options,
+    );
+
+    if (
+      nextRootReveals &&
+      !isEqual(formData.face_config?.rootReveals, nextRootReveals)
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        face_config: {
+          ...prev.face_config,
+          rootReveals: nextRootReveals,
+        },
+      }));
+    }
   }, [
     cabinetStyleId,
     formData.cabinet_style_override,
+    formData.face_config,
     formData.type,
+    formData.type_specific_options,
     cabinetStyles,
+    getRootRevealsForState,
   ]);
 
   // Update itemTypeConfig when formData.type changes
@@ -283,14 +336,6 @@ const CabinetItemForm = ({
           // Determine which type to use
           const effectiveTypeId = name === "type" ? numValue : formData.type;
 
-          // Find the style and type config
-          const style = cabinetStyles.find(
-            (s) => s.cabinet_style_id === effectiveStyleId,
-          );
-          const typeConfig = style?.types?.find(
-            (t) => t.cabinet_type_id === effectiveTypeId,
-          );
-
           // Build the updates object
           const updates = { [name]: numValue };
           const inputUpdates = {};
@@ -345,14 +390,20 @@ const CabinetItemForm = ({
             }
           } else if (name === "cabinet_style_override") {
             // For style changes only, update rootReveals - CabinetFaceDivider will handle dimensions
+            const nextRootReveals = getRootRevealsForState(
+              effectiveStyleId,
+              effectiveTypeId,
+              formData.type_specific_options,
+            );
+
             if (
-              typeConfig?.config &&
+              nextRootReveals &&
               formData.face_config &&
               formData.face_config.id
             ) {
               updates.face_config = {
                 ...formData.face_config,
-                rootReveals: typeConfig.config,
+                rootReveals: nextRootReveals,
               };
             }
           }
@@ -460,13 +511,43 @@ const CabinetItemForm = ({
 
   // Handle type-specific options changes
   const handleTypeSpecificOptionChange = (optionName, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      type_specific_options: {
+    setFormData((prev) => {
+      const nextTypeSpecificOptions = {
         ...prev.type_specific_options,
         [optionName]: value,
-      },
-    }));
+      };
+
+      const nextFormData = {
+        ...prev,
+        type_specific_options: nextTypeSpecificOptions,
+      };
+
+      const isBlindOption =
+        optionName === BLIND_OPTION_NAMES.side ||
+        optionName === BLIND_OPTION_NAMES.width;
+
+      if (isBlindOption && prev.face_config && prev.type) {
+        const effectiveStyleId =
+          prev.cabinet_style_override && prev.cabinet_style_override !== -1
+            ? prev.cabinet_style_override
+            : cabinetStyleId;
+
+        const nextRootReveals = getRootRevealsForState(
+          effectiveStyleId,
+          prev.type,
+          nextTypeSpecificOptions,
+        );
+
+        if (nextRootReveals) {
+          nextFormData.face_config = {
+            ...prev.face_config,
+            rootReveals: nextRootReveals,
+          };
+        }
+      }
+
+      return nextFormData;
+    });
   };
 
   const validateForm = () => {
@@ -622,6 +703,13 @@ const CabinetItemForm = ({
           formData.finished_interior,
           formData.finished_back,
           formData.type_specific_options?.corner_45 || false,
+          formData.type_specific_options?.[BLIND_OPTION_NAMES.side] ===
+            BLIND_SIDE_VALUES.left ||
+            formData.type_specific_options?.[BLIND_OPTION_NAMES.side] ===
+              BLIND_SIDE_VALUES.right,
+          formData.type_specific_options?.[BLIND_OPTION_NAMES.width] || 0,
+          formData.type_specific_options?.[BLIND_OPTION_NAMES.side] ||
+            BLIND_SIDE_VALUES.none,
         );
 
         finalFormData.face_config = {
@@ -947,12 +1035,29 @@ const CabinetItemForm = ({
     finishedInterior = false,
     finishedBack = false,
     isCorner45 = false,
+    isBlind = false,
+    blindWidth = 0,
+    blindSide = BLIND_SIDE_VALUES.none,
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
     const h = roundTo16th(Number(height));
     const d = roundTo16th(Number(depth));
     const qty = Number(quantity);
+
+    const normalizedBlindWidth = roundTo16th(normalizeBlindWidth(blindWidth));
+    const hasBlindSide =
+      itemType === ITEM_TYPES.CABINET.type &&
+      isBlind &&
+      (blindSide === BLIND_SIDE_VALUES.left ||
+        blindSide === BLIND_SIDE_VALUES.right) &&
+      normalizedBlindWidth > 0;
+    const blindSideArea = hasBlindSide
+      ? roundTo16th(normalizedBlindWidth * h)
+      : 0;
+    const blindSidePerimeter = hasBlindSide
+      ? roundTo16th(2 * (normalizedBlindWidth + h))
+      : 0;
 
     // Handle item types that don't need box material
     // door_front, drawer_front, end_panel, appliance_panel - no box parts, just faces
@@ -1300,6 +1405,10 @@ const CabinetItemForm = ({
       boxPartsCount = 5;
     }
 
+    if (hasBlindSide) {
+      boxPartsCount += 1;
+    }
+
     let bandingLength = 0;
     // Banding front edges is only for cabinet style 13 (European)
     if (cabinetStyleId === 13) {
@@ -1360,6 +1469,7 @@ const CabinetItemForm = ({
         2 * sideArea +
         2 * topBottomArea +
         2 * backArea + // Two back panels for corner 45
+        blindSideArea +
         totalShelfArea +
         totalPartitionArea;
     } else {
@@ -1368,6 +1478,7 @@ const CabinetItemForm = ({
         2 * sideArea +
         2 * topBottomArea +
         backArea +
+        blindSideArea +
         totalShelfArea +
         totalPartitionArea;
     }
@@ -1380,19 +1491,22 @@ const CabinetItemForm = ({
     // Count of pieces per cabinet type
     const pieces = isCorner45
       ? {
-          sides: 2 * qty,
+          sides: (2 + (hasBlindSide ? 1 : 0)) * qty,
           topBottom: 2 * qty,
           back: 2 * qty, // Two backs for corner 45
         }
       : {
-          sides: 2 * qty,
+          sides: (2 + (hasBlindSide ? 1 : 0)) * qty,
           topBottom: 2 * qty,
           back: 1 * qty,
         };
 
     const singleBoxPartsCount = boxPartsCount + shelfCount + partitionCount;
     const singleBoxPerimeterLength =
-      boxPerimeterLength + shelfPerimeterLength + partitionPerimeterLength;
+      boxPerimeterLength +
+      blindSidePerimeter +
+      shelfPerimeterLength +
+      partitionPerimeterLength;
 
     // Build boxPartsList for packing algorithm
     const boxPartsList = [];
@@ -1418,6 +1532,21 @@ const CabinetItemForm = ({
       quantity: 1,
       finish: finishedInterior || finishedRight,
     });
+
+    if (hasBlindSide) {
+      boxPartsList.push({
+        type: PART_NAMES.SIDE,
+        side:
+          blindSide === BLIND_SIDE_VALUES.left ? "blind_left" : "blind_right",
+        width: normalizedBlindWidth,
+        height: roundTo16th(h),
+        area: blindSideArea,
+        quantity: 1,
+        finish:
+          finishedInterior ||
+          (blindSide === BLIND_SIDE_VALUES.left ? finishedLeft : finishedRight),
+      });
+    }
 
     // Add top and bottom
     if (isCorner45) {
@@ -2260,6 +2389,15 @@ const CabinetItemForm = ({
                     </div>
                   );
                 } else if (option.type === "select") {
+                  const isBlindOption = option.name === BLIND_OPTION_NAMES.side;
+                  const showBlindWidthInput =
+                    isBlindOption &&
+                    (optionValue === BLIND_SIDE_VALUES.left ||
+                      optionValue === BLIND_SIDE_VALUES.right);
+                  const blindWidthValue =
+                    formData.type_specific_options?.[BLIND_OPTION_NAMES.width] ??
+                    "";
+
                   return (
                     <div
                       key={option.name}
@@ -2290,6 +2428,35 @@ const CabinetItemForm = ({
                           </option>
                         ))}
                       </select>
+
+                      {showBlindWidthInput && (
+                        <>
+                          <label
+                            htmlFor={BLIND_OPTION_NAMES.width}
+                            className="text-xs font-medium text-slate-700"
+                          >
+                            Width
+                          </label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            id={BLIND_OPTION_NAMES.width}
+                            name={BLIND_OPTION_NAMES.width}
+                            value={blindWidthValue}
+                            onChange={(e) =>
+                              handleTypeSpecificOptionChange(
+                                BLIND_OPTION_NAMES.width,
+                                e.target.value === ""
+                                  ? ""
+                                  : Number(e.target.value),
+                              )
+                            }
+                            min={0}
+                            step={0.125}
+                            className="w-20 px-2 py-1 border border-slate-300 rounded-md text-sm"
+                          />
+                        </>
+                      )}
                     </div>
                   );
                 } else if (option.type === "text") {

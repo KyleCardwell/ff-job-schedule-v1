@@ -250,7 +250,7 @@ const SectionItemList = ({
       finishedBack: item.finished_back,
       quantity: item.quantity,
     });
-    return summary ? <span className="text-slate-400">{summary}</span> : null;
+    return summary ? <span className="text-slate-400 capitalize">{summary}</span> : null;
   };
 
   const renderCellContent = (item, index, col) => {

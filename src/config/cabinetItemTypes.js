@@ -64,6 +64,19 @@ export const CABINET_ITEM_TYPES = {
         description: "Count this cabinet toward top/crown molding coverage",
         serviceMultipliers: {},
       },
+      {
+        name: "blind",
+        type: "select",
+        label: "Blind",
+        defaultValue: "none",
+        options: [
+          { value: "none", label: "None" },
+          { value: "left", label: "Left" },
+          { value: "right", label: "Right" },
+        ],
+        description: "Is this a blind cabinet?",
+        serviceMultipliers: {},
+      },
     ],
   },
 
