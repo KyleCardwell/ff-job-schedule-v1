@@ -2218,7 +2218,7 @@ export const generateCabinetSummary = (
     parts.push(typeSpecificOptions.cabinetStyleOverride);
   }
 
-  if (typeSpecificOptions?.blind) {
+  if (typeSpecificOptions?.blind && typeSpecificOptions.blind !== "none") {
     parts.push(`Blind ${typeSpecificOptions.blind}`);
   }
 

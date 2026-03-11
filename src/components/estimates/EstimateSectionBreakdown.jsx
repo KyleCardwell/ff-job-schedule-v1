@@ -38,6 +38,13 @@ const EstimateSectionBreakdown = ({
     ? Object.keys(sectionCalculations.laborCosts.costsByService).map(Number).sort()
     : [];
 
+  const totalServicesCost = sectionCalculations?.laborCosts?.totalLaborCost || 0;
+  const subtotal = sectionCalculations?.subTotalPrice || 0;
+  const sectionProfit = sectionCalculations?.profit || 0;
+  const sectionCommission = sectionCalculations?.commission || 0;
+  const sectionDiscount = sectionCalculations?.discount || 0;
+  const sectionTotal = sectionCalculations?.totalPrice || 0;
+
   return (
     <div className="bg-slate-800 rounded-lg flex flex-col h-full">
       {/* Sticky Header - Title and Buttons */}
@@ -144,7 +151,7 @@ const EstimateSectionBreakdown = ({
       {/* Sticky Totals Row at Bottom */}
       <div className="px-6 pb-6 pt-4 border-t-2 border-teal-500 flex-shrink-0">
         <div className="grid gap-3 py-4 px-4 bg-teal-900 bg-opacity-30 rounded font-bold" style={{ gridTemplateColumns: `2fr 1.5fr ${serviceIds.map(() => '1fr').join(' ')}` }}>
-          <div className="text-white text-base">Total</div>
+          <div className="text-white text-base">Total Parts</div>
           <div className="text-teal-300 text-right text-base">
             {formatCurrency(sectionCalculations?.partsTotalPrice || 0)}
           </div>
@@ -156,6 +163,50 @@ const EstimateSectionBreakdown = ({
               </div>
             );
           })}
+        </div>
+
+        <div className="grid gap-3 py-3 px-4 mt-2 bg-teal-900 bg-opacity-20 rounded font-semibold border border-teal-800" style={{ gridTemplateColumns: `2fr 1.5fr ${serviceIds.map(() => '1fr').join(' ')}` }}>
+          <div className="text-white text-sm">Total Hours Price</div>
+          <div className="text-teal-300 text-right text-sm">
+            {formatCurrency(totalServicesCost)}
+          </div>
+          {serviceIds.map((serviceId) => {
+            const serviceData = sectionCalculations?.laborCosts?.costsByService?.[serviceId];
+            return (
+              <div key={serviceId} className="text-teal-300 text-right text-sm">
+                {serviceData ? formatCurrency(serviceData.cost) : "-"}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-slate-600 space-y-1">
+          <div className="flex justify-between text-sm text-slate-300">
+            <span>Subtotal (Parts + Labor)</span>
+            <span>{formatCurrency(subtotal)}</span>
+          </div>
+          {sectionProfit > 0 && (
+            <div className="flex justify-between text-sm text-green-400">
+              <span>Profit</span>
+              <span>+{formatCurrency(sectionProfit)}</span>
+            </div>
+          )}
+          {sectionCommission > 0 && (
+            <div className="flex justify-between text-sm text-blue-400">
+              <span>Commission</span>
+              <span>+{formatCurrency(sectionCommission)}</span>
+            </div>
+          )}
+          {sectionDiscount > 0 && (
+            <div className="flex justify-between text-sm text-red-400">
+              <span>Discount</span>
+              <span>-{formatCurrency(sectionDiscount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-base font-bold text-teal-300 pt-2 border-t border-slate-700">
+            <span>Section Total</span>
+            <span>{formatCurrency(sectionTotal)}</span>
+          </div>
         </div>
       </div>
     </div>

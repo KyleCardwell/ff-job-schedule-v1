@@ -3,6 +3,9 @@ import { useState } from "react";
 import { FiFileText } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { NONE, PRE_FINISHED } from "../../utils/constants";
+import { createSectionContext } from "../../utils/createSectionContext";
+import { formatDoorDrawerStyle } from "../../utils/helpers";
 import {
   formatCurrency,
   formatHours,
@@ -20,6 +23,34 @@ const GenerateSectionBreakdownPdf = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const allServices = useSelector((state) => state.services.allServices);
+  const currentEstimate = useSelector(
+    (state) => state.estimates.currentEstimate,
+  );
+  const boxMaterials = useSelector((state) => state.materials.boxMaterials);
+  const faceMaterials = useSelector((state) => state.materials.faceMaterials);
+  const drawerBoxMaterials = useSelector(
+    (state) => state.materials.drawerBoxMaterials,
+  );
+  const finishTypes = useSelector((state) => state.finishes.finishes);
+  const cabinetStyles = useSelector(
+    (state) =>
+      state.cabinetStyles?.styles.filter((style) => style.is_active) || [],
+  );
+  const cabinetTypes = useSelector(
+    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || [],
+  );
+  const hardware = useSelector((state) => state.hardware);
+  const accessories = useSelector((state) => state.accessories);
+  const lengthsCatalog = useSelector((state) => state.lengths.catalog);
+  const partsListAnchors = useSelector(
+    (state) => state.partsListAnchors.itemsByPartsList,
+  );
+  const cabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors.itemsByType,
+  );
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults,
+  );
 
   const generatePdf = async () => {
     if (!sectionCalculations || isGenerating) return;
@@ -66,6 +97,159 @@ const GenerateSectionBreakdownPdf = ({
 
       // Get labor adjustment hours from section.add_hours
       const laborAdjustmentHours = getLaborAdjustmentHours(section?.add_hours);
+
+      const totalServicesCost =
+        sectionCalculations?.laborCosts?.totalLaborCost || 0;
+      const subtotal = sectionCalculations?.subTotalPrice || 0;
+      const sectionProfit = sectionCalculations?.profit || 0;
+      const sectionCommission = sectionCalculations?.commission || 0;
+      const sectionDiscount = sectionCalculations?.discount || 0;
+      const sectionTotal = sectionCalculations?.totalPrice || 0;
+
+      const catalogData = {
+        boxMaterials,
+        faceMaterials,
+        drawerBoxMaterials,
+        finishTypes,
+        cabinetStyles,
+        cabinetTypes,
+        hardware,
+        partsListAnchors,
+        cabinetAnchors,
+        globalServices: allServices,
+        lengthsCatalog,
+        accessories,
+        teamDefaults,
+      };
+
+      const { context, effectiveSection } = createSectionContext(
+        section,
+        currentEstimate,
+        catalogData,
+      );
+
+      const hasDoors =
+        (sectionCalculations?.faceCounts?.door || 0) +
+          (sectionCalculations?.faceCounts?.panel || 0) >
+        0;
+      const hasDrawerFronts =
+        (sectionCalculations?.faceCounts?.drawer_front || 0) +
+          (sectionCalculations?.faceCounts?.false_front || 0) >
+        0;
+      const hasDrawerBoxes =
+        (sectionCalculations?.drawerBoxCount || 0) +
+          (sectionCalculations?.rollOutCount || 0) >
+        0;
+      const hasBoxes = (sectionCalculations?.boxCount || 0) > 0;
+
+      const faceMaterial = faceMaterials?.find(
+        (m) => m.id === effectiveSection?.face_mat,
+      );
+      const faceFinishNames =
+        faceMaterial?.needs_finish === false
+          ? PRE_FINISHED
+          : effectiveSection?.face_finish
+              ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+              .filter(Boolean)
+              .join(", ") || NONE;
+
+      const boxMaterial = boxMaterials?.find(
+        (m) => m.id === effectiveSection?.box_mat,
+      );
+      const boxFinishNames =
+        boxMaterial?.needs_finish === false
+          ? PRE_FINISHED
+          : effectiveSection?.box_finish
+              ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
+              .filter(Boolean)
+              .join(", ") || NONE;
+
+      const drawerBoxMaterialName = hasDrawerBoxes
+        ? drawerBoxMaterials?.find(
+            (m) => m.id === effectiveSection?.drawer_box_mat,
+          )?.name || NONE
+        : NONE;
+
+      const cabinetStyleName =
+        cabinetStyles?.find(
+          (s) => s.cabinet_style_id === effectiveSection?.cabinet_style_id,
+        )?.cabinet_style_name || "—";
+      const boxMaterialName = hasBoxes
+        ? context?.selectedBoxMaterial?.material?.name || "—"
+        : NONE;
+      const faceMaterialName =
+        context?.selectedFaceMaterial?.material?.name || "—";
+      const doorStyleName = hasDoors
+        ? formatDoorDrawerStyle(effectiveSection?.door_style)
+        : NONE;
+      const drawerFrontStyleName = hasDrawerFronts
+        ? formatDoorDrawerStyle(effectiveSection?.drawer_front_style)
+        : NONE;
+
+      // Match GenerateEstimatePdf two-column detail snapshot layout
+      const leftColumn = [];
+      const rightColumn = [];
+
+      // leftColumn.push(`Style: ${cabinetStyleName}`);
+      // leftColumn.push(`Drawer Boxes: ${drawerBoxMaterialName}`);
+      // leftColumn.push(`Cabinets: ${boxMaterialName}`);
+      // leftColumn.push(`Finish: ${boxFinishNames}`);
+
+      // rightColumn.push(`Doors: ${doorStyleName}`);
+      // rightColumn.push(`Drawer Fronts: ${drawerFrontStyleName}`);
+      // rightColumn.push(`Wood: ${faceMaterialName}`);
+      // rightColumn.push(`Finish: ${faceFinishNames}`);
+
+      leftColumn.push({
+        text: [{ text: "Style: ", bold: true }, { text: cabinetStyleName }],
+      });
+      leftColumn.push({
+        text: [
+          { text: "Drawer Boxes: ", bold: true },
+          { text: drawerBoxMaterialName },
+        ],
+      });
+      leftColumn.push({
+        text: [
+          { text: "Cabinets: ", bold: true },
+          { text: boxMaterialName },
+        ],
+      });
+      leftColumn.push({
+        text: [{ text: "Finish: ", bold: true }, { text: boxFinishNames }],
+      });
+
+      rightColumn.push({
+        text: [{ text: "Doors: ", bold: true }, { text: doorStyleName }],
+      });
+      rightColumn.push({
+        text: [
+          { text: "Drawer Fronts: ", bold: true },
+          { text: drawerFrontStyleName },
+        ],
+      });
+      rightColumn.push({
+        text: [{ text: "Wood: ", bold: true }, { text: faceMaterialName }],
+      });
+      rightColumn.push({
+        text: [{ text: "Finish: ", bold: true }, { text: faceFinishNames }],
+      });
+
+      const maxDetailRows = Math.max(leftColumn.length, rightColumn.length);
+      const sectionDetailsRows = [];
+
+      for (let index = 0; index < maxDetailRows; index += 1) {
+        sectionDetailsRows.push([
+          {
+            text: leftColumn[index] || "",
+            color: "#111827",
+          },
+          {
+            text: rightColumn[index] || "",
+            color: "#111827",
+          },
+        ]);
+      }
 
       // Build table header row
       const headerRow = [
@@ -131,9 +315,9 @@ const GenerateSectionBreakdownPdf = ({
         tableBody.push(row);
       });
 
-      // Add totals row
+      // Add totals rows
       const totalsRow = [
-        { text: "Total", style: "totalsRow", bold: true },
+        { text: "Total Parts", style: "totalsRow", bold: true },
         {
           text: formatCurrency(sectionCalculations?.partsTotalPrice || 0),
           style: "totalsRow",
@@ -153,9 +337,140 @@ const GenerateSectionBreakdownPdf = ({
       });
       tableBody.push(totalsRow);
 
+      const totalServicesRow = [
+        { text: "Total Hours Price", style: "totalsRow", bold: true },
+        {
+          text: formatCurrency(totalServicesCost),
+          style: "totalsRow",
+          alignment: "right",
+          bold: true,
+        },
+      ];
+      serviceIds.forEach((serviceId) => {
+        const serviceData =
+          sectionCalculations?.laborCosts?.costsByService?.[serviceId];
+        totalServicesRow.push({
+          text: serviceData ? formatCurrency(serviceData.cost) : "-",
+          style: "totalsRow",
+          alignment: "right",
+          color: "#999999",
+          bold: true,
+        });
+      });
+      tableBody.push(totalServicesRow);
+
+      const sectionSummaryContent = [
+        {
+          columns: [
+            { text: "Subtotal (Parts + Labor)", color: "#374151" },
+            {
+              text: formatCurrency(subtotal),
+              alignment: "right",
+              color: "#111827",
+            },
+          ],
+          margin: [0, 0, 0, 4],
+        },
+        ...(sectionProfit > 0
+          ? [
+              {
+                columns: [
+                  { text: "Profit", color: "#047857" },
+                  {
+                    text: `+${formatCurrency(sectionProfit)}`,
+                    alignment: "right",
+                    color: "#047857",
+                  },
+                ],
+                margin: [0, 0, 0, 4],
+              },
+            ]
+          : []),
+        ...(sectionCommission > 0
+          ? [
+              {
+                columns: [
+                  { text: "Commission", color: "#1d4ed8" },
+                  {
+                    text: `+${formatCurrency(sectionCommission)}`,
+                    alignment: "right",
+                    color: "#1d4ed8",
+                  },
+                ],
+                margin: [0, 0, 0, 4],
+              },
+            ]
+          : []),
+        ...(sectionDiscount > 0
+          ? [
+              {
+                columns: [
+                  { text: "Discount", color: "#b91c1c" },
+                  {
+                    text: `-${formatCurrency(sectionDiscount)}`,
+                    alignment: "right",
+                    color: "#b91c1c",
+                  },
+                ],
+                margin: [0, 0, 0, 6],
+              },
+            ]
+          : []),
+        {
+          canvas: [
+            {
+              type: "line",
+              x1: 0,
+              y1: 0,
+              x2: 535,
+              y2: 0,
+              lineWidth: 0.5,
+              lineColor: "#cccccc",
+            },
+          ],
+          margin: [0, 2, 0, 6],
+        },
+        {
+          columns: [
+            {
+              text: "Section Total",
+              bold: true,
+              fontSize: 11,
+              color: "#0f766e",
+            },
+            {
+              text: formatCurrency(sectionTotal),
+              alignment: "right",
+              bold: true,
+              fontSize: 11,
+              color: "#0f766e",
+            },
+          ],
+        },
+        {
+          text: "",
+          margin: [0, 2, 0, 2],
+        },
+        {
+          table: {
+            widths: ["*", "*"],
+            body: sectionDetailsRows,
+          },
+          layout: {
+            hLineWidth: () => 0,
+            vLineWidth: () => 0,
+            paddingLeft: () => 0,
+            paddingRight: () => 0,
+            paddingTop: () => 2,
+            paddingBottom: () => 2,
+          },
+          margin: [0, 4, 0, 0],
+        },
+      ];
+
       // Calculate column widths dynamically
-      const serviceColumnWidth = serviceIds.length > 0 ? 40 : 0; //service column widths
-      const widths = ["*", 80]; //category, cost
+      const serviceColumnWidth = serviceIds.length > 0 ? 52 : 0; //service column widths
+      const widths = ["*", 70]; //Table Headers => item (category), cost
       serviceIds.forEach(() => widths.push(serviceColumnWidth));
 
       const docDefinition = {
@@ -215,6 +530,10 @@ const GenerateSectionBreakdownPdf = ({
                 return null;
               },
             },
+          },
+          {
+            margin: [0, 12, 0, 0],
+            stack: sectionSummaryContent,
           },
         ],
         footer: (currentPage, pageCount) => ({
