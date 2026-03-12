@@ -275,11 +275,21 @@ const EstimateSectionInfo = ({
                   "default_box_mat",
                   "default_box_mat",
                 );
-                const { value: boxFinish, source } = getSectionEffectiveValue(
+                const {
+                  value: boxFinish,
+                  source: boxFinishSource,
+                } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.box_finish,
                   "default_box_finish",
                   "default_box_finish",
                 );
+                const boxMaterial = materials.boxMaterials.find(
+                  (mat) => mat.id === boxMat.value,
+                );
+                const source =
+                  boxMaterial?.needs_finish === false
+                    ? boxMat.source
+                    : boxFinishSource;
                 return (
                   <>
                     <div className="text-slate-400 flex items-center gap-2">
@@ -316,11 +326,21 @@ const EstimateSectionInfo = ({
                   "default_face_mat",
                   "default_face_mat",
                 );
-                const { value: faceFinish, source } = getSectionEffectiveValue(
+                const {
+                  value: faceFinish,
+                  source: faceFinishSource,
+                } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.face_finish,
                   "default_face_finish",
                   "default_face_finish",
                 );
+                const faceMaterial = materials.faceMaterials.find(
+                  (mat) => mat.id === faceMat.value,
+                );
+                const source =
+                  faceMaterial?.needs_finish === false
+                    ? faceMat.source
+                    : faceFinishSource;
                 return (
                   <>
                     <div className="text-slate-400 flex items-center gap-2">
