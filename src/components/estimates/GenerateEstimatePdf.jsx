@@ -2,6 +2,8 @@ import PropTypes from "prop-types";
 import { useState } from "react";
 import { FiFileText } from "react-icons/fi";
 
+import { roundToHundredth } from "../../utils/estimateHelpers";
+
 /**
  * Component that generates a PDF estimate with:
  * - Header with logo space, "Estimate" title, date, client name, and project
@@ -158,6 +160,10 @@ const GenerateEstimatePdf = ({
       allSections.forEach((section, index) => {
         const taskKey = section.taskId ?? section.taskName ?? `task-${index}`;
         const sectionKey = section.sectionId ?? index;
+        const quantity = Number(section.quantity) || 0;
+        const unitPrice = Number(section.unitPrice) || 0;
+        const sectionTotal = roundToHundredth(quantity * unitPrice);
+
         if (!taskSummaries.has(taskKey)) {
           taskSummaries.set(taskKey, {
             totalPrice: 0,
@@ -167,7 +173,7 @@ const GenerateEstimatePdf = ({
         }
 
         const summary = taskSummaries.get(taskKey);
-        summary.totalPrice += section.totalPrice || 0;
+        summary.totalPrice = roundToHundredth(summary.totalPrice + sectionTotal);
         summary.sectionCount += 1;
       });
 
@@ -239,10 +245,25 @@ const GenerateEstimatePdf = ({
         const summary = taskSummaries.get(taskKey);
         const hasMultipleSections = summary?.sectionCount > 1;
         const isFirstSection = summary?.firstSectionKey === sectionKey;
-        const shouldShowPricing = !hasMultipleSections || isFirstSection;
-        const totalPrice = hasMultipleSections
-          ? summary.totalPrice
-          : section.totalPrice;
+        const quantity = Number(section.quantity) || 0;
+        const unitPrice = Number(section.unitPrice) || 0;
+        const totalPrice = roundToHundredth(quantity * unitPrice);
+        const groupedTotalPrice = summary?.totalPrice ?? totalPrice;
+        const displayQuantity = hasMultipleSections
+          ? isFirstSection
+            ? "1"
+            : ""
+          : section.quantity?.toString() ?? "";
+        const displayCost = hasMultipleSections
+          ? isFirstSection
+            ? formatCurrency(groupedTotalPrice)
+            : ""
+          : formatCurrency(unitPrice);
+        const displayTotal = hasMultipleSections
+          ? isFirstSection
+            ? formatCurrency(groupedTotalPrice)
+            : ""
+          : formatCurrency(totalPrice);
         const leftColumn = [];
         const rightColumn = [];
 
@@ -321,7 +342,7 @@ const GenerateEstimatePdf = ({
         // Single row with all section content - mark for page break avoidance
         allRows.push([
           {
-            text: section.quantity?.toString() ?? "",
+            text: displayQuantity,
             alignment: "center",
             rowSpan: 1,
           },
@@ -337,13 +358,13 @@ const GenerateEstimatePdf = ({
             ],
           },
           {
-            text: shouldShowPricing ? formatCurrency(totalPrice) : "",
+            text: displayCost,
             alignment: "right",
             colSpan: 2,
           },
           {},
           {
-            text: shouldShowPricing ? formatCurrency(totalPrice) : "",
+            text: displayTotal,
             alignment: "right",
             colSpan: 2,
           },
