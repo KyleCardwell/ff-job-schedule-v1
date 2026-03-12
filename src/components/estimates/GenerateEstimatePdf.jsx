@@ -264,6 +264,25 @@ const GenerateEstimatePdf = ({
             ? formatCurrency(groupedTotalPrice)
             : ""
           : formatCurrency(totalPrice);
+        const actualQuantityText = String(quantity);
+        const shouldAnnotateQuantityInNotes =
+          hasMultipleSections && displayQuantity !== actualQuantityText;
+        const quantityNotePrefix = `Quantity - ${actualQuantityText}. `;
+        let notesForPdf = section.notes;
+
+        if (shouldAnnotateQuantityInNotes) {
+          if (Array.isArray(section.notes)) {
+            const [firstNote = "", ...remainingNotes] = section.notes;
+            notesForPdf = [
+              `${quantityNotePrefix}${firstNote}`.trim(),
+              ...remainingNotes,
+            ];
+          } else if (typeof section.notes === "string" && section.notes.trim()) {
+            notesForPdf = `${quantityNotePrefix}${section.notes}`;
+          } else {
+            notesForPdf = [quantityNotePrefix.trim()];
+          }
+        }
         const leftColumn = [];
         const rightColumn = [];
 
@@ -311,11 +330,11 @@ const GenerateEstimatePdf = ({
         }
 
         // Add notes if present (handle both array and string formats)
-        if (section.notes) {
-          if (Array.isArray(section.notes)) {
+        if (notesForPdf) {
+          if (Array.isArray(notesForPdf)) {
             const notesLabels = ["Notes:", "Includes:", "Does Not Include:"];
 
-            section.notes.forEach((note, index) => {
+            notesForPdf.forEach((note, index) => {
               if (note && note.trim()) {
                 detailsStack.push({
                   italics: true,
@@ -328,11 +347,11 @@ const GenerateEstimatePdf = ({
                 });
               }
             });
-          } else if (section.notes.trim()) {
+          } else if (notesForPdf.trim()) {
             // Backward compatibility for string notes
             detailsStack.push({
               italics: true,
-              text: [{ text: "Notes: ", bold: true }, { text: section.notes }],
+              text: [{ text: "Notes: ", bold: true }, { text: notesForPdf }],
               fontSize: GROUP_DATA_FONT_SIZE,
               margin: [GROUP_DATA_INDENT, 0, 0, 4],
             });
