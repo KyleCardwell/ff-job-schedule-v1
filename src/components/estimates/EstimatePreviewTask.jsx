@@ -60,6 +60,10 @@ const EstimatePreviewTask = ({
       );
 
       selectedSectionsForTask.forEach((section) => {
+        if (!(Number(section.quantity) > 0)) {
+          return;
+        }
+
         // Aggregate services from laborCosts
         if (section.laborCosts?.costsByService) {
           Object.entries(section.laborCosts.costsByService).forEach(
