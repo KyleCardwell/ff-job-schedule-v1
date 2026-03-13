@@ -227,8 +227,18 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
       const sectionData = {};
       rows.forEach((row) => {
         if (!row.itemId) return;
+        const selectedOption = (sectionOptions[sectionKey] || []).find(
+          (opt) => String(SECTION_CONFIG[sectionKey].optionValue(opt)) === String(row.itemId)
+        );
         const prices = {};
         SECTION_CONFIG[sectionKey].priceFields.forEach(({ key }) => {
+          if (
+            sectionKey === "materials" &&
+            key === "bd_ft_price" &&
+            selectedOption?.bd_ft_price == null
+          ) {
+            return;
+          }
           const val = row[key];
           if (val !== undefined && val !== "" && val !== null) {
             prices[key] = parseFloat(val);
@@ -296,6 +306,11 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
       "block w-full rounded-md text-sm h-9 text-center bg-slate-700 text-slate-200 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
     select:
       "block w-full rounded-md text-sm h-9 bg-slate-700 text-slate-200 border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+  };
+
+  const formatOriginalValue = (value) => {
+    if (value === null || value === undefined || value === "") return "-";
+    return String(value);
   };
 
   return (
@@ -408,6 +423,10 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
                       sectionKey,
                       rowIndex
                     );
+                    const selectedOption = options.find(
+                      (opt) =>
+                        String(config.optionValue(opt)) === String(row.itemId)
+                    );
                     const availableOptions = options.filter(
                       (opt) =>
                         !selectedIds.includes(
@@ -488,12 +507,28 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
                         {/* Price Inputs */}
                         {config.priceFields.map((pf) => (
                           <div key={pf.key} className="w-32">
+                            {(() => {
+                              const isUnsupportedBdFtOverride =
+                                sectionKey === "materials" &&
+                                pf.key === "bd_ft_price" &&
+                                selectedOption?.bd_ft_price == null;
+                              return (
                             <input
                               type="number"
                               step="any"
                               className={STYLES.input}
-                              placeholder={pf.placeholder}
-                              value={row[pf.key] ?? ""}
+                              placeholder={
+                                isUnsupportedBdFtOverride ? "N/A" : pf.placeholder
+                              }
+                              value={
+                                isUnsupportedBdFtOverride ? "" : (row[pf.key] ?? "")
+                              }
+                              disabled={isUnsupportedBdFtOverride}
+                              title={
+                                isUnsupportedBdFtOverride
+                                  ? "This material does not support bd ft pricing"
+                                  : ""
+                              }
                               onChange={(e) =>
                                 handleRowChange(
                                   sectionKey,
@@ -503,6 +538,11 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
                                 )
                               }
                             />
+                              );
+                            })()}
+                            <div className="mt-1 text-[11px] text-slate-400 text-left px-1 truncate">
+                              Orig: {formatOriginalValue(selectedOption?.[pf.key])}
+                            </div>
                           </div>
                         ))}
 
