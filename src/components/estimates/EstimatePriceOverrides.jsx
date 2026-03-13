@@ -234,6 +234,9 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
             prices[key] = parseFloat(val);
           }
         });
+        if (typeof row.label_override === "string" && row.label_override.trim()) {
+          prices.label_override = row.label_override.trim();
+        }
         if (Object.keys(prices).length > 0) {
           sectionData[row.itemId] = prices;
         }
@@ -384,6 +387,11 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
                         Item
                       </span>
                     </div>
+                    <div className="w-56">
+                      <span className="text-xs font-medium text-slate-400">
+                        Label Override
+                      </span>
+                    </div>
                     {config.priceFields.map((pf) => (
                       <div key={pf.key} className="w-32">
                         <span className="text-xs font-medium text-slate-400">
@@ -458,6 +466,23 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
                               </option>
                             ))}
                           </select>
+                        </div>
+
+                        <div className="w-56">
+                          <input
+                            type="text"
+                            className={`${STYLES.input} text-left`}
+                            placeholder="Optional"
+                            value={row.label_override ?? ""}
+                            onChange={(e) =>
+                              handleRowChange(
+                                sectionKey,
+                                rowIndex,
+                                "label_override",
+                                e.target.value
+                              )
+                            }
+                          />
                         </div>
 
                         {/* Price Inputs */}

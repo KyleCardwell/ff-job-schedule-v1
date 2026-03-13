@@ -38,6 +38,24 @@ const EstimateSectionInfo = ({
     (state) => state.teamEstimateDefaults.teamDefaults,
   );
 
+  const getPriceOverrideForItem = (sectionKey, itemId) => {
+    if (itemId === null || itemId === undefined) return null;
+    const sectionOverrides = sectionKey
+      .split(".")
+      .reduce((acc, key) => acc?.[key], currentEstimate?.price_overrides);
+    return sectionOverrides?.[String(itemId)] || null;
+  };
+
+  const getOptionDisplayName = (sectionKey, option) => {
+    if (!option) return NOT_SELECTED;
+    const labelOverride = getPriceOverrideForItem(sectionKey, option.id)
+      ?.label_override;
+    if (typeof labelOverride === "string" && labelOverride.trim()) {
+      return labelOverride.trim();
+    }
+    return option.name || NOT_SELECTED;
+  };
+
   // Helper to get the effective value and source for a section field (with three-tier fallback)
   const getSectionEffectiveValue = (
     sectionValue,
@@ -90,9 +108,12 @@ const EstimateSectionInfo = ({
     return boxFinish?.length
       ? boxFinish
           .map(
-            (f) =>
-              finishes?.finishes?.find((fin) => fin.id === f)?.name ||
-              NOT_SELECTED,
+            (f) => {
+              const option = finishes?.finishes?.find((fin) => fin.id === f);
+              return option
+                ? getOptionDisplayName("finishes", option)
+                : NOT_SELECTED;
+            },
           )
           .join(", ")
       : NOT_SELECTED;
@@ -108,24 +129,25 @@ const EstimateSectionInfo = ({
     return faceFinish?.length
       ? faceFinish
           .map(
-            (f) =>
-              finishes?.finishes?.find((fin) => fin.id === f)?.name ||
-              NOT_SELECTED,
+            (f) => {
+              const option = finishes?.finishes?.find((fin) => fin.id === f);
+              return option
+                ? getOptionDisplayName("finishes", option)
+                : NOT_SELECTED;
+            },
           )
           .join(", ")
       : NOT_SELECTED;
   };
 
   const getFaceMaterialName = (id) => {
-    return (
-      materials?.faceMaterials?.find((m) => m.id === id)?.name || NOT_SELECTED
-    );
+    const option = materials?.faceMaterials?.find((m) => m.id === id);
+    return getOptionDisplayName("materials", option);
   };
 
   const getBoxMaterialName = (id) => {
-    return (
-      materials?.boxMaterials?.find((m) => m.id === id)?.name || NOT_SELECTED
-    );
+    const option = materials?.boxMaterials?.find((m) => m.id === id);
+    return getOptionDisplayName("materials", option);
   };
 
   const getDoorStyleName = (
@@ -148,11 +170,13 @@ const EstimateSectionInfo = ({
   };
 
   const getDoorHingeName = (id) => {
-    return hardware?.hinges?.find((h) => h.id === id)?.name || NOT_SELECTED;
+    const option = hardware?.hinges?.find((h) => h.id === id);
+    return getOptionDisplayName("hardware.hinges", option);
   };
 
   const getPullName = (id) => {
-    return hardware?.pulls?.find((h) => h.id === id)?.name || NOT_SELECTED;
+    const option = hardware?.pulls?.find((h) => h.id === id);
+    return getOptionDisplayName("hardware.pulls", option);
   };
 
   const getDrawerFrontStyleName = (
@@ -175,14 +199,13 @@ const EstimateSectionInfo = ({
   };
 
   const getDrawerBoxName = (id) => {
-    return (
-      materials?.drawerBoxMaterials?.find((d) => d.id === id)?.name ||
-      NOT_SELECTED
-    );
+    const option = materials?.drawerBoxMaterials?.find((d) => d.id === id);
+    return getOptionDisplayName("drawerBoxMaterials", option);
   };
 
   const getDrawerSlideName = (id) => {
-    return hardware?.slides?.find((s) => s.id === id)?.name || NOT_SELECTED;
+    const option = hardware?.slides?.find((s) => s.id === id);
+    return getOptionDisplayName("hardware.slides", option);
   };
 
   return (
@@ -435,7 +458,7 @@ const EstimateSectionInfo = ({
                         <span>Door Material:</span>
                       </div>
                       <div className="pl-5 mb-3">
-                        {doorMat?.name || "Unknown"}
+                        {getOptionDisplayName("materials", doorMat)}
                       </div>
                     </>
                   );
@@ -581,7 +604,7 @@ const EstimateSectionInfo = ({
                         <span>Drawer Front Material:</span>
                       </div>
                       <div className="pl-5 mb-3">
-                        {drawerFrontMat?.name || "Unknown"}
+                        {getOptionDisplayName("materials", drawerFrontMat)}
                       </div>
                     </>
                   );

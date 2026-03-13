@@ -152,6 +152,40 @@ const EstimateSectionForm = ({
     return value ? "true" : "false";
   };
 
+  const activePriceOverrides = useMemo(() => {
+    if (editType === EDIT_TYPES.TEAM) return {};
+    if (editType === EDIT_TYPES.ESTIMATE) {
+      return (estimateData || currentEstimate)?.price_overrides || {};
+    }
+    return currentEstimate?.price_overrides || {};
+  }, [editType, estimateData, currentEstimate]);
+
+  const getPriceOverrideForItem = (sectionKey, itemId) => {
+    if (itemId === null || itemId === undefined) return null;
+    const sectionOverrides = sectionKey
+      .split(".")
+      .reduce((acc, key) => acc?.[key], activePriceOverrides);
+    return sectionOverrides?.[String(itemId)] || null;
+  };
+
+  const getOptionDisplayName = (sectionKey, option) => {
+    if (!option) return "";
+    const labelOverride = getPriceOverrideForItem(sectionKey, option.id)
+      ?.label_override;
+    if (typeof labelOverride === "string" && labelOverride.trim()) {
+      return labelOverride.trim();
+    }
+    return option.name || "";
+  };
+
+  const getOptionDisplayPrice = (sectionKey, option, priceField) => {
+    if (!option) return 0;
+    const overrideValue = getPriceOverrideForItem(sectionKey, option.id)?.[
+      priceField
+    ];
+    return overrideValue ?? option?.[priceField] ?? 0;
+  };
+
   // Get the effective default value to display
   const getEffectiveDefaultDisplay = (
     fieldValue,
@@ -195,7 +229,7 @@ const EstimateSectionForm = ({
     const estimateValue =
       editType === EDIT_TYPES.ESTIMATE ? null : currentEstimate?.[estimateKey];
     const teamValue = teamDefaults?.[teamDefaultKey];
-    const { value, source } = getEffectiveValue(null, estimateValue, teamValue);
+    const { value } = getEffectiveValue(null, estimateValue, teamValue);
 
     // If no value found in 3-tier fallback, check for 4th tier fallback
     const effectiveValue =
@@ -225,15 +259,23 @@ const EstimateSectionForm = ({
   const formatStyleName = (id) =>
     STYLE_OPTIONS.find((s) => s.cabinet_style_id === id)?.cabinet_style_name ||
     "";
-  const formatMaterialName = (id, options) =>
-    options.find((m) => m.id === id)?.name || "";
+  const formatMaterialName = (id, options, sectionKey = "materials") => {
+    const option = options.find((m) => m.id === id);
+    return option ? getOptionDisplayName(sectionKey, option) : "";
+  };
 
-  const formatPullName = (id) =>
-    PULL_OPTIONS.find((p) => p.id === id)?.name || "";
-  const formatSlideName = (id) =>
-    DRAWER_SLIDE_OPTIONS.find((s) => s.id === id)?.name || "";
-  const formatHingeName = (id) =>
-    DOOR_HINGE_OPTIONS.find((h) => h.id === id)?.name || "";
+  const formatPullName = (id) => {
+    const option = PULL_OPTIONS.find((p) => p.id === id);
+    return option ? getOptionDisplayName("hardware.pulls", option) : "";
+  };
+  const formatSlideName = (id) => {
+    const option = DRAWER_SLIDE_OPTIONS.find((s) => s.id === id);
+    return option ? getOptionDisplayName("hardware.slides", option) : "";
+  };
+  const formatHingeName = (id) => {
+    const option = DOOR_HINGE_OPTIONS.find((h) => h.id === id);
+    return option ? getOptionDisplayName("hardware.hinges", option) : "";
+  };
   const formatDoorStyleName = (id) =>
     DOOR_STYLE_OPTIONS.find((s) => s.id === id)?.label || "";
   const formatBoolean = (value) => (value ? "Yes" : "No");
@@ -242,7 +284,10 @@ const EstimateSectionForm = ({
       return "None";
     }
     return finishIds
-      .map((id) => FINISH_OPTIONS.find((f) => f.id === id)?.name || "")
+      .map((id) => {
+        const option = FINISH_OPTIONS.find((f) => f.id === id);
+        return option ? getOptionDisplayName("finishes", option) : "";
+      })
       .filter(Boolean)
       .join(", ");
   };
@@ -1672,7 +1717,7 @@ const EstimateSectionForm = ({
                         </option>
                         {BOX_MATERIAL_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id}>
-                            {`${option.name} - $${option.sheet_price}/sheet`}
+                            {`${getOptionDisplayName("materials", option)} - $${getOptionDisplayPrice("materials", option, "sheet_price")}/sheet`}
                           </option>
                         ))}
                       </select>
@@ -1721,7 +1766,7 @@ const EstimateSectionForm = ({
                                 }
                                 className="rounded border-slate-300"
                               />
-                              <span>{option.name}</span>
+                              <span>{getOptionDisplayName("finishes", option)}</span>
                             </label>
                           ))}
                         </div>
@@ -1765,7 +1810,7 @@ const EstimateSectionForm = ({
                         </option>
                         {FACE_MATERIAL_OPTIONS.map((option) => (
                           <option key={option.id} value={option.id}>
-                            {`${option.name} - $${option.sheet_price}/sheet`}
+                            {`${getOptionDisplayName("materials", option)} - $${getOptionDisplayPrice("materials", option, "sheet_price")}/sheet`}
                           </option>
                         ))}
                       </select>
@@ -1818,7 +1863,7 @@ const EstimateSectionForm = ({
                                 }
                                 className="rounded border-slate-300"
                               />
-                              <span>{option.name}</span>
+                              <span>{getOptionDisplayName("finishes", option)}</span>
                             </label>
                           ))}
                         </div>
@@ -1919,7 +1964,7 @@ const EstimateSectionForm = ({
                           </option>
                           {DOOR_HINGE_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
-                              {`${option.name} - $${option.price}/pair`}
+                              {`${getOptionDisplayName("hardware.hinges", option)} - $${getOptionDisplayPrice("hardware.hinges", option, "price")}/pair`}
                             </option>
                           ))}
                         </select>
@@ -1954,7 +1999,7 @@ const EstimateSectionForm = ({
                           </option>
                           {PULL_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
-                              {`${option.name} - $${option.price}/pull`}
+                              {`${getOptionDisplayName("hardware.pulls", option)} - $${getOptionDisplayPrice("hardware.pulls", option, "price")}/pull`}
                             </option>
                           ))}
                         </select>
@@ -2092,7 +2137,7 @@ const EstimateSectionForm = ({
                               <option value="">Section Default</option>
                               {FACE_MATERIAL_OPTIONS.map((option) => (
                                 <option key={option.id} value={option.id}>
-                                  {`${option.name} - $${option.sheet_price}/sheet`}
+                                  {`${getOptionDisplayName("materials", option)} - $${getOptionDisplayPrice("materials", option, "sheet_price")}/sheet`}
                                 </option>
                               ))}
                             </select>
@@ -2158,7 +2203,7 @@ const EstimateSectionForm = ({
                                       }
                                       className="rounded border-slate-300"
                                     />
-                                    <span>{option.name}</span>
+                                    <span>{getOptionDisplayName("finishes", option)}</span>
                                   </label>
                                 ))}
                               </div>
@@ -2265,7 +2310,7 @@ const EstimateSectionForm = ({
                           </option>
                           {DRAWER_SLIDE_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
-                              {`${option.name} - $${option.price}/pair`}
+                              {`${getOptionDisplayName("hardware.slides", option)} - $${getOptionDisplayPrice("hardware.slides", option, "price")}/pair`}
                             </option>
                           ))}
                         </select>
@@ -2303,7 +2348,7 @@ const EstimateSectionForm = ({
                           </option>
                           {PULL_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
-                              {`${option.name} - $${option.price}/pull`}
+                              {`${getOptionDisplayName("hardware.pulls", option)} - $${getOptionDisplayPrice("hardware.pulls", option, "price")}/pull`}
                             </option>
                           ))}
                         </select>
@@ -2408,7 +2453,12 @@ const EstimateSectionForm = ({
                             formData.drawer_box_mat,
                             "default_drawer_box_mat",
                             "default_drawer_box_mat",
-                            (id) => formatMaterialName(id, DRAWER_BOX_OPTIONS),
+                            (id) =>
+                              formatMaterialName(
+                                id,
+                                DRAWER_BOX_OPTIONS,
+                                "drawerBoxMaterials",
+                              ),
                           )}
                         </label>
                         <select
@@ -2427,7 +2477,7 @@ const EstimateSectionForm = ({
                           </option>
                           {DRAWER_BOX_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
-                              {option.name}
+                              {getOptionDisplayName("drawerBoxMaterials", option)}
                             </option>
                           ))}
                         </select>
@@ -2487,7 +2537,7 @@ const EstimateSectionForm = ({
                               <option value="">Section Default</option>
                               {FACE_MATERIAL_OPTIONS.map((option) => (
                                 <option key={option.id} value={option.id}>
-                                  {`${option.name} - $${option.sheet_price}/sheet`}
+                                  {`${getOptionDisplayName("materials", option)} - $${getOptionDisplayPrice("materials", option, "sheet_price")}/sheet`}
                                 </option>
                               ))}
                             </select>
@@ -2553,7 +2603,7 @@ const EstimateSectionForm = ({
                                       }
                                       className="rounded border-slate-300"
                                     />
-                                    <span>{option.name}</span>
+                                    <span>{getOptionDisplayName("finishes", option)}</span>
                                   </label>
                                 ))}
                               </div>

@@ -21,7 +21,15 @@ const applyOverrides = (items, overridesMap) => {
     const filtered = Object.fromEntries(
       Object.entries(override).filter(([, v]) => v != null)
     );
-    return Object.keys(filtered).length > 0 ? { ...item, ...filtered } : item;
+    if (Object.keys(filtered).length === 0) return item;
+
+    const { label_override, ...priceFields } = filtered;
+    const renamed =
+      typeof label_override === "string" && label_override.trim()
+        ? { name: label_override.trim() }
+        : {};
+
+    return { ...item, ...priceFields, ...renamed };
   });
 };
 
