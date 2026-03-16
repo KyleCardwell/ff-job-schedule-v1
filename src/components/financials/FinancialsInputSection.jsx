@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { usePermissions } from "../../hooks/usePermissions";
 import { FIXED_AMOUNT } from "../../utils/constants.js";
+import { calculateHoursRowCost } from "../../utils/financialsHelpers";
 import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
 
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
@@ -203,35 +204,10 @@ const FinancialsInputSection = ({
           field === "hours" ||
           field === "isOvertime"
         ) {
-          updatedRows = updatedRows.map((row) => {
-            if (row.employee_id === FIXED_AMOUNT) {
-              // For fixed amount, use the decimal value
-              return {
-                ...row,
-                actual_cost: row.hours?.decimal || 0,
-              };
-            } else if (row.employee_id) {
-              // For regular employees, multiply decimal hours by rate
-              // Note: This searches the full employees array, so it will find
-              // employees even if they've been reassigned to a different service
-              const selectedEmployee = employees.find(
-                (e) => e.employee_id === +row.employee_id
-              );
-
-              // Apply overtime multiplier if overtime is checked
-              const overtimeMultiplier = row.isOvertime ? 1.5 : 1;
-
-              return {
-                ...row,
-                actual_cost: selectedEmployee
-                  ? (selectedEmployee.employee_rate * overtimeMultiplier +
-                      overheadRate) *
-                    (row.hours?.decimal || 0)
-                  : 0,
-              };
-            }
-            return row;
-          });
+          updatedRows = updatedRows.map((row) => ({
+            ...row,
+            actual_cost: calculateHoursRowCost(row, employees, overheadRate),
+          }));
         }
 
         // Calculate total actual_cost for this type

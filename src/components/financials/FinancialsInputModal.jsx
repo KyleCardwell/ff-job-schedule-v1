@@ -21,6 +21,7 @@ import {
   normalizeSectionName,
   parseCsvRows,
 } from "../../utils/financialsCsvImport";
+import { recalcServiceActualCost } from "../../utils/financialsHelpers";
 import { calculateFinancialTotals } from "../../utils/helpers";
 
 import EstimatesModal from "./EstimatesModal.jsx";
@@ -311,51 +312,43 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   };
 
   const handleHoursCsvConfirm = (includedRows) => {
+    const employeesById = new Map(
+      (employees || []).map((employee) => [employee.employee_id.toString(), employee])
+    );
+
     setLocalSections((prevSections) =>
       prevSections.map((section) => {
         if (section.id !== "hours") return section;
 
         const updatedData = (section.data || []).map((serviceData) => {
-          // Find all CSV rows assigned to this service
-          const csvRowsForService = includedRows.filter(
-            (r) => r.selectedServiceId === serviceData.team_service_id
-          );
+          // Find all CSV rows whose selected employee belongs to this service
+          const csvRowsForService = includedRows.filter((r) => {
+            const emp = r.selectedEmployeeId
+              ? employeesById.get(r.selectedEmployeeId)
+              : null;
+            return emp?.team_service_id === serviceData.team_service_id;
+          });
 
           if (csvRowsForService.length === 0) return serviceData;
 
-          const newInputRows = csvRowsForService.map((csvRow) => {
-            const employee = csvRow.employee;
-            const overtimeMultiplier = csvRow.isOvertime ? 1.5 : 1;
-            const rate = employee?.employee_rate ?? 0;
-            const overheadRateVal =
-              typeof overheadRate === "number" ? overheadRate : 0;
-            const actualCost =
-              employee && employee.employee_id
-                ? (rate * overtimeMultiplier + overheadRateVal) * csvRow.hours
-                : 0;
+          // Build raw input rows (no cost yet)
+          const newInputRows = csvRowsForService.map((csvRow) => ({
+            id: uuidv4(),
+            employee_id: csvRow.selectedEmployeeId || "",
+            hours: {
+              display: csvRow.hoursDisplay || "",
+              decimal: csvRow.hoursDecimal || 0,
+            },
+            isOvertime: csvRow.isOvertime,
+          }));
 
-            return {
-              id: uuidv4(),
-              employee_id: employee?.employee_id?.toString() || "",
-              hours: {
-                display: csvRow.hours.toString(),
-                decimal: csvRow.hours,
-              },
-              isOvertime: csvRow.isOvertime,
-              actual_cost: actualCost,
-            };
-          });
-
-          const mergedRows = [
-            ...(serviceData.inputRows || []),
-            ...newInputRows,
-          ];
-          const actual_cost = mergedRows.reduce(
-            (sum, row) => sum + (row.actual_cost || 0),
-            0
-          );
-
-          return { ...serviceData, inputRows: mergedRows, actual_cost };
+          // Merge with existing rows, then let the shared helper
+          // calculate per-row actual_cost and the service total.
+          const merged = {
+            ...serviceData,
+            inputRows: [...(serviceData.inputRows || []), ...newInputRows],
+          };
+          return recalcServiceActualCost(merged, employees, overheadRate);
         });
 
         return { ...section, data: updatedData };

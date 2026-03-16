@@ -50,7 +50,25 @@ const matchEmployee = (firstName, lastName, employees) => {
  * Parse the busybusy employee-activity CSV into preview rows.
  * Each CSV person may produce up to 2 rows: Regular Time + Overtime.
  */
-const parseHoursCsv = (rawRows, employees, services) => {
+const timeToDecimal = (value) => {
+  if (!value) return 0;
+  const str = value.toString().trim();
+  if (!str) return 0;
+
+  if (str.includes(":")) {
+    const [hoursPart, minutesPart] = str.split(":");
+    const hours = Number(hoursPart);
+    const minutes = Number(minutesPart);
+    if (Number.isFinite(hours) && Number.isFinite(minutes)) {
+      return Number((hours + minutes / 60).toFixed(2));
+    }
+  }
+
+  const parsed = Number(str);
+  return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0;
+};
+
+const parseHoursCsv = (rawRows, employees) => {
   if (!Array.isArray(rawRows) || rawRows.length < 2) return [];
 
   const headers = (rawRows[0] || []).map((h) =>
@@ -74,13 +92,17 @@ const parseHoursCsv = (rawRows, employees, services) => {
 
     const firstName = obj["first_name"] || "";
     const lastName = obj["last_name"] || "";
-    const regularDecimal = parseFloat(obj["regular_time_(decimal)"] || obj["regular_time_decimal"] || 0) || 0;
-    const overtimeDecimal = parseFloat(obj["overtime_(decimal)"] || obj["overtime_decimal"] || 0) || 0;
+    const regularDisplay = obj["regular_time"] || "";
+    const overtimeDisplay = obj["overtime"] || "";
+    const regularDecimal =
+      parseFloat(
+        obj["regular_time_(decimal)"] || obj["regular_time_decimal"] || 0
+      ) || timeToDecimal(regularDisplay);
+    const overtimeDecimal =
+      parseFloat(obj["overtime_(decimal)"] || obj["overtime_decimal"] || 0) ||
+      timeToDecimal(overtimeDisplay);
 
     const employee = matchEmployee(firstName, lastName, employees);
-    const service = employee
-      ? services.find((s) => s.team_service_id === employee.team_service_id)
-      : null;
 
     // Regular time row
     if (regularDecimal > 0) {
@@ -89,13 +111,13 @@ const parseHoursCsv = (rawRows, employees, services) => {
         firstName,
         lastName,
         displayName: `${firstName} ${lastName}`.trim(),
-        hours: regularDecimal,
+        hoursDisplay: regularDisplay || regularDecimal.toString(),
+        hoursDecimal: regularDecimal,
         isOvertime: false,
-        label: "Regular",
-        matched: !!employee,
-        employee,
-        service,
-        selectedServiceId: employee?.team_service_id ?? null,
+        label: "Regular Time",
+        selectedEmployeeId: employee?.employee_id
+          ? employee.employee_id.toString()
+          : "",
         included: true,
       });
     }
@@ -107,13 +129,13 @@ const parseHoursCsv = (rawRows, employees, services) => {
         firstName,
         lastName,
         displayName: `${firstName} ${lastName}`.trim(),
-        hours: overtimeDecimal,
+        hoursDisplay: overtimeDisplay || overtimeDecimal.toString(),
+        hoursDecimal: overtimeDecimal,
         isOvertime: true,
         label: "Overtime",
-        matched: !!employee,
-        employee,
-        service,
-        selectedServiceId: employee?.team_service_id ?? null,
+        selectedEmployeeId: employee?.employee_id
+          ? employee.employee_id.toString()
+          : "",
         included: true,
       });
     }
@@ -127,9 +149,17 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
   const [previewRows, setPreviewRows] = useState([]);
   const [csvError, setCsvError] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
+  const employeesById = useMemo(
+    () => new Map(employees.map((employee) => [employee.employee_id.toString(), employee])),
+    [employees]
+  );
+  const servicesByTeamServiceId = useMemo(
+    () => new Map(services.map((service) => [service.team_service_id, service])),
+    [services]
+  );
 
   const handleFileLoad = ({ data }, file) => {
-    const rows = parseHoursCsv(data, employees, services);
+    const rows = parseHoursCsv(data, employees);
     if (rows.length === 0) {
       setCsvError("No valid rows found in CSV.");
       setPreviewRows([]);
@@ -146,13 +176,11 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
     );
   };
 
-  const handleServiceChange = (id, teamServiceId) => {
+  const handleEmployeeChange = (id, employeeId) => {
     setPreviewRows((prev) =>
       prev.map((r) => {
         if (r._id !== id) return r;
-        const numId = Number(teamServiceId);
-        const svc = services.find((s) => s.team_service_id === numId) || null;
-        return { ...r, selectedServiceId: numId || null, service: svc };
+        return { ...r, selectedEmployeeId: employeeId || "" };
       })
     );
   };
@@ -163,7 +191,7 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
   );
 
   const hasUnassigned = useMemo(
-    () => includedRows.some((r) => !r.selectedServiceId),
+    () => includedRows.some((r) => !r.selectedEmployeeId),
     [includedRows]
   );
 
@@ -255,7 +283,13 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
                   </thead>
                   <tbody>
                     {previewRows.map((row) => {
-                      const unassigned = row.included && !row.selectedServiceId;
+                      const unassigned = row.included && !row.selectedEmployeeId;
+                      const selectedEmployee = row.selectedEmployeeId
+                        ? employeesById.get(row.selectedEmployeeId)
+                        : null;
+                      const selectedService = selectedEmployee
+                        ? servicesByTeamServiceId.get(selectedEmployee.team_service_id)
+                        : null;
                       return (
                         <tr
                           key={row._id}
@@ -288,24 +322,13 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
                             {row.label}
                           </td>
                           <td className="px-3 py-2 text-right font-mono">
-                            {row.hours.toFixed(2)}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            {row.matched ? (
-                              <span className="text-green-700 font-medium">
-                                {row.employee.employee_name}
-                              </span>
-                            ) : (
-                              <span className="text-red-600 font-medium">
-                                No match
-                              </span>
-                            )}
+                            {row.hoursDisplay}
                           </td>
                           <td className="px-3 py-2">
                             <select
-                              value={row.selectedServiceId || ""}
+                              value={row.selectedEmployeeId || ""}
                               onChange={(e) =>
-                                handleServiceChange(row._id, e.target.value)
+                                handleEmployeeChange(row._id, e.target.value)
                               }
                               className={`px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                 unassigned
@@ -313,16 +336,23 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
                                   : "border-gray-300"
                               }`}
                             >
-                              <option value="">Select service...</option>
-                              {services.map((s) => (
+                              <option value="">Select employee...</option>
+                              {employees.map((employee) => (
                                 <option
-                                  key={s.team_service_id}
-                                  value={s.team_service_id}
+                                  key={employee.employee_id}
+                                  value={employee.employee_id}
                                 >
-                                  {s.service_name}
+                                  {employee.employee_name}
                                 </option>
                               ))}
                             </select>
+                          </td>
+                          <td
+                            className={`px-3 py-2 whitespace-nowrap ${
+                              selectedService ? "text-gray-800" : "text-red-600"
+                            }`}
+                          >
+                            {selectedService?.service_name || "Unassigned"}
                           </td>
                         </tr>
                       );
