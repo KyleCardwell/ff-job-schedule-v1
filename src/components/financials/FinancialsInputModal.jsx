@@ -26,6 +26,7 @@ import { calculateFinancialTotals } from "../../utils/helpers";
 import EstimatesModal from "./EstimatesModal.jsx";
 import FinancialsAccordion from "./FinancialsAccordion.jsx";
 import FinancialsCsvRowSelectorModal from "./FinancialsCsvRowSelectorModal.jsx";
+import HoursCsvModal from "./HoursCsvModal.jsx";
 
 const DEFAULT_ADJUSTMENTS = {
   profit: 20,
@@ -42,7 +43,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const { CSVReader } = useCSVReader();
 
   const { employees } = useSelector((state) => state.builders);
-  const { taskFinancials:financialSections = {}, loading, errors } = useSelector(
+  const { taskFinancials:financialSections = {}, loading, errors, overheadRate } = useSelector(
     (state) => state.financialsData
   );
   const chartConfig = useSelector((state) => state.chartConfig);
@@ -63,6 +64,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const [selectedCsvRowIndex, setSelectedCsvRowIndex] = useState(null);
   const [csvImportError, setCsvImportError] = useState(null);
   const [uploadedCsvFileName, setUploadedCsvFileName] = useState("");
+  const [isHoursCsvOpen, setIsHoursCsvOpen] = useState(false);
 
   useEffect(() => {
     if (!financialSections) {
@@ -308,6 +310,59 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
     setIsCsvSelectorOpen(true);
   };
 
+  const handleHoursCsvConfirm = (includedRows) => {
+    setLocalSections((prevSections) =>
+      prevSections.map((section) => {
+        if (section.id !== "hours") return section;
+
+        const updatedData = (section.data || []).map((serviceData) => {
+          // Find all CSV rows assigned to this service
+          const csvRowsForService = includedRows.filter(
+            (r) => r.selectedServiceId === serviceData.team_service_id
+          );
+
+          if (csvRowsForService.length === 0) return serviceData;
+
+          const newInputRows = csvRowsForService.map((csvRow) => {
+            const employee = csvRow.employee;
+            const overtimeMultiplier = csvRow.isOvertime ? 1.5 : 1;
+            const rate = employee?.employee_rate ?? 0;
+            const overheadRateVal =
+              typeof overheadRate === "number" ? overheadRate : 0;
+            const actualCost =
+              employee && employee.employee_id
+                ? (rate * overtimeMultiplier + overheadRateVal) * csvRow.hours
+                : 0;
+
+            return {
+              id: uuidv4(),
+              employee_id: employee?.employee_id?.toString() || "",
+              hours: {
+                display: csvRow.hours.toString(),
+                decimal: csvRow.hours,
+              },
+              isOvertime: csvRow.isOvertime,
+              actual_cost: actualCost,
+            };
+          });
+
+          const mergedRows = [
+            ...(serviceData.inputRows || []),
+            ...newInputRows,
+          ];
+          const actual_cost = mergedRows.reduce(
+            (sum, row) => sum + (row.actual_cost || 0),
+            0
+          );
+
+          return { ...serviceData, inputRows: mergedRows, actual_cost };
+        });
+
+        return { ...section, data: updatedData };
+      })
+    );
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -362,17 +417,26 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                 {/* Fixed Header */}
                 <div className="flex-none bg-white px-4 pt-5">
                   <div className="flex justify-between mb-4">
-                    <CSVReader onUploadAccepted={handleOnFileLoad}>
-                      {({ getRootProps, acceptedFile }) => (
-                        <button
-                          type="button"
-                          {...getRootProps()}
-                          className={`${buttonClass} bg-blue-500 hover:bg-blue-700`}
-                        >
-                          {acceptedFile?.name ? "Replace CSV" : "Upload CSV"}
-                        </button>
-                      )}
-                    </CSVReader>
+                    <div className="flex gap-2">
+                      <CSVReader onUploadAccepted={handleOnFileLoad}>
+                        {({ getRootProps, acceptedFile }) => (
+                          <button
+                            type="button"
+                            {...getRootProps()}
+                            className={`${buttonClass} bg-blue-500 hover:bg-blue-700`}
+                          >
+                            {acceptedFile?.name ? "Replace CSV" : "Upload CSV"}
+                          </button>
+                        )}
+                      </CSVReader>
+                      <button
+                        type="button"
+                        onClick={() => setIsHoursCsvOpen(true)}
+                        className={`${buttonClass} bg-purple-600 hover:bg-purple-800`}
+                      >
+                        Hours CSV
+                      </button>
+                    </div>
                     <h2 className="text-lg font-bold w-full text-center flex items-center justify-center gap-2">
                       {`${selectedTask.project_name} - ${selectedTask.task_number} - ${selectedTask.task_name}`}
                       {isTaskCostingComplete ? (
@@ -510,6 +574,14 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
           total={calculateTotals.total}
         />
       )}
+
+      <HoursCsvModal
+        isOpen={isHoursCsvOpen}
+        onClose={() => setIsHoursCsvOpen(false)}
+        employees={employees}
+        services={services}
+        onConfirm={handleHoursCsvConfirm}
+      />
 
       <FinancialsCsvRowSelectorModal
         isOpen={isCsvSelectorOpen}
