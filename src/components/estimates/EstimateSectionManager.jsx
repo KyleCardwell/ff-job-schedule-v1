@@ -26,7 +26,7 @@ import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
 import EstimateOtherManager from "./EstimateOtherManager.jsx";
 import EstimateSectionBreakdown from "./EstimateSectionBreakdown.jsx";
-import LaborAdjustmentssManager from "./LaborAdjustmentsManager.jsx";
+import LaborAdjustmentsManager from "./LaborAdjustmentsManager.jsx";
 import SectionNotesManager from "./SectionNotesManager.jsx";
 
 const EstimateSectionManager = ({
@@ -66,6 +66,7 @@ const EstimateSectionManager = ({
     SECTION_TYPES.CABINETS.type,
   );
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const finishSetupNeeded = sectionCalculations?.finishSetupNeeded !== false;
 
   // Create a mapping of section types to their table names
   const sectionTableMapping = {
@@ -615,9 +616,10 @@ const EstimateSectionManager = ({
       ))}
 
       {/* Add Hours Section - Always Visible */}
-      <LaborAdjustmentssManager
+      <LaborAdjustmentsManager
         addHours={section?.add_hours}
         onSave={handleSaveAddHours}
+        finishSetupNeeded={finishSetupNeeded}
       />
 
       {/* Section Breakdown Button */}

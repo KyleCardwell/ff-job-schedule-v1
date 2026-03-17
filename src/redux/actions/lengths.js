@@ -25,7 +25,7 @@ export const fetchLengthsCatalog = () => async (dispatch, getState) => {
     const state = getState();
     const teamId = state.auth.teamId;
 
-    // Fetch lengths with embedded services (same pattern as hardware)
+    // Fetch lengths with embedded services and rules
     const { data, error } = await supabase
       .from("lengths_catalog")
       .select(`
@@ -40,6 +40,12 @@ export const fetchLengthsCatalog = () => async (dispatch, getState) => {
             service_id,
             services!inner(name)
           )
+        ),
+        length_catalog_rules(
+          id,
+          rule_key,
+          params,
+          sort_order
         )
       `)
       .eq("team_id", teamId)
@@ -47,7 +53,7 @@ export const fetchLengthsCatalog = () => async (dispatch, getState) => {
 
     if (error) throw error;
 
-    // Transform to flatten services array (same pattern as hardware)
+    // Transform to flatten services array and normalize rules
     const lengthsWithServices = (data || []).map((length) => ({
       ...length,
       services: (length.length_services || []).map((ls) => ({
@@ -59,7 +65,10 @@ export const fetchLengthsCatalog = () => async (dispatch, getState) => {
         is_miter_time: ls.is_miter_time,
         is_cutout_time: ls.is_cutout_time,
       })),
+      rules: (length.length_catalog_rules || [])
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
       length_services: undefined, // Remove the nested structure
+      length_catalog_rules: undefined, // Remove the nested structure
     }));
 
     dispatch({
@@ -104,8 +113,8 @@ export const saveLengthsCatalog =
         if (item.markedForDeletion) return; // Skip marked for deletion
 
         if (item.isNew) {
-          // New item - remove metadata fields and services (computed field)
-          const { id, isNew, markedForDeletion, services, ...itemData } = item;
+          // New item - remove metadata fields, services, and rules (computed/joined fields)
+          const { id, isNew, markedForDeletion, services, rules, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
           // Check if changed
@@ -113,7 +122,7 @@ export const saveLengthsCatalog =
             (orig) => orig.id === item.id
           );
           if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, services, ...itemData } = item;
+            const { isNew, markedForDeletion, services, rules, ...itemData } = item;
             toUpdate.push({ ...itemData, updated_at: new Date() });
           }
         }
@@ -165,117 +174,26 @@ export const saveLengthsCatalog =
     }
   };
 
-// Save length services (following hardware pattern but using length_services table)
-export const saveLengthServices =
-  (lengthId, services) => async (dispatch, getState) => {
+// Save length services + rules for all catalog items via a single RPC call.
+// `items` is an array of { length_catalog_id, services, rules } where:
+//   services: [{ service_id, time_per_unit, is_miter_time, is_cutout_time }]
+//   rules:    [{ rule_key, params, sort_order }]
+// The RPC handles team_service_id resolution, delete-then-insert (no ID gaps),
+// and runs everything in one transaction.
+export const saveLengthSettings =
+  (items) => async (dispatch) => {
     dispatch({ type: lengths.SAVE_LENGTH_TIME_ANCHORS_START });
     try {
-      const state = getState();
-      const teamId = state.auth.teamId;
-      
-      // Get all team services for this team
-      const { data: teamServices, error: teamServicesError } = await supabase
-        .from("team_services")
-        .select("id, service_id")
-        .eq("team_id", teamId);
-      
-      if (teamServicesError) throw teamServicesError;
-
-      // Get existing services for this length item
-      const { data: existingServices, error: fetchError } = await supabase
-        .from("length_services")
-        .select("*")
-        .eq("length_catalog_id", lengthId);
-
-      if (fetchError) throw fetchError;
-
-      const errors = [];
-      const toUpsert = [];
-      const toDelete = [];
-
-      // Process each service
-      services.forEach((service) => {
-        const teamService = teamServices.find(
-          (ts) => ts.service_id === service.service_id
-        );
-        
-        if (!teamService) return;
-
-        const timeValue = parseFloat(service.time_per_unit);
-        const isMiterTime = service.is_miter_time || false;
-        const isCutoutTime = service.is_cutout_time || false;
-        
-        // If time is 0 or empty, mark for deletion if it exists
-        if (!timeValue || timeValue === 0) {
-          const existing = existingServices?.find(
-            (es) => es.team_service_id === teamService.id && 
-                    es.is_miter_time === isMiterTime && 
-                    es.is_cutout_time === isCutoutTime
-          );
-          if (existing) {
-            toDelete.push(existing.id);
-          }
-        } else {
-          // Add or update
-          const existing = existingServices?.find(
-            (es) => es.team_service_id === teamService.id && 
-                    es.is_miter_time === isMiterTime && 
-                    es.is_cutout_time === isCutoutTime
-          );
-          
-          toUpsert.push({
-            id: existing?.id,
-            length_catalog_id: lengthId,
-            team_service_id: teamService.id,
-            time_per_unit: timeValue,
-            is_miter_time: isMiterTime,
-            is_cutout_time: isCutoutTime,
-          });
-        }
+      const { data, error } = await supabase.rpc("save_length_settings", {
+        p_items: items,
       });
 
-      // Delete services with 0 time
-      for (const id of toDelete) {
-        const { error } = await supabase
-          .from("length_services")
-          .delete()
-          .eq("id", id);
-        if (error) errors.push(`Delete failed: ${error.message}`);
-      }
+      if (error) throw error;
 
-      // Upsert services (insert or update)
-      if (toUpsert.length > 0) {
-        for (const service of toUpsert) {
-          if (service.id) {
-            // Update existing
-            const { id, ...updateData } = service;
-            const { error } = await supabase
-              .from("length_services")
-              .update(updateData)
-              .eq("id", id);
-            if (error) errors.push(`Update failed: ${error.message}`);
-          } else {
-            // Insert new
-            const { id, ...insertData } = service;
-            const { error } = await supabase
-              .from("length_services")
-              .insert(insertData);
-            if (error) errors.push(`Insert failed: ${error.message}`);
-          }
-        }
-      }
-
-      if (errors.length > 0) {
-        throw new Error(errors.join("; "));
-      }
-
-      // Don't refetch here - let the caller decide when to refetch
-      // This prevents multiple flashes when saving services for multiple items
-      
       dispatch({ type: lengths.SAVE_LENGTH_TIME_ANCHORS_SUCCESS });
-      return { success: true };
+      return { success: true, data };
     } catch (error) {
-      console.error("Error saving length services:", error);
+      console.error("Error saving length settings:", error);
       dispatch({
         type: lengths.SAVE_LENGTH_TIME_ANCHORS_ERROR,
         payload: error.message,

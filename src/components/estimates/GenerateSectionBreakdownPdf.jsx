@@ -280,6 +280,15 @@ const GenerateSectionBreakdownPdf = ({
         ];
 
         serviceIds.forEach((serviceId) => {
+          if (serviceId === 3 && !sectionCalculations.finishSetupNeeded) {
+            laborRow.push({
+              text: "-",
+              alignment: "right",
+              color: "#999999",
+              fillColor: "#e3f2fd",
+            });
+            return;
+          }
           const hours = laborAdjustmentHours[serviceId];
           laborRow.push({
             text: hours ? formatHours(hours).toString() : "-",

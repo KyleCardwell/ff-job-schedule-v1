@@ -13,9 +13,10 @@ import { v4 as uuidv4 } from "uuid";
 import {
   fetchLengthsCatalog,
   saveLengthsCatalog,
-  saveLengthServices,
+  saveLengthSettings,
 } from "../../redux/actions/lengths";
 import { LENGTH_TYPES } from "../../utils/constants";
+import { LENGTH_RULE_REGISTRY } from "../../utils/lengthRuleEngine";
 
 import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
@@ -39,6 +40,10 @@ const LengthsSettings = forwardRef((props, ref) => {
 
   // Service time state management (following hardware pattern)
   const [lengthServicesMap, setLengthServicesMap] = useState({});
+
+  // Rules state: { [lengthId]: { [ruleKey]: params | null } }
+  // null means rule is disabled; object means enabled with those params
+  const [rulesMap, setRulesMap] = useState({});
 
   useEffect(() => {
     dispatch(fetchLengthsCatalog());
@@ -66,6 +71,16 @@ const LengthsSettings = forwardRef((props, ref) => {
       });
     });
     setLengthServicesMap(servicesMap);
+
+    // Build rules map from embedded rules
+    const rMap = {};
+    (catalog || []).forEach((length) => {
+      rMap[length.id] = {};
+      (length.rules || []).forEach((rule) => {
+        rMap[length.id][rule.rule_key] = rule.params || {};
+      });
+    });
+    setRulesMap(rMap);
   }, [catalog, isSaving]);
 
   const handleCatalogChange = (id, field, value) => {
@@ -191,9 +206,9 @@ const LengthsSettings = forwardRef((props, ref) => {
 
       console.log("Lengths catalog saved successfully");
 
-      // Save service times for all length items (including newly saved with fresh IDs)
+      // Build batch data for services and rules across all items
       const activeServicesList = activeServices || [];
-      
+
       // Helper to find matching item (by name for new items, by ID for existing)
       const findOriginalItem = (savedItem, originalList) => {
         const byId = originalList.find((orig) => orig.id === savedItem.id);
@@ -201,62 +216,66 @@ const LengthsSettings = forwardRef((props, ref) => {
         return originalList.find((orig) => orig.isNew && orig.name === savedItem.name);
       };
 
-      // Save services for each length item
+      const rpcItems = [];
+
       for (const length of result.data || []) {
-        if (!length.markedForDeletion) {
-          const originalLength = findOriginalItem(length, localCatalog);
-          const originalId = originalLength?.id || length.id;
-          
-          // Collect regular time services
-          const regularServices = activeServicesList.map((service) => {
-            const timeValue = getServiceTime(originalId, service.service_id, 'regular');
-            return {
+        if (length.markedForDeletion) continue;
+
+        const originalLength = findOriginalItem(length, localCatalog);
+        const originalId = originalLength?.id || length.id;
+
+        // Collect services for this item
+        const regularServices = activeServicesList.map((service) => ({
+          service_id: service.service_id,
+          time_per_unit: getServiceTime(originalId, service.service_id, 'regular') || 0,
+          is_miter_time: false,
+          is_cutout_time: false,
+        }));
+
+        const miterServices = length.requires_miters
+          ? activeServicesList.map((service) => ({
               service_id: service.service_id,
-              time_per_unit: timeValue === '' ? 0 : timeValue,
-              is_miter_time: false,
+              time_per_unit: getServiceTime(originalId, service.service_id, 'miter') || 0,
+              is_miter_time: true,
               is_cutout_time: false,
-            };
-          });
+            }))
+          : [];
 
-          // Collect miter time services (only if requires_miters is true)
-          const miterServices = length.requires_miters
-            ? activeServicesList.map((service) => {
-                const timeValue = getServiceTime(originalId, service.service_id, 'miter');
-                return {
-                  service_id: service.service_id,
-                  time_per_unit: timeValue === '' ? 0 : timeValue,
-                  is_miter_time: true,
-                  is_cutout_time: false,
-                };
-              })
-            : [];
+        const cutoutServices = length.requires_cutouts
+          ? activeServicesList.map((service) => ({
+              service_id: service.service_id,
+              time_per_unit: getServiceTime(originalId, service.service_id, 'cutout') || 0,
+              is_miter_time: false,
+              is_cutout_time: true,
+            }))
+          : [];
 
-          // Collect cutout time services (only if requires_cutouts is true)
-          const cutoutServices = length.requires_cutouts
-            ? activeServicesList.map((service) => {
-                const timeValue = getServiceTime(originalId, service.service_id, 'cutout');
-                return {
-                  service_id: service.service_id,
-                  time_per_unit: timeValue === '' ? 0 : timeValue,
-                  is_miter_time: false,
-                  is_cutout_time: true,
-                };
-              })
-            : [];
+        // Collect rules for this item
+        const itemRules = rulesMap[originalId] || {};
+        const rulesToSave = Object.entries(itemRules)
+          .filter(([, params]) => params !== null && params !== undefined)
+          .map(([ruleKey, params], idx) => ({
+            rule_key: ruleKey,
+            params: params,
+            sort_order: idx,
+          }));
 
-          const allServices = [...regularServices, ...miterServices, ...cutoutServices];
-          
-          const servicesResult = await dispatch(
-            saveLengthServices(length.id, allServices)
-          );
-          
-          if (!servicesResult || !servicesResult.success) {
-            console.error(`Failed to save services for ${length.name}`);
-          }
+        rpcItems.push({
+          length_catalog_id: length.id,
+          services: [...regularServices, ...miterServices, ...cutoutServices],
+          rules: rulesToSave,
+        });
+      }
+
+      // Save all services + rules in a single RPC call
+      if (rpcItems.length > 0) {
+        const settingsResult = await dispatch(saveLengthSettings(rpcItems));
+        if (!settingsResult?.success) {
+          console.error("Failed to save length settings");
         }
       }
 
-      // Refetch to get fresh data with services
+      // Refetch to get fresh data with services and rules
       await dispatch(fetchLengthsCatalog());
 
       setValidationErrors({});
@@ -271,6 +290,15 @@ const LengthsSettings = forwardRef((props, ref) => {
   const handleCancel = () => {
     setLocalCatalog(JSON.parse(JSON.stringify(originalCatalog)));
     setValidationErrors({});
+    // Reset rules to match original catalog
+    const rMap = {};
+    (originalCatalog || []).forEach((length) => {
+      rMap[length.id] = {};
+      (length.rules || []).forEach((rule) => {
+        rMap[length.id][rule.rule_key] = rule.params || {};
+      });
+    });
+    setRulesMap(rMap);
   };
 
   useImperativeHandle(ref, () => ({
@@ -448,6 +476,87 @@ const LengthsSettings = forwardRef((props, ref) => {
     //   placeholder: "Optional description",
     // },
     ...createServiceColumns(),
+    {
+      field: "rules",
+      label: "Rules",
+      width: "200px",
+      render: (item) => {
+        const itemRules = rulesMap[item.id] || {};
+        return (
+          <div className="flex flex-col gap-1">
+            {Object.entries(LENGTH_RULE_REGISTRY).map(([ruleKey, meta]) => {
+              const isEnabled = itemRules[ruleKey] !== null && itemRules[ruleKey] !== undefined;
+              const params = isEnabled ? itemRules[ruleKey] : meta.defaultParams;
+              return (
+                <div key={ruleKey} className="flex flex-col">
+                  <label className="flex items-center gap-1 text-xs cursor-pointer" title={meta.description}>
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      onChange={(e) => {
+                        setRulesMap((prev) => {
+                          const updated = { ...prev };
+                          if (!updated[item.id]) updated[item.id] = {};
+                          updated[item.id] = { ...updated[item.id] };
+                          if (e.target.checked) {
+                            updated[item.id][ruleKey] = { ...meta.defaultParams };
+                          } else {
+                            const { [ruleKey]: _, ...rest } = updated[item.id];
+                            updated[item.id] = rest;
+                          }
+                          return updated;
+                        });
+                      }}
+                      disabled={item.markedForDeletion}
+                      className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className={isEnabled ? "text-teal-200" : "text-slate-200"}>
+                      {meta.label}
+                    </span>
+                  </label>
+                  {isEnabled && Object.keys(meta.defaultParams).some(
+                    (k) => typeof meta.defaultParams[k] === "number"
+                  ) && (
+                    <div className="ml-4 flex flex-wrap gap-1 mt-0.5">
+                      {Object.entries(meta.defaultParams)
+                        .filter(([, v]) => typeof v === "number")
+                        .map(([paramKey, defaultVal]) => (
+                          <div key={paramKey} className="flex items-center gap-0.5">
+                            <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                              {paramKey.replace(/_/g, " ")}:
+                            </span>
+                            <input
+                              type="number"
+                              step="any"
+                              value={params[paramKey] ?? defaultVal}
+                              onChange={(e) => {
+                                const val = e.target.value === "" ? "" : parseFloat(e.target.value);
+                                setRulesMap((prev) => {
+                                  const updated = { ...prev };
+                                  updated[item.id] = {
+                                    ...updated[item.id],
+                                    [ruleKey]: {
+                                      ...updated[item.id]?.[ruleKey],
+                                      [paramKey]: val,
+                                    },
+                                  };
+                                  return updated;
+                                });
+                              }}
+                              disabled={item.markedForDeletion}
+                              className="w-12 bg-slate-700 text-slate-200 px-1 py-0 rounded text-[10px] border border-slate-600"
+                            />
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      },
+    },
   ];
 
   return (

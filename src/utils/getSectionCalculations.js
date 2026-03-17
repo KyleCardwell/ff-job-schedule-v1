@@ -28,6 +28,7 @@ import {
   roundToHundredth,
   interpolateTimeByArea,
 } from "./estimateHelpers";
+import { applyLengthRules } from "./lengthRuleEngine";
 
 const getMoldingCountOverride = (cabinet, optionNames) => {
   for (const optionName of optionNames) {
@@ -49,10 +50,7 @@ const getMoldingCountOverride = (cabinet, optionNames) => {
 };
 
 const getEffectiveMoldingCount = (cabinet, optionName, legacyOptionName) => {
-  return getMoldingCountOverride(cabinet, [
-    optionName,
-    legacyOptionName,
-  ]);
+  return getMoldingCountOverride(cabinet, [optionName, legacyOptionName]);
 };
 
 // Calculate face counts and prices for all cabinets in a section
@@ -105,7 +103,8 @@ const calculateFaceTotals = (section, context) => {
     const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
     let cabinetWidthByQuantity = (Number(cabinet.width) || 0) * quantity;
     if (cabinet.type === 14) {
-      cabinetWidthByQuantity = Number(cabinet.width + (2 * Number(cabinet.depth)) || 0) * quantity;
+      cabinetWidthByQuantity =
+        Number(cabinet.width + 2 * Number(cabinet.depth) || 0) * quantity;
     }
     const cabinetStyleId =
       cabinet.cabinet_style_override || effectiveValues.cabinet_style_id;
@@ -898,7 +897,8 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
     if (cabinet.type === 15) {
       // Check if it has drawerBoxDimensions or rollOutDimensions at the root level
       if (cabinet.face_config.drawerBoxDimensions) {
-        const { width, height, depth } = cabinet.face_config.drawerBoxDimensions;
+        const { width, height, depth } =
+          cabinet.face_config.drawerBoxDimensions;
         allDrawerBoxes.push({
           width,
           height,
@@ -1018,19 +1018,16 @@ const tapeTimeMinutes = ({
   const refOpenings = 1;
 
   if (perInchRate === null) {
-    const refVariableMinutes =
-      refMinutes - refOpenings * overheadPerOpeningMin;
+    const refVariableMinutes = refMinutes - refOpenings * overheadPerOpeningMin;
 
     perInchRate = refVariableMinutes / refPerimeter;
   }
 
   let minutes =
-    openingsCount * overheadPerOpeningMin +
-    beadLengthIn * perInchRate;
+    openingsCount * overheadPerOpeningMin + beadLengthIn * perInchRate;
 
   return Math.max(minutes, minMinutes);
 };
-
 
 /**
  * Calculate face frame finish tape time using interpolation
@@ -1636,7 +1633,9 @@ const calculateSimpleItemsTotal = (items, context) => {
 };
 
 /**
- * Calculate length item totals with material costs and labor hours
+ * Calculate length item totals with material costs and labor hours.
+ * Base material and labor come from the catalog item + length_services.
+ * Additional effects come from composable rules (length_catalog_rules).
  * @param {Array} items - Array of length items from the section
  * @param {Object} context - Calculation context with lengths catalog and materials
  * @returns {Object} { materialTotal, hoursByService: { serviceId: hours } }
@@ -1674,7 +1673,7 @@ const calculateLengthTotals = (items, context) => {
       return Number.isFinite(num) && num > 0 ? num : null;
     };
 
-    const width =
+    const baseWidth =
       parsePositiveNumber(item.width) ??
       parsePositiveNumber(lengthItem.default_width) ??
       1;
@@ -1684,22 +1683,42 @@ const calculateLengthTotals = (items, context) => {
       parsePositiveNumber(material.thickness) ??
       0.75;
 
+    // Apply rules to get additional effects (material addon, width multiplier, extra labor)
+    const itemContext = {
+      lengthInches,
+      lengthFeet,
+      width: baseWidth,
+      thickness,
+      quantity,
+      material,
+      miterCount,
+      cutoutCount,
+      context,
+    };
+    const ruleEffects = applyLengthRules(lengthItem.rules, itemContext);
+
+    // Apply width multiplier from rules (e.g., full_depth_return doubles width)
+    const effectiveWidth = baseWidth * ruleEffects.materialWidthMultiplier;
+
+    // Base material calculation
     if (material.bd_ft_price) {
       // Board feet calculation: (length * width * thickness) / 144
-      const boardFeet = (lengthInches * width * thickness) / 144;
+      const boardFeet = (lengthInches * effectiveWidth * thickness) / 144;
       const boardFeetWithWaste = boardFeet * 1.1; // 10% waste for linear items
       totals.materialTotal +=
         boardFeetWithWaste * material.bd_ft_price * quantity;
     } else if (material.sheet_price && material.area) {
       // Sheet goods: calculate area as fraction of sheet
-      const nosingArea = thickness > 0.75 ? lengthInches * thickness : 0;
-      const area = ((lengthInches * width) + nosingArea) / 144; // Square feet
+      const area = (lengthInches * effectiveWidth) / 144; // Square feet
       const areaWithWaste = area * 1.1; // 10% waste
       const pricePerSqFt = material.sheet_price / (material.area / 144);
       totals.materialTotal += areaWithWaste * pricePerSqFt * quantity;
     }
 
-    // Calculate labor hours from length_services
+    // Add rule material addon (e.g., nosing extra area cost)
+    totals.materialTotal += ruleEffects.materialAddon;
+
+    // Calculate base labor hours from length_services
     if (lengthItem.services && Array.isArray(lengthItem.services)) {
       lengthItem.services.forEach((service) => {
         const serviceId = service.service_id;
@@ -1737,6 +1756,14 @@ const calculateLengthTotals = (items, context) => {
         totals.hoursByService[serviceId] += hours;
       });
     }
+
+    // Merge rule labor hours into totals
+    Object.entries(ruleEffects.hoursByService).forEach(([serviceId, hours]) => {
+      if (!totals.hoursByService[serviceId]) {
+        totals.hoursByService[serviceId] = 0;
+      }
+      totals.hoursByService[serviceId] += hours;
+    });
   });
 
   return totals;
@@ -2101,11 +2128,22 @@ export const getSectionCalculations = (section, context = {}) => {
     },
   );
 
+  const finishSetupNeeded = Boolean(
+    context?.selectedFaceMaterial?.material?.needs_finish ||
+      context?.selectedBoxMaterial?.material?.needs_finish ||
+      context?.selectedDoorMaterial?.material?.needs_finish ||
+      context?.selectedDrawerFrontMaterial?.material?.needs_finish,
+  );
+
   // Add manually entered hours from add_hours field
   if (section.add_hours && typeof section.add_hours === "object") {
     Object.entries(section.add_hours).forEach(([serviceId, hours]) => {
       // Skip install_setup_hours and finish_setup_hours as they're handled separately below
-      if (serviceId === "install_setup_hours" || serviceId === "finish_setup_hours") return;
+      if (
+        serviceId === "install_setup_hours" ||
+        serviceId === "finish_setup_hours"
+      )
+        return;
 
       const numericServiceId = parseInt(serviceId);
       const numericHours = parseFloat(hours) || 0;
@@ -2128,8 +2166,9 @@ export const getSectionCalculations = (section, context = {}) => {
     }
 
     // Add finish_setup_hours to Finish service (service_id 3)
-    const finishSetupHours = parseFloat(section.add_hours.finish_setup_hours) || 0;
-    if (finishSetupHours !== 0) {
+    const finishSetupHours =
+      parseFloat(section.add_hours.finish_setup_hours) || 0;
+    if (finishSetupHours !== 0 && finishSetupNeeded) {
       if (!finalHoursByService[3]) {
         finalHoursByService[3] = 0;
       }
@@ -2261,6 +2300,7 @@ export const getSectionCalculations = (section, context = {}) => {
     commissionRate: section.commission,
     discount: sectionDiscount,
     discountRate: section.discount,
+    finishSetupNeeded,
     partsIncluded: partsIncluded, // Pass through for UI to know what's included
     servicesIncluded: section.services_included || {}, // Pass through for UI
     // Face frame component breakdown (for detailed breakdown view only)

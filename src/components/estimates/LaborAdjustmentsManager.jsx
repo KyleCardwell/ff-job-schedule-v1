@@ -7,7 +7,11 @@ import { useSelector } from "react-redux";
  * Component for manually adding hours by service type to a section
  * Always visible, with edit/save/cancel functionality
  */
-const LaborAdjustmentssManager = ({ addHours, onSave }) => {
+const LaborAdjustmentsManager = ({
+  addHours,
+  onSave,
+  finishSetupNeeded = true,
+}) => {
   const services = useSelector((state) => state.services?.allServices || []);
 
   // Filter to active services only
@@ -168,18 +172,22 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
       </div>
 
       {/* Setup Hours Inputs */}
-      <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30 space-y-3">
+      <div className="mb-4 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30 space-y-3 text-slate-300">
         {/* Finish Setup/Cleanup */}
-        <div className="flex items-center justify-between">
+        <div
+          className={`flex items-center justify-between ${!finishSetupNeeded ? "bg-amber-400 text-amber-900 rounded-md font-semibold" : ""}`}
+        >
           <div className="flex-1">
             <label
               htmlFor="finish-setup-hours"
-              className="text-sm font-medium text-white block mb-1"
+              className="text-sm font-medium block mb-1"
             >
               Setup/Cleanup Hours - Finish
             </label>
-            <p className="text-xs text-slate-300">
-              Added to Finish hours. Defaults to 1 hour per section
+            <p className="text-xs">
+              {finishSetupNeeded
+                ? "Added to Finish hours. Defaults to 1 hour per section"
+                : "Hours not counted - No selected materials require finish for this section"}
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
@@ -202,7 +210,7 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
               className={`
                 w-24 px-2 py-1 text-sm border rounded
                 ${
-                  isEditing
+                  isEditing && finishSetupNeeded
                     ? "border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     : "border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
                 }
@@ -331,9 +339,10 @@ const LaborAdjustmentssManager = ({ addHours, onSave }) => {
   );
 };
 
-LaborAdjustmentssManager.propTypes = {
+LaborAdjustmentsManager.propTypes = {
   addHours: PropTypes.object, // { service_id: hours }
   onSave: PropTypes.func.isRequired,
+  finishSetupNeeded: PropTypes.bool,
 };
 
-export default LaborAdjustmentssManager;
+export default LaborAdjustmentsManager;
