@@ -2092,7 +2092,7 @@ export const getSectionCalculations = (section, context = {}) => {
     (isPartIncluded("pullsTotal") ? cabinetTotals.pullsTotal : 0) +
     (isPartIncluded("slidesTotal") ? cabinetTotals.slidesTotal : 0) +
     (isPartIncluded("woodTotal") ? cabinetTotals.woodTotal : 0) +
-    lengthTotals.materialTotal +
+    (isPartIncluded("woodTotal") ? lengthTotals.materialTotal : 0) +
     otherTotal +
     // Include all accessories (glass from accessories + glass from faces + other accessory types)
     (isPartIncluded("accessoriesTotal")
