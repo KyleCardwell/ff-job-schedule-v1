@@ -1667,8 +1667,22 @@ const calculateLengthTotals = (items, context) => {
     // Calculate material cost based on length
     // Use bd_ft_price if available, otherwise use fraction of sheet_price
     const material = selectedFaceMaterial.material;
-    const width = lengthItem.width || 1; // Width in inches
-    const thickness = material.thickness || 0.75; // Thickness in inches
+    if (!material) return;
+
+    const parsePositiveNumber = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) && num > 0 ? num : null;
+    };
+
+    const width =
+      parsePositiveNumber(item.width) ??
+      parsePositiveNumber(lengthItem.default_width) ??
+      1;
+    const thickness =
+      parsePositiveNumber(item.thickness) ??
+      parsePositiveNumber(lengthItem.default_thickness) ??
+      parsePositiveNumber(material.thickness) ??
+      0.75;
 
     if (material.bd_ft_price) {
       // Board feet calculation: (length * width * thickness) / 144
@@ -1678,9 +1692,10 @@ const calculateLengthTotals = (items, context) => {
         boardFeetWithWaste * material.bd_ft_price * quantity;
     } else if (material.sheet_price && material.area) {
       // Sheet goods: calculate area as fraction of sheet
-      const area = (lengthInches * width) / 144; // Square feet
+      const nosingArea = thickness > 0.75 ? lengthInches * thickness : 0;
+      const area = ((lengthInches * width) + nosingArea) / 144; // Square feet
       const areaWithWaste = area * 1.1; // 10% waste
-      const pricePerSqFt = material.sheet_price / material.area;
+      const pricePerSqFt = material.sheet_price / (material.area / 144);
       totals.materialTotal += areaWithWaste * pricePerSqFt * quantity;
     }
 
@@ -1689,6 +1704,11 @@ const calculateLengthTotals = (items, context) => {
       lengthItem.services.forEach((service) => {
         const serviceId = service.service_id;
         if (!serviceId) return;
+
+        // Skip finish service if material doesn't need finishing
+        if (serviceId === 3 && !material.needs_finish) {
+          return;
+        }
 
         // Base time per unit (per linear foot)
         const timePerUnit = Number(service.time_per_unit) || 0;

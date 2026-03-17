@@ -10,6 +10,8 @@ import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 
 import SectionItemList from "./SectionItemList.jsx";
 
+const DEFAULT_NEW_LENGTH_QUANTITY = 1;
+
 const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const dispatch = useDispatch();
   const { catalog, molding, base, shelf, top, other, loading } = useSelector(
@@ -20,7 +22,9 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   const [formData, setFormData] = useState({
     length_catalog_id: +item.length_catalog_id || "",
     length: item.length || "",
-    quantity: item.quantity != null ? item.quantity : 1,
+    quantity: item.quantity ?? DEFAULT_NEW_LENGTH_QUANTITY,
+    width: item.width ?? "",
+    thickness: item.thickness ?? "",
     miter_count: item.miter_count || 0,
     cutout_count: item.cutout_count || 0,
     temp_id: item.temp_id || uuid(),
@@ -32,8 +36,10 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
 
   const mathInput = useMathInput(
     {
-      quantity: item.quantity != null ? item.quantity : 1,
+      quantity: item.quantity ?? DEFAULT_NEW_LENGTH_QUANTITY,
       length: item.length || "",
+      width: item.width ?? "",
+      thickness: item.thickness ?? "",
       miter_count: item.miter_count || 0,
       cutout_count: item.cutout_count || 0,
     },
@@ -120,8 +126,24 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     const { name, value } = e.target;
 
     // Handle math-enabled numeric inputs
-    if (["quantity", "length", "miter_count", "cutout_count"].includes(name)) {
+    if (
+      [
+        "quantity",
+        "length",
+        "width",
+        "thickness",
+        "miter_count",
+        "cutout_count",
+      ].includes(name)
+    ) {
       mathInput.handleChange(name, value);
+      const parsedValue = value === "" ? null : Number(value);
+      if (value === "" || Number.isFinite(parsedValue)) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: parsedValue,
+        }));
+      }
       // Clear error when field is updated
       if (errors[name]) {
         setErrors({
@@ -163,8 +185,27 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       newErrors.length = "Length must be greater than 0";
     }
 
-    if (formData.quantity === null || formData.quantity === undefined || formData.quantity < 0) {
+    const quantityValue = Number(formData.quantity);
+    if (
+      formData.quantity === "" ||
+      formData.quantity === null ||
+      formData.quantity === undefined ||
+      Number.isNaN(quantityValue) ||
+      quantityValue < 0
+    ) {
       newErrors.quantity = "Quantity must be 0 or greater";
+    }
+
+    if (formData.width !== "" && formData.width !== null && Number(formData.width) <= 0) {
+      newErrors.width = "Width must be greater than 0";
+    }
+
+    if (
+      formData.thickness !== "" &&
+      formData.thickness !== null &&
+      Number(formData.thickness) <= 0
+    ) {
+      newErrors.thickness = "Thickness must be greater than 0";
     }
 
     setErrors(newErrors);
@@ -177,7 +218,23 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     }
 
     if (validateForm()) {
-      onSave(formData);
+      const parseOptionalNumber = (value) => {
+        if (value === "" || value === null || value === undefined) {
+          return null;
+        }
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+      };
+
+      onSave({
+        ...formData,
+        quantity: Number(formData.quantity),
+        length: Number(formData.length),
+        miter_count: parseOptionalNumber(formData.miter_count) ?? 0,
+        cutout_count: parseOptionalNumber(formData.cutout_count) ?? 0,
+        width: parseOptionalNumber(formData.width),
+        thickness: parseOptionalNumber(formData.thickness),
+      });
     }
   };
 
@@ -256,7 +313,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
           </div>
 
           {/* Input Grid */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {/* Quantity */}
             <div>
               <label
@@ -268,9 +325,10 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
               <input
                 type="number"
                 inputMode="decimal"
+                min="0"
                 id="quantity"
                 name="quantity"
-                value={mathInput.inputValues.quantity || ""}
+                value={mathInput.inputValues.quantity ?? ""}
                 onChange={handleChange}
                 onBlur={() => mathInput.handleBlur("quantity")}
                 className={`w-full px-3 py-2 border ${
@@ -304,6 +362,66 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
               />
               {errors.length && (
                 <p className="text-red-500 text-xs mt-1">{errors.length}</p>
+              )}
+            </div>
+
+            {/* Width */}
+            <div>
+              <label
+                htmlFor="width"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Width (in)
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                id="width"
+                name="width"
+                value={mathInput.inputValues.width || ""}
+                onChange={handleChange}
+                onBlur={() => mathInput.handleBlur("width")}
+                placeholder={
+                  selectedLengthItem?.default_width
+                    ? `Default: ${selectedLengthItem.default_width}`
+                    : "Optional"
+                }
+                className={`w-full px-3 py-2 border ${
+                  errors.width ? "border-red-500" : "border-slate-300"
+                } rounded-md text-sm`}
+              />
+              {errors.width && (
+                <p className="text-red-500 text-xs mt-1">{errors.width}</p>
+              )}
+            </div>
+
+            {/* Thickness */}
+            <div>
+              <label
+                htmlFor="thickness"
+                className="block text-xs font-medium text-slate-700 mb-1"
+              >
+                Thickness (in)
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                id="thickness"
+                name="thickness"
+                value={mathInput.inputValues.thickness || ""}
+                onChange={handleChange}
+                onBlur={() => mathInput.handleBlur("thickness")}
+                placeholder={
+                  selectedLengthItem?.default_thickness
+                    ? `Default: ${selectedLengthItem.default_thickness}`
+                    : "Optional"
+                }
+                className={`w-full px-3 py-2 border ${
+                  errors.thickness ? "border-red-500" : "border-slate-300"
+                } rounded-md text-sm`}
+              />
+              {errors.thickness && (
+                <p className="text-red-500 text-xs mt-1">{errors.thickness}</p>
               )}
             </div>
 
@@ -417,12 +535,12 @@ const EstimateLengthManager = ({
   };
 
   const columns = [
-    {
-      key: "type",
-      label: "Type",
-      width: "100px",
-      render: (item) => getLengthType(item.length_catalog_id),
-    },
+    // {
+    //   key: "type",
+    //   label: "Type",
+    //   width: "80px",
+    //   render: (item) => getLengthType(item.length_catalog_id),
+    // },
     {
       key: "item",
       label: "Item",
@@ -440,6 +558,26 @@ const EstimateLengthManager = ({
       label: "Length",
       width: "80px",
       render: (item) => (item.length ? `${item.length} ft` : "-"),
+    },
+    {
+      key: "width",
+      label: "Width",
+      width: "90px",
+      render: (item) => {
+        const lengthItem = catalog.find((l) => l.id === item.length_catalog_id);
+        const width = item.width ?? lengthItem?.default_width;
+        return width ? `${width} in` : "-";
+      },
+    },
+    {
+      key: "thickness",
+      label: "Thickness",
+      width: "100px",
+      render: (item) => {
+        const lengthItem = catalog.find((l) => l.id === item.length_catalog_id);
+        const thickness = item.thickness ?? lengthItem?.default_thickness;
+        return thickness ? `${thickness} in` : "-";
+      },
     },
     {
       key: "miter_count",

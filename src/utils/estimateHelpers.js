@@ -652,6 +652,11 @@ export const calculateBoxPartsTime = (section, context = {}) => {
             (s) => s.team_service_id === parseInt(teamServiceId),
           );
           if (!service) return;
+          
+          // Skip finish service if material doesn't need finishing
+          if (service.service_id === 3 && !context.selectedFaceMaterial.needs_finish) {
+            return;
+          }
 
           // Multiply by both part quantity (shelves) and cabinet quantity
           const roundedHours = roundToHundredth(
