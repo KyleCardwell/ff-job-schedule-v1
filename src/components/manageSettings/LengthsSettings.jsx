@@ -19,7 +19,8 @@ import { LENGTH_TYPES } from "../../utils/constants";
 import { LENGTH_RULE_REGISTRY } from "../../utils/lengthRuleEngine";
 
 import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
-import SettingsList from "./SettingsList.jsx";
+// import SettingsList from "./SettingsList.jsx";
+import SettingsListLengths from "./SettingsListLengths.jsx";
 import SettingsSection from "./SettingsSection.jsx";
 
 const LengthsSettings = forwardRef((props, ref) => {
@@ -384,6 +385,104 @@ const LengthsSettings = forwardRef((props, ref) => {
     return localCatalog.filter((item) => item.type === type);
   };
 
+  const renderRulesSection = (item) => {
+    const itemRules = rulesMap[item.id] || {};
+    const ruleEntries = Object.entries(LENGTH_RULE_REGISTRY);
+
+    return (
+      <div className="flex flex-col gap-2 border-t pt-2">
+        <div className="text-xs font-semibold text-slate-200">Rules</div>
+        <div
+          className="grid gap-2"
+          style={{
+            gridTemplateColumns: `repeat(${Math.max(ruleEntries.length, 1)}, minmax(120px, 1fr))`,
+          }}
+        >
+          {ruleEntries.map(([ruleKey, meta]) => {
+            const isEnabled =
+              itemRules[ruleKey] !== null && itemRules[ruleKey] !== undefined;
+            const params = isEnabled ? itemRules[ruleKey] : meta.defaultParams;
+            const numericParams = Object.entries(meta.defaultParams || {}).filter(
+              ([, value]) => typeof value === "number"
+            );
+
+            return (
+              <div
+                key={`${item.id}-${ruleKey}`}
+                className="border border-slate-500/40 rounded px-2 py-1 bg-slate-700/40"
+              >
+                <label
+                  className="flex items-center gap-1 text-xs cursor-pointer"
+                  title={meta.description}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isEnabled}
+                    onChange={(e) => {
+                      setRulesMap((prev) => {
+                        const updated = { ...prev };
+                        if (!updated[item.id]) updated[item.id] = {};
+                        updated[item.id] = { ...updated[item.id] };
+
+                        if (e.target.checked) {
+                          updated[item.id][ruleKey] = { ...meta.defaultParams };
+                        } else {
+                          const nextRules = { ...updated[item.id] };
+                          delete nextRules[ruleKey];
+                          updated[item.id] = nextRules;
+                        }
+
+                        return updated;
+                      });
+                    }}
+                    disabled={item.markedForDeletion}
+                    className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className={isEnabled ? "text-teal-200" : "text-slate-200"}>
+                    {meta.label}
+                  </span>
+                </label>
+
+                {isEnabled && numericParams.length > 0 && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    {numericParams.map(([paramKey, defaultVal]) => (
+                      <div key={paramKey} className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-300 whitespace-nowrap">
+                          {paramKey.replace(/_/g, " ")}
+                        </span>
+                        <input
+                          type="number"
+                          step="any"
+                          value={params[paramKey] ?? defaultVal}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? "" : parseFloat(e.target.value);
+                            setRulesMap((prev) => {
+                              const updated = { ...prev };
+                              updated[item.id] = {
+                                ...updated[item.id],
+                                [ruleKey]: {
+                                  ...updated[item.id]?.[ruleKey],
+                                  [paramKey]: val,
+                                },
+                              };
+                              return updated;
+                            });
+                          }}
+                          disabled={item.markedForDeletion}
+                          className="w-full bg-slate-700 text-slate-200 px-1 py-0 rounded text-[10px] border border-slate-600"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   // Helper to create service time columns
   // Each service gets one column with up to 4 stacked inputs:
   //   time_per_unit (min/ft), base_minutes, miter_minutes, cutout_minutes
@@ -411,7 +510,7 @@ const LengthsSettings = forwardRef((props, ref) => {
             disabled={item.markedForDeletion}
             title="Minutes per foot"
           />
-          {/* Minimum minutes */}
+          {/* Base minutes */}
           <input
             type="number"
             step="1"
@@ -422,9 +521,9 @@ const LengthsSettings = forwardRef((props, ref) => {
               updateServiceTime(item.id, service.service_id, value, 'base_minutes');
             }}
             className="w-full bg-slate-700 text-emerald-300 px-2 py-1 rounded text-sm border border-emerald-600"
-            placeholder="Min mins"
+            placeholder="Base mins"
             disabled={item.markedForDeletion}
-            title="Minimum minutes"
+            title="Base minutes"
           />
           {/* Miter minutes (only show if requires_miters is true) */}
           {item.requires_miters && (
@@ -470,7 +569,6 @@ const LengthsSettings = forwardRef((props, ref) => {
     {
       field: "name",
       label: "Name",
-      width: "200px",
       type: "text",
       placeholder: "Length name",
       hasError: (item) => !!getItemErrors(item.id, type).name,
@@ -514,100 +612,12 @@ const LengthsSettings = forwardRef((props, ref) => {
     {
       field: "default_thickness",
       label: "Thickness (in)",
-      width: "110px",
+      width: "100px",
       type: "number",
       placeholder: "0.75",
       allowEmpty: true,
     },
-    // {
-    //   field: "description",
-    //   label: "Description",
-    //   width: "200px",
-    //   type: "text",
-    //   placeholder: "Optional description",
-    // },
     ...createServiceColumns(),
-    {
-      field: "rules",
-      label: "Rules",
-      width: "200px",
-      render: (item) => {
-        const itemRules = rulesMap[item.id] || {};
-        return (
-          <div className="flex flex-col gap-1">
-            {Object.entries(LENGTH_RULE_REGISTRY).map(([ruleKey, meta]) => {
-              const isEnabled = itemRules[ruleKey] !== null && itemRules[ruleKey] !== undefined;
-              const params = isEnabled ? itemRules[ruleKey] : meta.defaultParams;
-              return (
-                <div key={ruleKey} className="flex flex-col">
-                  <label className="flex items-center gap-1 text-xs cursor-pointer" title={meta.description}>
-                    <input
-                      type="checkbox"
-                      checked={isEnabled}
-                      onChange={(e) => {
-                        setRulesMap((prev) => {
-                          const updated = { ...prev };
-                          if (!updated[item.id]) updated[item.id] = {};
-                          updated[item.id] = { ...updated[item.id] };
-                          if (e.target.checked) {
-                            updated[item.id][ruleKey] = { ...meta.defaultParams };
-                          } else {
-                            const { [ruleKey]: _, ...rest } = updated[item.id];
-                            updated[item.id] = rest;
-                          }
-                          return updated;
-                        });
-                      }}
-                      disabled={item.markedForDeletion}
-                      className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className={isEnabled ? "text-teal-200" : "text-slate-200"}>
-                      {meta.label}
-                    </span>
-                  </label>
-                  {isEnabled && Object.keys(meta.defaultParams).some(
-                    (k) => typeof meta.defaultParams[k] === "number"
-                  ) && (
-                    <div className="ml-4 flex flex-wrap gap-1 mt-0.5">
-                      {Object.entries(meta.defaultParams)
-                        .filter(([, v]) => typeof v === "number")
-                        .map(([paramKey, defaultVal]) => (
-                          <div key={paramKey} className="flex items-center gap-0.5">
-                            <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                              {paramKey.replace(/_/g, " ")}:
-                            </span>
-                            <input
-                              type="number"
-                              step="any"
-                              value={params[paramKey] ?? defaultVal}
-                              onChange={(e) => {
-                                const val = e.target.value === "" ? "" : parseFloat(e.target.value);
-                                setRulesMap((prev) => {
-                                  const updated = { ...prev };
-                                  updated[item.id] = {
-                                    ...updated[item.id],
-                                    [ruleKey]: {
-                                      ...updated[item.id]?.[ruleKey],
-                                      [paramKey]: val,
-                                    },
-                                  };
-                                  return updated;
-                                });
-                              }}
-                              disabled={item.markedForDeletion}
-                              className="w-12 bg-slate-700 text-slate-200 px-1 py-0 rounded text-[10px] border border-slate-600"
-                            />
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      },
-    },
   ];
 
   return (
@@ -677,9 +687,10 @@ const LengthsSettings = forwardRef((props, ref) => {
                     title={typeConfig.label}
                     maxWidthClass={maxWidthClass}
                   >
-                    <SettingsList
+                    <SettingsListLengths
                       items={typeItems}
                       columns={getCatalogColumns(typeConfig.value)}
+                      renderRulesSection={renderRulesSection}
                       onDelete={handleDeleteLength}
                       onCancelDelete={handleCancelDeleteLength}
                       onChange={handleCatalogChange}
