@@ -1719,6 +1719,8 @@ const calculateLengthTotals = (items, context) => {
     totals.materialTotal += ruleEffects.materialAddon;
 
     // Calculate base labor hours from length_services
+    // Each service row has: time_per_unit (min/ft), miter_minutes (min/miter),
+    // cutout_minutes (min/cutout), base_minutes (minimum minutes floor)
     if (lengthItem.services && Array.isArray(lengthItem.services)) {
       lengthItem.services.forEach((service) => {
         const serviceId = service.service_id;
@@ -1729,31 +1731,27 @@ const calculateLengthTotals = (items, context) => {
           return;
         }
 
-        // Base time per unit (per linear foot)
         const timePerUnit = Number(service.time_per_unit) || 0;
+        const miterMinutes = Number(service.miter_minutes) || 0;
+        const cutoutMinutes = Number(service.cutout_minutes) || 0;
+        const baseMinutes = Number(service.base_minutes) || 0;
 
-        // Calculate base hours for the length
-        let hours = 0;
+        // Total minutes = minMinutes + time_per_unit * feet + miter_minutes * miters + cutout_minutes * cutouts
+        const totalMinutes =
+          baseMinutes +
+          timePerUnit * lengthFeet +
+          miterMinutes * miterCount +
+          cutoutMinutes * cutoutCount;
 
-        if (!service.is_miter_time && !service.is_cutout_time) {
-          hours = (timePerUnit / 60) * lengthFeet * quantity;
+        // Convert to hours and apply quantity
+        const hours = (totalMinutes / 60) * quantity;
+
+        if (hours > 0) {
+          if (!totals.hoursByService[serviceId]) {
+            totals.hoursByService[serviceId] = 0;
+          }
+          totals.hoursByService[serviceId] += hours;
         }
-
-        // Add additional time for miters if this is miter time
-        if (service.is_miter_time && miterCount > 0) {
-          hours += (timePerUnit / 60) * miterCount * quantity;
-        }
-
-        // Add additional time for cutouts if this is cutout time
-        if (service.is_cutout_time && cutoutCount > 0) {
-          hours += (timePerUnit / 60) * cutoutCount * quantity;
-        }
-
-        // Add to totals
-        if (!totals.hoursByService[serviceId]) {
-          totals.hoursByService[serviceId] = 0;
-        }
-        totals.hoursByService[serviceId] += hours;
       });
     }
 
@@ -2130,9 +2128,9 @@ export const getSectionCalculations = (section, context = {}) => {
 
   const finishSetupNeeded = Boolean(
     context?.selectedFaceMaterial?.material?.needs_finish ||
-      context?.selectedBoxMaterial?.material?.needs_finish ||
-      context?.selectedDoorMaterial?.material?.needs_finish ||
-      context?.selectedDrawerFrontMaterial?.material?.needs_finish,
+    context?.selectedBoxMaterial?.material?.needs_finish ||
+    context?.selectedDoorMaterial?.material?.needs_finish ||
+    context?.selectedDrawerFrontMaterial?.material?.needs_finish,
   );
 
   // Add manually entered hours from add_hours field

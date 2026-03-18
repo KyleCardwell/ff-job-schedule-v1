@@ -56,18 +56,16 @@ const LengthsSettings = forwardRef((props, ref) => {
     setOriginalCatalog(JSON.parse(JSON.stringify(catalog || [])));
 
     // Build service times map from embedded services
+    // Key format: "<lengthId>-<serviceId>-<field>" where field is one of:
+    //   time_per_unit, miter_minutes, cutout_minutes, base_minutes
     const servicesMap = {};
     (catalog || []).forEach((length) => {
       (length.services || []).forEach((service) => {
-        const isMiterTime = service.is_miter_time || false;
-        const isCutoutTime = service.is_cutout_time || false;
-        // Create unique key: regular, miter, or cutout
-        let timeType = 'regular';
-        if (isMiterTime) timeType = 'miter';
-        else if (isCutoutTime) timeType = 'cutout';
-        
-        const key = `${length.id}-${service.service_id}-${timeType}`;
-        servicesMap[key] = service.time_per_unit;
+        const prefix = `${length.id}-${service.service_id}`;
+        servicesMap[`${prefix}-time_per_unit`] = service.time_per_unit;
+        servicesMap[`${prefix}-miter_minutes`] = service.miter_minutes;
+        servicesMap[`${prefix}-cutout_minutes`] = service.cutout_minutes;
+        servicesMap[`${prefix}-base_minutes`] = service.base_minutes;
       });
     });
     setLengthServicesMap(servicesMap);
@@ -179,7 +177,11 @@ const LengthsSettings = forwardRef((props, ref) => {
 
     try {
       let result;
-      if (!isEqual(localCatalog, originalCatalog)) {
+      // Compare only catalog columns (exclude services/rules — managed separately)
+      const stripJoined = (items) => items.map(({ services, rules, ...rest }) => rest);
+      const catalogChanged = !isEqual(stripJoined(localCatalog), stripJoined(originalCatalog));
+
+      if (catalogChanged) {
         // Clean up numeric fields: convert empty strings to null
         const cleanedCatalog = localCatalog.map((item) => ({
           ...item,
@@ -206,14 +208,48 @@ const LengthsSettings = forwardRef((props, ref) => {
 
       console.log("Lengths catalog saved successfully");
 
-      // Build batch data for services and rules across all items
+      // Build batch data for services and rules — only include items that changed
       const activeServicesList = activeServices || [];
+      const toNullable = (v) => (v === '' || v === undefined || v === null) ? null : Number(v);
 
       // Helper to find matching item (by name for new items, by ID for existing)
       const findOriginalItem = (savedItem, originalList) => {
         const byId = originalList.find((orig) => orig.id === savedItem.id);
         if (byId && !byId.isNew) return byId;
         return originalList.find((orig) => orig.isNew && orig.name === savedItem.name);
+      };
+
+      // Helper to check if services changed for a length item
+      const servicesChanged = (lengthId, originalServices, currentRequiresMiters, currentRequiresCutouts) => {
+        for (const service of activeServicesList) {
+          const origSvc = (originalServices || []).find((s) => s.service_id === service.service_id);
+          const fields = ['time_per_unit', 'base_minutes'];
+          if (currentRequiresMiters) fields.push('miter_minutes');
+          if (currentRequiresCutouts) fields.push('cutout_minutes');
+          
+          for (const field of fields) {
+            const currentVal = toNullable(getServiceTime(lengthId, service.service_id, field));
+            const origVal = origSvc ? toNullable(origSvc[field]) : null;
+            if (currentVal !== origVal) return true;
+          }
+        }
+        return false;
+      };
+
+      // Helper to check if rules changed for a length item
+      const rulesChanged = (lengthId, originalRules) => {
+        const currentRules = rulesMap[lengthId] || {};
+        const origRulesMap = {};
+        (originalRules || []).forEach((r) => { origRulesMap[r.rule_key] = r.params || {}; });
+        
+        const currentKeys = Object.keys(currentRules).filter((k) => currentRules[k] != null);
+        const origKeys = Object.keys(origRulesMap);
+        
+        if (currentKeys.length !== origKeys.length) return true;
+        for (const key of currentKeys) {
+          if (!origRulesMap[key] || !isEqual(currentRules[key], origRulesMap[key])) return true;
+        }
+        return false;
       };
 
       const rpcItems = [];
@@ -223,32 +259,31 @@ const LengthsSettings = forwardRef((props, ref) => {
 
         const originalLength = findOriginalItem(length, localCatalog);
         const originalId = originalLength?.id || length.id;
+        
+        // Find the original catalog item to compare services/rules
+        const origCatalogItem = originalCatalog.find((c) => c.id === originalId);
+        
+        // Skip if neither services nor rules changed (and not a new item)
+        const isNewItem = originalLength?.isNew || !origCatalogItem;
+        const svcChanged = servicesChanged(originalId, origCatalogItem?.services, length.requires_miters, length.requires_cutouts);
+        const ruleChanged = rulesChanged(originalId, origCatalogItem?.rules);
+        
+        if (!isNewItem && !svcChanged && !ruleChanged) {
+          continue; // No changes, skip this item
+        }
 
-        // Collect services for this item
-        const regularServices = activeServicesList.map((service) => ({
+        // Collect services for this item (one entry per service with all 4 fields)
+        const itemServices = activeServicesList.map((service) => ({
           service_id: service.service_id,
-          time_per_unit: getServiceTime(originalId, service.service_id, 'regular') || 0,
-          is_miter_time: false,
-          is_cutout_time: false,
+          time_per_unit: toNullable(getServiceTime(originalId, service.service_id, 'time_per_unit')),
+          miter_minutes: length.requires_miters
+            ? toNullable(getServiceTime(originalId, service.service_id, 'miter_minutes'))
+            : null,
+          cutout_minutes: length.requires_cutouts
+            ? toNullable(getServiceTime(originalId, service.service_id, 'cutout_minutes'))
+            : null,
+          base_minutes: toNullable(getServiceTime(originalId, service.service_id, 'base_minutes')),
         }));
-
-        const miterServices = length.requires_miters
-          ? activeServicesList.map((service) => ({
-              service_id: service.service_id,
-              time_per_unit: getServiceTime(originalId, service.service_id, 'miter') || 0,
-              is_miter_time: true,
-              is_cutout_time: false,
-            }))
-          : [];
-
-        const cutoutServices = length.requires_cutouts
-          ? activeServicesList.map((service) => ({
-              service_id: service.service_id,
-              time_per_unit: getServiceTime(originalId, service.service_id, 'cutout') || 0,
-              is_miter_time: false,
-              is_cutout_time: true,
-            }))
-          : [];
 
         // Collect rules for this item
         const itemRules = rulesMap[originalId] || {};
@@ -262,12 +297,12 @@ const LengthsSettings = forwardRef((props, ref) => {
 
         rpcItems.push({
           length_catalog_id: length.id,
-          services: [...regularServices, ...miterServices, ...cutoutServices],
+          services: itemServices,
           rules: rulesToSave,
         });
       }
 
-      // Save all services + rules in a single RPC call
+      // Save only changed services + rules in a single RPC call
       if (rpcItems.length > 0) {
         const settingsResult = await dispatch(saveLengthSettings(rpcItems));
         if (!settingsResult?.success) {
@@ -317,17 +352,16 @@ const LengthsSettings = forwardRef((props, ref) => {
     return validationErrors[`catalog-${type}-${itemId}`] || {};
   };
 
-  // Service time helpers (following hardware pattern)
-  const getServiceTime = (lengthId, serviceId, timeType = 'regular') => {
-    // timeType can be 'regular', 'miter', or 'cutout'
-    const key = `${lengthId}-${serviceId}-${timeType}`;
+  // Service time helpers — key format: "<lengthId>-<serviceId>-<field>"
+  // field is one of: time_per_unit, miter_minutes, cutout_minutes, base_minutes
+  const getServiceTime = (lengthId, serviceId, field) => {
+    const key = `${lengthId}-${serviceId}-${field}`;
     const value = lengthServicesMap[key];
     return value === undefined || value === null ? '' : value;
   };
 
-  const updateServiceTime = (lengthId, serviceId, value, timeType = 'regular') => {
-    // timeType can be 'regular', 'miter', or 'cutout'
-    const key = `${lengthId}-${serviceId}-${timeType}`;
+  const updateServiceTime = (lengthId, serviceId, value, field) => {
+    const key = `${lengthId}-${serviceId}-${field}`;
     setLengthServicesMap((prev) => ({
       ...prev,
       [key]: value,
@@ -350,63 +384,80 @@ const LengthsSettings = forwardRef((props, ref) => {
     return localCatalog.filter((item) => item.type === type);
   };
 
-  // Helper to create service time columns (regular time per foot)
+  // Helper to create service time columns
+  // Each service gets one column with up to 4 stacked inputs:
+  //   time_per_unit (min/ft), base_minutes, miter_minutes, cutout_minutes
   const createServiceColumns = () => {
     return activeServices.map((service) => ({
       field: `service_${service.service_id}`,
       label: service.service_name || `Service ${service.service_id}`,
-      width: "100px",
+      width: "110px",
       type: "number",
       placeholder: "0",
       render: (item) => (
         <div className="flex flex-col gap-1">
-          {/* Regular time per foot */}
+          {/* Minutes per foot */}
           <input
             type="number"
             step="1"
             min="0"
-            value={getServiceTime(item.id, service.service_id, 'regular')}
+            value={getServiceTime(item.id, service.service_id, 'time_per_unit')}
             onChange={(e) => {
               const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-              updateServiceTime(item.id, service.service_id, value, 'regular');
+              updateServiceTime(item.id, service.service_id, value, 'time_per_unit');
             }}
             className="w-full bg-slate-600 text-slate-200 px-2 py-1 rounded"
-            placeholder="0"
+            placeholder="Min/ft"
             disabled={item.markedForDeletion}
-            title="Time per foot"
+            title="Minutes per foot"
           />
-          {/* Miter time (only show if requires_miters is true) */}
+          {/* Minimum minutes */}
+          <input
+            type="number"
+            step="1"
+            min="0"
+            value={getServiceTime(item.id, service.service_id, 'base_minutes')}
+            onChange={(e) => {
+              const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+              updateServiceTime(item.id, service.service_id, value, 'base_minutes');
+            }}
+            className="w-full bg-slate-700 text-emerald-300 px-2 py-1 rounded text-sm border border-emerald-600"
+            placeholder="Min mins"
+            disabled={item.markedForDeletion}
+            title="Minimum minutes"
+          />
+          {/* Miter minutes (only show if requires_miters is true) */}
           {item.requires_miters && (
             <input
               type="number"
               step="1"
               min="0"
-              value={getServiceTime(item.id, service.service_id, 'miter')}
+              value={getServiceTime(item.id, service.service_id, 'miter_minutes')}
               onChange={(e) => {
                 const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                updateServiceTime(item.id, service.service_id, value, 'miter');
+                updateServiceTime(item.id, service.service_id, value, 'miter_minutes');
               }}
               className="w-full bg-slate-700 text-amber-300 px-2 py-1 rounded text-sm border border-amber-600"
               placeholder="Per miter"
               disabled={item.markedForDeletion}
-              title="Time per miter"
+              title="Minutes per miter"
             />
           )}
-          {/* Cutout time (only show if requires_cutouts is true) */}
+          {/* Cutout minutes (only show if requires_cutouts is true) */}
           {item.requires_cutouts && (
             <input
               type="number"
               step="1"
               min="0"
-              value={getServiceTime(item.id, service.service_id, 'cutout')}
+              value={getServiceTime(item.id, service.service_id, 'cutout_minutes')}
               onChange={(e) => {
                 const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-                updateServiceTime(item.id, service.service_id, value, 'cutout');
+                updateServiceTime(item.id, service.service_id, value, 'cutout_minutes');
               }}
               className="w-full bg-slate-700 text-cyan-300 px-2 py-1 rounded text-sm border border-cyan-600"
               placeholder="Per cutout"
               disabled={item.markedForDeletion}
-              title="Time per cutout"
+              title="Minutes per cutout"
             />
           )}
         </div>
@@ -582,22 +633,17 @@ const LengthsSettings = forwardRef((props, ref) => {
                   ...activeServices.map((s) => ({
                     field: `_service_${s.service_id}`,
                     label: s.service_name,
-                    width: 70,
+                    width: 85,
                     format: (_, item) => {
-                      const regular = (item.services || []).find(
-                        (sv) => sv.service_id === s.service_id && !sv.is_miter_time && !sv.is_cutout_time
-                      );
-                      const miter = (item.services || []).find(
-                        (sv) => sv.service_id === s.service_id && sv.is_miter_time
-                      );
-                      const cutout = (item.services || []).find(
-                        (sv) => sv.service_id === s.service_id && sv.is_cutout_time
+                      const svc = (item.services || []).find(
+                        (sv) => sv.service_id === s.service_id
                       );
                       const parts = [];
-                      if (regular?.time_per_unit) parts.push(String(regular.time_per_unit));
+                      if (svc?.time_per_unit != null) parts.push(String(svc.time_per_unit));
                       else parts.push("-");
-                      if (item.requires_miters) parts.push(`M:${miter?.time_per_unit || 0}`);
-                      if (item.requires_cutouts) parts.push(`C:${cutout?.time_per_unit || 0}`);
+                      if (svc?.base_minutes != null) parts.push(`Min:${svc.base_minutes}`);
+                      if (item.requires_miters && svc?.miter_minutes != null) parts.push(`M:${svc.miter_minutes}`);
+                      if (item.requires_cutouts && svc?.cutout_minutes != null) parts.push(`C:${svc.cutout_minutes}`);
                       return parts.join(" ");
                     },
                   })),

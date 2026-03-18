@@ -34,8 +34,9 @@ export const fetchLengthsCatalog = () => async (dispatch, getState) => {
           id,
           team_service_id,
           time_per_unit,
-          is_miter_time,
-          is_cutout_time,
+          miter_minutes,
+          cutout_minutes,
+          base_minutes,
           team_services!inner(
             service_id,
             services!inner(name)
@@ -54,21 +55,20 @@ export const fetchLengthsCatalog = () => async (dispatch, getState) => {
     if (error) throw error;
 
     // Transform to flatten services array and normalize rules
-    const lengthsWithServices = (data || []).map((length) => ({
+    const lengthsWithServices = (data || []).map(({ length_services, length_catalog_rules, ...length }) => ({
       ...length,
-      services: (length.length_services || []).map((ls) => ({
+      services: (length_services || []).map((ls) => ({
         id: ls.id,
         team_service_id: ls.team_service_id,
         service_id: ls.team_services?.service_id,
         service_name: ls.team_services?.services?.name,
         time_per_unit: ls.time_per_unit,
-        is_miter_time: ls.is_miter_time,
-        is_cutout_time: ls.is_cutout_time,
+        miter_minutes: ls.miter_minutes,
+        cutout_minutes: ls.cutout_minutes,
+        base_minutes: ls.base_minutes,
       })),
-      rules: (length.length_catalog_rules || [])
+      rules: (length_catalog_rules || [])
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-      length_services: undefined, // Remove the nested structure
-      length_catalog_rules: undefined, // Remove the nested structure
     }));
 
     dispatch({
@@ -117,13 +117,17 @@ export const saveLengthsCatalog =
           const { id, isNew, markedForDeletion, services, rules, ...itemData } = item;
           toAdd.push({ ...itemData, team_id: teamId });
         } else {
-          // Check if changed
+          // Check if changed — exclude services/rules since they're joined data
+          // saved separately via RPC, not stored in lengths_catalog table
           const originalItem = originalItems.find(
             (orig) => orig.id === item.id
           );
-          if (originalItem && !isEqual(originalItem, item)) {
-            const { isNew, markedForDeletion, services, rules, ...itemData } = item;
-            toUpdate.push({ ...itemData, updated_at: new Date() });
+          if (originalItem) {
+            const { services: _s1, rules: _r1, ...origCatalogFields } = originalItem;
+            const { isNew, markedForDeletion, services: _s2, rules: _r2, ...itemCatalogFields } = item;
+            if (!isEqual(origCatalogFields, itemCatalogFields)) {
+              toUpdate.push({ ...itemCatalogFields, updated_at: new Date() });
+            }
           }
         }
       });
@@ -176,9 +180,9 @@ export const saveLengthsCatalog =
 
 // Save length services + rules for all catalog items via a single RPC call.
 // `items` is an array of { length_catalog_id, services, rules } where:
-//   services: [{ service_id, time_per_unit, is_miter_time, is_cutout_time }]
+//   services: [{ service_id, time_per_unit, miter_minutes, cutout_minutes, base_minutes }]
 //   rules:    [{ rule_key, params, sort_order }]
-// The RPC handles team_service_id resolution, delete-then-insert (no ID gaps),
+// The RPC handles team_service_id resolution, targeted insert/update/delete,
 // and runs everything in one transaction.
 export const saveLengthSettings =
   (items) => async (dispatch) => {

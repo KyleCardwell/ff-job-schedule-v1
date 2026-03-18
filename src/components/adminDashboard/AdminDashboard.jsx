@@ -166,7 +166,7 @@ const AdminDashboard = () => {
         label: "Lengths",
         path: PATHS.MANAGE_LENGTHS,
         component: LengthsSettings,
-        props: { maxWidthClass: "max-w-[1400px]" },
+        props: { maxWidthClass: "max-w-[1500px]" },
         requiresAdmin: true,
         requiresFeatureToggle: "enable_estimates",
       },
