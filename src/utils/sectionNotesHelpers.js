@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 
-import { PANEL_MOD_DISPLAY_NAMES } from "./constants";
+import { PANEL_MOD_DISPLAY_NAMES, UNFINISHED } from "./constants";
 
 export const SECTION_NOTES_LABELS = ["Notes:", "Includes:", "Does Not Include:"];
 
@@ -58,42 +58,84 @@ export const buildDoorDrawerMaterialNote = ({
   const doorMaterialName = doorMaterial?.name || "";
   const drawerFrontMaterialName = drawerFrontMaterial?.name || "";
 
-  const doorFinishNames = doorMaterial?.needs_finish
-    ? (effectiveSection.door_finish?.length > 0
-        ? effectiveSection.door_finish
-        : effectiveSection.face_finish
-      )
-        ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-        .filter(Boolean)
-        .join(", ") || ""
-    : "";
+  const resolveFinishIds = (finishValue, fallbackFinishValue, needsFinish) => {
+    if (!needsFinish) return [];
 
-  const drawerFrontFinishNames = drawerFrontMaterial?.needs_finish
-    ? (effectiveSection.drawer_front_finish?.length > 0
-        ? effectiveSection.drawer_front_finish
-        : effectiveSection.face_finish
-      )
-        ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-        .filter(Boolean)
-        .join(", ") || ""
-    : "";
+    if (Array.isArray(finishValue)) {
+      return finishValue.length === 0 ? [UNFINISHED] : finishValue;
+    }
+
+    if (Array.isArray(fallbackFinishValue)) {
+      return fallbackFinishValue.length === 0
+        ? [UNFINISHED]
+        : fallbackFinishValue;
+    }
+
+    return [];
+  };
+
+  const finishIdsToNames = (finishIds = []) => {
+    return finishIds
+      .map((fid) => {
+        if (fid === UNFINISHED) return UNFINISHED;
+        return finishTypes?.find((f) => f.id === fid)?.name;
+      })
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const faceFinishIds = resolveFinishIds(
+    effectiveSection.face_finish,
+    null,
+    true,
+  );
+
+  const doorFinishIds = resolveFinishIds(
+    effectiveSection.door_finish,
+    effectiveSection.face_finish,
+    doorMaterial?.needs_finish,
+  );
+
+  const drawerFrontFinishIds = resolveFinishIds(
+    effectiveSection.drawer_front_finish,
+    effectiveSection.face_finish,
+    drawerFrontMaterial?.needs_finish,
+  );
+
+  const doorFinishNames = finishIdsToNames(doorFinishIds);
+  const drawerFrontFinishNames = finishIdsToNames(drawerFrontFinishIds);
+
+  const doorHasExplicitUnfinished =
+    doorMaterial?.needs_finish &&
+    Array.isArray(effectiveSection.door_finish) &&
+    effectiveSection.door_finish.length === 0;
+  const drawerFrontHasExplicitUnfinished =
+    drawerFrontMaterial?.needs_finish &&
+    Array.isArray(effectiveSection.drawer_front_finish) &&
+    effectiveSection.drawer_front_finish.length === 0;
 
   const doorDiffersFromFace =
     effectiveSection.door_mat && effectiveSection.door_mat !== faceMatId;
   const doorFinishDiffersFromFace =
-    effectiveSection.door_finish?.length > 0 &&
-    !isEqual(effectiveSection.door_finish, effectiveSection.face_finish);
+    Array.isArray(effectiveSection.door_finish) &&
+    !isEqual(doorFinishIds, faceFinishIds);
   const drawerFrontDiffersFromFace =
     effectiveSection.drawer_front_mat &&
     effectiveSection.drawer_front_mat !== faceMatId;
   const drawerFrontFinishDiffersFromFace =
-    effectiveSection.drawer_front_finish?.length > 0 &&
-    !isEqual(effectiveSection.drawer_front_finish, effectiveSection.face_finish);
+    Array.isArray(effectiveSection.drawer_front_finish) &&
+    !isEqual(drawerFrontFinishIds, faceFinishIds);
 
-  const doorNeedsNote = hasDoors && (doorDiffersFromFace || doorFinishDiffersFromFace);
+  const doorNeedsNote =
+    hasDoors &&
+    (doorDiffersFromFace ||
+      doorFinishDiffersFromFace ||
+      doorHasExplicitUnfinished);
   const drawerFrontNeedsNote =
     hasDrawerFronts &&
-    (drawerFrontDiffersFromFace || drawerFrontFinishDiffersFromFace);
+    (drawerFrontDiffersFromFace ||
+      drawerFrontFinishDiffersFromFace ||
+      drawerFrontHasExplicitUnfinished);
 
   if (doorNeedsNote && drawerFrontNeedsNote) {
     if (

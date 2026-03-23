@@ -203,7 +203,8 @@ const EstimateSectionForm = ({
     }
 
     // For numeric fields, treat 0, null, undefined, or empty string as empty
-    // For finish fields (arrays), treat null, undefined, or empty arrays as empty
+    // For finish fields (arrays), treat null or undefined as empty
+    //   ([] is now an explicit "None" override, so it counts as a set value)
     // For non-numeric fields, check for null, undefined, or empty string
     const isEmpty = isNumeric
       ? fieldValue === "" ||
@@ -211,9 +212,7 @@ const EstimateSectionForm = ({
         fieldValue === undefined ||
         fieldValue === 0
       : isFinishField
-        ? fieldValue === null ||
-          fieldValue === undefined ||
-          (Array.isArray(fieldValue) && fieldValue.length === 0)
+        ? fieldValue === null || fieldValue === undefined
         : fieldValue === "" || fieldValue === null || fieldValue === undefined;
 
     if (!isEmpty) {
@@ -396,17 +395,17 @@ const EstimateSectionForm = ({
       boxMaterial:
         data[boxMatField] || data.box_mat || initialDefaults.box_mat || "",
       boxFinish:
-        data[boxFinishField] ||
-        data.box_finish ||
-        initialDefaults.box_finish ||
-        [],
+        Array.isArray(data[boxFinishField]) ? data[boxFinishField]
+        : Array.isArray(data.box_finish) ? data.box_finish
+        : Array.isArray(initialDefaults.box_finish) ? initialDefaults.box_finish
+        : editType === EDIT_TYPES.TEAM ? [] : null,
       faceMaterial:
         data[faceMatField] || data.face_mat || initialDefaults.face_mat || "",
       faceFinish:
-        data[faceFinishField] ||
-        data.face_finish ||
-        initialDefaults.face_finish ||
-        [],
+        Array.isArray(data[faceFinishField]) ? data[faceFinishField]
+        : Array.isArray(data.face_finish) ? data.face_finish
+        : Array.isArray(initialDefaults.face_finish) ? initialDefaults.face_finish
+        : editType === EDIT_TYPES.TEAM ? [] : null,
       doorStyle:
         data[doorStyleField] ||
         data.door_style ||
@@ -479,7 +478,7 @@ const EstimateSectionForm = ({
           ? data.door_finish
           : Array.isArray(initialDefaults.door_finish)
             ? initialDefaults.door_finish
-            : [],
+            : editType === EDIT_TYPES.TEAM ? [] : null,
       drawer_front_mat:
         data[drawerFrontMatField] ||
         data.drawer_front_mat ||
@@ -491,7 +490,7 @@ const EstimateSectionForm = ({
           ? data.drawer_front_finish
           : Array.isArray(initialDefaults.drawer_front_finish)
             ? initialDefaults.drawer_front_finish
-            : [],
+            : editType === EDIT_TYPES.TEAM ? [] : null,
       quantity: data.quantity ?? 1,
       profit: data[profitField] ?? data.profit ?? initialDefaults.profit ?? "",
       commission:
@@ -520,9 +519,9 @@ const EstimateSectionForm = ({
       (formData.door_mat !== null &&
         formData.door_mat !== "" &&
         formData.door_mat !== undefined) ||
-      (formData.door_finish &&
-        Array.isArray(formData.door_finish) &&
-        formData.door_finish.length > 0)
+      (formData.door_finish !== null &&
+        formData.door_finish !== undefined &&
+        Array.isArray(formData.door_finish))
     );
   }, [formData.door_mat, formData.door_finish]);
 
@@ -531,9 +530,9 @@ const EstimateSectionForm = ({
       (formData.drawer_front_mat !== null &&
         formData.drawer_front_mat !== "" &&
         formData.drawer_front_mat !== undefined) ||
-      (formData.drawer_front_finish &&
-        Array.isArray(formData.drawer_front_finish) &&
-        formData.drawer_front_finish.length > 0)
+      (formData.drawer_front_finish !== null &&
+        formData.drawer_front_finish !== undefined &&
+        Array.isArray(formData.drawer_front_finish))
     );
   }, [formData.drawer_front_mat, formData.drawer_front_finish]);
 
@@ -541,7 +540,7 @@ const EstimateSectionForm = ({
     (section) => {
       setFormData({
         ...formData,
-        [section]: [],
+        [section]: null,
       });
     },
     [formData],
@@ -683,16 +682,45 @@ const EstimateSectionForm = ({
     setErrors(updatedErrors);
   };
 
-  const handleFinishChange = (option, finishType = "faceFinish") => {
-    const updatedFinish = [...formData[finishType]];
+  const FINISH_NONE = "none";
 
-    if (updatedFinish.includes(option)) {
-      // Remove option if already selected
-      const index = updatedFinish.indexOf(option);
-      updatedFinish.splice(index, 1);
+  // Check if a finish field is explicitly set to "no finish" (empty array, not null)
+  const isFinishExplicitlyNone = (finishType) => {
+    const val = formData[finishType];
+    return Array.isArray(val) && val.length === 0;
+  };
+
+  // "None" option is only available at estimate and section level (not team)
+  const showNoneFinishOption = editType !== EDIT_TYPES.TEAM;
+
+  const handleFinishChange = (option, finishType = "faceFinish") => {
+    let updatedFinish;
+
+    if (option === FINISH_NONE) {
+      // Selecting "None" clears all other selections and sets to empty array
+      // (explicit override = no finish). Toggle back to null (inherit) if already "None".
+      updatedFinish = isFinishExplicitlyNone(finishType) ? null : [];
     } else {
-      // Add option if not already selected
-      updatedFinish.push(option);
+      // Selecting a real finish option
+      const currentFinish = Array.isArray(formData[finishType])
+        ? formData[finishType]
+        : [];
+      updatedFinish = [...currentFinish];
+
+      if (updatedFinish.includes(option)) {
+        // Remove option if already selected
+        const index = updatedFinish.indexOf(option);
+        updatedFinish.splice(index, 1);
+      } else {
+        // Add option if not already selected
+        updatedFinish.push(option);
+      }
+
+      // If all finish options are deselected, use null so fallback logic applies.
+      // Empty array remains reserved for explicit "None" selection only.
+      if (updatedFinish.length === 0) {
+        updatedFinish = null;
+      }
     }
 
     setFormData({
@@ -701,7 +729,7 @@ const EstimateSectionForm = ({
     });
 
     // Clear error when field is updated
-    if (errors[finishType] && updatedFinish.length > 0) {
+    if (errors[finishType] && updatedFinish !== null && (updatedFinish.length > 0 || Array.isArray(updatedFinish))) {
       setErrors({
         ...errors,
         [finishType]: "",
@@ -716,9 +744,9 @@ const EstimateSectionForm = ({
       setFormData({
         style: "",
         boxMaterial: "",
-        boxFinish: [],
+        boxFinish: null,
         faceMaterial: "",
-        faceFinish: [],
+        faceFinish: null,
         doorStyle: "",
         drawerFrontStyle: "",
         doorInsideMolding: null,
@@ -734,9 +762,9 @@ const EstimateSectionForm = ({
         drawer_pull_id: "",
         drawer_box_mat: "",
         door_mat: "",
-        door_finish: [],
+        door_finish: null,
         drawer_front_mat: "",
-        drawer_front_finish: [],
+        drawer_front_finish: null,
         quantity: 1,
         profit: "",
         commission: "",
@@ -754,14 +782,14 @@ const EstimateSectionForm = ({
       ...formData,
       style: sourceSection.cabinet_style_id || "",
       boxMaterial: sourceSection.box_mat || "",
-      boxFinish: sourceSection.box_finish || [],
+      boxFinish: sourceSection.box_finish ?? [],
       faceMaterial: sourceSection.face_mat || "",
-      faceFinish: sourceSection.face_finish || [],
-      door_finish: sourceSection.door_finish || [],
+      faceFinish: sourceSection.face_finish ?? [],
+      door_finish: sourceSection.door_finish ?? [],
       door_mat: sourceSection.door_mat || "",
       doorStyle: sourceSection.door_style || "",
       drawerFrontStyle: sourceSection.drawer_front_style || "",
-      drawer_front_finish: sourceSection.drawer_front_finish || [],
+      drawer_front_finish: sourceSection.drawer_front_finish ?? [],
       drawer_front_mat: sourceSection.drawer_front_mat || "",
       doorInsideMolding: sourceSection.door_inside_molding ?? null,
       doorOutsideMolding: sourceSection.door_outside_molding ?? null,
@@ -808,17 +836,20 @@ const EstimateSectionForm = ({
       );
 
       if (faceFinishNeeded) {
-        const faceFinishTiers = getTiers("faceFinish", { emptyIsNull: true });
-        const effectiveFaceFinish = getEffectiveValue(
-          faceFinishTiers.section,
-          faceFinishTiers.estimate,
-          faceFinishTiers.team,
-        );
-        if (
-          !effectiveFaceFinish.value ||
-          effectiveFaceFinish.value.length === 0
-        ) {
-          newErrors.faceFinish = ERROR_MESSAGES.ONE_FINISH;
+        // If "None" is explicitly selected (empty array), that's a valid choice
+        if (!isFinishExplicitlyNone("faceFinish")) {
+          const faceFinishTiers = getTiers("faceFinish", { emptyIsNull: true });
+          const effectiveFaceFinish = getEffectiveValue(
+            faceFinishTiers.section,
+            faceFinishTiers.estimate,
+            faceFinishTiers.team,
+          );
+          if (
+            !effectiveFaceFinish.value ||
+            effectiveFaceFinish.value.length === 0
+          ) {
+            newErrors.faceFinish = ERROR_MESSAGES.ONE_FINISH;
+          }
         }
       }
 
@@ -832,17 +863,20 @@ const EstimateSectionForm = ({
       );
 
       if (boxFinishNeeded) {
-        const boxFinishTiers = getTiers("boxFinish", { emptyIsNull: true });
-        const effectiveBoxFinish = getEffectiveValue(
-          boxFinishTiers.section,
-          boxFinishTiers.estimate,
-          boxFinishTiers.team,
-        );
-        if (
-          !effectiveBoxFinish.value ||
-          effectiveBoxFinish.value.length === 0
-        ) {
-          newErrors.boxFinish = ERROR_MESSAGES.ONE_FINISH;
+        // If "None" is explicitly selected (empty array), that's a valid choice
+        if (!isFinishExplicitlyNone("boxFinish")) {
+          const boxFinishTiers = getTiers("boxFinish", { emptyIsNull: true });
+          const effectiveBoxFinish = getEffectiveValue(
+            boxFinishTiers.section,
+            boxFinishTiers.estimate,
+            boxFinishTiers.team,
+          );
+          if (
+            !effectiveBoxFinish.value ||
+            effectiveBoxFinish.value.length === 0
+          ) {
+            newErrors.boxFinish = ERROR_MESSAGES.ONE_FINISH;
+          }
         }
       }
 
@@ -1067,11 +1101,11 @@ const EstimateSectionForm = ({
       }
     }
 
-    if (mustSelectFaceFinish && formData.faceFinish.length === 0) {
+    if (mustSelectFaceFinish && (!formData.faceFinish || formData.faceFinish.length === 0)) {
       newErrors.faceFinish = "At least one finish option is required";
     }
 
-    if (mustSelectBoxFinish && formData.boxFinish.length === 0) {
+    if (mustSelectBoxFinish && (!formData.boxFinish || formData.boxFinish.length === 0)) {
       newErrors.boxFinish = "At least one finish option is required";
     }
 
@@ -1136,10 +1170,10 @@ const EstimateSectionForm = ({
             default_cabinet_style_id: formData.style || null,
             default_box_mat: formData.boxMaterial || null,
             default_box_finish:
-              formData.boxFinish.length > 0 ? formData.boxFinish : null,
+              formData.boxFinish === null ? null : formData.boxFinish,
             default_face_mat: formData.faceMaterial || null,
             default_face_finish:
-              formData.faceFinish.length > 0 ? formData.faceFinish : null,
+              formData.faceFinish === null ? null : formData.faceFinish,
             default_door_style: formData.doorStyle || null,
             default_drawer_front_style: formData.drawerFrontStyle || null,
             default_door_inside_molding: formData.doorInsideMolding || null,
@@ -1740,9 +1774,7 @@ const EstimateSectionForm = ({
                         <label className={STYLES.label}>
                           <span>Finish</span>
                           {getEffectiveDefaultDisplay(
-                            formData.boxFinish?.length > 0
-                              ? formData.boxFinish
-                              : null,
+                            formData.boxFinish,
                             "default_box_finish",
                             "default_box_finish",
                             formatFinishArray,
@@ -1752,15 +1784,31 @@ const EstimateSectionForm = ({
                           )}
                         </label>
                         <div className="grid grid-cols-3 gap-1 text-sm pl-2 text-slate-600">
-                          {FINISH_OPTIONS.map((option) => (
+                          {showNoneFinishOption && (
                             <label
-                              key={option.id}
                               className={`${STYLES.checkboxLabel} ${!mustSelectBoxFinish ? STYLES.checkboxLabelDisabled : ""}`}
                             >
                               <input
                                 disabled={!mustSelectBoxFinish}
                                 type="checkbox"
-                                checked={formData.boxFinish.includes(option.id)}
+                                checked={isFinishExplicitlyNone("boxFinish")}
+                                onChange={() =>
+                                  handleFinishChange(FINISH_NONE, "boxFinish")
+                                }
+                                className="rounded border-slate-300"
+                              />
+                              <span className="italic">None</span>
+                            </label>
+                          )}
+                          {FINISH_OPTIONS.map((option) => (
+                            <label
+                              key={option.id}
+                              className={`${STYLES.checkboxLabel} ${!mustSelectBoxFinish || isFinishExplicitlyNone("boxFinish") ? STYLES.checkboxLabelDisabled : ""}`}
+                            >
+                              <input
+                                disabled={!mustSelectBoxFinish || isFinishExplicitlyNone("boxFinish")}
+                                type="checkbox"
+                                checked={(formData.boxFinish || []).includes(option.id)}
                                 onChange={() =>
                                   handleFinishChange(option.id, "boxFinish")
                                 }
@@ -1835,9 +1883,7 @@ const EstimateSectionForm = ({
                         <label className={STYLES.label}>
                           <span>Finish</span>
                           {getEffectiveDefaultDisplay(
-                            formData.faceFinish?.length > 0
-                              ? formData.faceFinish
-                              : null,
+                            formData.faceFinish,
                             "default_face_finish",
                             "default_face_finish",
                             formatFinishArray,
@@ -1847,15 +1893,31 @@ const EstimateSectionForm = ({
                           )}
                         </label>
                         <div className="grid grid-cols-3 gap-1 text-sm pl-2 text-slate-600">
-                          {FINISH_OPTIONS.map((option) => (
+                          {showNoneFinishOption && (
                             <label
-                              key={option.id}
                               className={`${STYLES.checkboxLabel} ${!mustSelectFaceFinish ? STYLES.checkboxLabelDisabled : ""}`}
                             >
                               <input
                                 disabled={!mustSelectFaceFinish}
                                 type="checkbox"
-                                checked={formData.faceFinish.includes(
+                                checked={isFinishExplicitlyNone("faceFinish")}
+                                onChange={() =>
+                                  handleFinishChange(FINISH_NONE, "faceFinish")
+                                }
+                                className="rounded border-slate-300"
+                              />
+                              <span className="italic">None</span>
+                            </label>
+                          )}
+                          {FINISH_OPTIONS.map((option) => (
+                            <label
+                              key={option.id}
+                              className={`${STYLES.checkboxLabel} ${!mustSelectFaceFinish || isFinishExplicitlyNone("faceFinish") ? STYLES.checkboxLabelDisabled : ""}`}
+                            >
+                              <input
+                                disabled={!mustSelectFaceFinish || isFinishExplicitlyNone("faceFinish")}
+                                type="checkbox"
+                                checked={(formData.faceFinish || []).includes(
                                   option.id,
                                 )}
                                 onChange={() =>
@@ -2164,12 +2226,12 @@ const EstimateSectionForm = ({
                                 {(() => {
                                   // 4th tier: fall back to effective face finish
                                   const faceFinishValue = getEffectiveValueOnly(
-                                    formData.faceFinish?.length > 0
+                                    formData.faceFinish !== null && formData.faceFinish !== undefined
                                       ? formData.faceFinish
                                       : null,
-                                    currentEstimate?.default_face_finish ||
+                                    currentEstimate?.default_face_finish ??
                                       null,
-                                    teamDefaults?.default_face_finish || null,
+                                    teamDefaults?.default_face_finish ?? null,
                                   );
                                   return getEffectiveDefaultDisplay(
                                     formData.door_finish,
@@ -2184,15 +2246,31 @@ const EstimateSectionForm = ({
                                 })()}
                               </label>
                               <div className="grid grid-cols-3 gap-1 text-sm pl-2 text-slate-600">
-                                {FINISH_OPTIONS.map((option) => (
+                                {showNoneFinishOption && (
                                   <label
-                                    key={option.id}
                                     className={`${STYLES.checkboxLabel} ${!mustSelectDoorFinish ? STYLES.checkboxLabelDisabled : ""}`}
                                   >
                                     <input
                                       disabled={!mustSelectDoorFinish}
                                       type="checkbox"
-                                      checked={formData.door_finish.includes(
+                                      checked={isFinishExplicitlyNone("door_finish")}
+                                      onChange={() =>
+                                        handleFinishChange(FINISH_NONE, "door_finish")
+                                      }
+                                      className="rounded border-slate-300"
+                                    />
+                                    <span className="italic">None</span>
+                                  </label>
+                                )}
+                                {FINISH_OPTIONS.map((option) => (
+                                  <label
+                                    key={option.id}
+                                    className={`${STYLES.checkboxLabel} ${!mustSelectDoorFinish || isFinishExplicitlyNone("door_finish") ? STYLES.checkboxLabelDisabled : ""}`}
+                                  >
+                                    <input
+                                      disabled={!mustSelectDoorFinish || isFinishExplicitlyNone("door_finish")}
+                                      type="checkbox"
+                                      checked={(formData.door_finish || []).includes(
                                         option.id,
                                       )}
                                       onChange={() =>
@@ -2564,12 +2642,12 @@ const EstimateSectionForm = ({
                                 {(() => {
                                   // 4th tier: fall back to effective face finish
                                   const faceFinishValue = getEffectiveValueOnly(
-                                    formData.faceFinish?.length > 0
+                                    formData.faceFinish !== null && formData.faceFinish !== undefined
                                       ? formData.faceFinish
                                       : null,
-                                    currentEstimate?.default_face_finish ||
+                                    currentEstimate?.default_face_finish ??
                                       null,
-                                    teamDefaults?.default_face_finish || null,
+                                    teamDefaults?.default_face_finish ?? null,
                                   );
                                   return getEffectiveDefaultDisplay(
                                     formData.drawer_front_finish,
@@ -2584,15 +2662,31 @@ const EstimateSectionForm = ({
                                 })()}
                               </label>
                               <div className="grid grid-cols-3 gap-1 text-sm pl-2 text-slate-600">
-                                {FINISH_OPTIONS.map((option) => (
+                                {showNoneFinishOption && (
                                   <label
-                                    key={option.id}
                                     className={`${STYLES.checkboxLabel} ${!mustSelectDrawerFrontFinish ? STYLES.checkboxLabelDisabled : ""}`}
                                   >
                                     <input
                                       disabled={!mustSelectDrawerFrontFinish}
                                       type="checkbox"
-                                      checked={formData.drawer_front_finish.includes(
+                                      checked={isFinishExplicitlyNone("drawer_front_finish")}
+                                      onChange={() =>
+                                        handleFinishChange(FINISH_NONE, "drawer_front_finish")
+                                      }
+                                      className="rounded border-slate-300"
+                                    />
+                                    <span className="italic">None</span>
+                                  </label>
+                                )}
+                                {FINISH_OPTIONS.map((option) => (
+                                  <label
+                                    key={option.id}
+                                    className={`${STYLES.checkboxLabel} ${!mustSelectDrawerFrontFinish || isFinishExplicitlyNone("drawer_front_finish") ? STYLES.checkboxLabelDisabled : ""}`}
+                                  >
+                                    <input
+                                      disabled={!mustSelectDrawerFrontFinish || isFinishExplicitlyNone("drawer_front_finish")}
+                                      type="checkbox"
+                                      checked={(formData.drawer_front_finish || []).includes(
                                         option.id,
                                       )}
                                       onChange={() =>
@@ -2630,7 +2724,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="1"
+                    step="any"
                     min="0"
                     id="quantity"
                     name="quantity"
@@ -2658,7 +2752,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="0.25"
+                    step="any"
                     min="0"
                     id="profit"
                     name="profit"
@@ -2685,7 +2779,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="0.25"
+                    step="any"
                     min="0"
                     id="commission"
                     name="commission"
@@ -2712,7 +2806,7 @@ const EstimateSectionForm = ({
                   </label>
                   <input
                     type="number"
-                    step="0.25"
+                    step="any"
                     min="0"
                     id="discount"
                     name="discount"

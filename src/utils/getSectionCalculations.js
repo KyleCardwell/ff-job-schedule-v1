@@ -1123,11 +1123,11 @@ const calculateFaceFramePrices = (section, context) => {
           let totalMinutes = minutesEach * quantity;
 
           if (serviceId === 2 && selectedFaceMaterial.material?.needs_finish) {
-            totalMinutes *= selectedFaceMaterial.shopMultiplier || 1;
+            totalMinutes *= selectedFaceMaterial.shopMultiplier;
           }
 
           if (serviceId === 3 && selectedFaceMaterial.material?.needs_finish) {
-            totalMinutes *= selectedFaceMaterial.finishMultiplier || 1;
+            totalMinutes *= selectedFaceMaterial.finishMultiplier;
           }
 
           const hours = totalMinutes / 60;
@@ -1141,14 +1141,17 @@ const calculateFaceFramePrices = (section, context) => {
     });
   });
 
-  // Apply finish multiplier *only* to finish work, not tape time
-  if (selectedFaceMaterial.material?.needs_finish) {
-    const totalFinishHours = totals.hoursByService[3] || 0;
-    const finishOnlyHours = Math.max(totalFinishHours - totalTapeHours, 0); // ✅ never negative
-    const adjustedFinishHours =
-      finishOnlyHours * selectedFaceMaterial.finishMultiplier;
-
-    totals.hoursByService[3] = adjustedFinishHours + totalTapeHours;
+  // Add tape hours to finish service without applying finish multiplier to tape.
+  // Finish multiplier is already applied to anchor-based finish minutes above.
+  if (
+    selectedFaceMaterial.material?.needs_finish &&
+    selectedFaceMaterial.finishMultiplier &&
+    totalTapeHours > 0
+  ) {
+    if (!totals.hoursByService[3]) {
+      totals.hoursByService[3] = 0;
+    }
+    totals.hoursByService[3] += totalTapeHours;
   }
 
   return totals;
@@ -1651,6 +1654,19 @@ const calculateLengthTotals = (items, context) => {
   if (!lengthsCatalog || !selectedFaceMaterial) return totals;
   if (!items || !Array.isArray(items)) return totals;
 
+  const applyServiceMultiplier = (serviceId, hours) => {
+    const numericServiceId = Number(serviceId);
+    let adjustedHours = hours;
+
+    if (numericServiceId === 2) {
+      adjustedHours *= selectedFaceMaterial.shopMultiplier;
+    } else if (numericServiceId === 3) {
+      adjustedHours *= selectedFaceMaterial.finishMultiplier;
+    }
+
+    return adjustedHours;
+  };
+
   items.forEach((item) => {
     const lengthItem = lengthsCatalog.find(
       (l) => l.id === item.length_catalog_id,
@@ -1745,22 +1761,29 @@ const calculateLengthTotals = (items, context) => {
 
         // Convert to hours and apply quantity
         const hours = (totalMinutes / 60) * quantity;
+        const adjustedHours = applyServiceMultiplier(serviceId, hours);
 
-        if (hours > 0) {
+        if (adjustedHours > 0) {
           if (!totals.hoursByService[serviceId]) {
             totals.hoursByService[serviceId] = 0;
           }
-          totals.hoursByService[serviceId] += hours;
+          totals.hoursByService[serviceId] += adjustedHours;
         }
       });
     }
 
     // Merge rule labor hours into totals
     Object.entries(ruleEffects.hoursByService).forEach(([serviceId, hours]) => {
+      const adjustedHours = applyServiceMultiplier(
+        serviceId,
+        Number(hours) || 0,
+      );
+      if (adjustedHours <= 0) return;
+
       if (!totals.hoursByService[serviceId]) {
         totals.hoursByService[serviceId] = 0;
       }
-      totals.hoursByService[serviceId] += hours;
+      totals.hoursByService[serviceId] += adjustedHours;
     });
   });
 
@@ -1951,15 +1974,15 @@ const calculateAccessoriesTotal = (items, context, section) => {
           if (service && selectedFaceMaterial.material?.needs_finish) {
             // Apply shop multiplier for service ID 2
             if (
-              service.service_id === 2 &&
-              selectedFaceMaterial.shopMultiplier
+              service.service_id === 2
+              // && selectedFaceMaterial.shopMultiplier
             ) {
               totalMinutes *= selectedFaceMaterial.shopMultiplier;
             }
             // Apply finish multiplier for service ID 3
             if (
-              service.service_id === 3 &&
-              selectedFaceMaterial.finishMultiplier
+              service.service_id === 3
+              // && selectedFaceMaterial.finishMultiplier
             ) {
               totalMinutes *= selectedFaceMaterial.finishMultiplier;
             }
@@ -2126,11 +2149,22 @@ export const getSectionCalculations = (section, context = {}) => {
     },
   );
 
+  const {
+    selectedFaceMaterial,
+    selectedBoxMaterial,
+    selectedDoorMaterial,
+    selectedDrawerFrontMaterial,
+  } = context;
+
   const finishSetupNeeded = Boolean(
-    context?.selectedFaceMaterial?.material?.needs_finish ||
-    context?.selectedBoxMaterial?.material?.needs_finish ||
-    context?.selectedDoorMaterial?.material?.needs_finish ||
-    context?.selectedDrawerFrontMaterial?.material?.needs_finish,
+    (selectedFaceMaterial.finishMultiplier &&
+      selectedFaceMaterial?.material?.needs_finish) ||
+    (selectedBoxMaterial.finishMultiplier &&
+      selectedBoxMaterial?.material?.needs_finish) ||
+    (selectedDoorMaterial.finishMultiplier &&
+      selectedDoorMaterial?.material?.needs_finish) ||
+    (selectedDrawerFrontMaterial.finishMultiplier &&
+      selectedDrawerFrontMaterial?.material?.needs_finish),
   );
 
   // Add manually entered hours from add_hours field

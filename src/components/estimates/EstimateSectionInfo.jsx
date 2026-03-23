@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import {
   EDIT_TYPES,
   FACE_STYLES,
+  NONE,
   NOT_SELECTED,
   PANEL_MOD_DISPLAY_NAMES,
   PRE_FINISHED,
@@ -126,8 +127,8 @@ const EstimateSectionInfo = ({
     if (faceMaterial?.needs_finish === false) {
       return PRE_FINISHED;
     }
-    return faceFinish?.length
-      ? faceFinish
+    return Array.isArray(faceFinish)
+      ? faceFinish.length ? faceFinish
           .map(
             (f) => {
               const option = finishes?.finishes?.find((fin) => fin.id === f);
@@ -136,7 +137,7 @@ const EstimateSectionInfo = ({
                 : NOT_SELECTED;
             },
           )
-          .join(", ")
+          .join(", ") : NONE
       : NOT_SELECTED;
   };
 
@@ -465,8 +466,7 @@ const EstimateSectionInfo = ({
                 })()}
               {/* Door Finish Override - only show if set */}
               {!showEstimateDefaults &&
-                section?.door_finish &&
-                section.door_finish.length > 0 &&
+                Array.isArray(section?.door_finish) &&
                 (() => {
                   const doorMat = materials.faceMaterials?.find(
                     (m) => m.id === section.door_mat,
@@ -611,8 +611,7 @@ const EstimateSectionInfo = ({
                 })()}
               {/* Drawer Front Finish Override - only show if set */}
               {!showEstimateDefaults &&
-                section?.drawer_front_finish &&
-                section.drawer_front_finish.length > 0 &&
+                Array.isArray(section?.drawer_front_finish) &&
                 (() => {
                   const drawerFrontMat = materials.faceMaterials?.find(
                     (m) => m.id === section.drawer_front_mat,

@@ -1,7 +1,4 @@
-import {
-  getEffectiveDefaults,
-  shouldApplyFinish,
-} from "./estimateDefaults";
+import { getEffectiveDefaults, shouldApplyFinish } from "./estimateDefaults";
 
 /**
  * Apply price overrides to an array of catalog items.
@@ -19,7 +16,7 @@ const applyOverrides = (items, overridesMap) => {
     if (!override) return item;
     // Only apply non-null/non-undefined values so defaults are preserved for unset fields
     const filtered = Object.fromEntries(
-      Object.entries(override).filter(([, v]) => v != null)
+      Object.entries(override).filter(([, v]) => v != null),
     );
     if (Object.keys(filtered).length === 0) return item;
 
@@ -36,7 +33,7 @@ const applyOverrides = (items, overridesMap) => {
 /**
  * Creates the context object needed for getSectionCalculations
  * Extracted from EstimateSectionPrice to be reusable across components
- * 
+ *
  * @param {Object} section - The section object
  * @param {Object} estimate - The current estimate
  * @param {Object} catalogData - All the catalog data from Redux
@@ -60,10 +57,13 @@ export const createSectionContext = (section, estimate, catalogData) => {
   } = catalogData;
 
   // Apply price overrides from the estimate (skip if section opts out)
-  const po = section?.use_default_prices ? {} : (estimate?.price_overrides || {});
+  const po = section?.use_default_prices ? {} : estimate?.price_overrides || {};
   const boxMaterials = applyOverrides(rawBoxMaterials, po.materials);
   const faceMaterials = applyOverrides(rawFaceMaterials, po.materials);
-  const drawerBoxMaterials = applyOverrides(rawDrawerBoxMaterials, po.drawerBoxMaterials);
+  const drawerBoxMaterials = applyOverrides(
+    rawDrawerBoxMaterials,
+    po.drawerBoxMaterials,
+  );
   const finishTypes = applyOverrides(rawFinishTypes, po.finishes);
   const hardware = {
     ...rawHardware,
@@ -77,40 +77,60 @@ export const createSectionContext = (section, estimate, catalogData) => {
   };
 
   // Get effective defaults and merge with section (three-tier fallback)
-  const effectiveDefaults = getEffectiveDefaults(section, estimate, teamDefaults);
-  
+  const effectiveDefaults = getEffectiveDefaults(
+    section,
+    estimate,
+    teamDefaults,
+  );
+
   // Check if face finish should be applied using three-tier fallback
-  const faceFinishNeeded = shouldApplyFinish(
-    section.face_mat,
-    estimate?.default_face_mat,
-    teamDefaults?.default_face_mat,
-    faceMaterials || []
-  );
-  
+  const faceFinishNeeded =
+    (effectiveDefaults?.face_finish === null ||
+      (Array.isArray(effectiveDefaults?.face_finish) &&
+        effectiveDefaults.face_finish.length > 0)) &&
+    shouldApplyFinish(
+      section.face_mat,
+      estimate?.default_face_mat,
+      teamDefaults?.default_face_mat,
+      faceMaterials || [],
+    );
+
   // Check if box finish should be applied using three-tier fallback
-  const boxFinishNeeded = shouldApplyFinish(
-    section.box_mat,
-    estimate?.default_box_mat,
-    teamDefaults?.default_box_mat,
-    boxMaterials || []
-  );
-  
+  const boxFinishNeeded =
+    (effectiveDefaults?.box_finish === null ||
+      (Array.isArray(effectiveDefaults?.box_finish) &&
+        effectiveDefaults.box_finish.length > 0)) &&
+    shouldApplyFinish(
+      section.box_mat,
+      estimate?.default_box_mat,
+      teamDefaults?.default_box_mat,
+      boxMaterials || [],
+    );
+
   // Check if door finish should be applied
-  const doorFinishNeeded = shouldApplyFinish(
-    section.door_mat || section.face_mat,
-    estimate?.default_face_mat,
-    teamDefaults?.default_face_mat,
-    faceMaterials || []
-  );
-  
+  const doorFinishNeeded =
+    (effectiveDefaults?.door_finish === null ||
+      (Array.isArray(effectiveDefaults?.door_finish) &&
+        effectiveDefaults.door_finish.length > 0)) &&
+    shouldApplyFinish(
+      section.door_mat || section.face_mat,
+      estimate?.default_face_mat,
+      teamDefaults?.default_face_mat,
+      faceMaterials || [],
+    );
+
   // Check if drawer front finish should be applied
-  const drawerFrontFinishNeeded = shouldApplyFinish(
-    section.drawer_front_mat || section.face_mat,
-    estimate?.default_face_mat,
-    teamDefaults?.default_face_mat,
-    faceMaterials || []
-  );
-  
+  const drawerFrontFinishNeeded =
+    (effectiveDefaults?.drawer_front_finish === null ||
+      (Array.isArray(effectiveDefaults?.drawer_front_finish) &&
+        effectiveDefaults.drawer_front_finish.length > 0)) &&
+    shouldApplyFinish(
+      section.drawer_front_mat || section.face_mat,
+      estimate?.default_face_mat,
+      teamDefaults?.default_face_mat,
+      faceMaterials || [],
+    );
+
   // Merge the effective defaults with the section, preserving cabinet items and other data
   const effectiveSection = {
     ...section,
@@ -129,7 +149,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
     face_finish: faceFinishNeeded ? effectiveDefaults.face_finish : [],
     box_finish: boxFinishNeeded ? effectiveDefaults.box_finish : [],
     door_finish: doorFinishNeeded ? effectiveDefaults.door_finish : [],
-    drawer_front_finish: drawerFrontFinishNeeded ? effectiveDefaults.drawer_front_finish : [],
+    drawer_front_finish: drawerFrontFinishNeeded
+      ? effectiveDefaults.drawer_front_finish
+      : [],
     door_inside_molding: effectiveDefaults.door_inside_molding,
     door_outside_molding: effectiveDefaults.door_outside_molding,
     drawer_inside_molding: effectiveDefaults.drawer_inside_molding,
@@ -150,30 +172,28 @@ export const createSectionContext = (section, estimate, catalogData) => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
     const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveSection.face_mat
+      (mat) => mat.id === effectiveSection.face_mat,
     );
 
-    // Check if finish should be applied using three-tier fallback
-    const finishNeeded = shouldApplyFinish(
-      section.face_mat,
-      estimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
-      faceMaterials || []
-    );
+      // // Check if finish should be applied using three-tier fallback
+      // const finishNeeded = shouldApplyFinish(
+      //   section.face_mat,
+      //   estimate?.default_face_mat,
+      //   teamDefaults?.default_face_mat,
+      //   faceMaterials || [],
+      // );
 
-    if (finishNeeded) {
+    if (faceFinishNeeded) {
       finishMultiplier = 1;
-      if (effectiveSection.face_finish?.length > 0) {
-        effectiveSection.face_finish.forEach((finishId) => {
-          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-          if (finishObj?.finish_markup) {
-            finishMultiplier += finishObj.finish_markup / 100;
-          }
-          if (finishObj?.shop_markup) {
-            shopMultiplier += finishObj.shop_markup / 100;
-          }
-        });
-      }
+      effectiveSection.face_finish.forEach((finishId) => {
+        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+        if (finishObj?.finish_markup) {
+          finishMultiplier += finishObj.finish_markup / 100;
+        }
+        if (finishObj?.shop_markup) {
+          shopMultiplier += finishObj.shop_markup / 100;
+        }
+      });
     }
 
     return { material, finishMultiplier, shopMultiplier };
@@ -184,30 +204,28 @@ export const createSectionContext = (section, estimate, catalogData) => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
     const material = boxMaterials?.find(
-      (mat) => mat.id === effectiveSection.box_mat
+      (mat) => mat.id === effectiveSection.box_mat,
     );
 
-    // Check if finish should be applied using three-tier fallback
-    const finishNeeded = shouldApplyFinish(
-      section.box_mat,
-      estimate?.default_box_mat,
-      teamDefaults?.default_box_mat,
-      boxMaterials || []
-    );
+    // // Check if finish should be applied using three-tier fallback
+    // const finishNeeded = shouldApplyFinish(
+    //   section.box_mat,
+    //   estimate?.default_box_mat,
+    //   teamDefaults?.default_box_mat,
+    //   boxMaterials || [],
+    // );
 
-    if (finishNeeded) {
+    if (boxFinishNeeded) {
       finishMultiplier = 1;
-      if (effectiveSection.box_finish?.length > 0) {
-        effectiveSection.box_finish.forEach((finishId) => {
-          const finishObj = finishTypes?.find((ft) => ft.id === finishId);
-          if (finishObj?.finish_markup) {
-            finishMultiplier += finishObj.finish_markup / 100;
-          }
-          if (finishObj?.shop_markup) {
-            shopMultiplier += finishObj.shop_markup / 100;
-          }
-        });
-      }
+      effectiveSection.box_finish.forEach((finishId) => {
+        const finishObj = finishTypes?.find((ft) => ft.id === finishId);
+        if (finishObj?.finish_markup) {
+          finishMultiplier += finishObj.finish_markup / 100;
+        }
+        if (finishObj?.shop_markup) {
+          shopMultiplier += finishObj.shop_markup / 100;
+        }
+      });
     }
 
     return { material, finishMultiplier, shopMultiplier };
@@ -217,26 +235,27 @@ export const createSectionContext = (section, estimate, catalogData) => {
   const selectedDoorMaterial = (() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const effectiveDoorMatId = effectiveSection.door_mat || effectiveSection.face_mat;
+    const effectiveDoorMatId =
+      effectiveSection.door_mat || effectiveSection.face_mat;
     const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveDoorMatId
+      (mat) => mat.id === effectiveDoorMatId,
     );
 
-    // Check if finish should be applied
-    const finishNeeded = shouldApplyFinish(
-      section.door_mat || section.face_mat,
-      estimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
-      faceMaterials || []
-    );
+    // // Check if finish should be applied
+    // const finishNeeded = shouldApplyFinish(
+    //   section.door_mat || section.face_mat,
+    //   estimate?.default_face_mat,
+    //   teamDefaults?.default_face_mat,
+    //   faceMaterials || [],
+    // );
 
-    if (finishNeeded) {
-      finishMultiplier = 1;
-      const finishesToUse = effectiveSection.door_finish?.length > 0 
-        ? effectiveSection.door_finish 
-        : effectiveSection.face_finish;
-      
+    if (doorFinishNeeded) {
+      // door_finish already resolved by getEffectiveDefaults (falls back to face_finish if null)
+      // An explicit [] means "None" — skip finish entirely
+      const finishesToUse = effectiveSection.door_finish;
+
       if (finishesToUse?.length > 0) {
+        finishMultiplier = 1;
         finishesToUse.forEach((finishId) => {
           const finishObj = finishTypes?.find((ft) => ft.id === finishId);
           if (finishObj?.finish_markup) {
@@ -256,26 +275,27 @@ export const createSectionContext = (section, estimate, catalogData) => {
   const selectedDrawerFrontMaterial = (() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const effectiveDrawerFrontMatId = effectiveSection.drawer_front_mat || effectiveSection.face_mat;
+    const effectiveDrawerFrontMatId =
+      effectiveSection.drawer_front_mat || effectiveSection.face_mat;
     const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveDrawerFrontMatId
+      (mat) => mat.id === effectiveDrawerFrontMatId,
     );
 
-    // Check if finish should be applied
-    const finishNeeded = shouldApplyFinish(
-      section.drawer_front_mat || section.face_mat,
-      estimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
-      faceMaterials || []
-    );
+    // // Check if finish should be applied
+    // const finishNeeded = shouldApplyFinish(
+    //   section.drawer_front_mat || section.face_mat,
+    //   estimate?.default_face_mat,
+    //   teamDefaults?.default_face_mat,
+    //   faceMaterials || [],
+    // );
 
-    if (finishNeeded) {
-      finishMultiplier = 1;
-      const finishesToUse = effectiveSection.drawer_front_finish?.length > 0 
-        ? effectiveSection.drawer_front_finish 
-        : effectiveSection.face_finish;
-      
+    if (drawerFrontFinishNeeded) {
+      // drawer_front_finish already resolved by getEffectiveDefaults (falls back to face_finish if null)
+      // An explicit [] means "None" — skip finish entirely
+      const finishesToUse = effectiveSection.drawer_front_finish;
+
       if (finishesToUse?.length > 0) {
+        finishMultiplier = 1;
         finishesToUse.forEach((finishId) => {
           const finishObj = finishTypes?.find((ft) => ft.id === finishId);
           if (finishObj?.finish_markup) {
@@ -332,7 +352,8 @@ export const createSectionContext = (section, estimate, catalogData) => {
     }
 
     // Drawer box materials
-    if (has(po.drawerBoxMaterials, effectiveSection.drawer_box_mat)) return true;
+    if (has(po.drawerBoxMaterials, effectiveSection.drawer_box_mat))
+      return true;
 
     // Finishes
     if (po.finishes) {
@@ -356,18 +377,27 @@ export const createSectionContext = (section, estimate, catalogData) => {
     // Accessories (section-level and cabinet-embedded)
     if (po.accessories) {
       // Section-level accessories
-      if (section.accessories?.some((a) => has(po.accessories, a.accessory_catalog_id))) {
+      if (
+        section.accessories?.some((a) =>
+          has(po.accessories, a.accessory_catalog_id),
+        )
+      ) {
         return true;
       }
       // Cabinet-embedded accessories from face configs
-      if (section.cabinets?.some((cab) => {
-        const checkNode = (node) => {
-          if (!node) return false;
-          if (node.accessories?.some((a) => has(po.accessories, a.accessory_id))) return true;
-          return node.children?.some((child) => checkNode(child)) || false;
-        };
-        return checkNode(cab.face_config);
-      })) {
+      if (
+        section.cabinets?.some((cab) => {
+          const checkNode = (node) => {
+            if (!node) return false;
+            if (
+              node.accessories?.some((a) => has(po.accessories, a.accessory_id))
+            )
+              return true;
+            return node.children?.some((child) => checkNode(child)) || false;
+          };
+          return checkNode(cab.face_config);
+        })
+      ) {
         return true;
       }
     }

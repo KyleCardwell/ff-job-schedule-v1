@@ -372,12 +372,15 @@ export const calculateHoodPartsTime = (
         (s) => s.team_service_id === parseInt(teamServiceId),
       );
       if (service) {
-        if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+        if (
+          service.service_id === 2
+          // && selectedFaceMaterial.shopMultiplier
+        ) {
           // Shop multiplier for service ID 2
           totalMinutes *= selectedFaceMaterial.shopMultiplier;
         } else if (
-          service.service_id === 3 &&
-          selectedFaceMaterial.finishMultiplier
+          service.service_id === 3
+          // && selectedFaceMaterial.finishMultiplier
         ) {
           // Finish multiplier for service ID 3
           totalMinutes *= selectedFaceMaterial.finishMultiplier;
@@ -506,14 +509,17 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
           }
 
           // Shop multiplier for service ID 2
-          if (service.service_id === 2 && partMaterial.shopMultiplier) {
+          if (
+            service.service_id === 2
+            // && partMaterial.shopMultiplier
+          ) {
             totalMinutes *= partMaterial.shopMultiplier;
           }
           // Finish multiplier for service ID 3
           if (
             partNeedsFinish &&
-            service.service_id === 3 &&
-            partMaterial.finishMultiplier
+            service.service_id === 3
+            // && partMaterial.finishMultiplier
           ) {
             totalMinutes *= partMaterial.finishMultiplier;
           }
@@ -652,9 +658,12 @@ export const calculateBoxPartsTime = (section, context = {}) => {
             (s) => s.team_service_id === parseInt(teamServiceId),
           );
           if (!service) return;
-          
+
           // Skip finish service if material doesn't need finishing
-          if (service.service_id === 3 && !context.selectedFaceMaterial.needs_finish) {
+          if (
+            service.service_id === 3 &&
+            !context.selectedFaceMaterial.needs_finish
+          ) {
             return;
           }
 
@@ -800,14 +809,14 @@ export const calculateDoorPartsTime = (
         );
         if (service) {
           if (
-            service.service_id === 2 &&
-            materialForMultipliers.shopMultiplier
+            service.service_id === 2
+            // && materialForMultipliers.shopMultiplier
           ) {
             // Shop multiplier for service ID 2
             totalMinutes *= materialForMultipliers.shopMultiplier;
           } else if (
-            service.service_id === 3 &&
-            materialForMultipliers.finishMultiplier
+            service.service_id === 3
+            // && materialForMultipliers.finishMultiplier
           ) {
             // Finish multiplier for service ID 3
             totalMinutes *= materialForMultipliers.finishMultiplier;
@@ -929,12 +938,15 @@ export const calculatePanelPartsTime = (
         (s) => s.team_service_id === parseInt(teamServiceId),
       );
       if (service) {
-        if (service.service_id === 2 && selectedFaceMaterial.shopMultiplier) {
+        if (
+          service.service_id === 2
+          // && selectedFaceMaterial.shopMultiplier
+        ) {
           // Shop multiplier for service ID 2
           totalMinutes *= selectedFaceMaterial.shopMultiplier;
         } else if (
-          service.service_id === 3 &&
-          selectedFaceMaterial.finishMultiplier
+          service.service_id === 3
+          // && selectedFaceMaterial.finishMultiplier
         ) {
           // Finish multiplier for service ID 3
           totalMinutes *= selectedFaceMaterial.finishMultiplier;
@@ -2214,6 +2226,7 @@ export const calculateBoxSheetsCNC = (
 export const generateCabinetSummary = (
   faceConfig,
   typeSpecificOptions = {},
+  cabinetItemType,
 ) => {
   if (!faceConfig) return "";
 
@@ -2243,11 +2256,17 @@ export const generateCabinetSummary = (
     .map(({ label }) => label);
 
   if (finishedSides.length > 0) {
-    parts.push(
-      `${finishedSides.length} finished side${
-        finishedSides.length !== 1 ? "s" : ""
-      } (${finishedSides.join(", ")})`,
-    );
+    if (cabinetItemType === 10) {
+      parts.push(
+        `nosing (${finishedSides.join(", ")})`,
+      );
+    } else {
+      parts.push(
+        `${finishedSides.length} finished side${
+          finishedSides.length !== 1 ? "s" : ""
+        } (${finishedSides.join(", ")})`,
+      );
+    }
   }
 
   // Helper to recursively collect all nodes

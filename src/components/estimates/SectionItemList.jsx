@@ -160,9 +160,12 @@ const SectionItemList = ({
     }, transitionDurationMs);
   }, [transitionDurationMs]);
 
-  const handleCancelEdit = useCallback((itemIndex) => {
-    closeEditForm(itemIndex);
-  }, [closeEditForm]);
+  const handleCancelEdit = useCallback(
+    (itemIndex) => {
+      closeEditForm(itemIndex);
+    },
+    [closeEditForm],
+  );
 
   const handleCancelNew = useCallback(() => {
     closeNewItemForm();
@@ -240,17 +243,23 @@ const SectionItemList = ({
         )?.cabinet_style_name || ""
       : "";
 
-    const summary = generateCabinetSummary(item.face_config, {
-      ...item.type_specific_options,
-      cabinetStyleOverride: styleOverrideName,
-      finishedLeft: item.finished_left,
-      finishedRight: item.finished_right,
-      finishedTop: item.finished_top,
-      finishedBottom: item.finished_bottom,
-      finishedBack: item.finished_back,
-      quantity: item.quantity,
-    });
-    return summary ? <span className="text-slate-400 capitalize">{summary}</span> : null;
+    const summary = generateCabinetSummary(
+      item.face_config,
+      {
+        ...item.type_specific_options,
+        cabinetStyleOverride: styleOverrideName,
+        finishedLeft: item.finished_left,
+        finishedRight: item.finished_right,
+        finishedTop: item.finished_top,
+        finishedBottom: item.finished_bottom,
+        finishedBack: item.finished_back,
+        quantity: item.quantity,
+      },
+      item.type,
+    );
+    return summary ? (
+      <span className="text-slate-400 capitalize">{summary}</span>
+    ) : null;
   };
 
   const renderCellContent = (item, index, col) => {
@@ -382,7 +391,9 @@ const SectionItemList = ({
                 }
               }}
               className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                animateEditOpen ? "max-h-[2200px] opacity-100" : "max-h-0 opacity-0"
+                animateEditOpen
+                  ? "max-h-[2200px] opacity-100"
+                  : "max-h-0 opacity-0"
               }`}
             >
               <div className="p-4">
@@ -433,7 +444,7 @@ const SectionItemList = ({
                 </div>
               )}
             </div>
-          )
+          ),
         )}
       </div>
 
@@ -509,7 +520,7 @@ const SectionItemList = ({
             } else {
               // Default cabinet-specific logic for backward compatibility
               const itemType = cabinetTypes.find(
-                (t) => t.cabinet_type_id === item.type
+                (t) => t.cabinet_type_id === item.type,
               )?.cabinet_type_name;
               name = itemType
                 ? `${
@@ -566,7 +577,7 @@ SectionItemList.propTypes = {
       key: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
       width: PropTypes.string.isRequired,
-    })
+    }),
   ).isRequired,
   addButtonText: PropTypes.string.isRequired,
   emptyStateText: PropTypes.string.isRequired,

@@ -119,16 +119,21 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       team.default_box_finish
     ),
     // Door and drawer front finishes (section-level only, fallback to face_finish)
-    door_finish: section.door_finish || getEffectiveValueOnly(
-      section.face_finish,
-      estimate.default_face_finish,
-      team.default_face_finish
-    ),
-    drawer_front_finish: section.drawer_front_finish || getEffectiveValueOnly(
-      section.face_finish,
-      estimate.default_face_finish,
-      team.default_face_finish
-    ),
+    // Use explicit null/undefined check so [] (explicit "None") is respected
+    door_finish: (section.door_finish !== null && section.door_finish !== undefined)
+      ? section.door_finish
+      : getEffectiveValueOnly(
+          section.face_finish,
+          estimate.default_face_finish,
+          team.default_face_finish
+        ),
+    drawer_front_finish: (section.drawer_front_finish !== null && section.drawer_front_finish !== undefined)
+      ? section.drawer_front_finish
+      : getEffectiveValueOnly(
+          section.face_finish,
+          estimate.default_face_finish,
+          team.default_face_finish
+        ),
     
     // Molding options (booleans)
     door_inside_molding: getEffectiveValueOnly(
