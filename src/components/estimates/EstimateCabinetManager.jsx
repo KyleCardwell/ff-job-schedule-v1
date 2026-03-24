@@ -2671,12 +2671,12 @@ const EstimateCabinetManager = ({
 }) => {
   const columns = [
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
+    { key: "type", label: "Type", width: ITEM_FORM_WIDTHS.DEFAULT },
     {
       key: "interior",
       label: "Interior",
       width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
     },
-    { key: "type", label: "Type", width: ITEM_FORM_WIDTHS.DEFAULT },
     {
       key: "width",
       label: "Width",

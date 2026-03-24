@@ -376,6 +376,12 @@ const EstimateAccessoriesManager = ({
 
   const columns = [
     {
+      key: "quantity",
+      label: "Qty",
+      width: ITEM_FORM_WIDTHS.QUANTITY,
+      render: (item) => item.quantity || 0,
+    },
+    {
       key: "type",
       label: "Type",
       width: "100px",
@@ -386,12 +392,6 @@ const EstimateAccessoriesManager = ({
       label: "Accessory",
       width: ITEM_FORM_WIDTHS.DEFAULT,
       render: (item) => getAccessoryName(item.accessory_catalog_id),
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      width: ITEM_FORM_WIDTHS.QUANTITY,
-      render: (item) => item.quantity || 0,
     },
     {
       key: "width",
@@ -452,6 +452,10 @@ const EstimateAccessoriesManager = ({
     onReorderItems(orderedIds);
   };
 
+  const getReorderItemName = (item) => {
+    return catalog.find((acc) => acc.id === item.accessory_catalog_id)?.name || "Accessory";
+  };
+
   return (
     <SectionItemList
       items={items}
@@ -461,6 +465,7 @@ const EstimateAccessoriesManager = ({
       onSave={handleSaveItem}
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
+      getReorderItemName={getReorderItemName}
       onDuplicate={onDuplicateItem}
       onMove={onMoveItem}
       ItemForm={AccessoryItemForm}

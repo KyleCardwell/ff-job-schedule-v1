@@ -542,16 +542,16 @@ const EstimateLengthManager = ({
     //   render: (item) => getLengthType(item.length_catalog_id),
     // },
     {
-      key: "item",
-      label: "Item",
-      width: ITEM_FORM_WIDTHS.DEFAULT,
-      render: (item) => getLengthName(item.length_catalog_id),
-    },
-    {
       key: "quantity",
       label: "Qty",
       width: ITEM_FORM_WIDTHS.QUANTITY,
       render: (item) => item.quantity || 0,
+    },
+    {
+      key: "item",
+      label: "Item",
+      width: ITEM_FORM_WIDTHS.DEFAULT,
+      render: (item) => getLengthName(item.length_catalog_id),
     },
     {
       key: "length",

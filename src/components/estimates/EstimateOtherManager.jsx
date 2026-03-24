@@ -228,7 +228,7 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
     { key: "name", label: "Item", width: "2fr" },
     { key: "price", label: "Cost", width: ".75fr", render: (item) => formatCurrency(item.price || 0) },
     { key: "total", label: "Total", width: ".75fr", render: (item) => formatCurrency((item.quantity || 0) * (item.price || 0)) },
-    { key: "actions", label: "Actions", width: "0.5fr" },
+    { key: "actions", label: "Actions", width: "1fr" },
   ];
 
   const handleSaveItem = async (item, itemIndex = -1) => {
@@ -260,6 +260,10 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
     onUpdateItems(reorderedItems);
   };
 
+  const getReorderItemName = (item) => {
+    return `(${item.quantity}) ${item.name}`;
+  };
+
   return (
     <SectionItemList
       items={items}
@@ -270,6 +274,7 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
       onDelete={handleDeleteItem}
       onReorder={handleReorderItems}
       onDuplicate={onDuplicateItem}
+      getReorderItemName={getReorderItemName}
       onMove={onMoveItem}
       ItemForm={OtherItemForm}
       listType="other"
