@@ -3,6 +3,10 @@ import { useState } from "react";
 import { FiFileText } from "react-icons/fi";
 
 import { roundToHundredth } from "../../utils/estimateHelpers";
+import {
+  buildProcessedSectionNotes,
+  SECTION_NOTES_LABELS,
+} from "../../utils/sectionNotesHelpers";
 
 /**
  * Component that generates a PDF estimate with:
@@ -268,17 +272,17 @@ const GenerateEstimatePdf = ({
         const shouldAnnotateQuantityInNotes =
           hasMultipleSections && displayQuantity !== actualQuantityText;
         const quantityNotePrefix = `Quantity - ${actualQuantityText}. `;
-        let notesForPdf = section.notes;
+        let notesForPdf = buildProcessedSectionNotes(section.notes, null);
 
         if (shouldAnnotateQuantityInNotes) {
-          if (Array.isArray(section.notes)) {
-            const [firstNote = "", ...remainingNotes] = section.notes;
+          if (Array.isArray(notesForPdf)) {
+            const [firstNote = "", ...remainingNotes] = notesForPdf;
             notesForPdf = [
               `${quantityNotePrefix}${firstNote}`.trim(),
               ...remainingNotes,
             ];
-          } else if (typeof section.notes === "string" && section.notes.trim()) {
-            notesForPdf = `${quantityNotePrefix}${section.notes}`;
+          } else if (typeof notesForPdf === "string" && notesForPdf.trim()) {
+            notesForPdf = `${quantityNotePrefix}${notesForPdf}`;
           } else {
             notesForPdf = [quantityNotePrefix.trim()];
           }
@@ -332,18 +336,17 @@ const GenerateEstimatePdf = ({
         // Add notes if present (handle both array and string formats)
         if (notesForPdf) {
           if (Array.isArray(notesForPdf)) {
-            const notesLabels = ["Notes:", "Includes:", "Does Not Include:"];
-
             notesForPdf.forEach((note, index) => {
               if (note && note.trim()) {
+                const noteLabel = SECTION_NOTES_LABELS[index] || `Note ${index + 1}:`;
                 detailsStack.push({
                   italics: true,
                   text: [
-                    { text: `${notesLabels[index]} `, bold: true },
+                    { text: `${noteLabel} `, bold: true },
                     { text: note },
                   ],
                   fontSize: GROUP_DATA_FONT_SIZE,
-                  margin: [GROUP_DATA_INDENT, 0, 0, 4], // Left indent with top margin for new line
+                  margin: [GROUP_DATA_INDENT, 0, 0, 4],
                 });
               }
             });

@@ -5,20 +5,99 @@ import { useSelector } from "react-redux";
 
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
-import { buildAdditionalSectionNotesText } from "../../utils/sectionNotesHelpers";
+import {
+  buildAdditionalSectionNotesText,
+  getOptionsForNoteIndex,
+} from "../../utils/sectionNotesHelpers";
 
-const EMPTY_NOTES = ["", "", ""];
+const buildDefaultOptions = (noteIndex) => {
+  const opts = {};
+
+  getOptionsForNoteIndex(noteIndex).forEach((opt) => {
+    if (opt.type === "text-boolean") {
+      opts[opt.key] = [false, ""];
+    } else {
+      opts[opt.key] = false;
+    }
+  });
+
+  return opts;
+};
+
+const createDefaultNoteEntry = (index) => ({
+  note: "",
+  options: buildDefaultOptions(index),
+});
+
+const createEmptyNotes = () =>
+  [0, 1, 2].map((index) => createDefaultNoteEntry(index));
+
+const normalizeOptionValue = (opt, raw) => {
+  if (opt.type === "text-boolean") {
+    if (typeof raw === "string") {
+      return [true, raw];
+    }
+
+    if (Array.isArray(raw)) {
+      return [Boolean(raw[0]), typeof raw[1] === "string" ? raw[1] : ""];
+    }
+
+    return [false, ""];
+  }
+
+  return Boolean(raw);
+};
+
+const normalizeOptions = (options, noteIndex) => {
+  const raw =
+    options && typeof options === "object" && !Array.isArray(options)
+      ? options
+      : {};
+  const normalized = {};
+
+  getOptionsForNoteIndex(noteIndex).forEach((opt) => {
+    normalized[opt.key] = normalizeOptionValue(opt, raw[opt.key]);
+  });
+
+  return normalized;
+};
+
+const normalizeNoteEntry = (entry, index) => {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    return createDefaultNoteEntry(index);
+  }
+
+  return {
+    note: typeof entry.note === "string" ? entry.note : "",
+    options: normalizeOptions(entry.options, index),
+  };
+};
 
 const normalizeNotes = (notes) => {
   if (Array.isArray(notes)) {
-    return [notes[0] || "", notes[1] || "", notes[2] || ""];
+    return [0, 1, 2].map((index) => {
+      const noteEntry = notes[index];
+
+      if (typeof noteEntry === "string") {
+        return {
+          ...createDefaultNoteEntry(index),
+          note: noteEntry,
+        };
+      }
+
+      return normalizeNoteEntry(noteEntry, index);
+    });
   }
 
   if (typeof notes === "string" && notes.trim()) {
-    return [notes, "", ""];
+    return [
+      { ...createDefaultNoteEntry(0), note: notes },
+      createDefaultNoteEntry(1),
+      createDefaultNoteEntry(2),
+    ];
   }
 
-  return [...EMPTY_NOTES];
+  return createEmptyNotes();
 };
 
 const SectionNotesManager = ({ notes, section, onSave }) => {
@@ -124,42 +203,103 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
   ]);
 
   const hasChanges = useMemo(() => {
-    return (
-      formNotes[0] !== savedNotes[0] ||
-      formNotes[1] !== savedNotes[1] ||
-      formNotes[2] !== savedNotes[2]
-    );
+    return JSON.stringify(formNotes) !== JSON.stringify(savedNotes);
   }, [formNotes, savedNotes]);
 
   const handleChange = (index, value) => {
     setFormNotes((prev) => {
       const next = [...prev];
-      next[index] = value;
+      next[index] = { ...next[index], note: value };
+      return next;
+    });
+  };
+
+  const handleOptionToggle = (noteIndex, optKey, optType, checked) => {
+    setFormNotes((prev) => {
+      const next = [...prev];
+      const entry = next[noteIndex] || createDefaultNoteEntry(noteIndex);
+      const prevOptions = entry.options || {};
+
+      let newValue;
+      if (optType === "text-boolean") {
+        const currentVal = Array.isArray(prevOptions[optKey]) ? prevOptions[optKey] : [false, ""];
+        newValue = [checked, currentVal[1]];
+      } else {
+        newValue = checked;
+      }
+
+      next[noteIndex] = {
+        ...entry,
+        options: { ...prevOptions, [optKey]: newValue },
+      };
+      return next;
+    });
+  };
+
+  const handleOptionTextChange = (noteIndex, optKey, text) => {
+    setFormNotes((prev) => {
+      const next = [...prev];
+      const entry = next[noteIndex] || createDefaultNoteEntry(noteIndex);
+      const prevOptions = entry.options || {};
+      const currentVal = Array.isArray(prevOptions[optKey]) ? prevOptions[optKey] : [false, ""];
+
+      next[noteIndex] = {
+        ...entry,
+        options: { ...prevOptions, [optKey]: [currentVal[0], text] },
+      };
       return next;
     });
   };
 
   const handleEdit = () => {
-    setFormNotes(savedNotes);
+    setFormNotes(normalizeNotes(savedNotes));
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    setFormNotes(savedNotes);
+    setFormNotes(normalizeNotes(savedNotes));
     setIsEditing(false);
+  };
+
+  const buildOptionsForSave = (entry, noteIndex) => {
+    const saved = {};
+    const raw = entry?.options || {};
+
+    getOptionsForNoteIndex(noteIndex).forEach((opt) => {
+      if (opt.type === "text-boolean") {
+        const arr = Array.isArray(raw[opt.key]) ? raw[opt.key] : [false, ""];
+        if (arr[0]) {
+          saved[opt.key] = typeof arr[1] === "string" ? arr[1].trim() : "";
+        }
+      } else {
+        if (raw[opt.key]) {
+          saved[opt.key] = true;
+        }
+      }
+    });
+
+    return saved;
   };
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    const trimmedNotes = formNotes.map((value) => value.trim());
-    const hasAnyText = trimmedNotes.some((value) => value.length > 0);
-    const payload = hasAnyText ? trimmedNotes : null;
+    const normalizedForSave = formNotes.map((entry, index) => ({
+      note: entry.note.trim(),
+      options: buildOptionsForSave(entry, index),
+    }));
+    const hasAnyValue = normalizedForSave.some(
+      (entry) =>
+        entry.note.length > 0 ||
+        Object.keys(entry.options || {}).length > 0,
+    );
+    const payload = hasAnyValue ? normalizedForSave : null;
+    const nextSavedNotes = normalizeNotes(payload);
 
     try {
       await onSave(payload);
-      setSavedNotes(trimmedNotes);
-      setFormNotes(trimmedNotes);
+      setSavedNotes(nextSavedNotes);
+      setFormNotes(nextSavedNotes);
       setIsEditing(false);
     } catch {
       alert("Failed to save section notes. Please try again.");
@@ -212,48 +352,96 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
       )}
 
       <div className="grid grid-cols-1 items-start text-slate-700 px-1 gap-4">
-        <div>
-          <label htmlFor="section-notes-0" className="text-left text-sm font-bold flex items-center text-slate-700">
-            Notes
-          </label>
-          <textarea
-            id="section-notes-0"
-            value={formNotes[0]}
-            onChange={(e) => handleChange(0, e.target.value)}
-            disabled={!isEditing}
-            rows={3}
-            className="mt-1 p-2 block w-full rounded-md border border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-y disabled:bg-slate-100 disabled:text-slate-500"
-            placeholder="Any special notes..."
-          />
-        </div>
-        <div>
-          <label htmlFor="section-notes-1" className="text-left text-sm font-bold flex items-center text-slate-700">
-            Includes
-          </label>
-          <textarea
-            id="section-notes-1"
-            value={formNotes[1]}
-            onChange={(e) => handleChange(1, e.target.value)}
-            disabled={!isEditing}
-            rows={3}
-            className="mt-1 p-2 block w-full rounded-md border border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-y disabled:bg-slate-100 disabled:text-slate-500"
-            placeholder="What's included..."
-          />
-        </div>
-        <div>
-          <label htmlFor="section-notes-2" className="text-left text-sm font-bold flex items-center text-slate-700">
-            Does Not Include
-          </label>
-          <textarea
-            id="section-notes-2"
-            value={formNotes[2]}
-            onChange={(e) => handleChange(2, e.target.value)}
-            disabled={!isEditing}
-            rows={3}
-            className="mt-1 p-2 block w-full rounded-md border border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-y disabled:bg-slate-100 disabled:text-slate-500"
-            placeholder="What's not included..."
-          />
-        </div>
+        {["Notes", "Includes", "Does Not Include"].map((label, noteIndex) => {
+          const noteOptions = getOptionsForNoteIndex(noteIndex);
+          const placeholders = [
+            "Any special notes...",
+            "What's included...",
+            "What's not included...",
+          ];
+
+          return (
+            <div key={noteIndex}>
+              <label
+                htmlFor={`section-notes-${noteIndex}`}
+                className="text-left text-sm font-bold flex items-center text-slate-700"
+              >
+                {label}
+              </label>
+
+              {noteOptions.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {noteOptions.map((opt) => {
+                    const optionValue = formNotes[noteIndex]?.options?.[opt.key];
+
+                    if (opt.type === "text-boolean") {
+                      const checked = Array.isArray(optionValue) ? Boolean(optionValue[0]) : false;
+                      const textVal = Array.isArray(optionValue) ? optionValue[1] || "" : "";
+
+                      return (
+                        <div key={opt.key} className="inline-flex items-center gap-2">
+                          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) =>
+                                handleOptionToggle(noteIndex, opt.key, opt.type, e.target.checked)
+                              }
+                              disabled={!isEditing}
+                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-60"
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={textVal}
+                            onChange={(e) =>
+                              handleOptionTextChange(noteIndex, opt.key, e.target.value)
+                            }
+                            disabled={!isEditing || !checked}
+                            className="w-8 rounded-md border border-slate-300 px-1 py-1 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
+                            placeholder={opt.placeholder || ""}
+                          />
+                          {opt.suffix && (
+                            <span className="text-sm text-slate-700">{opt.suffix}</span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <label
+                        key={opt.key}
+                        className="inline-flex items-center gap-2 text-sm text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(optionValue)}
+                          onChange={(e) =>
+                            handleOptionToggle(noteIndex, opt.key, opt.type, e.target.checked)
+                          }
+                          disabled={!isEditing}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-60"
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              <textarea
+                id={`section-notes-${noteIndex}`}
+                value={formNotes[noteIndex]?.note || ""}
+                onChange={(e) => handleChange(noteIndex, e.target.value)}
+                disabled={!isEditing}
+                rows={3}
+                className="mt-1 p-2 block w-full rounded-md border border-slate-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-y disabled:bg-slate-100 disabled:text-slate-500"
+                placeholder={placeholders[noteIndex]}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -261,7 +449,15 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
 
 SectionNotesManager.propTypes = {
   notes: PropTypes.oneOfType([
-    PropTypes.arrayOf(PropTypes.string),
+    PropTypes.arrayOf(
+      PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.shape({
+          note: PropTypes.string,
+          options: PropTypes.object,
+        }),
+      ]),
+    ),
     PropTypes.string,
     PropTypes.oneOf([null]),
   ]),

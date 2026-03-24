@@ -228,10 +228,81 @@ export const buildAdditionalSectionNotesText = ({
   };
 };
 
+/**
+ * Data-driven registry for section note options.
+ * To add a new option, append an entry here — the UI, save logic, and
+ * PDF/preview formatting all derive from this array automatically.
+ *
+ * Option types:
+ *   "boolean"      – simple checkbox, saved as `true` when checked
+ *   "text-boolean" – checkbox + text input, saved as the text string when checked
+ *
+ * Fields:
+ *   key           – unique identifier stored in `options` on the note entry
+ *   noteIndex     – which of the 3 note slots (0 = Notes, 1 = Includes, 2 = Does Not Include)
+ *   type          – "boolean" | "text-boolean"
+ *   label         – checkbox label shown in the UI
+ *   suffix        – (text-boolean only) label text after the text input
+ *   placeholder   – (text-boolean only) placeholder for the text input
+ *   estimateText  – fn(savedValue) → string shown on estimate / PDF when the option is active
+ */
+export const SECTION_NOTES_OPTIONS = [
+  {
+    key: "cabinetHeight",
+    noteIndex: 0,
+    type: "text-boolean",
+    label: "Cabinets Assumed",
+    suffix: "ft Tall",
+    placeholder: "8",
+    estimateText: (value) => {
+      const text = typeof value === "string" ? value.trim() : "";
+      return text ? `Cabinets Assumed ${text}ft Tall.` : "Cabinets Assumed __ft Tall.";
+    },
+  },
+  {
+    key: "lighting",
+    noteIndex: 2,
+    type: "boolean",
+    label: "Lighting (By Others)",
+    estimateText: () => "Lighting (By Others).",
+  },
+];
+
+export const getOptionsForNoteIndex = (noteIndex) =>
+  SECTION_NOTES_OPTIONS.filter((opt) => opt.noteIndex === noteIndex);
+
+const buildNoteEntryText = (entry, index) => {
+  if (typeof entry === "string") {
+    return entry.trim();
+  }
+
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    return "";
+  }
+
+  const noteText = typeof entry.note === "string" ? entry.note.trim() : "";
+  const options =
+    entry.options && typeof entry.options === "object" && !Array.isArray(entry.options)
+      ? entry.options
+      : {};
+
+  const optionLines = getOptionsForNoteIndex(index)
+    .filter((opt) => {
+      const val = options[opt.key];
+      return opt.type === "text-boolean" ? val != null : Boolean(val);
+    })
+    .map((opt) => opt.estimateText(options[opt.key]))
+    .filter(Boolean);
+
+  return [...optionLines, noteText].filter(Boolean).join(" ");
+};
+
 export const buildProcessedSectionNotes = (sectionNotes, additionalNotesText) => {
   if (sectionNotes) {
     if (Array.isArray(sectionNotes)) {
-      const processedNotes = [...sectionNotes];
+      const processedNotes = [0, 1, 2].map((index) =>
+        buildNoteEntryText(sectionNotes[index], index),
+      );
 
       if (additionalNotesText) {
         if (processedNotes[0]) {
@@ -266,9 +337,11 @@ export const buildDisplayNotesLines = (processedNotes) => {
   if (Array.isArray(processedNotes)) {
     return processedNotes
       .map((note, index) => {
-        if (note && note.trim()) {
+        const noteText = buildNoteEntryText(note, index);
+
+        if (noteText) {
           const noteLabel = SECTION_NOTES_LABELS[index] || `Note ${index + 1}:`;
-          return `${noteLabel} ${note}`;
+          return `${noteLabel} ${noteText}`;
         }
 
         return null;
