@@ -171,6 +171,14 @@ export const CABINET_ITEM_TYPES = {
         description: "Add top molding to cabinet",
         serviceMultipliers: {},
       },
+      {
+        name: "t_shape",
+        type: "checkbox",
+        label: "T-Shape",
+        defaultValue: false,
+        description: "T-shape Construction",
+        serviceMultipliers: {},
+      },
     ],
   },
 

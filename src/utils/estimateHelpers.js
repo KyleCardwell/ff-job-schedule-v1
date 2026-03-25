@@ -477,6 +477,10 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
     const partNeedsFinish = partMaterial?.material?.needs_finish === true;
 
     const anchors = getPartAnchors(part, partNeedsFinish, partsListAnchors);
+    const tShapeAnchors =
+      part.type === "filler" && part.t_shape
+        ? partsListAnchors[PARTS_LIST_MAPPING.filler_t_shape_finished] || null
+        : null;
 
     if (!anchors || anchors.length === 0) {
       // No anchors for this part type - skip it
@@ -495,7 +499,10 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
         teamServiceId,
         null,
       );
-      let totalMinutes = minutesEach * quantity;
+      const tShapeMinutesEach = tShapeAnchors
+        ? interpolateTimeByArea(tShapeAnchors, area, teamServiceId, null)
+        : 0;
+      let totalMinutes = (minutesEach + tShapeMinutesEach) * quantity;
 
       // Apply multipliers and filter services based on whether this part needs finish
       if (globalServices) {

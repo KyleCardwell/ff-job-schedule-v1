@@ -1283,6 +1283,7 @@ const CabinetItemForm = ({
           area: sideArea,
           quantity: 1,
           finish: true,
+          t_shape: formData.type_specific_options.t_shape || undefined,
         },
       ];
 

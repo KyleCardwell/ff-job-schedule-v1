@@ -312,6 +312,7 @@ export const PARTS_LIST_MAPPING = {
   face_frame_finished: 20,
   hood_finished: 21, // Hood cabinets - includes depth in calculation
   panel_mod_grooved_finished: 22,
+  filler_t_shape_finished: 23,
 };
 
 export const PART_NAMES = {
