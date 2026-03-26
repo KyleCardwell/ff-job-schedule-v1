@@ -129,7 +129,7 @@ const EstimateSection = ({
           >
             <span>{scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {displayName}</span>
             <div className="invisible group-hover/section:visible pl-2 flex gap-1">
-              <Tooltip text="Edit" position="top">
+              <Tooltip text="Edit Section Name" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -140,7 +140,7 @@ const EstimateSection = ({
                   <FiEdit2 size={14} />
                 </button>
               </Tooltip>
-              <Tooltip text="Duplicate" position="top">
+              <Tooltip text="Duplicate Section" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -151,7 +151,7 @@ const EstimateSection = ({
                   <FiCopy size={14} />
                 </button>
               </Tooltip>
-              <Tooltip text="Delete" position="top">
+              <Tooltip text="Delete Section" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

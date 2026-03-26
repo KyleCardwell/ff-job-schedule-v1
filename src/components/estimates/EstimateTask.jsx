@@ -160,7 +160,7 @@ const EstimateTask = ({
               {task.est_task_name}
             </span>
             <div className="invisible group-hover/task:visible pl-2 flex gap-1">
-              <Tooltip text="Edit" position="top">
+              <Tooltip text="Edit Room Name" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -171,7 +171,7 @@ const EstimateTask = ({
                   <FiEdit2 size={14} />
                 </button>
               </Tooltip>
-              <Tooltip text="Duplicate" position="top">
+              <Tooltip text="Duplicate Room" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -183,7 +183,7 @@ const EstimateTask = ({
                   <FiCopy size={14} />
                 </button>
               </Tooltip>
-              <Tooltip text="Delete" position="top">
+              <Tooltip text="Delete Room" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

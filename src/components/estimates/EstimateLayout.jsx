@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiCopy } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
+import { RiSwapBoxLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 
@@ -12,7 +13,9 @@ import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
 import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
 import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import {
+  duplicateEstimate,
   fetchEstimateById,
+  moveEstimateRooms,
   setCurrentEstimate,
   updateTaskOrder,
   updateSection,
@@ -35,6 +38,8 @@ import { PATHS } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
+import DuplicateEstimateModal from "../common/DuplicateEstimateModal.jsx";
+import MoveRoomsModal from "../common/MoveRoomsModal.jsx";
 import ReorderModal from "../common/ReorderModal.jsx";
 import Tooltip from "../common/Tooltip.jsx";
 
@@ -79,6 +84,11 @@ const EstimateLayout = () => {
   const [initialData, setInitialData] = useState({});
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [showPriceOverrides, setShowPriceOverrides] = useState(false);
+  const [isDuplicateEstimateModalOpen, setIsDuplicateEstimateModalOpen] =
+    useState(false);
+  const [isDuplicatingEstimate, setIsDuplicatingEstimate] = useState(false);
+  const [isMoveRoomsModalOpen, setIsMoveRoomsModalOpen] = useState(false);
+  const [isMovingRooms, setIsMovingRooms] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -263,6 +273,34 @@ const EstimateLayout = () => {
     }
   };
 
+  const handleMoveRooms = async ({ selectedSectionIds, targetEstimateId }) => {
+    if (!currentEstimate) return;
+
+    try {
+      setIsMovingRooms(true);
+
+      const updatedSourceEstimate = await dispatch(
+        moveEstimateRooms(
+          currentEstimate.estimate_id,
+          targetEstimateId,
+          selectedSectionIds,
+        ),
+      );
+
+      const firstTask = updatedSourceEstimate?.tasks?.[0] || null;
+      const firstSectionId = firstTask?.sections?.[0]?.est_section_id || null;
+
+      setSelectedTaskId(firstTask?.est_task_id || null);
+      setSelectedSectionId(firstSectionId);
+      setShowProjectInfo(!firstTask);
+      setIsMoveRoomsModalOpen(false);
+    } catch (error) {
+      console.error("Error moving rooms:", error);
+    } finally {
+      setIsMovingRooms(false);
+    }
+  };
+
   const handleTaskCanceled = () => {
     setIsNewTask(false);
   };
@@ -270,6 +308,25 @@ const EstimateLayout = () => {
   const handleSaveTaskOrder = (reorderedTasks) => {
     dispatch(updateTaskOrder(currentEstimate.estimate_id, reorderedTasks));
     setIsReorderModalOpen(false);
+  };
+
+  const handleDuplicateEstimate = async ({ selectedSectionIds }) => {
+    if (!currentEstimate) return;
+
+    try {
+      setIsDuplicatingEstimate(true);
+
+      const newEstimateId = await dispatch(
+        duplicateEstimate(currentEstimate.estimate_id, selectedSectionIds),
+      );
+
+      setIsDuplicateEstimateModalOpen(false);
+      navigate(`${PATHS.IN_PROGRESS_ESTIMATES}/${newEstimateId}`);
+    } catch (error) {
+      console.error("Error duplicating estimate:", error);
+    } finally {
+      setIsDuplicatingEstimate(false);
+    }
   };
 
   const handleSaveToggles = async (data) => {
@@ -349,17 +406,39 @@ const EstimateLayout = () => {
               {/* Tasks List Header */}
               <div className="py-3 px-4 text-md font-medium text-slate-200 flex justify-between items-center border-b border-slate-200">
                 <span className="font-semibold">Rooms</span>
-                {currentEstimate?.tasks?.length > 1 && (
-                  <Tooltip text="Reorder Rooms">
+                <div className="flex items-center gap-2">
+                  <Tooltip text="Move Rooms to Another Estimate">
                     <button
-                      onClick={() => setIsReorderModalOpen(true)}
-                      className="text-slate-400 hover:text-teal-400"
-                      aria-label="Reorder rooms"
+                      onClick={() => setIsMoveRoomsModalOpen(true)}
+                      className="text-slate-400 hover:text-purple-500"
+                      aria-label="Move rooms"
+                      disabled={isDuplicatingEstimate || isMovingRooms}
                     >
-                      <LuArrowDownUp size={20} />
+                      <RiSwapBoxLine size={20} />
                     </button>
                   </Tooltip>
-                )}
+                  <Tooltip text="Duplicate Estimate">
+                    <button
+                      onClick={() => setIsDuplicateEstimateModalOpen(true)}
+                      className="text-slate-400 hover:text-teal-400"
+                      aria-label="Duplicate estimate"
+                      disabled={isDuplicatingEstimate || isMovingRooms}
+                    >
+                      <FiCopy size={20} />
+                    </button>
+                  </Tooltip>
+                  {currentEstimate?.tasks?.length > 1 && (
+                    <Tooltip text="Reorder Rooms">
+                      <button
+                        onClick={() => setIsReorderModalOpen(true)}
+                        className="text-slate-400 hover:text-teal-400"
+                        aria-label="Reorder rooms"
+                      >
+                        <LuArrowDownUp size={20} />
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
 
               {/* Tasks List */}
@@ -626,6 +705,26 @@ const EstimateLayout = () => {
           </div>
         )}
       </div>
+      <MoveRoomsModal
+        open={isMoveRoomsModalOpen}
+        onClose={() => {
+          if (!isMovingRooms) {
+            setIsMoveRoomsModalOpen(false);
+          }
+        }}
+        onSave={handleMoveRooms}
+        isSaving={isMovingRooms}
+      />
+      <DuplicateEstimateModal
+        open={isDuplicateEstimateModalOpen}
+        onClose={() => {
+          if (!isDuplicatingEstimate) {
+            setIsDuplicateEstimateModalOpen(false);
+          }
+        }}
+        onSave={handleDuplicateEstimate}
+        isSaving={isDuplicatingEstimate}
+      />
       <ReorderModal
         open={isReorderModalOpen}
         onClose={() => setIsReorderModalOpen(false)}

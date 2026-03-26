@@ -79,6 +79,8 @@ const EstimatesList = ({ mode = "draft" }) => {
       switch (key) {
         case "est_project_name":
           return (estimate.est_project_name || "").toLowerCase();
+        case "version":
+          return estimate.version || "";
         case "est_client_name":
           return (estimate.est_client_name || "").toLowerCase();
         case "created_at":
@@ -118,8 +120,9 @@ const EstimatesList = ({ mode = "draft" }) => {
           direction: prev.direction === "asc" ? "desc" : "asc",
         };
       }
-
-      return { key, direction: "asc" };
+    
+      const direction = key === "created_at" || key === "updated_at" ? "desc" : "asc";
+      return { key, direction };
     });
   };
 
@@ -192,7 +195,7 @@ const EstimatesList = ({ mode = "draft" }) => {
   return (
     <div className="bg-slate-800 min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-6xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
           <div className="flex items-center mb-6">
             <button
               onClick={() => navigate(PATHS.ESTIMATES)}
@@ -264,13 +267,20 @@ const EstimatesList = ({ mode = "draft" }) => {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-full">
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
+                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
                   <button
                     onClick={() => handleSort("est_project_name")}
                     className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
                   >
                     Project
                     {renderSortIcon("est_project_name")}
+                  </button>
+                  <button
+                    onClick={() => handleSort("version")}
+                    className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
+                  >
+                    Version
+                    {renderSortIcon("version")}
                   </button>
                   <button
                     onClick={() => handleSort("est_client_name")}
@@ -313,10 +323,13 @@ const EstimatesList = ({ mode = "draft" }) => {
                   {sortedEstimates.map((estimate) => (
                     <div
                       key={estimate.estimate_id}
-                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
+                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
                     >
                       <div className="text-sm font-medium text-slate-900 truncate">
                         {estimate.est_project_name || "Unknown Project"}
+                      </div>
+                      <div className="text-sm font-medium text-slate-900 truncate">
+                        {estimate.version || "Unknown Version"}
                       </div>
                       <div className="text-sm text-slate-500 truncate">
                         {estimate.est_client_name || ""}

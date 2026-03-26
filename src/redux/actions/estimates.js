@@ -214,6 +214,7 @@ export const fetchEstimateById = (estimateId) => {
         estimate_id: data.estimate_id,
         est_project_id: data.est_project_id,
         status: data.status,
+        version: data.version,
         is_current: data.is_current,
         created_at: data.estimate_created_at,
         updated_at: data.estimate_updated_at,
@@ -1935,6 +1936,95 @@ const mergeOverrides = (existing, generated) => {
   });
 
   return merged;
+};
+
+// Move selected rooms/sections from one estimate to another draft estimate
+export const moveEstimateRooms = (
+  sourceEstimateId,
+  targetEstimateId,
+  selectedSectionIds = [],
+) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const selectedIds =
+        Array.isArray(selectedSectionIds) && selectedSectionIds.length > 0
+          ? selectedSectionIds
+          : null;
+
+      if (!selectedIds || !targetEstimateId) {
+        throw new Error("Target estimate and selected sections are required");
+      }
+
+      const { error: rpcError } = await supabase.rpc("move_estimate_sections", {
+        p_source_estimate_id: sourceEstimateId,
+        p_target_estimate_id: targetEstimateId,
+        p_selected_section_ids: selectedIds,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const updatedSourceEstimate = await dispatch(fetchEstimateById(sourceEstimateId));
+      await dispatch(fetchEstimates());
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "rooms_moved",
+          data: { sourceEstimateId, targetEstimateId, selectedSectionIds: selectedIds },
+        },
+      });
+
+      return updatedSourceEstimate;
+    } catch (error) {
+      console.error("Error moving rooms between estimates:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+// Duplicate an estimate (optionally for selected sections) using Supabase RPC
+export const duplicateEstimate = (
+  sourceEstimateId,
+  selectedSectionIds = null,
+) => {
+  return async (dispatch) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const selectedIds =
+        Array.isArray(selectedSectionIds) && selectedSectionIds.length > 0
+          ? selectedSectionIds
+          : null;
+
+      const { data: newEstimateId, error: rpcError } = await supabase.rpc(
+        "duplicate_estimate",
+        {
+          p_source_estimate_id: sourceEstimateId,
+          p_selected_section_ids: selectedIds,
+        },
+      );
+
+      if (rpcError) throw rpcError;
+
+      await dispatch(fetchEstimateById(newEstimateId));
+      await dispatch(fetchEstimates());
+
+      return newEstimateId;
+    } catch (error) {
+      console.error("Error duplicating estimate:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
 };
 
 // Duplicate a section with all its items using Supabase RPC
