@@ -302,6 +302,7 @@ export const deleteEstimate = (id) => {
         type: Actions.estimates.DELETE_ESTIMATE_SUCCESS,
         payload: id,
       });
+      await dispatch(fetchEstimates());
     } catch (error) {
       console.error("Error deleting estimate:", error);
       dispatch({

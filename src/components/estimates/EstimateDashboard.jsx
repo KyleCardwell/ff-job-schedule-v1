@@ -3,22 +3,10 @@ import { FiPlusCircle, FiEdit, FiCheckCircle, FiArchive } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { fetchCabinetAnchors } from "../../redux/actions/cabinetAnchors.js";
-import { fetchTeamCabinetStyles } from "../../redux/actions/cabinetStyles.js";
-import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import {
   fetchEstimates,
   clearCurrentEstimate,
 } from "../../redux/actions/estimates";
-import {
-  fetchHinges,
-  fetchPulls,
-  fetchSlides,
-} from "../../redux/actions/hardware.js";
-import {
-  fetchDrawerBoxMaterials,
-  fetchSheetGoods,
-} from "../../redux/actions/materials";
 import { ESTIMATE_STATUS, PATHS } from "../../utils/constants";
 
 import EstimateDashboardCard from "./EstimateDashboardCard.jsx";
@@ -30,14 +18,6 @@ const EstimateDashboard = () => {
 
   useEffect(() => {
     dispatch(fetchEstimates());
-    // dispatch(fetchTeamCabinetStyles());
-    // dispatch(fetchCabinetTypes());
-    // dispatch(fetchSheetGoods());
-    // dispatch(fetchDrawerBoxMaterials());
-    // dispatch(fetchHinges());
-    // dispatch(fetchSlides());
-    // dispatch(fetchPulls());
-    // dispatch(fetchCabinetAnchors());
   }, []);
 
   const handleStartNewEstimate = () => {

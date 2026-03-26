@@ -195,7 +195,7 @@ const EstimatesList = ({ mode = "draft" }) => {
   return (
     <div className="bg-slate-800 min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-6 max-w-7xl mx-auto h-[calc(100vh-130px)] flex flex-col">
           <div className="flex items-center mb-6">
             <button
               onClick={() => navigate(PATHS.ESTIMATES)}
@@ -219,7 +219,7 @@ const EstimatesList = ({ mode = "draft" }) => {
             </div>
           )}
 
-          <div className="mb-6">
+          <div className="mb-6 shrink-0">
             <div className="relative">
               <input
                 type="text"
@@ -240,34 +240,35 @@ const EstimatesList = ({ mode = "draft" }) => {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : filteredEstimates.length === 0 ? (
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-8 text-center">
-              <p className="text-slate-500 mb-4">
-                {searchTerm
-                  ? "No estimates found matching your search"
-                  : isArchived
-                    ? "No archived estimates found"
-                    : isFinalized
-                      ? "No finalized estimates found"
-                      : "No draft estimates found"}
-              </p>
-              {!isFinalized && !isArchived && (
-                <button
-                  onClick={() => navigate(PATHS.NEW_ESTIMATE)}
-                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
-                >
-                  Create New Estimate
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-full">
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200">
+          <div className="flex-1 min-h-0">
+            {loading ? (
+              <div className="flex h-full justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : filteredEstimates.length === 0 ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-md p-8 text-center">
+                <p className="text-slate-500 mb-4">
+                  {searchTerm
+                    ? "No estimates found matching your search"
+                    : isArchived
+                      ? "No archived estimates found"
+                      : isFinalized
+                        ? "No finalized estimates found"
+                        : "No draft estimates found"}
+                </p>
+                {!isFinalized && !isArchived && (
+                  <button
+                    onClick={() => navigate(PATHS.NEW_ESTIMATE)}
+                    className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                  >
+                    Create New Estimate
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="h-full min-h-0 overflow-x-auto border border-slate-200 rounded-md">
+                <div className="min-w-full h-full overflow-y-auto">
+                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200 sticky top-0 z-10">
                   <button
                     onClick={() => handleSort("est_project_name")}
                     className="text-xs font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 flex items-center justify-center gap-1"
@@ -319,12 +320,12 @@ const EstimatesList = ({ mode = "draft" }) => {
                   </button>
                   <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</div>
                 </div>
-                <div className="bg-white divide-y divide-slate-200">
-                  {sortedEstimates.map((estimate) => (
-                    <div
-                      key={estimate.estimate_id}
-                      className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
-                    >
+                  <div className="bg-white divide-y divide-slate-200">
+                    {sortedEstimates.map((estimate) => (
+                      <div
+                        key={estimate.estimate_id}
+                        className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_.75fr] gap-4 py-4 px-3 hover:bg-slate-50 transition-colors items-center"
+                      >
                       <div className="text-sm font-medium text-slate-900 truncate">
                         {estimate.est_project_name || "Unknown Project"}
                       </div>
@@ -416,12 +417,13 @@ const EstimatesList = ({ mode = "draft" }) => {
                           </button>
                         </Tooltip>
                       </div>
-                    </div>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

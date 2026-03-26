@@ -15,17 +15,18 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
 
   // Map routes to page titles
   const getPageTitle = () => {
-    const estimateProjectId = currentEstimate?.est_project_id
-      ? String(currentEstimate.est_project_id)
-      : null;
+    const estimatePathMatch = location.pathname.match(
+      /^\/estimates\/(?:in-progress|finalized|archived)\/([^/]+)(?:\/(?:preview|schedule))?$/,
+    );
+    const estimateIdFromPath = estimatePathMatch?.[1] || null;
     const isEstimateDetailPath =
-      estimateProjectId &&
-      location.pathname.includes("/estimates") &&
-      location.pathname.includes(estimateProjectId);
+      !!estimateIdFromPath &&
+      String(currentEstimate?.estimate_id) === estimateIdFromPath;
     const estimateTitleSuffix =
       isEstimateDetailPath && currentEstimate?.est_project_name
         ? ` - ${currentEstimate.est_project_name}`
         : "";
+    const estimateVersion = currentEstimate?.version > 1 ? ` - Version ${currentEstimate.version}` : "";
 
     if (location.pathname.includes("/preview")) {
       return `Estimate Preview${estimateTitleSuffix}`;
@@ -38,7 +39,7 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
         return `Estimate - Add to Schedule${estimateTitleSuffix}`;
       }
       if (isEstimateDetailPath) {
-        return `Estimate${estimateTitleSuffix}`;
+        return `Estimate${estimateTitleSuffix}${estimateVersion}`;
       }
       return "Estimates";
     }
