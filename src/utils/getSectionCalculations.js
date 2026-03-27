@@ -1625,12 +1625,19 @@ const calculateSimpleItemsTotal = (items, context) => {
  * Additional effects come from composable rules (length_catalog_rules).
  * @param {Array} items - Array of length items from the section
  * @param {Object} context - Calculation context with lengths catalog and materials
- * @returns {Object} { materialTotal, hoursByService: { serviceId: hours } }
+ * @returns {Object} {
+ *   materialTotal,
+ *   hoursByService: { serviceId: hours },
+ *   itemHoursByCatalog: {
+ *     [lengthCatalogId]: { id, name, hoursByService: { serviceId: hours } }
+ *   }
+ * }
  */
 const calculateLengthTotals = (items, context) => {
   const totals = {
     materialTotal: 0,
     hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
+    itemHoursByCatalog: {},
   };
 
   const { lengthsCatalog, selectedFaceMaterial } = context;
@@ -1657,11 +1664,24 @@ const calculateLengthTotals = (items, context) => {
     );
     if (!lengthItem) return;
 
+    if (!totals.itemHoursByCatalog[lengthItem.id]) {
+      totals.itemHoursByCatalog[lengthItem.id] = {
+        id: lengthItem.id,
+        length: 0,
+        name: lengthItem.name || `Length ${lengthItem.id}`,
+        hoursByService: {},
+      };
+    }
+    
+    const lengthCatalogHours = totals.itemHoursByCatalog[lengthItem.id];
+
     const quantity = item.quantity != null ? Number(item.quantity) : 1;
     const lengthFeet = Number(item.length) || 0; // User inputs feet
     const lengthInches = lengthFeet * 12; // Convert to inches for calculations
     const miterCount = Number(item.miter_count) || 0;
     const cutoutCount = Number(item.cutout_count) || 0;
+
+    totals.itemHoursByCatalog[lengthItem.id].length += lengthFeet;
 
     // Calculate material cost based on length
     // Use bd_ft_price if available, otherwise use fraction of sheet_price
@@ -1752,6 +1772,11 @@ const calculateLengthTotals = (items, context) => {
             totals.hoursByService[serviceId] = 0;
           }
           totals.hoursByService[serviceId] += adjustedHours;
+
+          if (!lengthCatalogHours.hoursByService[serviceId]) {
+            lengthCatalogHours.hoursByService[serviceId] = 0;
+          }
+          lengthCatalogHours.hoursByService[serviceId] += adjustedHours;
         }
       });
     }
@@ -1768,6 +1793,11 @@ const calculateLengthTotals = (items, context) => {
         totals.hoursByService[serviceId] = 0;
       }
       totals.hoursByService[serviceId] += adjustedHours;
+
+      if (!lengthCatalogHours.hoursByService[serviceId]) {
+        lengthCatalogHours.hoursByService[serviceId] = 0;
+      }
+      lengthCatalogHours.hoursByService[serviceId] += adjustedHours;
     });
   });
 
@@ -1783,6 +1813,7 @@ const calculateAccessoriesTotal = (items, context, section) => {
     organizer: { count: 0, total: 0 },
     other: { count: 0, total: 0 },
     hoursByService: {},
+    itemHoursByCatalog: {},
   };
   const { accessories, selectedFaceMaterial, globalServices } = context;
 
@@ -1861,6 +1892,15 @@ const calculateAccessoriesTotal = (items, context, section) => {
       (acc) => acc.id === item.accessory_catalog_id,
     );
     if (!accessory) return;
+
+    if (!totals.itemHoursByCatalog[accessory.id]) {
+      totals.itemHoursByCatalog[accessory.id] = {
+        id: accessory.id,
+        name: accessory.name || `Accessory ${accessory.id}`,
+        hoursByService: {},
+      };
+    }
+    const accessoryCatalogHours = totals.itemHoursByCatalog[accessory.id];
 
     const quantity = item.quantity !== undefined ? item.quantity : 1;
     let price = 0;
@@ -2008,6 +2048,11 @@ const calculateAccessoriesTotal = (items, context, section) => {
             totals.hoursByService[service.service_id] = 0;
           }
           totals.hoursByService[service.service_id] += hours;
+
+          if (!accessoryCatalogHours.hoursByService[service.service_id]) {
+            accessoryCatalogHours.hoursByService[service.service_id] = 0;
+          }
+          accessoryCatalogHours.hoursByService[service.service_id] += hours;
         }
       });
     }
@@ -2377,7 +2422,9 @@ export const getSectionCalculations = (section, context = {}) => {
       panelMods: cabinetTotals.categoryHours?.panelMods || {},
       // Other categories
       lengths: lengthTotals.hoursByService || {},
+      lengthsByCatalog: lengthTotals.itemHoursByCatalog || {},
       accessories: accessoriesTotal.hoursByService || {},
+      accessoriesByCatalog: accessoriesTotal.itemHoursByCatalog || {},
     },
   };
 };

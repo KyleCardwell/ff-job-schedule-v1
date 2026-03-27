@@ -23,6 +23,27 @@ const GenerateSectionBreakdownPdf = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const allServices = useSelector((state) => state.services.allServices);
+
+  const getItemHourRows = (categoryTitle) => {
+    const itemHoursByCatalog =
+      categoryTitle === "Lengths"
+        ? sectionCalculations?.categoryHours?.lengthsByCatalog
+        : categoryTitle === "Accessories"
+          ? sectionCalculations?.categoryHours?.accessoriesByCatalog
+          : null;
+
+    if (!itemHoursByCatalog || typeof itemHoursByCatalog !== "object") {
+      return [];
+    }
+
+    return Object.values(itemHoursByCatalog)
+      .filter((item) => {
+        if (!item?.hoursByService) return false;
+        return Object.values(item.hoursByService).some((hours) => hours > 0);
+      })
+      .sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
+  };
+
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
   );
@@ -304,6 +325,8 @@ const GenerateSectionBreakdownPdf = ({
 
       activeCategories.forEach((category) => {
         const countDisplay = category.count > 0 ? ` (${category.count})` : "";
+        const itemHourRows = getItemHourRows(category.title);
+        const hasItemHourRows = itemHourRows.length > 0;
         const row = [
           { text: `${category.title}${countDisplay}`, style: "itemName" },
           { text: formatCurrency(category.cost), alignment: "right" },
@@ -315,13 +338,43 @@ const GenerateSectionBreakdownPdf = ({
           } else {
             const hours = category.hoursByService?.[serviceId];
             row.push({
-              text: hours ? formatHours(hours).toString() : "-",
+              text: hours
+                ? hasItemHourRows
+                  ? `(${formatHours(hours).toString()})`
+                  : formatHours(hours).toString()
+                : "-",
               alignment: "right",
             });
           }
         });
 
         tableBody.push(row);
+
+        itemHourRows.forEach((itemHours) => {
+          const itemRow = [
+            {
+              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.length} ft)` : ""}`,
+              style: "itemSubRow",
+              color: "#4b5563",
+            },
+            {
+              text: "-",
+              alignment: "right",
+              color: "#9ca3af",
+            },
+          ];
+
+          serviceIds.forEach((serviceId) => {
+            const hours = itemHours.hoursByService?.[serviceId];
+            itemRow.push({
+              text: hours ? formatHours(hours).toString() : "-",
+              alignment: "right",
+              color: hours ? "#4b5563" : "#9ca3af",
+            });
+          });
+
+          tableBody.push(itemRow);
+        });
       });
 
       // Add totals rows
@@ -431,7 +484,7 @@ const GenerateSectionBreakdownPdf = ({
               type: "line",
               x1: 0,
               y1: 0,
-              x2: 535,
+              x2: 552,
               y2: 0,
               lineWidth: 0.5,
               lineColor: "#cccccc",
@@ -485,37 +538,39 @@ const GenerateSectionBreakdownPdf = ({
       const docDefinition = {
         pageSize: "LETTER",
         pageOrientation: "portrait",
-        pageMargins: [30, 30, 30, 40],
+        pageMargins: [30, 24, 30, 40],
         content: [
-          {
-            text: "Section Parts & Labor Breakdown",
-            style: "header",
-            margin: [0, 0, 0, 10],
-          },
           {
             columns: [
               {
                 stack: [
                   projectName && {
                     text: `Project: ${projectName}`,
-                    fontSize: 11,
+                    fontSize: 10,
                     margin: [0, 0, 0, 4],
                   },
                   taskName && {
                     text: `Room: ${taskName}`,
-                    fontSize: 11,
+                    fontSize: 10,
                     margin: [0, 0, 0, 4],
                   },
                   sectionName && {
                     text: `Section: ${sectionName}`,
-                    fontSize: 11,
+                    fontSize: 10,
                     margin: [0, 0, 0, 4],
                   },
                 ].filter(Boolean),
                 width: "*",
               },
+              {
+                text: "Section Parts & Labor Breakdown",
+                style: "header",
+                alignment: "right",
+                width: "auto",
+              },
             ],
-            margin: [0, 0, 0, 15],
+            columnGap: 12,
+            margin: [0, 0, 0, 8],
           },
           {
             table: {
@@ -553,7 +608,7 @@ const GenerateSectionBreakdownPdf = ({
         }),
         styles: {
           header: {
-            fontSize: 18,
+            fontSize: 16,
             bold: true,
           },
           tableHeader: {
@@ -563,6 +618,9 @@ const GenerateSectionBreakdownPdf = ({
           },
           itemName: {
             fontSize: 9,
+          },
+          itemSubRow: {
+            fontSize: 8,
           },
           totalsRow: {
             fontSize: 10,

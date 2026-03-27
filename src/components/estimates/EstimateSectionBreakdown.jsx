@@ -22,6 +22,26 @@ const EstimateSectionBreakdown = ({
 }) => {
   const allServices = useSelector((state) => state.services.allServices);
 
+  const getItemHourRows = (categoryTitle) => {
+    const itemHoursByCatalog =
+      categoryTitle === "Lengths"
+        ? sectionCalculations?.categoryHours?.lengthsByCatalog
+        : categoryTitle === "Accessories"
+          ? sectionCalculations?.categoryHours?.accessoriesByCatalog
+          : null;
+
+    if (!itemHoursByCatalog || typeof itemHoursByCatalog !== "object") {
+      return [];
+    }
+
+    return Object.values(itemHoursByCatalog)
+      .filter((item) => {
+        if (!item?.hoursByService) return false;
+        return Object.values(item.hoursByService).some((hours) => hours > 0);
+      })
+      .sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
+  };
+
   const breakdownCategories = getBreakdownCategories(sectionCalculations);
 
   const activeCategories = breakdownCategories.filter((cat) => {
@@ -131,59 +151,91 @@ const EstimateSectionBreakdown = ({
           const countDisplay = category.count > 0 ? ` (${category.count})` : "";
           const showAggregate =
             category.showAggregateNote && !category.skipHours;
+          const itemHourRows = getItemHourRows(category.title);
+          const hasItemHourRows = itemHourRows.length > 0;
 
           return (
-            <div
-              key={index}
-              className="grid gap-3 py-3 px-4 border-b border-slate-700 hover:bg-slate-750 transition-colors"
-              style={{
-                gridTemplateColumns: `2fr 1.5fr ${serviceIds.map(() => "1fr").join(" ")}`,
-              }}
-            >
-              <div className="text-white font-medium text-sm text-left">
-                {category.title}
-                <span className="text-slate-500 text-xs ml-1">
-                  {countDisplay}
-                </span>
-              </div>
-              <div className="text-teal-400 text-right font-semibold text-sm">
-                {formatCurrency(category.cost)}
-              </div>
-              {serviceIds.map((serviceId) => {
-                if (category.skipHours) {
+            <div key={index}>
+              <div
+                className="grid gap-3 py-3 px-4 border-b border-slate-700 hover:bg-slate-750 transition-colors"
+                style={{
+                  gridTemplateColumns: `2fr 1.5fr ${serviceIds.map(() => "1fr").join(" ")}`,
+                }}
+              >
+                <div className="text-white font-medium text-sm text-left">
+                  {category.title}
+                  <span className="text-slate-500 text-xs ml-1">
+                    {countDisplay}
+                  </span>
+                </div>
+                <div className="text-teal-400 text-right font-semibold text-sm">
+                  {formatCurrency(category.cost)}
+                </div>
+                {serviceIds.map((serviceId) => {
+                  if (category.skipHours) {
+                    return (
+                      <div
+                        key={serviceId}
+                        className="text-slate-600 text-right text-sm"
+                      >
+                        -
+                      </div>
+                    );
+                  }
+                  const hours = category.hoursByService?.[serviceId];
                   return (
                     <div
                       key={serviceId}
-                      className="text-slate-600 text-right text-sm"
+                      className="text-slate-300 text-right text-sm tabular-nums"
+                      title={
+                        showAggregate
+                          ? `Combined hours for ${category.aggregateLabel}`
+                          : ""
+                      }
                     >
-                      -
+                      {hours ? (
+                        <>
+                          {hasItemHourRows
+                            ? `(${formatHours(hours)})`
+                            : formatHours(hours)}
+                          {showAggregate && (
+                            <span className="text-slate-600 ml-1">*</span>
+                          )}
+                        </>
+                      ) : (
+                        "-"
+                      )}
                     </div>
                   );
-                }
-                const hours = category.hoursByService?.[serviceId];
-                return (
-                  <div
-                    key={serviceId}
-                    className="text-slate-300 text-right text-sm tabular-nums"
-                    title={
-                      showAggregate
-                        ? `Combined hours for ${category.aggregateLabel}`
-                        : ""
-                    }
-                  >
-                    {hours ? (
-                      <>
-                        {formatHours(hours)}
-                        {showAggregate && (
-                          <span className="text-slate-600 ml-1">*</span>
-                        )}
-                      </>
-                    ) : (
-                      "-"
-                    )}
+                })}
+              </div>
+
+              {itemHourRows.map((itemHours) => (
+                <div
+                  key={`${category.title}-${itemHours.id}`}
+                  className="grid gap-3 py-2 px-4 border-b border-slate-700/60 bg-slate-900/20"
+                  style={{
+                    gridTemplateColumns: `2fr 1.5fr ${serviceIds.map(() => "1fr").join(" ")}`,
+                  }}
+                >
+                  <div className="text-slate-300 text-xs text-left pl-4">
+                    <span className="text-slate-500 mr-1">-</span>
+                    {itemHours.name} {itemHours.length ? `(${itemHours.length} ft)` : ""}
                   </div>
-                );
-              })}
+                  <div className="text-slate-600 text-right text-xs">-</div>
+                  {serviceIds.map((serviceId) => {
+                    const hours = itemHours.hoursByService?.[serviceId];
+                    return (
+                      <div
+                        key={`${itemHours.id}-${serviceId}`}
+                        className="text-slate-400 text-right text-xs tabular-nums"
+                      >
+                        {hours ? formatHours(hours) : "-"}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           );
         })}
