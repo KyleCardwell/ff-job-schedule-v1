@@ -400,22 +400,6 @@ const calculateFaceTotals = (section, context) => {
 
     Object.entries(cabinet.face_config.faceSummary).forEach(
       ([faceType, faceData]) => {
-        // Process glass first (before exclusion check) so open face types with glass shelves are included
-        if (faceData.glass) {
-          const { glass } = context?.accessories || {};
-
-          faceData.glass.forEach((piece) => {
-            const sqft = (piece.width * piece.height) / 144;
-            const price =
-              glass.find((g) => g.id === piece.accessoryCatalogId)
-                ?.default_price_per_unit || 0;
-            // Store glass count as quantity (number of pieces) not square footage
-            totals.glassCount += piece.quantity * quantity; // Multiply by cabinet quantity
-            totals.glassTotal +=
-              (sqft * price || 0) * piece.quantity * quantity;
-          });
-        }
-
         // Exclude open, container, and reveal types from face processing
         if (["open", "container", "reveal"].includes(faceType)) return;
 
@@ -1844,6 +1828,31 @@ const calculateAccessoriesTotal = (items, context, section) => {
       };
 
       collectAccessories(faceConfig);
+
+      // Include glass from faceSummary so accessory labor and pricing are
+      // handled in the accessory pipeline.
+      if (faceConfig.faceSummary && typeof faceConfig.faceSummary === "object") {
+        Object.values(faceConfig.faceSummary).forEach((faceData) => {
+          if (!faceData?.glass || !Array.isArray(faceData.glass)) return;
+
+          faceData.glass.forEach((glassPiece) => {
+            const accessoryCatalogId = Number(glassPiece.accessoryCatalogId);
+            if (!accessoryCatalogId) return;
+
+            const pieceQuantity =
+              glassPiece.quantity != null ? Number(glassPiece.quantity) : 1;
+            if (pieceQuantity <= 0) return;
+
+            allAccessories.push({
+              accessory_catalog_id: accessoryCatalogId,
+              quantity: pieceQuantity * quantity,
+              width: glassPiece.width,
+              height: glassPiece.height,
+              depth: glassPiece.depth,
+            });
+          });
+        });
+      }
     });
   }
 
@@ -2115,10 +2124,9 @@ export const getSectionCalculations = (section, context = {}) => {
     (isPartIncluded("woodTotal") ? cabinetTotals.woodTotal : 0) +
     (isPartIncluded("woodTotal") ? lengthTotals.materialTotal : 0) +
     otherTotal +
-    // Include all accessories (glass from accessories + glass from faces + other accessory types)
+    // Include all accessories (including glass from faceSummary)
     (isPartIncluded("accessoriesTotal")
       ? accessoriesTotal.glass.total +
-        (cabinetTotals.glassTotal || 0) + // Glass from faces
         accessoriesTotal.insert.total +
         accessoriesTotal.hardware.total +
         accessoriesTotal.shop_built.total +
@@ -2276,14 +2284,12 @@ export const getSectionCalculations = (section, context = {}) => {
   const accessoriesCount =
     Object.values(accessoriesTotal)
       .filter((item) => typeof item === "object" && item.count !== undefined)
-      .reduce((sum, item) => sum + item.count, 0) +
-    (cabinetTotals.glassCount || 0);
+      .reduce((sum, item) => sum + item.count, 0);
 
   const accessoriesTotalPrice =
     Object.values(accessoriesTotal)
       .filter((item) => typeof item === "object" && item.total !== undefined)
-      .reduce((sum, item) => sum + item.total, 0) +
-    (cabinetTotals.glassTotal || 0);
+      .reduce((sum, item) => sum + item.total, 0);
 
   // Calculate other items count
   const otherCount = (section.other || []).reduce((sum, item) => {
