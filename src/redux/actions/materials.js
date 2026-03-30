@@ -132,13 +132,17 @@ export const saveSheetGoods =
 // ------------ Drawer Box Materials ------------
 // ----------------------------------------------
 
-export const fetchDrawerBoxMaterials = () => async (dispatch) => {
+export const fetchDrawerBoxMaterials = () => async (dispatch, getState) => {
   try {
+    const state = getState();
+    const teamId = state.auth.teamId;
+
     const { data, error } = await supabase
       .from("drawer_wood_catalog")
       .select(
         "id, name, width, height, thickness, area, sheet_price, needs_finish"
       )
+      .eq("team_id", teamId)
       .order("name", { ascending: true });
 
     if (error) throw error;
