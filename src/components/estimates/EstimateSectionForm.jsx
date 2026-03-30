@@ -386,6 +386,17 @@ const EstimateSectionForm = ({
     const discountField = getFieldName("discount");
     const servicePriceOverridesField = getFieldName("service_price_overrides");
 
+    const normalizeTeamFinishValue = (value) => {
+      if (
+        editType === EDIT_TYPES.TEAM &&
+        Array.isArray(value) &&
+        value.length === 0
+      ) {
+        return null;
+      }
+      return value;
+    };
+
     return {
       style:
         data[styleField] ||
@@ -395,17 +406,23 @@ const EstimateSectionForm = ({
       boxMaterial:
         data[boxMatField] || data.box_mat || initialDefaults.box_mat || "",
       boxFinish:
-        Array.isArray(data[boxFinishField]) ? data[boxFinishField]
-        : Array.isArray(data.box_finish) ? data.box_finish
-        : Array.isArray(initialDefaults.box_finish) ? initialDefaults.box_finish
-        : editType === EDIT_TYPES.TEAM ? [] : null,
+        Array.isArray(data[boxFinishField])
+          ? normalizeTeamFinishValue(data[boxFinishField])
+          : Array.isArray(data.box_finish)
+            ? normalizeTeamFinishValue(data.box_finish)
+            : Array.isArray(initialDefaults.box_finish)
+              ? normalizeTeamFinishValue(initialDefaults.box_finish)
+              : null,
       faceMaterial:
         data[faceMatField] || data.face_mat || initialDefaults.face_mat || "",
       faceFinish:
-        Array.isArray(data[faceFinishField]) ? data[faceFinishField]
-        : Array.isArray(data.face_finish) ? data.face_finish
-        : Array.isArray(initialDefaults.face_finish) ? initialDefaults.face_finish
-        : editType === EDIT_TYPES.TEAM ? [] : null,
+        Array.isArray(data[faceFinishField])
+          ? normalizeTeamFinishValue(data[faceFinishField])
+          : Array.isArray(data.face_finish)
+            ? normalizeTeamFinishValue(data.face_finish)
+            : Array.isArray(initialDefaults.face_finish)
+              ? normalizeTeamFinishValue(initialDefaults.face_finish)
+              : null,
       doorStyle:
         data[doorStyleField] ||
         data.door_style ||
@@ -473,24 +490,24 @@ const EstimateSectionForm = ({
       door_mat:
         data[doorMatField] || data.door_mat || initialDefaults.door_mat || "",
       door_finish: Array.isArray(data[doorFinishField])
-        ? data[doorFinishField]
+        ? normalizeTeamFinishValue(data[doorFinishField])
         : Array.isArray(data.door_finish)
-          ? data.door_finish
+          ? normalizeTeamFinishValue(data.door_finish)
           : Array.isArray(initialDefaults.door_finish)
-            ? initialDefaults.door_finish
-            : editType === EDIT_TYPES.TEAM ? [] : null,
+            ? normalizeTeamFinishValue(initialDefaults.door_finish)
+            : null,
       drawer_front_mat:
         data[drawerFrontMatField] ||
         data.drawer_front_mat ||
         initialDefaults.drawer_front_mat ||
         "",
       drawer_front_finish: Array.isArray(data[drawerFrontFinishField])
-        ? data[drawerFrontFinishField]
+        ? normalizeTeamFinishValue(data[drawerFrontFinishField])
         : Array.isArray(data.drawer_front_finish)
-          ? data.drawer_front_finish
+          ? normalizeTeamFinishValue(data.drawer_front_finish)
           : Array.isArray(initialDefaults.drawer_front_finish)
-            ? initialDefaults.drawer_front_finish
-            : editType === EDIT_TYPES.TEAM ? [] : null,
+            ? normalizeTeamFinishValue(initialDefaults.drawer_front_finish)
+            : null,
       quantity: data.quantity ?? 1,
       profit: data[profitField] ?? data.profit ?? initialDefaults.profit ?? "",
       commission:
@@ -686,6 +703,9 @@ const EstimateSectionForm = ({
 
   // Check if a finish field is explicitly set to "no finish" (empty array, not null)
   const isFinishExplicitlyNone = (finishType) => {
+    if (editType === EDIT_TYPES.TEAM) {
+      return false;
+    }
     const val = formData[finishType];
     return Array.isArray(val) && val.length === 0;
   };
