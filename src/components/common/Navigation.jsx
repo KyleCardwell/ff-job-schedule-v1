@@ -19,7 +19,7 @@ import { supabase } from "../../utils/supabase";
 
 const Navigation = ({ isOpen, onClose }) => {
   const { enable_estimates } = useFeatureToggles();
-  const { roleId, permissions } = useSelector((state) => state.auth);
+  const { roleId, permissions, userName } = useSelector((state) => state.auth);
   const canAccessManage =
     roleId === 1 || (permissions && permissions.can_manage_teams);
   const canCreateEstimates =
@@ -67,6 +67,9 @@ const Navigation = ({ isOpen, onClose }) => {
           isOpen ? "translate-x-0" : "-translate-x-full"
         } border-t border-slate-200`}
       >
+        <div className="px-6 py-3 text-left text-slate-300 border-b border-slate-200 bg-teal-900">
+          {userName}
+        </div>
         <nav className="py-4 space-y-2">
           {navItems.map(({ icon: Icon, label, path }) => (
             <NavLink
