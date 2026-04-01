@@ -83,15 +83,33 @@ const EstimateSectionForm = ({
 
   const COLOR_CLASS = "teal-600";
 
-  const FACE_MATERIAL_OPTIONS = materials?.faceMaterials || [];
-  const BOX_MATERIAL_OPTIONS = materials?.boxMaterials || [];
-  const STYLE_OPTIONS = cabinetStyles || [];
-  const FINISH_OPTIONS = finishes?.finishes || [];
-  const DOOR_STYLE_OPTIONS = FACE_STYLES || [];
-  const DRAWER_BOX_OPTIONS = materials?.drawerBoxMaterials || [];
-  const DOOR_HINGE_OPTIONS = hardware.hinges || [];
-  const DRAWER_SLIDE_OPTIONS = hardware.slides || [];
-  const PULL_OPTIONS = hardware.pulls || [];
+  const FACE_MATERIAL_OPTIONS = useMemo(
+    () => materials?.faceMaterials || [],
+    [materials?.faceMaterials],
+  );
+  const BOX_MATERIAL_OPTIONS = useMemo(
+    () => materials?.boxMaterials || [],
+    [materials?.boxMaterials],
+  );
+  const STYLE_OPTIONS = useMemo(() => cabinetStyles || [], [cabinetStyles]);
+  const FINISH_OPTIONS = useMemo(
+    () => finishes?.finishes || [],
+    [finishes?.finishes],
+  );
+  const DOOR_STYLE_OPTIONS = useMemo(() => FACE_STYLES || [], []);
+  const DRAWER_BOX_OPTIONS = useMemo(
+    () => materials?.drawerBoxMaterials || [],
+    [materials?.drawerBoxMaterials],
+  );
+  const DOOR_HINGE_OPTIONS = useMemo(
+    () => hardware?.hinges || [],
+    [hardware?.hinges],
+  );
+  const DRAWER_SLIDE_OPTIONS = useMemo(
+    () => hardware?.slides || [],
+    [hardware?.slides],
+  );
+  const PULL_OPTIONS = useMemo(() => hardware?.pulls || [], [hardware?.pulls]);
 
   const services = useSelector((state) => state.services?.allServices || []);
   const activeServices = services.filter((service) => service.is_active);
@@ -170,8 +188,10 @@ const EstimateSectionForm = ({
 
   const getOptionDisplayName = (sectionKey, option) => {
     if (!option) return "";
-    const labelOverride = getPriceOverrideForItem(sectionKey, option.id)
-      ?.label_override;
+    const labelOverride = getPriceOverrideForItem(
+      sectionKey,
+      option.id,
+    )?.label_override;
     if (typeof labelOverride === "string" && labelOverride.trim()) {
       return labelOverride.trim();
     }
@@ -405,24 +425,22 @@ const EstimateSectionForm = ({
         "",
       boxMaterial:
         data[boxMatField] || data.box_mat || initialDefaults.box_mat || "",
-      boxFinish:
-        Array.isArray(data[boxFinishField])
-          ? normalizeTeamFinishValue(data[boxFinishField])
-          : Array.isArray(data.box_finish)
-            ? normalizeTeamFinishValue(data.box_finish)
-            : Array.isArray(initialDefaults.box_finish)
-              ? normalizeTeamFinishValue(initialDefaults.box_finish)
-              : null,
+      boxFinish: Array.isArray(data[boxFinishField])
+        ? normalizeTeamFinishValue(data[boxFinishField])
+        : Array.isArray(data.box_finish)
+          ? normalizeTeamFinishValue(data.box_finish)
+          : Array.isArray(initialDefaults.box_finish)
+            ? normalizeTeamFinishValue(initialDefaults.box_finish)
+            : null,
       faceMaterial:
         data[faceMatField] || data.face_mat || initialDefaults.face_mat || "",
-      faceFinish:
-        Array.isArray(data[faceFinishField])
-          ? normalizeTeamFinishValue(data[faceFinishField])
-          : Array.isArray(data.face_finish)
-            ? normalizeTeamFinishValue(data.face_finish)
-            : Array.isArray(initialDefaults.face_finish)
-              ? normalizeTeamFinishValue(initialDefaults.face_finish)
-              : null,
+      faceFinish: Array.isArray(data[faceFinishField])
+        ? normalizeTeamFinishValue(data[faceFinishField])
+        : Array.isArray(data.face_finish)
+          ? normalizeTeamFinishValue(data.face_finish)
+          : Array.isArray(initialDefaults.face_finish)
+            ? normalizeTeamFinishValue(initialDefaults.face_finish)
+            : null,
       doorStyle:
         data[doorStyleField] ||
         data.door_style ||
@@ -529,6 +547,126 @@ const EstimateSectionForm = ({
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (editType !== EDIT_TYPES.TEAM) return;
+
+    setFormData((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      const isSameValue = (a, b) => {
+        if (a === b) return true;
+        if (
+          (a === null || a === undefined || a === "") &&
+          (b === null || b === undefined || b === "")
+        ) {
+          return true;
+        }
+        return String(a) === String(b);
+      };
+
+      const isSameArray = (a, b) => {
+        if (!Array.isArray(a) && !Array.isArray(b)) return true;
+        if (!Array.isArray(a) || !Array.isArray(b)) return false;
+        if (a.length !== b.length) return false;
+        return a.every((val, index) => String(val) === String(b[index]));
+      };
+
+      const optionHasId = (options, value, idKey = "id") =>
+        options.some((option) => String(option[idKey]) === String(value));
+
+      const sanitizeSingleOptionId = (field, options, idKey = "id") => {
+        if (!Array.isArray(options) || options.length === 0) return;
+
+        const current = prev[field];
+        let sanitized = current;
+
+        if (current === "" || current === undefined) {
+          sanitized = null;
+        } else if (
+          current !== null &&
+          !optionHasId(options, current, idKey)
+        ) {
+          sanitized = null;
+        }
+
+        if (!isSameValue(current, sanitized)) {
+          next[field] = sanitized;
+          changed = true;
+        }
+      };
+
+      const sanitizeSingleAllowedValue = (field, allowedValues) => {
+        const current = prev[field];
+        let sanitized = current;
+
+        if (current === "" || current === undefined) {
+          sanitized = null;
+        } else if (
+          current !== null &&
+          !allowedValues.some((value) => String(value) === String(current))
+        ) {
+          sanitized = null;
+        }
+
+        if (!isSameValue(current, sanitized)) {
+          next[field] = sanitized;
+          changed = true;
+        }
+      };
+
+      const sanitizeArrayOptionIds = (field, options, idKey = "id") => {
+        if (!Array.isArray(options) || options.length === 0) return;
+
+        const current = prev[field];
+        const allowed = new Set(options.map((option) => String(option[idKey])));
+        let sanitized = null;
+
+        if (Array.isArray(current)) {
+          const filtered = current.filter((value) =>
+            allowed.has(String(value)),
+          );
+          sanitized = filtered.length > 0 ? filtered : null;
+        }
+
+        if (!isSameArray(current, sanitized)) {
+          next[field] = sanitized;
+          changed = true;
+        }
+      };
+
+      sanitizeSingleOptionId("style", STYLE_OPTIONS, "cabinet_style_id");
+      sanitizeSingleOptionId("boxMaterial", BOX_MATERIAL_OPTIONS);
+      sanitizeSingleOptionId("faceMaterial", FACE_MATERIAL_OPTIONS);
+      sanitizeSingleOptionId("hinge_id", DOOR_HINGE_OPTIONS);
+      sanitizeSingleOptionId("slide_id", DRAWER_SLIDE_OPTIONS);
+      sanitizeSingleOptionId("door_pull_id", PULL_OPTIONS);
+      sanitizeSingleOptionId("drawer_pull_id", PULL_OPTIONS);
+      sanitizeSingleOptionId("drawer_box_mat", DRAWER_BOX_OPTIONS);
+      sanitizeSingleOptionId("doorStyle", DOOR_STYLE_OPTIONS);
+      sanitizeSingleOptionId("drawerFrontStyle", DOOR_STYLE_OPTIONS);
+
+      sanitizeSingleAllowedValue("doorPanelModId", [0, 15, 22]);
+      sanitizeSingleAllowedValue("drawerPanelModId", [0, 15, 22]);
+
+      sanitizeArrayOptionIds("faceFinish", FINISH_OPTIONS);
+      sanitizeArrayOptionIds("boxFinish", FINISH_OPTIONS);
+
+      return changed ? next : prev;
+    });
+  }, [
+    editType,
+    STYLE_OPTIONS,
+    BOX_MATERIAL_OPTIONS,
+    FACE_MATERIAL_OPTIONS,
+    DOOR_HINGE_OPTIONS,
+    DRAWER_SLIDE_OPTIONS,
+    PULL_OPTIONS,
+    DRAWER_BOX_OPTIONS,
+    DOOR_STYLE_OPTIONS,
+    FINISH_OPTIONS,
+  ]);
 
   // Track if door/drawer specific materials or finishes are being used
   const isDoorMaterialCustomized = useMemo(() => {
@@ -749,7 +887,11 @@ const EstimateSectionForm = ({
     });
 
     // Clear error when field is updated
-    if (errors[finishType] && updatedFinish !== null && (updatedFinish.length > 0 || Array.isArray(updatedFinish))) {
+    if (
+      errors[finishType] &&
+      updatedFinish !== null &&
+      (updatedFinish.length > 0 || Array.isArray(updatedFinish))
+    ) {
       setErrors({
         ...errors,
         [finishType]: "",
@@ -1034,6 +1176,13 @@ const EstimateSectionForm = ({
         newErrors.style = "Style is required";
       }
 
+      if (
+        formData.horizontalGrain === null ||
+        formData.horizontalGrain === undefined
+      ) {
+        newErrors.horizontalGrain = "Horizontal grain is required";
+      }
+
       if (!formData.boxMaterial) {
         newErrors.boxMaterial = "Cabinet interior is required";
       }
@@ -1069,6 +1218,66 @@ const EstimateSectionForm = ({
       if (!formData.drawer_box_mat) {
         newErrors.drawer_box_mat = "Drawer box material is required";
       }
+
+      if (
+        formData.doorInsideMolding === null ||
+        formData.doorInsideMolding === undefined
+      ) {
+        newErrors.doorInsideMolding = "Door inside molding is required";
+      }
+
+      if (
+        formData.doorOutsideMolding === null ||
+        formData.doorOutsideMolding === undefined
+      ) {
+        newErrors.doorOutsideMolding = "Door outside molding is required";
+      }
+
+      if (
+        formData.drawerInsideMolding === null ||
+        formData.drawerInsideMolding === undefined
+      ) {
+        newErrors.drawerInsideMolding = "Drawer inside molding is required";
+      }
+
+      if (
+        formData.drawerOutsideMolding === null ||
+        formData.drawerOutsideMolding === undefined
+      ) {
+        newErrors.drawerOutsideMolding = "Drawer outside molding is required";
+      }
+
+      if (
+        formData.doorPanelModId === "" ||
+        formData.doorPanelModId === null ||
+        formData.doorPanelModId === undefined
+      ) {
+        newErrors.doorPanelModId = "Door panel mod is required";
+      }
+
+      if (
+        formData.drawerPanelModId === "" ||
+        formData.drawerPanelModId === null ||
+        formData.drawerPanelModId === undefined
+      ) {
+        newErrors.drawerPanelModId = "Drawer panel mod is required";
+      }
+
+      // if (formData.profit === "" || formData.profit === null || formData.profit === undefined) {
+      //   newErrors.profit = "Profit is required";
+      // }
+
+      // if (
+      //   formData.commission === "" ||
+      //   formData.commission === null ||
+      //   formData.commission === undefined
+      // ) {
+      //   newErrors.commission = "Commission is required";
+      // }
+
+      // if (formData.discount === "" || formData.discount === null || formData.discount === undefined) {
+      //   newErrors.discount = "Discount is required";
+      // }
 
       // Validate door style is compatible with face material for team defaults
       if (formData.faceMaterial && formData.doorStyle) {
@@ -1119,14 +1328,29 @@ const EstimateSectionForm = ({
           }
         }
       }
-    }
 
-    if (mustSelectFaceFinish && (!formData.faceFinish || formData.faceFinish.length === 0)) {
-      newErrors.faceFinish = "At least one finish option is required";
-    }
+      // Validate required finishes for team defaults directly from current inputs
+      // (do not rely on mustSelect* UI state)
+      const selectedFaceMaterial = FACE_MATERIAL_OPTIONS.find(
+        (mat) => mat.id === formData.faceMaterial,
+      );
+      if (
+        selectedFaceMaterial?.needs_finish === true &&
+        (!Array.isArray(formData.faceFinish) ||
+          formData.faceFinish.length === 0)
+      ) {
+        newErrors.faceFinish = ERROR_MESSAGES.ONE_FINISH;
+      }
 
-    if (mustSelectBoxFinish && (!formData.boxFinish || formData.boxFinish.length === 0)) {
-      newErrors.boxFinish = "At least one finish option is required";
+      const selectedBoxMaterial = BOX_MATERIAL_OPTIONS.find(
+        (mat) => mat.id === formData.boxMaterial,
+      );
+      if (
+        selectedBoxMaterial?.needs_finish === true &&
+        (!Array.isArray(formData.boxFinish) || formData.boxFinish.length === 0)
+      ) {
+        newErrors.boxFinish = ERROR_MESSAGES.ONE_FINISH;
+      }
     }
 
     setErrors(newErrors);
@@ -1143,41 +1367,32 @@ const EstimateSectionForm = ({
           // Update team defaults using Redux action
           // Convert profit/commission/discount to numbers
           const updatePayload = {
-            default_cabinet_style_id: formData.style || null,
-            default_box_mat: formData.boxMaterial || null,
-            default_box_finish: formData.boxFinish,
-            default_face_mat: formData.faceMaterial || null,
-            default_face_finish: formData.faceFinish,
-            default_door_style: formData.doorStyle || null,
-            default_drawer_front_style: formData.drawerFrontStyle || null,
+            default_cabinet_style_id: formData.style,
+            default_box_mat: formData.boxMaterial,
+            default_box_finish: Array.isArray(formData.boxFinish)
+              ? formData.boxFinish
+              : [],
+            default_face_mat: formData.faceMaterial,
+            default_face_finish: Array.isArray(formData.faceFinish)
+              ? formData.faceFinish
+              : [],
+            default_door_style: formData.doorStyle,
+            default_drawer_front_style: formData.drawerFrontStyle,
             default_door_inside_molding: formData.doorInsideMolding,
             default_door_outside_molding: formData.doorOutsideMolding,
             default_drawer_inside_molding: formData.drawerInsideMolding,
             default_drawer_outside_molding: formData.drawerOutsideMolding,
             default_horizontal_grain: formData.horizontalGrain,
-            default_door_panel_mod_id:
-              formData.doorPanelModId === "" ? null : formData.doorPanelModId,
-            default_drawer_panel_mod_id:
-              formData.drawerPanelModId === ""
-                ? null
-                : formData.drawerPanelModId,
-            default_hinge_id: formData.hinge_id || null,
-            default_slide_id: formData.slide_id || null,
-            default_door_pull_id: formData.door_pull_id || null,
-            default_drawer_pull_id: formData.drawer_pull_id || null,
-            default_drawer_box_mat: formData.drawer_box_mat || null,
-            default_profit:
-              formData.profit === "" || formData.profit == null
-                ? null
-                : Number(formData.profit),
-            default_commission:
-              formData.commission === "" || formData.commission == null
-                ? null
-                : Number(formData.commission),
-            default_discount:
-              formData.discount === "" || formData.discount == null
-                ? null
-                : Number(formData.discount),
+            default_door_panel_mod_id: formData.doorPanelModId,
+            default_drawer_panel_mod_id: formData.drawerPanelModId,
+            default_hinge_id: formData.hinge_id,
+            default_slide_id: formData.slide_id,
+            default_door_pull_id: formData.door_pull_id,
+            default_drawer_pull_id: formData.drawer_pull_id,
+            default_drawer_box_mat: formData.drawer_box_mat,
+            default_profit: Number(formData.profit),
+            default_commission: Number(formData.commission),
+            default_discount: Number(formData.discount),
           };
 
           await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
@@ -1196,13 +1411,12 @@ const EstimateSectionForm = ({
               formData.faceFinish === null ? null : formData.faceFinish,
             default_door_style: formData.doorStyle || null,
             default_drawer_front_style: formData.drawerFrontStyle || null,
-            default_door_inside_molding: formData.doorInsideMolding || null,
-            default_door_outside_molding: formData.doorOutsideMolding || null,
-            default_drawer_inside_molding: formData.drawerInsideMolding || null,
+            default_door_inside_molding: formData.doorInsideMolding ?? null,
+            default_door_outside_molding: formData.doorOutsideMolding ?? null,
+            default_drawer_inside_molding: formData.drawerInsideMolding ?? null,
             default_drawer_outside_molding:
-              formData.drawerOutsideMolding || null,
-            default_horizontal_grain:
-              formData.horizontalGrain || null,
+              formData.drawerOutsideMolding ?? null,
+            default_horizontal_grain: formData.horizontalGrain ?? null,
             default_door_panel_mod_id:
               formData.doorPanelModId === "" ? null : formData.doorPanelModId,
             default_drawer_panel_mod_id:
@@ -1624,7 +1838,7 @@ const EstimateSectionForm = ({
                 ? `Edit ${selectedTask?.est_task_name || "Section"}`
                 : (() => {
                     const sectionIndex = selectedTask?.sections?.findIndex(
-                      (s) => s.est_section_id === section?.est_section_id
+                      (s) => s.est_section_id === section?.est_section_id,
                     );
                     const sectionName =
                       section?.section_name ||
@@ -1725,16 +1939,23 @@ const EstimateSectionForm = ({
                       </label>
                       <select
                         name="horizontalGrain"
-                        value={getBooleanSelectValue(
-                          formData.horizontalGrain,
-                        )}
+                        value={getBooleanSelectValue(formData.horizontalGrain)}
                         onChange={handleChange}
-                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                        className={`${STYLES.select} ${
+                          errors.horizontalGrain
+                            ? STYLES.inputError
+                            : STYLES.inputNormal
+                        } ${STYLES.inputFocus}`}
                       >
                         <option value="">{getPlaceholder("...")}</option>
                         <option value="true">Yes</option>
                         <option value="false">No</option>
                       </select>
+                      {errors.horizontalGrain && (
+                        <p className={STYLES.errorText}>
+                          {errors.horizontalGrain}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1826,15 +2047,22 @@ const EstimateSectionForm = ({
                               className={`${STYLES.checkboxLabel} ${!mustSelectBoxFinish || isFinishExplicitlyNone("boxFinish") ? STYLES.checkboxLabelDisabled : ""}`}
                             >
                               <input
-                                disabled={!mustSelectBoxFinish || isFinishExplicitlyNone("boxFinish")}
+                                disabled={
+                                  !mustSelectBoxFinish ||
+                                  isFinishExplicitlyNone("boxFinish")
+                                }
                                 type="checkbox"
-                                checked={(formData.boxFinish || []).includes(option.id)}
+                                checked={(formData.boxFinish || []).includes(
+                                  option.id,
+                                )}
                                 onChange={() =>
                                   handleFinishChange(option.id, "boxFinish")
                                 }
                                 className="rounded border-slate-300"
                               />
-                              <span>{getOptionDisplayName("finishes", option)}</span>
+                              <span>
+                                {getOptionDisplayName("finishes", option)}
+                              </span>
                             </label>
                           ))}
                         </div>
@@ -1935,7 +2163,10 @@ const EstimateSectionForm = ({
                               className={`${STYLES.checkboxLabel} ${!mustSelectFaceFinish || isFinishExplicitlyNone("faceFinish") ? STYLES.checkboxLabelDisabled : ""}`}
                             >
                               <input
-                                disabled={!mustSelectFaceFinish || isFinishExplicitlyNone("faceFinish")}
+                                disabled={
+                                  !mustSelectFaceFinish ||
+                                  isFinishExplicitlyNone("faceFinish")
+                                }
                                 type="checkbox"
                                 checked={(formData.faceFinish || []).includes(
                                   option.id,
@@ -1945,7 +2176,9 @@ const EstimateSectionForm = ({
                                 }
                                 className="rounded border-slate-300"
                               />
-                              <span>{getOptionDisplayName("finishes", option)}</span>
+                              <span>
+                                {getOptionDisplayName("finishes", option)}
+                              </span>
                             </label>
                           ))}
                         </div>
@@ -2110,12 +2343,21 @@ const EstimateSectionForm = ({
                             formData.doorInsideMolding,
                           )}
                           onChange={handleChange}
-                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                          className={`${STYLES.select} ${
+                            errors.doorInsideMolding
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">{getPlaceholder("...")}</option>
                           <option value="true">Yes</option>
                           <option value="false">No</option>
                         </select>
+                        {errors.doorInsideMolding && (
+                          <p className={STYLES.errorText}>
+                            {errors.doorInsideMolding}
+                          </p>
+                        )}
                       </div>
                       <div className="grid items-center">
                         <label className={STYLES.label}>
@@ -2133,12 +2375,21 @@ const EstimateSectionForm = ({
                             formData.doorOutsideMolding,
                           )}
                           onChange={handleChange}
-                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                          className={`${STYLES.select} ${
+                            errors.doorOutsideMolding
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">{getPlaceholder("...")}</option>
                           <option value="true">Yes</option>
                           <option value="false">No</option>
                         </select>
+                        {errors.doorOutsideMolding && (
+                          <p className={STYLES.errorText}>
+                            {errors.doorOutsideMolding}
+                          </p>
+                        )}
                       </div>
                       <div className="grid items-center">
                         <label className={STYLES.label}>
@@ -2164,13 +2415,22 @@ const EstimateSectionForm = ({
                               : formData.doorPanelModId
                           }
                           onChange={handleChange}
-                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                          className={`${STYLES.select} ${
+                            errors.doorPanelModId
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">{getPlaceholder("...")}</option>
                           <option value="0">None</option>
                           <option value="15">Reeded</option>
                           <option value="22">Grooved</option>
                         </select>
+                        {errors.doorPanelModId && (
+                          <p className={STYLES.errorText}>
+                            {errors.doorPanelModId}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {/* Expandable Door Material/Finish Options */}
@@ -2246,7 +2506,8 @@ const EstimateSectionForm = ({
                                 {(() => {
                                   // 4th tier: fall back to effective face finish
                                   const faceFinishValue = getEffectiveValueOnly(
-                                    formData.faceFinish !== null && formData.faceFinish !== undefined
+                                    formData.faceFinish !== null &&
+                                      formData.faceFinish !== undefined
                                       ? formData.faceFinish
                                       : null,
                                     currentEstimate?.default_face_finish ??
@@ -2273,9 +2534,14 @@ const EstimateSectionForm = ({
                                     <input
                                       disabled={!mustSelectDoorFinish}
                                       type="checkbox"
-                                      checked={isFinishExplicitlyNone("door_finish")}
+                                      checked={isFinishExplicitlyNone(
+                                        "door_finish",
+                                      )}
                                       onChange={() =>
-                                        handleFinishChange(FINISH_NONE, "door_finish")
+                                        handleFinishChange(
+                                          FINISH_NONE,
+                                          "door_finish",
+                                        )
                                       }
                                       className="rounded border-slate-300"
                                     />
@@ -2288,11 +2554,14 @@ const EstimateSectionForm = ({
                                     className={`${STYLES.checkboxLabel} ${!mustSelectDoorFinish || isFinishExplicitlyNone("door_finish") ? STYLES.checkboxLabelDisabled : ""}`}
                                   >
                                     <input
-                                      disabled={!mustSelectDoorFinish || isFinishExplicitlyNone("door_finish")}
+                                      disabled={
+                                        !mustSelectDoorFinish ||
+                                        isFinishExplicitlyNone("door_finish")
+                                      }
                                       type="checkbox"
-                                      checked={(formData.door_finish || []).includes(
-                                        option.id,
-                                      )}
+                                      checked={(
+                                        formData.door_finish || []
+                                      ).includes(option.id)}
                                       onChange={() =>
                                         handleFinishChange(
                                           option.id,
@@ -2301,7 +2570,9 @@ const EstimateSectionForm = ({
                                       }
                                       className="rounded border-slate-300"
                                     />
-                                    <span>{getOptionDisplayName("finishes", option)}</span>
+                                    <span>
+                                      {getOptionDisplayName("finishes", option)}
+                                    </span>
                                   </label>
                                 ))}
                               </div>
@@ -2475,12 +2746,21 @@ const EstimateSectionForm = ({
                             formData.drawerInsideMolding,
                           )}
                           onChange={handleChange}
-                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                          className={`${STYLES.select} ${
+                            errors.drawerInsideMolding
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">{getPlaceholder("...")}</option>
                           <option value="true">Yes</option>
                           <option value="false">No</option>
                         </select>
+                        {errors.drawerInsideMolding && (
+                          <p className={STYLES.errorText}>
+                            {errors.drawerInsideMolding}
+                          </p>
+                        )}
                       </div>
                       <div className="grid items-center">
                         <label className={STYLES.label}>
@@ -2498,12 +2778,21 @@ const EstimateSectionForm = ({
                             formData.drawerOutsideMolding,
                           )}
                           onChange={handleChange}
-                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                          className={`${STYLES.select} ${
+                            errors.drawerOutsideMolding
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">{getPlaceholder("...")}</option>
                           <option value="true">Yes</option>
                           <option value="false">No</option>
                         </select>
+                        {errors.drawerOutsideMolding && (
+                          <p className={STYLES.errorText}>
+                            {errors.drawerOutsideMolding}
+                          </p>
+                        )}
                       </div>
                       <div className="grid items-center">
                         <label className={STYLES.label}>
@@ -2529,13 +2818,22 @@ const EstimateSectionForm = ({
                               : formData.drawerPanelModId
                           }
                           onChange={handleChange}
-                          className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                          className={`${STYLES.select} ${
+                            errors.drawerPanelModId
+                              ? STYLES.inputError
+                              : STYLES.inputNormal
+                          } ${STYLES.inputFocus}`}
                         >
                           <option value="">{getPlaceholder("...")}</option>
                           <option value="0">None</option>
                           <option value="15">Reeded</option>
                           <option value="22">Grooved</option>
                         </select>
+                        {errors.drawerPanelModId && (
+                          <p className={STYLES.errorText}>
+                            {errors.drawerPanelModId}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -2575,7 +2873,10 @@ const EstimateSectionForm = ({
                           </option>
                           {DRAWER_BOX_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
-                              {getOptionDisplayName("drawerBoxMaterials", option)}
+                              {getOptionDisplayName(
+                                "drawerBoxMaterials",
+                                option,
+                              )}
                             </option>
                           ))}
                         </select>
@@ -2662,7 +2963,8 @@ const EstimateSectionForm = ({
                                 {(() => {
                                   // 4th tier: fall back to effective face finish
                                   const faceFinishValue = getEffectiveValueOnly(
-                                    formData.faceFinish !== null && formData.faceFinish !== undefined
+                                    formData.faceFinish !== null &&
+                                      formData.faceFinish !== undefined
                                       ? formData.faceFinish
                                       : null,
                                     currentEstimate?.default_face_finish ??
@@ -2689,9 +2991,14 @@ const EstimateSectionForm = ({
                                     <input
                                       disabled={!mustSelectDrawerFrontFinish}
                                       type="checkbox"
-                                      checked={isFinishExplicitlyNone("drawer_front_finish")}
+                                      checked={isFinishExplicitlyNone(
+                                        "drawer_front_finish",
+                                      )}
                                       onChange={() =>
-                                        handleFinishChange(FINISH_NONE, "drawer_front_finish")
+                                        handleFinishChange(
+                                          FINISH_NONE,
+                                          "drawer_front_finish",
+                                        )
                                       }
                                       className="rounded border-slate-300"
                                     />
@@ -2704,11 +3011,16 @@ const EstimateSectionForm = ({
                                     className={`${STYLES.checkboxLabel} ${!mustSelectDrawerFrontFinish || isFinishExplicitlyNone("drawer_front_finish") ? STYLES.checkboxLabelDisabled : ""}`}
                                   >
                                     <input
-                                      disabled={!mustSelectDrawerFrontFinish || isFinishExplicitlyNone("drawer_front_finish")}
+                                      disabled={
+                                        !mustSelectDrawerFrontFinish ||
+                                        isFinishExplicitlyNone(
+                                          "drawer_front_finish",
+                                        )
+                                      }
                                       type="checkbox"
-                                      checked={(formData.drawer_front_finish || []).includes(
-                                        option.id,
-                                      )}
+                                      checked={(
+                                        formData.drawer_front_finish || []
+                                      ).includes(option.id)}
                                       onChange={() =>
                                         handleFinishChange(
                                           option.id,
@@ -2717,7 +3029,9 @@ const EstimateSectionForm = ({
                                       }
                                       className="rounded border-slate-300"
                                     />
-                                    <span>{getOptionDisplayName("finishes", option)}</span>
+                                    <span>
+                                      {getOptionDisplayName("finishes", option)}
+                                    </span>
                                   </label>
                                 ))}
                               </div>
@@ -2779,8 +3093,13 @@ const EstimateSectionForm = ({
                     value={formData.profit}
                     onChange={handleChange}
                     placeholder="0%"
-                    className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
+                    className={`${STYLES.input} ${
+                      errors.profit ? STYLES.inputError : STYLES.inputNormal
+                    } ${STYLES.inputFocus} text-center`}
                   />
+                  {errors.profit && (
+                    <p className={STYLES.errorText}>{errors.profit}</p>
+                  )}
                 </div>
 
                 {/* Commission */}
@@ -2806,8 +3125,13 @@ const EstimateSectionForm = ({
                     value={formData.commission}
                     onChange={handleChange}
                     placeholder="0%"
-                    className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
+                    className={`${STYLES.input} ${
+                      errors.commission ? STYLES.inputError : STYLES.inputNormal
+                    } ${STYLES.inputFocus} text-center`}
                   />
+                  {errors.commission && (
+                    <p className={STYLES.errorText}>{errors.commission}</p>
+                  )}
                 </div>
 
                 {/* Discount */}
@@ -2833,8 +3157,13 @@ const EstimateSectionForm = ({
                     value={formData.discount}
                     onChange={handleChange}
                     placeholder="0%"
-                    className={`${STYLES.input} ${STYLES.inputNormal} ${STYLES.inputFocus} text-center`}
+                    className={`${STYLES.input} ${
+                      errors.discount ? STYLES.inputError : STYLES.inputNormal
+                    } ${STYLES.inputFocus} text-center`}
                   />
+                  {errors.discount && (
+                    <p className={STYLES.errorText}>{errors.discount}</p>
+                  )}
                 </div>
 
                 <h3
@@ -2904,7 +3233,6 @@ const EstimateSectionForm = ({
               </div>
             </div>
           </div>
-
         </form>
       </div>
 
@@ -2934,23 +3262,23 @@ const EstimateSectionForm = ({
         )}
         {editType === EDIT_TYPES.SECTION &&
           Object.keys(currentEstimate?.price_overrides || {}).length > 0 && (
-          <div className="flex flex-1 items-center space-x-2">
-            <label className="flex items-center space-x-2 text-sm text-slate-200 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.use_default_prices || false}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    use_default_prices: e.target.checked,
-                  }))
-                }
-                className="w-5 h-5 rounded border-slate-400 bg-slate-700 text-purple-500 focus:ring-purple-500"
-              />
-              <span>Use Catalog Prices</span>
-            </label>
-          </div>
-        )}
+            <div className="flex flex-1 items-center space-x-2">
+              <label className="flex items-center space-x-2 text-sm text-slate-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.use_default_prices || false}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      use_default_prices: e.target.checked,
+                    }))
+                  }
+                  className="w-5 h-5 rounded border-slate-400 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                />
+                <span>Use Catalog Prices</span>
+              </label>
+            </div>
+          )}
         <button
           type="button"
           onClick={onCancel}

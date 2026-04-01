@@ -30,6 +30,29 @@ const applyOverrides = (items, overridesMap) => {
   });
 };
 
+const optionHasId = (options, value, idKey = "id") => {
+  if (!Array.isArray(options) || options.length === 0) return true;
+  return options.some((option) => String(option[idKey]) === String(value));
+};
+
+const sanitizeOptionId = (value, options, idKey = "id") => {
+  if (value === null || value === undefined || value === "") return null;
+  return optionHasId(options, value, idKey) ? value : null;
+};
+
+const sanitizeFinishArray = (value, finishOptions) => {
+  if (value === null || value === undefined) return null;
+  if (!Array.isArray(value)) return null;
+  if (!Array.isArray(finishOptions) || finishOptions.length === 0) return value;
+
+  if (value.length === 0) return [];
+
+  const allowed = new Set(finishOptions.map((finish) => String(finish.id)));
+  const filtered = value.filter((finishId) => allowed.has(String(finishId)));
+
+  return filtered.length > 0 ? filtered : null;
+};
+
 /**
  * Creates the context object needed for getSectionCalculations
  * Extracted from EstimateSectionPrice to be reusable across components
@@ -76,11 +99,108 @@ export const createSectionContext = (section, estimate, catalogData) => {
     catalog: applyOverrides(rawAccessories?.catalog, po.accessories),
   };
 
+  const normalizedSection = {
+    ...section,
+    cabinet_style_id: sanitizeOptionId(
+      section?.cabinet_style_id,
+      cabinetStyles,
+      "cabinet_style_id",
+    ),
+    box_mat: sanitizeOptionId(section?.box_mat, boxMaterials),
+    face_mat: sanitizeOptionId(section?.face_mat, faceMaterials),
+    drawer_box_mat: sanitizeOptionId(section?.drawer_box_mat, drawerBoxMaterials),
+    door_mat: sanitizeOptionId(section?.door_mat, faceMaterials),
+    drawer_front_mat: sanitizeOptionId(section?.drawer_front_mat, faceMaterials),
+    hinge_id: sanitizeOptionId(section?.hinge_id, hardware?.hinges),
+    slide_id: sanitizeOptionId(section?.slide_id, hardware?.slides),
+    door_pull_id: sanitizeOptionId(section?.door_pull_id, hardware?.pulls),
+    drawer_pull_id: sanitizeOptionId(section?.drawer_pull_id, hardware?.pulls),
+    face_finish: sanitizeFinishArray(section?.face_finish, finishTypes),
+    box_finish: sanitizeFinishArray(section?.box_finish, finishTypes),
+    door_finish: sanitizeFinishArray(section?.door_finish, finishTypes),
+    drawer_front_finish: sanitizeFinishArray(
+      section?.drawer_front_finish,
+      finishTypes,
+    ),
+  };
+
+  const normalizedEstimate = {
+    ...estimate,
+    default_cabinet_style_id: sanitizeOptionId(
+      estimate?.default_cabinet_style_id,
+      cabinetStyles,
+      "cabinet_style_id",
+    ),
+    default_box_mat: sanitizeOptionId(estimate?.default_box_mat, boxMaterials),
+    default_face_mat: sanitizeOptionId(estimate?.default_face_mat, faceMaterials),
+    default_drawer_box_mat: sanitizeOptionId(
+      estimate?.default_drawer_box_mat,
+      drawerBoxMaterials,
+    ),
+    default_hinge_id: sanitizeOptionId(estimate?.default_hinge_id, hardware?.hinges),
+    default_slide_id: sanitizeOptionId(estimate?.default_slide_id, hardware?.slides),
+    default_door_pull_id: sanitizeOptionId(
+      estimate?.default_door_pull_id,
+      hardware?.pulls,
+    ),
+    default_drawer_pull_id: sanitizeOptionId(
+      estimate?.default_drawer_pull_id,
+      hardware?.pulls,
+    ),
+    default_face_finish: sanitizeFinishArray(
+      estimate?.default_face_finish,
+      finishTypes,
+    ),
+    default_box_finish: sanitizeFinishArray(
+      estimate?.default_box_finish,
+      finishTypes,
+    ),
+  };
+
+  const normalizedTeamDefaults = {
+    ...teamDefaults,
+    default_cabinet_style_id: sanitizeOptionId(
+      teamDefaults?.default_cabinet_style_id,
+      cabinetStyles,
+      "cabinet_style_id",
+    ),
+    default_box_mat: sanitizeOptionId(teamDefaults?.default_box_mat, boxMaterials),
+    default_face_mat: sanitizeOptionId(teamDefaults?.default_face_mat, faceMaterials),
+    default_drawer_box_mat: sanitizeOptionId(
+      teamDefaults?.default_drawer_box_mat,
+      drawerBoxMaterials,
+    ),
+    default_hinge_id: sanitizeOptionId(
+      teamDefaults?.default_hinge_id,
+      hardware?.hinges,
+    ),
+    default_slide_id: sanitizeOptionId(
+      teamDefaults?.default_slide_id,
+      hardware?.slides,
+    ),
+    default_door_pull_id: sanitizeOptionId(
+      teamDefaults?.default_door_pull_id,
+      hardware?.pulls,
+    ),
+    default_drawer_pull_id: sanitizeOptionId(
+      teamDefaults?.default_drawer_pull_id,
+      hardware?.pulls,
+    ),
+    default_face_finish: sanitizeFinishArray(
+      teamDefaults?.default_face_finish,
+      finishTypes,
+    ),
+    default_box_finish: sanitizeFinishArray(
+      teamDefaults?.default_box_finish,
+      finishTypes,
+    ),
+  };
+
   // Get effective defaults and merge with section (three-tier fallback)
   const effectiveDefaults = getEffectiveDefaults(
-    section,
-    estimate,
-    teamDefaults,
+    normalizedSection,
+    normalizedEstimate,
+    normalizedTeamDefaults,
   );
 
   // Check if face finish should be applied using three-tier fallback
@@ -89,9 +209,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
       (Array.isArray(effectiveDefaults?.face_finish) &&
         effectiveDefaults.face_finish.length > 0)) &&
     shouldApplyFinish(
-      section.face_mat,
-      estimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
+      normalizedSection.face_mat,
+      normalizedEstimate?.default_face_mat,
+      normalizedTeamDefaults?.default_face_mat,
       faceMaterials || [],
     );
 
@@ -101,9 +221,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
       (Array.isArray(effectiveDefaults?.box_finish) &&
         effectiveDefaults.box_finish.length > 0)) &&
     shouldApplyFinish(
-      section.box_mat,
-      estimate?.default_box_mat,
-      teamDefaults?.default_box_mat,
+      normalizedSection.box_mat,
+      normalizedEstimate?.default_box_mat,
+      normalizedTeamDefaults?.default_box_mat,
       boxMaterials || [],
     );
 
@@ -113,9 +233,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
       (Array.isArray(effectiveDefaults?.door_finish) &&
         effectiveDefaults.door_finish.length > 0)) &&
     shouldApplyFinish(
-      section.door_mat || section.face_mat,
-      estimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
+      normalizedSection.door_mat || normalizedSection.face_mat,
+      normalizedEstimate?.default_face_mat,
+      normalizedTeamDefaults?.default_face_mat,
       faceMaterials || [],
     );
 
@@ -125,9 +245,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
       (Array.isArray(effectiveDefaults?.drawer_front_finish) &&
         effectiveDefaults.drawer_front_finish.length > 0)) &&
     shouldApplyFinish(
-      section.drawer_front_mat || section.face_mat,
-      estimate?.default_face_mat,
-      teamDefaults?.default_face_mat,
+      normalizedSection.drawer_front_mat || normalizedSection.face_mat,
+      normalizedEstimate?.default_face_mat,
+      normalizedTeamDefaults?.default_face_mat,
       faceMaterials || [],
     );
 
@@ -329,8 +449,8 @@ export const createSectionContext = (section, estimate, catalogData) => {
     globalServices,
     lengthsCatalog,
     accessories,
-    estimate,
-    team: teamDefaults,
+    estimate: normalizedEstimate,
+    team: normalizedTeamDefaults,
   };
 
   // Check if this section uses any items that have price overrides

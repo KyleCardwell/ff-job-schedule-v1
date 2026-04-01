@@ -432,7 +432,7 @@ const EstimateNotesManager = ({
 };
 
 EstimateNotesManager.propTypes = {
-  estimateId: PropTypes.string.isRequired,
+  estimateId: PropTypes.number.isRequired,
   onSelectedNotesChange: PropTypes.func,
   marginTop: PropTypes.string,
 };
