@@ -58,7 +58,7 @@ const EstimateSectionForm = ({
   );
   const materials = useSelector((state) => state.materials);
   const hardware = useSelector((state) => state.hardware);
-  const { styles: cabinetStyles } = useSelector((state) => state.cabinetStyles);
+  const cabinetStyles = useSelector((state) => state.cabinetStyles?.styles || []);
   const finishes = useSelector((state) => state.finishes);
   const teamDefaults = useSelector(
     (state) => state.teamEstimateDefaults.teamDefaults,
@@ -91,7 +91,10 @@ const EstimateSectionForm = ({
     () => materials?.boxMaterials || [],
     [materials?.boxMaterials],
   );
-  const STYLE_OPTIONS = useMemo(() => cabinetStyles || [], [cabinetStyles]);
+  const STYLE_OPTIONS = useMemo(
+    () => (cabinetStyles || []).filter((style) => style.is_active),
+    [cabinetStyles],
+  );
   const FINISH_OPTIONS = useMemo(
     () => finishes?.finishes || [],
     [finishes?.finishes],
@@ -584,10 +587,7 @@ const EstimateSectionForm = ({
 
         if (current === "" || current === undefined) {
           sanitized = null;
-        } else if (
-          current !== null &&
-          !optionHasId(options, current, idKey)
-        ) {
+        } else if (current !== null && !optionHasId(options, current, idKey)) {
           sanitized = null;
         }
 
