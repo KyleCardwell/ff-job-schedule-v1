@@ -2,7 +2,11 @@ import { isEqual } from "lodash";
 
 import { PANEL_MOD_DISPLAY_NAMES, UNFINISHED } from "./constants";
 
-export const SECTION_NOTES_LABELS = ["Notes:", "Includes:", "Does Not Include:"];
+export const SECTION_NOTES_LABELS = [
+  "Notes:",
+  "Includes:",
+  "Does Not Include:",
+];
 
 export const buildPanelModNote = (effectiveSection = {}) => {
   const doorPanelModId = effectiveSection.door_panel_mod_id;
@@ -12,11 +16,13 @@ export const buildPanelModNote = (effectiveSection = {}) => {
 
   if (hasPanelModDoors && hasPanelModDrawers) {
     if (doorPanelModId === drawerPanelModId) {
-      const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+      const panelModName =
+        PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
       return `${panelModName} on doors and drawer fronts.`;
     }
 
-    const doorPanelName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+    const doorPanelName =
+      PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
     const drawerPanelName =
       PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
     return `${doorPanelName} on doors, ${drawerPanelName} on drawer fronts.`;
@@ -171,7 +177,8 @@ export const buildDoorDrawerMaterialNote = ({
 
 export const buildAppliedMoldingNote = (effectiveSection = {}) => {
   const hasDoorMolding =
-    effectiveSection.door_inside_molding || effectiveSection.door_outside_molding;
+    effectiveSection.door_inside_molding ||
+    effectiveSection.door_outside_molding;
   const hasDrawerMolding =
     effectiveSection.drawer_inside_molding ||
     effectiveSection.drawer_outside_molding;
@@ -198,6 +205,27 @@ export const buildHorizontalGrainNote = (effectiveSection = {}) => {
   return "";
 };
 
+export const buildExcludedPullsNote = (
+  effectiveSection = {},
+  hasDoors = false,
+  hasDrawerFronts = false
+) => {
+  const noDoorPulls = hasDoors && effectiveSection.include_door_pulls === false;
+  const noDrawerPulls =
+    hasDrawerFronts && effectiveSection.include_drawer_pulls === false;
+
+  if (noDoorPulls && noDrawerPulls) {
+    return "Door & Drawer Front Pulls.";
+  }
+  if (noDoorPulls) {
+    return "Door Pulls.";
+  }
+  if (noDrawerPulls) {
+    return "Drawer Front Pulls.";
+  }
+  return "";
+};
+
 export const buildAdditionalSectionNotesText = ({
   effectiveSection,
   hasDoors,
@@ -216,15 +244,27 @@ export const buildAdditionalSectionNotesText = ({
 
   const panelModNote = buildPanelModNote(effectiveSection);
   const appliedMoldingNote = buildAppliedMoldingNote(effectiveSection);
+  const excludedPullsNote = buildExcludedPullsNote(
+    effectiveSection,
+    hasDoors,
+    hasDrawerFronts,
+  );
 
   return {
     horizontalGrainNote,
     doorDrawerMaterialNote,
     panelModNote,
     appliedMoldingNote,
-    additionalNotesText: [horizontalGrainNote, doorDrawerMaterialNote, panelModNote, appliedMoldingNote]
+    excludedPullsNote,
+    additionalNotesText: [
+      horizontalGrainNote,
+      doorDrawerMaterialNote,
+      panelModNote,
+      appliedMoldingNote,
+    ]
       .filter(Boolean)
       .join(" "),
+    doesNotIncludeText: [excludedPullsNote].filter(Boolean).join(" "),
   };
 };
 
@@ -256,7 +296,9 @@ export const SECTION_NOTES_OPTIONS = [
     placeholder: "8",
     estimateText: (value) => {
       const text = typeof value === "string" ? value.trim() : "";
-      return text ? `Cabinets Assumed ${text}ft Tall.` : "Cabinets Assumed __ft Tall.";
+      return text
+        ? `Cabinets Assumed ${text}ft Tall.`
+        : "Cabinets Assumed __ft Tall.";
     },
   },
   {
@@ -282,7 +324,9 @@ const buildNoteEntryText = (entry, index) => {
 
   const noteText = typeof entry.note === "string" ? entry.note.trim() : "";
   const options =
-    entry.options && typeof entry.options === "object" && !Array.isArray(entry.options)
+    entry.options &&
+    typeof entry.options === "object" &&
+    !Array.isArray(entry.options)
       ? entry.options
       : {};
 
@@ -297,7 +341,11 @@ const buildNoteEntryText = (entry, index) => {
   return [...optionLines, noteText].filter(Boolean).join(" ");
 };
 
-export const buildProcessedSectionNotes = (sectionNotes, additionalNotesText) => {
+export const buildProcessedSectionNotes = (
+  sectionNotes,
+  additionalNotesText,
+  doesNotIncludeText = "",
+) => {
   if (sectionNotes) {
     if (Array.isArray(sectionNotes)) {
       const processedNotes = [0, 1, 2].map((index) =>
@@ -309,6 +357,14 @@ export const buildProcessedSectionNotes = (sectionNotes, additionalNotesText) =>
           processedNotes[0] = `${additionalNotesText} ${processedNotes[0]}`;
         } else {
           processedNotes[0] = additionalNotesText;
+        }
+      }
+
+      if (doesNotIncludeText) {
+        if (processedNotes[2]) {
+          processedNotes[2] = `${doesNotIncludeText} ${processedNotes[2]}`;
+        } else {
+          processedNotes[2] = doesNotIncludeText;
         }
       }
 
@@ -324,8 +380,8 @@ export const buildProcessedSectionNotes = (sectionNotes, additionalNotesText) =>
     return null;
   }
 
-  if (additionalNotesText) {
-    return [additionalNotesText, "", ""];
+  if (additionalNotesText || doesNotIncludeText) {
+    return [additionalNotesText || "", "", doesNotIncludeText || ""];
   }
 
   return null;

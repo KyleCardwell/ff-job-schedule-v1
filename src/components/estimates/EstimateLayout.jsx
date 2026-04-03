@@ -536,6 +536,8 @@ const EstimateLayout = () => {
                   slide_id: templateSection.slide_id,
                   door_pull_id: templateSection.door_pull_id,
                   drawer_pull_id: templateSection.drawer_pull_id,
+                  include_door_pulls: templateSection.include_door_pulls,
+                  include_drawer_pulls: templateSection.include_drawer_pulls,
                   drawer_box_mat: templateSection.drawer_box_mat,
                   door_style: templateSection.door_style,
                   drawer_front_style: templateSection.drawer_front_style,

@@ -176,7 +176,7 @@ const EstimatePreviewSection = ({
         ? `${taskName} - Section ${sectionNumber}`
         : taskName;
 
-    const { doorDrawerMaterialNote, additionalNotesText } =
+    const { doorDrawerMaterialNote, additionalNotesText, doesNotIncludeText } =
       buildAdditionalSectionNotesText({
         effectiveSection,
         hasDoors,
@@ -188,6 +188,7 @@ const EstimatePreviewSection = ({
     const processedNotes = buildProcessedSectionNotes(
       section.notes,
       additionalNotesText,
+      doesNotIncludeText,
     );
     const displayNotesLines = buildDisplayNotesLines(processedNotes);
 

@@ -1277,6 +1277,15 @@ const countHardware = (section, faceTotals, context) => {
     }
   });
 
+  // Zero out pull counts when user explicitly chose "None"
+  if (section.include_door_pulls === false) {
+    totalDoorPulls = 0;
+    totalAppliancePulls = 0;
+  }
+  if (section.include_drawer_pulls === false) {
+    totalDrawerPulls = 0;
+  }
+
   // Get hardware items from section
   const doorHinge = context.hardware?.hinges?.find(
     (h) => h.id === section.hinge_id,

@@ -640,16 +640,20 @@ const AddToSchedule = () => {
 
         addHardwareCount(hardwareCounts.hinges, section?.hinge_id, hingesCount);
         addHardwareCount(hardwareCounts.slides, section?.slide_id, slidesCount);
-        addHardwareCount(
-          hardwareCounts.pulls,
-          section?.door_pull_id,
-          doorPullCount,
-        );
-        addHardwareCount(
-          hardwareCounts.pulls,
-          section?.drawer_pull_id,
-          drawerPullCount,
-        );
+        if (section?.include_door_pulls !== false) {
+          addHardwareCount(
+            hardwareCounts.pulls,
+            section?.door_pull_id,
+            doorPullCount,
+          );
+        }
+        if (section?.include_drawer_pulls !== false) {
+          addHardwareCount(
+            hardwareCounts.pulls,
+            section?.drawer_pull_id,
+            drawerPullCount,
+          );
+        }
       });
 
       const adjustedTotals = allocateUnmappedCosts(

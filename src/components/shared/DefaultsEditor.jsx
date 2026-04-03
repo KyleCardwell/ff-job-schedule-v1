@@ -72,8 +72,12 @@ const DefaultsEditor = ({
     drawer_panel_mod_id: data.drawer_panel_mod_id ?? data.default_drawer_panel_mod_id ?? "",
     hinge_id: data.hinge_id || data.default_hinge_id || "",
     slide_id: data.slide_id || data.default_slide_id || "",
-    door_pull_id: data.door_pull_id || data.default_door_pull_id || "",
-    drawer_pull_id: data.drawer_pull_id || data.default_drawer_pull_id || "",
+    door_pull_id: (data.include_door_pulls === false || data.default_include_door_pulls === false)
+      ? "none"
+      : (data.door_pull_id || data.default_door_pull_id || ""),
+    drawer_pull_id: (data.include_drawer_pulls === false || data.default_include_drawer_pulls === false)
+      ? "none"
+      : (data.drawer_pull_id || data.default_drawer_pull_id || ""),
     drawer_box_mat: data.drawer_box_mat || data.default_drawer_box_mat || "",
   });
 
@@ -132,14 +136,16 @@ const DefaultsEditor = ({
       "box_mat",
       "face_mat",
       "drawer_box_mat",
-      "door_pull_id",
-      "drawer_pull_id",
       "slide_id",
       "hinge_id",
     ];
+
+    const pullFields = ["door_pull_id", "drawer_pull_id"];
     
     let processedValue = value;
-    if (numericFields.includes(name) && value !== "") {
+    if (pullFields.includes(name)) {
+      processedValue = value === "none" ? "none" : value === "" ? "" : +value;
+    } else if (numericFields.includes(name) && value !== "") {
       processedValue = +value;
     }
 
@@ -199,6 +205,24 @@ const DefaultsEditor = ({
         // Convert form data to appropriate format for the level
         const dataToSave = { ...formData };
         
+        // Derive include_*_pulls booleans from pull selection
+        if (dataToSave.door_pull_id === "none") {
+          dataToSave.include_door_pulls = false;
+          dataToSave.door_pull_id = null;
+        } else if (dataToSave.door_pull_id) {
+          dataToSave.include_door_pulls = true;
+        } else {
+          dataToSave.include_door_pulls = null;
+        }
+        if (dataToSave.drawer_pull_id === "none") {
+          dataToSave.include_drawer_pulls = false;
+          dataToSave.drawer_pull_id = null;
+        } else if (dataToSave.drawer_pull_id) {
+          dataToSave.include_drawer_pulls = true;
+        } else {
+          dataToSave.include_drawer_pulls = null;
+        }
+
         // For estimate/team levels, convert field names to include 'default_' prefix
         if (isTeamLevel || isEstimateLevel) {
           const prefixedData = {};

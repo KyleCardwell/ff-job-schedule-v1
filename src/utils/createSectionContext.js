@@ -265,6 +265,8 @@ export const createSectionContext = (section, estimate, catalogData) => {
     slide_id: effectiveDefaults.slide_id,
     door_pull_id: effectiveDefaults.door_pull_id,
     drawer_pull_id: effectiveDefaults.drawer_pull_id,
+    include_door_pulls: effectiveDefaults.include_door_pulls,
+    include_drawer_pulls: effectiveDefaults.include_drawer_pulls,
     // Only include finishes if the material needs them
     face_finish: faceFinishNeeded ? effectiveDefaults.face_finish : [],
     box_finish: boxFinishNeeded ? effectiveDefaults.box_finish : [],

@@ -505,18 +505,25 @@ const EstimateSectionInfo = ({
                 );
               })()}
               {(() => {
+                const { value: includeDoorPulls, source: includeDoorPullsSource } = getSectionEffectiveValue(
+                  showEstimateDefaults ? null : section?.include_door_pulls,
+                  "default_include_door_pulls",
+                  "default_include_door_pulls",
+                );
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.door_pull_id,
                   "default_door_pull_id",
                   "default_door_pull_id",
                 );
+                const pullSource =
+                  includeDoorPulls === false ? includeDoorPullsSource : source;
                 return (
                   <>
                     <div className="text-slate-400 flex items-center gap-2">
-                      <span className={getSourceColor(source)}>●</span>
+                      <span className={getSourceColor(pullSource)}>●</span>
                       <span>Door Pulls:</span>
                     </div>
-                    <div className="pl-5 mb-3">{getPullName(value)}</div>
+                    <div className="pl-5 mb-3">{includeDoorPulls === false ? NONE : getPullName(value)}</div>
                   </>
                 );
               })()}
@@ -666,18 +673,30 @@ const EstimateSectionInfo = ({
                 );
               })()}
               {(() => {
+                const {
+                  value: includeDrawerPulls,
+                  source: includeDrawerPullsSource,
+                } = getSectionEffectiveValue(
+                  showEstimateDefaults ? null : section?.include_drawer_pulls,
+                  "default_include_drawer_pulls",
+                  "default_include_drawer_pulls",
+                );
                 const { value, source } = getSectionEffectiveValue(
                   showEstimateDefaults ? null : section?.drawer_pull_id,
                   "default_drawer_pull_id",
                   "default_drawer_pull_id",
                 );
+                const pullSource =
+                  includeDrawerPulls === false
+                    ? includeDrawerPullsSource
+                    : source;
                 return (
                   <>
                     <div className="text-slate-400 flex items-center gap-2">
-                      <span className={getSourceColor(source)}>●</span>
+                      <span className={getSourceColor(pullSource)}>●</span>
                       <span>Drawer Pulls:</span>
                     </div>
-                    <div className="pl-5 mb-3">{getPullName(value)}</div>
+                    <div className="pl-5 mb-3">{includeDrawerPulls === false ? NONE : getPullName(value)}</div>
                   </>
                 );
               })()}

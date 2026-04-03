@@ -22,6 +22,7 @@ import {
   FACE_STYLES,
   FACE_STYLE_VALUES,
   EDIT_TYPES,
+  NONE,
 } from "../../utils/constants";
 import {
   getNewSectionDefaults,
@@ -277,6 +278,69 @@ const EstimateSectionForm = ({
     );
   };
 
+  const getEffectivePullDefaultDisplay = (
+    pullFieldValue,
+    pullEstimateKey,
+    pullTeamKey,
+    includeEstimateKey,
+  ) => {
+    if (editType === EDIT_TYPES.TEAM) {
+      return null;
+    }
+
+    const isExplicitPullOverride =
+      pullFieldValue !== "" &&
+      pullFieldValue !== null &&
+      pullFieldValue !== undefined;
+
+    if (isExplicitPullOverride) {
+      return <span className="flex-1 px-1 border border-amber-400 ml-1"></span>;
+    }
+
+    const estimateIncludeValue =
+      editType === EDIT_TYPES.ESTIMATE
+        ? null
+        : currentEstimate?.[includeEstimateKey];
+    const { value: effectiveIncludePulls } = getEffectiveValue(
+      null,
+      estimateIncludeValue,
+      true,
+    );
+
+    if (effectiveIncludePulls === false) {
+      return (
+        <span className={`flex-1 px-1 text-white text-sm bg-${COLOR_CLASS} ml-1`}>
+          {NONE}
+        </span>
+      );
+    }
+
+    const estimatePullValue =
+      editType === EDIT_TYPES.ESTIMATE
+        ? null
+        : currentEstimate?.[pullEstimateKey];
+    const teamPullValue = teamDefaults?.[pullTeamKey];
+    const { value: effectivePullValue } = getEffectiveValue(
+      null,
+      estimatePullValue,
+      teamPullValue,
+    );
+
+    if (effectivePullValue === null || effectivePullValue === undefined) {
+      return null;
+    }
+
+    const displayValue = formatPullName(effectivePullValue);
+
+    return (
+      displayValue && (
+        <span className={`flex-1 px-1 text-white text-sm bg-${COLOR_CLASS} ml-1`}>
+          {displayValue}
+        </span>
+      )
+    );
+  };
+
   // Formatters for different field types
   const formatStyleName = (id) =>
     STYLE_OPTIONS.find((s) => s.cabinet_style_id === id)?.cabinet_style_name ||
@@ -493,16 +557,20 @@ const EstimateSectionForm = ({
         data[hingeField] || data.hinge_id || initialDefaults.hinge_id || "",
       slide_id:
         data[slideField] || data.slide_id || initialDefaults.slide_id || "",
-      door_pull_id:
-        data[doorPullField] ||
-        data.door_pull_id ||
-        initialDefaults.door_pull_id ||
-        "",
-      drawer_pull_id:
-        data[drawerPullField] ||
-        data.drawer_pull_id ||
-        initialDefaults.drawer_pull_id ||
-        "",
+      door_pull_id: (() => {
+        const includeDoorPullsField = editType === EDIT_TYPES.SECTION
+          ? 'include_door_pulls'
+          : 'default_include_door_pulls';
+        if (data[includeDoorPullsField] === false || data.include_door_pulls === false) return "none";
+        return data[doorPullField] || data.door_pull_id || initialDefaults.door_pull_id || "";
+      })(),
+      drawer_pull_id: (() => {
+        const includeDrawerPullsField = editType === EDIT_TYPES.SECTION
+          ? 'include_drawer_pulls'
+          : 'default_include_drawer_pulls';
+        if (data[includeDrawerPullsField] === false || data.include_drawer_pulls === false) return "none";
+        return data[drawerPullField] || data.drawer_pull_id || initialDefaults.drawer_pull_id || "";
+      })(),
       drawer_box_mat:
         data[drawerBoxMatField] ||
         data.drawer_box_mat ||
@@ -757,13 +825,14 @@ const EstimateSectionForm = ({
       "boxMaterial",
       "faceMaterial",
       "drawer_box_mat",
-      "door_pull_id",
-      "drawer_pull_id",
       "slide_id",
       "hinge_id",
       "door_mat",
       "drawer_front_mat",
     ];
+
+    // Pull fields accept "none" sentinel in addition to numeric IDs
+    const pullFields = ["door_pull_id", "drawer_pull_id"];
 
     // Handle adjustment fields - convert to number but allow empty string to become null
     const adjustmentFields = ["quantity", "profit", "commission", "discount"];
@@ -781,7 +850,10 @@ const EstimateSectionForm = ({
     const panelModIdFields = ["doorPanelModId", "drawerPanelModId"];
 
     let processedValue = value;
-    if (numericFields.includes(name) && value !== "") {
+    if (pullFields.includes(name)) {
+      // "none" = explicit none, "" = inherit, otherwise numeric ID
+      processedValue = value === "none" ? "none" : value === "" ? "" : +value;
+    } else if (numericFields.includes(name) && value !== "") {
       processedValue = +value;
     } else if (adjustmentFields.includes(name)) {
       // For adjustment fields: empty string stays as empty string in state,
@@ -944,14 +1016,14 @@ const EstimateSectionForm = ({
       ...formData,
       style: sourceSection.cabinet_style_id || "",
       boxMaterial: sourceSection.box_mat || "",
-      boxFinish: sourceSection.box_finish ?? [],
+      boxFinish: sourceSection.box_finish,
       faceMaterial: sourceSection.face_mat || "",
-      faceFinish: sourceSection.face_finish ?? [],
-      door_finish: sourceSection.door_finish ?? [],
+      faceFinish: sourceSection.face_finish,
+      door_finish: sourceSection.door_finish,
       door_mat: sourceSection.door_mat || "",
       doorStyle: sourceSection.door_style || "",
       drawerFrontStyle: sourceSection.drawer_front_style || "",
-      drawer_front_finish: sourceSection.drawer_front_finish ?? [],
+      drawer_front_finish: sourceSection.drawer_front_finish,
       drawer_front_mat: sourceSection.drawer_front_mat || "",
       doorInsideMolding: sourceSection.door_inside_molding ?? null,
       doorOutsideMolding: sourceSection.door_outside_molding ?? null,
@@ -962,8 +1034,14 @@ const EstimateSectionForm = ({
       drawerPanelModId: sourceSection.drawer_panel_mod_id ?? "",
       hinge_id: sourceSection.hinge_id || "",
       slide_id: sourceSection.slide_id || "",
-      door_pull_id: sourceSection.door_pull_id || "",
-      drawer_pull_id: sourceSection.drawer_pull_id || "",
+      door_pull_id: sourceSection.include_door_pulls === false
+        ? "none"
+        : (sourceSection.door_pull_id || ""),
+      drawer_pull_id: sourceSection.include_drawer_pulls === false
+        ? "none"
+        : (sourceSection.drawer_pull_id || ""),
+      include_door_pulls: sourceSection.include_door_pulls ?? null,
+      include_drawer_pulls: sourceSection.include_drawer_pulls ?? null,
       drawer_box_mat: sourceSection.drawer_box_mat || "",
       profit: sourceSection.profit ?? "",
       commission: sourceSection.commission ?? "",
@@ -1207,11 +1285,11 @@ const EstimateSectionForm = ({
         newErrors.slide_id = "Drawer slide type is required";
       }
 
-      if (!formData.door_pull_id) {
+      if (!formData.door_pull_id || formData.door_pull_id === "none") {
         newErrors.door_pull_id = "Door pull type is required";
       }
 
-      if (!formData.drawer_pull_id) {
+      if (!formData.drawer_pull_id || formData.drawer_pull_id === "none") {
         newErrors.drawer_pull_id = "Drawer pull type is required";
       }
 
@@ -1387,8 +1465,8 @@ const EstimateSectionForm = ({
             default_drawer_panel_mod_id: formData.drawerPanelModId,
             default_hinge_id: formData.hinge_id,
             default_slide_id: formData.slide_id,
-            default_door_pull_id: formData.door_pull_id,
-            default_drawer_pull_id: formData.drawer_pull_id,
+            default_door_pull_id: formData.door_pull_id === "none" ? null : formData.door_pull_id,
+            default_drawer_pull_id: formData.drawer_pull_id === "none" ? null : formData.drawer_pull_id,
             default_drawer_box_mat: formData.drawer_box_mat,
             default_profit: Number(formData.profit),
             default_commission: Number(formData.commission),
@@ -1425,8 +1503,20 @@ const EstimateSectionForm = ({
                 : formData.drawerPanelModId,
             default_hinge_id: formData.hinge_id || null,
             default_slide_id: formData.slide_id || null,
-            default_door_pull_id: formData.door_pull_id || null,
-            default_drawer_pull_id: formData.drawer_pull_id || null,
+            default_door_pull_id: formData.door_pull_id === "none" ? null : (formData.door_pull_id || null),
+            default_drawer_pull_id: formData.drawer_pull_id === "none" ? null : (formData.drawer_pull_id || null),
+            default_include_door_pulls:
+              formData.door_pull_id === "none"
+                ? false
+                : formData.door_pull_id
+                  ? true
+                  : null,
+            default_include_drawer_pulls:
+              formData.drawer_pull_id === "none"
+                ? false
+                : formData.drawer_pull_id
+                  ? true
+                  : null,
             default_drawer_box_mat: formData.drawer_box_mat || null,
             default_profit:
               formData.profit === "" || formData.profit == null
@@ -1491,6 +1581,24 @@ const EstimateSectionForm = ({
                 ? cleanedOverrides
                 : null;
           }
+
+          // Derive include_*_pulls booleans from pull selection
+          processedData.include_door_pulls =
+            processedData.door_pull_id === "none"
+              ? false
+              : processedData.door_pull_id
+                ? true
+                : null;
+          processedData.include_drawer_pulls =
+            processedData.drawer_pull_id === "none"
+              ? false
+              : processedData.drawer_pull_id
+                ? true
+                : null;
+
+          // Clear pull IDs when "none" is selected (before FK cleanup)
+          if (processedData.door_pull_id === "none") processedData.door_pull_id = null;
+          if (processedData.drawer_pull_id === "none") processedData.drawer_pull_id = null;
 
           // Convert empty strings to null for material/hardware foreign key fields
           const foreignKeyFields = [
@@ -2291,11 +2399,11 @@ const EstimateSectionForm = ({
                       <div className="grid items-center">
                         <label htmlFor="door_pull_id" className={STYLES.label}>
                           <span>Pulls</span>
-                          {getEffectiveDefaultDisplay(
+                          {getEffectivePullDefaultDisplay(
                             formData.door_pull_id,
                             "default_door_pull_id",
                             "default_door_pull_id",
-                            formatPullName,
+                            "default_include_door_pulls",
                           )}
                         </label>
                         <select
@@ -2312,6 +2420,9 @@ const EstimateSectionForm = ({
                           <option value="">
                             {getPlaceholder("door pull type")}
                           </option>
+                          {editType !== EDIT_TYPES.TEAM && (
+                            <option value="none">None</option>
+                          )}
                           {PULL_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
                               {`${getOptionDisplayName("hardware.pulls", option)} - $${getOptionDisplayPrice("hardware.pulls", option, "price")}/pull`}
@@ -2694,11 +2805,11 @@ const EstimateSectionForm = ({
                           className={STYLES.label}
                         >
                           <span>Pulls</span>
-                          {getEffectiveDefaultDisplay(
+                          {getEffectivePullDefaultDisplay(
                             formData.drawer_pull_id,
                             "default_drawer_pull_id",
                             "default_drawer_pull_id",
-                            formatPullName,
+                            "default_include_drawer_pulls",
                           )}
                         </label>
                         <select
@@ -2715,6 +2826,9 @@ const EstimateSectionForm = ({
                           <option value="">
                             {getPlaceholder("drawer pull type")}
                           </option>
+                          {editType !== EDIT_TYPES.TEAM && (
+                            <option value="none">None</option>
+                          )}
                           {PULL_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
                               {`${getOptionDisplayName("hardware.pulls", option)} - $${getOptionDisplayPrice("hardware.pulls", option, "price")}/pull`}

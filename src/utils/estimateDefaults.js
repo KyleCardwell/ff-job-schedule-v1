@@ -106,6 +106,18 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       estimate.default_drawer_pull_id,
       team.default_drawer_pull_id
     ),
+    // Include pulls booleans (null = inherit/include, false = none)
+    // Team level always includes pulls, so we default to true at the team tier
+    include_door_pulls: getEffectiveValueOnly(
+      section.include_door_pulls,
+      estimate.default_include_door_pulls,
+      true
+    ),
+    include_drawer_pulls: getEffectiveValueOnly(
+      section.include_drawer_pulls,
+      estimate.default_include_drawer_pulls,
+      true
+    ),
     
     // Finishes (arrays)
     face_finish: getEffectiveValueOnly(
@@ -239,6 +251,8 @@ export const DEFAULTS_FIELD_MAPPING = {
   slide_id: 'slide_id',
   door_pull_id: 'door_pull_id',
   drawer_pull_id: 'drawer_pull_id',
+  include_door_pulls: 'include_door_pulls',
+  include_drawer_pulls: 'include_drawer_pulls',
   faceFinish: 'face_finish',
   boxFinish: 'box_finish',
   door_finish: 'door_finish',
