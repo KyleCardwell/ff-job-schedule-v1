@@ -220,7 +220,10 @@ const EstimateSectionBreakdown = ({
                 >
                   <div className="text-slate-300 text-xs text-left pl-4">
                     <span className="text-slate-500 mr-1">-</span>
-                    {itemHours.name} {itemHours.length ? `(${itemHours.length} ft)` : ""}
+                    {itemHours.name}{" "}
+                    {itemHours.length
+                      ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)`
+                      : ""}
                   </div>
                   <div className="text-slate-600 text-right text-xs">-</div>
                   {serviceIds.map((serviceId) => {

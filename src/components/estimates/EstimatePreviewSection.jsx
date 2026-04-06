@@ -226,7 +226,7 @@ const EstimatePreviewSection = ({
         ? formatDoorDrawerStyle(effectiveSection.drawer_front_style)
         : "None",
       faceFinish: faceFinishNames,
-      boxFinish: boxFinishNames,
+      boxFinish: hasBoxes ? boxFinishNames : "None",
       doorMaterialNote: doorDrawerMaterialNote, // For PDF door/drawer material note
       notes: processedNotes, // Array format for PDF
       displayNotes: displayNotesLines, // Formatted lines for UI display
@@ -303,7 +303,15 @@ const EstimatePreviewSection = ({
       {hasMultipleSections && (
         <div className="border-b border-slate-600 pb-4 mb-4">
           <h3 className="text-lg font-semibold text-slate-200">
-            {scheduled ? <FiCalendar size={18} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {taskName}
+            {scheduled ? (
+              <FiCalendar
+                size={18}
+                className={`inline ${TASK_SCHEDULED_COLOR}`}
+              />
+            ) : (
+              ""
+            )}{" "}
+            {taskName}
             {sectionData.sectionNameDisplay}
           </h3>
           {sectionData.displayNotes &&
@@ -335,12 +343,12 @@ const EstimatePreviewSection = ({
           <p className="text-slate-200">{sectionData.cabinetStyle || "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Face Material:</p>
-          <p className="text-slate-200">{sectionData.faceMaterial || "—"}</p>
-        </div>
-        <div>
           <p className="text-slate-400">Box Material:</p>
           <p className="text-slate-200">{sectionData.boxMaterial || "—"}</p>
+        </div>
+        <div>
+          <p className="text-slate-400">Face Material:</p>
+          <p className="text-slate-200">{sectionData.faceMaterial || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Door Style:</p>
@@ -355,12 +363,12 @@ const EstimatePreviewSection = ({
           </p>
         </div>
         <div>
-          <p className="text-slate-400">Face Finish:</p>
-          <p className="text-slate-200">{sectionData.faceFinish || "—"}</p>
-        </div>
-        <div>
           <p className="text-slate-400">Box Finish:</p>
           <p className="text-slate-200">{sectionData.boxFinish || "—"}</p>
+        </div>
+        <div>
+          <p className="text-slate-400">Face Finish:</p>
+          <p className="text-slate-200">{sectionData.faceFinish || "—"}</p>
         </div>
         <div>
           <p className="text-slate-400">Drawer Front Style:</p>
@@ -447,7 +455,9 @@ const EstimatePreviewSection = ({
                 : "text-teal-400"
             } flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2`}
           >
-            <span>{hasMultipleSections ? `Section ${sectionNumber}` : "Room"} Total</span>
+            <span>
+              {hasMultipleSections ? `Section ${sectionNumber}` : "Room"} Total
+            </span>
             {hasPriceOverrides && (
               <div className="flex items-center bg-purple-600 p-1">
                 <span className="block text-xs text-white">

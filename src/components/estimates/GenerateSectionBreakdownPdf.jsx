@@ -231,10 +231,7 @@ const GenerateSectionBreakdownPdf = ({
         ],
       });
       leftColumn.push({
-        text: [
-          { text: "Cabinets: ", bold: true },
-          { text: boxMaterialName },
-        ],
+        text: [{ text: "Cabinets: ", bold: true }, { text: boxMaterialName }],
       });
       leftColumn.push({
         text: [{ text: "Finish: ", bold: true }, { text: boxFinishNames }],
@@ -353,7 +350,7 @@ const GenerateSectionBreakdownPdf = ({
         itemHourRows.forEach((itemHours) => {
           const itemRow = [
             {
-              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.length} ft)` : ""}`,
+              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)` : ""}`,
               style: "itemSubRow",
               color: "#4b5563",
             },

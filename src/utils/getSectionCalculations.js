@@ -1647,6 +1647,7 @@ const calculateLengthTotals = (items, context) => {
     materialTotal: 0,
     hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
     itemHoursByCatalog: {},
+    woodCount: 0,
   };
 
   const { lengthsCatalog, selectedFaceMaterial } = context;
@@ -1691,6 +1692,7 @@ const calculateLengthTotals = (items, context) => {
     const cutoutCount = Number(item.cutout_count) || 0;
 
     totals.itemHoursByCatalog[lengthItem.id].length += lengthFeet;
+    totals.itemHoursByCatalog[lengthItem.id].quantity = quantity;
 
     // Calculate material cost based on length
     // Use bd_ft_price if available, otherwise use fraction of sheet_price
@@ -1736,6 +1738,7 @@ const calculateLengthTotals = (items, context) => {
       const boardFeetWithWaste = boardFeet * 1.1; // 10% waste for linear items
       totals.materialTotal +=
         boardFeetWithWaste * material.bd_ft_price * quantity;
+      totals.woodCount += boardFeetWithWaste * quantity;
     } else if (material.sheet_price && material.area) {
       // Sheet goods: calculate area as fraction of sheet
       const area = (lengthInches * effectiveWidth) / 144; // Square feet
@@ -2374,7 +2377,7 @@ export const getSectionCalculations = (section, context = {}) => {
     slidesCount: cabinetTotals.slidesCount,
     slidesTotal: cabinetTotals.slidesTotal,
     woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
-    woodCount: roundToHundredth(cabinetTotals.woodCount),
+    woodCount: roundToHundredth(cabinetTotals.woodCount + lengthTotals.woodCount),
     lengthsTotal: lengthTotals.materialTotal,
     lengthsCount: (section.lengths || []).reduce(
       (sum, item) => sum + (Number(item.quantity) || 0),
