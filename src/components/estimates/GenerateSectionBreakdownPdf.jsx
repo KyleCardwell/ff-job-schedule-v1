@@ -177,13 +177,14 @@ const GenerateSectionBreakdownPdf = ({
       const boxMaterial = boxMaterials?.find(
         (m) => m.id === effectiveSection?.box_mat,
       );
-      const boxFinishNames =
-        boxMaterial?.needs_finish === false
+      const boxFinishNames = hasBoxes
+        ? boxMaterial?.needs_finish === false
           ? PRE_FINISHED
           : effectiveSection?.box_finish
               ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
               .filter(Boolean)
-              .join(", ") || NONE;
+              .join(", ") || NONE
+        : NONE;
 
       const drawerBoxMaterialName = hasDrawerBoxes
         ? drawerBoxMaterials?.find(
@@ -326,7 +327,12 @@ const GenerateSectionBreakdownPdf = ({
         const hasItemHourRows = itemHourRows.length > 0;
         const row = [
           { text: `${category.title}${countDisplay}`, style: "itemName" },
-          { text: formatCurrency(category.cost), alignment: "right" },
+          {
+            text: hasItemHourRows
+              ? `(${formatCurrency(category.cost)})`
+              : formatCurrency(category.cost),
+            alignment: "right",
+          },
         ];
 
         serviceIds.forEach((serviceId) => {
@@ -350,14 +356,14 @@ const GenerateSectionBreakdownPdf = ({
         itemHourRows.forEach((itemHours) => {
           const itemRow = [
             {
-              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)` : ""}`,
+              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)` : itemHours.quantity ? `(${itemHours.quantity})` : ""}`,
               style: "itemSubRow",
               color: "#4b5563",
             },
             {
-              text: "-",
+              text: itemHours.price ? formatCurrency(itemHours.price) : "-",
               alignment: "right",
-              color: "#9ca3af",
+              color: itemHours.price ? "#4b5563" : "#9ca3af",
             },
           ];
 

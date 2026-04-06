@@ -1679,10 +1679,11 @@ const calculateLengthTotals = (items, context) => {
         id: lengthItem.id,
         length: 0,
         name: lengthItem.name || `Length ${lengthItem.id}`,
+        price: 0,
         hoursByService: {},
       };
     }
-    
+
     const lengthCatalogHours = totals.itemHoursByCatalog[lengthItem.id];
 
     const quantity = item.quantity != null ? Number(item.quantity) : 1;
@@ -1736,19 +1737,25 @@ const calculateLengthTotals = (items, context) => {
       // Board feet calculation: (length * width * thickness) / 144
       const boardFeet = (lengthInches * effectiveWidth * thickness) / 144;
       const boardFeetWithWaste = boardFeet * 1.1; // 10% waste for linear items
-      totals.materialTotal +=
-        boardFeetWithWaste * material.bd_ft_price * quantity;
+      const price = boardFeetWithWaste * material.bd_ft_price * quantity || 0;
+      totals.materialTotal += price;
       totals.woodCount += boardFeetWithWaste * quantity;
+      lengthCatalogHours.price = Number(lengthCatalogHours.price) || 0;
+      lengthCatalogHours.price += price;
     } else if (material.sheet_price && material.area) {
       // Sheet goods: calculate area as fraction of sheet
       const area = (lengthInches * effectiveWidth) / 144; // Square feet
       const areaWithWaste = area * 1.1; // 10% waste
       const pricePerSqFt = material.sheet_price / (material.area / 144);
-      totals.materialTotal += areaWithWaste * pricePerSqFt * quantity;
+      const price = areaWithWaste * pricePerSqFt * quantity || 0;
+      totals.materialTotal += price;
+      lengthCatalogHours.price = Number(lengthCatalogHours.price) || 0;
+      lengthCatalogHours.price += price;
     }
 
     // Add rule material addon (e.g., nosing extra area cost)
     totals.materialTotal += ruleEffects.materialAddon;
+    totals.itemHoursByCatalog[lengthItem.id].price += ruleEffects.materialAddon;
 
     // Calculate base labor hours from length_services
     // Each service row has: time_per_unit (min/ft), miter_minutes (min/miter),
@@ -1874,7 +1881,10 @@ const calculateAccessoriesTotal = (items, context, section) => {
 
       // Include glass from faceSummary so accessory labor and pricing are
       // handled in the accessory pipeline.
-      if (faceConfig.faceSummary && typeof faceConfig.faceSummary === "object") {
+      if (
+        faceConfig.faceSummary &&
+        typeof faceConfig.faceSummary === "object"
+      ) {
         Object.values(faceConfig.faceSummary).forEach((faceData) => {
           if (!faceData?.glass || !Array.isArray(faceData.glass)) return;
 
@@ -1909,6 +1919,8 @@ const calculateAccessoriesTotal = (items, context, section) => {
       totals.itemHoursByCatalog[accessory.id] = {
         id: accessory.id,
         name: accessory.name || `Accessory ${accessory.id}`,
+        quantity: 0,
+        price: 0,
         hoursByService: {},
       };
     }
@@ -2008,6 +2020,10 @@ const calculateAccessoriesTotal = (items, context, section) => {
       totals[accessoryType].count += quantity;
       totals[accessoryType].total += price * quantity;
     }
+
+    accessoryCatalogHours.quantity += Number(quantity) || 0;
+    accessoryCatalogHours.price = Number(accessoryCatalogHours.price) || 0;
+    accessoryCatalogHours.price += (Number(price) || 0) * (Number(quantity) || 0);
 
     // Calculate labor hours from time anchors if available
     if (accessories.timeAnchors && accessories.timeAnchors.length > 0) {
@@ -2338,15 +2354,13 @@ export const getSectionCalculations = (section, context = {}) => {
   const totalPrice = roundPriceUpTo5 * effectiveQuantity;
 
   // Calculate total accessories count and price (including glass from faces)
-  const accessoriesCount =
-    Object.values(accessoriesTotal)
-      .filter((item) => typeof item === "object" && item.count !== undefined)
-      .reduce((sum, item) => sum + item.count, 0);
+  const accessoriesCount = Object.values(accessoriesTotal)
+    .filter((item) => typeof item === "object" && item.count !== undefined)
+    .reduce((sum, item) => sum + item.count, 0);
 
-  const accessoriesTotalPrice =
-    Object.values(accessoriesTotal)
-      .filter((item) => typeof item === "object" && item.total !== undefined)
-      .reduce((sum, item) => sum + item.total, 0);
+  const accessoriesTotalPrice = Object.values(accessoriesTotal)
+    .filter((item) => typeof item === "object" && item.total !== undefined)
+    .reduce((sum, item) => sum + item.total, 0);
 
   // Calculate other items count
   const otherCount = (section.other || []).reduce((sum, item) => {
@@ -2377,7 +2391,9 @@ export const getSectionCalculations = (section, context = {}) => {
     slidesCount: cabinetTotals.slidesCount,
     slidesTotal: cabinetTotals.slidesTotal,
     woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
-    woodCount: roundToHundredth(cabinetTotals.woodCount + lengthTotals.woodCount),
+    woodCount: roundToHundredth(
+      cabinetTotals.woodCount + lengthTotals.woodCount,
+    ),
     lengthsTotal: lengthTotals.materialTotal,
     lengthsCount: (section.lengths || []).reduce(
       (sum, item) => sum + (Number(item.quantity) || 0),

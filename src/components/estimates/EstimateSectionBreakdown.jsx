@@ -169,7 +169,9 @@ const EstimateSectionBreakdown = ({
                   </span>
                 </div>
                 <div className="text-teal-400 text-right font-semibold text-sm">
-                  {formatCurrency(category.cost)}
+                  {hasItemHourRows
+                    ? `(${formatCurrency(category.cost)})`
+                    : formatCurrency(category.cost)}
                 </div>
                 {serviceIds.map((serviceId) => {
                   if (category.skipHours) {
@@ -223,9 +225,13 @@ const EstimateSectionBreakdown = ({
                     {itemHours.name}{" "}
                     {itemHours.length
                       ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)`
-                      : ""}
+                      : itemHours.quantity
+                        ? `(${itemHours.quantity})`
+                        : ""}
                   </div>
-                  <div className="text-slate-600 text-right text-xs">-</div>
+                  <div className="text-slate-400 text-right text-xs">
+                    {itemHours.price ? formatCurrency(itemHours.price) : "-"}
+                  </div>
                   {serviceIds.map((serviceId) => {
                     const hours = itemHours.hoursByService?.[serviceId];
                     return (
