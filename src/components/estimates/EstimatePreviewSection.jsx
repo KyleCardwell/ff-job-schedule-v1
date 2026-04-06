@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
 import {
+  FINISHED,
   NONE,
   PRE_FINISHED,
   PRICE_OVERRIDES_ACTIVE,
@@ -153,13 +154,19 @@ const EstimatePreviewSection = ({
     const boxMaterial = boxMaterials?.find(
       (m) => m.id === effectiveSection.box_mat,
     );
-    const boxFinishNames =
+    let boxFinishNames =
       boxMaterial?.needs_finish === false
         ? PRE_FINISHED
         : effectiveSection.box_finish
             ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
             .filter(Boolean)
             .join(", ") || NONE;
+    
+    if (hasBoxes && boxFinishNames === PRE_FINISHED) {
+      if (section.cabinets.some((c) => c.finished_interior === true)) {
+        boxFinishNames = boxFinishNames + "/" + FINISHED;
+      }
+    }
 
     const drawerBoxMaterialName = hasDrawerBoxes
       ? `${

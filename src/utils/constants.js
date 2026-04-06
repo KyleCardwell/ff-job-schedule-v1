@@ -88,6 +88,7 @@ export const ITEM_FORM_WIDTHS = {
 };
 
 export const PRE_FINISHED = "Pre-Finished";
+export const FINISHED = "Finished";
 export const NONE = "None";
 export const NOT_SELECTED = "Not Selected";
 export const UNFINISHED = "Unfinished";
