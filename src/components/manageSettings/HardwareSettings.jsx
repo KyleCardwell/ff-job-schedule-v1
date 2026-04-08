@@ -153,6 +153,7 @@ const HardwareSettings = forwardRef((props, ref) => {
       name: "",
       price: 0,
       actual_cost: 0,
+      auto_add_note: false,
       isNew: true,
     };
     setLocalHinges((prev) => [...prev, newItem]);
@@ -209,6 +210,7 @@ const HardwareSettings = forwardRef((props, ref) => {
       name: "",
       price: 0,
       actual_cost: 0,
+      auto_add_note: false,
       isNew: true,
     };
     setLocalPulls((prev) => [...prev, newItem]);
@@ -265,6 +267,7 @@ const HardwareSettings = forwardRef((props, ref) => {
       name: "",
       price: 0,
       actual_cost: 0,
+      auto_add_note: false,
       isNew: true,
     };
     setLocalSlides((prev) => [...prev, newItem]);
@@ -373,10 +376,77 @@ const HardwareSettings = forwardRef((props, ref) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const normalizeForComparison = (items = []) =>
+    JSON.parse(JSON.stringify(items || []));
+
   const handleSave = async () => {
     // Validate inputs first
     if (!validateInputs()) {
       console.log("Validation failed");
+      return;
+    }
+
+    const normalizedLocalHinges = normalizeForComparison(localHinges);
+    const normalizedOriginalHinges = normalizeForComparison(originalHinges);
+    const normalizedLocalPulls = normalizeForComparison(localPulls);
+    const normalizedOriginalPulls = normalizeForComparison(originalPulls);
+    const normalizedLocalSlides = normalizeForComparison(localSlides);
+    const normalizedOriginalSlides = normalizeForComparison(originalSlides);
+
+    const hingesChanged = !isEqual(normalizedLocalHinges, normalizedOriginalHinges);
+    const pullsChanged = !isEqual(normalizedLocalPulls, normalizedOriginalPulls);
+    const slidesChanged = !isEqual(normalizedLocalSlides, normalizedOriginalSlides);
+
+    const activeServices = allServices.filter((s) => s.is_active);
+
+    const normalizeTimePerUnit = (value) => {
+      if (value === "" || value === null || value === undefined) return 0;
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const buildServicesPayload = (hardwareType, sourceId) =>
+      activeServices.map((service) => ({
+        service_id: service.service_id,
+        time_per_unit: normalizeTimePerUnit(
+          getServiceTime(hardwareType, sourceId, service.service_id),
+        ),
+      }));
+
+    const hasServiceChanges = (hardwareItem, nextServices = []) => {
+      const existingByServiceId = new Map(
+        (hardwareItem.services || []).map((svc) => [
+          String(svc.service_id),
+          normalizeTimePerUnit(svc.time_per_unit),
+        ]),
+      );
+
+      return nextServices.some((svc) => {
+        const existingValue = existingByServiceId.get(String(svc.service_id)) ?? 0;
+        return existingValue !== normalizeTimePerUnit(svc.time_per_unit);
+      });
+    };
+
+    const hasListServiceChanges = (hardwareType, items = []) =>
+      (items || []).some((item) => {
+        if (item.markedForDeletion) return false;
+        const services = buildServicesPayload(hardwareType, item.id);
+        return hasServiceChanges(item, services);
+      });
+
+    const hingesServicesChanged = hasListServiceChanges("hinge", localHinges);
+    const pullsServicesChanged = hasListServiceChanges("pull", localPulls);
+    const slidesServicesChanged = hasListServiceChanges("slide", localSlides);
+
+    const hasAnyChanges =
+      hingesChanged ||
+      pullsChanged ||
+      slidesChanged ||
+      hingesServicesChanged ||
+      pullsServicesChanged ||
+      slidesServicesChanged;
+
+    if (!hasAnyChanges) {
       return;
     }
 
@@ -386,7 +456,7 @@ const HardwareSettings = forwardRef((props, ref) => {
     try {
       // Save hinges (only if there are changes)
       let hingesResult;
-      if (!isEqual(localHinges, originalHinges)) {
+      if (hingesChanged) {
         hingesResult = await dispatch(saveHinges(localHinges, originalHinges));
 
         if (!hingesResult || !hingesResult.success) {
@@ -398,7 +468,7 @@ const HardwareSettings = forwardRef((props, ref) => {
 
       // Save pulls (only if there are changes)
       let pullsResult;
-      if (!isEqual(localPulls, originalPulls)) {
+      if (pullsChanged) {
         pullsResult = await dispatch(savePulls(localPulls, originalPulls));
 
         if (!pullsResult || !pullsResult.success) {
@@ -410,7 +480,7 @@ const HardwareSettings = forwardRef((props, ref) => {
 
       // Save slides (only if there are changes)
       let slidesResult;
-      if (!isEqual(localSlides, originalSlides)) {
+      if (slidesChanged) {
         slidesResult = await dispatch(saveSlides(localSlides, originalSlides));
 
         if (!slidesResult || !slidesResult.success) {
@@ -423,9 +493,6 @@ const HardwareSettings = forwardRef((props, ref) => {
       console.log("Hardware saved successfully");
 
       setValidationErrors({});
-
-      // Save hardware services for all items (including newly saved items with fresh IDs)
-      const activeServices = allServices.filter((s) => s.is_active);
 
       // Helper to find matching item (by name for new items, by ID for existing)
       const findOriginalItem = (savedItem, originalList) => {
@@ -444,15 +511,11 @@ const HardwareSettings = forwardRef((props, ref) => {
         if (!hinge.markedForDeletion) {
           const originalHinge = findOriginalItem(hinge, localHinges);
           const originalId = originalHinge?.id || hinge.id;
-          
-          const services = activeServices.map((service) => {
-            const timeValue = getServiceTime("hinge", originalId, service.service_id);
-            return {
-              service_id: service.service_id,
-              time_per_unit: timeValue === '' ? 0 : timeValue,
-            };
-          });
-          await dispatch(saveHardwareServices("hinge", hinge.id, services));
+
+          const services = buildServicesPayload("hinge", originalId);
+          if (hasServiceChanges(hinge, services)) {
+            await dispatch(saveHardwareServices("hinge", hinge.id, services));
+          }
         }
       }
 
@@ -461,15 +524,11 @@ const HardwareSettings = forwardRef((props, ref) => {
         if (!pull.markedForDeletion) {
           const originalPull = findOriginalItem(pull, localPulls);
           const originalId = originalPull?.id || pull.id;
-          
-          const services = activeServices.map((service) => {
-            const timeValue = getServiceTime("pull", originalId, service.service_id);
-            return {
-              service_id: service.service_id,
-              time_per_unit: timeValue === '' ? 0 : timeValue,
-            };
-          });
-          await dispatch(saveHardwareServices("pull", pull.id, services));
+
+          const services = buildServicesPayload("pull", originalId);
+          if (hasServiceChanges(pull, services)) {
+            await dispatch(saveHardwareServices("pull", pull.id, services));
+          }
         }
       }
 
@@ -478,15 +537,11 @@ const HardwareSettings = forwardRef((props, ref) => {
         if (!slide.markedForDeletion) {
           const originalSlide = findOriginalItem(slide, localSlides);
           const originalId = originalSlide?.id || slide.id;
-          
-          const services = activeServices.map((service) => {
-            const timeValue = getServiceTime("slide", originalId, service.service_id);
-            return {
-              service_id: service.service_id,
-              time_per_unit: timeValue === '' ? 0 : timeValue,
-            };
-          });
-          await dispatch(saveHardwareServices("slide", slide.id, services));
+
+          const services = buildServicesPayload("slide", originalId);
+          if (hasServiceChanges(slide, services)) {
+            await dispatch(saveHardwareServices("slide", slide.id, services));
+          }
         }
       }
 
@@ -571,7 +626,7 @@ const HardwareSettings = forwardRef((props, ref) => {
               value
             );
           }}
-          className="w-full bg-slate-600 text-slate-200 px-2 py-1 my-2"
+          className="w-full bg-slate-600 text-slate-200 text-center px-2 py-1 my-2"
           placeholder="0"
           disabled={item.markedForDeletion}
         />
@@ -605,6 +660,20 @@ const HardwareSettings = forwardRef((props, ref) => {
       placeholder: "0",
       hasError: (item) => !!getItemErrors(item.id, "hinge").actual_cost,
     },
+    {
+      field: "auto_add_note",
+      label: "Note On Estimate",
+      width: "80px",
+      render: (item, onChange) => (
+        <input
+          type="checkbox"
+          checked={Boolean(item.auto_add_note)}
+          onChange={(e) => onChange("auto_add_note", e.target.checked)}
+          className="h-4 w-4 accent-teal-500"
+          disabled={item.markedForDeletion}
+        />
+      ),
+    },
     ...createServiceColumns("hinge"),
   ];
 
@@ -634,6 +703,20 @@ const HardwareSettings = forwardRef((props, ref) => {
       placeholder: "0",
       hasError: (item) => !!getItemErrors(item.id, "pull").actual_cost,
     },
+    {
+      field: "auto_add_note",
+      label: "Note On Estimate",
+      width: "80px",
+      render: (item, onChange) => (
+        <input
+          type="checkbox"
+          checked={Boolean(item.auto_add_note)}
+          onChange={(e) => onChange("auto_add_note", e.target.checked)}
+          className="h-4 w-4 accent-teal-500"
+          disabled={item.markedForDeletion}
+        />
+      ),
+    },
     ...createServiceColumns("pull"),
   ];
 
@@ -662,6 +745,20 @@ const HardwareSettings = forwardRef((props, ref) => {
       type: "number",
       placeholder: "0",
       hasError: (item) => !!getItemErrors(item.id, "slide").actual_cost,
+    },
+    {
+      field: "auto_add_note",
+      label: "Note On Estimate",
+      width: "80px",
+      render: (item, onChange) => (
+        <input
+          type="checkbox"
+          checked={Boolean(item.auto_add_note)}
+          onChange={(e) => onChange("auto_add_note", e.target.checked)}
+          className="h-4 w-4 accent-teal-500"
+          disabled={item.markedForDeletion}
+        />
+      ),
     },
     ...createServiceColumns("slide"),
   ];

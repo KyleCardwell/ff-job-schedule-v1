@@ -226,12 +226,96 @@ export const buildExcludedPullsNote = (
   return "";
 };
 
+const findHardwareById = (options = [], id) => {
+  if (!Array.isArray(options) || id === null || id === undefined || id === "") {
+    return null;
+  }
+
+  return options.find((option) => String(option.id) === String(id)) || null;
+};
+
+export const buildHardwareAutoNotes = ({
+  effectiveSection = {},
+  hardware = {},
+  hasDoors = false,
+  hasDrawerFronts = false,
+  hasDrawerBoxes = false,
+}) => {
+  if (!effectiveSection) {
+    return {
+      doorPullNote: "",
+      drawerPullNote: "",
+      hingeNote: "",
+      slideNote: "",
+    };
+  }
+
+  const pulls = hardware?.pulls || [];
+  const hinges = hardware?.hinges || [];
+  const slides = hardware?.slides || [];
+
+  const includeDoorPulls = effectiveSection.include_door_pulls !== false;
+  const includeDrawerPulls = effectiveSection.include_drawer_pulls !== false;
+
+  const doorPull = findHardwareById(pulls, effectiveSection.door_pull_id);
+  const drawerPull = findHardwareById(pulls, effectiveSection.drawer_pull_id);
+  const hinge = findHardwareById(hinges, effectiveSection.hinge_id);
+  const slide = findHardwareById(slides, effectiveSection.slide_id);
+
+  const shouldAddDoorPullNote =
+    hasDoors &&
+    includeDoorPulls &&
+    doorPull?.auto_add_note &&
+    doorPull?.name;
+
+  const shouldAddDrawerPullNote =
+    hasDrawerFronts &&
+    includeDrawerPulls &&
+    drawerPull?.auto_add_note &&
+    drawerPull?.name;
+
+  const sameDoorAndDrawerPull =
+    shouldAddDoorPullNote &&
+    shouldAddDrawerPullNote &&
+    String(effectiveSection.door_pull_id) ===
+      String(effectiveSection.drawer_pull_id);
+
+  const doorPullNote = sameDoorAndDrawerPull
+    ? `Door & Drawer Pulls - ${doorPull.name}.`
+    : shouldAddDoorPullNote
+      ? `Door Pulls - ${doorPull.name}.`
+      : "";
+
+  const drawerPullNote = sameDoorAndDrawerPull
+    ? ""
+    : shouldAddDrawerPullNote
+      ? `Drawer Pulls - ${drawerPull.name}.`
+      : "";
+
+  const hingeNote =
+    hasDoors && hinge?.auto_add_note && hinge?.name ? `Hinges - ${hinge.name}.` : "";
+
+  const slideNote =
+    hasDrawerBoxes && slide?.auto_add_note && slide?.name
+      ? `Slides - ${slide.name}.`
+      : "";
+
+  return {
+    doorPullNote,
+    drawerPullNote,
+    hingeNote,
+    slideNote,
+  };
+};
+
 export const buildAdditionalSectionNotesText = ({
   effectiveSection,
   hasDoors,
   hasDrawerFronts,
+  hasDrawerBoxes,
   faceMaterials,
   finishTypes,
+  hardware,
 }) => {
   const horizontalGrainNote = buildHorizontalGrainNote(effectiveSection);
   const doorDrawerMaterialNote = buildDoorDrawerMaterialNote({
@@ -249,18 +333,34 @@ export const buildAdditionalSectionNotesText = ({
     hasDoors,
     hasDrawerFronts,
   );
+  const { doorPullNote, drawerPullNote, hingeNote, slideNote } =
+    buildHardwareAutoNotes({
+      effectiveSection,
+      hardware,
+      hasDoors,
+      hasDrawerFronts,
+      hasDrawerBoxes,
+    });
 
   return {
     horizontalGrainNote,
     doorDrawerMaterialNote,
     panelModNote,
     appliedMoldingNote,
+    doorPullNote,
+    drawerPullNote,
+    hingeNote,
+    slideNote,
     excludedPullsNote,
     additionalNotesText: [
       horizontalGrainNote,
       doorDrawerMaterialNote,
       panelModNote,
       appliedMoldingNote,
+      doorPullNote,
+      drawerPullNote,
+      hingeNote,
+      slideNote,
     ]
       .filter(Boolean)
       .join(" "),

@@ -188,8 +188,10 @@ const EstimatePreviewSection = ({
         effectiveSection,
         hasDoors,
         hasDrawerFronts,
+        hasDrawerBoxes,
         faceMaterials,
         finishTypes,
+        hardware: context?.hardware,
       });
 
     const processedNotes = buildProcessedSectionNotes(

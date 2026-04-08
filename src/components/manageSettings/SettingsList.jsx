@@ -25,7 +25,7 @@ const SettingsList = ({
         {columns.map((col, index) => (
           <div
             key={index}
-            className="text-sm font-semibold text-slate-200 mb-2"
+            className="text-sm font-semibold text-slate-200 mb-2 flex flex-col justify-center"
           >
             {col.label}
           </div>
@@ -70,7 +70,7 @@ const SettingsList = ({
                           onChange(item.id, col.field, value);
                         }
                       }}
-                      className={`w-full bg-slate-600 text-slate-200 px-2 py-1 my-2 ${
+                      className={`w-full bg-slate-600 text-slate-200 text-center px-2 py-1 my-2 ${
                         col.hasError && col.hasError(item)
                           ? "border-2 border-red-500"
                           : ""
@@ -129,7 +129,7 @@ const SettingsList = ({
 SettingsList.propTypes = {
   items: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.string || PropTypes.number,
+      id: PropTypes.number || PropTypes.string,
     })
   ),
   columns: PropTypes.arrayOf(
