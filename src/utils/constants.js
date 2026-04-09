@@ -331,8 +331,8 @@ export const PART_NAMES = {
 
 // Display names for panel mods (used in estimates, PDFs, etc.)
 export const PANEL_MOD_DISPLAY_NAMES = {
-  15: "Reeded Panels",
-  22: "Grooved Panels",
+  15: "Reeded",
+  22: "Grooved",
   // Add more panel mods here as needed
 };
 

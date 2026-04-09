@@ -427,30 +427,51 @@ const calculateFaceTotals = (section, context) => {
             }
           });
 
-          let panelModId = null;
+          // Determine section-level default panelModId for this face type
+          let sectionPanelModId = null;
 
           if (
             faceType === FACE_NAMES.DRAWER_FRONT ||
             faceType === FACE_NAMES.FALSE_FRONT
           ) {
-            panelModId = effectiveValues.drawer_panel_mod_id;
+            sectionPanelModId = effectiveValues.drawer_panel_mod_id;
           } else if (
             faceType === FACE_NAMES.DOOR ||
             faceType === FACE_NAMES.PAIR_DOOR ||
             faceType === FACE_NAMES.PANEL
           ) {
-            panelModId = effectiveValues.door_panel_mod_id;
+            sectionPanelModId = effectiveValues.door_panel_mod_id;
           }
 
-          // Collect faces for hour calculation with cabinet style ID and face type
-          allFacesForHours.push({
-            faces: faceData.faces,
-            faceType,
-            styleToUse,
-            cabinetStyleId,
-            panelModId,
-            quantity,
-            cabinetTypeId: cabinet.type,
+          // Group faces by their effective panelModId (per-face override or section default)
+          const facesByPanelMod = {};
+          faceData.faces.forEach((face) => {
+            let effectivePanelModId;
+            if (face.panelMod != null) {
+              // Per-face override: "0" = none, "15" = reeded, "22" = grooved
+              effectivePanelModId = +face.panelMod;
+            } else {
+              // No override — use section default
+              effectivePanelModId = sectionPanelModId;
+            }
+            const key = effectivePanelModId ?? "null";
+            if (!facesByPanelMod[key]) {
+              facesByPanelMod[key] = { panelModId: effectivePanelModId, faces: [] };
+            }
+            facesByPanelMod[key].faces.push(face);
+          });
+
+          // Collect each group for hour calculation
+          Object.values(facesByPanelMod).forEach(({ panelModId, faces }) => {
+            allFacesForHours.push({
+              faces,
+              faceType,
+              styleToUse,
+              cabinetStyleId,
+              panelModId,
+              quantity,
+              cabinetTypeId: cabinet.type,
+            });
           });
         }
 

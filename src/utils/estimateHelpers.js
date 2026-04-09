@@ -2234,6 +2234,7 @@ export const generateCabinetSummary = (
   faceConfig,
   typeSpecificOptions = {},
   cabinetItemType,
+  accessoryCatalog = [],
 ) => {
   if (!faceConfig) return "";
 
@@ -2297,7 +2298,7 @@ export const generateCabinetSummary = (
   );
 
   let totalDoors = 0;
-  let glassDoorsCount = 0;
+  const glassDoorsByName = {};
 
   doorNodes.forEach((node) => {
     if (node.type === "pair_door") {
@@ -2308,20 +2309,25 @@ export const generateCabinetSummary = (
 
     // Check if this door has glass panels
     if (node.glassPanel) {
-      if (node.type === "pair_door") {
-        glassDoorsCount += 2; // Both doors in pair have glass
-      } else {
-        glassDoorsCount += 1;
-      }
+      const glassItem = accessoryCatalog.find(
+        (acc) => acc.id === +node.glassPanel,
+      );
+      const glassName = glassItem?.name || "glass";
+      const count = node.type === "pair_door" ? 2 : 1;
+      glassDoorsByName[glassName] = (glassDoorsByName[glassName] || 0) + count;
     }
   });
 
   if (totalDoors > 0) {
-    if (glassDoorsCount > 0) {
+    const glassEntries = Object.entries(glassDoorsByName);
+    if (glassEntries.length > 0) {
+      const glassParts = glassEntries
+        .map(([name, count]) => `${count} ${name}`)
+        .join(", ");
       parts.push(
         `${totalDoors} door${
           totalDoors !== 1 ? "s" : ""
-        } (${glassDoorsCount} glass panel${glassDoorsCount !== 1 ? "s" : ""})`,
+        } (${glassParts})`,
       );
     } else {
       parts.push(`${totalDoors} door${totalDoors !== 1 ? "s" : ""}`);

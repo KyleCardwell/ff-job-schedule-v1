@@ -31,6 +31,7 @@ const SectionItemList = ({
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  const accessories = useSelector((state) => state.accessories);
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
@@ -256,6 +257,7 @@ const SectionItemList = ({
         quantity: item.quantity,
       },
       item.type,
+      accessories?.glass || [],
     );
     return summary ? (
       <span className="text-slate-400 capitalize">{summary}</span>

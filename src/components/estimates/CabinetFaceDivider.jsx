@@ -103,6 +103,7 @@ const CabinetFaceDivider = ({
     glassPanel: "",
     glassShelves: "",
     shelfNosing: "",
+    panelMod: "",
   });
 
   const clampPopupPosition = useCallback((position, popupElement) => {
@@ -1168,11 +1169,47 @@ const CabinetFaceDivider = ({
 
   const supportsGlassPanel = itemType !== ITEM_TYPES.FILLER.type;
 
+  const PANEL_MOD_FACE_TYPES = [
+    FACE_NAMES.DOOR,
+    FACE_NAMES.PAIR_DOOR,
+    FACE_NAMES.DRAWER_FRONT,
+    FACE_NAMES.FALSE_FRONT,
+    FACE_NAMES.PANEL,
+  ];
+
+  const supportsPanelMod = (nodeType) =>
+    PANEL_MOD_FACE_TYPES.includes(nodeType) &&
+    itemType !== ITEM_TYPES.FILLER.type;
+
   const glassPanelOptions = (nodeType) => {
     const glassOptions = accessories.glass.filter((glass) =>
       glass.applies_to.includes(nodeType),
     );
     return glassOptions;
+  };
+
+  // Handle panel mod change
+  const handlePanelModChange = (e) => {
+    const panelModValue = e.target.value;
+
+    // Update input value state
+    setInputValues({ ...inputValues, panelMod: panelModValue });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      // "" = Section Default (inherit), "0" = None, "15" = Reeded, "22" = Grooved
+      node.panelMod = panelModValue === "" ? null : panelModValue;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        panelMod: panelModValue === "" ? null : panelModValue,
+      });
+    }
   };
 
   // Handle glass panel change
@@ -1820,6 +1857,7 @@ const CabinetFaceDivider = ({
       glassPanel: node.glassPanel || "",
       glassShelves: node.glassShelves || "",
       shelfNosing: node.shelfNosing || "",
+      panelMod: node.panelMod ?? "",
     });
 
     setShowTypeSelector(true);
@@ -2582,9 +2620,9 @@ const CabinetFaceDivider = ({
                       <div>
                         {supportsGlassPanel &&
                           glassPanelOptions(selectedNode.type).length > 0 && (
-                            <div className="flex-1 flex flex-col items-start space-x-1">
+                            <div className="flex-1 flex flex-col items-start space-x-1 mb-2">
                               <label className="text-xs text-slate-600">
-                                Glass Panel:
+                                Change Panel:
                               </label>
                               <select
                                 name="glassPanel"
@@ -2600,6 +2638,24 @@ const CabinetFaceDivider = ({
                                     </option>
                                   ),
                                 )}
+                              </select>
+                            </div>
+                          )}
+                        {supportsPanelMod(selectedNode.type) && (
+                          <div className="flex-1 flex flex-col items-start space-x-1">
+                              <label className="text-xs text-slate-600">
+                                Panel Mod:
+                              </label>
+                              <select
+                                name="panelMod"
+                                value={inputValues.panelMod}
+                                onChange={(e) => handlePanelModChange(e)}
+                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              >
+                                <option value="">Section Default</option>
+                                <option value="0">None</option>
+                                <option value="15">Reeded</option>
+                                <option value="22">Grooved</option>
                               </select>
                             </div>
                           )}
