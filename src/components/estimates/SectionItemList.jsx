@@ -6,6 +6,7 @@ import { RiSwapBoxLine } from "react-icons/ri";
 import { useSelector } from "react-redux";
 
 import { ITEM_TYPES } from "../../utils/constants.js";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults.js";
 import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
 import DuplicateItemModal from "../common/DuplicateItemModal.jsx";
 import ReorderModal from "../common/ReorderModal.jsx";
@@ -32,6 +33,10 @@ const SectionItemList = ({
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const accessories = useSelector((state) => state.accessories);
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults,
+  );
   const [showNewItem, setShowNewItem] = useState(false);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
@@ -238,6 +243,15 @@ const SectionItemList = ({
 
   const generateTextSummary = (item) => {
     if (!item.face_config) return null;
+    const currentSection = currentEstimate?.tasks
+      ?.flatMap((task) => task.sections || [])
+      ?.find((section) => section.est_section_id === currentSectionId);
+    const effectiveDoorPanelModId = getEffectiveValueOnly(
+      currentSection?.door_panel_mod_id,
+      currentEstimate?.default_door_panel_mod_id,
+      teamDefaults?.default_door_panel_mod_id,
+    );
+
     const styleOverrideName = item.cabinet_style_override
       ? cabinetStyles.find(
           (style) => style.cabinet_style_id === item.cabinet_style_override,
@@ -258,6 +272,7 @@ const SectionItemList = ({
       },
       item.type,
       accessories?.glass || [],
+      effectiveDoorPanelModId,
     );
     return summary ? (
       <span className="text-slate-400 capitalize">{summary}</span>

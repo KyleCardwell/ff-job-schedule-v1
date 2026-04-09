@@ -17,26 +17,26 @@ export const buildPanelModNote = (effectiveSection = {}) => {
   if (hasPanelModDoors && hasPanelModDrawers) {
     if (doorPanelModId === drawerPanelModId) {
       const panelModName =
-        PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
-      return `${panelModName} on doors and drawer fronts.`;
+        PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Modified";
+      return `${panelModName} Panels on doors and drawer fronts.`;
     }
 
     const doorPanelName =
-      PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
+      PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Modified";
     const drawerPanelName =
-      PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
-    return `${doorPanelName} on doors, ${drawerPanelName} on drawer fronts.`;
+      PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Modified";
+    return `${doorPanelName} Panels on doors, ${drawerPanelName} Panels on drawer fronts.`;
   }
 
   if (hasPanelModDoors) {
-    const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Panel Mod";
-    return `${panelModName} on doors.`;
+    const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Modified";
+    return `${panelModName} Panels on doors.`;
   }
 
   if (hasPanelModDrawers) {
     const panelModName =
-      PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Panel Mod";
-    return `${panelModName} on drawer fronts.`;
+      PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Modified";
+    return `${panelModName} Panels on drawer fronts.`;
   }
 
   return "";

@@ -5,6 +5,7 @@ import {
   FACE_NAMES,
   FACE_STYLE_VALUES,
   FACE_TYPES,
+  PANEL_MOD_DISPLAY_NAMES,
   PART_NAMES,
   PARTS_LIST_MAPPING,
 } from "./constants";
@@ -2235,6 +2236,7 @@ export const generateCabinetSummary = (
   typeSpecificOptions = {},
   cabinetItemType,
   accessoryCatalog = [],
+  effectiveDoorPanelModId = null,
 ) => {
   if (!faceConfig) return "";
 
@@ -2299,6 +2301,14 @@ export const generateCabinetSummary = (
 
   let totalDoors = 0;
   const glassDoorsByName = {};
+  const panelModDoorsByName = {};
+  const panelModDoorsNotByName = {};
+
+  const defaultPanelModName =
+    effectiveDoorPanelModId && +effectiveDoorPanelModId > 0
+      ? PANEL_MOD_DISPLAY_NAMES[+effectiveDoorPanelModId] ||
+        `Panel Mod ${+effectiveDoorPanelModId}`
+      : null;
 
   doorNodes.forEach((node) => {
     if (node.type === "pair_door") {
@@ -2316,18 +2326,60 @@ export const generateCabinetSummary = (
       const count = node.type === "pair_door" ? 2 : 1;
       glassDoorsByName[glassName] = (glassDoorsByName[glassName] || 0) + count;
     }
+
+    const count = node.type === "pair_door" ? 2 : 1;
+
+    if (node.panelMod != null) {
+      const panelModId = +node.panelMod;
+
+      if (panelModId > 0) {
+        const panelModName =
+          PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
+        panelModDoorsByName[panelModName] =
+          (panelModDoorsByName[panelModName] || 0) + count;
+      } else if (panelModId === 0 && defaultPanelModName) {
+        const notPanelModName = `Not ${defaultPanelModName}`;
+        panelModDoorsNotByName[notPanelModName] =
+          (panelModDoorsNotByName[notPanelModName] || 0) + count;
+      }
+    } else if (defaultPanelModName) {
+      panelModDoorsByName[defaultPanelModName] =
+        (panelModDoorsByName[defaultPanelModName] || 0) + count;
+    }
   });
 
   if (totalDoors > 0) {
+    const summaryDetails = [];
+
     const glassEntries = Object.entries(glassDoorsByName);
     if (glassEntries.length > 0) {
       const glassParts = glassEntries
         .map(([name, count]) => `${count} ${name}`)
         .join(", ");
+      summaryDetails.push(glassParts);
+    }
+
+    const panelModEntries = Object.entries(panelModDoorsByName);
+    if (panelModEntries.length > 0) {
+      const panelModParts = panelModEntries
+        .map(([name, count]) => `${count} ${name}`)
+        .join(", ");
+      summaryDetails.push(panelModParts);
+    }
+
+    const panelModNotEntries = Object.entries(panelModDoorsNotByName);
+    if (panelModNotEntries.length > 0) {
+      const panelModNotParts = panelModNotEntries
+        .map(([name, count]) => `${count} ${name}`)
+        .join(", ");
+      summaryDetails.push(panelModNotParts);
+    }
+
+    if (summaryDetails.length > 0) {
       parts.push(
         `${totalDoors} door${
           totalDoors !== 1 ? "s" : ""
-        } (${glassParts})`,
+        } (${summaryDetails.join(", ")})`,
       );
     } else {
       parts.push(`${totalDoors} door${totalDoors !== 1 ? "s" : ""}`);
