@@ -202,7 +202,25 @@ const EstimateLayout = () => {
     const { context, effectiveSection, hasPriceOverrides } =
       createSectionContext(selectedSection, currentEstimate, catalogData);
     const calcs = getSectionCalculations(effectiveSection, context);
-    return { ...calcs, hasPriceOverrides };
+
+    // Default rates (estimate → team fallback) for when section value is null
+    const defaultProfit = getEffectiveValueOnly(
+      null,
+      currentEstimate?.default_profit,
+      teamDefaults?.default_profit,
+    ) || 0;
+    const defaultCommission = getEffectiveValueOnly(
+      null,
+      currentEstimate?.default_commission,
+      teamDefaults?.default_commission,
+    ) || 0;
+    const defaultDiscount = getEffectiveValueOnly(
+      null,
+      currentEstimate?.default_discount,
+      teamDefaults?.default_discount,
+    ) || 0;
+
+    return { ...calcs, hasPriceOverrides, defaultProfit, defaultCommission, defaultDiscount };
   }, [
     selectedSection,
     currentEstimate,
@@ -340,6 +358,19 @@ const EstimateLayout = () => {
             parts_included: data.parts_included,
             services_included: data.services_included,
           },
+        ),
+      );
+    }
+  };
+
+  const handleSaveTargetPrice = async (updates) => {
+    if (selectedTaskId && selectedSectionId && currentEstimate) {
+      await dispatch(
+        updateSection(
+          currentEstimate.estimate_id,
+          selectedTaskId,
+          selectedSectionId,
+          updates,
         ),
       );
     }
@@ -689,6 +720,7 @@ const EstimateLayout = () => {
                     section={selectedSection}
                     sectionCalculations={sectionCalculations}
                     onSaveToggles={handleSaveToggles}
+                    onSaveTargetPrice={handleSaveTargetPrice}
                     hasPriceOverrides={sectionCalculations?.hasPriceOverrides}
                   />
                 </div>

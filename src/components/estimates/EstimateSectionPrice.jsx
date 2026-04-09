@@ -7,17 +7,20 @@ import { FACE_STYLE_VALUES, FACE_TYPES, PRICE_OVERRIDES_ACTIVE } from "../../uti
 import { roundToHundredth } from "../../utils/estimateHelpers";
 
 import EstimateSectionPriceGroup from "./EstimateSectionPriceGroup.jsx";
+import TargetPriceModal from "./TargetPriceModal.jsx";
 
 const EstimateSectionPrice = ({
   section,
   sectionCalculations,
   onSaveToggles,
+  onSaveTargetPrice,
   hasPriceOverrides,
 }) => {
   // sectionCalculations is now passed as a prop from EstimateLayout
 
   // Edit mode state for toggles
   const [isEditingToggles, setIsEditingToggles] = useState(false);
+  const [isTargetPriceOpen, setIsTargetPriceOpen] = useState(false);
   const [partsToggles, setPartsToggles] = useState({});
   const [serviceToggles, setServiceToggles] = useState({});
 
@@ -210,7 +213,17 @@ const EstimateSectionPrice = ({
       {/* Content Section - Scrollable */}
       <div className="flex-1 overflow-auto space-y-4">
         {/* Adjustments */}
-        <EstimateSectionPriceGroup title="Adjustments">
+        <EstimateSectionPriceGroup
+          title="Adjustments"
+          titleAction={
+            <button
+              onClick={() => setIsTargetPriceOpen(true)}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
+            >
+              Target Price
+            </button>
+          }
+        >
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700">
             <div className="text-sm text-slate-300 text-left">Subtotal</div>
@@ -797,6 +810,19 @@ const EstimateSectionPrice = ({
           </div>
         </EstimateSectionPriceGroup>
       </div>
+
+      <TargetPriceModal
+        isOpen={isTargetPriceOpen}
+        onClose={() => setIsTargetPriceOpen(false)}
+        subTotal={sectionCalculations.subTotalPrice}
+        currentProfit={sectionCalculations.profitRate}
+        currentCommission={sectionCalculations.commissionRate}
+        currentDiscount={sectionCalculations.discountRate}
+        defaultProfit={sectionCalculations.defaultProfit}
+        defaultCommission={sectionCalculations.defaultCommission}
+        defaultDiscount={sectionCalculations.defaultDiscount}
+        onSave={onSaveTargetPrice}
+      />
     </div>
   );
 };
@@ -805,6 +831,7 @@ EstimateSectionPrice.propTypes = {
   section: PropTypes.object.isRequired,
   sectionCalculations: PropTypes.object,
   onSaveToggles: PropTypes.func,
+  onSaveTargetPrice: PropTypes.func,
   hasPriceOverrides: PropTypes.bool,
 };
 
