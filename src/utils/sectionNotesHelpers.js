@@ -61,6 +61,10 @@ export const buildDoorDrawerMaterialNote = ({
     (m) => m.id === drawerFrontMatId,
   );
 
+  const effectiveFaceMaterial = faceMaterials.find(
+    (m) => m.id === faceMatId,
+  );
+
   const doorMaterialName = doorMaterial?.name || "";
   const drawerFrontMaterialName = drawerFrontMaterial?.name || "";
 
@@ -93,7 +97,7 @@ export const buildDoorDrawerMaterialNote = ({
   const faceFinishIds = resolveFinishIds(
     effectiveSection.face_finish,
     null,
-    true,
+    effectiveFaceMaterial?.needs_finish !== false,
   );
 
   const doorFinishIds = resolveFinishIds(
@@ -149,7 +153,7 @@ export const buildDoorDrawerMaterialNote = ({
       doorFinishNames === drawerFrontFinishNames
     ) {
       const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
-      return `Doors & Drawer Fronts: ${doorMaterialName}${finishPart}.`;
+      return `Doors & Drawer Fronts - ${doorMaterialName}${finishPart}.`;
     }
 
     const doorFinishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
@@ -169,7 +173,7 @@ export const buildDoorDrawerMaterialNote = ({
     const finishPart = drawerFrontFinishNames
       ? ` (${drawerFrontFinishNames})`
       : "";
-    return `Drawer Fronts: ${drawerFrontMaterialName}${finishPart}.`;
+    return `Drawer Fronts - ${drawerFrontMaterialName}${finishPart}.`;
   }
 
   return "";
