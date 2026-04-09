@@ -3201,7 +3201,7 @@ const EstimateSectionForm = ({
                   <input
                     type="number"
                     step="any"
-                    min="0"
+                    // min="0"
                     id="profit"
                     name="profit"
                     value={formData.profit}
@@ -3233,7 +3233,7 @@ const EstimateSectionForm = ({
                   <input
                     type="number"
                     step="any"
-                    min="0"
+                    // min="0"
                     id="commission"
                     name="commission"
                     value={formData.commission}
@@ -3265,7 +3265,7 @@ const EstimateSectionForm = ({
                   <input
                     type="number"
                     step="any"
-                    min="0"
+                    // min="0"
                     id="discount"
                     name="discount"
                     value={formData.discount}
