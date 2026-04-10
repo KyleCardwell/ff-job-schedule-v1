@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 
-import { PANEL_MOD_DISPLAY_NAMES, UNFINISHED } from "./constants";
+import { FACE_NAMES, PANEL_MOD_DISPLAY_NAMES, UNFINISHED } from "./constants";
 
 export const SECTION_NOTES_LABELS = [
   "Notes:",
@@ -11,35 +11,113 @@ export const SECTION_NOTES_LABELS = [
 export const buildPanelModNote = (effectiveSection = {}) => {
   const doorPanelModId = effectiveSection.door_panel_mod_id;
   const drawerPanelModId = effectiveSection.drawer_panel_mod_id;
-  const hasPanelModDoors = doorPanelModId && doorPanelModId > 0;
-  const hasPanelModDrawers = drawerPanelModId && drawerPanelModId > 0;
+  const hasPanelModDoors = Number(doorPanelModId) > 0;
+  const hasPanelModDrawers = Number(drawerPanelModId) > 0;
+
+  const getPanelModName = (panelModId) =>
+    PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
+
+  let baseNote = "";
 
   if (hasPanelModDoors && hasPanelModDrawers) {
     if (doorPanelModId === drawerPanelModId) {
-      const panelModName =
-        PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Modified";
-      return `${panelModName} Panels on doors and drawer fronts.`;
+      const panelModName = getPanelModName(doorPanelModId);
+      baseNote = `${panelModName} Panels on doors and drawer fronts.`;
+    } else {
+      const doorPanelName = getPanelModName(doorPanelModId);
+      const drawerPanelName = getPanelModName(drawerPanelModId);
+      baseNote = `${doorPanelName} Panels on doors, ${drawerPanelName} Panels on drawer fronts.`;
+    }
+  } else if (hasPanelModDoors) {
+    const panelModName = getPanelModName(doorPanelModId);
+    baseNote = `${panelModName} Panels on doors.`;
+  } else if (hasPanelModDrawers) {
+    const panelModName = getPanelModName(drawerPanelModId);
+    baseNote = `${panelModName} Panels on drawer fronts.`;
+  }
+
+  const panelModCountsByName = {};
+  const panelModEligibleTypes = new Set([
+    FACE_NAMES.DOOR,
+    FACE_NAMES.PAIR_DOOR,
+    FACE_NAMES.DRAWER_FRONT,
+    FACE_NAMES.FALSE_FRONT,
+    FACE_NAMES.PANEL,
+  ]);
+
+  const getExpectedPanelModIdForType = (faceType) => {
+    if (
+      faceType === FACE_NAMES.DOOR ||
+      faceType === FACE_NAMES.PAIR_DOOR ||
+      faceType === FACE_NAMES.PANEL
+    ) {
+      return Number(doorPanelModId) || 0;
     }
 
-    const doorPanelName =
-      PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Modified";
-    const drawerPanelName =
-      PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Modified";
-    return `${doorPanelName} Panels on doors, ${drawerPanelName} Panels on drawer fronts.`;
+    if (
+      faceType === FACE_NAMES.DRAWER_FRONT ||
+      faceType === FACE_NAMES.FALSE_FRONT
+    ) {
+      return Number(drawerPanelModId) || 0;
+    }
+
+    return 0;
+  };
+
+  const collectPanelModsFromNode = (node) => {
+    if (!node) return;
+
+    if (panelModEligibleTypes.has(node.type) && node.panelMod != null) {
+      const panelModId = Number(node.panelMod);
+      const expectedPanelModId = getExpectedPanelModIdForType(node.type);
+
+      if (Number.isFinite(panelModId) && panelModId !== expectedPanelModId) {
+        const count = node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1;
+
+        let panelModName = "";
+        if (panelModId > 0) {
+          panelModName = getPanelModName(panelModId);
+        } else if (panelModId === 0 && expectedPanelModId > 0) {
+          panelModName = `not ${getPanelModName(expectedPanelModId)}`;
+        }
+
+        if (!panelModName) return;
+
+        panelModCountsByName[panelModName] =
+          (panelModCountsByName[panelModName] || 0) + count;
+      }
+    }
+
+    if (Array.isArray(node.children)) {
+      node.children.forEach(collectPanelModsFromNode);
+    }
+  };
+
+  if (Array.isArray(effectiveSection.cabinets)) {
+    effectiveSection.cabinets.forEach((cabinet) => {
+      if (cabinet?.face_config) {
+        collectPanelModsFromNode(cabinet.face_config);
+      }
+    });
   }
 
-  if (hasPanelModDoors) {
-    const panelModName = PANEL_MOD_DISPLAY_NAMES[doorPanelModId] || "Modified";
-    return `${panelModName} Panels on doors.`;
+  const panelModEntries = Object.entries(panelModCountsByName);
+  if (panelModEntries.length > 0) {
+    const panelModParts = panelModEntries
+      .map(
+        ([panelModName, count]) =>
+          `${count} ${panelModName} panel${count !== 1 ? "s" : ""}`,
+      )
+      .join(", ");
+
+    if (baseNote) {
+      return `${baseNote} ${panelModParts}.`;
+    }
+
+    return `${panelModParts}.`;
   }
 
-  if (hasPanelModDrawers) {
-    const panelModName =
-      PANEL_MOD_DISPLAY_NAMES[drawerPanelModId] || "Modified";
-    return `${panelModName} Panels on drawer fronts.`;
-  }
-
-  return "";
+  return baseNote;
 };
 
 export const buildDoorDrawerMaterialNote = ({
