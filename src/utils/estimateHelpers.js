@@ -2235,23 +2235,24 @@ export const generateCabinetSummary = (
   faceConfig,
   typeSpecificOptions = {},
   cabinetItemType,
+  cabinetItemQuantity,
   accessoryCatalog = [],
   effectiveDoorPanelModId = null,
 ) => {
   if (!faceConfig) return "";
 
-  const parts = [];
+  const summary = [];
 
   if (typeSpecificOptions?.cabinetStyleOverride) {
-    parts.push(typeSpecificOptions.cabinetStyleOverride);
+    summary.push(typeSpecificOptions.cabinetStyleOverride);
   }
 
   if (typeSpecificOptions?.blind && typeSpecificOptions.blind !== "none") {
-    parts.push(`Blind ${typeSpecificOptions.blind}`);
+    summary.push(`Blind ${typeSpecificOptions.blind}`);
   }
 
   if (typeSpecificOptions.corner_45) {
-    parts.push("45° Corner");
+    summary.push("45° Corner");
   }
 
   const sideLabels = [
@@ -2267,11 +2268,9 @@ export const generateCabinetSummary = (
 
   if (finishedSides.length > 0) {
     if (cabinetItemType === 10) {
-      parts.push(
-        `nosing (${finishedSides.join(", ")})`,
-      );
+      summary.push(`nosing (${finishedSides.join(", ")})`);
     } else {
-      parts.push(
+      summary.push(
         `${finishedSides.length} finished side${
           finishedSides.length !== 1 ? "s" : ""
         } (${finishedSides.join(", ")})`,
@@ -2296,7 +2295,8 @@ export const generateCabinetSummary = (
 
   // Count doors and glass panels
   const doorNodes = allNodes.filter(
-    (node) => node.type === "door" || node.type === "pair_door",
+    (node) =>
+      node.type === FACE_NAMES.DOOR || node.type === FACE_NAMES.PAIR_DOOR,
   );
 
   let totalDoors = 0;
@@ -2311,7 +2311,7 @@ export const generateCabinetSummary = (
       : null;
 
   doorNodes.forEach((node) => {
-    if (node.type === "pair_door") {
+    if (node.type === FACE_NAMES.PAIR_DOOR) {
       totalDoors += 2; // Pair door counts as 2 doors
     } else {
       totalDoors += 1;
@@ -2323,11 +2323,11 @@ export const generateCabinetSummary = (
         (acc) => acc.id === +node.glassPanel,
       );
       const glassName = glassItem?.name || "glass";
-      const count = node.type === "pair_door" ? 2 : 1;
+      const count = node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1;
       glassDoorsByName[glassName] = (glassDoorsByName[glassName] || 0) + count;
     }
 
-    const count = node.type === "pair_door" ? 2 : 1;
+    const count = node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1;
 
     if (node.panelMod != null) {
       const panelModId = +node.panelMod;
@@ -2376,13 +2376,13 @@ export const generateCabinetSummary = (
     }
 
     if (summaryDetails.length > 0) {
-      parts.push(
+      summary.push(
         `${totalDoors} door${
           totalDoors !== 1 ? "s" : ""
         } (${summaryDetails.join(", ")})`,
       );
     } else {
-      parts.push(`${totalDoors} door${totalDoors !== 1 ? "s" : ""}`);
+      summary.push(`${totalDoors} door${totalDoors !== 1 ? "s" : ""}`);
     }
   }
 
@@ -2391,7 +2391,7 @@ export const generateCabinetSummary = (
     (node) => node.type === FACE_NAMES.DRAWER_FRONT,
   );
   if (drawerNodes.length > 0) {
-    parts.push(
+    summary.push(
       `${drawerNodes.length} drawer${drawerNodes.length !== 1 ? "s" : ""}`,
     );
   }
@@ -2401,7 +2401,7 @@ export const generateCabinetSummary = (
     (node) => node.type === FACE_NAMES.FALSE_FRONT,
   );
   if (falseFrontNodes.length > 0) {
-    parts.push(
+    summary.push(
       `${falseFrontNodes.length} false front${
         falseFrontNodes.length !== 1 ? "s" : ""
       }`,
@@ -2411,7 +2411,7 @@ export const generateCabinetSummary = (
   // Count open faces
   const openNodes = allNodes.filter((node) => node.type === FACE_NAMES.OPEN);
   if (openNodes.length > 0) {
-    parts.push(
+    summary.push(
       `${openNodes.length} opening${openNodes.length !== 1 ? "s" : ""}`,
     );
   }
@@ -2420,10 +2420,38 @@ export const generateCabinetSummary = (
   const panelNodes = allNodes.filter((node) => node.type === FACE_NAMES.PANEL);
   if (panelNodes.length > 0) {
     const panelText = `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`;
-    const shopBuiltSuffix = typeSpecificOptions?.shop_built
-      ? " (shop-built)"
-      : "";
-    parts.push(panelText + shopBuiltSuffix);
+    const panelModsByName = {};
+
+    panelNodes.forEach((node) => {
+      if (node.panelMod == null) return;
+
+      const panelModId = +node.panelMod;
+      if (panelModId > 0) {
+        const panelModName =
+          PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
+        panelModsByName[panelModName] = (panelModsByName[panelModName] || 0) + 1;
+      }
+    });
+
+    const panelDetails = [];
+    const panelModEntries = Object.entries(panelModsByName);
+    if (panelModEntries.length > 0) {
+      panelDetails.push(
+        panelModEntries
+          .map(([name, count]) => (count > 1 ? `${count} ${name}` : name))
+          .join(", "),
+      );
+    }
+
+    if (typeSpecificOptions?.shop_built) {
+      panelDetails.push("shop-built");
+    }
+
+    if (panelDetails.length > 0) {
+      summary.push(`${panelText} (${panelDetails.join(", ")})`);
+    } else {
+      summary.push(panelText);
+    }
   }
 
   // Count shelves and glass shelves
@@ -2445,13 +2473,13 @@ export const generateCabinetSummary = (
 
   if (totalShelves > 0) {
     if (glassShelves > 0) {
-      parts.push(
+      summary.push(
         `${totalShelves} shel${
           totalShelves !== 1 ? "ves" : "f"
         } (${glassShelves} glass)`,
       );
     } else {
-      parts.push(`${totalShelves} shel${totalShelves !== 1 ? "ves" : "f"}`);
+      summary.push(`${totalShelves} shel${totalShelves !== 1 ? "ves" : "f"}`);
     }
   }
 
@@ -2465,7 +2493,7 @@ export const generateCabinetSummary = (
   });
 
   if (totalRollouts > 0) {
-    parts.push(`${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`);
+    summary.push(`${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`);
   }
 
   // Count accessories from face nodes by traversing the tree
@@ -2498,9 +2526,11 @@ export const generateCabinetSummary = (
   // Create summary strings for each accessory type
   if (Object.keys(accessoryGroups).length > 0) {
     Object.entries(accessoryGroups).forEach(([name, count]) => {
-      parts.push(`${count} ${name}${count !== 1 ? "s" : ""}`);
+      summary.push(`${count} ${name}${count !== 1 ? "s" : ""}`);
     });
   }
 
-  return parts.join(", ");
+  return cabinetItemQuantity && cabinetItemQuantity > 1
+    ? `Each: ${summary.join(", ")}`
+    : summary.join(", ");
 };

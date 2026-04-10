@@ -271,6 +271,7 @@ const SectionItemList = ({
         quantity: item.quantity,
       },
       item.type,
+      item.quantity,
       accessories?.glass || [],
       effectiveDoorPanelModId,
     );

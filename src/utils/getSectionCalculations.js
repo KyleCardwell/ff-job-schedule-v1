@@ -195,6 +195,30 @@ const calculateFaceTotals = (section, context) => {
         // Create faces array for both pricing and hours calculation
         const shopBuiltFaces = [];
 
+        // For shop-built end panels, only use explicit per-node panel mods.
+        // Do not inherit section-level defaults when no node panelMod is set.
+        let shopBuiltPanelModId = null;
+        if (
+          cabinet.face_config?.faceSummary &&
+          typeof cabinet.face_config.faceSummary === "object"
+        ) {
+          const faceSummaryEntries = Object.values(cabinet.face_config.faceSummary);
+          for (const faceData of faceSummaryEntries) {
+            if (!faceData?.faces || !Array.isArray(faceData.faces)) continue;
+
+            const explicitPanelModFace = faceData.faces.find((face) => {
+              if (face?.panelMod == null) return false;
+              const panelModId = Number(face.panelMod);
+              return Number.isFinite(panelModId) && panelModId > 0;
+            });
+
+            if (explicitPanelModFace) {
+              shopBuiltPanelModId = Number(explicitPanelModFace.panelMod);
+              break;
+            }
+          }
+        }
+
         // Add single panel using root dimensions (NOT multiplied - quantity handled later)
         shopBuiltFaces.push({
           width: cabinet.width,
@@ -264,8 +288,7 @@ const calculateFaceTotals = (section, context) => {
           faceType,
           styleToUse,
           cabinetStyleId,
-          // panelModId: effectiveValues.door_panel_mod_id,
-          panelModId: null, // No panel mod for shop-built
+          panelModId: shopBuiltPanelModId,
           quantity,
           cabinetTypeId: cabinet.type,
         });
