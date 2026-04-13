@@ -254,9 +254,13 @@ const GeneratePdfButton = ({
           },
         ];
 
-        // Process each section in the task
-        const sections = Object.entries(task.financial_data);
-        sections.push(...adjustedTotals.adjustments);
+        // Process each section in the task (hours always first)
+        const financialSections = Object.entries(task.financial_data);
+        const sections = [
+          ...financialSections.filter(([id]) => id === "hours"),
+          ...financialSections.filter(([id]) => id !== "hours"),
+          ...adjustedTotals.adjustments,
+        ];
         sections.forEach(([id, sectionData]) => {
           if (id === "hours") {
             // Hours section with service breakdowns
