@@ -39,12 +39,18 @@ const CompletedProjectsContainer = () => {
     dispatch(fetchCompletedProjects(filters));
   };
 
-  const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
+    const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+    
+      const direction = key === "completed" ? "desc" : "asc";
+      return { key, direction };
+    });
   };
 
   const handleRestoreTask = (project, task) => {
