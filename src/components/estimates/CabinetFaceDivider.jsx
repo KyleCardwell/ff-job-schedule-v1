@@ -16,6 +16,7 @@ import {
 import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
+  DEFAULT_NO_SHELVES,
   FACE_NAMES,
   FACE_TYPES,
   ITEM_TYPES,
@@ -1382,13 +1383,15 @@ const CabinetFaceDivider = ({
       }
 
       // Set default shelf quantity for supported types
+      const shouldForceNoShelves = DEFAULT_NO_SHELVES.includes(newType);
+
       if (supportsShelves(newType)) {
         const standardShelfQty = calculateShelfQty(node.height);
-        node.shelfQty = node.shelfQty || standardShelfQty;
+        node.shelfQty = shouldForceNoShelves ? 0 : node.shelfQty || standardShelfQty;
 
         setInputValues((prev) => ({
           ...prev,
-          shelfQty: node.shelfQty || standardShelfQty,
+          shelfQty: node.shelfQty,
         }));
       } else {
         // Reset roll-outs & shelves if unsupported
