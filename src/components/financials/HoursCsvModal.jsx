@@ -201,6 +201,12 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
     onClose();
   };
 
+  const handleClearCsv = () => {
+    setPreviewRows([]);
+    setCsvError(null);
+    setUploadedFileName("");
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -220,10 +226,15 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
             </div>
             <button
               type="button"
-              onClick={onClose}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              onClick={handleClearCsv}
+              disabled={previewRows.length === 0}
+              className={`px-3 py-2 text-sm font-medium border rounded-md ${
+                previewRows.length === 0
+                  ? "text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed"
+                  : "text-gray-700 bg-white border-gray-300 hover:bg-gray-50"
+              }`}
             >
-              Close
+              Clear CSV
             </button>
           </div>
 
