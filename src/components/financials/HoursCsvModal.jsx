@@ -267,144 +267,152 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
 
           {/* Preview table */}
           {previewRows.length > 0 && (
-            <>
-              <div className="border border-gray-200 rounded-md overflow-auto max-h-[55vh]">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">
-                        Include
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">
-                        Name
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">
-                        Type
-                      </th>
-                      <th className="px-3 py-2 text-right font-semibold text-gray-700">
-                        Hours
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">
-                        Matched Employee
-                      </th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">
-                        Service
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewRows.map((row) => {
-                      const unassigned = row.included && !row.selectedEmployeeId;
-                      const selectedEmployee = row.selectedEmployeeId
-                        ? employeesById.get(row.selectedEmployeeId)
-                        : null;
-                      const selectedService = selectedEmployee
-                        ? servicesByTeamServiceId.get(selectedEmployee.team_service_id)
-                        : null;
-                      return (
-                        <tr
-                          key={row._id}
-                          className={`${
-                            !row.included
-                              ? "bg-gray-100 opacity-60"
-                              : unassigned
-                              ? "bg-red-50"
-                              : "bg-white"
-                          } hover:bg-gray-50`}
+            <div className="border border-gray-200 rounded-md overflow-auto max-h-[55vh]">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                      Include
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                      Name
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                      Type
+                    </th>
+                    <th className="px-3 py-2 text-right font-semibold text-gray-700">
+                      Hours
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                      Matched Employee
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                      Service
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewRows.map((row) => {
+                    const unassigned = row.included && !row.selectedEmployeeId;
+                    const selectedEmployee = row.selectedEmployeeId
+                      ? employeesById.get(row.selectedEmployeeId)
+                      : null;
+                    const selectedService = selectedEmployee
+                      ? servicesByTeamServiceId.get(selectedEmployee.team_service_id)
+                      : null;
+                    return (
+                      <tr
+                        key={row._id}
+                        className={`${
+                          !row.included
+                            ? "bg-gray-100 opacity-60"
+                            : unassigned
+                            ? "bg-red-50"
+                            : "bg-white"
+                        } hover:bg-gray-50`}
+                      >
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={row.included}
+                            onChange={() => handleToggleInclude(row._id)}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {row.displayName}
+                        </td>
+                        <td
+                          className={`px-3 py-2 whitespace-nowrap ${
+                            row.isOvertime ? "text-orange-600 font-medium" : ""
+                          }`}
                         >
-                          <td className="px-3 py-2">
-                            <input
-                              type="checkbox"
-                              checked={row.included}
-                              onChange={() => handleToggleInclude(row._id)}
-                              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            {row.displayName}
-                          </td>
-                          <td
-                            className={`px-3 py-2 whitespace-nowrap ${
-                              row.isOvertime
-                                ? "text-orange-600 font-medium"
-                                : ""
+                          {row.label}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          {row.hoursDisplay}
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={row.selectedEmployeeId || ""}
+                            onChange={(e) =>
+                              handleEmployeeChange(row._id, e.target.value)
+                            }
+                            className={`px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              unassigned
+                                ? "border-red-500 bg-red-50"
+                                : "border-gray-300"
                             }`}
                           >
-                            {row.label}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">
-                            {row.hoursDisplay}
-                          </td>
-                          <td className="px-3 py-2">
-                            <select
-                              value={row.selectedEmployeeId || ""}
-                              onChange={(e) =>
-                                handleEmployeeChange(row._id, e.target.value)
-                              }
-                              className={`px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                unassigned
-                                  ? "border-red-500 bg-red-50"
-                                  : "border-gray-300"
-                              }`}
-                            >
-                              <option value="">Select employee...</option>
-                              {employees.map((employee) => (
-                                <option
-                                  key={employee.employee_id}
-                                  value={employee.employee_id}
-                                >
-                                  {employee.employee_name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td
-                            className={`px-3 py-2 whitespace-nowrap ${
-                              selectedService ? "text-gray-800" : "text-red-600"
-                            }`}
-                          >
-                            {selectedService?.service_name || "Unassigned"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            <option value="">Select employee...</option>
+                            {employees.map((employee) => (
+                              <option
+                                key={employee.employee_id}
+                                value={employee.employee_id}
+                              >
+                                {employee.employee_name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td
+                          className={`px-3 py-2 whitespace-nowrap ${
+                            selectedService ? "text-gray-800" : "text-red-600"
+                          }`}
+                        >
+                          {selectedService?.service_name || "Unassigned"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-              {/* Footer */}
-              <div className="mt-4 flex justify-between items-center">
-                <div className="text-sm text-gray-600">
-                  {includedRows.length} of {previewRows.length} rows selected
-                  {hasUnassigned && (
-                    <span className="text-red-600 ml-2">
-                      — assign all included rows to a service before confirming
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirm}
-                    disabled={includedRows.length === 0 || hasUnassigned}
-                    className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                      includedRows.length === 0 || hasUnassigned
-                        ? "bg-blue-300 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  >
-                    Confirm
-                  </button>
-                </div>
+          {/* Footer */}
+          {previewRows.length === 0 ? (
+            <div className="mt-4 flex justify-end items-center">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {includedRows.length} of {previewRows.length} rows selected
+                {hasUnassigned && (
+                  <span className="text-red-600 ml-2">
+                    — assign all included rows to a service before confirming
+                  </span>
+                )}
               </div>
-            </>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  disabled={includedRows.length === 0 || hasUnassigned}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                    includedRows.length === 0 || hasUnassigned
+                      ? "bg-blue-300 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
