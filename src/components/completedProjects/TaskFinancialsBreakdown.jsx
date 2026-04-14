@@ -38,6 +38,17 @@ const orderFinancialEntries = (entries) => {
   return ordered;
 };
 
+const isOtherSection = (sectionId, sectionName) =>
+  sectionId === "other" ||
+  (sectionName || "").trim().toLowerCase() === "other";
+
+const formatOtherInputRowLabel = (row) => {
+  const parts = [row?.invoice, row?.description]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  return parts.join(" - ") || "(No details)";
+};
+
 const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
   if (!task.financial_data) {
     return (
@@ -154,6 +165,13 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
             );
           }
 
+          const sectionIsOther = isOtherSection(id, sectionData.name);
+          const otherInputRows = sectionIsOther
+            ? Array.isArray(sectionData.data)
+              ? sectionData.data
+              : []
+            : [];
+
           return (
             <div key={id} className="py-2 hover:bg-gray-200">
               <div className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 text-sm">
@@ -191,6 +209,31 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                   })}
                 </div>
               </div>
+
+              {sectionIsOther && otherInputRows.length > 0 && (
+                <div>
+                  {otherInputRows.map((row, index) => {
+                    const rowCost = parseFloat(row?.cost) || 0;
+                    return (
+                      <div
+                        key={`${id}-other-row-${row?.id || index}`}
+                        className="grid grid-cols-[100px_2fr_1fr_1fr_1fr] gap-4 text-sm py-1 text-gray-600"
+                      >
+                        <div></div>
+                        <div className="pl-4">{formatOtherInputRowLabel(row)}</div>
+                        <div className="text-right"></div>
+                        <div className="text-right">
+                          ${rowCost.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                        <div className="text-right"></div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
@@ -218,6 +261,8 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
 TaskFinancialsBreakdown.propTypes = {
   task: PropTypes.object.isRequired,
   services: PropTypes.array.isRequired,
+  color: PropTypes.string,
+  adjustments: PropTypes.array,
 };
 
 export default TaskFinancialsBreakdown;

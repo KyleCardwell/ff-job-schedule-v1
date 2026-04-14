@@ -1,9 +1,124 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 
-import { headerButtonClass, headerButtonColor } from "../../assets/tailwindConstants";
-import { FIXED_AMOUNT } from "../../utils/constants";
+import {
+  headerButtonClass,
+  headerButtonColor,
+} from "../../assets/tailwindConstants";
+import {
+  FIXED_AMOUNT,
+  FINANCIAL_SECTION_ORDER,
+  ADJUSTMENT_ORDER,
+} from "../../utils/constants";
 import { calculateFinancialTotals } from "../../utils/helpers";
+
+const orderFinancialEntries = (entries) => {
+  const entryMap = new Map(entries);
+  const ordered = [];
+
+  FINANCIAL_SECTION_ORDER.forEach((id) => {
+    if (entryMap.has(id)) {
+      ordered.push([id, entryMap.get(id)]);
+      entryMap.delete(id);
+    }
+  });
+
+  entries.forEach(([id, data]) => {
+    if (!entryMap.has(id)) return;
+    if (ADJUSTMENT_ORDER.includes(id)) return;
+    ordered.push([id, data]);
+    entryMap.delete(id);
+  });
+
+  ADJUSTMENT_ORDER.forEach((id) => {
+    if (entryMap.has(id)) {
+      ordered.push([id, entryMap.get(id)]);
+      entryMap.delete(id);
+    }
+  });
+
+  entryMap.forEach((data, id) => {
+    ordered.push([id, data]);
+  });
+
+  return ordered;
+};
+
+const formatOtherInputRowLabel = (row) => {
+  const parts = [row?.invoice, row?.description]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  return parts.join(" - ") || "(No details)";
+};
+
+const PDF_LINE_COLOR = "#aaa";
+const COMPACT_TABLE_LAYOUT = {
+  hLineWidth: function () {
+    return 0.5;
+  },
+  vLineWidth: function () {
+    return 0;
+  },
+  hLineColor: function () {
+    return PDF_LINE_COLOR;
+  },
+  paddingTop: function () {
+    return 1;
+  },
+  paddingBottom: function () {
+    return 1;
+  },
+};
+const NO_SECTION_LINES_LAYOUT = {
+  hLineWidth: function () {
+    return 0;
+  },
+  vLineWidth: function () {
+    return 0;
+  },
+  paddingTop: function () {
+    return 1;
+  },
+  paddingBottom: function () {
+    return 1;
+  },
+};
+const HOURS_SERVICES_LAYOUT = {
+  hLineWidth: function (i) {
+    if (i === 1) return 0.5;
+    if (i > 1 && i % 2 === 1) return 0.5;
+    return 0;
+  },
+  vLineWidth: function () {
+    return 0;
+  },
+  hLineColor: function () {
+    return PDF_LINE_COLOR;
+  },
+  paddingTop: function () {
+    return 1;
+  },
+  paddingBottom: function () {
+    return 1;
+  },
+};
+const TOTALS_LAYOUT = {
+  hLineWidth: function () {
+    return 0.5;
+  },
+  vLineWidth: function () {
+    return 0;
+  },
+  hLineColor: function () {
+    return PDF_LINE_COLOR;
+  },
+  paddingTop: function () {
+    return 1;
+  },
+  paddingBottom: function () {
+    return 1;
+  },
+};
 
 // Use CDN approach for pdfMake to avoid font loading issues
 const GeneratePdfButton = ({
@@ -45,7 +160,7 @@ const GeneratePdfButton = ({
       }
 
       const completedDate = new Date(
-        project.project_completed_at
+        project.project_completed_at,
       ).toLocaleDateString();
 
       // Get today's date for the report
@@ -83,7 +198,7 @@ const GeneratePdfButton = ({
             //   margin: [0, 10, 0, 0],
             // },
           ],
-          margin: [0, 0, 0, 10],
+          margin: [0, 0, 0, 8],
         },
         {
           columns: [
@@ -96,12 +211,12 @@ const GeneratePdfButton = ({
               alignment: "right",
             },
           ],
-          margin: [0, 0, 0, 20],
+          margin: [0, 0, 0, 14],
         },
         {
           text: "Project Totals",
           style: "subheader",
-          margin: [0, 10, 0, 5],
+          margin: [0, 8, 0, 4],
         },
         {
           table: {
@@ -120,7 +235,7 @@ const GeneratePdfButton = ({
                     {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }
+                    },
                   )}`,
                   alignment: "center",
                 },
@@ -130,7 +245,7 @@ const GeneratePdfButton = ({
                     {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }
+                    },
                   )}`,
                   alignment: "center",
                 },
@@ -140,14 +255,14 @@ const GeneratePdfButton = ({
                     {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }
+                    },
                   )}`,
                   color:
                     (projectTotals.profit || 0) > 0
                       ? "green"
                       : (projectTotals.profit || 0) < 0
-                      ? "red"
-                      : "blue",
+                        ? "red"
+                        : "blue",
                   alignment: "center",
                 },
                 {
@@ -156,20 +271,20 @@ const GeneratePdfButton = ({
                     profitPercent > 0
                       ? "green"
                       : profitPercent < 0
-                      ? "red"
-                      : "blue",
+                        ? "red"
+                        : "blue",
                   alignment: "center",
                 },
               ],
             ],
           },
-          layout: "lightHorizontalLines",
-          margin: [0, 0, 0, 20],
+          layout: COMPACT_TABLE_LAYOUT,
+          margin: [0, 0, 0, 14],
         },
         {
           text: "Tasks Summary",
           style: "subheader",
-          margin: [0, 10, 0, 5],
+          margin: [0, 8, 0, 4],
         },
       ];
 
@@ -198,7 +313,7 @@ const GeneratePdfButton = ({
               estimate: section.estimate || 0,
               inputRows: section.data || [],
             };
-          }
+          },
         );
 
         const taskTotals = calculateFinancialTotals(taskSections, services);
@@ -250,17 +365,15 @@ const GeneratePdfButton = ({
           {
             text: `${project.project_name} - ${task.task_number} - ${task.task_name}`,
             style: "taskHeader",
-            margin: [0, 15, 0, 5],
+            margin: [0, 10, 0, 4],
           },
         ];
 
-        // Process each section in the task (hours always first)
-        const financialSections = Object.entries(task.financial_data);
-        const sections = [
-          ...financialSections.filter(([id]) => id === "hours"),
-          ...financialSections.filter(([id]) => id !== "hours"),
-          ...adjustedTotals.adjustments,
-        ];
+        // Process each section in the same order as completed-project breakdown
+        const sections = orderFinancialEntries([
+          ...Object.entries(task.financial_data || {}),
+          ...(adjustedTotals.adjustments || []),
+        ]);
         sections.forEach(([id, sectionData]) => {
           if (id === "hours") {
             // Hours section with service breakdowns
@@ -283,7 +396,7 @@ const GeneratePdfButton = ({
             // Add each service row
             (sectionData.data || []).forEach((service) => {
               const serviceInfo = services.find(
-                (s) => s.team_service_id === service.team_service_id
+                (s) => s.team_service_id === service.team_service_id,
               );
               const rate =
                 service.rateOverride ?? serviceInfo?.hourly_rate ?? 0;
@@ -297,7 +410,7 @@ const GeneratePdfButton = ({
                   const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
                   return sum + hoursValue;
                 },
-                0
+                0,
               );
 
               // Calculate differences
@@ -340,7 +453,7 @@ const GeneratePdfButton = ({
 
               // Second row - Hours information
               hoursTableBody.push([
-                " Hours",
+                { text: "Hours", margin: [12, 0, 0, 0] },
                 {
                   text: service.estimate.toFixed(2),
                   alignment: "right",
@@ -365,29 +478,8 @@ const GeneratePdfButton = ({
                   widths: ["*", "*", "*", "*"],
                   body: hoursTableBody,
                 },
-                layout: {
-                  hLineWidth: function (i, node) {
-                    // Remove lines between estimate and hours rows (every odd line except header)
-                    if (i > 0 && i < node.table.body.length && i % 2 === 0) {
-                      return 0;
-                    }
-                    return 0.5;
-                  },
-                  vLineWidth: function () {
-                    return 0;
-                  },
-                  paddingBottom: function (i) {
-                    // Add extra padding after hours rows (every even row)
-                    if (i > 0 && i % 2 === 0) {
-                      return 8;
-                    }
-                    return 2;
-                  },
-                  hLineColor: function () {
-                    return "#aaa";
-                  },
-                },
-                margin: [0, 0, 0, 10],
+                layout: HOURS_SERVICES_LAYOUT,
+                margin: [0, 0, 0, 8],
               });
             }
           } else {
@@ -398,56 +490,79 @@ const GeneratePdfButton = ({
             //   margin: [0, 10, 0, 5],
             // });
 
+            const isOtherSection =
+              id === "other" ||
+              (sectionData.name || "").toLowerCase() === "other";
+            const sectionTableBody = [
+              [
+                sectionData.name || id,
+                {
+                  text: `$${sectionData.estimate.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                  alignment: "right",
+                },
+                {
+                  text: `$${sectionData.actual_cost.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                  alignment: "right",
+                },
+                {
+                  text: `$${(
+                    sectionData.estimate - sectionData.actual_cost
+                  ).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                  alignment: "right",
+                  color:
+                    sectionData.estimate - sectionData.actual_cost > 0
+                      ? "green"
+                      : sectionData.estimate - sectionData.actual_cost < 0
+                        ? "red"
+                        : "blue",
+                },
+              ],
+            ];
+
+            if (isOtherSection && Array.isArray(sectionData.data)) {
+              sectionData.data.forEach((row) => {
+                const rowCost = parseFloat(row?.cost) || 0;
+                sectionTableBody.push([
+                  {
+                    text: formatOtherInputRowLabel(row),
+                    margin: [12, 0, 0, 0],
+                  },
+                  {
+                    text: "",
+                    alignment: "right",
+                  },
+                  {
+                    text: `$${rowCost.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`,
+                    alignment: "right",
+                  },
+                  {
+                    text: "",
+                    alignment: "right",
+                  },
+                ]);
+              });
+            }
+
             // Add section data
             taskBreakdown.push({
               table: {
                 widths: ["*", "*", "*", "*"],
-                body: [
-                  //   [
-                  //     { text: "Category", bold: true },
-                  //     { text: "Estimated", bold: true, alignment: "right" },
-                  //     { text: "Cost", bold: true, alignment: "right" },
-                  //     { text: "Difference", bold: true, alignment: "right" },
-                  //   ],
-                  [
-                    sectionData.name || id,
-                    {
-                      text: `$${sectionData.estimate.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}`,
-                      alignment: "right",
-                    },
-                    {
-                      text: `$${sectionData.actual_cost.toLocaleString(
-                        undefined,
-                        {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }
-                      )}`,
-                      alignment: "right",
-                    },
-                    {
-                      text: `$${(
-                        sectionData.estimate - sectionData.actual_cost
-                      ).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}`,
-                      alignment: "right",
-                      color:
-                        sectionData.estimate - sectionData.actual_cost > 0
-                          ? "green"
-                          : sectionData.estimate - sectionData.actual_cost < 0
-                          ? "red"
-                          : "blue",
-                    },
-                  ],
-                ],
+                body: sectionTableBody,
               },
-              layout: "lightHorizontalLines",
-              margin: [0, 0, 0, 10],
+              layout: NO_SECTION_LINES_LAYOUT,
+              margin: [0, 0, 0, 8],
             });
           }
         });
@@ -488,21 +603,8 @@ const GeneratePdfButton = ({
               ],
             ],
           },
-          layout: {
-            hLineWidth: function () {
-              return 0.5;
-            },
-            vLineWidth: function () {
-              return 0;
-            },
-            paddingBottom: function () {
-              return 2;
-            },
-            hLineColor: function () {
-              return "#aaa";
-            },
-          },
-          margin: [0, 5, 0, 10],
+          layout: TOTALS_LAYOUT,
+          margin: [0, 4, 0, 8],
         });
 
         // Add page break after each task except the last one
@@ -519,7 +621,7 @@ const GeneratePdfButton = ({
           widths: ["10%", "*", "15%", "15%", "15%", "8%"],
           body: summaryTableBody,
         },
-        layout: "lightHorizontalLines",
+        layout: COMPACT_TABLE_LAYOUT,
       });
 
       // Add page break before detailed breakdowns
@@ -538,12 +640,13 @@ const GeneratePdfButton = ({
 
       const docDefinition = {
         pageSize: "Letter",
+        pageMargins: [24, 28, 24, 32],
         content: content,
         footer: (currentPage, pageCount) => {
           return {
             text: `Report Date: ${today}           Page ${currentPage} of ${pageCount}`,
             alignment: "right",
-            margin: [0, 10, 40, 0],
+            margin: [0, 8, 24, 0],
           };
         },
         styles: {

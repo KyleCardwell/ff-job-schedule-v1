@@ -44,6 +44,17 @@ const orderFinancialEntries = (entries) => {
   return ordered;
 };
 
+const formatOtherInputRowLabel = (row) => {
+  const parts = [row?.invoice, row?.description]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+  return parts.join(" - ") || "(No details)";
+};
+
+const isOtherSection = (sectionId, sectionName) =>
+  sectionId === "other" ||
+  (sectionName || "").trim().toLowerCase() === "other";
+
 const CompletedProjectView = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -112,16 +123,26 @@ const CompletedProjectView = () => {
         const newSections = { ...acc.sections };
         Object.entries(adjustedTotals.sections || {}).forEach(
           ([sectionId, sectionData]) => {
+            const sectionIsOther = isOtherSection(sectionId, sectionData.name);
             if (!newSections[sectionId]) {
               newSections[sectionId] = {
                 estimate: 0,
                 actual_cost: 0,
                 name: sectionData.name,
                 services: sectionId === "hours" ? {} : undefined,
+                inputRows: sectionIsOther ? [] : undefined,
               };
             }
             newSections[sectionId].estimate += sectionData.estimate || 0;
             newSections[sectionId].actual_cost += sectionData.actual_cost || 0;
+
+            if (sectionIsOther) {
+              const otherRows = task.financial_data?.[sectionId]?.data || [];
+              newSections[sectionId].inputRows = [
+                ...(newSections[sectionId].inputRows || []),
+                ...otherRows,
+              ];
+            }
 
             // Aggregate services for hours section
             if (sectionId === "hours" && sectionData.services) {
@@ -186,6 +207,17 @@ const CompletedProjectView = () => {
     () => orderFinancialEntries(Object.entries(projectTotals.sections || {})),
     [projectTotals.sections],
   );
+
+  const projectOtherInputRows = useMemo(() => {
+    return (projectFinancials || []).flatMap((task) => {
+      return Object.entries(task?.financial_data || {}).flatMap(
+        ([id, sectionData]) => {
+          if (!isOtherSection(id, sectionData?.name)) return [];
+          return Array.isArray(sectionData?.data) ? sectionData.data : [];
+        }
+      );
+    });
+  }, [projectFinancials]);
 
   // Get the most recent update date from all task financials
   const dateUpdated = useMemo(() => {
@@ -356,9 +388,15 @@ const CompletedProjectView = () => {
               {/* Section rows */}
               {orderedProjectSections.map(
                 ([sectionId, sectionData]) => {
+                  const sectionIsOther = isOtherSection(sectionId, sectionData.name);
                   const profit =
                     (sectionData.estimate || 0) -
                     (sectionData.actual_cost || 0);
+                  const otherInputRows = sectionIsOther
+                    ? sectionData.inputRows?.length
+                      ? sectionData.inputRows
+                      : projectOtherInputRows
+                    : [];
 
                   return (
                     <div key={sectionId}>
@@ -487,6 +525,30 @@ const CompletedProjectView = () => {
                               );
                             }
                           )}
+                        </div>
+                      )}
+
+                      {sectionIsOther && otherInputRows.length > 0 && (
+                        <div>
+                          {otherInputRows.map((row, index) => {
+                            const rowCost = parseFloat(row?.cost) || 0;
+                            return (
+                              <div
+                                key={`${sectionId}-other-row-${row?.id || index}`}
+                                className="grid grid-cols-4 gap-4 text-sm py-1 text-gray-600"
+                              >
+                                <div className="pl-4">{formatOtherInputRowLabel(row)}</div>
+                                <div className="text-right"></div>
+                                <div className="text-right">
+                                  ${rowCost.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </div>
+                                <div className="text-right"></div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

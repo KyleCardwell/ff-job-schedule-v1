@@ -31,6 +31,11 @@ const FinancialsInputSection = ({
   const [expandedServiceId, setExpandedServiceId] = useState(null);
   const [inputValues, setInputValues] = useState({}); // For cost inputs
   const isHoursSection = sectionId === "hours";
+  const isOtherSection =
+    sectionId === "other" || sectionName?.toLowerCase() === "other";
+  const nonHoursGridColsClass = isOtherSection
+    ? "grid-cols-[2fr_3fr_2fr_2fr_2fr_36px]"
+    : "grid-cols-[3fr_3fr_2fr_2fr_36px]";
   const inputRefs = useRef({});
   const prevRowsLengthRef = useRef(inputRows.length);
 
@@ -227,6 +232,7 @@ const FinancialsInputSection = ({
     const newRow = {
       id: uuidv4(),
       invoice: "",
+      description: "",
       cost: "",
       taxRate: "",
     };
@@ -683,8 +689,11 @@ const FinancialsInputSection = ({
             ) : (
               <>
                 {localInputRows.length > 0 && (
-                  <div className="grid grid-cols-[3fr_3fr_2fr_2fr_36px] gap-4 font-medium text-sm text-gray-600 text-left mb-1">
+                  <div
+                    className={`grid ${nonHoursGridColsClass} gap-4 font-medium text-sm text-gray-600 text-left mb-1`}
+                  >
                     <span>Invoice</span>
+                    {isOtherSection && <span>Description</span>}
                     <span>Cost</span>
                     <span>Tax</span>
                     <span className="pr-3 text-right">Total</span>
@@ -695,7 +704,7 @@ const FinancialsInputSection = ({
                   {localInputRows.map((row) => (
                     <div
                       key={row.id}
-                      className="grid grid-cols-[3fr_3fr_2fr_2fr_36px] gap-4 items-center"
+                      className={`grid ${nonHoursGridColsClass} gap-4 items-center`}
                     >
                       <input
                         ref={(el) => (inputRefs.current[row.id] = el)}
@@ -708,6 +717,18 @@ const FinancialsInputSection = ({
                         className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Invoice"
                       />
+                      {isOtherSection && (
+                        <input
+                          type="text"
+                          name="description"
+                          value={row.description || ""}
+                          onChange={(e) =>
+                            handleInputChange(row.id, "description", e.target.value)
+                          }
+                          className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Description"
+                        />
+                      )}
                       <input
                         type="text"
                         name="cost"
