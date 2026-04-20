@@ -338,49 +338,6 @@ const calculateFaceTotals = (section, context) => {
       }
     }
 
-    // // Add extra service hours for end panels (type 10) and appliance panels (type 11)
-    // // Uses root dimensions with parts list anchors 17 and 18 respectively
-    // if (cabinet.type === 10 || cabinet.type === 11) {
-    //   const panelHours = calculatePanelPartsTime(
-    //     cabinet,
-    //     cabinetStyleId,
-    //     context
-    //   );
-
-    //   const categoryKey = 'panel';
-    //   const typeName = cabinet.type === 10 ? 'End Panel' : 'Appliance Panel';
-
-    //   console.log(`🟣 ${typeName} (cabinet ${cabinet.id || cabinet.temp_id}):`, panelHours);
-
-    //   // Aggregate panel hours by converting team_service_id to service_id
-    //   Object.entries(panelHours).forEach(([teamServiceId, hours]) => {
-    //     const service = context.globalServices?.find(
-    //       (s) => s.team_service_id === parseInt(teamServiceId)
-    //     );
-    //     if (!service) return;
-
-    //     const serviceId = service.service_id;
-    //     if (!totals.hoursByService[serviceId]) {
-    //       totals.hoursByService[serviceId] = 0;
-    //     }
-    //     // Hours already include quantity multiplier from calculatePanelPartsTime
-    //     totals.hoursByService[serviceId] += hours || 0;
-
-    //     // Track in categoryHours for breakdown display
-    //     if (!totals.categoryHours[categoryKey]) {
-    //       totals.categoryHours[categoryKey] = {};
-    //     }
-    //     if (!totals.categoryHours[categoryKey][serviceId]) {
-    //       totals.categoryHours[categoryKey][serviceId] = 0;
-    //     }
-    //     totals.categoryHours[categoryKey][serviceId] += hours || 0;
-
-    //     console.log(`  Added ${hours} hours to categoryHours.${categoryKey}[${serviceId}]`);
-    //   });
-
-    //   console.log(`  categoryHours.${categoryKey} now:`, totals.categoryHours[categoryKey]);
-    // }
-
     // Add service hours for hoods (type 14)
     // Uses 3D volume (width × height × depth) with parts list anchor 21
     if (cabinet.type === 14) {
@@ -426,23 +383,26 @@ const calculateFaceTotals = (section, context) => {
         // Exclude open, container, and reveal types from face processing
         if (["open", "container", "reveal"].includes(faceType)) return;
 
-        const styleToUse =
+        const sectionStyleToUse =
           faceType === FACE_NAMES.drawer_front ||
           faceType === FACE_NAMES.false_front
             ? effectiveValues.drawer_front_style
             : effectiveValues.door_style;
 
-        // Initialize style category if needed
-        if (!facesByStyle[styleToUse]) {
-          facesByStyle[styleToUse] = [];
-        }
-
         // Add each face to the aggregated list (multiplied by cabinet quantity)
         if (faceData.faces && Array.isArray(faceData.faces)) {
           faceData.faces.forEach((face) => {
+            // Use per-face style override if present, otherwise section default
+            const effectiveStyle = face.style || sectionStyleToUse;
+
+            // Initialize style category if needed
+            if (!facesByStyle[effectiveStyle]) {
+              facesByStyle[effectiveStyle] = [];
+            }
+
             // Add face multiple times based on cabinet quantity
             for (let i = 0; i < quantity; i++) {
-              facesByStyle[styleToUse].push({
+              facesByStyle[effectiveStyle].push({
                 ...face,
                 faceType,
                 cabinetId: cabinet.id || cabinet.temp_id,
@@ -489,7 +449,7 @@ const calculateFaceTotals = (section, context) => {
             allFacesForHours.push({
               faces,
               faceType,
-              styleToUse,
+              styleToUse: sectionStyleToUse,
               cabinetStyleId,
               panelModId,
               quantity,
@@ -793,14 +753,14 @@ const calculateFaceTotals = (section, context) => {
           faceType === FACE_NAMES.PAIR_DOOR ||
           faceType === FACE_NAMES.PANEL
         ) {
-          insideMolding = section.door_inside_molding || false;
-          outsideMolding = section.door_outside_molding || false;
+          insideMolding = face.insideMolding ?? section.door_inside_molding ?? false;
+          outsideMolding = face.outsideMolding ?? section.door_outside_molding ?? false;
         } else if (
           faceType === FACE_NAMES.DRAWER_FRONT ||
           faceType === FACE_NAMES.FALSE_FRONT
         ) {
-          insideMolding = section.drawer_inside_molding || false;
-          outsideMolding = section.drawer_outside_molding || false;
+          insideMolding = face.insideMolding ?? section.drawer_inside_molding ?? false;
+          outsideMolding = face.outsideMolding ?? section.drawer_outside_molding ?? false;
         }
 
         const moldingCost = calculateMoldingCost(
@@ -858,14 +818,14 @@ const calculateFaceTotals = (section, context) => {
           faceType === FACE_NAMES.PAIR_DOOR ||
           faceType === FACE_NAMES.PANEL
         ) {
-          insideMolding = section.door_inside_molding || false;
-          outsideMolding = section.door_outside_molding || false;
+          insideMolding = face.insideMolding ?? section.door_inside_molding ?? false;
+          outsideMolding = face.outsideMolding ?? section.door_outside_molding ?? false;
         } else if (
           faceType === FACE_NAMES.DRAWER_FRONT ||
           faceType === FACE_NAMES.FALSE_FRONT
         ) {
-          insideMolding = section.drawer_inside_molding || false;
-          outsideMolding = section.drawer_outside_molding || false;
+          insideMolding = face.insideMolding ?? section.drawer_inside_molding ?? false;
+          outsideMolding = face.outsideMolding ?? section.drawer_outside_molding ?? false;
         }
 
         const moldingCost = calculateMoldingCost(
