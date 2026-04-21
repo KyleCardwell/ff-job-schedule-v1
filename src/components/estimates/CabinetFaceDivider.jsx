@@ -2667,9 +2667,9 @@ const CabinetFaceDivider = ({
 
                     <div className="mt-2 grid grid-cols-2 space-x-4">
                       {supportsFaceStyle(selectedNode.type) && (
-                        <div className="flex-1 flex flex-col items-start space-x-1">
+                        <div className="flex-1 flex flex-col items-start">
                           <label className="text-xs text-slate-600">
-                            Style:
+                            Style
                           </label>
                           <select
                             name="style"
@@ -2694,7 +2694,7 @@ const CabinetFaceDivider = ({
                           {accessories.glass.length > 0 && (
                             <div className="flex-1 flex flex-col items-end space-x-1 mb-2">
                               <label className="text-xs text-slate-600">
-                                Shelf Material:
+                                Shelf Material
                               </label>
                               <select
                                 name="glassShelves"
@@ -2722,7 +2722,7 @@ const CabinetFaceDivider = ({
                         {supportsRollouts(selectedNode.type) && (
                           <div className="col-start-1 justify-self-start flex flex-col items-start">
                             <label className="text-xs text-slate-600">
-                              Roll-Out Qty:
+                              Roll-Out Qty
                             </label>
                             <input
                               type="number"
@@ -2739,7 +2739,7 @@ const CabinetFaceDivider = ({
                         {supportsShelves(selectedNode.type) && (
                           <div className="col-start-2 flex flex-col items-center">
                             <label className="text-xs text-slate-600">
-                              Shelf Qty:
+                              Shelf Qty
                             </label>
                             <input
                               type="number"
@@ -2756,7 +2756,7 @@ const CabinetFaceDivider = ({
                         {supportsShelves(selectedNode.type) && (
                           <div className="col-start-3 justify-self-end flex-1 flex flex-col items-end space-x-1">
                             <label className="text-xs text-slate-600">
-                              Shelf Nosing:
+                              Shelf Nosing
                             </label>
                             <input
                               type="number"
@@ -2778,7 +2778,7 @@ const CabinetFaceDivider = ({
                         glassPanelOptions(selectedNode.type).length > 0 && (
                           <div className="col-start-1 justify-self-start flex flex-col items-start">
                             <label className="text-xs text-slate-600">
-                              Panel Material:
+                              Panel Material
                             </label>
                             <select
                               name="glassPanel"
@@ -2800,7 +2800,7 @@ const CabinetFaceDivider = ({
                       {supportsPanelMod(selectedNode.type) && (
                         <div className="col-start-2 justify-self-end flex flex-col items-end">
                           <label className="text-xs text-slate-600">
-                            Panel Mod:
+                            Panel Mod
                           </label>
                           <select
                             name="panelMod"
@@ -2821,7 +2821,7 @@ const CabinetFaceDivider = ({
                       <div className="mt-2 grid grid-cols-2">
                         <div className="col-start-1 justify-self-start flex flex-col items-start">
                           <label className="text-xs text-slate-600">
-                            Inside Molding:
+                            Inside Molding
                           </label>
                           <select
                             name="insideMolding"
@@ -2839,7 +2839,7 @@ const CabinetFaceDivider = ({
 
                         <div className="col-start-2 justify-self-end flex flex-col items-end">
                           <label className="text-xs text-slate-600">
-                            Outside Molding:
+                            Outside Molding
                           </label>
                           <select
                             name="outsideMolding"

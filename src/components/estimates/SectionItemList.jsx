@@ -251,6 +251,36 @@ const SectionItemList = ({
       currentEstimate?.default_door_panel_mod_id,
       teamDefaults?.default_door_panel_mod_id,
     );
+    const effectiveDoorStyle = getEffectiveValueOnly(
+      currentSection?.door_style,
+      currentEstimate?.default_door_style,
+      teamDefaults?.default_door_style,
+    );
+    const effectiveDrawerStyle = getEffectiveValueOnly(
+      currentSection?.drawer_front_style,
+      currentEstimate?.default_drawer_front_style,
+      teamDefaults?.default_drawer_front_style,
+    );
+    const effectiveDoorInsideMolding = getEffectiveValueOnly(
+      currentSection?.door_inside_molding,
+      currentEstimate?.default_door_inside_molding,
+      teamDefaults?.default_door_inside_molding,
+    );
+    const effectiveDoorOutsideMolding = getEffectiveValueOnly(
+      currentSection?.door_outside_molding,
+      currentEstimate?.default_door_outside_molding,
+      teamDefaults?.default_door_outside_molding,
+    );
+    const effectiveDrawerInsideMolding = getEffectiveValueOnly(
+      currentSection?.drawer_inside_molding,
+      currentEstimate?.default_drawer_inside_molding,
+      teamDefaults?.default_drawer_inside_molding,
+    );
+    const effectiveDrawerOutsideMolding = getEffectiveValueOnly(
+      currentSection?.drawer_outside_molding,
+      currentEstimate?.default_drawer_outside_molding,
+      teamDefaults?.default_drawer_outside_molding,
+    );
 
     const styleOverrideName = item.cabinet_style_override
       ? cabinetStyles.find(
@@ -273,7 +303,15 @@ const SectionItemList = ({
       item.type,
       item.quantity,
       accessories?.glass || [],
-      effectiveDoorPanelModId,
+      {
+        effectiveDoorPanelModId,
+        effectiveDoorStyle,
+        effectiveDrawerStyle,
+        effectiveDoorInsideMolding,
+        effectiveDoorOutsideMolding,
+        effectiveDrawerInsideMolding,
+        effectiveDrawerOutsideMolding,
+      },
     );
     return summary ? (
       <span className="text-slate-400 capitalize">{summary}</span>
