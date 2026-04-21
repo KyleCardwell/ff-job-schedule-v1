@@ -1825,6 +1825,9 @@ const CabinetItemForm = ({
             height: doorHeight,
             area: doorArea,
             ...(node.panelMod != null && { panelMod: node.panelMod }),
+            ...(node.style != null && { style: node.style }),
+            ...(node.insideMolding != null && { insideMolding: node.insideMolding }),
+            ...(node.outsideMolding != null && { outsideMolding: node.outsideMolding }),
           });
 
           // Add right door
@@ -1836,6 +1839,9 @@ const CabinetItemForm = ({
             height: doorHeight,
             area: doorArea,
             ...(node.panelMod != null && { panelMod: node.panelMod }),
+            ...(node.style != null && { style: node.style }),
+            ...(node.insideMolding != null && { insideMolding: node.insideMolding }),
+            ...(node.outsideMolding != null && { outsideMolding: node.outsideMolding }),
           });
 
           if (node.glassPanel) {
@@ -1885,6 +1891,9 @@ const CabinetItemForm = ({
             shelfQty: node.glassShelves ? 0 : node.shelfQty || 0,
             rollOutQty: node.rollOutQty || 0,
             ...(node.panelMod != null && { panelMod: node.panelMod }),
+            ...(node.style != null && { style: node.style }),
+            ...(node.insideMolding != null && { insideMolding: node.insideMolding }),
+            ...(node.outsideMolding != null && { outsideMolding: node.outsideMolding }),
           });
 
           if (node.glassPanel) {

@@ -3,6 +3,7 @@ import { MaxRectsPacker } from "maxrects-packer";
 import {
   CABINET_TYPES,
   FACE_NAMES,
+  FACE_STYLES,
   FACE_STYLE_VALUES,
   FACE_TYPES,
   PANEL_MOD_DISPLAY_NAMES,
@@ -2229,6 +2230,7 @@ export const calculateBoxSheetsCNC = (
  * Generate a human-readable text summary of a cabinet's face configuration
  * @param {Object} faceConfig - The face_config object from a cabinet
  * @param {Object} typeSpecificOptions - Optional type-specific options (e.g., shop_built flag)
+ * @param {Object} effectiveFaceDefaults - Effective section defaults for face options (styles, molding, panel mod)
  * @returns {string} - Text summary like "4 doors (2 glass panels), 5 shelves (2 glass)"
  */
 export const generateCabinetSummary = (
@@ -2237,7 +2239,7 @@ export const generateCabinetSummary = (
   cabinetItemType,
   cabinetItemQuantity,
   accessoryCatalog = [],
-  effectiveDoorPanelModId = null,
+  effectiveFaceDefaults = {},
 ) => {
   if (!faceConfig) return "";
 
@@ -2293,120 +2295,221 @@ export const generateCabinetSummary = (
 
   const allNodes = collectNodes(faceConfig);
 
+  const {
+    effectiveDoorPanelModId = null,
+    effectiveDoorStyle = null,
+    effectiveDrawerStyle = null,
+    effectiveDoorInsideMolding = null,
+    effectiveDoorOutsideMolding = null,
+    effectiveDrawerInsideMolding = null,
+    effectiveDrawerOutsideMolding = null,
+  } = effectiveFaceDefaults;
+
+  const styleLabelMap = FACE_STYLES.reduce((acc, style) => {
+    acc[style.value] = style.label;
+    return acc;
+  }, {});
+
+  const getStyleLabel = (styleValue) => {
+    if (!styleValue) return null;
+    return styleLabelMap[styleValue] || styleValue;
+  };
+
+  const getNodeCount = (node) => (node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1);
+
+  const normalizeBoolean = (value) =>
+    value === true || value === "true" || value === 1 || value === "1";
+
+  const normalizedDefaultPanelModId =
+    effectiveDoorPanelModId != null ? +effectiveDoorPanelModId : null;
+
+  const getPanelModName = (panelModId) =>
+    PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
+
+  const defaultPanelModName =
+    normalizedDefaultPanelModId && normalizedDefaultPanelModId > 0
+      ? getPanelModName(normalizedDefaultPanelModId)
+      : null;
+
+  const getPanelModDifferenceLabel = (panelModValue) => {
+    if (panelModValue == null) return null;
+
+    const panelModId = +panelModValue;
+    if (Number.isNaN(panelModId)) return null;
+
+    if (normalizedDefaultPanelModId && normalizedDefaultPanelModId > 0) {
+      if (panelModId === 0) {
+        return `Not ${defaultPanelModName}`;
+      }
+      if (panelModId > 0 && panelModId !== normalizedDefaultPanelModId) {
+        return getPanelModName(panelModId);
+      }
+      return null;
+    }
+
+    return panelModId > 0 ? getPanelModName(panelModId) : null;
+  };
+
+  const getStyleDifferenceLabel = (nodeStyle, defaultStyle) => {
+    if (nodeStyle == null) return null;
+    if (defaultStyle != null && nodeStyle === defaultStyle) return null;
+    return getStyleLabel(nodeStyle);
+  };
+
+  const getMoldingDifferenceLabel = (nodeValue, defaultValue, label) => {
+    if (nodeValue == null) return null;
+
+    const nodeBool = normalizeBoolean(nodeValue);
+    const defaultBool = normalizeBoolean(defaultValue);
+
+    if (nodeBool === defaultBool) return null;
+    return nodeBool ? label : `No ${label}`;
+  };
+
+  const getNodeDetailLabels = (
+    node,
+    {
+      defaultStyle,
+      defaultInsideMolding,
+      defaultOutsideMolding,
+      includeGlass = false,
+      includePanelMod = false,
+      staticDetails = [],
+    } = {},
+  ) => {
+    const labels = [];
+
+    if (includeGlass && node.glassPanel) {
+      const glassItem = accessoryCatalog.find((acc) => acc.id === +node.glassPanel);
+      labels.push(glassItem?.name || "glass");
+    }
+
+    if (includePanelMod) {
+      const panelModLabel = getPanelModDifferenceLabel(node.panelMod);
+      if (panelModLabel) {
+        labels.push(panelModLabel);
+      }
+    }
+
+    const styleLabel = getStyleDifferenceLabel(node.style, defaultStyle);
+    if (styleLabel) {
+      labels.push(styleLabel);
+    }
+
+    const insideLabel = getMoldingDifferenceLabel(
+      node.insideMolding,
+      defaultInsideMolding,
+      "Inside Molding",
+    );
+    if (insideLabel) {
+      labels.push(insideLabel);
+    }
+
+    const outsideLabel = getMoldingDifferenceLabel(
+      node.outsideMolding,
+      defaultOutsideMolding,
+      "Outside Molding",
+    );
+    if (outsideLabel) {
+      labels.push(outsideLabel);
+    }
+
+    if (staticDetails.length > 0) {
+      labels.push(...staticDetails);
+    }
+
+    return labels;
+  };
+
+  const buildGroupedFaceSummaries = (
+    nodes,
+    {
+      singularLabel,
+      pluralLabel,
+      defaultStyle,
+      defaultInsideMolding,
+      defaultOutsideMolding,
+      includeGlass = false,
+      includePanelMod = false,
+      staticDetails = [],
+    } = {},
+  ) => {
+    if (!nodes.length) return [];
+
+    const grouped = new Map();
+
+    nodes.forEach((node) => {
+      const count = getNodeCount(node);
+      const details = getNodeDetailLabels(node, {
+        defaultStyle,
+        defaultInsideMolding,
+        defaultOutsideMolding,
+        includeGlass,
+        includePanelMod,
+        staticDetails,
+      });
+      const key = details.join("|");
+
+      if (!grouped.has(key)) {
+        grouped.set(key, { count: 0, details });
+      }
+
+      grouped.get(key).count += count;
+    });
+
+    return Array.from(grouped.values()).map(({ count, details }) => {
+      const label = count === 1 ? singularLabel : pluralLabel;
+      return details.length > 0
+        ? `${count} ${label} (${details.join(", ")})`
+        : `${count} ${label}`;
+    });
+  };
+
   // Count doors and glass panels
   const doorNodes = allNodes.filter(
     (node) =>
       node.type === FACE_NAMES.DOOR || node.type === FACE_NAMES.PAIR_DOOR,
   );
 
-  let totalDoors = 0;
-  const glassDoorsByName = {};
-  const panelModDoorsByName = {};
-  const panelModDoorsNotByName = {};
-
-  const defaultPanelModName =
-    effectiveDoorPanelModId && +effectiveDoorPanelModId > 0
-      ? PANEL_MOD_DISPLAY_NAMES[+effectiveDoorPanelModId] ||
-        `Panel Mod ${+effectiveDoorPanelModId}`
-      : null;
-
-  doorNodes.forEach((node) => {
-    if (node.type === FACE_NAMES.PAIR_DOOR) {
-      totalDoors += 2; // Pair door counts as 2 doors
-    } else {
-      totalDoors += 1;
-    }
-
-    // Check if this door has glass panels
-    if (node.glassPanel) {
-      const glassItem = accessoryCatalog.find(
-        (acc) => acc.id === +node.glassPanel,
-      );
-      const glassName = glassItem?.name || "glass";
-      const count = node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1;
-      glassDoorsByName[glassName] = (glassDoorsByName[glassName] || 0) + count;
-    }
-
-    const count = node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1;
-
-    if (node.panelMod != null) {
-      const panelModId = +node.panelMod;
-
-      if (panelModId > 0) {
-        const panelModName =
-          PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
-        panelModDoorsByName[panelModName] =
-          (panelModDoorsByName[panelModName] || 0) + count;
-      } else if (panelModId === 0 && defaultPanelModName) {
-        const notPanelModName = `Not ${defaultPanelModName}`;
-        panelModDoorsNotByName[notPanelModName] =
-          (panelModDoorsNotByName[notPanelModName] || 0) + count;
-      }
-    } else if (defaultPanelModName) {
-      panelModDoorsByName[defaultPanelModName] =
-        (panelModDoorsByName[defaultPanelModName] || 0) + count;
-    }
-  });
-
-  if (totalDoors > 0) {
-    const summaryDetails = [];
-
-    const glassEntries = Object.entries(glassDoorsByName);
-    if (glassEntries.length > 0) {
-      const glassParts = glassEntries
-        .map(([name, count]) => `${count} ${name}`)
-        .join(", ");
-      summaryDetails.push(glassParts);
-    }
-
-    const panelModEntries = Object.entries(panelModDoorsByName);
-    if (panelModEntries.length > 0) {
-      const panelModParts = panelModEntries
-        .map(([name, count]) => `${count} ${name}`)
-        .join(", ");
-      summaryDetails.push(panelModParts);
-    }
-
-    const panelModNotEntries = Object.entries(panelModDoorsNotByName);
-    if (panelModNotEntries.length > 0) {
-      const panelModNotParts = panelModNotEntries
-        .map(([name, count]) => `${count} ${name}`)
-        .join(", ");
-      summaryDetails.push(panelModNotParts);
-    }
-
-    if (summaryDetails.length > 0) {
-      summary.push(
-        `${totalDoors} door${
-          totalDoors !== 1 ? "s" : ""
-        } (${summaryDetails.join(", ")})`,
-      );
-    } else {
-      summary.push(`${totalDoors} door${totalDoors !== 1 ? "s" : ""}`);
-    }
-  }
+  summary.push(
+    ...buildGroupedFaceSummaries(doorNodes, {
+      singularLabel: "door",
+      pluralLabel: "doors",
+      defaultStyle: effectiveDoorStyle,
+      defaultInsideMolding: effectiveDoorInsideMolding,
+      defaultOutsideMolding: effectiveDoorOutsideMolding,
+      includeGlass: true,
+      includePanelMod: true,
+    }),
+  );
 
   // Count drawer fronts
   const drawerNodes = allNodes.filter(
     (node) => node.type === FACE_NAMES.DRAWER_FRONT,
   );
-  if (drawerNodes.length > 0) {
-    summary.push(
-      `${drawerNodes.length} drawer${drawerNodes.length !== 1 ? "s" : ""}`,
-    );
-  }
+  summary.push(
+    ...buildGroupedFaceSummaries(drawerNodes, {
+      singularLabel: "drawer",
+      pluralLabel: "drawers",
+      defaultStyle: effectiveDrawerStyle,
+      defaultInsideMolding: effectiveDrawerInsideMolding,
+      defaultOutsideMolding: effectiveDrawerOutsideMolding,
+    }),
+  );
 
   // Count false fronts
   const falseFrontNodes = allNodes.filter(
     (node) => node.type === FACE_NAMES.FALSE_FRONT,
   );
-  if (falseFrontNodes.length > 0) {
-    summary.push(
-      `${falseFrontNodes.length} false front${
-        falseFrontNodes.length !== 1 ? "s" : ""
-      }`,
-    );
-  }
+  summary.push(
+    ...buildGroupedFaceSummaries(falseFrontNodes, {
+      singularLabel: "false front",
+      pluralLabel: "false fronts",
+      defaultStyle: effectiveDrawerStyle,
+      defaultInsideMolding: effectiveDrawerInsideMolding,
+      defaultOutsideMolding: effectiveDrawerOutsideMolding,
+    }),
+  );
 
   // Count open faces
   const openNodes = allNodes.filter((node) => node.type === FACE_NAMES.OPEN);
@@ -2418,41 +2521,17 @@ export const generateCabinetSummary = (
 
   // Count panels
   const panelNodes = allNodes.filter((node) => node.type === FACE_NAMES.PANEL);
-  if (panelNodes.length > 0) {
-    const panelText = `${panelNodes.length} panel${panelNodes.length !== 1 ? "s" : ""}`;
-    const panelModsByName = {};
-
-    panelNodes.forEach((node) => {
-      if (node.panelMod == null) return;
-
-      const panelModId = +node.panelMod;
-      if (panelModId > 0) {
-        const panelModName =
-          PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
-        panelModsByName[panelModName] = (panelModsByName[panelModName] || 0) + 1;
-      }
-    });
-
-    const panelDetails = [];
-    const panelModEntries = Object.entries(panelModsByName);
-    if (panelModEntries.length > 0) {
-      panelDetails.push(
-        panelModEntries
-          .map(([name, count]) => (count > 1 ? `${count} ${name}` : name))
-          .join(", "),
-      );
-    }
-
-    if (typeSpecificOptions?.shop_built) {
-      panelDetails.push("shop-built");
-    }
-
-    if (panelDetails.length > 0) {
-      summary.push(`${panelText} (${panelDetails.join(", ")})`);
-    } else {
-      summary.push(panelText);
-    }
-  }
+  summary.push(
+    ...buildGroupedFaceSummaries(panelNodes, {
+      singularLabel: "panel",
+      pluralLabel: "panels",
+      defaultStyle: effectiveDoorStyle,
+      defaultInsideMolding: effectiveDoorInsideMolding,
+      defaultOutsideMolding: effectiveDoorOutsideMolding,
+      includePanelMod: true,
+      staticDetails: typeSpecificOptions?.shop_built ? ["shop-built"] : [],
+    }),
+  );
 
   // Count shelves and glass shelves
   let totalShelves = 0;

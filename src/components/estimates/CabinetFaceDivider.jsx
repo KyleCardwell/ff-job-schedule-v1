@@ -17,6 +17,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap.js";
 import {
   CAN_HAVE_ROLL_OUTS_OR_SHELVES,
   DEFAULT_NO_SHELVES,
+  FACE_STYLES,
   FACE_NAMES,
   FACE_TYPES,
   ITEM_TYPES,
@@ -105,6 +106,9 @@ const CabinetFaceDivider = ({
     glassShelves: "",
     shelfNosing: "",
     panelMod: "",
+    insideMolding: "",
+    outsideMolding: "",
+    style: "",
   });
 
   const clampPopupPosition = useCallback((position, popupElement) => {
@@ -133,7 +137,7 @@ const CabinetFaceDivider = ({
   useFocusTrap(handleEditorPopupRef, showHandlePopup);
 
   // Fixed display dimensions
-  const fixedDisplayWidth = 300; // Fixed width for the SVG container
+  const fixedDisplayWidth = 480; // Fixed width for the SVG container
   const fixedDisplayHeight = 515; // Fixed height for the SVG container
 
   // Minimum face dimension (2 inches)
@@ -792,7 +796,12 @@ const CabinetFaceDivider = ({
     }
 
     // Add dimensions text for leaf nodes (excluding reveals)
-    if (!node.children && node.type !== FACE_NAMES.REVEAL && width > 60 && height > 30) {
+    if (
+      !node.children &&
+      node.type !== FACE_NAMES.REVEAL &&
+      width > 60 &&
+      height > 30
+    ) {
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
@@ -1182,6 +1191,14 @@ const CabinetFaceDivider = ({
     PANEL_MOD_FACE_TYPES.includes(nodeType) &&
     itemType !== ITEM_TYPES.FILLER.type;
 
+  const supportsFaceStyle = (nodeType) =>
+    PANEL_MOD_FACE_TYPES.includes(nodeType) &&
+    itemType !== ITEM_TYPES.FILLER.type;
+
+  const supportsFaceMolding = (nodeType) =>
+    PANEL_MOD_FACE_TYPES.includes(nodeType) &&
+    itemType !== ITEM_TYPES.FILLER.type;
+
   const glassPanelOptions = (nodeType) => {
     const glassOptions = accessories.glass.filter((glass) =>
       glass.applies_to.includes(nodeType),
@@ -1209,6 +1226,51 @@ const CabinetFaceDivider = ({
       setSelectedNode({
         ...selectedNode,
         panelMod: panelModValue === "" ? null : panelModValue,
+      });
+    }
+  };
+
+  const handleStyleChange = (e) => {
+    const styleValue = e.target.value;
+
+    setInputValues({ ...inputValues, style: styleValue });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      node.style = styleValue === "" ? null : styleValue;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        style: styleValue === "" ? null : styleValue,
+      });
+    }
+  };
+
+  const handleMoldingChange = (e, moldingType) => {
+    const moldingValue = e.target.value;
+
+    setInputValues({ ...inputValues, [moldingType]: moldingValue });
+
+    if (!selectedNode) return;
+
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, selectedNode.id);
+
+    if (node) {
+      const parsedValue =
+        moldingValue === "" ? null : moldingValue === "true" ? true : false;
+
+      node[moldingType] = parsedValue;
+
+      setConfig(newConfig);
+      setSelectedNode({
+        ...selectedNode,
+        [moldingType]: parsedValue,
       });
     }
   };
@@ -1387,7 +1449,9 @@ const CabinetFaceDivider = ({
 
       if (supportsShelves(newType)) {
         const standardShelfQty = calculateShelfQty(node.height);
-        node.shelfQty = shouldForceNoShelves ? 0 : node.shelfQty || standardShelfQty;
+        node.shelfQty = shouldForceNoShelves
+          ? 0
+          : node.shelfQty || standardShelfQty;
 
         setInputValues((prev) => ({
           ...prev,
@@ -1861,6 +1925,19 @@ const CabinetFaceDivider = ({
       glassShelves: node.glassShelves || "",
       shelfNosing: node.shelfNosing || "",
       panelMod: node.panelMod ?? "",
+      insideMolding:
+        node.insideMolding === null || node.insideMolding === undefined
+          ? ""
+          : node.insideMolding === true || node.insideMolding === "true"
+            ? "true"
+            : "false",
+      outsideMolding:
+        node.outsideMolding === null || node.outsideMolding === undefined
+          ? ""
+          : node.outsideMolding === true || node.outsideMolding === "true"
+            ? "true"
+            : "false",
+      style: node.style ?? "",
     });
 
     setShowTypeSelector(true);
@@ -2168,7 +2245,9 @@ const CabinetFaceDivider = ({
     }
 
     const multiplier =
-      typeof dimensionConfig.multiply === "number" ? dimensionConfig.multiply : 1;
+      typeof dimensionConfig.multiply === "number"
+        ? dimensionConfig.multiply
+        : 1;
     const additive =
       typeof dimensionConfig.add === "number" ? dimensionConfig.add : 0;
 
@@ -2217,7 +2296,7 @@ const CabinetFaceDivider = ({
 
     const splitDirection = layoutNode.direction;
     const isHorizontal = splitDirection === SPLIT_DIRECTIONS.HORIZONTAL;
-    const dividerSize = usesReveals ? (reveals?.reveal || 0) : 0;
+    const dividerSize = usesReveals ? reveals?.reveal || 0 : 0;
     const dividerCount = usesReveals ? Math.max(childLayouts.length - 1, 0) : 0;
     const splitDimension = isHorizontal ? "width" : "height";
     const parentDimension = isHorizontal ? width : height;
@@ -2236,7 +2315,8 @@ const CabinetFaceDivider = ({
     );
 
     const requestedTotal = requestedChildDimensions.reduce(
-      (sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0),
+      (sum, value) =>
+        sum + (typeof value === "number" && value > 0 ? value : 0),
       0,
     );
 
@@ -2248,13 +2328,17 @@ const CabinetFaceDivider = ({
     }
 
     const normalizedRequestedTotal = requestedChildDimensions.reduce(
-      (sum, value) => sum + (typeof value === "number" && value > 0 ? value : 0),
+      (sum, value) =>
+        sum + (typeof value === "number" && value > 0 ? value : 0),
       0,
     );
     const unspecifiedCount = requestedChildDimensions.filter(
       (value) => typeof value !== "number" || value <= 0,
     ).length;
-    const remainder = Math.max(0, availableDimension - normalizedRequestedTotal);
+    const remainder = Math.max(
+      0,
+      availableDimension - normalizedRequestedTotal,
+    );
     const fallbackDimension =
       unspecifiedCount > 0 ? remainder / unspecifiedCount : 0;
 
@@ -2271,7 +2355,9 @@ const CabinetFaceDivider = ({
       const childWidth = isHorizontal ? childDimension : width;
       const childHeight = isHorizontal ? height : childDimension;
 
-      children.push(buildPresetNode(childLayout, childId, childWidth, childHeight));
+      children.push(
+        buildPresetNode(childLayout, childId, childWidth, childHeight),
+      );
       childSlotIndex += 1;
 
       if (usesReveals && index < childLayouts.length - 1) {
@@ -2579,14 +2665,64 @@ const CabinetFaceDivider = ({
                       </div>
                     </div>
 
+                    <div className="mt-2 grid grid-cols-2 space-x-4">
+                      {supportsFaceStyle(selectedNode.type) && (
+                        <div className="flex-1 flex flex-col items-start">
+                          <label className="text-xs text-slate-600">
+                            Style
+                          </label>
+                          <select
+                            name="style"
+                            value={inputValues.style}
+                            onChange={(e) => handleStyleChange(e)}
+                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          >
+                            <option value="">Section Default</option>
+                            {FACE_STYLES.map((styleOption) => (
+                              <option
+                                key={styleOption.id}
+                                value={styleOption.id}
+                              >
+                                {styleOption.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {supportsShelves(selectedNode.type) && (
+                        <div className="col-start-2">
+                          {accessories.glass.length > 0 && (
+                            <div className="flex-1 flex flex-col items-end space-x-1 mb-2">
+                              <label className="text-xs text-slate-600">
+                                Shelf Material
+                              </label>
+                              <select
+                                name="glassShelves"
+                                value={inputValues.glassShelves}
+                                onChange={(e) => handleGlassShelvesChange(e)}
+                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              >
+                                <option value="">Box Material</option>
+                                {accessories.glass.map((glass) => (
+                                  <option key={glass.id} value={glass.id}>
+                                    {glass.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Roll-Out and Shelf Quantity Inputs */}
                     {(supportsRollouts(selectedNode.type) ||
                       supportsShelves(selectedNode.type)) && (
-                      <div className="mt-2 flex justify-between">
+                      <div className="mt-2 grid grid-cols-3 gap-2">
                         {supportsRollouts(selectedNode.type) && (
-                          <div className="flex flex-col items-center space-x-1">
+                          <div className="col-start-1 justify-self-start flex flex-col items-start">
                             <label className="text-xs text-slate-600">
-                              Roll-Out Qty:
+                              Roll-Out Qty
                             </label>
                             <input
                               type="number"
@@ -2601,9 +2737,9 @@ const CabinetFaceDivider = ({
                           </div>
                         )}
                         {supportsShelves(selectedNode.type) && (
-                          <div className="flex flex-col items-center space-x-1">
+                          <div className="col-start-2 flex flex-col items-center">
                             <label className="text-xs text-slate-600">
-                              Shelf Qty:
+                              Shelf Qty
                             </label>
                             <input
                               type="number"
@@ -2617,91 +2753,109 @@ const CabinetFaceDivider = ({
                             />
                           </div>
                         )}
-                      </div>
-                    )}
-                    <div className="mt-2 grid grid-cols-2 space-x-4">
-                      <div>
-                        {supportsGlassPanel &&
-                          glassPanelOptions(selectedNode.type).length > 0 && (
-                            <div className="flex-1 flex flex-col items-start space-x-1 mb-2">
-                              <label className="text-xs text-slate-600">
-                                Change Panel:
-                              </label>
-                              <select
-                                name="glassPanel"
-                                value={inputValues.glassPanel}
-                                onChange={(e) => handleGlassPanelChange(e)}
-                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                              >
-                                <option value="">None</option>
-                                {glassPanelOptions(selectedNode.type).map(
-                                  (glass) => (
-                                    <option key={glass.id} value={glass.id}>
-                                      {glass.name}
-                                    </option>
-                                  ),
-                                )}
-                              </select>
-                            </div>
-                          )}
-                        {supportsPanelMod(selectedNode.type) && (
-                          <div className="flex-1 flex flex-col items-start space-x-1">
-                              <label className="text-xs text-slate-600">
-                                Panel Mod:
-                              </label>
-                              <select
-                                name="panelMod"
-                                value={inputValues.panelMod}
-                                onChange={(e) => handlePanelModChange(e)}
-                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
-                              >
-                                <option value="">Section Default</option>
-                                <option value="0">None</option>
-                                <option value="15">Reeded</option>
-                                <option value="22">Grooved</option>
-                              </select>
-                            </div>
-                          )}
-                      </div>
-                      <div className="text-xs text-slate-600">
                         {supportsShelves(selectedNode.type) && (
-                          <>
-                            {accessories.glass.length > 0 && (
-                              <div className="flex-1 flex flex-col items-end space-x-1 mb-2">
-                                <label>Shelf material:</label>
-                                <select
-                                  name="glassShelves"
-                                  value={inputValues.glassShelves}
-                                  onChange={(e) => handleGlassShelvesChange(e)}
-                                  className="px-1 py-0.5 text-black border border-slate-300 rounded"
-                                >
-                                  <option value="">Box Material</option>
-                                  {accessories.glass.map((glass) => (
-                                    <option key={glass.id} value={glass.id}>
-                                      {glass.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                            <div className="flex-1 flex flex-col items-end space-x-1">
-                              <label>Shelf Nosing:</label>
-                              <input
-                                type="number"
-                                name="shelfNosing"
-                                value={inputValues.shelfNosing}
-                                onChange={(e) => handleShelfNosingChange(e)}
-                                className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                                step="0.25"
-                                min="0"
-                                placeholder="0"
-                                disabled={inputValues.glassShelves !== ""}
-                              />
-                            </div>
-                          </>
+                          <div className="col-start-3 justify-self-end flex-1 flex flex-col items-end space-x-1">
+                            <label className="text-xs text-slate-600">
+                              Shelf Nosing
+                            </label>
+                            <input
+                              type="number"
+                              name="shelfNosing"
+                              value={inputValues.shelfNosing}
+                              onChange={(e) => handleShelfNosingChange(e)}
+                              className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              step="0.25"
+                              min="0"
+                              placeholder="0"
+                              disabled={inputValues.glassShelves !== ""}
+                            />
+                          </div>
                         )}
                       </div>
+                    )}
+                    <div className="mt-2 grid grid-cols-2">
+                      {supportsGlassPanel &&
+                        glassPanelOptions(selectedNode.type).length > 0 && (
+                          <div className="col-start-1 justify-self-start flex flex-col items-start">
+                            <label className="text-xs text-slate-600">
+                              Panel Material
+                            </label>
+                            <select
+                              name="glassPanel"
+                              value={inputValues.glassPanel}
+                              onChange={(e) => handleGlassPanelChange(e)}
+                              className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                            >
+                              <option value="">Section Default</option>
+                              {glassPanelOptions(selectedNode.type).map(
+                                (glass) => (
+                                  <option key={glass.id} value={glass.id}>
+                                    {glass.name}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </div>
+                        )}
+                      {supportsPanelMod(selectedNode.type) && (
+                        <div className="col-start-2 justify-self-end flex flex-col items-end">
+                          <label className="text-xs text-slate-600">
+                            Panel Mod
+                          </label>
+                          <select
+                            name="panelMod"
+                            value={inputValues.panelMod}
+                            onChange={(e) => handlePanelModChange(e)}
+                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          >
+                            <option value="">Section Default</option>
+                            <option value="0">None</option>
+                            <option value="15">Reeded</option>
+                            <option value="22">Grooved</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
+
+                    {supportsFaceMolding(selectedNode.type) && (
+                      <div className="mt-2 grid grid-cols-2">
+                        <div className="col-start-1 justify-self-start flex flex-col items-start">
+                          <label className="text-xs text-slate-600">
+                            Inside Molding
+                          </label>
+                          <select
+                            name="insideMolding"
+                            value={inputValues.insideMolding}
+                            onChange={(e) =>
+                              handleMoldingChange(e, "insideMolding")
+                            }
+                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          >
+                            <option value="">Section Default</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                          </select>
+                        </div>
+
+                        <div className="col-start-2 justify-self-end flex flex-col items-end">
+                          <label className="text-xs text-slate-600">
+                            Outside Molding
+                          </label>
+                          <select
+                            name="outsideMolding"
+                            value={inputValues.outsideMolding}
+                            onChange={(e) =>
+                              handleMoldingChange(e, "outsideMolding")
+                            }
+                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                          >
+                            <option value="">Section Default</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2732,7 +2886,7 @@ const CabinetFaceDivider = ({
                     <div className="text-xs font-medium text-slate-700 mb-2">
                       Change Type:
                     </div>
-                    <div className="grid grid-cols-1 gap-1 mb-3">
+                    <div className="grid grid-cols-2 gap-1 mb-3">
                       {availableFaceTypes
                         .filter(
                           (type) =>
