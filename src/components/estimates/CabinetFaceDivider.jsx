@@ -137,7 +137,7 @@ const CabinetFaceDivider = ({
   useFocusTrap(handleEditorPopupRef, showHandlePopup);
 
   // Fixed display dimensions
-  const fixedDisplayWidth = 300; // Fixed width for the SVG container
+  const fixedDisplayWidth = 480; // Fixed width for the SVG container
   const fixedDisplayHeight = 515; // Fixed height for the SVG container
 
   // Minimum face dimension (2 inches)
