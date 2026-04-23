@@ -2027,10 +2027,26 @@ export const duplicateEstimate = (
 
       if (rpcError) throw rpcError;
 
-      await dispatch(fetchEstimateById(newEstimateId));
+      const resolvedEstimateIdRaw = Array.isArray(newEstimateId)
+        ? newEstimateId[0]?.estimate_id ||
+          newEstimateId[0]?.new_estimate_id ||
+          newEstimateId[0]?.duplicate_estimate
+        : typeof newEstimateId === "object" && newEstimateId !== null
+          ? newEstimateId.estimate_id ||
+            newEstimateId.new_estimate_id ||
+            newEstimateId.duplicate_estimate
+          : newEstimateId;
+
+      const resolvedEstimateId = Number(resolvedEstimateIdRaw);
+
+      if (!Number.isFinite(resolvedEstimateId) || resolvedEstimateId <= 0) {
+        throw new Error("Duplicate estimate did not return a valid estimate ID");
+      }
+
+      await dispatch(fetchEstimateById(resolvedEstimateId));
       await dispatch(fetchEstimates());
 
-      return newEstimateId;
+      return resolvedEstimateId;
     } catch (error) {
       console.error("Error duplicating estimate:", error);
       dispatch({
