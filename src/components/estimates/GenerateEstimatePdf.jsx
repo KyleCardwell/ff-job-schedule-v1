@@ -932,6 +932,34 @@ const GenerateEstimatePdf = ({
         estimate.est_project_name || ""
       } Estimate ${formatDateShort(today)}.pdf`;
       const pdfDoc = window.pdfMake.createPdf(docDefinition);
+      const pdfBlob = await new Promise((resolve, reject) => {
+        pdfDoc.getBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Unable to generate PDF blob."));
+          }
+        });
+      });
+
+      const openPdfInNewTab = (blob) => {
+        const blobUrl = window.URL.createObjectURL(blob);
+        const previewTab = window.open(blobUrl, "_blank");
+
+        if (previewTab) {
+          previewTab.opener = null;
+        }
+
+        if (!previewTab) {
+          alert(
+            "PDF was saved, but your browser blocked opening it in a new tab. Please allow pop-ups and try again.",
+          );
+        }
+
+        window.setTimeout(() => {
+          window.URL.revokeObjectURL(blobUrl);
+        }, 60000);
+      };
 
       if (typeof window.showSaveFilePicker === "function") {
         try {
@@ -947,28 +975,22 @@ const GenerateEstimatePdf = ({
             ],
           });
 
-          const pdfBlob = await new Promise((resolve, reject) => {
-            pdfDoc.getBlob((blob) => {
-              if (blob) {
-                resolve(blob);
-              } else {
-                reject(new Error("Unable to generate PDF blob."));
-              }
-            });
-          });
-
           const writable = await fileHandle.createWritable();
           await writable.write(pdfBlob);
           await writable.close();
+
+          openPdfInNewTab(pdfBlob);
         } catch (saveError) {
           if (saveError?.name === "AbortError") {
             return;
           }
 
           pdfDoc.download(fileName);
+          openPdfInNewTab(pdfBlob);
         }
       } else {
         pdfDoc.download(fileName);
+        openPdfInNewTab(pdfBlob);
       }
     } catch (error) {
       console.error("Error generating PDF:", error);
