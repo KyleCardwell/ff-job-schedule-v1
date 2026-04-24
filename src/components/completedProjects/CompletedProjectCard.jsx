@@ -20,6 +20,8 @@ import {
 } from "../../redux/actions/financialsData";
 import Tooltip from "../common/Tooltip.jsx";
 
+import TaskCostSplitModal from "./TaskCostSplitModal.jsx";
+
 const CompletedProjectCard = ({
   project,
   setIsFinancialsInputModalOpen,
@@ -35,6 +37,7 @@ const CompletedProjectCard = ({
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoveredProjectId, setHoveredProjectId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSplitCostModalOpen, setIsSplitCostModalOpen] = useState(false);
 
   const bgColor = index % 2 === 0 ? "bg-gray-200" : "bg-white";
   const bgHoverColor = index % 2 === 0 ? "bg-teal-200" : "bg-teal-100";
@@ -154,7 +157,16 @@ const CompletedProjectCard = ({
                 <span className="p-2 bg-gray-300">Job Number</span>
                 <span className="p-2 bg-gray-300">Room Name</span>
                 <span className="p-2 bg-gray-300">Costing Complete</span>
-                <span className="p-2 bg-gray-300">Actions</span>
+                <div className="bg-gray-300 p-1 flex flex-col items-center justify-center gap-1">
+                  <span>Actions</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSplitCostModalOpen(true)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Split Cost
+                  </button>
+                </div>
               </div>
               {project.tasks.map((task, index) => {
                 const taskBgColor =
@@ -228,6 +240,13 @@ const CompletedProjectCard = ({
           </div>
         </div>
       </div>
+      <TaskCostSplitModal
+        isOpen={isSplitCostModalOpen}
+        onClose={() => setIsSplitCostModalOpen(false)}
+        projectId={project.project_id}
+        projectName={project.project_name}
+        tasks={project.tasks}
+      />
     </div>
   );
 };
