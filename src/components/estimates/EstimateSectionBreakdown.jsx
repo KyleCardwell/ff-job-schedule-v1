@@ -3,6 +3,11 @@ import { FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import {
+  EXCLUDED_HOURS_PART_KEYS_BY_CATEGORY,
+  PANEL_MOD_PART_KEY_BY_FACE_TYPE,
+  PULLS_PART_KEYS_BY_TYPE,
+} from "../../utils/constants.js";
+import {
   formatCurrency,
   formatHours,
   getBreakdownCategories,
@@ -21,6 +26,59 @@ const EstimateSectionBreakdown = ({
   onClose,
 }) => {
   const allServices = useSelector((state) => state.services.allServices);
+
+  const hasExcludedPartKey = (partKey) =>
+    sectionCalculations?.partsIncluded?.[partKey] === false;
+
+  const getExcludedHoursForCategoryService = (
+    categoryTitle,
+    serviceId,
+    totalHours,
+  ) => {
+    const numericTotalHours = Number(totalHours) || 0;
+    if (numericTotalHours <= 0) return 0;
+
+    if (categoryTitle === "Pulls") {
+      if (hasExcludedPartKey("pullsTotal")) return numericTotalHours;
+
+      const pullsByType = sectionCalculations?.categoryHours?.pullsByType || {};
+      const excludedPullHours = Object.entries(PULLS_PART_KEYS_BY_TYPE).reduce(
+        (sum, [pullType, partKeys]) => {
+          const shouldExcludePullType = (partKeys || []).some((partKey) =>
+            hasExcludedPartKey(partKey),
+          );
+          if (!shouldExcludePullType) return sum;
+
+          return sum + (Number(pullsByType?.[pullType]?.[serviceId]) || 0);
+        },
+        0,
+      );
+
+      return Math.min(numericTotalHours, excludedPullHours);
+    }
+
+    if (categoryTitle === "Panel Mods") {
+      const panelModsByFaceType =
+        sectionCalculations?.categoryHours?.panelModsByFaceType || {};
+
+      const excludedPanelModHours = Object.entries(
+        PANEL_MOD_PART_KEY_BY_FACE_TYPE,
+      ).reduce((sum, [faceType, partKey]) => {
+        if (!hasExcludedPartKey(partKey)) return sum;
+        return (
+          sum + (Number(panelModsByFaceType?.[faceType]?.[serviceId]) || 0)
+        );
+      }, 0);
+
+      return Math.min(numericTotalHours, excludedPanelModHours);
+    }
+
+    const partKeys = EXCLUDED_HOURS_PART_KEYS_BY_CATEGORY[categoryTitle] || [];
+    const excludeCategoryHours = partKeys.some((partKey) =>
+      hasExcludedPartKey(partKey),
+    );
+    return excludeCategoryHours ? numericTotalHours : 0;
+  };
 
   const getItemHourRows = (categoryTitle) => {
     const itemHoursByCatalog =
@@ -53,6 +111,14 @@ const EstimateSectionBreakdown = ({
 
   // Get labor adjustment hours from section.add_hours
   const laborAdjustmentHours = getLaborAdjustmentHours(section?.add_hours);
+
+  const hasExcludedHoursMarker = activeCategories.some((cat) => {
+    if (cat.skipHours) return false;
+    return Object.entries(cat.hoursByService || {}).some(
+      ([serviceId, hours]) =>
+        getExcludedHoursForCategoryService(cat.title, serviceId, hours) > 0,
+    );
+  });
 
   const serviceIds = sectionCalculations?.laborCosts?.costsByService
     ? Object.keys(sectionCalculations.laborCosts.costsByService)
@@ -153,6 +219,16 @@ const EstimateSectionBreakdown = ({
             category.showAggregateNote && !category.skipHours;
           const itemHourRows = getItemHourRows(category.title);
           const hasItemHourRows = itemHourRows.length > 0;
+          const hasExcludedHours =
+            !category.skipHours &&
+            Object.entries(category.hoursByService || {}).some(
+              ([serviceId, hours]) =>
+                getExcludedHoursForCategoryService(
+                  category.title,
+                  serviceId,
+                  hours,
+                ) > 0,
+            );
 
           return (
             <div key={index}>
@@ -164,6 +240,14 @@ const EstimateSectionBreakdown = ({
               >
                 <div className="text-white font-medium text-sm text-left">
                   {category.title}
+                  {hasExcludedHours && (
+                    <span
+                      className="text-amber-400 ml-1"
+                      title="Hours excluded from totals"
+                    >
+                      *
+                    </span>
+                  )}
                   <span className="text-slate-500 text-xs ml-1">
                     {countDisplay}
                   </span>
@@ -185,6 +269,16 @@ const EstimateSectionBreakdown = ({
                     );
                   }
                   const hours = category.hoursByService?.[serviceId];
+                  const excludedHours = getExcludedHoursForCategoryService(
+                    category.title,
+                    serviceId,
+                    hours,
+                  );
+                  const includedHours = Math.max(
+                    0,
+                    (Number(hours) || 0) - excludedHours,
+                  );
+
                   return (
                     <div
                       key={serviceId}
@@ -197,11 +291,25 @@ const EstimateSectionBreakdown = ({
                     >
                       {hours ? (
                         <>
-                          {hasItemHourRows
-                            ? `(${formatHours(hours)})`
-                            : formatHours(hours)}
-                          {showAggregate && (
-                            <span className="text-slate-600 ml-1">*</span>
+                          {excludedHours > 0 && (
+                            <span
+                              className="text-amber-400"
+                              title="Hours excluded from totals"
+                            >
+                              ({formatHours(excludedHours)})
+                            </span>
+                          )}
+                          <span className={excludedHours > 0 ? "ml-1" : ""}>
+                            {includedHours > 0
+                              ? hasItemHourRows
+                                ? `(${formatHours(includedHours)})`
+                                : formatHours(includedHours)
+                              : excludedHours > 0
+                                ? ""
+                                : "-"}
+                          </span>
+                          {showAggregate && includedHours > 0 && (
+                            <span className="text-slate-600 ml-1">^</span>
                           )}
                         </>
                       ) : (
@@ -234,12 +342,40 @@ const EstimateSectionBreakdown = ({
                   </div>
                   {serviceIds.map((serviceId) => {
                     const hours = itemHours.hoursByService?.[serviceId];
+                    const excludedHours = hasExcludedHours
+                      ? Number(hours) || 0
+                      : 0;
+                    const includedHours = Math.max(
+                      0,
+                      (Number(hours) || 0) - excludedHours,
+                    );
+
                     return (
                       <div
                         key={`${itemHours.id}-${serviceId}`}
                         className="text-slate-400 text-right text-xs tabular-nums"
                       >
-                        {hours ? formatHours(hours) : "-"}
+                        {hours ? (
+                          excludedHours > 0 ? (
+                            <>
+                              <span
+                                className="text-amber-400"
+                                title="Hours excluded from totals"
+                              >
+                                ({formatHours(excludedHours)})
+                              </span>
+                              <span className="ml-1">
+                                {includedHours > 0
+                                  ? formatHours(includedHours)
+                                  : "-"}
+                              </span>
+                            </>
+                          ) : (
+                            formatHours(hours)
+                          )
+                        ) : (
+                          "-"
+                        )}
                       </div>
                     );
                   })}
@@ -298,6 +434,12 @@ const EstimateSectionBreakdown = ({
         </div>
 
         <div className="mt-3 pt-3 border-t border-slate-600 space-y-1">
+          {hasExcludedHoursMarker && (
+            <div className="text-xs text-amber-300">
+              (x) is excluded from totals; values outside parentheses are
+              included.
+            </div>
+          )}
           <div className="flex justify-between text-sm text-slate-300">
             <span>Subtotal (Parts + Labor)</span>
             <span>{formatCurrency(subtotal)}</span>

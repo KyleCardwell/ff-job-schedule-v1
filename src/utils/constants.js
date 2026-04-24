@@ -350,3 +350,37 @@ export const EDIT_TYPES = {
   ESTIMATE: "estimate",
   SECTION: "section",
 };
+
+export const EXCLUDED_HOURS_PART_KEYS_BY_CATEGORY = {
+  "Cabinet Boxes": ["boxTotal"],
+  Doors: ["facePrices.door"],
+  "Drawer Fronts": ["facePrices.drawer_front"],
+  "False Fronts": ["facePrices.false_front"],
+  Panels: ["facePrices.panel"],
+  Hinges: ["hingesTotal"],
+  "Drawer Slides": ["slidesTotal"],
+  Pulls: ["pullsTotal"],
+  "Face Frame": ["woodTotal"],
+  Fillers: ["woodTotal"],
+  Lengths: ["woodTotal"],
+  Accessories: ["accessoriesTotal"],
+  Nosing: ["woodTotal"],
+  "Panel Mods": [
+    "facePrices.door",
+    "facePrices.drawer_front",
+    "facePrices.false_front",
+    "facePrices.panel",
+  ],
+};
+
+export const PANEL_MOD_PART_KEY_BY_FACE_TYPE = {
+  door: "facePrices.door",
+  drawer_front: "facePrices.drawer_front",
+  false_front: "facePrices.false_front",
+  panel: "facePrices.panel",
+};
+
+export const PULLS_PART_KEYS_BY_TYPE = {
+  door: ["facePrices.door"],
+  drawer: ["drawerBoxTotal", "facePrices.drawer_front", "facePrices.false_front"],
+};
