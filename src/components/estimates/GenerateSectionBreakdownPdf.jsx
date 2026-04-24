@@ -3,7 +3,13 @@ import { useState } from "react";
 import { FiFileText } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
-import { NONE, PRE_FINISHED } from "../../utils/constants";
+import {
+  EXCLUDED_HOURS_PART_KEYS_BY_CATEGORY,
+  NONE,
+  PANEL_MOD_PART_KEY_BY_FACE_TYPE,
+  PRE_FINISHED,
+  PULLS_PART_KEYS_BY_TYPE,
+} from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { formatDoorDrawerStyle } from "../../utils/helpers";
 import {
@@ -23,6 +29,125 @@ const GenerateSectionBreakdownPdf = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const allServices = useSelector((state) => state.services.allServices);
+
+  const hasExcludedPartKey = (partKey) =>
+    sectionCalculations?.partsIncluded?.[partKey] === false;
+
+  const getExcludedHoursForCategoryService = (
+    categoryTitle,
+    serviceId,
+    totalHours,
+  ) => {
+    const numericTotalHours = Number(totalHours) || 0;
+    if (numericTotalHours <= 0) return 0;
+
+    if (categoryTitle === "Pulls") {
+      if (hasExcludedPartKey("pullsTotal")) return numericTotalHours;
+
+      const pullsByType = sectionCalculations?.categoryHours?.pullsByType || {};
+      const excludedPullHours = Object.entries(PULLS_PART_KEYS_BY_TYPE).reduce(
+        (sum, [pullType, partKeys]) => {
+          const shouldExcludePullType = (partKeys || []).some((partKey) =>
+            hasExcludedPartKey(partKey),
+          );
+          if (!shouldExcludePullType) return sum;
+
+          return sum + (Number(pullsByType?.[pullType]?.[serviceId]) || 0);
+        },
+        0,
+      );
+
+      return Math.min(numericTotalHours, excludedPullHours);
+    }
+
+    if (categoryTitle === "Panel Mods") {
+      const panelModsByFaceType =
+        sectionCalculations?.categoryHours?.panelModsByFaceType || {};
+
+      const excludedPanelModHours = Object.entries(
+        PANEL_MOD_PART_KEY_BY_FACE_TYPE,
+      ).reduce((sum, [faceType, partKey]) => {
+        if (!hasExcludedPartKey(partKey)) return sum;
+        return (
+          sum +
+          (Number(panelModsByFaceType?.[faceType]?.[serviceId]) || 0)
+        );
+      }, 0);
+
+      return Math.min(numericTotalHours, excludedPanelModHours);
+    }
+
+    const partKeys = EXCLUDED_HOURS_PART_KEYS_BY_CATEGORY[categoryTitle] || [];
+    const excludeCategoryHours = partKeys.some((partKey) =>
+      hasExcludedPartKey(partKey),
+    );
+    return excludeCategoryHours ? numericTotalHours : 0;
+  };
+
+  const getCategoryServiceHoursPdfText = ({
+    categoryTitle,
+    serviceId,
+    totalHours,
+    hasItemHourRows,
+    showAggregate,
+  }) => {
+    if (!totalHours) return "-";
+
+    const excludedHours = getExcludedHoursForCategoryService(
+      categoryTitle,
+      serviceId,
+      totalHours,
+    );
+    const includedHours = Math.max(0, (Number(totalHours) || 0) - excludedHours);
+
+    if (excludedHours <= 0) {
+      const includedText = hasItemHourRows
+        ? `(${formatHours(includedHours).toString()})`
+        : formatHours(includedHours).toString();
+      return showAggregate && includedHours > 0 ? `${includedText} ^` : includedText;
+    }
+
+    const text = [
+      {
+        text: `(${formatHours(excludedHours).toString()})`,
+        color: "#d97706",
+      },
+    ];
+
+    if (includedHours > 0) {
+      const includedText = hasItemHourRows
+        ? `(${formatHours(includedHours).toString()})`
+        : formatHours(includedHours).toString();
+      text.push({ text: ` ${includedText}` });
+
+      if (showAggregate) {
+        text.push({ text: " ^", color: "#6b7280" });
+      }
+    }
+
+    return text;
+  };
+
+  const getItemServiceHoursPdfText = (hours, hasExcludedHours) => {
+    if (!hours) return "-";
+
+    const excludedHours = hasExcludedHours ? Number(hours) || 0 : 0;
+    const includedHours = Math.max(0, (Number(hours) || 0) - excludedHours);
+
+    if (excludedHours > 0) {
+      return [
+        {
+          text: `(${formatHours(excludedHours).toString()})`,
+          color: "#d97706",
+        },
+        {
+          text: ` ${includedHours > 0 ? formatHours(includedHours).toString() : "-"}`,
+        },
+      ];
+    }
+
+    return formatHours(hours).toString();
+  };
 
   const getItemHourRows = (categoryTitle) => {
     const itemHoursByCatalog =
@@ -114,6 +239,14 @@ const GenerateSectionBreakdownPdf = ({
           cat.hoursByService &&
           Object.values(cat.hoursByService).some((hours) => hours > 0);
         return cat.cost > 0 || cat.count > 0 || hasHours;
+      });
+
+      const hasExcludedHoursMarker = activeCategories.some((cat) => {
+        if (cat.skipHours) return false;
+        return Object.entries(cat.hoursByService || {}).some(
+          ([serviceId, hours]) =>
+            getExcludedHoursForCategoryService(cat.title, serviceId, hours) > 0,
+        );
       });
 
       // Get labor adjustment hours from section.add_hours
@@ -323,10 +456,27 @@ const GenerateSectionBreakdownPdf = ({
 
       activeCategories.forEach((category) => {
         const countDisplay = category.count > 0 ? ` (${category.count})` : "";
+        const showAggregate = category.showAggregateNote && !category.skipHours;
         const itemHourRows = getItemHourRows(category.title);
         const hasItemHourRows = itemHourRows.length > 0;
+        const hasExcludedHours =
+          !category.skipHours &&
+          Object.entries(category.hoursByService || {}).some(
+            ([serviceId, hours]) =>
+              getExcludedHoursForCategoryService(category.title, serviceId, hours) >
+              0,
+          );
         const row = [
-          { text: `${category.title}${countDisplay}`, style: "itemName" },
+          {
+            text: hasExcludedHours
+              ? [
+                  { text: category.title },
+                  { text: "*", color: "#d97706" },
+                  { text: countDisplay },
+                ]
+              : `${category.title}${countDisplay}`,
+            style: "itemName",
+          },
           {
             text: hasItemHourRows
               ? `(${formatCurrency(category.cost)})`
@@ -341,11 +491,13 @@ const GenerateSectionBreakdownPdf = ({
           } else {
             const hours = category.hoursByService?.[serviceId];
             row.push({
-              text: hours
-                ? hasItemHourRows
-                  ? `(${formatHours(hours).toString()})`
-                  : formatHours(hours).toString()
-                : "-",
+              text: getCategoryServiceHoursPdfText({
+                categoryTitle: category.title,
+                serviceId,
+                totalHours: hours,
+                hasItemHourRows,
+                showAggregate,
+              }),
               alignment: "right",
             });
           }
@@ -370,7 +522,7 @@ const GenerateSectionBreakdownPdf = ({
           serviceIds.forEach((serviceId) => {
             const hours = itemHours.hoursByService?.[serviceId];
             itemRow.push({
-              text: hours ? formatHours(hours).toString() : "-",
+              text: getItemServiceHoursPdfText(hours, hasExcludedHours),
               alignment: "right",
               color: hours ? "#4b5563" : "#9ca3af",
             });
@@ -425,6 +577,15 @@ const GenerateSectionBreakdownPdf = ({
       tableBody.push(totalServicesRow);
 
       const sectionSummaryContent = [
+        ...(hasExcludedHoursMarker
+          ? [
+              {
+                text: "(x) is excluded from totals; values outside parentheses are included.",
+                color: "#b45309",
+                margin: [0, 0, 0, 4],
+              },
+            ]
+          : []),
         {
           columns: [
             { text: "Subtotal (Parts + Labor)", color: "#374151" },
