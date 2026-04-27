@@ -64,6 +64,19 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
     id: item.id || undefined,
   });
 
+  const effectiveLengthMaterialForFinish =
+    formData.length_mat !== "" &&
+    formData.length_mat !== null &&
+    formData.length_mat !== undefined
+      ? formData.length_mat
+      : effectiveLengthMaterialId;
+
+  const selectedLengthMaterial = faceMaterialOptions.find(
+    (mat) => String(mat.id) === String(effectiveLengthMaterialForFinish)
+  );
+
+  const mustSelectLengthFinish = selectedLengthMaterial?.needs_finish === true;
+
   const [errors, setErrors] = useState({});
   const [selectedLengthItem, setSelectedLengthItem] = useState(null);
 
@@ -246,6 +259,11 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
       return <span className="flex-1 px-1 border border-amber-400 ml-1"></span>;
     }
 
+    const shouldShowFallback = !isFinish || mustSelectLengthFinish;
+    if (!shouldShowFallback) {
+      return null;
+    }
+
     if (defaultValue === null || defaultValue === undefined) {
       return null;
     }
@@ -284,6 +302,15 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
       length_finish: updatedFinish,
     }));
   };
+
+  useEffect(() => {
+    if (!mustSelectLengthFinish && Array.isArray(formData.length_finish)) {
+      setFormData((prev) => ({
+        ...prev,
+        length_finish: null,
+      }));
+    }
+  }, [mustSelectLengthFinish, formData.length_finish]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -624,9 +651,14 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                 )}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm border border-slate-300 rounded-md px-3 py-2">
-                <label className="flex items-center space-x-2">
+                <label
+                  className={`flex items-center space-x-2 ${
+                    !mustSelectLengthFinish ? "opacity-50" : ""
+                  }`}
+                >
                   <input
                     type="checkbox"
+                    disabled={!mustSelectLengthFinish}
                     checked={isFinishExplicitlyNone()}
                     onChange={() => handleFinishChange(FINISH_NONE)}
                     className="rounded border-slate-300"
@@ -634,10 +666,17 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                   <span className="italic">None</span>
                 </label>
                 {finishOptions.map((option) => (
-                  <label key={option.id} className="flex items-center space-x-2">
+                  <label
+                    key={option.id}
+                    className={`flex items-center space-x-2 ${
+                      !mustSelectLengthFinish || isFinishExplicitlyNone()
+                        ? "opacity-50"
+                        : ""
+                    }`}
+                  >
                     <input
                       type="checkbox"
-                      disabled={isFinishExplicitlyNone()}
+                      disabled={!mustSelectLengthFinish || isFinishExplicitlyNone()}
                       checked={(formData.length_finish || []).includes(option.id)}
                       onChange={() => handleFinishChange(option.id)}
                       className="rounded border-slate-300"
@@ -645,6 +684,15 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                     <span>{option.name}</span>
                   </label>
                 ))}
+              </div>
+              <div className="h-5">
+                <p
+                  className={`text-xs text-teal-600 mt-1 transition-opacity duration-200 ${
+                    !mustSelectLengthFinish ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  The selected length material does not require finish.
+                </p>
               </div>
             </div>
           </div>
@@ -694,10 +742,31 @@ const EstimateLengthManager = ({
   currentSectionId,
 }) => {
   const { catalog } = useSelector((state) => state.lengths);
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
+  );
   const faceMaterialOptions = useSelector(
     (state) => state.materials?.faceMaterials || []
   );
   const finishOptions = useSelector((state) => state.finishes?.finishes || []);
+
+  const currentSection = useMemo(() => {
+    const sectionId = Number(currentSectionId);
+    if (!Number.isFinite(sectionId)) return null;
+
+    return (
+      currentEstimate?.tasks
+        ?.flatMap((task) => task.sections || [])
+        ?.find((section) => Number(section.est_section_id) === sectionId) || null
+    );
+  }, [currentEstimate, currentSectionId]);
+
+  const effectiveSectionLengthMaterialId = getEffectiveValueOnly(
+    currentSection?.face_mat ?? null,
+    currentEstimate?.default_face_mat ?? null,
+    teamDefaults?.default_face_mat ?? null
+  );
 
   const getLengthName = (lengthCatalogId) => {
     const lengthItem = catalog.find((l) => l.id === lengthCatalogId);
@@ -724,6 +793,15 @@ const EstimateLengthManager = ({
   const getLengthOverridesSummary = (item) => {
     const summaryParts = [];
 
+    const effectiveLengthMaterialId =
+      item.length_mat !== null && item.length_mat !== undefined
+        ? item.length_mat
+        : effectiveSectionLengthMaterialId;
+    const effectiveLengthMaterial = faceMaterialOptions.find(
+      (mat) => String(mat.id) === String(effectiveLengthMaterialId)
+    );
+    const shouldShowFinish = effectiveLengthMaterial?.needs_finish === true;
+
     if (item.length_mat !== null && item.length_mat !== undefined) {
       const materialName = getLengthMaterialName(item.length_mat);
       if (materialName) {
@@ -731,7 +809,7 @@ const EstimateLengthManager = ({
       }
     }
 
-    if (Array.isArray(item.length_finish)) {
+    if (shouldShowFinish && Array.isArray(item.length_finish)) {
       const finishName = getLengthFinishName(item.length_finish);
       if (finishName) {
         summaryParts.push(`Finish: ${finishName}`);

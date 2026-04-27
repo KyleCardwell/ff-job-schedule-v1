@@ -1675,6 +1675,7 @@ const calculateLengthTotals = (items, context) => {
     hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
     itemHoursByCatalog: {},
     woodCount: 0,
+    finishSetupNeeded: false,
   };
 
   const {
@@ -1801,6 +1802,13 @@ const calculateLengthTotals = (items, context) => {
     // Use bd_ft_price if available, otherwise use fraction of sheet_price
     const material = lengthMaterialConfig?.material;
     if (!material) return;
+
+    if (
+      material.needs_finish &&
+      Number(lengthMaterialConfig?.finishMultiplier || 0) > 0
+    ) {
+      totals.finishSetupNeeded = true;
+    }
 
     const parsePositiveNumber = (value) => {
       const num = Number(value);
@@ -2482,7 +2490,8 @@ export const getSectionCalculations = (section, context = {}) => {
     (selectedDoorMaterial.finishMultiplier &&
       selectedDoorMaterial?.material?.needs_finish) ||
     (selectedDrawerFrontMaterial.finishMultiplier &&
-      selectedDrawerFrontMaterial?.material?.needs_finish),
+      selectedDrawerFrontMaterial?.material?.needs_finish) ||
+    lengthTotals.finishSetupNeeded,
   );
 
   // Add manually entered hours from add_hours field
