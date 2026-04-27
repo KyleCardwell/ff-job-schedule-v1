@@ -805,7 +805,7 @@ const EstimateLengthManager = ({
     if (item.length_mat !== null && item.length_mat !== undefined) {
       const materialName = getLengthMaterialName(item.length_mat);
       if (materialName) {
-        summaryParts.push(`Material: ${materialName}`);
+        summaryParts.push(`${materialName}`);
       }
     }
 

@@ -376,7 +376,7 @@ export const buildLengthMaterialFinishNote = ({
         (material) => String(material.id) === String(effectiveMaterialId),
       )?.name;
       detailParts.push(
-        `Material: ${materialName || `Material ${effectiveMaterialId}`}`,
+        `${materialName || `Material ${effectiveMaterialId}`}`,
       );
     }
 
