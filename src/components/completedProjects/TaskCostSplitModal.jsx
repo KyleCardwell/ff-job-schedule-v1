@@ -56,17 +56,40 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2,
   })}`;
 
-const buildSharedDistributionByTask = (sharedRow, taskIds) => {
+const buildSharedDistributionByTask = (sharedRow, taskIds, taskWeightsById = null) => {
   if (!taskIds.length) return [];
 
   const totalCents = Math.round((sharedRow.cost || 0) * 100);
-  const baseCents = Math.trunc(totalCents / taskIds.length);
+  const weightedTasks = taskIds.map((taskId) => ({
+    taskId,
+    weight: Math.max(0, taskWeightsById?.[String(taskId)] || 0),
+  }));
+  const totalWeight = weightedTasks.reduce((sum, task) => sum + task.weight, 0);
 
-  return taskIds.map((taskId, index) => {
+  const distributionTasks =
+    totalWeight > 0
+      ? weightedTasks
+      : taskIds.map((taskId) => ({ taskId, weight: 1 }));
+
+  const distributionWeightTotal = distributionTasks.reduce(
+    (sum, task) => sum + task.weight,
+    0,
+  );
+
+  let allocatedCents = 0;
+  let allocatedWeight = 0;
+
+  return distributionTasks.map(({ taskId, weight }, index) => {
     const shareCents =
-      index === taskIds.length - 1
-        ? totalCents - baseCents * (taskIds.length - 1)
-        : baseCents;
+      index === distributionTasks.length - 1
+        ? totalCents - allocatedCents
+        : Math.round(
+            ((totalCents - allocatedCents) * weight) /
+              Math.max(distributionWeightTotal - allocatedWeight, 1),
+          );
+
+    allocatedCents += shareCents;
+    allocatedWeight += weight;
 
     return {
       taskId,
@@ -89,14 +112,21 @@ const TaskCostSplitModal = ({
   onSave,
 }) => {
   const chartConfig = useSelector((state) => state.chartConfig);
+  const services = useSelector((state) => state.services?.allServices || []);
 
-  const categoryOptions = useMemo(() => {
+  const sectionCategoryOptions = useMemo(() => {
     const chartSections = Array.isArray(chartConfig?.estimate_sections)
       ? chartConfig.estimate_sections
       : [];
 
-    const options = [...DEFAULT_FINANCIAL_SECTIONS];
-    const existingIds = new Set(options.map((section) => String(section.id)));
+    const options = DEFAULT_FINANCIAL_SECTIONS.map((section) => ({
+      value: String(section.id),
+      categoryId: String(section.id),
+      name: section.name,
+      type: "section",
+      label: section.name,
+    }));
+    const existingIds = new Set(options.map((section) => String(section.value)));
     const existingNames = new Set(
       options.map((section) => normalizeSectionName(section.name)),
     );
@@ -110,13 +140,37 @@ const TaskCostSplitModal = ({
       if (existingIds.has(sectionId) || existingNames.has(normalizedName))
         return;
 
-      options.push({ id: sectionId, name: sectionName });
+      options.push({
+        value: sectionId,
+        categoryId: sectionId,
+        name: sectionName,
+        type: "section",
+        label: sectionName,
+      });
       existingIds.add(sectionId);
       existingNames.add(normalizedName);
     });
 
     return options;
   }, [chartConfig]);
+
+  const serviceCategoryOptions = useMemo(
+    () =>
+      (services || []).map((service) => ({
+        value: `service:${service.team_service_id}`,
+        categoryId: "hours",
+        teamServiceId: String(service.team_service_id),
+        name: service.service_name,
+        type: "service",
+        label: service.service_name,
+      })),
+    [services],
+  );
+
+  const categoryOptions = useMemo(
+    () => [...sectionCategoryOptions, ...serviceCategoryOptions],
+    [sectionCategoryOptions, serviceCategoryOptions],
+  );
 
   const [categoryId, setCategoryId] = useState("");
   const [invoice, setInvoice] = useState("");
@@ -142,15 +196,18 @@ const TaskCostSplitModal = ({
     setInputValues({});
     setIsSaving(false);
     setSaveError(null);
-  }, [isOpen, categoryOptions]);
+  }, [isOpen]);
 
   const selectedCategory = useMemo(
     () =>
       categoryOptions.find(
-        (option) => String(option.id) === String(categoryId),
+        (option) => String(option.value) === String(categoryId),
       ),
     [categoryOptions, categoryId],
   );
+
+  const isServiceCategory = selectedCategory?.type === "service";
+  const amountColumnLabel = isServiceCategory ? "Fixed Amount" : "Amount";
 
   const taskOptions = useMemo(
     () =>
@@ -293,27 +350,40 @@ const TaskCostSplitModal = ({
         taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
       }));
 
-    const preparedSharedRows = [
-      ...sharedRows
-        .filter((row) => row.amount !== null)
-        .map((row) => ({
-          invoice: invoice || "",
-          description: row.description,
-          cost: row.amount,
-          taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
-        })),
-      ...[
-        { description: "Delivery Fee", cost: deliveryFeeAmount },
-        { description: "Credit Card Fee", cost: creditCardFeeAmount },
-      ]
-        .filter((row) => row.cost !== null)
-        .map((row) => ({
-          invoice: invoice || "",
-          description: row.description,
-          cost: row.cost,
-          taxRate: 0,
-        })),
-    ];
+    const splitAmountsByTask = preparedSplitRows.reduce((acc, row) => {
+      const taskId = String(row.taskId);
+      acc[taskId] = (acc[taskId] || 0) + (row.cost || 0);
+      return acc;
+    }, {});
+
+    const preparedSharedRows = sharedRows
+      .filter((row) => row.amount !== null)
+      .map((row) => ({
+        invoice: invoice || "",
+        description: row.description,
+        cost: row.amount,
+        taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
+      }));
+
+    const preparedFeeRows = [
+      {
+        description: "Delivery Fee",
+        invoice: invoice ? `${invoice} - delivery fee` : "delivery fee",
+        cost: deliveryFeeAmount,
+      },
+      {
+        description: "Credit Card Fee",
+        invoice: invoice ? `${invoice} - credit card fee` : "credit card fee",
+        cost: creditCardFeeAmount,
+      },
+    ]
+      .filter((row) => row.cost !== null)
+      .map((row) => ({
+        invoice: row.invoice,
+        description: row.description,
+        cost: row.cost,
+        taxRate: 0,
+      }));
 
     const selectedTaskIds = [
       ...new Set(preparedSplitRows.map((row) => String(row.taskId))),
@@ -352,14 +422,27 @@ const TaskCostSplitModal = ({
       });
     });
 
+    preparedFeeRows.forEach((feeRow) => {
+      const distributedRows = buildSharedDistributionByTask(
+        feeRow,
+        selectedTaskIds,
+        splitAmountsByTask,
+      );
+      distributedRows.forEach(({ taskId, row }) => {
+        taskRowsMap[taskId].push(row);
+      });
+    });
+
     const taskRows = Object.entries(taskRowsMap)
       .map(([taskId, rows]) => ({ taskId, rows }))
       .filter((taskRow) => taskRow.rows.length > 0);
 
     const payload = {
       projectId,
-      categoryId,
+      categoryId: selectedCategory?.categoryId || categoryId,
       categoryName: selectedCategory?.name || "",
+      categoryType: selectedCategory?.type || "section",
+      serviceTeamServiceId: selectedCategory?.teamServiceId || null,
       taskRows,
     };
 
@@ -402,11 +485,20 @@ const TaskCostSplitModal = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select category</option>
-                {categoryOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
+                <optgroup label="Sections">
+                  {sectionCategoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Hours - Fixed Amounts">
+                  {serviceCategoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
             <div>
@@ -443,7 +535,7 @@ const TaskCostSplitModal = ({
 
             <div className="grid grid-cols-[2fr_1fr_110px_40px] gap-3 text-xs font-semibold text-gray-600 uppercase mb-1">
               <span>Task</span>
-              <span>Amount</span>
+              <span>{amountColumnLabel}</span>
               <span>Taxed</span>
               <span />
             </div>
@@ -482,7 +574,7 @@ const TaskCostSplitModal = ({
                       handleRowAmountBlur("split", row.id, e.target.value)
                     }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Amount"
+                    placeholder={amountColumnLabel}
                   />
                   <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                     <input
@@ -603,7 +695,7 @@ const TaskCostSplitModal = ({
 
             <div className="grid grid-cols-[2fr_1fr_110px_40px] gap-3 text-xs font-semibold text-gray-600 uppercase mb-1">
               <span>Description</span>
-              <span>Amount</span>
+              <span>{amountColumnLabel}</span>
               <span>Taxed</span>
               <span />
             </div>
@@ -642,7 +734,7 @@ const TaskCostSplitModal = ({
                       handleRowAmountBlur("shared", row.id, e.target.value)
                     }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Amount"
+                    placeholder={amountColumnLabel}
                   />
                   <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                     <input

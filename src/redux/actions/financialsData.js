@@ -1,6 +1,8 @@
 import { supabase } from "../../utils/supabase";
 import { Actions } from "../actions";
 
+// import { fetchCompletedProjects } from "./projects";
+
 // Action Creators
 export const setLoading = (loading) => ({
   type: Actions.financialsData.SET_FINANCIALS_DATA_LOADING,
@@ -66,6 +68,47 @@ export const createProjectFinancials = (_projectId, tasks) => {
       throw error;
     } finally {
       dispatch(setLoading(false));
+    }
+  };
+};
+
+export const splitProjectFinancialsCosts = ({
+  projectId,
+  categoryId,
+  categoryName,
+  categoryType = "section",
+  serviceTeamServiceId = null,
+  taskRows,
+}) => {
+  return async (dispatch) => {
+    try {
+      const { data, error } = await supabase.rpc("split_project_financials_costs", {
+        p_project_id: projectId,
+        p_category_id: categoryId,
+        p_category_name: categoryName || null,
+        p_task_rows: taskRows || [],
+        p_category_type: categoryType,
+        p_service_team_service_id: serviceTeamServiceId,
+      });
+
+      if (error) {
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to modify financial records",
+          );
+        }
+        throw error;
+      }
+
+      // await dispatch(fetchCompletedProjects());
+
+      return { success: true, data };
+    } catch (error) {
+      dispatch({
+        type: Actions.financialsData.SAVE_TASK_FINANCIALS_ERROR,
+        payload: error.message,
+      });
+      return { success: false, error: error.message };
     }
   };
 };
