@@ -10,9 +10,13 @@ import {
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
 import { DEFAULT_FINANCIAL_SECTIONS } from "../../utils/constants";
+import { roundToHundredth } from "../../utils/estimateHelpers";
 import { formatNumberValue, safeEvaluate } from "../../utils/mathUtils";
 
-const normalizeSectionName = (name) => String(name || "").trim().toLowerCase();
+const normalizeSectionName = (name) =>
+  String(name || "")
+    .trim()
+    .toLowerCase();
 
 const createSplitRow = () => ({
   id: uuidv4(),
@@ -52,6 +56,30 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2,
   })}`;
 
+const buildSharedDistributionByTask = (sharedRow, taskIds) => {
+  if (!taskIds.length) return [];
+
+  const totalCents = Math.round((sharedRow.cost || 0) * 100);
+  const baseCents = Math.trunc(totalCents / taskIds.length);
+
+  return taskIds.map((taskId, index) => {
+    const shareCents =
+      index === taskIds.length - 1
+        ? totalCents - baseCents * (taskIds.length - 1)
+        : baseCents;
+
+    return {
+      taskId,
+      row: {
+        invoice: sharedRow.invoice || "",
+        description: sharedRow.description || "",
+        cost: shareCents / 100,
+        taxRate: sharedRow.taxRate || 0,
+      },
+    };
+  });
+};
+
 const TaskCostSplitModal = ({
   isOpen,
   onClose,
@@ -79,7 +107,8 @@ const TaskCostSplitModal = ({
       const normalizedName = normalizeSectionName(sectionName);
 
       if (!sectionId || !sectionName) return;
-      if (existingIds.has(sectionId) || existingNames.has(normalizedName)) return;
+      if (existingIds.has(sectionId) || existingNames.has(normalizedName))
+        return;
 
       options.push({ id: sectionId, name: sectionName });
       existingIds.add(sectionId);
@@ -94,20 +123,34 @@ const TaskCostSplitModal = ({
   const [splitRows, setSplitRows] = useState([]);
   const [sharedRows, setSharedRows] = useState([]);
   const [sharedTaxAmount, setSharedTaxAmount] = useState(null);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState(null);
+  const [creditCardFeeAmount, setCreditCardFeeAmount] = useState(null);
   const [inputValues, setInputValues] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    setCategoryId(categoryOptions[0]?.id ? String(categoryOptions[0].id) : "");
+    setCategoryId("");
     setInvoice("");
     setSplitRows([createSplitRow()]);
     setSharedRows([createSharedRow()]);
     setSharedTaxAmount(null);
+    setDeliveryFeeAmount(null);
+    setCreditCardFeeAmount(null);
     setInputValues({});
     setIsSaving(false);
+    setSaveError(null);
   }, [isOpen, categoryOptions]);
+
+  const selectedCategory = useMemo(
+    () =>
+      categoryOptions.find(
+        (option) => String(option.id) === String(categoryId),
+      ),
+    [categoryOptions, categoryId],
+  );
 
   const taskOptions = useMemo(
     () =>
@@ -145,112 +188,179 @@ const TaskCostSplitModal = ({
     return ((sharedTaxAmount || 0) / taxableSubtotal) * 100;
   }, [sharedTaxAmount, taxableSubtotal]);
 
+  const roundedEffectiveTaxRate = useMemo(
+    () => roundToHundredth(effectiveTaxRate),
+    [effectiveTaxRate],
+  );
+
   const grandTotal = useMemo(
-    () => splitSubtotal + sharedSubtotal + (sharedTaxAmount || 0),
-    [splitSubtotal, sharedSubtotal, sharedTaxAmount],
+    () =>
+      splitSubtotal +
+      sharedSubtotal +
+      (sharedTaxAmount || 0) +
+      (deliveryFeeAmount || 0) +
+      (creditCardFeeAmount || 0),
+    [
+      splitSubtotal,
+      sharedSubtotal,
+      sharedTaxAmount,
+      deliveryFeeAmount,
+      creditCardFeeAmount,
+    ],
   );
 
   if (!isOpen) return null;
 
-  const handleTaskRowChange = (rowId, field, value) => {
-    setSplitRows((prev) =>
+  const getRowTypeConfig = (rowType) => {
+    if (rowType === "split") {
+      return {
+        setRows: setSplitRows,
+        inputKeyPrefix: "split",
+      };
+    }
+
+    return {
+      setRows: setSharedRows,
+      inputKeyPrefix: "shared",
+    };
+  };
+
+  const handleRowChange = (rowType, rowId, field, value) => {
+    const { setRows } = getRowTypeConfig(rowType);
+    setRows((prev) =>
       prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
     );
   };
 
-  const handleSharedRowChange = (rowId, field, value) => {
-    setSharedRows((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
-    );
-  };
-
-  const handleTaskAmountInputChange = (rowId, value) => {
+  const handleRowAmountInputChange = (rowType, rowId, value) => {
+    const { inputKeyPrefix } = getRowTypeConfig(rowType);
     setInputValues((prev) => ({
       ...prev,
-      [`split-${rowId}`]: value,
+      [`${inputKeyPrefix}-${rowId}`]: value,
     }));
   };
 
-  const handleTaskAmountBlur = (rowId, value) => {
+  const handleRowAmountBlur = (rowType, rowId, value) => {
+    const { setRows, inputKeyPrefix } = getRowTypeConfig(rowType);
     const parsedValue = parseMathInputValue(value);
-    setSplitRows((prev) =>
+
+    setRows((prev) =>
       prev.map((row) =>
         row.id === rowId ? { ...row, amount: parsedValue ?? null } : row,
       ),
     );
+
     setInputValues((prev) => ({
       ...prev,
-      [`split-${rowId}`]: parsedValue === null ? "" : parsedValue.toString(),
+      [`${inputKeyPrefix}-${rowId}`]:
+        parsedValue === null ? "" : parsedValue.toString(),
     }));
   };
 
-  const handleSharedAmountInputChange = (rowId, value) => {
-    setInputValues((prev) => ({
-      ...prev,
-      [`shared-${rowId}`]: value,
-    }));
+  const handleFeeInputChange = (fieldKey, value) => {
+    setInputValues((prev) => ({ ...prev, [fieldKey]: value }));
   };
 
-  const handleSharedAmountBlur = (rowId, value) => {
+  const handleFeeBlur = (fieldKey, value, setAmount) => {
     const parsedValue = parseMathInputValue(value);
-    setSharedRows((prev) =>
-      prev.map((row) =>
-        row.id === rowId ? { ...row, amount: parsedValue ?? null } : row,
-      ),
-    );
+    setAmount(parsedValue ?? null);
     setInputValues((prev) => ({
       ...prev,
-      [`shared-${rowId}`]: parsedValue === null ? "" : parsedValue.toString(),
+      [fieldKey]: parsedValue === null ? "" : parsedValue.toString(),
     }));
   };
 
-  const handleSharedTaxInputChange = (value) => {
-    setInputValues((prev) => ({ ...prev, sharedTax: value }));
-  };
-
-  const handleSharedTaxBlur = (value) => {
-    const parsedValue = parseMathInputValue(value);
-    setSharedTaxAmount(parsedValue ?? null);
-    setInputValues((prev) => ({
-      ...prev,
-      sharedTax: parsedValue === null ? "" : parsedValue.toString(),
-    }));
-  };
-
-  const handleDeleteSplitRow = (rowId) => {
-    setSplitRows((prev) => prev.filter((row) => row.id !== rowId));
+  const handleDeleteRow = (rowType, rowId) => {
+    const { setRows, inputKeyPrefix } = getRowTypeConfig(rowType);
+    setRows((prev) => prev.filter((row) => row.id !== rowId));
     setInputValues((prev) => {
       const next = { ...prev };
-      delete next[`split-${rowId}`];
-      return next;
-    });
-  };
-
-  const handleDeleteSharedRow = (rowId) => {
-    setSharedRows((prev) => prev.filter((row) => row.id !== rowId));
-    setInputValues((prev) => {
-      const next = { ...prev };
-      delete next[`shared-${rowId}`];
+      delete next[`${inputKeyPrefix}-${rowId}`];
       return next;
     });
   };
 
   const handleSave = async () => {
+    setSaveError(null);
+
+    const preparedSplitRows = splitRows
+      .filter((row) => row.taskId && row.amount !== null)
+      .map((row) => ({
+        taskId: row.taskId,
+        invoice: invoice || "",
+        description: "",
+        cost: row.amount,
+        taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
+      }));
+
+    const preparedSharedRows = [
+      ...sharedRows
+        .filter((row) => row.amount !== null)
+        .map((row) => ({
+          invoice: invoice || "",
+          description: row.description,
+          cost: row.amount,
+          taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
+        })),
+      ...[
+        { description: "Delivery Fee", cost: deliveryFeeAmount },
+        { description: "Credit Card Fee", cost: creditCardFeeAmount },
+      ]
+        .filter((row) => row.cost !== null)
+        .map((row) => ({
+          invoice: invoice || "",
+          description: row.description,
+          cost: row.cost,
+          taxRate: 0,
+        })),
+    ];
+
+    const selectedTaskIds = [
+      ...new Set(preparedSplitRows.map((row) => String(row.taskId))),
+    ];
+
+    if (!categoryId) {
+      setSaveError("Please select a category.");
+      return;
+    }
+
+    if (preparedSplitRows.length === 0) {
+      setSaveError("Please add at least one task row with task + amount.");
+      return;
+    }
+
+    const taskRowsMap = selectedTaskIds.reduce((acc, taskId) => {
+      acc[taskId] = [];
+      return acc;
+    }, {});
+
+    preparedSplitRows.forEach((row) => {
+      taskRowsMap[row.taskId].push({
+        invoice: row.invoice,
+        cost: row.cost,
+        taxRate: row.taxRate,
+      });
+    });
+
+    preparedSharedRows.forEach((sharedRow) => {
+      const distributedRows = buildSharedDistributionByTask(
+        sharedRow,
+        selectedTaskIds,
+      );
+      distributedRows.forEach(({ taskId, row }) => {
+        taskRowsMap[taskId].push(row);
+      });
+    });
+
+    const taskRows = Object.entries(taskRowsMap)
+      .map(([taskId, rows]) => ({ taskId, rows }))
+      .filter((taskRow) => taskRow.rows.length > 0);
+
     const payload = {
       projectId,
-      projectName,
       categoryId,
-      invoice,
-      splitRows,
-      sharedRows,
-      sharedTaxAmount: sharedTaxAmount || 0,
-      totals: {
-        splitSubtotal,
-        sharedSubtotal,
-        taxableSubtotal,
-        effectiveTaxRate,
-        grandTotal,
-      },
+      categoryName: selectedCategory?.name || "",
+      taskRows,
     };
 
     if (!onSave) {
@@ -260,8 +370,15 @@ const TaskCostSplitModal = ({
 
     setIsSaving(true);
     try {
-      await onSave(payload);
+      const saveResult = await onSave(payload);
+      if (saveResult?.success === false) {
+        setSaveError(saveResult.error || "Failed to save split cost.");
+        return;
+      }
+
       onClose?.();
+    } catch (error) {
+      setSaveError(error?.message || "Failed to save split cost.");
     } finally {
       setIsSaving(false);
     }
@@ -315,7 +432,9 @@ const TaskCostSplitModal = ({
               </h3>
               <button
                 type="button"
-                onClick={() => setSplitRows((prev) => [...prev, createSplitRow()])}
+                onClick={() =>
+                  setSplitRows((prev) => [...prev, createSplitRow()])
+                }
                 className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900"
               >
                 <FiPlus size={14} /> Add Task Row
@@ -338,7 +457,7 @@ const TaskCostSplitModal = ({
                   <select
                     value={row.taskId}
                     onChange={(e) =>
-                      handleTaskRowChange(row.id, "taskId", e.target.value)
+                      handleRowChange("split", row.id, "taskId", e.target.value)
                     }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -353,9 +472,15 @@ const TaskCostSplitModal = ({
                     type="text"
                     value={inputValues[`split-${row.id}`] ?? ""}
                     onChange={(e) =>
-                      handleTaskAmountInputChange(row.id, e.target.value)
+                      handleRowAmountInputChange(
+                        "split",
+                        row.id,
+                        e.target.value,
+                      )
                     }
-                    onBlur={(e) => handleTaskAmountBlur(row.id, e.target.value)}
+                    onBlur={(e) =>
+                      handleRowAmountBlur("split", row.id, e.target.value)
+                    }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Amount"
                   />
@@ -364,7 +489,12 @@ const TaskCostSplitModal = ({
                       type="checkbox"
                       checked={!!row.isTaxed}
                       onChange={(e) =>
-                        handleTaskRowChange(row.id, "isTaxed", e.target.checked)
+                        handleRowChange(
+                          "split",
+                          row.id,
+                          "isTaxed",
+                          e.target.checked,
+                        )
                       }
                       className="h-4 w-4"
                     />
@@ -372,7 +502,7 @@ const TaskCostSplitModal = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => handleDeleteSplitRow(row.id)}
+                    onClick={() => handleDeleteRow("split", row.id)}
                     className="text-red-600 hover:text-red-800"
                     aria-label="Remove split row"
                   >
@@ -390,11 +520,85 @@ const TaskCostSplitModal = ({
               </h3>
               <button
                 type="button"
-                onClick={() => setSharedRows((prev) => [...prev, createSharedRow()])}
+                onClick={() =>
+                  setSharedRows((prev) => [...prev, createSharedRow()])
+                }
                 className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900"
               >
                 <FiPlus size={14} /> Add Shared Row
               </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
+                  Delivery Fee
+                </label>
+                <input
+                  type="text"
+                  value={inputValues.deliveryFee ?? ""}
+                  onChange={(e) =>
+                    handleFeeInputChange("deliveryFee", e.target.value)
+                  }
+                  onBlur={(e) =>
+                    handleFeeBlur(
+                      "deliveryFee",
+                      e.target.value,
+                      setDeliveryFeeAmount,
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Delivery fee"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
+                  Credit Card Fee
+                </label>
+                <input
+                  type="text"
+                  value={inputValues.creditCardFee ?? ""}
+                  onChange={(e) =>
+                    handleFeeInputChange("creditCardFee", e.target.value)
+                  }
+                  onBlur={(e) =>
+                    handleFeeBlur(
+                      "creditCardFee",
+                      e.target.value,
+                      setCreditCardFeeAmount,
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Credit card fee"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
+                  Tax Amount
+                </label>
+                <input
+                  type="text"
+                  value={inputValues.sharedTax ?? ""}
+                  onChange={(e) =>
+                    handleFeeInputChange("sharedTax", e.target.value)
+                  }
+                  onBlur={(e) =>
+                    handleFeeBlur(
+                      "sharedTax",
+                      e.target.value,
+                      setSharedTaxAmount,
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tax amount"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Derived tax rate from taxable amounts:{" "}
+                  {effectiveTaxRate.toFixed(2)}%
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-[2fr_1fr_110px_40px] gap-3 text-xs font-semibold text-gray-600 uppercase mb-1">
@@ -414,18 +618,29 @@ const TaskCostSplitModal = ({
                     type="text"
                     value={row.description}
                     onChange={(e) =>
-                      handleSharedRowChange(row.id, "description", e.target.value)
+                      handleRowChange(
+                        "shared",
+                        row.id,
+                        "description",
+                        e.target.value,
+                      )
                     }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Delivery, credit card fee, etc."
+                    placeholder="Description"
                   />
                   <input
                     type="text"
                     value={inputValues[`shared-${row.id}`] ?? ""}
                     onChange={(e) =>
-                      handleSharedAmountInputChange(row.id, e.target.value)
+                      handleRowAmountInputChange(
+                        "shared",
+                        row.id,
+                        e.target.value,
+                      )
                     }
-                    onBlur={(e) => handleSharedAmountBlur(row.id, e.target.value)}
+                    onBlur={(e) =>
+                      handleRowAmountBlur("shared", row.id, e.target.value)
+                    }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Amount"
                   />
@@ -434,7 +649,12 @@ const TaskCostSplitModal = ({
                       type="checkbox"
                       checked={!!row.isTaxed}
                       onChange={(e) =>
-                        handleSharedRowChange(row.id, "isTaxed", e.target.checked)
+                        handleRowChange(
+                          "shared",
+                          row.id,
+                          "isTaxed",
+                          e.target.checked,
+                        )
                       }
                       className="h-4 w-4"
                     />
@@ -442,7 +662,7 @@ const TaskCostSplitModal = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => handleDeleteSharedRow(row.id)}
+                    onClick={() => handleDeleteRow("shared", row.id)}
                     className="text-red-600 hover:text-red-800"
                     aria-label="Remove shared row"
                   >
@@ -451,38 +671,41 @@ const TaskCostSplitModal = ({
                 </div>
               ))}
             </div>
-
-            <div className="mt-3 max-w-sm">
-              <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
-                Tax Amount
-              </label>
-              <input
-                type="text"
-                value={inputValues.sharedTax ?? ""}
-                onChange={(e) => handleSharedTaxInputChange(e.target.value)}
-                onBlur={(e) => handleSharedTaxBlur(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Tax amount"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Derived tax rate from taxable amounts: {effectiveTaxRate.toFixed(2)}%
-              </p>
-            </div>
           </section>
 
           <section className="border-t border-gray-200 pt-4">
-            <h3 className="text-sm font-bold uppercase text-gray-700 mb-2">Totals</h3>
+            <h3 className="text-sm font-bold uppercase text-gray-700 mb-2">
+              Totals
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1 text-sm">
               <div className="text-gray-600">Task Split Subtotal</div>
-              <div className="text-right font-medium">{formatCurrency(splitSubtotal)}</div>
+              <div className="text-right font-medium">
+                {formatCurrency(splitSubtotal)}
+              </div>
               <div className="text-gray-600">Shared Subtotal</div>
-              <div className="text-right font-medium">{formatCurrency(sharedSubtotal)}</div>
+              <div className="text-right font-medium">
+                {formatCurrency(sharedSubtotal)}
+              </div>
               <div className="text-gray-600">Taxable Base</div>
-              <div className="text-right font-medium">{formatCurrency(taxableSubtotal)}</div>
+              <div className="text-right font-medium">
+                {formatCurrency(taxableSubtotal)}
+              </div>
               <div className="text-gray-600">Tax Amount</div>
-              <div className="text-right font-medium">{formatCurrency(sharedTaxAmount || 0)}</div>
+              <div className="text-right font-medium">
+                {formatCurrency(sharedTaxAmount || 0)}
+              </div>
+              <div className="text-gray-600">Delivery Fee</div>
+              <div className="text-right font-medium">
+                {formatCurrency(deliveryFeeAmount || 0)}
+              </div>
+              <div className="text-gray-600">Credit Card Fee</div>
+              <div className="text-right font-medium">
+                {formatCurrency(creditCardFeeAmount || 0)}
+              </div>
               <div className="text-gray-900 font-bold">Total</div>
-              <div className="text-right font-bold text-base">{formatCurrency(grandTotal)}</div>
+              <div className="text-right font-bold text-base">
+                {formatCurrency(grandTotal)}
+              </div>
             </div>
           </section>
         </div>
@@ -505,6 +728,9 @@ const TaskCostSplitModal = ({
             {isSaving ? "Saving..." : "Save"}
           </button>
         </div>
+        {saveError && (
+          <div className="text-sm text-red-600 mt-2">{saveError}</div>
+        )}
       </div>
     </div>
   );
