@@ -12,13 +12,18 @@ import {
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
+import { buttonClass } from "../../assets/tailwindConstants.js";
 import { usePermissions } from "../../hooks/usePermissions";
 import { Actions } from "../../redux/actions";
 import {
   fetchProjectFinancials,
+  splitProjectFinancialsCosts,
   fetchTaskFinancials,
 } from "../../redux/actions/financialsData";
 import Tooltip from "../common/Tooltip.jsx";
+
+import TaskCostSplitModal from "./TaskCostSplitModal.jsx";
+
 
 const CompletedProjectCard = ({
   project,
@@ -35,6 +40,7 @@ const CompletedProjectCard = ({
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoveredProjectId, setHoveredProjectId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSplitCostModalOpen, setIsSplitCostModalOpen] = useState(false);
 
   const bgColor = index % 2 === 0 ? "bg-gray-200" : "bg-white";
   const bgHoverColor = index % 2 === 0 ? "bg-teal-200" : "bg-teal-100";
@@ -64,6 +70,10 @@ const CompletedProjectCard = ({
     } catch (error) {
       console.error("Error fetching financial data:", error);
     }
+  };
+
+  const handleSplitCostSave = async (payload) => {
+    return dispatch(splitProjectFinancialsCosts(payload));
   };
 
   const handleViewClick = async (e) => {
@@ -154,7 +164,18 @@ const CompletedProjectCard = ({
                 <span className="p-2 bg-gray-300">Job Number</span>
                 <span className="p-2 bg-gray-300">Room Name</span>
                 <span className="p-2 bg-gray-300">Costing Complete</span>
-                <span className="p-2 bg-gray-300">Actions</span>
+                <div className="bg-gray-300 p-1 flex flex-col items-center justify-center gap-1">
+                  <span>Actions</span>
+                  <Tooltip text="Split cost between multiple tasks">
+                    <button
+                      type="button"
+                      onClick={() => setIsSplitCostModalOpen(true)}
+                      className={`${buttonClass} bg-blue-700`}
+                    >
+                      Split Cost
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
               {project.tasks.map((task, index) => {
                 const taskBgColor =
@@ -228,6 +249,14 @@ const CompletedProjectCard = ({
           </div>
         </div>
       </div>
+      <TaskCostSplitModal
+        isOpen={isSplitCostModalOpen}
+        onClose={() => setIsSplitCostModalOpen(false)}
+        projectId={project.project_id}
+        projectName={project.project_name}
+        tasks={project.tasks}
+        onSave={handleSplitCostSave}
+      />
     </div>
   );
 };
