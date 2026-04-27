@@ -1,21 +1,52 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FiSave, FiX } from "react-icons/fi";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import useMathInput from "../../hooks/useMathInput";
-import { fetchLengthsCatalog } from "../../redux/actions/lengths";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 
 import SectionItemList from "./SectionItemList.jsx";
 
 const DEFAULT_NEW_LENGTH_QUANTITY = 1;
+const FINISH_NONE = "none";
 
-const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
-  const dispatch = useDispatch();
+const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
+  const faceMaterialOptions = useSelector(
+    (state) => state.materials?.faceMaterials || []
+  );
+  const finishOptions = useSelector((state) => state.finishes?.finishes || []);
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
+  );
   const { catalog, molding, base, shelf, top, other, loading } = useSelector(
     (state) => state.lengths
+  );
+
+  const currentSection = useMemo(() => {
+    const sectionId = Number(currentSectionId);
+    if (!Number.isFinite(sectionId)) return null;
+
+    return (
+      currentEstimate?.tasks
+        ?.flatMap((task) => task.sections || [])
+        ?.find((section) => Number(section.est_section_id) === sectionId) || null
+    );
+  }, [currentEstimate, currentSectionId]);
+
+  const effectiveLengthMaterialId = getEffectiveValueOnly(
+    currentSection?.face_mat ?? null,
+    currentEstimate?.default_face_mat ?? null,
+    teamDefaults?.default_face_mat ?? null
+  );
+
+  const effectiveLengthFinish = getEffectiveValueOnly(
+    currentSection?.face_finish ?? null,
+    currentEstimate?.default_face_finish ?? null,
+    teamDefaults?.default_face_finish ?? null
   );
 
   const [selectedType, setSelectedType] = useState("");
@@ -27,9 +58,24 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     thickness: item.thickness ?? "",
     miter_count: item.miter_count || 0,
     cutout_count: item.cutout_count || 0,
+    length_mat: item.length_mat ?? "",
+    length_finish: Array.isArray(item.length_finish) ? item.length_finish : null,
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });
+
+  const effectiveLengthMaterialForFinish =
+    formData.length_mat !== "" &&
+    formData.length_mat !== null &&
+    formData.length_mat !== undefined
+      ? formData.length_mat
+      : effectiveLengthMaterialId;
+
+  const selectedLengthMaterial = faceMaterialOptions.find(
+    (mat) => String(mat.id) === String(effectiveLengthMaterialForFinish)
+  );
+
+  const mustSelectLengthFinish = selectedLengthMaterial?.needs_finish === true;
 
   const [errors, setErrors] = useState({});
   const [selectedLengthItem, setSelectedLengthItem] = useState(null);
@@ -152,6 +198,11 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
         });
       }
       return;
+    } else if (name === "length_mat") {
+      setFormData({
+        ...formData,
+        [name]: value === "" ? "" : Number(value),
+      });
     } else if (name === "length_catalog_id") {
       const numValue = value === "" ? "" : Number(value);
       setFormData({
@@ -173,6 +224,93 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
       });
     }
   };
+
+  const isFinishExplicitlyNone = () => {
+    const value = formData.length_finish;
+    return Array.isArray(value) && value.length === 0;
+  };
+
+  const formatMaterialName = (materialId) => {
+    const material = faceMaterialOptions.find((mat) => mat.id === materialId);
+    return material?.name || "";
+  };
+
+  const formatFinishArray = (finishIds) => {
+    if (Array.isArray(finishIds) && finishIds.length === 0) {
+      return "None";
+    }
+
+    if (!Array.isArray(finishIds) || finishIds.length === 0) {
+      return "";
+    }
+
+    return finishIds
+      .map((id) => finishOptions.find((option) => option.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const getEffectiveDefaultDisplay = (fieldValue, defaultValue, formatter, isFinish = false) => {
+    const isEmpty = isFinish
+      ? fieldValue === null || fieldValue === undefined
+      : fieldValue === "" || fieldValue === null || fieldValue === undefined;
+
+    if (!isEmpty) {
+      return <span className="flex-1 px-1 border border-amber-400 ml-1"></span>;
+    }
+
+    const shouldShowFallback = !isFinish || mustSelectLengthFinish;
+    if (!shouldShowFallback) {
+      return null;
+    }
+
+    if (defaultValue === null || defaultValue === undefined) {
+      return null;
+    }
+
+    const displayValue = formatter ? formatter(defaultValue) : defaultValue;
+    if (!displayValue) return null;
+
+    return (
+      <span className="flex-1 px-1 text-white text-xs bg-teal-600 ml-1">
+        {displayValue}
+      </span>
+    );
+  };
+
+  const handleFinishChange = (option) => {
+    let updatedFinish;
+
+    if (option === FINISH_NONE) {
+      updatedFinish = isFinishExplicitlyNone() ? null : [];
+    } else {
+      const currentFinish = Array.isArray(formData.length_finish)
+        ? formData.length_finish
+        : [];
+
+      updatedFinish = currentFinish.includes(option)
+        ? currentFinish.filter((id) => id !== option)
+        : [...currentFinish, option];
+
+      if (updatedFinish.length === 0) {
+        updatedFinish = null;
+      }
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      length_finish: updatedFinish,
+    }));
+  };
+
+  useEffect(() => {
+    if (!mustSelectLengthFinish && Array.isArray(formData.length_finish)) {
+      setFormData((prev) => ({
+        ...prev,
+        length_finish: null,
+      }));
+    }
+  }, [mustSelectLengthFinish, formData.length_finish]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -234,6 +372,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
         cutout_count: parseOptionalNumber(formData.cutout_count) ?? 0,
         width: parseOptionalNumber(formData.width),
         thickness: parseOptionalNumber(formData.thickness),
+        length_mat: parseOptionalNumber(formData.length_mat),
       });
     }
   };
@@ -467,6 +606,96 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor="length_mat"
+                className="flex items-center text-xs font-medium text-slate-700 mb-1"
+              >
+                <span>Material</span>
+                {getEffectiveDefaultDisplay(
+                  formData.length_mat,
+                  effectiveLengthMaterialId,
+                  formatMaterialName
+                )}
+              </label>
+              <select
+                id="length_mat"
+                name="length_mat"
+                value={
+                  formData.length_mat === null || formData.length_mat === ""
+                    ? ""
+                    : formData.length_mat
+                }
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              >
+                <option value="">Section Default</option>
+                {faceMaterialOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="flex items-center text-xs font-medium text-slate-700 mb-1">
+                <span>Finish</span>
+                {getEffectiveDefaultDisplay(
+                  formData.length_finish,
+                  effectiveLengthFinish,
+                  formatFinishArray,
+                  true
+                )}
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm border border-slate-300 rounded-md px-3 py-2">
+                <label
+                  className={`flex items-center space-x-2 ${
+                    !mustSelectLengthFinish ? "opacity-50" : ""
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={!mustSelectLengthFinish}
+                    checked={isFinishExplicitlyNone()}
+                    onChange={() => handleFinishChange(FINISH_NONE)}
+                    className="rounded border-slate-300"
+                  />
+                  <span className="italic">None</span>
+                </label>
+                {finishOptions.map((option) => (
+                  <label
+                    key={option.id}
+                    className={`flex items-center space-x-2 ${
+                      !mustSelectLengthFinish || isFinishExplicitlyNone()
+                        ? "opacity-50"
+                        : ""
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={!mustSelectLengthFinish || isFinishExplicitlyNone()}
+                      checked={(formData.length_finish || []).includes(option.id)}
+                      onChange={() => handleFinishChange(option.id)}
+                      className="rounded border-slate-300"
+                    />
+                    <span>{option.name}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="h-5">
+                <p
+                  className={`text-xs text-teal-600 mt-1 transition-opacity duration-200 ${
+                    !mustSelectLengthFinish ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  The selected length material does not require finish.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Form Actions */}
@@ -497,7 +726,7 @@ LengthItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  onDeleteItem: PropTypes.func.isRequired,
+  currentSectionId: PropTypes.number,
 };
 
 const EstimateLengthManager = ({
@@ -513,25 +742,83 @@ const EstimateLengthManager = ({
   currentSectionId,
 }) => {
   const { catalog } = useSelector((state) => state.lengths);
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults
+  );
+  const faceMaterialOptions = useSelector(
+    (state) => state.materials?.faceMaterials || []
+  );
+  const finishOptions = useSelector((state) => state.finishes?.finishes || []);
+
+  const currentSection = useMemo(() => {
+    const sectionId = Number(currentSectionId);
+    if (!Number.isFinite(sectionId)) return null;
+
+    return (
+      currentEstimate?.tasks
+        ?.flatMap((task) => task.sections || [])
+        ?.find((section) => Number(section.est_section_id) === sectionId) || null
+    );
+  }, [currentEstimate, currentSectionId]);
+
+  const effectiveSectionLengthMaterialId = getEffectiveValueOnly(
+    currentSection?.face_mat ?? null,
+    currentEstimate?.default_face_mat ?? null,
+    teamDefaults?.default_face_mat ?? null
+  );
 
   const getLengthName = (lengthCatalogId) => {
     const lengthItem = catalog.find((l) => l.id === lengthCatalogId);
     return lengthItem ? lengthItem.name : "Unknown";
   };
 
-  const getLengthType = (lengthCatalogId) => {
-    const lengthItem = catalog.find((l) => l.id === lengthCatalogId);
-    if (!lengthItem) return "Unknown";
+  const getLengthMaterialName = (materialId) => {
+    if (materialId === null || materialId === undefined) return "";
+    const material = faceMaterialOptions.find((mat) => mat.id === materialId);
+    return material?.name || `ID ${materialId}`;
+  };
 
-    const typeLabels = {
-      molding: "Molding",
-      base: "Base",
-      shelf: "Shelf",
-      top: "Top",
-      other: "Other",
-    };
+  const getLengthFinishName = (finishIds) => {
+    if (finishIds === null || finishIds === undefined) return "";
+    if (Array.isArray(finishIds) && finishIds.length === 0) return "None";
+    if (!Array.isArray(finishIds)) return "";
 
-    return typeLabels[lengthItem.type] || lengthItem.type;
+    return finishIds
+      .map((finishId) => finishOptions.find((f) => f.id === finishId)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const getLengthOverridesSummary = (item) => {
+    const summaryParts = [];
+
+    const effectiveLengthMaterialId =
+      item.length_mat !== null && item.length_mat !== undefined
+        ? item.length_mat
+        : effectiveSectionLengthMaterialId;
+    const effectiveLengthMaterial = faceMaterialOptions.find(
+      (mat) => String(mat.id) === String(effectiveLengthMaterialId)
+    );
+    const shouldShowFinish = effectiveLengthMaterial?.needs_finish === true;
+
+    if (item.length_mat !== null && item.length_mat !== undefined) {
+      const materialName = getLengthMaterialName(item.length_mat);
+      if (materialName) {
+        summaryParts.push(`Material: ${materialName}`);
+      }
+    }
+
+    if (shouldShowFinish && Array.isArray(item.length_finish)) {
+      const finishName = getLengthFinishName(item.length_finish);
+      if (finishName) {
+        summaryParts.push(`Finish: ${finishName}`);
+      }
+    }
+
+    if (summaryParts.length === 0) return null;
+
+    return <span className="text-slate-400">{summaryParts.join(" | ")}</span>;
   };
 
   const columns = [
@@ -606,7 +893,7 @@ const EstimateLengthManager = ({
       }
       onUpdateItems(updatedItems);
     } catch (error) {
-      console.error("Error saving item:", error);
+      void error;
     }
   };
 
@@ -615,7 +902,7 @@ const EstimateLengthManager = ({
       const itemToDelete = items[itemIndex];
       onDeleteItem(itemToDelete);
     } catch (error) {
-      console.error("Error deleting item:", error);
+      void error;
     }
   };
 
@@ -645,7 +932,9 @@ const EstimateLengthManager = ({
         onDuplicate={onDuplicateItem}
         onMove={onMoveItem}
         ItemForm={LengthItemForm}
+        formProps={{ currentSectionId }}
         getReorderItemName={getReorderItemName}
+        getItemSummary={getLengthOverridesSummary}
         listType="length"
         currentTaskId={currentTaskId}
         currentSectionId={currentSectionId}

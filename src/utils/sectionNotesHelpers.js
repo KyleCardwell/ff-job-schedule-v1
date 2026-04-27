@@ -257,6 +257,167 @@ export const buildDoorDrawerMaterialNote = ({
   return "";
 };
 
+const normalizeOptionalId = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : value;
+};
+
+const normalizeFinishArray = (value) => {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .map((finishId) => {
+      const num = Number(finishId);
+      return Number.isFinite(num) ? num : finishId;
+    })
+    .sort((a, b) => String(a).localeCompare(String(b)));
+};
+
+const formatFinishNames = (finishIds = [], finishTypes = []) => {
+  if (!Array.isArray(finishIds)) return "";
+  if (finishIds.length === 0) return UNFINISHED;
+
+  return finishIds
+    .map((finishId) => {
+      const finish = finishTypes?.find((f) => String(f.id) === String(finishId));
+      return finish?.name || `Finish ${finishId}`;
+    })
+    .join(", ");
+};
+
+const F_VES_EXCEPTIONS = new Set([
+  "belief",
+  "chef",
+  "chief",
+  "cliff",
+  "giraffe",
+  "handkerchief",
+  "proof",
+  "reef",
+  "roof",
+  "safe",
+]);
+
+const pluralizeItemName = (name) => {
+  if (!name) return "";
+  const trimmed = String(name).trim();
+  if (!trimmed) return "";
+
+  const lower = trimmed.toLowerCase();
+
+  if (/(s|x|z|ch|sh)$/i.test(trimmed)) return `${trimmed}es`;
+  if (/[^aeiou]y$/i.test(trimmed)) return `${trimmed.slice(0, -1)}ies`;
+
+  if (/fe$/i.test(trimmed) && !F_VES_EXCEPTIONS.has(lower)) {
+    return `${trimmed.slice(0, -2)}ves`;
+  }
+
+  if (/f$/i.test(trimmed) && !/ff$/i.test(trimmed) && !F_VES_EXCEPTIONS.has(lower)) {
+    return `${trimmed.slice(0, -1)}ves`;
+  }
+
+  return `${trimmed}s`;
+};
+
+const formatGroupedLengthNames = (names = []) => {
+  const counts = new Map();
+  names.forEach((name) => {
+    if (!name) return;
+    counts.set(name, (counts.get(name) || 0) + 1);
+  });
+
+  return Array.from(counts.entries())
+    .map(([name, count]) => (count > 1 ? pluralizeItemName(name) : name))
+    .join(", ");
+};
+
+export const buildLengthMaterialFinishNote = ({
+  effectiveSection,
+  faceMaterials,
+  finishTypes,
+  lengthsCatalog,
+}) => {
+  const sectionLengths = Array.isArray(effectiveSection?.lengths)
+    ? effectiveSection.lengths
+    : [];
+  if (sectionLengths.length === 0) return "";
+
+  const defaultMaterialId = normalizeOptionalId(effectiveSection?.face_mat);
+  const defaultFinishIds = normalizeFinishArray(effectiveSection?.face_finish);
+
+  const lengthNameById = new Map(
+    (Array.isArray(lengthsCatalog) ? lengthsCatalog : [])
+      .filter((length) => length?.id !== null && length?.id !== undefined)
+      .map((length) => [String(length.id), length.name]),
+  );
+
+  const groupedOverrides = new Map();
+
+  sectionLengths.forEach((lengthItem, index) => {
+    if (!lengthItem) return;
+
+    const materialOverrideId = normalizeOptionalId(lengthItem.length_mat);
+    const finishOverrideIds = normalizeFinishArray(lengthItem.length_finish);
+
+    const effectiveMaterialId = materialOverrideId ?? defaultMaterialId;
+    const effectiveFinishIds = finishOverrideIds ?? defaultFinishIds;
+
+    const materialDiffers =
+      String(effectiveMaterialId ?? "") !== String(defaultMaterialId ?? "");
+    const finishDiffers = !isEqual(effectiveFinishIds ?? null, defaultFinishIds ?? null);
+
+    if (!materialDiffers && !finishDiffers) return;
+
+    const detailParts = [];
+
+    if (materialDiffers) {
+      const materialName = faceMaterials?.find(
+        (material) => String(material.id) === String(effectiveMaterialId),
+      )?.name;
+      detailParts.push(
+        `Material: ${materialName || `Material ${effectiveMaterialId}`}`,
+      );
+    }
+
+    if (finishDiffers) {
+      detailParts.push(
+        `Finish: ${formatFinishNames(effectiveFinishIds, finishTypes)}`,
+      );
+    }
+
+    const groupKey = JSON.stringify({
+      material: materialDiffers ? effectiveMaterialId : null,
+      finish: finishDiffers ? effectiveFinishIds : null,
+    });
+
+    const lengthName =
+      lengthNameById.get(String(lengthItem.length_catalog_id)) ||
+      lengthItem.length_name ||
+      `Length ${index + 1}`;
+
+    if (!groupedOverrides.has(groupKey)) {
+      groupedOverrides.set(groupKey, {
+        names: [],
+        detailText: detailParts.join(", "),
+      });
+    }
+
+    groupedOverrides.get(groupKey).names.push(lengthName);
+  });
+
+  if (groupedOverrides.size === 0) return "";
+
+  const groupText = Array.from(groupedOverrides.values())
+    .map(({ names, detailText }) => {
+      const groupedNames = formatGroupedLengthNames(names);
+      return `${groupedNames} (${detailText}).`;
+    })
+    .join(" ");
+
+  return groupText;
+};
+
 export const buildAppliedMoldingNote = (effectiveSection = {}) => {
   const hasDoorMolding =
     effectiveSection.door_inside_molding ||
@@ -398,6 +559,7 @@ export const buildAdditionalSectionNotesText = ({
   faceMaterials,
   finishTypes,
   hardware,
+  lengthsCatalog,
 }) => {
   const horizontalGrainNote = buildHorizontalGrainNote(effectiveSection);
   const doorDrawerMaterialNote = buildDoorDrawerMaterialNote({
@@ -406,6 +568,12 @@ export const buildAdditionalSectionNotesText = ({
     hasDrawerFronts,
     faceMaterials,
     finishTypes,
+  });
+  const lengthMaterialFinishNote = buildLengthMaterialFinishNote({
+    effectiveSection,
+    faceMaterials,
+    finishTypes,
+    lengthsCatalog,
   });
 
   const panelModNote = buildPanelModNote(effectiveSection);
@@ -427,6 +595,7 @@ export const buildAdditionalSectionNotesText = ({
   return {
     horizontalGrainNote,
     doorDrawerMaterialNote,
+    lengthMaterialFinishNote,
     panelModNote,
     appliedMoldingNote,
     doorPullNote,
@@ -443,6 +612,7 @@ export const buildAdditionalSectionNotesText = ({
       drawerPullNote,
       hingeNote,
       slideNote,
+      lengthMaterialFinishNote,
     ]
       .filter(Boolean)
       .join(" "),

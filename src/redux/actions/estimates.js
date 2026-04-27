@@ -1586,6 +1586,30 @@ export const finalizeEstimate = (estimateId, catalogData) => {
             }
           });
 
+          // Length item material/finish overrides
+          section.lengths?.forEach((lengthItem) => {
+            const effectiveLengthMat =
+              lengthItem.length_mat !== null && lengthItem.length_mat !== undefined
+                ? lengthItem.length_mat
+                : faceMat;
+
+            if (effectiveLengthMat != null) {
+              usedMaterialIds.add(effectiveLengthMat);
+            }
+
+            const effectiveLengthFinish =
+              lengthItem.length_finish !== null &&
+              lengthItem.length_finish !== undefined
+                ? lengthItem.length_finish
+                : faceFinish;
+
+            if (Array.isArray(effectiveLengthFinish)) {
+              effectiveLengthFinish.forEach((id) => {
+                if (id != null) usedFinishIds.add(id);
+              });
+            }
+          });
+
           // Hardware
           const hingeId = resolve(section.hinge_id, currentEstimate.default_hinge_id, teamDefaults?.default_hinge_id);
           const slideId = resolve(section.slide_id, currentEstimate.default_slide_id, teamDefaults?.default_slide_id);

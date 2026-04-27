@@ -1645,7 +1645,7 @@ const calculateCabinetTotals = (section, context) => {
   return totals;
 };
 
-const calculateSimpleItemsTotal = (items, context) => {
+const calculateSimpleItemsTotal = (items) => {
   if (!items || !Array.isArray(items)) return 0;
   return items.reduce((total, item) => {
     if (!item) return total;
@@ -1675,21 +1675,96 @@ const calculateLengthTotals = (items, context) => {
     hoursByService: {}, // Keyed by service ID: 2=shop, 3=finish, 4=install
     itemHoursByCatalog: {},
     woodCount: 0,
+    finishSetupNeeded: false,
   };
 
-  const { lengthsCatalog, selectedFaceMaterial } = context;
+  const {
+    lengthsCatalog,
+    selectedFaceMaterial,
+    faceMaterials,
+    finishTypes,
+    effectiveSection,
+  } = context;
 
   if (!lengthsCatalog || !selectedFaceMaterial) return totals;
   if (!items || !Array.isArray(items)) return totals;
 
-  const applyServiceMultiplier = (serviceId, hours) => {
+  const isValueSet = (value) =>
+    value !== null && value !== undefined && value !== "";
+
+  const resolveLengthMaterialConfig = (item) => {
+    const hasMaterialOverride = isValueSet(item.length_mat);
+    const hasFinishOverride = item.length_finish !== null && item.length_finish !== undefined;
+
+    if (!hasMaterialOverride && !hasFinishOverride) {
+      return selectedFaceMaterial;
+    }
+
+    const fallbackMaterialId =
+      selectedFaceMaterial?.material?.id ?? effectiveSection?.face_mat ?? null;
+    const materialId = hasMaterialOverride ? Number(item.length_mat) : fallbackMaterialId;
+
+    const materialFromCatalog = faceMaterials?.find(
+      (mat) => Number(mat.id) === Number(materialId),
+    );
+
+    const material =
+      materialFromCatalog ||
+      (Number(selectedFaceMaterial?.material?.id) === Number(materialId)
+        ? selectedFaceMaterial.material
+        : null) ||
+      selectedFaceMaterial?.material;
+
+    const fallbackFinishIds = effectiveSection?.face_finish;
+    const rawFinishIds = hasFinishOverride ? item.length_finish : fallbackFinishIds;
+    const finishIds = Array.isArray(rawFinishIds)
+      ? rawFinishIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
+      : null;
+
+    let finishMultiplier = 0;
+    let shopMultiplier = 1;
+
+    if (material?.needs_finish && Array.isArray(finishIds) && finishIds.length > 0) {
+      finishMultiplier = 1;
+      finishIds.forEach((finishId) => {
+        const finishObj = finishTypes?.find(
+          (finish) => Number(finish.id) === Number(finishId),
+        );
+        if (finishObj?.finish_markup) {
+          finishMultiplier += finishObj.finish_markup / 100;
+        }
+        if (finishObj?.shop_markup) {
+          shopMultiplier += finishObj.shop_markup / 100;
+        }
+      });
+    } else if (!material?.needs_finish) {
+      finishMultiplier = 0;
+      shopMultiplier = 1;
+    } else if (!Array.isArray(finishIds)) {
+      finishMultiplier = selectedFaceMaterial?.finishMultiplier ?? 0;
+      shopMultiplier = selectedFaceMaterial?.shopMultiplier ?? 1;
+    }
+
+    return {
+      material,
+      finishMultiplier,
+      shopMultiplier,
+    };
+  };
+
+  const applyServiceMultiplier = (serviceId, hours, materialConfig) => {
     const numericServiceId = Number(serviceId);
+    const targetConfig = materialConfig || selectedFaceMaterial;
+    const shopMultiplier = targetConfig?.shopMultiplier ?? 1;
+    const finishMultiplier = targetConfig?.finishMultiplier ?? 0;
     let adjustedHours = hours;
 
     if (numericServiceId === 2) {
-      adjustedHours *= selectedFaceMaterial.shopMultiplier;
+      adjustedHours *= shopMultiplier;
     } else if (numericServiceId === 3) {
-      adjustedHours *= selectedFaceMaterial.finishMultiplier;
+      adjustedHours *= finishMultiplier;
     }
 
     return adjustedHours;
@@ -1718,14 +1793,22 @@ const calculateLengthTotals = (items, context) => {
     const lengthInches = lengthFeet * 12; // Convert to inches for calculations
     const miterCount = Number(item.miter_count) || 0;
     const cutoutCount = Number(item.cutout_count) || 0;
+    const lengthMaterialConfig = resolveLengthMaterialConfig(item);
 
     totals.itemHoursByCatalog[lengthItem.id].length += lengthFeet;
     totals.itemHoursByCatalog[lengthItem.id].quantity = quantity;
 
     // Calculate material cost based on length
     // Use bd_ft_price if available, otherwise use fraction of sheet_price
-    const material = selectedFaceMaterial.material;
+    const material = lengthMaterialConfig?.material;
     if (!material) return;
+
+    if (
+      material.needs_finish &&
+      Number(lengthMaterialConfig?.finishMultiplier || 0) > 0
+    ) {
+      totals.finishSetupNeeded = true;
+    }
 
     const parsePositiveNumber = (value) => {
       const num = Number(value);
@@ -1811,7 +1894,11 @@ const calculateLengthTotals = (items, context) => {
 
         // Convert to hours and apply quantity
         const hours = (totalMinutes / 60) * quantity;
-        const adjustedHours = applyServiceMultiplier(serviceId, hours);
+        const adjustedHours = applyServiceMultiplier(
+          serviceId,
+          hours,
+          lengthMaterialConfig,
+        );
 
         if (adjustedHours > 0) {
           if (!totals.hoursByService[serviceId]) {
@@ -1832,6 +1919,7 @@ const calculateLengthTotals = (items, context) => {
       const adjustedHours = applyServiceMultiplier(
         serviceId,
         Number(hours) || 0,
+        lengthMaterialConfig,
       );
       if (adjustedHours <= 0) return;
 
@@ -2170,7 +2258,7 @@ export const getSectionCalculations = (section, context = {}) => {
     context,
     section,
   );
-  const otherTotal = calculateSimpleItemsTotal(section.other, context);
+  const otherTotal = calculateSimpleItemsTotal(section.other);
 
   // Get parts_included toggles (default all to true)
   const partsIncluded = section.parts_included || {};
@@ -2402,7 +2490,8 @@ export const getSectionCalculations = (section, context = {}) => {
     (selectedDoorMaterial.finishMultiplier &&
       selectedDoorMaterial?.material?.needs_finish) ||
     (selectedDrawerFrontMaterial.finishMultiplier &&
-      selectedDrawerFrontMaterial?.material?.needs_finish),
+      selectedDrawerFrontMaterial?.material?.needs_finish) ||
+    lengthTotals.finishSetupNeeded,
   );
 
   // Add manually entered hours from add_hours field

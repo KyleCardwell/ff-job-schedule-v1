@@ -192,6 +192,7 @@ const EstimatePreviewSection = ({
         faceMaterials,
         finishTypes,
         hardware: context?.hardware,
+        lengthsCatalog: context?.lengthsCatalog,
       });
 
     const processedNotes = buildProcessedSectionNotes(

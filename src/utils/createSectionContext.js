@@ -453,6 +453,7 @@ export const createSectionContext = (section, estimate, catalogData) => {
     accessories,
     estimate: normalizedEstimate,
     team: normalizedTeamDefaults,
+    effectiveSection,
   };
 
   // Check if this section uses any items that have price overrides
