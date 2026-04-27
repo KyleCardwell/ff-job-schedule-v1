@@ -26,6 +26,7 @@ const SectionItemList = ({
   hideAddButton = false,
   formProps = {},
   getReorderItemName,
+  getItemSummary,
   listType,
   currentTaskId,
   currentSectionId,
@@ -488,17 +489,28 @@ const SectionItemList = ({
                   );
                 })}
               </div>
-              {listType === ITEM_TYPES.CABINET.type && item.type !== 5 && (
-                <div
-                  className={`grid gap-4 px-3 text-sm text-left`}
-                  style={{
-                    gridTemplateColumns: columns[0].width + " " + "1fr",
-                  }}
-                >
-                  <span></span>
-                  {generateTextSummary(item)}
-                </div>
-              )}
+              {(() => {
+                const customSummary = getItemSummary?.(item, index);
+                const cabinetSummary =
+                  listType === ITEM_TYPES.CABINET.type && item.type !== 5
+                    ? generateTextSummary(item)
+                    : null;
+                const summaryContent = customSummary || cabinetSummary;
+
+                if (!summaryContent) return null;
+
+                return (
+                  <div
+                    className={`grid gap-4 px-3 text-sm text-left`}
+                    style={{
+                      gridTemplateColumns: columns[0].width + " " + "1fr",
+                    }}
+                  >
+                    <span></span>
+                    {summaryContent}
+                  </div>
+                );
+              })()}
             </div>
           ),
         )}
@@ -646,6 +658,7 @@ SectionItemList.propTypes = {
   hideAddButton: PropTypes.bool,
   formProps: PropTypes.object,
   getReorderItemName: PropTypes.func,
+  getItemSummary: PropTypes.func,
   listType: PropTypes.string,
   currentTaskId: PropTypes.number,
   currentSectionId: PropTypes.number,
