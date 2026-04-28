@@ -41,6 +41,7 @@ const CabinetFaceDivider = ({
   onDimensionChange = null,
 }) => {
   const svgRef = useRef();
+  const designerContainerRef = useRef(null);
   const typeSelectorPopupRef = useRef(null);
   const handleEditorPopupRef = useRef(null);
 
@@ -111,24 +112,36 @@ const CabinetFaceDivider = ({
     style: "",
   });
 
-  const clampPopupPosition = useCallback((position, popupElement) => {
+  const clampPopupPosition = useCallback((position, popupElement, options = {}) => {
     if (!popupElement) return position;
 
-    const popupViewportMargin = 12;
+    const popupViewportMarginX = 50;
+    const popupViewportMarginY = 30;
+    const popupOffsetFromDesigner = 30;
+    const { preferLeftOfDesigner = false } = options;
 
     const rect = popupElement.getBoundingClientRect();
+    let targetX = position.x;
+    let targetY = position.y;
+
+    if (preferLeftOfDesigner && designerContainerRef.current) {
+      const designerRect = designerContainerRef.current.getBoundingClientRect();
+      targetX = designerRect.left - rect.width + popupOffsetFromDesigner;
+      targetY = designerRect.top + popupOffsetFromDesigner;
+    }
+
     const maxX = Math.max(
-      popupViewportMargin,
-      window.innerWidth - rect.width - popupViewportMargin,
+      popupViewportMarginX,
+      window.innerWidth - rect.width + popupViewportMarginX,
     );
     const maxY = Math.max(
-      popupViewportMargin,
-      window.innerHeight - rect.height - popupViewportMargin,
+      popupViewportMarginY,
+      window.innerHeight - rect.height - popupViewportMarginY,
     );
 
     return {
-      x: Math.min(Math.max(position.x, popupViewportMargin), maxX),
-      y: Math.min(Math.max(position.y, popupViewportMargin), maxY),
+      x: Math.min(Math.max(targetX, popupViewportMarginX), maxX),
+      y: Math.min(Math.max(targetY, popupViewportMarginY), maxY),
     };
   }, []);
 
@@ -443,6 +456,8 @@ const CabinetFaceDivider = ({
     displayWidth,
     displayHeight,
     disabled,
+    showTypeSelector,
+    selectedNode,
     showHandlePopup,
     selectedHandle,
   ]);
@@ -512,6 +527,7 @@ const CabinetFaceDivider = ({
         const clamped = clampPopupPosition(
           currentPosition,
           typeSelectorPopupRef.current,
+          { preferLeftOfDesigner: true },
         );
 
         if (
@@ -542,6 +558,7 @@ const CabinetFaceDivider = ({
         const clamped = clampPopupPosition(
           currentPosition,
           handleEditorPopupRef.current,
+          
         );
 
         if (
@@ -1104,6 +1121,37 @@ const CabinetFaceDivider = ({
               .attr("pointer-events", "none");
           }
         });
+      }
+    }
+
+    if (showTypeSelector && selectedNode) {
+      const selectedLayoutNode =
+        findNode(layoutConfig, selectedNode.id) || selectedNode;
+
+      if (selectedLayoutNode) {
+        const selectedStrokeWidth =
+          selectedLayoutNode.type === FACE_NAMES.CONTAINER ? 1 : 2;
+        const x = selectedLayoutNode.x * scale + selectedStrokeWidth / 2;
+        const y = selectedLayoutNode.y * scale + selectedStrokeWidth / 2;
+        const width = Math.max(
+          0,
+          selectedLayoutNode.width * scale - selectedStrokeWidth,
+        );
+        const height = Math.max(
+          0,
+          selectedLayoutNode.height * scale - selectedStrokeWidth,
+        );
+
+        highlightGroup
+          .append("rect")
+          .attr("x", x + 1)
+          .attr("y", y + 1)
+          .attr("width", Math.max(0, width - 2))
+          .attr("height", Math.max(0, height - 2))
+          .attr("fill", "none")
+          .attr("stroke", "#000000")
+          .attr("stroke-width", 3)
+          .attr("pointer-events", "none");
       }
     }
 
@@ -1904,11 +1952,25 @@ const CabinetFaceDivider = ({
   const handleNodeClick = (event, node) => {
     if (disabled) return;
 
-    const popupOffset = 12;
-    setSelectorPosition({
-      x: event.clientX + popupOffset,
-      y: event.clientY + popupOffset,
-    });
+    const popupOffset = 30;
+    const designerRect = designerContainerRef.current?.getBoundingClientRect();
+    const estimatedPopupWidth =
+      typeSelectorPopupRef.current?.getBoundingClientRect().width || 360;
+
+    const nextPosition = {
+      x: designerRect
+        ? designerRect.left - estimatedPopupWidth + popupOffset
+        : event.clientX + popupOffset,
+      y: designerRect
+        ? designerRect.top + popupOffset
+        : event.clientY + popupOffset,
+    };
+
+    setSelectorPosition(
+      clampPopupPosition(nextPosition, typeSelectorPopupRef.current, {
+        preferLeftOfDesigner: true,
+      }),
+    );
     setSelectedNode(node);
 
     // Initialize input values with current node dimensions
@@ -2491,7 +2553,7 @@ const CabinetFaceDivider = ({
   };
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div ref={designerContainerRef} onClick={(e) => e.stopPropagation()}>
       <h4 className="text-sm font-medium text-slate-700">
         Cabinet Face Designer
       </h4>
