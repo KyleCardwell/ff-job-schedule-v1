@@ -927,6 +927,13 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
 
       // Collect drawer boxes
       if (node.type === "drawer_front" && node.drawerBoxDimensions) {
+        const withDividers = parseInt(
+          node.drawersWithDividersQty ??
+            node.drawerswithdividersqty ??
+            node.drawersWithDivdersQty ??
+            0,
+          10,
+        );
         const { width, height, depth } = node.drawerBoxDimensions;
         allDrawerBoxes.push({
           width,
@@ -934,6 +941,7 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
           depth,
           quantity,
           rollOut: false,
+          withDividers,
           isFaceFrame,
         });
         totals.drawerBoxCount += quantity;
@@ -942,6 +950,13 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
       // Collect rollouts
       if (node.rollOutQty && node.rollOutQty > 0 && node.rollOutDimensions) {
         const rollOutQty = parseInt(node.rollOutQty, 10);
+        const withDividers = parseInt(
+          node.drawersWithDividersQty ??
+            node.drawerswithdividersqty ??
+            node.drawersWithDivdersQty ??
+            0,
+          10,
+        );
         const { width, height, depth } = node.rollOutDimensions;
         allRollOuts.push({
           width,
@@ -949,6 +964,7 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
           depth,
           quantity: rollOutQty * quantity,
           rollOut: true,
+          withDividers,
           isFaceFrame,
         });
         totals.rollOutCount += rollOutQty * quantity;

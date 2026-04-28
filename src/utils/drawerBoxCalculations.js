@@ -9,6 +9,7 @@ import { roundToHundredth } from "./estimateHelpers.js";
  * @param {number} boxes[].quantity - Number of boxes
  * @param {boolean} boxes[].rollOut - Whether box is a roll-out (adds scoop cost)
  * @param {boolean} boxes[].isFaceFrame - Whether box is for face frame cabinet (higher clip cost)
+ * @param {number} boxes[].withDividers - Number of boxes in this line item that include dividers
  * @param {number} sheetPrice - Price per sheet of material (default 75)
  * @param {object} sheetSize - { width: number, height: number } in inches (default 60x60)
  * @param {number} baseLaborRate - Flat labor cost per box (default 16.75)
@@ -30,27 +31,53 @@ export const calculateDrawerBoxesPrice = ({
 
   // Fixed costs
   const notchCost = 3.5;
+  const holeDrillingCost = 0.5;
+  const dividerCutCost = 2;
 
   // Single loop: calculate area and labor/hardware costs
   let totalRawSheets = 0;
   let totalLaborAndHardware = 0;
 
-  boxes.forEach(({ width, height, depth, quantity, rollOut, isFaceFrame }) => {
-    // Calculate area for this box
-    const boxArea = width * depth + 2 * (height * depth) + 2 * (width * height);
-    const adjustedBoxArea = boxArea * (1 + wasteFactor);
-    totalRawSheets += (adjustedBoxArea / sheetArea) * quantity;
+  boxes.forEach(
+    ({
+      width,
+      height,
+      depth,
+      quantity,
+      rollOut,
+      isFaceFrame,
+      withDividers = 0,
+    }) => {
+      const dividerBoxCount = Math.max(0, parseInt(withDividers, 10) || 0);
+      const dividersPerBox = Math.max(0, Math.floor(width / 6 - 1));
+      const totalDividers = dividersPerBox * dividerBoxCount;
+      const holesPerDividerBox = Math.max(0, parseFloat(width) || 0) * 4;
+      const totalDividerHoles = holesPerDividerBox * dividerBoxCount;
 
-    // Calculate labor and hardware for this box
-    let laborCostPerBox = baseLaborRate;
-    if (width > 36 || height > 8) laborCostPerBox *= 1.05;
+      const dividerArea = totalDividers * (height * depth);
+      const boxQuantity = Math.max(0, parseInt(quantity, 10) || 0);
 
-    const clipCost = isFaceFrame ? 8 : 3.5;
-    const scoopCost = rollOut ? 5 : 0;
-    const costPerBox = laborCostPerBox + notchCost + clipCost + scoopCost;
-    
-    totalLaborAndHardware += costPerBox * quantity;
-  });
+      // Calculate area for this box line item
+      const boxAreaPerBox =
+        width * depth + 2 * (height * depth) + 2 * (width * height);
+      const totalBoxArea = boxAreaPerBox * boxQuantity + dividerArea;
+      const adjustedBoxArea = totalBoxArea * (1 + wasteFactor);
+      totalRawSheets += adjustedBoxArea / sheetArea;
+
+      // Calculate labor and hardware for this box
+      let laborCostPerBox = baseLaborRate;
+      if (width > 36 || height > 8) laborCostPerBox *= 1.05;
+
+      const clipCost = isFaceFrame ? 8 : 3.5;
+      const scoopCost = rollOut ? 5 : 0;
+      const costPerBox = laborCostPerBox + notchCost + clipCost + scoopCost;
+      const dividerHoleLaborCost = totalDividerHoles * holeDrillingCost;
+      const dividerCutLaborCost = totalDividers * dividerCutCost;
+      const dividerLaborCost = dividerHoleLaborCost + dividerCutLaborCost;
+
+      totalLaborAndHardware += costPerBox * boxQuantity + dividerLaborCost;
+    },
+  );
 
   // Round total sheets up to nearest increment
   const totalRoundedSheets =
