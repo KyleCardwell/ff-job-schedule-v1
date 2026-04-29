@@ -37,6 +37,38 @@ export const createEstimateProject = (projectData) => {
   };
 };
 
+// Fetch estimate projects for selection
+export const fetchEstimateProjects = () => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_START });
+
+      const { teamId } = getState().auth;
+      const { data, error } = await supabase
+        .from("estimate_projects")
+        .select("est_project_id, est_project_name, est_client_name")
+        .eq("team_id", teamId)
+        .order("est_project_name", { ascending: true });
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_SUCCESS,
+        payload: data || [],
+      });
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching estimate projects:", error);
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
 // Create estimate
 export const createEstimate = (estimateProjectId) => {
   return async (dispatch, getState) => {

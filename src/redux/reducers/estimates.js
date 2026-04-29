@@ -13,6 +13,8 @@ const initialState = {
   projectsLoading: false,
   projectsError: null,
   estimateProjects: [],
+  estimateProjectsList: [],
+  estimateProjectsLoading: false,
 };
 
 export const estimatesReducer = (state = initialState, action) => {
@@ -88,6 +90,7 @@ export const estimatesReducer = (state = initialState, action) => {
       return {
         ...state,
         estimateProjects: [...state.estimateProjects, action.payload],
+        estimateProjectsList: [...state.estimateProjectsList, action.payload],
         loading: false,
         error: null,
       };
@@ -97,6 +100,25 @@ export const estimatesReducer = (state = initialState, action) => {
         ...state,
         loading: false,
         error: action.payload,
+      };
+
+    case Actions.estimates.FETCH_ESTIMATE_PROJECTS_START:
+      return {
+        ...state,
+        estimateProjectsLoading: true,
+      };
+
+    case Actions.estimates.FETCH_ESTIMATE_PROJECTS_SUCCESS:
+      return {
+        ...state,
+        estimateProjectsList: action.payload,
+        estimateProjectsLoading: false,
+      };
+
+    case Actions.estimates.FETCH_ESTIMATE_PROJECTS_ERROR:
+      return {
+        ...state,
+        estimateProjectsLoading: false,
       };
 
     case Actions.estimates.FETCH_ESTIMATE_SUCCESS:
