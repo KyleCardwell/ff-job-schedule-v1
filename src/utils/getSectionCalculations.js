@@ -879,6 +879,7 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
     if (!cabinet.face_config) return;
 
     const quantity = cabinet.quantity != null ? Number(cabinet.quantity) : 1;
+    const dividerQuantityMultiplier = Math.max(0, Number(quantity) || 0);
 
     // Determine if section is face frame style
     const sectionStyle = cabinet.cabinet_style_override
@@ -898,23 +899,33 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
       if (cabinet.face_config.drawerBoxDimensions) {
         const { width, height, depth } =
           cabinet.face_config.drawerBoxDimensions;
+        const hasDividers =
+          cabinet.type_specific_options?.drawer_dividers === true ||
+          cabinet.type_specific_options?.drawer_dividers === "true";
+        const withDividers = hasDividers ? dividerQuantityMultiplier : 0;
         allDrawerBoxes.push({
           width,
           height,
           depth,
           quantity,
           rollOut: false,
+          withDividers,
           isFaceFrame,
         });
         totals.drawerBoxCount += quantity;
       } else if (cabinet.face_config.rollOutDimensions) {
         const { width, height, depth } = cabinet.face_config.rollOutDimensions;
+        const hasDividers =
+          cabinet.type_specific_options?.drawer_dividers === true ||
+          cabinet.type_specific_options?.drawer_dividers === "true";
+        const withDividers = hasDividers ? dividerQuantityMultiplier : 0;
         allRollOuts.push({
           width,
           height,
           depth,
           quantity,
           rollOut: true,
+          withDividers,
           isFaceFrame,
         });
         totals.rollOutCount += quantity;
@@ -927,13 +938,9 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
 
       // Collect drawer boxes
       if (node.type === "drawer_front" && node.drawerBoxDimensions) {
-        const withDividers = parseInt(
-          node.drawersWithDividersQty ??
-            node.drawerswithdividersqty ??
-            node.drawersWithDivdersQty ??
-            0,
-          10,
-        );
+        const hasDividers =
+          node.drawerDividers === true || node.drawerDividers === "true";
+        const withDividers = hasDividers ? dividerQuantityMultiplier : 0;
         const { width, height, depth } = node.drawerBoxDimensions;
         allDrawerBoxes.push({
           width,
@@ -950,13 +957,15 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
       // Collect rollouts
       if (node.rollOutQty && node.rollOutQty > 0 && node.rollOutDimensions) {
         const rollOutQty = parseInt(node.rollOutQty, 10);
-        const withDividers = parseInt(
+        const withDividersPerCabinet = parseInt(
           node.drawersWithDividersQty ??
             node.drawerswithdividersqty ??
             node.drawersWithDivdersQty ??
             0,
           10,
         );
+        const withDividers =
+          Math.max(0, withDividersPerCabinet || 0) * dividerQuantityMultiplier;
         const { width, height, depth } = node.rollOutDimensions;
         allRollOuts.push({
           width,
@@ -991,10 +1000,6 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
         width: drawerBoxMaterial?.width || 60,
         height: drawerBoxMaterial?.height || 60,
       },
-      baseLaborRate: 18,
-      wasteFactor: 0.05,
-      roundingIncrement: 0.5,
-      taxRate: 0.1,
     });
     totals.drawerBoxTotal = drawerBoxResult.totalCost;
   }
@@ -1008,10 +1013,6 @@ const calculateDrawerAndRolloutTotals = (section, context) => {
         width: drawerBoxMaterial?.width || 60,
         height: drawerBoxMaterial?.height || 60,
       },
-      baseLaborRate: 18,
-      wasteFactor: 0.05,
-      roundingIncrement: 0.5,
-      taxRate: 0.1,
     });
     totals.rollOutTotal = rollOutResult.totalCost;
   }

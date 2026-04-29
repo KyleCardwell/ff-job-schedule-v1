@@ -310,6 +310,14 @@ export const CABINET_ITEM_TYPES = {
         description: "Drawer box has a rollout scoop",
         serviceMultipliers: {},
       },
+      {
+        name: "drawer_dividers",
+        type: "checkbox",
+        label: "Dividers",
+        defaultValue: false,
+        description: "Drawer box has dividers",
+        serviceMultipliers: {},
+      },
     ],
   },
 

@@ -22,16 +22,16 @@ export const calculateDrawerBoxesPrice = ({
   boxes,
   sheetPrice = 75,
   sheetSize = { width: 60, height: 60 },
-  baseLaborRate = 16.75,
-  wasteFactor = 0.05,
+  baseLaborRate = 19,
+  wasteFactor = 0.06,
   roundingIncrement = 0.25,
   taxRate = 0.1,
 }) => {
   const sheetArea = sheetSize.width * sheetSize.height;
 
   // Fixed costs
-  const notchCost = 3.5;
-  const holeDrillingCost = 0.5;
+  const notchCost = 3.6;
+  const holeDrillingCost = 0.35;
   const dividerCutCost = 2;
 
   // Single loop: calculate area and labor/hardware costs
@@ -48,14 +48,18 @@ export const calculateDrawerBoxesPrice = ({
       isFaceFrame,
       withDividers = 0,
     }) => {
-      const dividerBoxCount = Math.max(0, parseInt(withDividers, 10) || 0);
-      const dividersPerBox = Math.max(0, Math.floor(width / 6 - 1));
+      const boxQuantity = Math.max(0, parseInt(quantity, 10) || 0);
+      const requestedDividerBoxCount = Math.max(
+        0,
+        parseInt(withDividers, 10) || 0,
+      );
+      const dividerBoxCount = Math.min(boxQuantity, requestedDividerBoxCount);
+      const dividersPerBox = Math.max(0, Math.floor(width / 6));
       const totalDividers = dividersPerBox * dividerBoxCount;
       const holesPerDividerBox = Math.max(0, parseFloat(width) || 0) * 4;
       const totalDividerHoles = holesPerDividerBox * dividerBoxCount;
 
       const dividerArea = totalDividers * (height * depth);
-      const boxQuantity = Math.max(0, parseInt(quantity, 10) || 0);
 
       // Calculate area for this box line item
       const boxAreaPerBox =

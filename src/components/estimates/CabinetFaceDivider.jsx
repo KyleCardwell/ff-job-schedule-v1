@@ -104,6 +104,7 @@ const CabinetFaceDivider = ({
     rollOutQty: "",
     shelfQty: "",
     drawersWithDividersQty: "",
+    drawerDividers: false,
     glassPanel: "",
     glassShelves: "",
     shelfNosing: "",
@@ -1193,10 +1194,12 @@ const CabinetFaceDivider = ({
 
   // Handle roll-out or shelf quantity change
   const handleRoShQtyChange = (e, type) => {
-    const qty = parseInt(e.target.value) || 0;
+    const isCheckbox = e.target.type === "checkbox";
+    const rawValue = isCheckbox ? e.target.checked : e.target.value;
+    const value = isCheckbox ? rawValue : parseInt(rawValue, 10) || 0;
 
     // Update input value state
-    setInputValues({ ...inputValues, [type]: e.target.value });
+    setInputValues((prev) => ({ ...prev, [type]: rawValue }));
 
     if (!selectedNode) return;
 
@@ -1205,12 +1208,12 @@ const CabinetFaceDivider = ({
 
     if (node) {
       // Update roll-out quantity
-      node[type] = qty;
+      node[type] = value;
 
       setConfig(newConfig);
       setSelectedNode({
         ...selectedNode,
-        [type]: qty,
+        [type]: value,
       });
     }
   };
@@ -1478,6 +1481,7 @@ const CabinetFaceDivider = ({
 
       // Clear drawer box dimensions if changing away from drawer_front
       if (newType !== FACE_NAMES.DRAWER_FRONT) {
+        node.drawerDividers = false;
         delete node.drawerBoxDimensions;
       }
 
@@ -1513,6 +1517,7 @@ const CabinetFaceDivider = ({
         // Reset roll-outs & shelves if unsupported
         node.rollOutQty = 0;
         node.drawersWithDividersQty = 0;
+        node.drawerDividers = false;
         node.shelfQty = 0;
         delete node.rollOutDimensions;
 
@@ -1520,6 +1525,7 @@ const CabinetFaceDivider = ({
           ...prev,
           rollOutQty: "",
           drawersWithDividersQty: "",
+          drawerDividers: false,
           shelfQty: "",
         }));
       }
@@ -1989,6 +1995,7 @@ const CabinetFaceDivider = ({
         node.drawersWithDividersQty > 0
           ? truncateTrailingZeros(node.drawersWithDividersQty)
           : node.drawersWithDividersQty || "",
+      drawerDividers: Boolean(node.drawerDividers),
       shelfQty:
         node.shelfQty > 0
           ? truncateTrailingZeros(node.shelfQty)
@@ -2045,6 +2052,7 @@ const CabinetFaceDivider = ({
           height: node.height,
           rollOutQty: null,
           drawersWithDividersQty: null,
+          drawerDividers: false,
           shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
           accessories: [],
@@ -2063,6 +2071,7 @@ const CabinetFaceDivider = ({
           height: node.height,
           rollOutQty: null,
           drawersWithDividersQty: null,
+          drawerDividers: false,
           shelfQty: canHaveShelves ? calculateShelfQty(node.height) : null,
           children: null,
           accessories: [],
@@ -2073,6 +2082,7 @@ const CabinetFaceDivider = ({
       node.accessories = [];
       node.rollOutQty = 0;
       node.drawersWithDividersQty = 0;
+      node.drawerDividers = false;
       node.drawerBoxDimensions = null;
       node.shelfQty = 0;
     }
@@ -2112,6 +2122,7 @@ const CabinetFaceDivider = ({
           height: childHeight,
           rollOutQty: null,
           drawersWithDividersQty: null,
+          drawerDividers: false,
           shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
           accessories: [],
@@ -2130,6 +2141,7 @@ const CabinetFaceDivider = ({
           height: childHeight,
           rollOutQty: null,
           drawersWithDividersQty: null,
+          drawerDividers: false,
           shelfQty: canHaveShelves ? calculateShelfQty(childHeight) : null,
           children: null,
           accessories: [],
@@ -2140,6 +2152,7 @@ const CabinetFaceDivider = ({
       node.accessories = [];
       node.rollOutQty = 0;
       node.drawersWithDividersQty = 0;
+      node.drawerDividers = false;
       node.shelfQty = 0;
       node.drawerBoxDimensions = null;
     }
@@ -2267,6 +2280,7 @@ const CabinetFaceDivider = ({
             y: parent.y,
             rollOutQty: null,
             drawersWithDividersQty: null,
+            drawerDividers: false,
             shelfQty: canHaveShelves ? calculateShelfQty(newHeight) : null,
           });
         }
@@ -2368,6 +2382,7 @@ const CabinetFaceDivider = ({
         height,
         rollOutQty: canHaveRollouts ? presetRollOutQty : null,
         drawersWithDividersQty: null,
+        drawerDividers: Boolean(layoutNode?.drawerDividers),
         shelfQty: canHaveShelves ? calculateShelfQty(height) : null,
         children: null,
         accessories: [],
@@ -2462,6 +2477,7 @@ const CabinetFaceDivider = ({
       children,
       rollOutQty: 0,
       drawersWithDividersQty: 0,
+      drawerDividers: false,
       shelfQty: 0,
       accessories: [],
     };
@@ -2509,6 +2525,7 @@ const CabinetFaceDivider = ({
       x: reveals.left,
       y: reveals.top,
       children: null,
+      drawerDividers: false,
       shelfQty: needsShelves ? calculateShelfQty(resetHeight) : 0,
       rootReveals: reveals,
     };
@@ -2774,10 +2791,10 @@ const CabinetFaceDivider = ({
 
                     {/* Shelf Quantity Inputs */}
                     {supportsShelves(selectedNode.type) && (
-                      <div className="mt-2 grid grid-cols-3 gap-2">
+                      <div className="mt-2 grid gap-2">
                         <div className="">
                           {accessories.glass.length > 0 && (
-                            <div className="flex-1 flex flex-col items-start space-x-1 mb-2">
+                            <div className="flex-1 flex flex-col items-start mb-2">
                               <label className="text-xs text-slate-600">
                                 Shelf Material
                               </label>
@@ -2832,10 +2849,12 @@ const CabinetFaceDivider = ({
                     )}
 
                     {supportsRollouts(selectedNode.type) && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div
+                        className="mt-2 grid gap-4 grid-cols-[1.1fr_1.75fr_1.5fr]"
+                      >
                         <div className="col-start-1 justify-self-start flex flex-col items-start">
                           <label className="text-xs text-slate-600">
-                            Roll-out Qty
+                            Total Roll-outs
                           </label>
                           <input
                             type="number"
@@ -2848,7 +2867,7 @@ const CabinetFaceDivider = ({
                             step="1"
                           />
                         </div>
-                        <div className="col-start-2 justify-self-end flex flex-col items-end">
+                        <div className="col-start-2 flex flex-col items-center">
                           <label className="text-xs text-slate-600">
                             Roll-outs with Dividers
                           </label>
@@ -2864,21 +2883,22 @@ const CabinetFaceDivider = ({
                           />
                         </div>
                         
-                        <div className="col-start-3 justify-self-end flex flex-col items-end">
-                          <label className="text-xs text-slate-600">
-                            Drawer Dividers
-                          </label>
-                          <input
-                            type="checkbox"
-                            name="drawersWithDividersQty"
-                            value={inputValues.drawersWithDividersQty}
-                            onChange={(e) =>
-                              handleRoShQtyChange(e, "drawersWithDividersQty")
-                            }
-                            className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
-                            step="1"
-                          />
-                        </div>
+                        {selectedNode.type === FACE_NAMES.DRAWER_FRONT && (
+                          <div className="col-start-3 justify-self-end flex flex-col items-end">
+                            <label className="text-xs text-slate-600">
+                              Drawer Box Dividers
+                            </label>
+                            <input
+                              type="checkbox"
+                              name="drawerDividers"
+                              checked={inputValues.drawerDividers}
+                              onChange={(e) =>
+                                handleRoShQtyChange(e, "drawerDividers")
+                              }
+                              className="h-4 w-4 border border-slate-300 rounded"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="mt-2 grid grid-cols-2">

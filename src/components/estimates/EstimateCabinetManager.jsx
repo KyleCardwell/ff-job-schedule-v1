@@ -1891,6 +1891,7 @@ const CabinetItemForm = ({
             shelfQty: node.glassShelves ? 0 : node.shelfQty || 0,
             rollOutQty: node.rollOutQty || 0,
             drawersWithDividersQty: node.drawersWithDividersQty || 0,
+            drawerDividers: node.drawerDividers === true ? true : null,
             ...(node.panelMod != null && { panelMod: node.panelMod }),
             ...(node.style != null && { style: node.style }),
             ...(node.insideMolding != null && { insideMolding: node.insideMolding }),
