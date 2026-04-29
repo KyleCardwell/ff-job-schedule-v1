@@ -150,6 +150,24 @@ const GenerateSectionBreakdownPdf = ({
   };
 
   const getItemHourRows = (categoryTitle) => {
+    if (categoryTitle === "Other") {
+      const otherItems = Array.isArray(section?.other) ? section.other : [];
+
+      return otherItems
+        .map((item, index) => ({
+          id: item?.id || item?.temp_id || `other-${index}`,
+          name: item?.name || "Other",
+          quantity: Number(item?.quantity) || 0,
+          price: (Number(item?.price) || 0) * (Number(item?.quantity) || 0),
+          hoursByService: {},
+        }))
+        .filter(
+          (item) =>
+            item.name || Number(item.quantity) > 0 || Number(item.price) > 0,
+        )
+        .sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
+    }
+
     const itemHoursByCatalog =
       categoryTitle === "Lengths"
         ? sectionCalculations?.categoryHours?.lengthsByCatalog
@@ -341,67 +359,52 @@ const GenerateSectionBreakdownPdf = ({
         ? formatDoorDrawerStyle(effectiveSection?.drawer_front_style)
         : NONE;
 
-      // Match GenerateEstimatePdf two-column detail snapshot layout
-      const leftColumn = [];
-      const rightColumn = [];
+      const sectionDetailsColumns = [
+        {
+          topLabel: "Style",
+          topValue: cabinetStyleName,
+          bottomLabel: "Drawers",
+          bottomValue: drawerBoxMaterialName,
+        },
+        {
+          topLabel: "Cabinets",
+          topValue: boxMaterialName,
+          bottomLabel: "Finish",
+          bottomValue: boxFinishNames,
+        },
+        {
+          topLabel: "Doors",
+          topValue: doorStyleName,
+          bottomLabel: "DF's",
+          bottomValue: drawerFrontStyleName,
+        },
+        {
+          topLabel: "Wood",
+          topValue: faceMaterialName,
+          bottomLabel: "Finish",
+          bottomValue: faceFinishNames,
+        },
+      ];
 
-      // leftColumn.push(`Style: ${cabinetStyleName}`);
-      // leftColumn.push(`Drawer Boxes: ${drawerBoxMaterialName}`);
-      // leftColumn.push(`Cabinets: ${boxMaterialName}`);
-      // leftColumn.push(`Finish: ${boxFinishNames}`);
-
-      // rightColumn.push(`Doors: ${doorStyleName}`);
-      // rightColumn.push(`Drawer Fronts: ${drawerFrontStyleName}`);
-      // rightColumn.push(`Wood: ${faceMaterialName}`);
-      // rightColumn.push(`Finish: ${faceFinishNames}`);
-
-      leftColumn.push({
-        text: [{ text: "Style: ", bold: true }, { text: cabinetStyleName }],
-      });
-      leftColumn.push({
-        text: [
-          { text: "Drawer Boxes: ", bold: true },
-          { text: drawerBoxMaterialName },
-        ],
-      });
-      leftColumn.push({
-        text: [{ text: "Cabinets: ", bold: true }, { text: boxMaterialName }],
-      });
-      leftColumn.push({
-        text: [{ text: "Finish: ", bold: true }, { text: boxFinishNames }],
-      });
-
-      rightColumn.push({
-        text: [{ text: "Doors: ", bold: true }, { text: doorStyleName }],
-      });
-      rightColumn.push({
-        text: [
-          { text: "Drawer Fronts: ", bold: true },
-          { text: drawerFrontStyleName },
-        ],
-      });
-      rightColumn.push({
-        text: [{ text: "Wood: ", bold: true }, { text: faceMaterialName }],
-      });
-      rightColumn.push({
-        text: [{ text: "Finish: ", bold: true }, { text: faceFinishNames }],
-      });
-
-      const maxDetailRows = Math.max(leftColumn.length, rightColumn.length);
-      const sectionDetailsRows = [];
-
-      for (let index = 0; index < maxDetailRows; index += 1) {
-        sectionDetailsRows.push([
+      const sectionDetailsCells = sectionDetailsColumns.map((col) => ({
+        stack: [
           {
-            text: leftColumn[index] || "",
+            text: [
+              { text: `${col.topLabel}: `, bold: true },
+              { text: col.topValue },
+            ],
             color: "#111827",
           },
           {
-            text: rightColumn[index] || "",
+            text: [
+              { text: `${col.bottomLabel}: `, bold: true },
+              { text: col.bottomValue },
+            ],
             color: "#111827",
+            margin: [0, 2, 0, 0],
           },
-        ]);
-      }
+        ],
+      }));
 
       // Build table header row
       const headerRow = [
@@ -588,56 +591,88 @@ const GenerateSectionBreakdownPdf = ({
           : []),
         {
           columns: [
-            { text: "Subtotal (Parts + Labor)", color: "#374151" },
             {
-              text: formatCurrency(subtotal),
-              alignment: "right",
-              color: "#111827",
+              stack: [
+                {
+                  text: "Subtotal (Parts + Labor)",
+                  color: "#374151",
+                  alignment: "center",
+                },
+                {
+                  text: formatCurrency(subtotal),
+                  color: "#111827",
+                  alignment: "center",
+                  bold: true,
+                  margin: [0, 2, 0, 0],
+                },
+              ],
+            },
+            {
+              stack: [
+                {
+                  text: "Profit",
+                  color: "#047857",
+                  alignment: "center",
+                },
+                {
+                  text:
+                    sectionProfit >= 0
+                      ? `+${formatCurrency(sectionProfit)}`
+                      : `-${formatCurrency(Math.abs(sectionProfit))}`,
+                  color: "#047857",
+                  alignment: "center",
+                  bold: true,
+                  margin: [0, 2, 0, 0],
+                },
+              ],
+            },
+            {
+              stack: [
+                {
+                  text: "Commission",
+                  color: "#1d4ed8",
+                  alignment: "center",
+                },
+                {
+                  text:
+                    sectionCommission >= 0
+                      ? `+${formatCurrency(sectionCommission)}`
+                      : `-${formatCurrency(Math.abs(sectionCommission))}`,
+                  color: "#1d4ed8",
+                  alignment: "center",
+                  bold: true,
+                  margin: [0, 2, 0, 0],
+                },
+              ],
+            },
+            {
+              stack: [
+                {
+                  text: "Section Total",
+                  color: "#0f766e",
+                  alignment: "center",
+                  bold: true,
+                },
+                {
+                  text: formatCurrency(sectionTotal),
+                  color: "#0f766e",
+                  alignment: "center",
+                  bold: true,
+                  fontSize: 11,
+                  margin: [0, 2, 0, 0],
+                },
+              ],
             },
           ],
+          columnGap: 8,
           margin: [0, 0, 0, 4],
         },
-        ...(sectionProfit > 0
-          ? [
-              {
-                columns: [
-                  { text: "Profit", color: "#047857" },
-                  {
-                    text: `+${formatCurrency(sectionProfit)}`,
-                    alignment: "right",
-                    color: "#047857",
-                  },
-                ],
-                margin: [0, 0, 0, 4],
-              },
-            ]
-          : []),
-        ...(sectionCommission > 0
-          ? [
-              {
-                columns: [
-                  { text: "Commission", color: "#1d4ed8" },
-                  {
-                    text: `+${formatCurrency(sectionCommission)}`,
-                    alignment: "right",
-                    color: "#1d4ed8",
-                  },
-                ],
-                margin: [0, 0, 0, 4],
-              },
-            ]
-          : []),
         ...(sectionDiscount > 0
           ? [
               {
-                columns: [
-                  { text: "Discount", color: "#b91c1c" },
-                  {
-                    text: `-${formatCurrency(sectionDiscount)}`,
-                    alignment: "right",
-                    color: "#b91c1c",
-                  },
-                ],
+                text: `Discount Applied: -${formatCurrency(sectionDiscount)}`,
+                alignment: "right",
+                color: "#b91c1c",
                 margin: [0, 0, 0, 6],
               },
             ]
@@ -657,30 +692,9 @@ const GenerateSectionBreakdownPdf = ({
           margin: [0, 2, 0, 6],
         },
         {
-          columns: [
-            {
-              text: "Section Total",
-              bold: true,
-              fontSize: 11,
-              color: "#0f766e",
-            },
-            {
-              text: formatCurrency(sectionTotal),
-              alignment: "right",
-              bold: true,
-              fontSize: 11,
-              color: "#0f766e",
-            },
-          ],
-        },
-        {
-          text: "",
-          margin: [0, 2, 0, 2],
-        },
-        {
           table: {
-            widths: ["*", "*"],
-            body: sectionDetailsRows,
+            widths: [130, 190, 80, 190],
+            body: [sectionDetailsCells],
           },
           layout: {
             hLineWidth: () => 0,
@@ -690,7 +704,7 @@ const GenerateSectionBreakdownPdf = ({
             paddingTop: () => 2,
             paddingBottom: () => 2,
           },
-          margin: [0, 4, 0, 0],
+          margin: [0, 2, 0, 0],
         },
       ];
 
@@ -702,7 +716,7 @@ const GenerateSectionBreakdownPdf = ({
       const docDefinition = {
         pageSize: "LETTER",
         pageOrientation: "portrait",
-        pageMargins: [30, 24, 30, 40],
+        pageMargins: [24, 24, 24, 40],
         content: [
           {
             columns: [
@@ -710,18 +724,18 @@ const GenerateSectionBreakdownPdf = ({
                 stack: [
                   projectName && {
                     text: `Project: ${projectName}`,
-                    fontSize: 10,
-                    margin: [0, 0, 0, 4],
+                    fontSize: 9,
+                    margin: [0, 0, 0, 2],
                   },
                   taskName && {
                     text: `Room: ${taskName}`,
-                    fontSize: 10,
-                    margin: [0, 0, 0, 4],
+                    fontSize: 9,
+                    margin: [0, 0, 0, 2],
                   },
                   sectionName && {
                     text: `Section: ${sectionName}`,
-                    fontSize: 10,
-                    margin: [0, 0, 0, 4],
+                    fontSize: 9,
+                    margin: [0, 0, 0, 2],
                   },
                 ].filter(Boolean),
                 width: "*",
@@ -734,7 +748,7 @@ const GenerateSectionBreakdownPdf = ({
               },
             ],
             columnGap: 12,
-            margin: [0, 0, 0, 8],
+            margin: [0, 0, 0, 4],
           },
           {
             table: {
@@ -748,10 +762,10 @@ const GenerateSectionBreakdownPdf = ({
               vLineWidth: () => 0.5,
               hLineColor: () => "#cccccc",
               vLineColor: () => "#cccccc",
-              paddingLeft: () => 8,
-              paddingRight: () => 8,
-              paddingTop: () => 6,
-              paddingBottom: () => 6,
+              paddingLeft: () => 6,
+              paddingRight: () => 6,
+              paddingTop: () => 4,
+              paddingBottom: () => 4,
               fillColor: (i, node) => {
                 if (i === 0) return "#f0f0f0";
                 if (i === node.table.body.length - 1) return "#e6f7ff";
@@ -772,7 +786,7 @@ const GenerateSectionBreakdownPdf = ({
         }),
         styles: {
           header: {
-            fontSize: 16,
+            fontSize: 14,
             bold: true,
           },
           tableHeader: {
@@ -787,7 +801,7 @@ const GenerateSectionBreakdownPdf = ({
             fontSize: 8,
           },
           totalsRow: {
-            fontSize: 10,
+            fontSize: 9,
             fillColor: "#e6f7ff",
           },
         },

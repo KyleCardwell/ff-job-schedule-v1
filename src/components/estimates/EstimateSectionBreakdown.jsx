@@ -81,6 +81,24 @@ const EstimateSectionBreakdown = ({
   };
 
   const getItemHourRows = (categoryTitle) => {
+    if (categoryTitle === "Other") {
+      const otherItems = Array.isArray(section?.other) ? section.other : [];
+
+      return otherItems
+        .map((item, index) => ({
+          id: item?.id || item?.temp_id || `other-${index}`,
+          name: item?.name || "Other",
+          quantity: Number(item?.quantity) || 0,
+          price: (Number(item?.price) || 0) * (Number(item?.quantity) || 0),
+          hoursByService: {},
+        }))
+        .filter(
+          (item) =>
+            item.name || Number(item.quantity) > 0 || Number(item.price) > 0,
+        )
+        .sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
+    }
+
     const itemHoursByCatalog =
       categoryTitle === "Lengths"
         ? sectionCalculations?.categoryHours?.lengthsByCatalog
