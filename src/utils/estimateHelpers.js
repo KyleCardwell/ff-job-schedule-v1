@@ -2483,19 +2483,42 @@ export const generateCabinetSummary = (
     }),
   );
 
-  // Count drawer fronts
+  // Count drawer fronts (aggregate divider count)
   const drawerNodes = allNodes.filter(
     (node) => node.type === FACE_NAMES.DRAWER_FRONT,
   );
-  summary.push(
-    ...buildGroupedFaceSummaries(drawerNodes, {
-      singularLabel: "drawer",
-      pluralLabel: "drawers",
-      defaultStyle: effectiveDrawerStyle,
-      defaultInsideMolding: effectiveDrawerInsideMolding,
-      defaultOutsideMolding: effectiveDrawerOutsideMolding,
-    }),
-  );
+  const isDrawerBoxItem = cabinetItemType === 15;
+
+  let totalDrawers = 0;
+  let totalDrawersWithDividers = 0;
+
+  if (isDrawerBoxItem && faceConfig.drawerBoxDimensions) {
+    totalDrawers = 1;
+    totalDrawersWithDividers = normalizeBoolean(
+      typeSpecificOptions?.drawer_dividers,
+    )
+      ? 1
+      : 0;
+  } else {
+    drawerNodes.forEach((node) => {
+      const drawerCount = getNodeCount(node);
+      totalDrawers += drawerCount;
+      if (normalizeBoolean(node.drawerDividers)) {
+        totalDrawersWithDividers += drawerCount;
+      }
+    });
+  }
+
+  if (totalDrawers > 0) {
+    const drawerLabel = `${totalDrawers} drawer${totalDrawers !== 1 ? "s" : ""}`;
+    summary.push(
+      totalDrawersWithDividers > 0
+        ? totalDrawersWithDividers === totalDrawers
+          ? `${drawerLabel} with dividers`
+          : `${drawerLabel} (${totalDrawersWithDividers} with dividers)`
+        : drawerLabel,
+    );
+  }
 
   // Count false fronts
   const falseFrontNodes = allNodes.filter(
@@ -2562,17 +2585,46 @@ export const generateCabinetSummary = (
     }
   }
 
-  // Count rollouts
+  // Count rollouts (aggregate divider count)
   let totalRollouts = 0;
-  allNodes.forEach((node) => {
-    const rollOutQty = parseInt(node.rollOutQty, 10) || 0;
-    if (rollOutQty > 0) {
-      totalRollouts += rollOutQty;
-    }
-  });
+  let totalRolloutsWithDividers = 0;
+
+  if (isDrawerBoxItem && faceConfig.rollOutDimensions) {
+    totalRollouts = 1;
+    totalRolloutsWithDividers = normalizeBoolean(
+      typeSpecificOptions?.drawer_dividers,
+    )
+      ? 1
+      : 0;
+  } else {
+    allNodes.forEach((node) => {
+      const rollOutQty = parseInt(node.rollOutQty, 10) || 0;
+      if (rollOutQty > 0) {
+        totalRollouts += rollOutQty;
+        const withDividers = Math.max(
+          0,
+          parseInt(
+            node.drawersWithDividersQty ??
+              node.drawerswithdividersqty ??
+              node.drawersWithDivdersQty ??
+              0,
+            10,
+          ) || 0,
+        );
+        totalRolloutsWithDividers += Math.min(rollOutQty, withDividers);
+      }
+    });
+  }
 
   if (totalRollouts > 0) {
-    summary.push(`${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`);
+    const rolloutLabel = `${totalRollouts} rollout${totalRollouts !== 1 ? "s" : ""}`;
+    summary.push(
+      totalRolloutsWithDividers > 0
+        ? totalRolloutsWithDividers === totalRollouts
+          ? `${rolloutLabel} with dividers`
+          : `${rolloutLabel} (${totalRolloutsWithDividers} with dividers)`
+        : rolloutLabel,
+    );
   }
 
   // Count accessories from face nodes by traversing the tree
