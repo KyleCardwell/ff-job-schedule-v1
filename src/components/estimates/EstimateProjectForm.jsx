@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -51,30 +51,28 @@ const EstimateProjectForm = () => {
 
   useEffect(() => {
     if (!currentEstimate?.est_project_id) {
-      setProjectsLoadError("");
-      dispatch(fetchEstimateProjects()).catch((error) => {
-        setProjectsLoadError(error?.message || "Failed to load estimate projects");
-      });
+      const timeoutId = setTimeout(() => {
+        setProjectsLoadError("");
+        dispatch(fetchEstimateProjects(searchTerm)).catch((error) => {
+          setProjectsLoadError(error?.message || "Failed to load estimate projects");
+        });
+      }, 250);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [dispatch, currentEstimate?.est_project_id]);
+  }, [dispatch, currentEstimate?.est_project_id, searchTerm]);
 
-  const filteredProjects = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+  useEffect(() => {
+    if (!selectedProjectId) return;
 
-    if (!normalizedSearch) {
-      return estimateProjectsList;
+    const isStillInList = estimateProjectsList.some(
+      (project) => project.est_project_id === selectedProjectId,
+    );
+
+    if (!isStillInList) {
+      setSelectedProjectId(null);
     }
-
-    return estimateProjectsList.filter((project) => {
-      const projectName = (project.est_project_name || "").toLowerCase();
-      const clientName = (project.est_client_name || "").toLowerCase();
-
-      return (
-        projectName.includes(normalizedSearch) ||
-        clientName.includes(normalizedSearch)
-      );
-    });
-  }, [estimateProjectsList, searchTerm]);
+  }, [estimateProjectsList, selectedProjectId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -134,6 +132,10 @@ const EstimateProjectForm = () => {
   };
 
   const isEditMode = Boolean(currentEstimate?.est_project_id);
+  const selectedProject = estimateProjectsList.find(
+    (project) => project.est_project_id === selectedProjectId,
+  );
+  const selectedProjectName = selectedProject?.est_project_name || "Untitled Project";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -316,11 +318,14 @@ const EstimateProjectForm = () => {
               <div className="p-3 text-sm text-slate-300">Loading projects...</div>
             ) : projectsLoadError ? (
               <div className="p-3 text-sm text-red-400">{projectsLoadError}</div>
-            ) : filteredProjects.length === 0 ? (
+            ) : estimateProjectsList.length === 0 ? (
               <div className="p-3 text-sm text-slate-300">No projects found.</div>
             ) : (
-              filteredProjects.map((project) => {
+              estimateProjectsList.map((project) => {
                 const isSelected = selectedProjectId === project.est_project_id;
+                const createdDateLabel = project.created_at
+                  ? new Date(project.created_at).toLocaleDateString()
+                  : "Unknown date";
 
                 return (
                   <button
@@ -337,10 +342,27 @@ const EstimateProjectForm = () => {
                     <div className="text-xs text-slate-400">
                       {project.est_client_name || "No client name"}
                     </div>
+                    <div className="text-xs text-slate-500">Created: {createdDateLabel}</div>
                   </button>
                 );
               })
             )}
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-900 px-3 py-2">
+            <div className="text-sm text-slate-200">
+              {selectedProjectId
+                ? `Creating new estimate for: ${selectedProjectName}`
+                : "Creating new estimate for: --"}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedProjectId(null)}
+              disabled={!selectedProjectId}
+              className="text-xs font-medium text-teal-300 hover:text-teal-200 disabled:cursor-not-allowed disabled:text-slate-500"
+            >
+              Clear Selection
+            </button>
           </div>
 
           <div className="flex justify-end">
