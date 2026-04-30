@@ -418,7 +418,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                             {...getRootProps()}
                             className={`${buttonClass} bg-blue-500 hover:bg-blue-700`}
                           >
-                            {acceptedFile?.name ? "Replace CSV" : "Upload CSV"}
+                            {acceptedFile?.name ? "Replace CSV" : "Estimate CSV"}
                           </button>
                         )}
                       </CSVReader>
@@ -574,6 +574,9 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
         employees={employees}
         services={services}
         onConfirm={handleHoursCsvConfirm}
+        projectName={selectedTask?.project_name}
+        taskName={selectedTask?.task_name}
+        taskNumber={selectedTask?.task_number}
       />
 
       <FinancialsCsvRowSelectorModal

@@ -68,6 +68,16 @@ const timeToDecimal = (value) => {
   return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0;
 };
 
+const decimalHoursToHHMM = (value) => {
+  const totalMinutes = Math.round((Number(value) || 0) * 60);
+  const isNegative = totalMinutes < 0;
+  const absMinutes = Math.abs(totalMinutes);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = absMinutes % 60;
+  const sign = isNegative ? "-" : "";
+  return `${sign}${hours}:${minutes.toString().padStart(2, "0")}`;
+};
+
 const parseHoursCsv = (rawRows, employees) => {
   if (!Array.isArray(rawRows) || rawRows.length < 2) return [];
 
@@ -144,7 +154,16 @@ const parseHoursCsv = (rawRows, employees) => {
   return rows;
 };
 
-const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
+const HoursCsvModal = ({
+  isOpen,
+  onClose,
+  employees,
+  services,
+  onConfirm,
+  projectName,
+  taskName,
+  taskNumber,
+}) => {
   const { CSVReader } = useCSVReader();
   const [previewRows, setPreviewRows] = useState([]);
   const [csvError, setCsvError] = useState(null);
@@ -190,6 +209,18 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
     [previewRows]
   );
 
+  const totalHours = useMemo(
+    () =>
+      previewRows.reduce((sum, row) => sum + (Number(row.hoursDecimal) || 0), 0),
+    [previewRows]
+  );
+
+  const includedTotalHours = useMemo(
+    () =>
+      includedRows.reduce((sum, row) => sum + (Number(row.hoursDecimal) || 0), 0),
+    [includedRows]
+  );
+
   const hasUnassigned = useMemo(
     () => includedRows.some((r) => !r.selectedEmployeeId),
     [includedRows]
@@ -223,6 +254,12 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
                 Upload a Busybusy Employee Activity Report to auto-assign hours
                 to services.
               </p>
+              {(projectName || taskName) && (
+                <p className="text-sm text-gray-700 mt-1">
+                  {projectName || "Unknown Project"}
+                  {taskName ? ` - ${taskNumber} - ${taskName}` : ""}
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -262,6 +299,14 @@ const HoursCsvModal = ({ isOpen, onClose, employees, services, onConfirm }) => {
           {uploadedFileName && previewRows.length > 0 && (
             <div className="text-xs text-gray-500 mb-2">
               File: {uploadedFileName}
+            </div>
+          )}
+
+          {previewRows.length > 0 && (
+            <div className="text-sm text-gray-700 mb-2">
+              Total Hours: <span className="font-semibold">{decimalHoursToHHMM(includedTotalHours)}</span>
+              <span className="text-gray-500"> selected</span>
+              <span className="text-gray-500"> ({decimalHoursToHHMM(totalHours)} overall)</span>
             </div>
           )}
 
@@ -426,6 +471,8 @@ HoursCsvModal.propTypes = {
   employees: PropTypes.array.isRequired,
   services: PropTypes.array.isRequired,
   onConfirm: PropTypes.func.isRequired,
+  projectName: PropTypes.string,
+  taskName: PropTypes.string,
 };
 
 export default HoursCsvModal;
