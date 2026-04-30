@@ -49,9 +49,9 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title, idKey
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">{title || 'Reorder Items'}</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[calc(100vh-2rem)] flex flex-col p-6">
+        <h2 className="text-xl font-bold mb-4 flex-shrink-0">{title || 'Reorder Items'}</h2>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -59,7 +59,7 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title, idKey
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         >
           <SortableContext items={items.map(i => i[idKey])} strategy={verticalListSortingStrategy}>
-            <div className="max-h-144 overflow-y-auto pr-2">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2">
               {items.map(item => (
                 <SortableItem key={item[idKey]} id={item[idKey]}>
                   {item[itemName] || item[idKey]} 
@@ -68,7 +68,7 @@ const ReorderModal = ({ items: initialItems, open, onClose, onSave, title, idKey
             </div>
           </SortableContext>
         </DndContext>
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end mt-6 flex-shrink-0">
           <button onClick={onClose} className="mr-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
             Cancel
           </button>
