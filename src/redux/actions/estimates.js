@@ -37,6 +37,52 @@ export const createEstimateProject = (projectData) => {
   };
 };
 
+// Fetch estimate projects for selection
+export const fetchEstimateProjects = (searchTerm = "") => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_START });
+
+      const { teamId } = getState().auth;
+      const normalizedSearch = searchTerm.trim();
+      let query = supabase
+        .from("estimate_projects")
+        .select("est_project_id, est_project_name, est_client_name, created_at")
+        .eq("team_id", teamId);
+
+      if (normalizedSearch) {
+        query = query.or(
+          `est_project_name.ilike.%${normalizedSearch}%,est_client_name.ilike.%${normalizedSearch}%`
+        );
+      } else {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        query = query.gte("created_at", oneYearAgo.toISOString());
+      }
+
+      const { data, error } = await query.order("est_project_name", {
+        ascending: true,
+      });
+
+      if (error) throw error;
+
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_SUCCESS,
+        payload: data || [],
+      });
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching estimate projects:", error);
+      dispatch({
+        type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
 // Create estimate
 export const createEstimate = (estimateProjectId) => {
   return async (dispatch, getState) => {
