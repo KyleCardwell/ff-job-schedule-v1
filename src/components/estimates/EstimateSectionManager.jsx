@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 import PropTypes from "prop-types";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   FiChevronDown,
   FiChevronRight,
@@ -66,6 +66,8 @@ const EstimateSectionManager = ({
     SECTION_TYPES.CABINETS.type,
   );
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const sectionRefs = useRef({});
+  const hasInitializedScrollBehavior = useRef(false);
   const finishSetupNeeded = sectionCalculations?.finishSetupNeeded !== false;
 
   // Create a mapping of section types to their table names
@@ -114,6 +116,25 @@ const EstimateSectionManager = ({
   useEffect(() => {
     setOpenSectionType(null);
   }, [taskId, sectionId]);
+
+  useEffect(() => {
+    if (!openSectionType) {
+      return;
+    }
+
+    if (!hasInitializedScrollBehavior.current) {
+      hasInitializedScrollBehavior.current = true;
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const sectionElement = sectionRefs.current[openSectionType];
+      sectionElement?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [openSectionType]);
 
   const handleToggleSection = (sectionType) => {
     setOpenSectionType(openSectionType === sectionType ? null : sectionType);
@@ -575,7 +596,17 @@ const EstimateSectionManager = ({
     <div className="flex-1 max-w-4xl mx-auto space-y-4">
       {/* Section Items Accordions */}
       {sections.map(({ type, title, count, component }) => (
-        <div key={type} className="border border-slate-200 rounded-lg">
+        <div
+          key={type}
+          ref={(element) => {
+            if (element) {
+              sectionRefs.current[type] = element;
+            } else {
+              delete sectionRefs.current[type];
+            }
+          }}
+          className="border border-slate-200 rounded-lg"
+        >
           <button
             onClick={() => handleToggleSection(type)}
             className={`
