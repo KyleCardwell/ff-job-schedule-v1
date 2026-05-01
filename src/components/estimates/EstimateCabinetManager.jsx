@@ -140,6 +140,19 @@ const getDefaultTypeSpecificOptions = (
   return defaults;
 };
 
+const getMoldingColumnValue = (typeSpecificOptions = {}) => {
+  const countTopMolding = Boolean(
+    typeSpecificOptions[MOLDING_OPTION_NAMES.top] ??
+      typeSpecificOptions.top_molding,
+  );
+  const countBaseMolding = Boolean(
+    typeSpecificOptions[MOLDING_OPTION_NAMES.base] ??
+      typeSpecificOptions.base_molding,
+  );
+
+  return `${countTopMolding ? "T" : " "} ${countBaseMolding ? "B" : " "}`;
+};
+
 const CabinetItemForm = ({
   item = {},
   onSave,
@@ -2695,20 +2708,30 @@ const EstimateCabinetManager = ({
     {
       key: "width",
       label: "Width",
-      width: ITEM_FORM_WIDTHS.DEFAULT,
+      width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
       render: (item) => (item.width ? decimalToFraction(item.width) : "-"),
     },
     {
       key: "height",
       label: "Height",
-      width: ITEM_FORM_WIDTHS.DEFAULT,
+      width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
       render: (item) => (item.height ? decimalToFraction(item.height) : "-"),
     },
     {
       key: "depth",
       label: "Depth",
-      width: ITEM_FORM_WIDTHS.DEFAULT,
+      width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
       render: (item) => (item.depth ? decimalToFraction(item.depth) : "-"),
+    },
+    {
+      key: "molding",
+      label: "Molding",
+      width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
+      render: (item) => (
+        <span className="font-mono whitespace-pre">
+          {getMoldingColumnValue(item.type_specific_options || {})}
+        </span>
+      ),
     },
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
