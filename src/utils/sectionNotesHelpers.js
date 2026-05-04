@@ -577,6 +577,9 @@ export const buildOtherItemsIncludesNote = (effectiveSection = {}) => {
       const rawName = typeof item?.name === "string" ? item.name.trim() : "";
       if (!rawName) return "";
 
+      const numericQuantity = Number(item?.quantity);
+      if (Number.isFinite(numericQuantity) && numericQuantity <= 0) return "";
+
       const name = rawName.endsWith(".") ? rawName.slice(0, -1).trim() : rawName;
       if (!name) return "";
 
