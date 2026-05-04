@@ -551,6 +551,43 @@ export const buildHardwareAutoNotes = ({
   };
 };
 
+const formatOtherItemQuantity = (quantity) => {
+  if (quantity === null || quantity === undefined || quantity === "") {
+    return "";
+  }
+
+  const numeric = Number(quantity);
+  if (Number.isFinite(numeric)) {
+    if (numeric < 0) return "";
+    return Number.isInteger(numeric) ? String(numeric) : String(numeric);
+  }
+
+  const trimmed = String(quantity).trim();
+  return trimmed || "";
+};
+
+export const buildOtherItemsIncludesNote = (effectiveSection = {}) => {
+  const otherItems = Array.isArray(effectiveSection?.other)
+    ? effectiveSection.other
+    : [];
+
+  const includedItemsText = otherItems
+    .filter((item) => item?.note_included)
+    .map((item) => {
+      const rawName = typeof item?.name === "string" ? item.name.trim() : "";
+      if (!rawName) return "";
+
+      const name = rawName.endsWith(".") ? rawName.slice(0, -1).trim() : rawName;
+      if (!name) return "";
+
+      const quantityText = formatOtherItemQuantity(item?.quantity) || "1";
+      return `${quantityText} ${name}.`;
+    })
+    .filter(Boolean);
+
+  return includedItemsText.join(" ");
+};
+
 export const buildAdditionalSectionNotesText = ({
   effectiveSection,
   hasDoors,
@@ -591,6 +628,7 @@ export const buildAdditionalSectionNotesText = ({
       hasDrawerFronts,
       hasDrawerBoxes,
     });
+  const otherItemsIncludesNote = buildOtherItemsIncludesNote(effectiveSection);
 
   return {
     horizontalGrainNote,
@@ -602,6 +640,7 @@ export const buildAdditionalSectionNotesText = ({
     drawerPullNote,
     hingeNote,
     slideNote,
+    otherItemsIncludesNote,
     excludedPullsNote,
     additionalNotesText: [
       horizontalGrainNote,
@@ -616,6 +655,7 @@ export const buildAdditionalSectionNotesText = ({
     ]
       .filter(Boolean)
       .join(" "),
+    includesText: [otherItemsIncludesNote].filter(Boolean).join(" "),
     doesNotIncludeText: [excludedPullsNote].filter(Boolean).join(" "),
   };
 };
@@ -697,6 +737,7 @@ export const buildProcessedSectionNotes = (
   sectionNotes,
   additionalNotesText,
   doesNotIncludeText = "",
+  includesText = "",
 ) => {
   if (sectionNotes) {
     if (Array.isArray(sectionNotes)) {
@@ -712,6 +753,14 @@ export const buildProcessedSectionNotes = (
         }
       }
 
+      if (includesText) {
+        if (processedNotes[1]) {
+          processedNotes[1] = `${includesText} ${processedNotes[1]}`;
+        } else {
+          processedNotes[1] = includesText;
+        }
+      }
+
       if (doesNotIncludeText) {
         if (processedNotes[2]) {
           processedNotes[2] = `${doesNotIncludeText} ${processedNotes[2]}`;
@@ -724,6 +773,16 @@ export const buildProcessedSectionNotes = (
     }
 
     if (typeof sectionNotes === "string" && sectionNotes.trim()) {
+      if (includesText || doesNotIncludeText) {
+        return [
+          additionalNotesText
+            ? `${additionalNotesText} ${sectionNotes}`
+            : sectionNotes,
+          includesText || "",
+          doesNotIncludeText || "",
+        ];
+      }
+
       return additionalNotesText
         ? `${additionalNotesText} ${sectionNotes}`
         : sectionNotes;
@@ -732,8 +791,12 @@ export const buildProcessedSectionNotes = (
     return null;
   }
 
-  if (additionalNotesText || doesNotIncludeText) {
-    return [additionalNotesText || "", "", doesNotIncludeText || ""];
+  if (additionalNotesText || includesText || doesNotIncludeText) {
+    return [
+      additionalNotesText || "",
+      includesText || "",
+      doesNotIncludeText || "",
+    ];
   }
 
   return null;

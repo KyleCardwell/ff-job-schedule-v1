@@ -7,11 +7,12 @@ import useMathInput from "../../hooks/useMathInput";
 
 import SectionItemList from "./SectionItemList.jsx";
 
-const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
+const OtherItemForm = ({ item = {}, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     name: item.name || "",
     quantity: item.quantity ?? 1,
     price: item.price ?? 0,
+    note_included: item.note_included ?? false,
     temp_id: item.temp_id || uuid(),
     id: item.id || undefined,
   });
@@ -32,7 +33,7 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
   );
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
 
     // Handle math-enabled numeric inputs
     if (["quantity", "price"].includes(name)) {
@@ -48,7 +49,7 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: type === "checkbox" ? checked : value,
       });
     }
 
@@ -175,6 +176,19 @@ const OtherItemForm = ({ item = {}, onSave, onCancel, onDeleteItem }) => {
         </div>
       </div>
 
+      <div className="mt-3">
+        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="note_included"
+            checked={Boolean(formData.note_included)}
+            onChange={handleChange}
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          Include in section Includes note
+        </label>
+      </div>
+
       {/* Total Display */}
       <div className="mt-4 pt-3 border-t border-slate-200 flex justify-end items-center">
         <span className="text-sm font-medium text-slate-700 mr-2">Total:</span>
@@ -210,10 +224,9 @@ OtherItemForm.propTypes = {
   item: PropTypes.object,
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  onDeleteItem: PropTypes.func.isRequired,
 };
 
-const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicateItem, onMoveItem, onDeleteItem, currentTaskId, currentSectionId }) => {
+const EstimateOtherManager = ({ items, onUpdateItems, onDuplicateItem, onMoveItem, onDeleteItem, currentTaskId, currentSectionId }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -226,6 +239,23 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
   const columns = [
     { key: "quantity", label: "Qty", width: ".5fr" },
     { key: "name", label: "Item", width: "2fr" },
+    {
+      key: "note_included",
+      label: "Include",
+      width: ".75fr",
+      render: (item) => (
+        <div className="flex justify-center">
+          <input
+            type="checkbox"
+            checked={Boolean(item.note_included)}
+            disabled
+            readOnly
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+            aria-label="Include item in section includes note (edit row to change)"
+          />
+        </div>
+      ),
+    },
     { key: "price", label: "Cost", width: ".75fr", render: (item) => formatCurrency(item.price || 0) },
     { key: "total", label: "Total", width: ".75fr", render: (item) => formatCurrency((item.quantity || 0) * (item.price || 0)) },
     { key: "actions", label: "Actions", width: "1fr" },
@@ -243,7 +273,7 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
       }
       onUpdateItems(updatedItems);
     } catch (error) {
-      console.error("Error saving item:", error);
+      void error;
     }
   };
 
@@ -252,7 +282,7 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
       const itemToDelete = items[itemIndex];
       onDeleteItem(itemToDelete);
     } catch (error) {
-      console.error("Error deleting item:", error);
+      void error;
     }
   };
 
@@ -287,7 +317,6 @@ const EstimateOtherManager = ({ items, onUpdateItems, onReorderItems, onDuplicat
 EstimateOtherManager.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   onUpdateItems: PropTypes.func.isRequired,
-  onReorderItems: PropTypes.func,
   onDuplicateItem: PropTypes.func,
   onMoveItem: PropTypes.func,
   onDeleteItem: PropTypes.func.isRequired,
