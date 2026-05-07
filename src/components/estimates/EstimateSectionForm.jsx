@@ -2513,6 +2513,7 @@ const EstimateSectionForm = ({
                               if (value === 0) return "None";
                               if (value === 15) return "Reeded";
                               if (value === 22) return "Grooved";
+                              if (value === 24) return "Slatted";
                               return value ? `ID ${value}` : "None";
                             },
                           )}
@@ -2536,6 +2537,7 @@ const EstimateSectionForm = ({
                           <option value="0">None</option>
                           <option value="15">Reeded</option>
                           <option value="22">Grooved</option>
+                          <option value="24">Slatted</option>
                         </select>
                         {errors.doorPanelModId && (
                           <p className={STYLES.errorText}>
@@ -2919,6 +2921,7 @@ const EstimateSectionForm = ({
                               if (value === 0) return "None";
                               if (value === 15) return "Reeded";
                               if (value === 22) return "Grooved";
+                              if (value === 24) return "Slatted";
                               return value ? `ID ${value}` : "None";
                             },
                           )}
@@ -2942,6 +2945,7 @@ const EstimateSectionForm = ({
                           <option value="0">None</option>
                           <option value="15">Reeded</option>
                           <option value="22">Grooved</option>
+                          <option value="24">Slatted</option>
                         </select>
                         {errors.drawerPanelModId && (
                           <p className={STYLES.errorText}>

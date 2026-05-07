@@ -321,6 +321,7 @@ export const PARTS_LIST_MAPPING = {
   hood_finished: 21, // Hood cabinets - includes depth in calculation
   panel_mod_grooved_finished: 22,
   filler_t_shape_finished: 23,
+  panel_mod_slatted_finished: 24,
 };
 
 export const PART_NAMES = {
@@ -340,6 +341,7 @@ export const PART_NAMES = {
 export const PANEL_MOD_DISPLAY_NAMES = {
   15: "Reeded",
   22: "Grooved",
+  24: "Slatted",
   // Add more panel mods here as needed
 };
 

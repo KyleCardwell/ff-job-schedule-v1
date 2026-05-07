@@ -1274,7 +1274,7 @@ const CabinetFaceDivider = ({
     const node = findNode(newConfig, selectedNode.id);
 
     if (node) {
-      // "" = Section Default (inherit), "0" = None, "15" = Reeded, "22" = Grooved
+      // "" = Section Default (inherit), "0" = None, "15" = Reeded, "22" = Grooved, "24" = Slatted
       node.panelMod = panelModValue === "" ? null : panelModValue;
 
       setConfig(newConfig);
@@ -2940,6 +2940,7 @@ const CabinetFaceDivider = ({
                             <option value="0">None</option>
                             <option value="15">Reeded</option>
                             <option value="22">Grooved</option>
+                            <option value="24">Slatted</option>
                           </select>
                         </div>
                       )}
