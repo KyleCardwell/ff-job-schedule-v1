@@ -1,6 +1,6 @@
 import { isEqual } from "lodash";
 import PropTypes from "prop-types";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
@@ -13,7 +13,9 @@ import {
   CAN_BE_BEADED,
   ITEM_TYPES,
   PART_NAMES,
+  PANEL_MOD_DISPLAY_NAMES,
 } from "../../utils/constants.js";
+import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import {
   safeEvaluate,
   formatNumberValue,
@@ -159,12 +161,49 @@ const CabinetItemForm = ({
   onCancel,
   cabinetStyleId,
   onDeleteItem,
+  currentSectionId,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   // const cabinetAnchors = useSelector(
   //   (state) => state.cabinetAnchors.itemsByType
   // );
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  const faceMaterialOptions = useSelector(
+    (state) => state.materials?.faceMaterials || [],
+  );
+  const finishOptions = useSelector((state) => state.finishes?.finishes || []);
+  const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults,
+  );
+
+  const currentSection = useMemo(() => {
+    const sectionId = Number(currentSectionId);
+    if (!Number.isFinite(sectionId)) return null;
+    return (
+      currentEstimate?.tasks
+        ?.flatMap((task) => task.sections || [])
+        ?.find((section) => Number(section.est_section_id) === sectionId) || null
+    );
+  }, [currentEstimate, currentSectionId]);
+
+  const effectiveFaceMaterialId = getEffectiveValueOnly(
+    currentSection?.face_mat ?? null,
+    currentEstimate?.default_face_mat ?? null,
+    teamDefaults?.default_face_mat ?? null,
+  );
+
+  const effectiveFaceFinish = getEffectiveValueOnly(
+    currentSection?.face_finish ?? null,
+    currentEstimate?.default_face_finish ?? null,
+    teamDefaults?.default_face_finish ?? null,
+  );
+
+  const effectiveFinBackPanelModId = getEffectiveValueOnly(
+    currentSection?.door_panel_mod_id ?? null,
+    currentEstimate?.default_door_panel_mod_id ?? null,
+    teamDefaults?.default_door_panel_mod_id ?? null,
+  );
 
   // Get current item type configuration from cabinetTypeId
   const currentCabinetType = cabinetTypes.find(
@@ -202,6 +241,11 @@ const CabinetItemForm = ({
     finished_top: item.finished_top,
     finished_bottom: item.finished_bottom,
     finished_back: item.finished_back,
+    fin_back_mat: item.fin_back_mat ?? null,
+    fin_back_finish: Array.isArray(item.fin_back_finish)
+      ? item.fin_back_finish
+      : null,
+    fin_back_panel_mod: item.fin_back_panel_mod ?? null,
     cabinet_style_override: item.cabinet_style_override,
     updated_at: item.updated_at,
     type_specific_options: normalizeTypeSpecificOptions(
@@ -218,6 +262,135 @@ const CabinetItemForm = ({
   });
 
   const [errors, setErrors] = useState({});
+
+  const FINISH_NONE_FB = "none";
+
+  const finBackEnabled = formData.finished_back || formData.finished_interior;
+
+  const effectiveFinBackMaterialId =
+    formData.fin_back_mat != null ? formData.fin_back_mat : effectiveFaceMaterialId;
+
+  const selectedFinBackMaterial = faceMaterialOptions.find(
+    (mat) => mat.id === effectiveFinBackMaterialId,
+  );
+
+  const mustSelectFinBackFinish = selectedFinBackMaterial?.needs_finish === true;
+
+  const isFinBackFinishExplicitlyNone = () =>
+    Array.isArray(formData.fin_back_finish) && formData.fin_back_finish.length === 0;
+
+  const formatFinBackMaterialName = (materialId) => {
+    const material = faceMaterialOptions.find(
+      (mat) => Number(mat.id) === Number(materialId),
+    );
+    return material?.name || "";
+  };
+
+  const formatFinBackFinishArray = (finishIds) => {
+    if (Array.isArray(finishIds) && finishIds.length === 0) {
+      return "None";
+    }
+
+    if (!Array.isArray(finishIds) || finishIds.length === 0) {
+      return "";
+    }
+
+    return finishIds
+      .map(
+        (id) =>
+          finishOptions.find((option) => Number(option.id) === Number(id))?.name,
+      )
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const formatFinBackPanelMod = (panelModId) => {
+    if (panelModId === null || panelModId === undefined || panelModId === "") {
+      return "";
+    }
+
+    const normalizedPanelModId = Number(panelModId);
+    if (Number.isNaN(normalizedPanelModId)) return "";
+    if (normalizedPanelModId === 0) return "None";
+
+    return (
+      PANEL_MOD_DISPLAY_NAMES[normalizedPanelModId] ||
+      `Panel Mod ${normalizedPanelModId}`
+    );
+  };
+
+  const getEffectiveDefaultDisplay = (
+    fieldValue,
+    defaultValue,
+    formatter,
+    isFinish = false,
+  ) => {
+    const isEmpty = isFinish
+      ? fieldValue === null || fieldValue === undefined
+      : fieldValue === "" || fieldValue === null || fieldValue === undefined;
+
+    if (!isEmpty) {
+      return <span className="flex-1 px-1 border border-amber-400 ml-1"></span>;
+    }
+
+    const shouldShowFallback = !isFinish || mustSelectFinBackFinish;
+    if (!shouldShowFallback) {
+      return null;
+    }
+
+    if (defaultValue === null || defaultValue === undefined) {
+      return null;
+    }
+
+    const displayValue = formatter ? formatter(defaultValue) : defaultValue;
+    if (displayValue === null || displayValue === undefined || displayValue === "") {
+      return null;
+    }
+
+    return (
+      <span className="flex-1 px-1 text-white text-xs bg-teal-600 ml-1">
+        {displayValue}
+      </span>
+    );
+  };
+
+  const handleFinBackMatChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      fin_back_mat: value === "" ? null : Number(value),
+    }));
+  };
+
+  const handleFinBackFinishChange = (option) => {
+    let updatedFinish;
+    if (option === FINISH_NONE_FB) {
+      updatedFinish = isFinBackFinishExplicitlyNone() ? null : [];
+    } else {
+      const currentFinish = Array.isArray(formData.fin_back_finish)
+        ? formData.fin_back_finish
+        : [];
+      updatedFinish = currentFinish.includes(option)
+        ? currentFinish.filter((id) => id !== option)
+        : [...currentFinish, option];
+      if (updatedFinish.length === 0) updatedFinish = null;
+    }
+    setFormData((prev) => ({ ...prev, fin_back_finish: updatedFinish }));
+  };
+
+  const handleFinBackPanelModChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      fin_back_panel_mod: value === "" ? null : Number(value),
+    }));
+  };
+
+  useEffect(() => {
+    if (!mustSelectFinBackFinish && Array.isArray(formData.fin_back_finish)) {
+      setFormData((prev) => ({ ...prev, fin_back_finish: null }));
+    }
+  }, [mustSelectFinBackFinish, formData.fin_back_finish]);
 
   // Helper to get the effective cabinet style ID (considers override)
   const getEffectiveCabinetStyleId = () => {
@@ -392,6 +565,9 @@ const CabinetItemForm = ({
                 selectedItemTypeConfig.typeSpecificOptions || [],
                 selectedType.cabinet_type_id,
               );
+              updates.fin_back_mat = null;
+              updates.fin_back_finish = null;
+              updates.fin_back_panel_mod = null;
             }
 
             // Update inputValues with dimension defaults
@@ -636,6 +812,12 @@ const CabinetItemForm = ({
     if (validateForm()) {
       // Calculate face summary and box summary before saving
       const finalFormData = { ...formData };
+
+      if (!finalFormData.finished_back && !finalFormData.finished_interior) {
+        finalFormData.fin_back_mat = null;
+        finalFormData.fin_back_finish = null;
+        finalFormData.fin_back_panel_mod = null;
+      }
 
       // Convert cabinet_style_override to null if default option (-1) is selected
       if (formData.cabinet_style_override === -1) {
@@ -2351,6 +2533,120 @@ const CabinetItemForm = ({
                 </div>
               </div>
 
+              {/* Finished Back Options */}
+              {finBackEnabled && (
+                <div className="mt-4 p-3 border border-slate-300 rounded-md bg-slate-50">
+                  <p className="text-xs font-semibold text-slate-700 mb-2">
+                    Finished Back Options
+                  </p>
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Material */}
+                    <div>
+                      <label className="flex items-center text-xs font-medium text-slate-700 mb-1">
+                        <span>Material</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.fin_back_mat,
+                          effectiveFaceMaterialId,
+                          formatFinBackMaterialName,
+                        )}
+                      </label>
+                      <select
+                        value={formData.fin_back_mat ?? ""}
+                        onChange={handleFinBackMatChange}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-md text-sm"
+                      >
+                        <option value="">Section Default</option>
+                        {faceMaterialOptions.map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Finish */}
+                    <div>
+                      <label className="flex items-center text-xs font-medium text-slate-700 mb-1">
+                        <span>Finish</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.fin_back_finish,
+                          effectiveFaceFinish,
+                          formatFinBackFinishArray,
+                          true,
+                        )}
+                      </label>
+                      <div className="grid grid-cols-2 gap-1 text-xs border border-slate-300 rounded-md px-2 py-1.5">
+                        <label
+                          className={`flex items-center space-x-1 ${
+                            !mustSelectFinBackFinish ? "opacity-50" : ""
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!mustSelectFinBackFinish}
+                            checked={isFinBackFinishExplicitlyNone()}
+                            onChange={() =>
+                              handleFinBackFinishChange(FINISH_NONE_FB)
+                            }
+                            className="rounded border-slate-300"
+                          />
+                          <span className="italic">None</span>
+                        </label>
+                        {finishOptions.map((opt) => (
+                          <label
+                            key={opt.id}
+                            className={`flex items-center space-x-1 ${
+                              !mustSelectFinBackFinish ||
+                              isFinBackFinishExplicitlyNone()
+                                ? "opacity-50"
+                                : ""
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              disabled={
+                                !mustSelectFinBackFinish ||
+                                isFinBackFinishExplicitlyNone()
+                              }
+                              checked={
+                                Array.isArray(formData.fin_back_finish) &&
+                                formData.fin_back_finish.includes(opt.id)
+                              }
+                              onChange={() => handleFinBackFinishChange(opt.id)}
+                              className="rounded border-slate-300"
+                            />
+                            <span>{opt.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Panel Mod */}
+                    <div>
+                      <label className="flex items-center text-xs font-medium text-slate-700 mb-1">
+                        <span>Panel Mod</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.fin_back_panel_mod,
+                          effectiveFinBackPanelModId,
+                          formatFinBackPanelMod,
+                        )}
+                      </label>
+                      <select
+                        value={formData.fin_back_panel_mod ?? ""}
+                        onChange={handleFinBackPanelModChange}
+                        className="w-full px-2 py-1.5 border border-slate-300 rounded-md text-sm"
+                      >
+                        <option value="">Section Default</option>
+                        <option value="0">None</option>
+                        <option value="15">Reeded</option>
+                        <option value="22">Grooved</option>
+                        <option value="24">Slatted</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Dynamic Type-Specific Options */}
               {filteredTypeSpecificOptions.map((option) => {
                 const optionValue =
@@ -2680,6 +2976,7 @@ CabinetItemForm.propTypes = {
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   cabinetStyleId: PropTypes.number,
+  currentSectionId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
@@ -2778,7 +3075,7 @@ const EstimateCabinetManager = ({
       onDuplicate={onDuplicateItem}
       onMove={onMoveItem}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes }}
+      formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes, currentSectionId }}
       listType={ITEM_TYPES.CABINET.type}
       currentTaskId={currentTaskId}
       currentSectionId={currentSectionId}

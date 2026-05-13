@@ -5,7 +5,7 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { RiSwapBoxLine } from "react-icons/ri";
 import { useSelector } from "react-redux";
 
-import { ITEM_TYPES } from "../../utils/constants.js";
+import { ITEM_TYPES, PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults.js";
 import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
 import DuplicateItemModal from "../common/DuplicateItemModal.jsx";
@@ -34,6 +34,10 @@ const SectionItemList = ({
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const accessories = useSelector((state) => state.accessories);
+  const faceMaterialOptions = useSelector(
+    (state) => state.materials?.faceMaterials || [],
+  );
+  const finishOptions = useSelector((state) => state.finishes?.finishes || []);
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   const teamDefaults = useSelector(
     (state) => state.teamEstimateDefaults.teamDefaults,
@@ -289,6 +293,37 @@ const SectionItemList = ({
         )?.cabinet_style_name || ""
       : "";
 
+    const finBackMaterialSummary =
+      item.fin_back_mat != null
+        ? faceMaterialOptions.find(
+            (material) => Number(material.id) === Number(item.fin_back_mat),
+          )?.name || `Material ${item.fin_back_mat}`
+        : null;
+
+    const finBackFinishSummary =
+      item.fin_back_finish != null
+        ? Array.isArray(item.fin_back_finish) && item.fin_back_finish.length === 0
+          ? "None"
+          : (Array.isArray(item.fin_back_finish) ? item.fin_back_finish : [])
+              .map(
+                (finishId) =>
+                  finishOptions.find(
+                    (finish) => Number(finish.id) === Number(finishId),
+                  )?.name || `Finish ${finishId}`,
+              )
+              .join(", ")
+        : null;
+
+    const normalizedFinBackPanelModId =
+      item.fin_back_panel_mod != null ? Number(item.fin_back_panel_mod) : null;
+    const finBackPanelModSummary =
+      item.fin_back_panel_mod != null
+        ? normalizedFinBackPanelModId === 0
+          ? "None"
+          : PANEL_MOD_DISPLAY_NAMES[normalizedFinBackPanelModId] ||
+            `Panel Mod ${item.fin_back_panel_mod}`
+        : null;
+
     const summary = generateCabinetSummary(
       item.face_config,
       {
@@ -299,6 +334,9 @@ const SectionItemList = ({
         finishedTop: item.finished_top,
         finishedBottom: item.finished_bottom,
         finishedBack: item.finished_back,
+        finBackMaterialSummary,
+        finBackFinishSummary,
+        finBackPanelModSummary,
         quantity: item.quantity,
       },
       item.type,

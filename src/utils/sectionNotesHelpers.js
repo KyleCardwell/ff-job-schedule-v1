@@ -286,6 +286,103 @@ const formatFinishNames = (finishIds = [], finishTypes = []) => {
     .join(", ");
 };
 
+export const buildFinishedBackOverridesNote = ({
+  effectiveSection,
+  faceMaterials,
+  finishTypes,
+}) => {
+  const cabinets = Array.isArray(effectiveSection?.cabinets)
+    ? effectiveSection.cabinets
+    : [];
+
+  if (cabinets.length === 0) return "";
+
+  const groupedOverrides = new Map();
+
+  cabinets.forEach((cabinet) => {
+    if (!cabinet) return;
+
+    const panelModOverrideId = normalizeOptionalId(cabinet.fin_back_panel_mod);
+    const materialOverrideId = normalizeOptionalId(cabinet.fin_back_mat);
+    const finishOverrideIds = normalizeFinishArray(cabinet.fin_back_finish);
+
+    const hasOverride =
+      panelModOverrideId !== null ||
+      materialOverrideId !== null ||
+      finishOverrideIds !== null;
+
+    if (!hasOverride) return;
+
+    const panelModName =
+      panelModOverrideId === null
+        ? ""
+        : Number(panelModOverrideId) === 0
+          ? "None"
+          : PANEL_MOD_DISPLAY_NAMES[Number(panelModOverrideId)] ||
+            `Panel Mod ${panelModOverrideId}`;
+
+    const materialName =
+      materialOverrideId === null
+        ? ""
+        : faceMaterials?.find(
+            (material) => String(material.id) === String(materialOverrideId),
+          )?.name || `Material ${materialOverrideId}`;
+
+    const finishName =
+      finishOverrideIds === null
+        ? ""
+        : formatFinishNames(finishOverrideIds, finishTypes);
+
+    let materialFinishText = "";
+    if (materialName && finishName) {
+      materialFinishText = `${materialName} (${finishName})`;
+    } else if (materialName) {
+      materialFinishText = materialName;
+    } else if (finishName) {
+      materialFinishText = `(${finishName})`;
+    }
+
+    const overrideLabel = [panelModName, materialFinishText].filter(Boolean).join(" ");
+    if (!overrideLabel) return;
+
+    const overrideKey = JSON.stringify({
+      panelMod: panelModOverrideId,
+      material: materialOverrideId,
+      finish: finishOverrideIds,
+    });
+
+    const numericQuantity = Number(cabinet.quantity);
+    const cabinetCount =
+      Number.isFinite(numericQuantity) && numericQuantity > 0 ? numericQuantity : 1;
+
+    if (!groupedOverrides.has(overrideKey)) {
+      groupedOverrides.set(overrideKey, {
+        label: overrideLabel,
+        count: 0,
+      });
+    }
+
+    groupedOverrides.get(overrideKey).count += cabinetCount;
+  });
+
+  if (groupedOverrides.size === 0) return "";
+
+  const formatCount = (count) =>
+    Number.isInteger(count) ? String(count) : String(count);
+
+  const groupedText = Array.from(groupedOverrides.values())
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .map(({ label, count }) => {
+      const countText = formatCount(count);
+      const backLabel = count === 1 ? "back" : "backs";
+      const cabinetLabel = count === 1 ? "cabinet" : "cabinets";
+      return `${label} ${backLabel} in ${countText} ${cabinetLabel}`;
+    })
+    .join(", ");
+
+  return `${groupedText}.`;
+};
+
 const F_VES_EXCEPTIONS = new Set([
   "belief",
   "chef",
@@ -617,6 +714,11 @@ export const buildAdditionalSectionNotesText = ({
   });
 
   const panelModNote = buildPanelModNote(effectiveSection);
+  const finishedBackOverridesNote = buildFinishedBackOverridesNote({
+    effectiveSection,
+    faceMaterials,
+    finishTypes,
+  });
   const appliedMoldingNote = buildAppliedMoldingNote(effectiveSection);
   const excludedPullsNote = buildExcludedPullsNote(
     effectiveSection,
@@ -638,6 +740,7 @@ export const buildAdditionalSectionNotesText = ({
     doorDrawerMaterialNote,
     lengthMaterialFinishNote,
     panelModNote,
+    finishedBackOverridesNote,
     appliedMoldingNote,
     doorPullNote,
     drawerPullNote,
@@ -649,6 +752,7 @@ export const buildAdditionalSectionNotesText = ({
       horizontalGrainNote,
       doorDrawerMaterialNote,
       panelModNote,
+      finishedBackOverridesNote,
       appliedMoldingNote,
       doorPullNote,
       drawerPullNote,

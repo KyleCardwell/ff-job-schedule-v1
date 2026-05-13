@@ -101,6 +101,33 @@ const getPartAnchors = (part, partNeedsFinish, partsListAnchors) => {
   return anchors || null;
 };
 
+const resolveFinBackMultipliers = (cab, context) => {
+  const finBackFinish = cab?.fin_back_finish;
+
+  if (finBackFinish === null || finBackFinish === undefined) return null;
+
+  if (Array.isArray(finBackFinish) && finBackFinish.length === 0) {
+    return { finishMultiplier: 0, shopMultiplier: 1 };
+  }
+
+  let finishMultiplier = 1;
+  let shopMultiplier = 1;
+
+  finBackFinish.forEach((finishId) => {
+    const finishObj = context.finishTypes?.find(
+      (ft) => Number(ft.id) === Number(finishId),
+    );
+    if (finishObj?.finish_markup) {
+      finishMultiplier += finishObj.finish_markup / 100;
+    }
+    if (finishObj?.shop_markup) {
+      shopMultiplier += finishObj.shop_markup / 100;
+    }
+  });
+
+  return { finishMultiplier, shopMultiplier };
+};
+
 /**
  * Generic interpolation function for calculating time based on area
  * @param {Array} anchors - Array of anchor objects with dimensions and services
@@ -436,7 +463,11 @@ export const calculateHoodPartsTime = (
  * @param {Array} context.globalServices - Global services array
  * @returns {Object} - { serviceId: hours }
  */
-const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
+const calculatePartsTimeForCabinet = (
+  boxPartsList,
+  context = {},
+  cabinet = null,
+) => {
   const {
     partsListAnchors,
     selectedBoxMaterial,
@@ -473,6 +504,20 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
     const partMaterial = part.finish
       ? selectedFaceMaterial
       : selectedBoxMaterial;
+    const isFinishedBack =
+      cabinet && part.type === PART_NAMES.BACK && part.finish === true;
+    const finBackMultipliers = isFinishedBack
+      ? resolveFinBackMultipliers(cabinet, context)
+      : null;
+    const finBackPanelModId = isFinishedBack
+      ? cabinet?.fin_back_panel_mod
+      : null;
+    const finBackPanelModAnchors =
+      finBackPanelModId !== null &&
+      finBackPanelModId !== undefined &&
+      Number(finBackPanelModId) > 0
+        ? partsListAnchors[Number(finBackPanelModId)] || null
+        : null;
 
     // Determine if THIS specific part needs finish based on the selected material
     // This is independent of which material was selected
@@ -504,7 +549,11 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
       const tShapeMinutesEach = tShapeAnchors
         ? interpolateTimeByArea(tShapeAnchors, area, teamServiceId, null)
         : 0;
-      let totalMinutes = (minutesEach + tShapeMinutesEach) * quantity;
+      const panelModMinutesEach = finBackPanelModAnchors
+        ? interpolateTimeByArea(finBackPanelModAnchors, area, teamServiceId, null)
+        : 0;
+      let totalMinutes =
+        (minutesEach + tShapeMinutesEach + panelModMinutesEach) * quantity;
 
       // Apply multipliers and filter services based on whether this part needs finish
       if (globalServices) {
@@ -522,7 +571,8 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
             service.service_id === 2
             // && partMaterial.shopMultiplier
           ) {
-            totalMinutes *= partMaterial.shopMultiplier;
+            totalMinutes *=
+              finBackMultipliers?.shopMultiplier ?? partMaterial.shopMultiplier;
           }
           // Finish multiplier for service ID 3
           if (
@@ -530,7 +580,8 @@ const calculatePartsTimeForCabinet = (boxPartsList, context = {}) => {
             service.service_id === 3
             // && partMaterial.finishMultiplier
           ) {
-            totalMinutes *= partMaterial.finishMultiplier;
+            totalMinutes *=
+              finBackMultipliers?.finishMultiplier ?? partMaterial.finishMultiplier;
           }
         }
       }
@@ -596,7 +647,11 @@ export const calculateBoxPartsTime = (section, context = {}) => {
 
     // Calculate hours for regular box parts
     if (regularParts.length > 0) {
-      const regularHours = calculatePartsTimeForCabinet(regularParts, context);
+      const regularHours = calculatePartsTimeForCabinet(
+        regularParts,
+        context,
+        cabinet,
+      );
       Object.entries(regularHours).forEach(([teamServiceId, hours]) => {
         const service = globalServices.find(
           (s) => s.team_service_id === parseInt(teamServiceId),
@@ -616,7 +671,11 @@ export const calculateBoxPartsTime = (section, context = {}) => {
 
     // Calculate hours for filler parts
     if (fillerParts.length > 0) {
-      const fillerHours = calculatePartsTimeForCabinet(fillerParts, context);
+      const fillerHours = calculatePartsTimeForCabinet(
+        fillerParts,
+        context,
+        cabinet,
+      );
       Object.entries(fillerHours).forEach(([teamServiceId, hours]) => {
         const service = globalServices.find(
           (s) => s.team_service_id === parseInt(teamServiceId),
@@ -639,7 +698,11 @@ export const calculateBoxPartsTime = (section, context = {}) => {
     // Then add nosing process time based on length (without multipliers)
     if (nosingParts.length > 0) {
       // Calculate material hours (includes multipliers for the material itself)
-      const materialHours = calculatePartsTimeForCabinet(nosingParts, context);
+      const materialHours = calculatePartsTimeForCabinet(
+        nosingParts,
+        context,
+        cabinet,
+      );
       Object.entries(materialHours).forEach(([teamServiceId, hours]) => {
         const service = globalServices.find(
           (s) => s.team_service_id === parseInt(teamServiceId),
@@ -1887,6 +1950,13 @@ export const calculateBoxSheetsCNC = (
 
     const boxMaterialKey = cab.finished_interior ? "face" : "box";
 
+    const finBackMatId = cab.fin_back_mat ?? null;
+    const finBackMaterial = finBackMatId
+      ? context.faceMaterials?.find((m) => Number(m.id) === Number(finBackMatId)) ||
+        selectedFaceMaterial
+      : selectedFaceMaterial;
+    const finBackMaterialKey = finBackMatId ? `finBack-${finBackMatId}` : "face";
+
     if (!cab.face_config?.boxSummary?.boxPartsList) return;
     // Only process cabinet boxes
     if (![...CABINET_TYPES].includes(cab.type)) return;
@@ -1912,13 +1982,20 @@ export const calculateBoxSheetsCNC = (
     // Add parts from this cabinet (multiplied by quantity)
     // Separate oversized parts and finished parts into their own groups
     boxPartsList.forEach((part) => {
-      // Determine base material key based on finish boolean
-      const baseMaterialKey = part.finish ? "face" : boxMaterialKey;
+      // Back parts with finish use the fin_back override material
+      const isFinishedBack = part.finish && part.type === PART_NAMES.BACK;
+      const baseMaterialKey = isFinishedBack
+        ? finBackMaterialKey
+        : part.finish
+          ? "face"
+          : boxMaterialKey;
 
       // Get the appropriate material for this part
-      const partMaterial = part.finish
-        ? selectedFaceMaterial
-        : selectedBoxMaterial;
+      const partMaterial = isFinishedBack
+        ? finBackMaterial
+        : part.finish
+          ? selectedFaceMaterial
+          : selectedBoxMaterial;
 
       // Check if part is oversized (exceeds standard sheet dimensions)
       const partStandardWidth = partMaterial?.width || 49;
@@ -1949,6 +2026,13 @@ export const calculateBoxSheetsCNC = (
               slides: 0,
               shelfDrillHoles: 0,
             },
+            cabinets: [],
+          };
+        } else if (isFinishedBack) {
+          materialGroups[materialKey] = {
+            material: partMaterial,
+            parts: [],
+            totals: { bandingLength: 0, hinges: 0, slides: 0, shelfDrillHoles: 0 },
             cabinets: [],
           };
         } else if (part.finish) {
@@ -2049,9 +2133,8 @@ export const calculateBoxSheetsCNC = (
         // Find the base material to get standard pricing
         const baseMaterialKey = materialKey.replace("-oversize", "");
         const baseMaterial =
-          baseMaterialKey === "face"
-            ? selectedFaceMaterial
-            : selectedBoxMaterial;
+          materialGroups[baseMaterialKey]?.material ||
+          (baseMaterialKey === "face" ? selectedFaceMaterial : selectedBoxMaterial);
 
         if (baseMaterial) {
           const standardSheetWidth = baseMaterial.width || 49;
@@ -2268,16 +2351,50 @@ export const generateCabinetSummary = (
     .filter(({ key }) => typeSpecificOptions?.[key])
     .map(({ label }) => label);
 
+  const finBackMaterial = typeSpecificOptions?.finBackMaterialSummary;
+  const finBackFinish = typeSpecificOptions?.finBackFinishSummary;
+  const finBackPanelMod = typeSpecificOptions?.finBackPanelModSummary;
+
+  let finBackMaterialFinish = null;
+  if (finBackMaterial != null && finBackFinish != null) {
+    finBackMaterialFinish = `${finBackMaterial} - ${finBackFinish}`;
+  } else if (finBackMaterial != null) {
+    finBackMaterialFinish = `${finBackMaterial}`;
+  } else if (finBackFinish != null) {
+    finBackMaterialFinish = `${finBackFinish}`;
+  }
+
+  const finBackDetails = [];
+  if (finBackMaterialFinish) {
+    finBackDetails.push(finBackMaterialFinish);
+  }
+  if (finBackPanelMod != null) {
+    finBackDetails.push(finBackPanelMod);
+  }
+
+  const backOverrideLabel =
+    finBackDetails.length > 0 ? `back (${finBackDetails.join(", ")})` : null;
+
+  const finishedSideDetails = finishedSides.map((side) =>
+    side === "back" && backOverrideLabel ? backOverrideLabel : side,
+  );
+
+  if (!finishedSides.includes("back") && backOverrideLabel) {
+    finishedSideDetails.push(backOverrideLabel);
+  }
+
   if (finishedSides.length > 0) {
     if (cabinetItemType === 10) {
-      summary.push(`nosing (${finishedSides.join(", ")})`);
+      summary.push(`nosing (${finishedSideDetails.join(", ")})`);
     } else {
       summary.push(
         `${finishedSides.length} finished side${
           finishedSides.length !== 1 ? "s" : ""
-        } (${finishedSides.join(", ")})`,
+        } (${finishedSideDetails.join(", ")})`,
       );
     }
+  } else if (backOverrideLabel) {
+    summary.push(backOverrideLabel);
   }
 
   // Helper to recursively collect all nodes
