@@ -64,7 +64,7 @@ export const buildPanelModNote = (effectiveSection = {}) => {
     return 0;
   };
 
-  const collectPanelModsFromNode = (node) => {
+  const collectPanelModsFromNode = (node, cabinetQuantity = 1) => {
     if (!node) return;
 
     if (panelModEligibleTypes.has(node.type) && node.panelMod != null) {
@@ -72,7 +72,7 @@ export const buildPanelModNote = (effectiveSection = {}) => {
       const expectedPanelModId = getExpectedPanelModIdForType(node.type);
 
       if (Number.isFinite(panelModId) && panelModId !== expectedPanelModId) {
-        const count = node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1;
+        const count = (node.type === FACE_NAMES.PAIR_DOOR ? 2 : 1) * cabinetQuantity;
 
         let panelModName = "";
         if (panelModId > 0) {
@@ -89,14 +89,22 @@ export const buildPanelModNote = (effectiveSection = {}) => {
     }
 
     if (Array.isArray(node.children)) {
-      node.children.forEach(collectPanelModsFromNode);
+      node.children.forEach((child) =>
+        collectPanelModsFromNode(child, cabinetQuantity),
+      );
     }
   };
 
   if (Array.isArray(effectiveSection.cabinets)) {
     effectiveSection.cabinets.forEach((cabinet) => {
       if (cabinet?.face_config) {
-        collectPanelModsFromNode(cabinet.face_config);
+        const numericQuantity = Number(cabinet.quantity);
+        const cabinetQuantity =
+          Number.isFinite(numericQuantity) && numericQuantity > 0
+            ? numericQuantity
+            : 1;
+
+        collectPanelModsFromNode(cabinet.face_config, cabinetQuantity);
       }
     });
   }
