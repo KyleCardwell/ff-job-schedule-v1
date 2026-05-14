@@ -739,6 +739,40 @@ const AddToSchedule = () => {
     return { unscheduledSectionIds: unscheduled, scheduledGroups: grouped };
   }, [currentEstimate]);
 
+  const scheduledDisplayGroups = useMemo(() => {
+    const taskIdOrder = [];
+    const groupsByTaskId = {};
+
+    scheduledGroups.forEach((group) => {
+      const taskId = group.taskId;
+      groupsByTaskId[taskId] = {
+        taskId,
+        sectionIds: [...group.sectionIds],
+        lineItemSectionIds: [],
+      };
+      taskIdOrder.push(taskId);
+    });
+
+    scheduledLineItemSectionIds.forEach((sectionId) => {
+      const lineItem = lineItemData[sectionId];
+      const taskId = lineItem?.scheduledTaskId;
+      if (!taskId) return;
+
+      if (!groupsByTaskId[taskId]) {
+        groupsByTaskId[taskId] = {
+          taskId,
+          sectionIds: [],
+          lineItemSectionIds: [],
+        };
+        taskIdOrder.push(taskId);
+      }
+
+      groupsByTaskId[taskId].lineItemSectionIds.push(sectionId);
+    });
+
+    return taskIdOrder.map((taskId) => groupsByTaskId[taskId]);
+  }, [scheduledGroups, scheduledLineItemSectionIds, lineItemData]);
+
   // Initialize groups from unscheduled sections only
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
@@ -1486,11 +1520,13 @@ const AddToSchedule = () => {
 
   const allSelected =
     groups.length > 0 && selectedGroups.size === groups.length;
-  const hasScheduledItems =
-    scheduledGroups.length > 0 || scheduledLineItemSectionIds.length > 0;
+  const hasScheduledItems = scheduledDisplayGroups.length > 0;
   const totalScheduledItems =
-    scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0) +
-    scheduledLineItemSectionIds.length;
+    scheduledDisplayGroups.reduce(
+      (count, group) =>
+        count + group.sectionIds.length + group.lineItemSectionIds.length,
+      0,
+    );
 
   return (
     <div className="h-full bg-slate-900 text-slate-200 flex flex-col">
@@ -1934,10 +1970,29 @@ const AddToSchedule = () => {
                 )
               </h3>
               <div className="space-y-3 opacity-80 text-slate-300 font-mono text-xs font-medium">
-                {scheduledGroups.map((schGroup) => {
-                  const isMulti = schGroup.sectionIds.length > 1;
-                  const groupHours = getGroupHours(schGroup);
-                  const groupPrice = getGroupEstimatedPrice(schGroup);
+                {scheduledDisplayGroups.map((schGroup) => {
+                  const scheduledSectionIds = [
+                    ...schGroup.sectionIds,
+                    ...schGroup.lineItemSectionIds,
+                  ];
+                  const scheduledGroup = { sectionIds: scheduledSectionIds };
+                  const scheduledCount = scheduledSectionIds.length;
+                  const isMulti = scheduledCount > 1;
+                  const groupHours = getGroupHours(scheduledGroup);
+                  const groupPrice = getGroupEstimatedPrice(scheduledGroup);
+                  const sectionTaskName = schGroup.sectionIds[0]
+                    ? sectionCalcsMap[schGroup.sectionIds[0]]?.taskName
+                    : null;
+                  const firstLineItemSectionId = schGroup.lineItemSectionIds[0];
+                  const firstLineItemName = firstLineItemSectionId
+                    ? sectionNames[firstLineItemSectionId] ||
+                      lineItemData[firstLineItemSectionId]?.title ||
+                      lineItemData[firstLineItemSectionId]?.fallbackName
+                    : null;
+                  const groupName =
+                    sectionTaskName ||
+                    firstLineItemName ||
+                    `Task ${schGroup.taskId}`;
 
                   return (
                     <div
@@ -1958,10 +2013,7 @@ const AddToSchedule = () => {
                             <FiCheck size={16} className="text-green-500" />
                           </div>
                           <div></div>
-                          <div className="min-w-0 truncate">
-                            {sectionCalcsMap[schGroup.sectionIds[0]]
-                              ?.taskName || "Group"}
-                          </div>
+                          <div className="min-w-0 truncate">{groupName}</div>
                           {activeServices.map((service) => (
                             <div
                               key={service.service_id}
@@ -1981,7 +2033,7 @@ const AddToSchedule = () => {
                         </div>
                       )}
 
-                      {/* Individual sections */}
+                      {/* Individual scheduled rows */}
                       <div className={isMulti ? "p-2 space-y-1" : "space-y-1"}>
                         {schGroup.sectionIds.map((sectionId) => {
                           const calc = sectionCalcsMap[sectionId];
@@ -2039,52 +2091,65 @@ const AddToSchedule = () => {
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
-                  );
-                })}
-                {scheduledLineItemSectionIds.map((sectionId) => {
-                  const lineItem = lineItemData[sectionId];
-                  if (!lineItem) return null;
-                  const sectionPrice = getSectionEstimatedPrice(sectionId);
+                        {schGroup.lineItemSectionIds.map((sectionId) => {
+                          const lineItem = lineItemData[sectionId];
+                          if (!lineItem) return null;
+                          const sectionPrice = getSectionEstimatedPrice(sectionId);
 
-                  return (
-                    <div
-                      key={`scheduled-${sectionId}`}
-                      className="px-4 py-3 rounded-lg border bg-slate-800 border-slate-700"
-                    >
-                      <div
-                        className="grid gap-2 items-center text-sm"
-                        style={{
-                          gridTemplateColumns: `28px 28px ${sectionGridCols}`,
-                        }}
-                      >
-                        <div className="flex items-center justify-center">
-                          <FiCheck size={16} className="text-green-500" />
-                        </div>
-                        <div></div>
-                        <div className="min-w-0 truncate flex items-center gap-2">
-                          <span>
-                            {sectionNames[sectionId] ||
-                              lineItem.title ||
-                              lineItem.fallbackName}
-                          </span>
-                          <span className="text-[10px] uppercase tracking-wider text-slate-500 border border-slate-600 rounded px-1.5 py-0.5">
-                            Line Item
-                          </span>
-                        </div>
-                        {activeServices.map((service) => (
-                          <div
-                            key={service.service_id}
-                            className="text-center"
-                          >
-                            0.00
-                          </div>
-                        ))}
-                        <div className="text-center">0.00</div>
-                        <div className="text-center">
-                          {formatCurrency(sectionPrice)}
-                        </div>
+                          return (
+                            <div
+                              key={`scheduled-${sectionId}`}
+                              className={`px-4 py-3 rounded-lg border ${
+                                isMulti
+                                  ? "bg-slate-700/20 border-slate-700/50"
+                                  : "bg-slate-800 border-slate-700"
+                              }`}
+                            >
+                              <div
+                                className="grid gap-2 items-center text-sm"
+                                style={{
+                                  gridTemplateColumns: isMulti
+                                    ? sectionGridCols
+                                    : `28px 28px ${sectionGridCols}`,
+                                }}
+                              >
+                                {!isMulti && (
+                                  <>
+                                    <div className="flex items-center justify-center">
+                                      <FiCheck
+                                        size={16}
+                                        className="text-green-500"
+                                      />
+                                    </div>
+                                    <div></div>
+                                  </>
+                                )}
+                                <div className="min-w-0 truncate flex items-center gap-2">
+                                  <span>
+                                    {sectionNames[sectionId] ||
+                                      lineItem.title ||
+                                      lineItem.fallbackName}
+                                  </span>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-500 border border-slate-600 rounded px-1.5 py-0.5">
+                                    Line Item
+                                  </span>
+                                </div>
+                                {activeServices.map((service) => (
+                                  <div
+                                    key={service.service_id}
+                                    className="text-center"
+                                  >
+                                    0.00
+                                  </div>
+                                ))}
+                                <div className="text-center">0.00</div>
+                                <div className="text-center">
+                                  {formatCurrency(sectionPrice)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
