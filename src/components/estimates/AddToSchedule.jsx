@@ -148,6 +148,65 @@ const normalizeEstimateSections = (sections = []) =>
 
 const normalizeSectionName = (value) => value?.toLowerCase?.().trim?.() || "";
 
+const parseNumeric = (value) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getLineItemSectionId = (index) => `line-item-${index}`;
+
+const getLineItemFallbackName = (index) => `Line Item ${index + 1}`;
+
+const calculateLineItemTotalCost = (lineItem = {}) => {
+  const parentTotal =
+    parseNumeric(lineItem?.quantity) * parseNumeric(lineItem?.cost);
+  const subItemsTotal = (lineItem?.subItems || []).reduce((sum, subItem) => {
+    const subTotal = parseNumeric(subItem?.quantity) * parseNumeric(subItem?.cost);
+    return sum + subTotal;
+  }, 0);
+  return parentTotal + subItemsTotal;
+};
+
+const buildLineItemOtherRows = (lineItem = {}, includedSubItemsByIndex = {}) => {
+  const parentLabel = lineItem?.title || lineItem?.fallbackName || "Line Item";
+  const rows = [];
+
+  const parentCost = roundToHundredth(
+    parseNumeric(lineItem?.quantity) * parseNumeric(lineItem?.cost),
+  );
+  if (parentCost) {
+    rows.push({
+      invoice: `line-item-${(lineItem?.index || 0) + 1}`,
+      description: parentLabel,
+      cost: parentCost,
+      taxRate: "",
+    });
+  }
+
+  (lineItem?.subItems || []).forEach((subItem, subIndex) => {
+    if (includedSubItemsByIndex[subIndex] === false) return;
+
+    const subCost = roundToHundredth(
+      parseNumeric(subItem?.quantity) * parseNumeric(subItem?.cost),
+    );
+    if (!subCost) return;
+
+    const subTitle =
+      typeof subItem?.title === "string" && subItem.title.trim()
+        ? subItem.title.trim()
+        : `Sub Item ${subIndex + 1}`;
+
+    rows.push({
+      invoice: `line-item-${(lineItem?.index || 0) + 1}-sub-${subIndex + 1}`,
+      description: `${parentLabel} - ${subTitle}`,
+      cost: subCost,
+      taxRate: "",
+    });
+  });
+
+  return rows;
+};
+
 const getSectionCategoryCosts = (calculations = {}) => {
   const facePrices = calculations.facePrices || {};
   const doorCost =
@@ -309,6 +368,7 @@ const AddToSchedule = () => {
   // Editable names: sectionId → string, groupId → string
   const [sectionNames, setSectionNames] = useState({});
   const [groupNames, setGroupNames] = useState({});
+  const [lineItemSubItemInclusion, setLineItemSubItemInclusion] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -328,6 +388,132 @@ const AddToSchedule = () => {
     });
     return [...DEFAULT_FINANCIAL_SECTIONS, ...extras];
   }, [normalizedEstimateSections]);
+  const otherFinancialSectionId = useMemo(
+    () =>
+      financialSections.find(
+        (section) =>
+          section.id === "other" || normalizeSectionName(section.name) === "other",
+      )?.id || "other",
+    [financialSections],
+  );
+
+  const lineItemData = useMemo(() => {
+    const lineItems = Array.isArray(currentEstimate?.line_items)
+      ? currentEstimate.line_items
+      : EMPTY_ARRAY;
+    return lineItems.reduce((map, lineItem, index) => {
+      const sectionId = getLineItemSectionId(index);
+      const fallbackName = getLineItemFallbackName(index);
+      const rawTitle = lineItem?.title;
+      const resolvedTitle =
+        typeof rawTitle === "string" && rawTitle.trim()
+          ? rawTitle.trim()
+          : fallbackName;
+
+      map[sectionId] = {
+        index,
+        sectionId,
+        title: resolvedTitle,
+        quantity: lineItem?.quantity,
+        cost: lineItem?.cost,
+        subItems: Array.isArray(lineItem?.subItems)
+          ? lineItem.subItems
+          : EMPTY_ARRAY,
+        totalCost: roundToHundredth(calculateLineItemTotalCost(lineItem)),
+        fallbackName,
+      };
+
+      return map;
+    }, {});
+  }, [currentEstimate]);
+
+  const lineItemSectionIds = useMemo(
+    () =>
+      Object.values(lineItemData)
+        .sort((a, b) => a.index - b.index)
+        .map((item) => item.sectionId),
+    [lineItemData],
+  );
+
+  useEffect(() => {
+    setLineItemSubItemInclusion((prev) =>
+      Object.values(lineItemData).reduce((next, lineItem) => {
+        const sectionId = lineItem.sectionId;
+        const previousFlags = prev[sectionId] || {};
+        next[sectionId] = (lineItem.subItems || []).reduce((flags, _, subIndex) => {
+          flags[subIndex] = previousFlags[subIndex] ?? true;
+          return flags;
+        }, {});
+        return next;
+      }, {}),
+    );
+  }, [lineItemData]);
+
+  const handleToggleLineItemSubItem = useCallback((sectionId, subIndex) => {
+    setLineItemSubItemInclusion((prev) => ({
+      ...prev,
+      [sectionId]: {
+        ...(prev[sectionId] || {}),
+        [subIndex]: !((prev[sectionId] || {})[subIndex] ?? true),
+      },
+    }));
+  }, []);
+
+  const renderLineItemSubItems = useCallback(
+    (sectionId, lineItem, isDisabled = false) => {
+      if (!lineItem?.subItems?.length) return null;
+
+      return (
+        <div className="ml-14 mt-1 space-y-1 rounded border border-slate-700/70 bg-slate-900/50 px-3 py-2">
+          {lineItem.subItems.map((subItem, subIndex) => {
+            const isIncluded =
+              lineItemSubItemInclusion[sectionId]?.[subIndex] !== false;
+            const subTitle =
+              typeof subItem?.title === "string" && subItem.title.trim()
+                ? subItem.title.trim()
+                : `Sub Item ${subIndex + 1}`;
+            const subCost = roundToHundredth(
+              parseNumeric(subItem?.quantity) * parseNumeric(subItem?.cost),
+            );
+
+            return (
+              <label
+                key={`${sectionId}-sub-item-${subIndex}`}
+                className="flex items-center justify-between gap-3 text-xs text-slate-300"
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={isIncluded}
+                    onChange={() => handleToggleLineItemSubItem(sectionId, subIndex)}
+                    disabled={isDisabled}
+                    className="w-3.5 h-3.5 rounded border-slate-500 text-teal-500 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <span className="truncate">{subTitle}</span>
+                </span>
+                <span className="font-mono text-slate-400 flex-shrink-0">
+                  ${subCost.toFixed(2)}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      );
+    },
+    [lineItemSubItemInclusion, handleToggleLineItemSubItem],
+  );
+
+  const lineItemRowsBySectionId = useMemo(
+    () =>
+      Object.values(lineItemData).reduce((map, lineItem) => {
+        map[lineItem.sectionId] = buildLineItemOtherRows(
+          lineItem,
+          lineItemSubItemInclusion[lineItem.sectionId] || {},
+        );
+        return map;
+      }, {}),
+    [lineItemData, lineItemSubItemInclusion],
+  );
 
   // ---------- Fetch estimate + catalogs ----------
   useEffect(() => {
@@ -511,16 +697,18 @@ const AddToSchedule = () => {
   // Auto-group sections belonging to the same task if the task has >1 section
   useEffect(() => {
     const allScheduledIds = scheduledGroups.flatMap((g) => g.sectionIds);
-    if (unscheduledSectionIds.length > 0) {
+    const hasUnscheduledEntries =
+      unscheduledSectionIds.length > 0 || lineItemSectionIds.length > 0;
+    if (hasUnscheduledEntries) {
       setSaveSuccess(false);
     }
     // No unscheduled sections means there is nothing to initialize/select.
     // Returning here prevents repeatedly setting [] / {} state and re-rendering forever.
-    if (unscheduledSectionIds.length === 0) return;
+    if (!hasUnscheduledEntries) return;
     if (groups.length !== 0) return;
-    // Verify all sections have calcs (both unscheduled and scheduled)
-    const allIds = [...unscheduledSectionIds, ...allScheduledIds];
-    if (!allIds.every((id) => sectionCalcsMap[id])) return;
+    // Verify all estimate sections have calcs (both unscheduled and scheduled)
+    const allEstimateSectionIds = [...unscheduledSectionIds, ...allScheduledIds];
+    if (!allEstimateSectionIds.every((id) => sectionCalcsMap[id])) return;
 
     // Group only unscheduled sections by taskId, preserving tasks_order
     const taskOrder = [];
@@ -535,31 +723,51 @@ const AddToSchedule = () => {
       taskMap[calc.taskId].push(sectionId);
     });
 
-    const initialGroups = taskOrder.map((taskId) => ({
+    const sectionGroups = taskOrder.map((taskId) => ({
       groupId: `group-task-${taskId}`,
       sectionIds: taskMap[taskId],
     }));
+    const lineItemGroups = lineItemSectionIds.map((sectionId) => ({
+      groupId: `group-${sectionId}`,
+      sectionIds: [sectionId],
+    }));
+    const initialGroups = [...sectionGroups, ...lineItemGroups];
 
     // Initialize editable section names for ALL sections (unscheduled + scheduled)
     const initialSectionNames = {};
-    allIds.forEach((sectionId) => {
+    allEstimateSectionIds.forEach((sectionId) => {
       const calc = sectionCalcsMap[sectionId];
       if (calc) initialSectionNames[sectionId] = calc.sectionName;
+    });
+    lineItemSectionIds.forEach((sectionId) => {
+      const lineItem = lineItemData[sectionId];
+      if (lineItem) {
+        initialSectionNames[sectionId] = lineItem.title || lineItem.fallbackName;
+      }
     });
     setSectionNames(initialSectionNames);
 
     // Initialize editable group names: default to first section's task name
     const initialGroupNames = {};
     initialGroups.forEach((group) => {
-      const firstCalc = sectionCalcsMap[group.sectionIds[0]];
-      initialGroupNames[group.groupId] = firstCalc?.taskName || "Group";
+      const firstId = group.sectionIds[0];
+      const firstCalc = sectionCalcsMap[firstId];
+      initialGroupNames[group.groupId] =
+        firstCalc?.taskName || initialSectionNames[firstId] || "Group";
     });
     setGroupNames(initialGroupNames);
 
     setGroups(initialGroups);
-    // Select all by default
-    setSelectedGroups(new Set(initialGroups.map((g) => g.groupId)));
-  }, [sectionCalcsMap, unscheduledSectionIds, scheduledGroups, groups.length]);
+    // Select only section-based groups by default
+    setSelectedGroups(new Set(sectionGroups.map((g) => g.groupId)));
+  }, [
+    sectionCalcsMap,
+    unscheduledSectionIds,
+    scheduledGroups,
+    lineItemSectionIds,
+    lineItemData,
+    groups.length,
+  ]);
 
   // Active services (for column headers)
   const activeServices = useMemo(
@@ -597,6 +805,68 @@ const AddToSchedule = () => {
     [sectionCalcsMap],
   );
 
+  const getSectionDisplayName = useCallback(
+    (sectionId) => {
+      const editable = sectionNames[sectionId];
+      if (typeof editable === "string" && editable.trim()) {
+        return editable.trim();
+      }
+
+      if (lineItemData[sectionId]) {
+        return lineItemData[sectionId].fallbackName;
+      }
+
+      return sectionCalcsMap[sectionId]?.sectionName || "Section";
+    },
+    [sectionNames, lineItemData, sectionCalcsMap],
+  );
+
+  const getGroupDisplayName = useCallback(
+    (group) => {
+      if (group.sectionIds.length > 1) {
+        const editable = groupNames[group.groupId];
+        if (typeof editable === "string" && editable.trim()) {
+          return editable.trim();
+        }
+        return getSectionDisplayName(group.sectionIds[0]) || "Group";
+      }
+
+      return getSectionDisplayName(group.sectionIds[0]);
+    },
+    [groupNames, getSectionDisplayName],
+  );
+
+  const buildMinimalLineItemFinancialData = useCallback(
+    (lineItemTotalCost = 0, lineItemRows = EMPTY_ARRAY) => {
+      const total = roundToHundredth(lineItemTotalCost || 0);
+      const otherActualCost = roundToHundredth(
+        lineItemRows.reduce((sum, row) => sum + (Number(row.cost) || 0), 0),
+      );
+
+      const financialData = {
+        hours: {
+          name: "hours",
+          estimate: 0,
+          actual_cost: 0,
+          data: [],
+        },
+      };
+
+      financialSections.forEach(({ id, name }) => {
+        const isOther = id === otherFinancialSectionId;
+        financialData[id] = {
+          name: name?.toLowerCase?.() || String(id),
+          estimate: isOther ? total : 0,
+          actual_cost: isOther ? otherActualCost : 0,
+          data: isOther ? lineItemRows : [],
+        };
+      });
+
+      return financialData;
+    },
+    [financialSections, otherFinancialSectionId],
+  );
+
   const buildGroupFinancialData = useCallback(
     (group) => {
       const categoryTotals = {
@@ -612,6 +882,13 @@ const AddToSchedule = () => {
         pulls: new Map(),
         slides: new Map(),
       };
+      let hasSectionFinancialData = false;
+      const lineItemInputRows = group.sectionIds.flatMap(
+        (sectionId) => lineItemRowsBySectionId[sectionId] || EMPTY_ARRAY,
+      );
+      const lineItemsTotalCost = roundToHundredth(
+        lineItemInputRows.reduce((sum, row) => sum + (Number(row.cost) || 0), 0),
+      );
 
       const addHardwareCount = (map, id, count) => {
         if (!id || !count) return;
@@ -622,6 +899,7 @@ const AddToSchedule = () => {
         const sectionData = sectionCalcsMap[sectionId];
         const calculations = sectionData?.calculations;
         if (!calculations) return;
+        hasSectionFinancialData = true;
         const costs = getSectionCategoryCosts(calculations);
         Object.keys(categoryTotals).forEach((key) => {
           categoryTotals[key] += costs[key] || 0;
@@ -655,6 +933,17 @@ const AddToSchedule = () => {
           );
         }
       });
+
+      if (!hasSectionFinancialData) {
+        return buildMinimalLineItemFinancialData(
+          lineItemsTotalCost,
+          lineItemInputRows,
+        );
+      }
+
+      if (lineItemsTotalCost) {
+        categoryTotals.other += lineItemsTotalCost;
+      }
 
       const adjustedTotals = allocateUnmappedCosts(
         categoryTotals,
@@ -720,6 +1009,7 @@ const AddToSchedule = () => {
         const estimate = getEstimateCostForSectionName(name, adjustedTotals);
         const isHardware = id === "hardware";
         const isWood = id === "wood";
+        const isOther = id === otherFinancialSectionId;
         const inputRows = isHardware
           ? hardwareInputRows
           : isWood && estimate
@@ -730,6 +1020,8 @@ const AddToSchedule = () => {
                   taxRate: "",
                 },
               ]
+            : isOther
+              ? lineItemInputRows
             : [];
         const actualCost = inputRows.reduce(
           (sum, row) => sum + (Number(row.cost) || 0),
@@ -745,7 +1037,16 @@ const AddToSchedule = () => {
 
       return financialData;
     },
-    [sectionCalcsMap, financialSections, services, getGroupHours, hardware],
+    [
+      sectionCalcsMap,
+      lineItemRowsBySectionId,
+      buildMinimalLineItemFinancialData,
+      financialSections,
+      otherFinancialSectionId,
+      services,
+      getGroupHours,
+      hardware,
+    ],
   );
 
   // ---------- Selection ----------
@@ -993,22 +1294,29 @@ const AddToSchedule = () => {
           const groupHours = getGroupHours(group);
           const shopHours = groupHours.hoursByService[2] || 0;
           const financialData = buildGroupFinancialData(group);
+          const sectionIds = group.sectionIds.filter(
+            (id) => !lineItemData[id],
+          );
+          const lineItemIndexes = group.sectionIds
+            .map((id) => lineItemData[id]?.index)
+            .filter((index) => Number.isInteger(index));
 
           // Determine task name: use group name for multi-section groups,
           // or section name for single-section groups
-          const name =
-            group.sectionIds.length > 1
-              ? groupNames[group.groupId] || "Group"
-              : sectionNames[group.sectionIds[0]] ||
-                sectionCalcsMap[group.sectionIds[0]]?.sectionName ||
-                "Section";
+          const name = getGroupDisplayName(group);
 
-          return {
+          const groupPayload = {
             name,
             duration: shopHours,
-            section_ids: group.sectionIds.map((id) => parseInt(id, 10)),
+            section_ids: sectionIds.map((id) => parseInt(id, 10)),
             financial_data: financialData,
           };
+
+          if (lineItemIndexes.length > 0) {
+            groupPayload.line_item_index = lineItemIndexes[0];
+          }
+
+          return groupPayload;
         });
 
       const startDate = normalizeDate(new Date());
@@ -1054,9 +1362,8 @@ const AddToSchedule = () => {
     groups,
     getGroupHours,
     buildGroupFinancialData,
-    groupNames,
-    sectionNames,
-    sectionCalcsMap,
+    lineItemData,
+    getGroupDisplayName,
     scheduledGroups,
     dispatch,
     currentEstimate,
@@ -1096,7 +1403,7 @@ const AddToSchedule = () => {
     <div className="h-full bg-slate-900 text-slate-200 flex flex-col">
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-6xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -1144,29 +1451,37 @@ const AddToSchedule = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="max-w-7xl mx-auto px-6 py-6">
           {/* Instructions */}
           <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700 flex gap-4">
             <div className="flex-1">
               <p className="text-slate-300">
-                Select which sections to add to the schedule.
+                Select which items to add to the schedule.
               </p>
-              <p>
-                Click the{" "}
-                <BsDashSquare className="inline text-lg text-red-400 bg-red-900/30" />{" "}
-                to ungroup a section.
-              </p>
-            </div>
-            <div className="flex-1">
               <p>
                 Drag the <strong>☰</strong> handle to reorder groups.
               </p>
+              {/* <p>
+                Click the{" "}
+                <BsDashSquare className="inline text-lg text-red-400 bg-red-900/30" />{" "}
+                to ungroup a section.
+              </p> */}
+            </div>
+            <div className="flex-1">
+              {/* <p>
+                Drag the <strong>☰</strong> handle to reorder groups.
+              </p> */}
               <p>
                 Drag the{" "}
                 <strong>
                   <FiMove className="inline" />
                 </strong>{" "}
                 handle on a section to merge it into another group.
+              </p>
+               <p>
+                Click the{" "}
+                <BsDashSquare className="inline text-lg text-red-400 bg-red-900/30" />{" "}
+                to ungroup a section.
               </p>
             </div>
           </div>
@@ -1191,7 +1506,7 @@ const AddToSchedule = () => {
           >
             <div></div>
             <div></div>
-            <div>Section</div>
+            <div>Task</div>
             {activeServices.map((service) => (
               <div key={service.service_id} className="text-center">
                 {service.service_name}
@@ -1286,7 +1601,9 @@ const AddToSchedule = () => {
                           >
                             {group.sectionIds.map((sectionId) => {
                               const calc = sectionCalcsMap[sectionId];
-                              if (!calc) return null;
+                              const lineItem = lineItemData[sectionId];
+                              const isLineItem = Boolean(lineItem);
+                              if (!calc && !lineItem) return null;
 
                               if (!isMulti) {
                                 // Single-section group: show checkbox + group drag + section content inline
@@ -1296,55 +1613,72 @@ const AddToSchedule = () => {
                                     id={sectionId}
                                     isGrouped={false}
                                   >
-                                    <div
-                                      className="grid gap-2 items-center text-sm"
-                                      style={{
-                                        gridTemplateColumns: `28px 28px ${sectionGridCols}`,
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-center">
-                                        <input
-                                          type="checkbox"
-                                          checked={isSelected}
-                                          onChange={() =>
-                                            handleToggleGroup(group.groupId)
-                                          }
-                                          className="w-4 h-4 rounded border-slate-500 text-teal-500 focus:ring-teal-500 cursor-pointer"
-                                        />
-                                      </div>
-                                      <button
-                                        {...dragListeners}
-                                        className="cursor-grab text-slate-400 hover:text-slate-200 p-1 flex items-center justify-center"
-                                        aria-label="Drag to reorder"
+                                    <div className="w-full space-y-1">
+                                      <div
+                                        className="grid gap-2 items-center text-sm"
+                                        style={{
+                                          gridTemplateColumns: `28px 28px ${sectionGridCols}`,
+                                        }}
                                       >
-                                        <FiMenu size={16} />
-                                      </button>
-                                      <div className="min-w-0">
-                                        <input
-                                          type="text"
-                                          value={sectionNames[sectionId] || ""}
-                                          onChange={(e) =>
-                                            setSectionNames((prev) => ({
-                                              ...prev,
-                                              [sectionId]: e.target.value,
-                                            }))
-                                          }
-                                          className="w-full bg-transparent border-b border-transparent hover:border-slate-500 focus:border-teal-400 focus:outline-none text-slate-200 text-sm px-0 py-0"
-                                        />
-                                      </div>
-                                      {activeServices.map((service) => (
-                                        <div
-                                          key={service.service_id}
-                                          className="text-center text-slate-300 font-mono text-xs"
-                                        >
-                                          {calc.hoursByService[
-                                            service.service_id
-                                          ]?.toFixed(2) || "—"}
+                                        <div className="flex items-center justify-center">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() =>
+                                              handleToggleGroup(group.groupId)
+                                            }
+                                            className="w-4 h-4 rounded border-slate-500 text-teal-500 focus:ring-teal-500 cursor-pointer"
+                                          />
                                         </div>
-                                      ))}
-                                      <div className="text-center text-slate-200 font-mono text-xs font-medium">
-                                        {calc.totalHours.toFixed(2)}
+                                        <button
+                                          {...dragListeners}
+                                          className="cursor-grab text-slate-400 hover:text-slate-200 p-1 flex items-center justify-center"
+                                          aria-label="Drag to reorder"
+                                        >
+                                          <FiMenu size={16} />
+                                        </button>
+                                        <div className="min-w-0 flex items-center gap-2">
+                                          <input
+                                            type="text"
+                                            value={sectionNames[sectionId] || ""}
+                                            onChange={(e) =>
+                                              setSectionNames((prev) => ({
+                                                ...prev,
+                                                [sectionId]: e.target.value,
+                                              }))
+                                            }
+                                            className="w-full bg-transparent border-b border-transparent hover:border-slate-500 focus:border-teal-400 focus:outline-none text-slate-200 text-sm px-0 py-0"
+                                          />
+                                          {isLineItem && (
+                                            <span className="text-[10px] uppercase tracking-wider text-slate-400 border border-slate-600 rounded px-1.5 py-0.5">
+                                              Line Item
+                                            </span>
+                                          )}
+                                        </div>
+                                        {activeServices.map((service) => (
+                                          <div
+                                            key={service.service_id}
+                                            className="text-center text-slate-300 font-mono text-xs"
+                                          >
+                                            {isLineItem
+                                              ? "0.00"
+                                              : calc.hoursByService[
+                                                  service.service_id
+                                                ]?.toFixed(2) || "—"}
+                                          </div>
+                                        ))}
+                                        <div className="text-center text-slate-200 font-mono text-xs font-medium">
+                                          {isLineItem
+                                            ? "0.00"
+                                            : calc.totalHours.toFixed(2)}
+                                        </div>
                                       </div>
+                                      {isLineItem &&
+                                        renderLineItemSubItems(
+                                          sectionId,
+                                          lineItem,
+                                          !isSelected,
+                                        )}
                                     </div>
                                   </DraggableSection>
                                 );
@@ -1357,50 +1691,67 @@ const AddToSchedule = () => {
                                   id={sectionId}
                                   isGrouped={true}
                                 >
-                                  <div
-                                    className="grid gap-2 items-center text-sm"
-                                    style={{
-                                      gridTemplateColumns: sectionGridCols,
-                                    }}
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <input
-                                        type="text"
-                                        value={sectionNames[sectionId] || ""}
-                                        onChange={(e) =>
-                                          setSectionNames((prev) => ({
-                                            ...prev,
-                                            [sectionId]: e.target.value,
-                                          }))
-                                        }
-                                        className="flex-1 min-w-0 bg-transparent border-b border-transparent hover:border-slate-500 focus:border-teal-400 focus:outline-none text-slate-200 text-sm px-0 py-0"
-                                      />
-                                      <button
-                                        onClick={() =>
-                                          handleUngroup(
-                                            sectionId,
-                                            group.groupId,
-                                          )
-                                        }
-                                        className="flex-shrink-0 text-lg text-red-400 hover:text-red-300 rounded bg-red-900/30 hover:bg-red-900/50"
-                                        title="Ungroup this section"
-                                      >
-                                        <BsDashSquare />
-                                      </button>
-                                    </div>
-                                    {activeServices.map((service) => (
-                                      <div
-                                        key={service.service_id}
-                                        className="text-center text-slate-300 font-mono text-xs"
-                                      >
-                                        {calc.hoursByService[
-                                          service.service_id
-                                        ]?.toFixed(2) || "—"}
+                                  <div className="w-full space-y-1">
+                                    <div
+                                      className="grid gap-2 items-center text-sm"
+                                      style={{
+                                        gridTemplateColumns: sectionGridCols,
+                                      }}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <input
+                                          type="text"
+                                          value={sectionNames[sectionId] || ""}
+                                          onChange={(e) =>
+                                            setSectionNames((prev) => ({
+                                              ...prev,
+                                              [sectionId]: e.target.value,
+                                            }))
+                                          }
+                                          className="flex-1 min-w-0 bg-transparent border-b border-transparent hover:border-slate-500 focus:border-teal-400 focus:outline-none text-slate-200 text-sm px-0 py-0"
+                                        />
+                                        {isLineItem && (
+                                          <span className="text-[10px] uppercase tracking-wider text-slate-400 border border-slate-600 rounded px-1.5 py-0.5">
+                                            Line Item
+                                          </span>
+                                        )}
+                                        <button
+                                          onClick={() =>
+                                            handleUngroup(
+                                              sectionId,
+                                              group.groupId,
+                                            )
+                                          }
+                                          className="flex-shrink-0 text-lg text-red-400 hover:text-red-300 rounded bg-red-900/30 hover:bg-red-900/50"
+                                          title="Ungroup this section"
+                                        >
+                                          <BsDashSquare />
+                                        </button>
                                       </div>
-                                    ))}
-                                    <div className="text-center text-slate-200 font-mono text-xs font-medium">
-                                      {calc.totalHours.toFixed(2)}
+                                      {activeServices.map((service) => (
+                                        <div
+                                          key={service.service_id}
+                                          className="text-center text-slate-300 font-mono text-xs"
+                                        >
+                                          {isLineItem
+                                            ? "0.00"
+                                            : calc.hoursByService[
+                                                service.service_id
+                                              ]?.toFixed(2) || "—"}
+                                        </div>
+                                      ))}
+                                      <div className="text-center text-slate-200 font-mono text-xs font-medium">
+                                        {isLineItem
+                                          ? "0.00"
+                                          : calc.totalHours.toFixed(2)}
+                                      </div>
                                     </div>
+                                    {isLineItem &&
+                                      renderLineItemSubItems(
+                                        sectionId,
+                                        lineItem,
+                                        !isSelected,
+                                      )}
                                   </div>
                                 </DraggableSection>
                               );
@@ -1418,15 +1769,13 @@ const AddToSchedule = () => {
               {activeId ? (
                 <div className="px-4 py-3 rounded-lg border border-teal-500 bg-slate-700 shadow-xl text-sm text-slate-200">
                   {activeId.startsWith("group-")
-                    ? groupNames[activeId] ||
-                      sectionCalcsMap[
-                        groups.find((g) => g.groupId === activeId)
-                          ?.sectionIds[0]
-                      ]?.taskName ||
-                      "Group"
-                    : sectionNames[activeId] ||
-                      sectionCalcsMap[activeId]?.sectionName ||
-                      "Section"}
+                    ? getGroupDisplayName(
+                        groups.find((g) => g.groupId === activeId) || {
+                          groupId: activeId,
+                          sectionIds: [],
+                        },
+                      ) || "Group"
+                    : getSectionDisplayName(activeId)}
                 </div>
               ) : null}
             </DragOverlay>
