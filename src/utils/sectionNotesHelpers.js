@@ -476,9 +476,16 @@ const pluralizeItemName = (name) => {
 
 const formatGroupedLengthNames = (names = []) => {
   const counts = new Map();
-  names.forEach((name) => {
+  names.forEach((entry) => {
+    const name = typeof entry === "string" ? entry : entry?.name;
     if (!name) return;
-    counts.set(name, (counts.get(name) || 0) + 1);
+
+    const quantityValue =
+      typeof entry === "string" ? 1 : Number(entry?.quantity);
+    const quantity =
+      Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1;
+
+    counts.set(name, (counts.get(name) || 0) + quantity);
   });
 
   return Array.from(counts.entries())
@@ -557,7 +564,10 @@ export const buildLengthMaterialFinishNote = ({
       });
     }
 
-    groupedOverrides.get(groupKey).names.push(lengthName);
+    groupedOverrides.get(groupKey).names.push({
+      name: lengthName,
+      quantity: lengthItem.quantity,
+    });
   });
 
   if (groupedOverrides.size === 0) return "";
