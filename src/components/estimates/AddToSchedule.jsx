@@ -153,6 +153,14 @@ const parseNumeric = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const formatCurrency = (value) => {
+  const amount = Number(value) || 0;
+  return `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
 const getLineItemSectionId = (index) => `line-item-${index}`;
 
 const getLineItemFallbackName = (index) => `Line Item ${index + 1}`;
@@ -460,11 +468,18 @@ const AddToSchedule = () => {
   }, []);
 
   const renderLineItemSubItems = useCallback(
-    (sectionId, lineItem, isDisabled = false) => {
+    (sectionId, lineItem, options = {}) => {
+      const {
+        isDisabled = false,
+        rowGridTemplateColumns,
+        serviceColumnCount = 0,
+        leadingColumnCount = 0,
+      } = options;
+
       if (!lineItem?.subItems?.length) return null;
 
       return (
-        <div className="ml-14 mt-1 space-y-1 rounded border border-slate-700/70 bg-slate-900/50 px-3 py-2">
+        <div className="mt-1 space-y-1 rounded border border-slate-700/70 bg-slate-900/50 pl-3 py-2">
           {lineItem.subItems.map((subItem, subIndex) => {
             const isIncluded =
               lineItemSubItemInclusion[sectionId]?.[subIndex] !== false;
@@ -477,11 +492,16 @@ const AddToSchedule = () => {
             );
 
             return (
-              <label
+              <div
                 key={`${sectionId}-sub-item-${subIndex}`}
-                className="flex items-center justify-between gap-3 text-xs text-slate-300"
+                className="grid gap-2 items-center text-xs text-slate-300"
+                style={{ gridTemplateColumns: rowGridTemplateColumns }}
               >
-                <span className="flex items-center gap-2 min-w-0">
+                {Array.from({ length: leadingColumnCount }).map((_, index) => (
+                  <div key={`${sectionId}-sub-item-${subIndex}-lead-${index}`} />
+                ))}
+
+                <label className="flex items-center gap-2 min-w-0 pl-2">
                   <input
                     type="checkbox"
                     checked={isIncluded}
@@ -490,11 +510,18 @@ const AddToSchedule = () => {
                     className="w-3.5 h-3.5 rounded border-slate-500 text-teal-500 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <span className="truncate">{subTitle}</span>
-                </span>
-                <span className="font-mono text-slate-400 flex-shrink-0">
-                  ${subCost.toFixed(2)}
-                </span>
-              </label>
+                </label>
+
+                {Array.from({ length: serviceColumnCount }).map((_, index) => (
+                  <div key={`${sectionId}-sub-item-${subIndex}-svc-${index}`} />
+                ))}
+
+                <div />
+
+                <div className="text-center font-mono text-slate-400">
+                  {formatCurrency(subCost)}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -803,6 +830,37 @@ const AddToSchedule = () => {
       };
     },
     [sectionCalcsMap],
+  );
+
+  const getSectionEstimatedPrice = useCallback(
+    (sectionId) => {
+      const lineItemRows = lineItemRowsBySectionId[sectionId];
+      if (lineItemRows) {
+        return roundToHundredth(
+          lineItemRows.reduce((sum, row) => sum + (Number(row.cost) || 0), 0),
+        );
+      }
+
+      const calculations = sectionCalcsMap[sectionId]?.calculations;
+      const totalPrice = Number(calculations?.totalPrice);
+      if (Number.isFinite(totalPrice)) {
+        return roundToHundredth(totalPrice);
+      }
+
+      return 0;
+    },
+    [lineItemRowsBySectionId, sectionCalcsMap],
+  );
+
+  const getGroupEstimatedPrice = useCallback(
+    (group) =>
+      roundToHundredth(
+        group.sectionIds.reduce(
+          (sum, sectionId) => sum + getSectionEstimatedPrice(sectionId),
+          0,
+        ),
+      ),
+    [getSectionEstimatedPrice],
   );
 
   const getSectionDisplayName = useCallback(
@@ -1256,10 +1314,12 @@ const AddToSchedule = () => {
   const selectedTotals = useMemo(() => {
     const totals = {};
     let grandTotal = 0;
+    let grandPrice = 0;
 
     groups.forEach((group) => {
       if (!selectedGroups.has(group.groupId)) return;
       const groupHours = getGroupHours(group);
+      const groupPrice = getGroupEstimatedPrice(group);
       Object.entries(groupHours.hoursByService).forEach(
         ([serviceId, hours]) => {
           if (!totals[serviceId]) totals[serviceId] = 0;
@@ -1267,6 +1327,7 @@ const AddToSchedule = () => {
         },
       );
       grandTotal += groupHours.totalHours;
+      grandPrice += groupPrice;
     });
 
     Object.keys(totals).forEach((key) => {
@@ -1276,8 +1337,9 @@ const AddToSchedule = () => {
     return {
       hoursByService: totals,
       totalHours: roundToHundredth(grandTotal),
+      totalPrice: roundToHundredth(grandPrice),
     };
-  }, [groups, selectedGroups, getGroupHours]);
+  }, [groups, selectedGroups, getGroupHours, getGroupEstimatedPrice]);
 
   // ---------- Add to Schedule handler ----------
   const handleAddToSchedule = useCallback(async () => {
@@ -1376,8 +1438,8 @@ const AddToSchedule = () => {
 
   // ---------- Column template helper ----------
   const serviceColumns = activeServices.map(() => "80px").join(" ");
-  const headerGridCols = `40px 40px 1fr ${serviceColumns} 90px`;
-  const sectionGridCols = `1fr ${serviceColumns} 90px`;
+  const headerGridCols = `40px 40px 1fr ${serviceColumns} 90px 120px`;
+  const sectionGridCols = `1fr ${serviceColumns} 90px 120px`;
 
   // ---------- Render ----------
   if (loading) {
@@ -1513,6 +1575,7 @@ const AddToSchedule = () => {
               </div>
             ))}
             <div className="text-center">Total</div>
+            <div className="text-center">Price</div>
           </div>
 
           {/* Groups list with DnD */}
@@ -1530,6 +1593,7 @@ const AddToSchedule = () => {
               <div className="space-y-3">
                 {groups.map((group) => {
                   const groupHours = getGroupHours(group);
+                  const groupPrice = getGroupEstimatedPrice(group);
                   const isSelected = selectedGroups.has(group.groupId);
                   const isMulti = group.sectionIds.length > 1;
 
@@ -1592,6 +1656,9 @@ const AddToSchedule = () => {
                               <div className="text-center font-mono font-bold">
                                 {groupHours.totalHours.toFixed(2)}
                               </div>
+                              <div className="text-center font-mono">
+                                {formatCurrency(groupPrice)}
+                              </div>
                             </div>
                           )}
 
@@ -1604,6 +1671,7 @@ const AddToSchedule = () => {
                               const lineItem = lineItemData[sectionId];
                               const isLineItem = Boolean(lineItem);
                               if (!calc && !lineItem) return null;
+                              const sectionPrice = getSectionEstimatedPrice(sectionId);
 
                               if (!isMulti) {
                                 // Single-section group: show checkbox + group drag + section content inline
@@ -1672,12 +1740,20 @@ const AddToSchedule = () => {
                                             ? "0.00"
                                             : calc.totalHours.toFixed(2)}
                                         </div>
+                                        <div className="text-center text-slate-300 font-mono text-xs">
+                                          {formatCurrency(sectionPrice)}
+                                        </div>
                                       </div>
                                       {isLineItem &&
                                         renderLineItemSubItems(
                                           sectionId,
                                           lineItem,
-                                          !isSelected,
+                                          {
+                                            isDisabled: !isSelected,
+                                            rowGridTemplateColumns: `20px 20px ${sectionGridCols}`,
+                                            serviceColumnCount: activeServices.length,
+                                            leadingColumnCount: 2,
+                                          },
                                         )}
                                     </div>
                                   </DraggableSection>
@@ -1745,12 +1821,20 @@ const AddToSchedule = () => {
                                           ? "0.00"
                                           : calc.totalHours.toFixed(2)}
                                       </div>
+                                      <div className="text-center text-slate-300 font-mono text-xs">
+                                        {formatCurrency(sectionPrice)}
+                                      </div>
                                     </div>
                                     {isLineItem &&
                                       renderLineItemSubItems(
                                         sectionId,
                                         lineItem,
-                                        !isSelected,
+                                        {
+                                          isDisabled: !isSelected,
+                                          rowGridTemplateColumns: sectionGridCols,
+                                          serviceColumnCount: activeServices.length,
+                                          leadingColumnCount: 0,
+                                        },
                                       )}
                                   </div>
                                 </DraggableSection>
@@ -1802,6 +1886,9 @@ const AddToSchedule = () => {
             <div className="text-center text-teal-300 font-mono text-base">
               {selectedTotals.totalHours.toFixed(2)}
             </div>
+            <div className="text-center text-teal-400 font-mono text-base">
+              {formatCurrency(selectedTotals.totalPrice)}
+            </div>
           </div>
 
           {/* Already-scheduled sections (grayed out, non-interactive) */}
@@ -1823,6 +1910,7 @@ const AddToSchedule = () => {
                 {scheduledGroups.map((schGroup) => {
                   const isMulti = schGroup.sectionIds.length > 1;
                   const groupHours = getGroupHours(schGroup);
+                  const groupPrice = getGroupEstimatedPrice(schGroup);
 
                   return (
                     <div
@@ -1860,6 +1948,9 @@ const AddToSchedule = () => {
                           <div className="text-center font-bold">
                             {groupHours.totalHours.toFixed(2)}
                           </div>
+                          <div className="text-center font-mono">
+                            {formatCurrency(groupPrice)}
+                          </div>
                         </div>
                       )}
 
@@ -1868,6 +1959,7 @@ const AddToSchedule = () => {
                         {schGroup.sectionIds.map((sectionId) => {
                           const calc = sectionCalcsMap[sectionId];
                           if (!calc) return null;
+                          const sectionPrice = getSectionEstimatedPrice(sectionId);
 
                           return (
                             <div
@@ -1912,6 +2004,9 @@ const AddToSchedule = () => {
                                 ))}
                                 <div className="text-center">
                                   {calc.totalHours.toFixed(2)}
+                                </div>
+                                <div className="text-center">
+                                  {formatCurrency(sectionPrice)}
                                 </div>
                               </div>
                             </div>
