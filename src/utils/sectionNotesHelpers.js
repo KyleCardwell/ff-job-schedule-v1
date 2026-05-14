@@ -801,6 +801,7 @@ export const SECTION_NOTES_OPTIONS = [
     label: "Cabinets Assumed",
     suffix: "ft Tall",
     placeholder: "8",
+    custom_width: "w-16",
     estimateText: (value) => {
       const text = typeof value === "string" ? value.trim() : "";
       return text

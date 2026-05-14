@@ -427,7 +427,7 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
                               handleOptionTextChange(noteIndex, opt.key, e.target.value)
                             }
                             disabled={!isEditing || !checked}
-                            className="w-8 rounded-md border border-slate-300 px-1 py-1 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
+                            className={`${opt.custom_width ?? "w-16"} rounded-md border border-slate-300 px-1 py-1 text-sm text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500`}
                             placeholder={opt.placeholder || ""}
                           />
                           {opt.suffix && (
