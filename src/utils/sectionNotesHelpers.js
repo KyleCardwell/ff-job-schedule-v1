@@ -11,29 +11,78 @@ export const SECTION_NOTES_LABELS = [
 export const buildPanelModNote = (effectiveSection = {}) => {
   const doorPanelModId = effectiveSection.door_panel_mod_id;
   const drawerPanelModId = effectiveSection.drawer_panel_mod_id;
+  const doorFrontStyle = effectiveSection.door_style;
+  const drawerFrontStyle = effectiveSection.drawer_front_style;
   const hasPanelModDoors = Number(doorPanelModId) > 0;
   const hasPanelModDrawers = Number(drawerPanelModId) > 0;
 
   const getPanelModName = (panelModId) =>
     PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
 
+  const isSlabStyle = (styleValue) =>
+    typeof styleValue === "string" && styleValue.toLowerCase().includes("slab");
+
+  const buildPanelModSegment = (panelModId, targetLabel, styleValue) => {
+    const panelModName = getPanelModName(panelModId);
+    if (isSlabStyle(styleValue)) {
+      return `${panelModName} ${targetLabel}`;
+    }
+
+    return `${panelModName} panels on ${targetLabel}`;
+  };
+
   let baseNote = "";
 
   if (hasPanelModDoors && hasPanelModDrawers) {
     if (doorPanelModId === drawerPanelModId) {
       const panelModName = getPanelModName(doorPanelModId);
-      baseNote = `${panelModName} Panels on doors and drawer fronts.`;
+      const doorUsesSlabWording = isSlabStyle(doorFrontStyle);
+      const drawerUsesSlabWording = isSlabStyle(drawerFrontStyle);
+
+      if (doorUsesSlabWording && drawerUsesSlabWording) {
+        baseNote = `${panelModName} doors and drawer fronts.`;
+      } else if (!doorUsesSlabWording && !drawerUsesSlabWording) {
+        baseNote = `${panelModName} panels on doors and drawer fronts.`;
+      } else {
+        const doorSegment = buildPanelModSegment(
+          doorPanelModId,
+          "doors",
+          doorFrontStyle,
+        );
+        const drawerSegment = buildPanelModSegment(
+          drawerPanelModId,
+          "drawer fronts",
+          drawerFrontStyle,
+        );
+        baseNote = `${doorSegment}, ${drawerSegment}.`;
+      }
     } else {
-      const doorPanelName = getPanelModName(doorPanelModId);
-      const drawerPanelName = getPanelModName(drawerPanelModId);
-      baseNote = `${doorPanelName} Panels on doors, ${drawerPanelName} Panels on drawer fronts.`;
+      const doorSegment = buildPanelModSegment(
+        doorPanelModId,
+        "doors",
+        doorFrontStyle,
+      );
+      const drawerSegment = buildPanelModSegment(
+        drawerPanelModId,
+        "drawer fronts",
+        drawerFrontStyle,
+      );
+      baseNote = `${doorSegment}, ${drawerSegment}.`;
     }
   } else if (hasPanelModDoors) {
-    const panelModName = getPanelModName(doorPanelModId);
-    baseNote = `${panelModName} Panels on doors.`;
+    const doorSegment = buildPanelModSegment(
+      doorPanelModId,
+      "doors",
+      doorFrontStyle,
+    );
+    baseNote = `${doorSegment}.`;
   } else if (hasPanelModDrawers) {
-    const panelModName = getPanelModName(drawerPanelModId);
-    baseNote = `${panelModName} Panels on drawer fronts.`;
+    const drawerSegment = buildPanelModSegment(
+      drawerPanelModId,
+      "drawer fronts",
+      drawerFrontStyle,
+    );
+    baseNote = `${drawerSegment}.`;
   }
 
   const panelModCountsByName = {};
