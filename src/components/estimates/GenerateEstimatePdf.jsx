@@ -250,12 +250,13 @@ const GenerateEstimatePdf = ({
         const hasMultipleSections = summary?.sectionCount > 1;
         const isFirstSection = summary?.firstSectionKey === sectionKey;
         const quantity = Number(section.quantity) || 0;
+        const actualQuantityText = String(quantity);
         const unitPrice = Number(section.unitPrice) || 0;
         const totalPrice = roundToHundredth(quantity * unitPrice);
         const groupedTotalPrice = summary?.totalPrice ?? totalPrice;
         const displayQuantity = hasMultipleSections
-          ? isFirstSection
-            ? "1"
+          ? isFirstSection || quantity !== 1
+            ? actualQuantityText
             : ""
           : section.quantity?.toString() ?? "";
         const displayCost = hasMultipleSections
@@ -268,9 +269,10 @@ const GenerateEstimatePdf = ({
             ? formatCurrency(groupedTotalPrice)
             : ""
           : formatCurrency(totalPrice);
-        const actualQuantityText = String(quantity);
         const shouldAnnotateQuantityInNotes =
-          hasMultipleSections && displayQuantity !== actualQuantityText;
+          hasMultipleSections &&
+          quantity !== 1 &&
+          displayQuantity !== actualQuantityText;
         const quantityNotePrefix = `Quantity - ${actualQuantityText}. `;
         let notesForPdf = buildProcessedSectionNotes(section.notes, null);
 
