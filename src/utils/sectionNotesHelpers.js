@@ -67,7 +67,7 @@ export const buildPanelModNote = (effectiveSection = {}) => {
         "drawer fronts",
         drawerFrontStyle,
       );
-      baseNote = `${doorSegment}, ${drawerSegment}.`;
+      baseNote = `${doorSegment}. ${drawerSegment}.`;
     }
   } else if (hasPanelModDoors) {
     const doorSegment = buildPanelModSegment(
