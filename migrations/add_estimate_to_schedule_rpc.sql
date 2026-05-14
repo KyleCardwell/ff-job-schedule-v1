@@ -1,5 +1,5 @@
--- Drop the old 9-parameter signature if it exists (parameter list changed)
-DROP FUNCTION IF EXISTS add_estimate_to_schedule(TEXT, UUID, BIGINT, TIMESTAMPTZ, NUMERIC, NUMERIC, INTEGER, BIGINT, JSONB);
+-- Drop the old 10-parameter signature if it exists (parameter list changed)
+DROP FUNCTION IF EXISTS add_estimate_to_schedule(TEXT, UUID, BIGINT, TIMESTAMPTZ, NUMERIC, NUMERIC, INTEGER, BIGINT, JSONB, BIGINT);
 
 -- Create the RPC function for atomically adding estimate sections to the schedule
 CREATE OR REPLACE FUNCTION add_estimate_to_schedule(
@@ -12,10 +12,12 @@ CREATE OR REPLACE FUNCTION add_estimate_to_schedule(
   p_next_task_number INTEGER,
   p_chart_config_id BIGINT,
   p_groups JSONB,
-  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "financial_data": { ... } }
-  p_existing_task_id BIGINT DEFAULT NULL
+  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "line_item_id": "uuid", "financial_data": { ... } }
+  p_existing_task_id BIGINT DEFAULT NULL,
+  p_estimate_id BIGINT DEFAULT NULL
   -- If sections from this estimate are already scheduled, pass one of their
   -- scheduled_task_id values so new tasks get added to the same project.
+  -- The estimate_id, needed to stamp scheduled_task_id on line_items jsonb entries.
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -31,6 +33,8 @@ DECLARE
   v_results JSONB := '[]'::JSONB;
   v_now TIMESTAMPTZ := now();
   v_created_at TIMESTAMPTZ;
+  v_line_item_index INTEGER;
+  v_line_item_id UUID;
 BEGIN
   -- 1. Resolve or create the project
   IF p_existing_task_id IS NOT NULL THEN
@@ -152,6 +156,48 @@ BEGIN
       FROM jsonb_array_elements_text(v_group->'section_ids')
     );
 
+    -- If this group references a line item, stamp scheduled_task_id on that line item.
+    IF p_estimate_id IS NOT NULL AND (v_group->>'line_item_id') IS NOT NULL THEN
+      v_line_item_id := NULL;
+      v_line_item_index := NULL;
+
+      IF (v_group->>'line_item_id') IS NOT NULL THEN
+        v_line_item_id := (v_group->>'line_item_id')::UUID;
+      END IF;
+
+      IF v_line_item_id IS NOT NULL THEN
+        SELECT idx - 1
+        INTO v_line_item_index
+        FROM estimates e
+        CROSS JOIN LATERAL jsonb_array_elements(e.line_items) WITH ORDINALITY AS li(item, idx)
+        WHERE e.estimate_id = p_estimate_id
+          AND COALESCE(li.item->>'id', li.item->>'line_item_id') = v_line_item_id::TEXT
+        LIMIT 1;
+
+        IF v_line_item_index IS NULL THEN
+          RAISE EXCEPTION 'Could not find line item id % for estimate % (group: %)', v_line_item_id, p_estimate_id, v_group->>'name';
+        END IF;
+      END IF;
+
+      -- Validate: line item is not already scheduled.
+      IF COALESCE((
+        SELECT (line_items->v_line_item_index->>'scheduled_task_id') IS NOT NULL
+        FROM estimates
+        WHERE estimate_id = p_estimate_id
+      ), FALSE) THEN
+        RAISE EXCEPTION 'Line item % is already scheduled (group: %)', v_line_item_id, v_group->>'name';
+      END IF;
+
+      -- Set scheduled_task_id on the resolved line item index.
+      UPDATE estimates
+      SET line_items = jsonb_set(
+        line_items,
+        ARRAY[v_line_item_index::TEXT, 'scheduled_task_id'],
+        to_jsonb(v_task_id)
+      )
+      WHERE estimate_id = p_estimate_id;
+    END IF;
+
     v_task_number := v_task_number + 1;
 
     -- Accumulate results
@@ -159,7 +205,8 @@ BEGIN
       'task_id', v_task_id,
       'subtask_id', v_subtask_id,
       'task_name', v_group->>'name',
-      'section_ids', v_group->'section_ids'
+      'section_ids', v_group->'section_ids',
+      'line_item_id', v_group->'line_item_id'
     );
   END LOOP;
 
@@ -177,7 +224,7 @@ END;
 $$;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION add_estimate_to_schedule(TEXT, UUID, BIGINT, TIMESTAMPTZ, NUMERIC, NUMERIC, INTEGER, BIGINT, JSONB, BIGINT) TO authenticated;
+GRANT EXECUTE ON FUNCTION add_estimate_to_schedule(TEXT, UUID, BIGINT, TIMESTAMPTZ, NUMERIC, NUMERIC, INTEGER, BIGINT, JSONB, BIGINT, BIGINT) TO authenticated;
 
 -- Add comment for documentation
 COMMENT ON FUNCTION add_estimate_to_schedule IS 'Atomically creates (or appends to) a schedule project with tasks and subtasks from estimate sections. If p_existing_task_id is provided, new tasks are added to the same project; otherwise a new project is created. Updates estimate_sections.scheduled_task_id to track the link. All operations are in a single transaction.';

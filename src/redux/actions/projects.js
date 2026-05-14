@@ -796,6 +796,7 @@ export const addEstimateToSchedule =
     chartConfigId,
     groups,
     existingTaskId = null,
+    estimateId = null,
   }) =>
   async (dispatch, getState) => {
     dispatch({ type: Actions.projects.ADD_TO_SCHEDULE_START });
@@ -812,6 +813,7 @@ export const addEstimateToSchedule =
         p_chart_config_id: chartConfigId,
         p_groups: groups,
         p_existing_task_id: existingTaskId,
+        p_estimate_id: estimateId,
       });
 
       if (error) throw error;

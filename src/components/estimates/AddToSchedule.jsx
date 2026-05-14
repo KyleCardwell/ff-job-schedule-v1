@@ -161,7 +161,8 @@ const formatCurrency = (value) => {
   })}`;
 };
 
-const getLineItemSectionId = (index) => `line-item-${index}`;
+const getLineItemSectionId = (lineItemId, index) =>
+  `line-item-${lineItemId || index}`;
 
 const getLineItemFallbackName = (index) => `Line Item ${index + 1}`;
 
@@ -317,6 +318,7 @@ const AddToSchedule = () => {
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
   );
+  const currentEstimateId = currentEstimate?.estimate_id || null;
   const estimates = useSelector((state) => state.estimates.estimates);
   const [loading, setLoading] = useState(true);
 
@@ -410,7 +412,12 @@ const AddToSchedule = () => {
       ? currentEstimate.line_items
       : EMPTY_ARRAY;
     return lineItems.reduce((map, lineItem, index) => {
-      const sectionId = getLineItemSectionId(index);
+      const lineItemId =
+        (typeof lineItem?.id === "string" && lineItem.id.trim()) ||
+        (typeof lineItem?.line_item_id === "string" &&
+          lineItem.line_item_id.trim()) ||
+        null;
+      const sectionId = getLineItemSectionId(lineItemId, index);
       const fallbackName = getLineItemFallbackName(index);
       const rawTitle = lineItem?.title;
       const resolvedTitle =
@@ -421,7 +428,9 @@ const AddToSchedule = () => {
       map[sectionId] = {
         index,
         sectionId,
+        lineItemId,
         title: resolvedTitle,
+        scheduledTaskId: lineItem?.scheduled_task_id || null,
         quantity: lineItem?.quantity,
         cost: lineItem?.cost,
         subItems: Array.isArray(lineItem?.subItems)
@@ -438,6 +447,16 @@ const AddToSchedule = () => {
   const lineItemSectionIds = useMemo(
     () =>
       Object.values(lineItemData)
+        .filter((item) => !item.scheduledTaskId)
+        .sort((a, b) => a.index - b.index)
+        .map((item) => item.sectionId),
+    [lineItemData],
+  );
+
+  const scheduledLineItemSectionIds = useMemo(
+    () =>
+      Object.values(lineItemData)
+        .filter((item) => item.scheduledTaskId)
         .sort((a, b) => a.index - b.index)
         .map((item) => item.sectionId),
     [lineItemData],
@@ -766,8 +785,8 @@ const AddToSchedule = () => {
       const calc = sectionCalcsMap[sectionId];
       if (calc) initialSectionNames[sectionId] = calc.sectionName;
     });
-    lineItemSectionIds.forEach((sectionId) => {
-      const lineItem = lineItemData[sectionId];
+    Object.values(lineItemData).forEach((lineItem) => {
+      const sectionId = lineItem.sectionId;
       if (lineItem) {
         initialSectionNames[sectionId] = lineItem.title || lineItem.fallbackName;
       }
@@ -1359,9 +1378,9 @@ const AddToSchedule = () => {
           const sectionIds = group.sectionIds.filter(
             (id) => !lineItemData[id],
           );
-          const lineItemIndexes = group.sectionIds
-            .map((id) => lineItemData[id]?.index)
-            .filter((index) => Number.isInteger(index));
+          const lineItemIds = group.sectionIds
+            .map((id) => lineItemData[id]?.lineItemId)
+            .filter((id) => typeof id === "string" && id);
 
           // Determine task name: use group name for multi-section groups,
           // or section name for single-section groups
@@ -1374,8 +1393,8 @@ const AddToSchedule = () => {
             financial_data: financialData,
           };
 
-          if (lineItemIndexes.length > 0) {
-            groupPayload.line_item_index = lineItemIndexes[0];
+          if (lineItemIds.length > 0) {
+            groupPayload.line_item_id = lineItemIds[0];
           }
 
           return groupPayload;
@@ -1386,7 +1405,11 @@ const AddToSchedule = () => {
       // If sections from this estimate are already scheduled, find an
       // existing task_id so new tasks get added to the same project
       const existingTaskId =
-        scheduledGroups.length > 0 ? scheduledGroups[0].taskId : null;
+        scheduledGroups.length > 0
+          ? scheduledGroups[0].taskId
+          : scheduledLineItemSectionIds.length > 0
+            ? lineItemData[scheduledLineItemSectionIds[0]]?.scheduledTaskId || null
+            : null;
 
       const result = await dispatch(
         addEstimateToSchedule({
@@ -1400,6 +1423,7 @@ const AddToSchedule = () => {
           chartConfigId,
           groups: selectedGroupsData,
           existingTaskId,
+          estimateId: currentEstimateId,
         }),
       );
 
@@ -1407,7 +1431,7 @@ const AddToSchedule = () => {
         setSaveSuccess(true);
         // Re-fetch estimate so scheduled_task_id values are up to date,
         // then reset groups so the init effect re-runs with the new split
-        await dispatch(fetchEstimateById(currentEstimate.estimate_id));
+        await dispatch(fetchEstimateById(currentEstimateId));
         setGroups([]);
         setSelectedGroups(new Set());
       } else {
@@ -1427,8 +1451,10 @@ const AddToSchedule = () => {
     lineItemData,
     getGroupDisplayName,
     scheduledGroups,
+    scheduledLineItemSectionIds,
     dispatch,
     currentEstimate,
+    currentEstimateId,
     defaultEmployeeId,
     dayWidth,
     workdayHours,
@@ -1460,6 +1486,11 @@ const AddToSchedule = () => {
 
   const allSelected =
     groups.length > 0 && selectedGroups.size === groups.length;
+  const hasScheduledItems =
+    scheduledGroups.length > 0 || scheduledLineItemSectionIds.length > 0;
+  const totalScheduledItems =
+    scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0) +
+    scheduledLineItemSectionIds.length;
 
   return (
     <div className="h-full bg-slate-900 text-slate-200 flex flex-col">
@@ -1891,17 +1922,13 @@ const AddToSchedule = () => {
             </div>
           </div>
 
-          {/* Already-scheduled sections (grayed out, non-interactive) */}
-          {scheduledGroups.length > 0 && (
+          {/* Already-scheduled items (grayed out, non-interactive) */}
+          {hasScheduledItems && (
             <div className="mt-8">
               <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
                 Already Scheduled (
-                {scheduledGroups.reduce((n, g) => n + g.sectionIds.length, 0)}{" "}
-                section
-                {scheduledGroups.reduce(
-                  (n, g) => n + g.sectionIds.length,
-                  0,
-                ) !== 1
+                {totalScheduledItems} item
+                {totalScheduledItems !== 1
                   ? "s"
                   : ""}
                 )
@@ -2012,6 +2039,52 @@ const AddToSchedule = () => {
                             </div>
                           );
                         })}
+                      </div>
+                    </div>
+                  );
+                })}
+                {scheduledLineItemSectionIds.map((sectionId) => {
+                  const lineItem = lineItemData[sectionId];
+                  if (!lineItem) return null;
+                  const sectionPrice = getSectionEstimatedPrice(sectionId);
+
+                  return (
+                    <div
+                      key={`scheduled-${sectionId}`}
+                      className="px-4 py-3 rounded-lg border bg-slate-800 border-slate-700"
+                    >
+                      <div
+                        className="grid gap-2 items-center text-sm"
+                        style={{
+                          gridTemplateColumns: `28px 28px ${sectionGridCols}`,
+                        }}
+                      >
+                        <div className="flex items-center justify-center">
+                          <FiCheck size={16} className="text-green-500" />
+                        </div>
+                        <div></div>
+                        <div className="min-w-0 truncate flex items-center gap-2">
+                          <span>
+                            {sectionNames[sectionId] ||
+                              lineItem.title ||
+                              lineItem.fallbackName}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-wider text-slate-500 border border-slate-600 rounded px-1.5 py-0.5">
+                            Line Item
+                          </span>
+                        </div>
+                        {activeServices.map((service) => (
+                          <div
+                            key={service.service_id}
+                            className="text-center"
+                          >
+                            0.00
+                          </div>
+                        ))}
+                        <div className="text-center">0.00</div>
+                        <div className="text-center">
+                          {formatCurrency(sectionPrice)}
+                        </div>
                       </div>
                     </div>
                   );

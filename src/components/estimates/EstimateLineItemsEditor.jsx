@@ -2,8 +2,13 @@ import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { FiSave, FiX, FiPlus, FiTrash2, FiChevronDown, FiChevronRight } from "react-icons/fi";
 import { useDispatch } from "react-redux";
+import { v4 as uuidv4 } from "uuid";
 
 import { updateEstimateLineItems } from "../../redux/actions/estimates";
+
+const createLineItemId = () => {
+  return uuidv4();
+};
 
 const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
   const dispatch = useDispatch();
@@ -41,6 +46,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
     setLineItems([
       ...lineItems,
       {
+        id: createLineItemId(),
         title: "",
         quantity: "",
         cost: "",
@@ -55,6 +61,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
       newLineItems[parentIndex].subItems = [];
     }
     newLineItems[parentIndex].subItems.push({
+      id: createLineItemId(),
       title: "",
       quantity: "",
       cost: "",
