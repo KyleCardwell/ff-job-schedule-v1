@@ -523,6 +523,20 @@ const GenerateEstimatePdf = ({
             paddingLeft: () => 8,
             paddingRight: () => 8,
             paddingTop: (i, node) => {
+              const descriptionCell = node.table.body[i]?.[1];
+              const isLineItemSubItemRow =
+                i > 0 &&
+                !!descriptionCell &&
+                !descriptionCell.bold &&
+                !descriptionCell.italics &&
+                descriptionCell.fontSize === GROUP_DATA_FONT_SIZE &&
+                Array.isArray(descriptionCell.margin) &&
+                descriptionCell.margin[0] === GROUP_DATA_INDENT;
+
+              if (isLineItemSubItemRow) {
+                return 1;
+              }
+
               // No padding for note rows (italics) or intro line (bold)
               if (
                 i > 0 &&
@@ -533,8 +547,29 @@ const GenerateEstimatePdf = ({
               return 3;
             },
             paddingBottom: (i, node) => {
+              const descriptionCell = node.table.body[i]?.[1];
+              const isLineItemSubItemRow =
+                i > 0 &&
+                !!descriptionCell &&
+                !descriptionCell.bold &&
+                !descriptionCell.italics &&
+                descriptionCell.fontSize === GROUP_DATA_FONT_SIZE &&
+                Array.isArray(descriptionCell.margin) &&
+                descriptionCell.margin[0] === GROUP_DATA_INDENT;
+              const nextDescriptionCell = node.table.body[i + 1]?.[1];
+              const nextIsLineItemSubItemRow =
+                !!nextDescriptionCell &&
+                !nextDescriptionCell.bold &&
+                !nextDescriptionCell.italics &&
+                nextDescriptionCell.fontSize === GROUP_DATA_FONT_SIZE &&
+                Array.isArray(nextDescriptionCell.margin) &&
+                nextDescriptionCell.margin[0] === GROUP_DATA_INDENT;
+
               if (i === 0) {
                 return 4;
+              }
+              if (isLineItemSubItemRow) {
+                return nextIsLineItemSubItemRow ? 2 : 10;
               }
               // Minimal padding for note rows and separator rows
               if (
