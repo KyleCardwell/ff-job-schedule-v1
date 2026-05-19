@@ -6,6 +6,11 @@ import { v4 as uuid } from "uuid";
 
 import useMathInput from "../../hooks/useMathInput";
 import { fetchAccessoriesCatalog } from "../../redux/actions/accessories";
+import {
+  fetchHinges,
+  fetchPulls,
+  fetchSlides,
+} from "../../redux/actions/hardware";
 import { getUnitLabel } from "../../utils/accessoryCalculations";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 import { decimalToFraction } from "../../utils/mathUtils";
@@ -14,12 +19,41 @@ import SectionItemList from "./SectionItemList.jsx";
 
 const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   const dispatch = useDispatch();
-  const { catalog, glass, insert, hardware, shop_built, organizer, other, loading } =
-    useSelector((state) => state.accessories);
+  const {
+    catalog,
+    glass,
+    insert,
+    hardware: hardwareAccessories,
+    shop_built,
+    organizer,
+    other,
+    loading,
+  } = useSelector((state) => state.accessories);
+  const {
+    pulls,
+    hinges,
+    slides,
+    loading: hardwareLoading,
+  } = useSelector((state) => state.hardware);
 
   const [selectedType, setSelectedType] = useState("");
   const [formData, setFormData] = useState({
-    accessory_catalog_id: item.accessory_catalog_id || "",
+    accessory_catalog_id:
+      item.accessory_catalog_id !== undefined && item.accessory_catalog_id !== null
+        ? item.accessory_catalog_id
+        : null,
+    hardware_pull_id:
+      item.hardware_pull_id !== undefined && item.hardware_pull_id !== null
+        ? item.hardware_pull_id
+        : null,
+    hardware_hinge_id:
+      item.hardware_hinge_id !== undefined && item.hardware_hinge_id !== null
+        ? item.hardware_hinge_id
+        : null,
+    hardware_slide_id:
+      item.hardware_slide_id !== undefined && item.hardware_slide_id !== null
+        ? item.hardware_slide_id
+        : null,
     quantity: item.quantity !== undefined && item.quantity !== null ? item.quantity : 1,
     width: item.width !== undefined && item.width !== null ? item.width : "",
     height: item.height !== undefined && item.height !== null ? item.height : "",
@@ -48,10 +82,28 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
 
   useEffect(() => {
     dispatch(fetchAccessoriesCatalog());
+    dispatch(fetchHinges());
+    dispatch(fetchPulls());
+    dispatch(fetchSlides());
   }, [dispatch]);
 
   // Set initial type if editing existing item
   useEffect(() => {
+    if (item.hardware_pull_id) {
+      setSelectedType("pulls");
+      return;
+    }
+
+    if (item.hardware_hinge_id) {
+      setSelectedType("hinges");
+      return;
+    }
+
+    if (item.hardware_slide_id) {
+      setSelectedType("slides");
+      return;
+    }
+
     if (item.accessory_catalog_id && catalog.length > 0) {
       const accessory = catalog.find(
         (acc) => acc.id === item.accessory_catalog_id
@@ -60,12 +112,25 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
         setSelectedType(accessory.type);
       }
     }
-  }, [item.accessory_catalog_id, catalog]);
+  }, [
+    item.accessory_catalog_id,
+    item.hardware_hinge_id,
+    item.hardware_pull_id,
+    item.hardware_slide_id,
+    catalog,
+  ]);
 
 
   const selectedAccessory = catalog.find(
     (acc) => acc.id === formData.accessory_catalog_id
   );
+
+  const getSelectedReferenceId = () => {
+    if (selectedType === "pulls") return formData.hardware_pull_id;
+    if (selectedType === "hinges") return formData.hardware_hinge_id;
+    if (selectedType === "slides") return formData.hardware_slide_id;
+    return formData.accessory_catalog_id;
+  };
 
   // Get accessories by selected type
   const getAccessoriesByType = () => {
@@ -74,10 +139,13 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
     const typeMap = {
       glass,
       insert,
-      hardware,
+      hardware: hardwareAccessories,
       shop_built,
       organizer,
       other,
+      pulls,
+      hinges,
+      slides,
     };
 
     // Return all accessories of the selected type (no filtering by context)
@@ -90,10 +158,19 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
     const newType = e.target.value;
     setSelectedType(newType);
     // Reset accessory selection when type changes
-    setFormData({
-      ...formData,
-      accessory_catalog_id: "",
-    });
+    setFormData((prev) => ({
+      ...prev,
+      accessory_catalog_id: null,
+      hardware_pull_id: null,
+      hardware_hinge_id: null,
+      hardware_slide_id: null,
+    }));
+    if (errors.accessory_catalog_id) {
+      setErrors((prev) => ({
+        ...prev,
+        accessory_catalog_id: "",
+      }));
+    }
   };
 
   const handleChange = (e) => {
@@ -111,12 +188,41 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
       }
       return;
     } else if (name === "accessory_catalog_id") {
-      // Convert accessory_catalog_id to number for consistency
-      const numValue = value === "" ? "" : Number(value);
-      setFormData({
-        ...formData,
-        [name]: numValue,
-      });
+      const numValue = value === "" ? null : Number(value);
+
+      if (selectedType === "pulls") {
+        setFormData({
+          ...formData,
+          accessory_catalog_id: null,
+          hardware_pull_id: numValue,
+          hardware_hinge_id: null,
+          hardware_slide_id: null,
+        });
+      } else if (selectedType === "hinges") {
+        setFormData({
+          ...formData,
+          accessory_catalog_id: null,
+          hardware_pull_id: null,
+          hardware_hinge_id: numValue,
+          hardware_slide_id: null,
+        });
+      } else if (selectedType === "slides") {
+        setFormData({
+          ...formData,
+          accessory_catalog_id: null,
+          hardware_pull_id: null,
+          hardware_hinge_id: null,
+          hardware_slide_id: numValue,
+        });
+      } else {
+        setFormData({
+          ...formData,
+          accessory_catalog_id: numValue,
+          hardware_pull_id: null,
+          hardware_hinge_id: null,
+          hardware_slide_id: null,
+        });
+      }
     } else {
       setFormData({
         ...formData,
@@ -136,8 +242,13 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.accessory_catalog_id) {
-      newErrors.accessory_catalog_id = "Accessory type is required";
+    if (
+      !formData.accessory_catalog_id
+      && !formData.hardware_pull_id
+      && !formData.hardware_hinge_id
+      && !formData.hardware_slide_id
+    ) {
+      newErrors.accessory_catalog_id = "Accessory item is required";
     }
 
     if (formData.quantity === null || formData.quantity === undefined || formData.quantity < 0) {
@@ -187,6 +298,9 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 <option value="glass">Glass</option>
                 <option value="insert">Inserts</option>
                 <option value="hardware">Hardware</option>
+                <option value="pulls">Pulls</option>
+                <option value="hinges">Hinges</option>
+                <option value="slides">Slides</option>
                 <option value="shop_built">Shop-Built</option>
                 <option value="organizer">Organizers</option>
                 <option value="other">Other</option>
@@ -203,7 +317,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
               <select
                 id="accessory_catalog_id"
                 name="accessory_catalog_id"
-                value={formData.accessory_catalog_id}
+                value={getSelectedReferenceId() || ""}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border ${
                   errors.accessory_catalog_id
@@ -211,7 +325,10 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                     : "border-slate-300"
                 } rounded-md text-sm`}
                 disabled={
-                  loading || filteredAccessories.length === 0 || !selectedType
+                  loading
+                  || hardwareLoading
+                  || filteredAccessories.length === 0
+                  || !selectedType
                 }
               >
                 <option value="">
@@ -221,7 +338,9 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 </option>
                 {filteredAccessories.map((acc) => (
                   <option key={acc.id} value={acc.id}>
-                    {acc.name} ({getUnitLabel(acc.calculation_type)})
+                    {acc.name} ({["pulls", "hinges", "slides"].includes(selectedType)
+                      ? "unit"
+                      : getUnitLabel(acc.calculation_type)})
                   </option>
                 ))}
               </select>
@@ -352,14 +471,31 @@ const EstimateAccessoriesManager = ({
   currentSectionId,
 }) => {
   const { catalog } = useSelector((state) => state.accessories);
+  const { pulls, hinges, slides } = useSelector((state) => state.hardware);
 
-  const getAccessoryName = (accessoryCatalogId) => {
-    const accessory = catalog.find((acc) => acc.id === accessoryCatalogId);
+  const getAccessoryName = (item) => {
+    if (item.hardware_pull_id) {
+      return pulls.find((pull) => pull.id === item.hardware_pull_id)?.name || "Unknown";
+    }
+
+    if (item.hardware_hinge_id) {
+      return hinges.find((hinge) => hinge.id === item.hardware_hinge_id)?.name || "Unknown";
+    }
+
+    if (item.hardware_slide_id) {
+      return slides.find((slide) => slide.id === item.hardware_slide_id)?.name || "Unknown";
+    }
+
+    const accessory = catalog.find((acc) => acc.id === item.accessory_catalog_id);
     return accessory ? accessory.name : "Unknown";
   };
 
-  const getAccessoryType = (accessoryCatalogId) => {
-    const accessory = catalog.find((acc) => acc.id === accessoryCatalogId);
+  const getAccessoryType = (item) => {
+    if (item.hardware_pull_id) return "Pull";
+    if (item.hardware_hinge_id) return "Hinge";
+    if (item.hardware_slide_id) return "Slide";
+
+    const accessory = catalog.find((acc) => acc.id === item.accessory_catalog_id);
     if (!accessory) return "Unknown";
 
     const typeLabels = {
@@ -385,13 +521,13 @@ const EstimateAccessoriesManager = ({
       key: "type",
       label: "Type",
       width: "100px",
-      render: (item) => getAccessoryType(item.accessory_catalog_id),
+      render: (item) => getAccessoryType(item),
     },
     {
       key: "accessory",
       label: "Accessory",
       width: ITEM_FORM_WIDTHS.DEFAULT,
-      render: (item) => getAccessoryName(item.accessory_catalog_id),
+      render: (item) => getAccessoryName(item),
     },
     {
       key: "width",
@@ -453,7 +589,7 @@ const EstimateAccessoriesManager = ({
   };
 
   const getReorderItemName = (item) => {
-    return catalog.find((acc) => acc.id === item.accessory_catalog_id)?.name || "Accessory";
+    return getAccessoryName(item) || "Accessory";
   };
 
   return (
