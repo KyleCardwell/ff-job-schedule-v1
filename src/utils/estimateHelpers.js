@@ -1911,6 +1911,7 @@ export const calculateBoxSheetsCNC = (
     taxRate = 0.1,
     setupCostPerSheet = 5,
     kerfWidth = 0.125, // Saw blade kerf width in inches
+    utilizationFactor = 0.92,
   } = {},
 ) => {
   if (
@@ -2160,55 +2161,26 @@ export const calculateBoxSheetsCNC = (
       // Calculate total area of all parts
       const totalPartsArea = parts.reduce((sum, part) => sum + part.area, 0);
 
-      // Prepare parts for packing (add kerf spacing to each part)
-      const packerParts = parts.map((part, index) => ({
-        width: part.width + kerfWidth,
-        height: part.height + kerfWidth,
-        data: {
-          originalWidth: part.width,
-          originalHeight: part.height,
-          area: part.area,
-          type: part.type,
-          cabinetId: part.cabinetId,
-          index,
-        },
-      }));
+      const safeUtilizationFactor =
+        typeof utilizationFactor === "number" &&
+        utilizationFactor > 0 &&
+        utilizationFactor <= 1
+          ? utilizationFactor
+          : 0.92;
 
-      // Initialize packer with sheet dimensions (add kerf to account for parts having kerf added)
-      // Options: smart (default), square, or maxarea
-      const packer = new MaxRectsPacker(
-        sheetWidth + kerfWidth,
-        sheetHeight + kerfWidth,
-        0, // padding (we're handling kerf manually)
-        {
-          smart: true,
-          pot: false, // power of two sizing
-          square: false,
-          allowRotation: false, // Allow parts to be rotated for better fit
-        },
-      );
+      // Approximate kerf waste with perimeter-based cut loss
+      const totalKerfWaste = parts.reduce((sum, part) => {
+        return sum + 2 * (part.width + part.height) * kerfWidth;
+      }, 0);
 
-      // Add all parts to packer
-      packer.addArray(packerParts);
+      const effectiveArea = totalPartsArea + totalKerfWaste;
+      const rawSheets = effectiveArea / (sheetArea * safeUtilizationFactor);
+      const roundedSheets = Math.max(Math.ceil(rawSheets * 2) / 2, 0.5);
 
-      // Get the number of bins (sheets) used
-      const sheetsUsed = packer.bins.length;
-      const roundedSheets = Math.max(sheetsUsed, 0.5);
-
-      // Calculate actual packing efficiency
-      const totalSheetArea = sheetsUsed * sheetArea;
+      // Calculate effective packing efficiency against billed sheet area
+      const totalSheetArea = roundedSheets * sheetArea;
       const packingEfficiency =
         totalSheetArea > 0 ? totalPartsArea / totalSheetArea : 0;
-
-      // Calculate actual kerf waste based on packed parts
-      let totalKerfWaste = 0;
-      packer.bins.forEach((bin) => {
-        bin.rects.forEach((rect) => {
-          // Kerf waste is the difference between packed size and original size
-          const kerfArea = rect.width * rect.height - rect.data.area;
-          totalKerfWaste += kerfArea;
-        });
-      });
 
       // Calculate costs
       const sheetCost = roundedSheets * effectiveSheetPrice;
@@ -2255,26 +2227,7 @@ export const calculateBoxSheetsCNC = (
           width: sheetWidth,
           height: sheetHeight,
         },
-        packingDetails: packer.bins.map((bin, index) => ({
-          sheetNumber: index + 1,
-          partsCount: bin.rects.length,
-          efficiency: parseFloat(
-            (
-              (bin.rects.reduce((sum, rect) => sum + rect.data.area, 0) /
-                sheetArea) *
-              100
-            ).toFixed(1),
-          ),
-          // Optional: include layout data for visualization
-          layout: bin.rects.map((rect) => ({
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
-            rotated: rect.rot || false,
-            type: rect.data.type,
-          })),
-        })),
+        packingDetails: [],
         breakdown: {
           sheetCost: parseFloat(sheetCost.toFixed(2)),
           setupCost: parseFloat(setupCost.toFixed(2)),
