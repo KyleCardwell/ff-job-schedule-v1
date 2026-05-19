@@ -64,6 +64,9 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
 
   const [errors, setErrors] = useState({});
 
+  const isHardwareType = (type) => ["pulls", "hinges", "slides"].includes(type);
+  const isHardwareTypeSelected = isHardwareType(selectedType);
+
   const mathInput = useMathInput(
     {
       width: item.width,
@@ -120,6 +123,27 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
     catalog,
   ]);
 
+  useEffect(() => {
+    if (!isHardwareTypeSelected) return;
+
+    setFormData((prev) => {
+      if (prev.width === null && prev.height === null && prev.depth === null) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        width: null,
+        height: null,
+        depth: null,
+      };
+    });
+
+    mathInput.setInputValue("width", null);
+    mathInput.setInputValue("height", null);
+    mathInput.setInputValue("depth", null);
+  }, [isHardwareTypeSelected, mathInput]);
+
 
   const selectedAccessory = catalog.find(
     (acc) => acc.id === formData.accessory_catalog_id
@@ -157,6 +181,8 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setSelectedType(newType);
+    const selectedIsHardware = isHardwareType(newType);
+
     // Reset accessory selection when type changes
     setFormData((prev) => ({
       ...prev,
@@ -164,7 +190,17 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
       hardware_pull_id: null,
       hardware_hinge_id: null,
       hardware_slide_id: null,
+      width: selectedIsHardware ? null : prev.width,
+      height: selectedIsHardware ? null : prev.height,
+      depth: selectedIsHardware ? null : prev.depth,
     }));
+
+    if (selectedIsHardware) {
+      mathInput.setInputValue("width", null);
+      mathInput.setInputValue("height", null);
+      mathInput.setInputValue("depth", null);
+    }
+
     if (errors.accessory_catalog_id) {
       setErrors((prev) => ({
         ...prev,
@@ -338,7 +374,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 </option>
                 {filteredAccessories.map((acc) => (
                   <option key={acc.id} value={acc.id}>
-                    {acc.name} ({["pulls", "hinges", "slides"].includes(selectedType)
+                    {acc.name} ({isHardwareTypeSelected
                       ? "unit"
                       : getUnitLabel(acc.calculation_type)})
                   </option>
@@ -376,6 +412,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 onBlur={() => mathInput.handleBlur("width")}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
+                disabled={isHardwareTypeSelected}
               />
             </div>
             <div>
@@ -391,6 +428,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 onBlur={() => mathInput.handleBlur("height")}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
+                disabled={isHardwareTypeSelected}
               />
             </div>
             <div>
@@ -406,6 +444,7 @@ const AccessoryItemForm = ({ item = {}, onSave, onCancel }) => {
                 onBlur={() => mathInput.handleBlur("depth")}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 placeholder=""
+                disabled={isHardwareTypeSelected}
               />
             </div>
             <div>
@@ -552,12 +591,22 @@ const EstimateAccessoriesManager = ({
 
   const handleSaveItem = async (item, itemIndex = -1) => {
     try {
+      const isHardwareAccessory = Boolean(
+        item.hardware_pull_id || item.hardware_hinge_id || item.hardware_slide_id,
+      );
+
       // Clean up numeric fields: convert empty strings to null
       const cleanedItem = {
         ...item,
-        width: item.width === "" || item.width === null || item.width === undefined ? null : Number(item.width),
-        height: item.height === "" || item.height === null || item.height === undefined ? null : Number(item.height),
-        depth: item.depth === "" || item.depth === null || item.depth === undefined ? null : Number(item.depth),
+        width: isHardwareAccessory
+          ? null
+          : item.width === "" || item.width === null || item.width === undefined ? null : Number(item.width),
+        height: isHardwareAccessory
+          ? null
+          : item.height === "" || item.height === null || item.height === undefined ? null : Number(item.height),
+        depth: isHardwareAccessory
+          ? null
+          : item.depth === "" || item.depth === null || item.depth === undefined ? null : Number(item.depth),
         quantity: item.quantity != null ? Number(item.quantity) : 1,
       };
 
