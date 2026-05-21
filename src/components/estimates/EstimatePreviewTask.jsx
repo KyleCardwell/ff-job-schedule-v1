@@ -196,7 +196,8 @@ const EstimatePreviewTask = ({
 
   const scheduled = task.sections.every(section => section.scheduled_task_id !== null);
 
-  const { selectedRoomTotal, selectedSectionCount } = useMemo(() => {
+  const { selectedRoomTotal, selectedRoomWouldBeTotal, selectedSectionCount } =
+    useMemo(() => {
     const sections = Object.values(sectionDataMap);
     const selectedSectionsForTask = sections.filter(
       (sectionData) => selectedSections?.[sectionData.sectionId],
@@ -207,9 +208,22 @@ const EstimatePreviewTask = ({
         (sum, sectionData) => sum + (sectionData.totalPrice || 0),
         0,
       ),
+      selectedRoomWouldBeTotal: selectedSectionsForTask.reduce(
+        (sum, sectionData) => {
+          const quantity = Number(sectionData.quantity) || 0;
+          const sectionTotal = Number(sectionData.totalPrice) || 0;
+          const sectionWouldBeTotal =
+            quantity === 0 ? Number(sectionData.unitPrice) || 0 : sectionTotal;
+
+          return sum + sectionWouldBeTotal;
+        },
+        0,
+      ),
       selectedSectionCount: selectedSectionsForTask.length,
     };
-  }, [sectionDataMap, selectedSections]);
+    }, [sectionDataMap, selectedSections]);
+
+  const hasWouldBeRoomTotal = selectedRoomWouldBeTotal !== selectedRoomTotal;
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
@@ -259,7 +273,14 @@ const EstimatePreviewTask = ({
                   }`}
                 >
                   <span>Room Total</span>
-                  <span>{formatCurrency(selectedRoomTotal)}</span>
+                  <div className="flex items-center gap-2">
+                    <span>{formatCurrency(selectedRoomTotal)}</span>
+                    {hasWouldBeRoomTotal && (
+                      <span className="px-1 bg-amber-400 text-slate-900 text-base">
+                        {formatCurrency(selectedRoomWouldBeTotal)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

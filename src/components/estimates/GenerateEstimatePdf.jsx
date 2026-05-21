@@ -170,6 +170,7 @@ const GenerateEstimatePdf = ({
 
         if (!taskSummaries.has(taskKey)) {
           taskSummaries.set(taskKey, {
+            costPrice: 0,
             totalPrice: 0,
             sectionCount: 0,
             firstSectionKey: sectionKey,
@@ -177,6 +178,7 @@ const GenerateEstimatePdf = ({
         }
 
         const summary = taskSummaries.get(taskKey);
+        summary.costPrice = roundToHundredth(summary.costPrice + unitPrice);
         summary.totalPrice = roundToHundredth(summary.totalPrice + sectionTotal);
         summary.sectionCount += 1;
       });
@@ -253,6 +255,7 @@ const GenerateEstimatePdf = ({
         const actualQuantityText = String(quantity);
         const unitPrice = Number(section.unitPrice) || 0;
         const totalPrice = roundToHundredth(quantity * unitPrice);
+        const groupedCostPrice = summary?.costPrice ?? unitPrice;
         const groupedTotalPrice = summary?.totalPrice ?? totalPrice;
         const displayQuantity = hasMultipleSections
           ? isFirstSection || quantity !== 1
@@ -261,7 +264,7 @@ const GenerateEstimatePdf = ({
           : section.quantity?.toString() ?? "";
         const displayCost = hasMultipleSections
           ? isFirstSection
-            ? formatCurrency(groupedTotalPrice)
+            ? formatCurrency(groupedCostPrice)
             : ""
           : formatCurrency(unitPrice);
         const displayTotal = hasMultipleSections
