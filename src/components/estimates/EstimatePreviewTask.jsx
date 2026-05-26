@@ -24,6 +24,22 @@ const EstimatePreviewTask = ({
         ? parsedTaskQuantity
         : 1;
 
+  const getOrderedSectionData = useCallback(
+    (dataMap) => {
+      const orderedByTask = (task.sections || [])
+        .map((section) => dataMap[section.est_section_id])
+        .filter(Boolean);
+      const orderedIds = new Set(
+        orderedByTask.map((section) => section.sectionId),
+      );
+      const remaining = Object.values(dataMap).filter(
+        (section) => !orderedIds.has(section.sectionId),
+      );
+      return [...orderedByTask, ...remaining];
+    },
+    [task.sections],
+  );
+
   // Helper function to calculate breakdown from sections
   const calculateBreakdown = useCallback(
     (sections) => {
@@ -152,7 +168,7 @@ const EstimatePreviewTask = ({
         const updated = { ...prev, [sectionData.sectionId]: sectionData };
 
         // Calculate task total and build task data object
-        const sections = Object.values(updated);
+        const sections = getOrderedSectionData(updated);
         const roomCost = sections.reduce(
           (sum, s) => sum + (s.totalPriceWithQuantity || 0),
           0,
@@ -195,21 +211,22 @@ const EstimatePreviewTask = ({
       taskQuantity,
       onTaskDataChange,
       calculateBreakdown,
+      getOrderedSectionData,
     ],
   );
 
   // Recalculate breakdown when selectedSections changes
   useEffect(() => {
-    const sections = Object.values(sectionDataMap);
+    const sections = getOrderedSectionData(sectionDataMap);
     if (sections.length > 0) {
       calculateBreakdown(sections);
     }
-  }, [selectedSections, calculateBreakdown, sectionDataMap]);
+  }, [selectedSections, calculateBreakdown, getOrderedSectionData, sectionDataMap]);
 
   const scheduled = task.sections.every(section => section.scheduled_task_id !== null);
 
   const { selectedRoomCost, selectedRoomTotal, selectedSectionCount } = useMemo(() => {
-    const sections = Object.values(sectionDataMap);
+    const sections = getOrderedSectionData(sectionDataMap);
     const selectedSectionsForTask = sections.filter(
       (sectionData) => selectedSections?.[sectionData.sectionId],
     );
@@ -224,7 +241,7 @@ const EstimatePreviewTask = ({
       selectedRoomTotal: selectedRoomCost * taskQuantity,
       selectedSectionCount: selectedSectionsForTask.length,
     };
-    }, [sectionDataMap, selectedSections, taskQuantity]);
+    }, [sectionDataMap, selectedSections, taskQuantity, getOrderedSectionData]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {

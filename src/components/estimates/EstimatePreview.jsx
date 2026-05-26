@@ -230,16 +230,64 @@ const EstimatePreview = () => {
     });
   }, []);
 
+  const orderedEstimateTasks = useMemo(() => {
+    const tasks = currentEstimate?.tasks || [];
+    if (!tasks.length) return [];
+
+    const tasksOrder = Array.isArray(currentEstimate?.tasks_order)
+      ? currentEstimate.tasks_order
+      : [];
+    const tasksById = new Map(tasks.map((task) => [task.est_task_id, task]));
+    const orderedTasks = tasksOrder
+      .map((taskId) => tasksById.get(taskId))
+      .filter(Boolean);
+    const orderedTaskIds = new Set(
+      orderedTasks.map((task) => task.est_task_id),
+    );
+    const remainingTasks = tasks.filter(
+      (task) => !orderedTaskIds.has(task.est_task_id),
+    );
+
+    return [...orderedTasks, ...remainingTasks].map((task) => {
+      const sections = task.sections || [];
+      const sectionsOrder = Array.isArray(task.sections_order)
+        ? task.sections_order
+        : [];
+
+      if (!sectionsOrder.length) {
+        return task;
+      }
+
+      const sectionsById = new Map(
+        sections.map((section) => [section.est_section_id, section]),
+      );
+      const orderedSections = sectionsOrder
+        .map((sectionId) => sectionsById.get(sectionId))
+        .filter(Boolean);
+      const orderedSectionIds = new Set(
+        orderedSections.map((section) => section.est_section_id),
+      );
+      const remainingSections = sections.filter(
+        (section) => !orderedSectionIds.has(section.est_section_id),
+      );
+
+      return {
+        ...task,
+        sections: [...orderedSections, ...remainingSections],
+      };
+    });
+  }, [currentEstimate?.tasks, currentEstimate?.tasks_order]);
+
   // Calculate grand total from task data and prepare all sections for PDF
   // Use currentEstimate.tasks to maintain original order
   // Only include selected sections in calculations
   const { grandTotal, allSections, lineItemsTotal, breakdown } = useMemo(() => {
-    if (!currentEstimate?.tasks) {
+    if (!orderedEstimateTasks.length) {
       return { grandTotal: 0, allSections: [], lineItemsTotal: 0, breakdown: null };
     }
 
-    // Iterate through tasks in their original order
-    const orderedTasks = currentEstimate.tasks
+    // Iterate through tasks in normalized order
+    const orderedTasks = orderedEstimateTasks
       .map((task) => taskDataMap[task.est_task_id])
       .filter(Boolean); // Remove any undefined tasks
 
@@ -385,7 +433,15 @@ const EstimatePreview = () => {
     });
 
     return { grandTotal, allSections: selectedSectionsArray, lineItemsTotal, breakdown };
-  }, [taskDataMap, taskBreakdownMap, currentEstimate, selectedSections, selectedLineItems]);
+  }, [taskDataMap, taskBreakdownMap, orderedEstimateTasks, currentEstimate, selectedSections, selectedLineItems]);
+
+  const orderedTaskDataForIndex = useMemo(
+    () =>
+      orderedEstimateTasks
+        .map((task) => taskDataMap[task.est_task_id])
+        .filter(Boolean),
+    [orderedEstimateTasks, taskDataMap],
+  );
 
   // Redirect to edit page if no currentEstimate exists
   useEffect(() => {
@@ -565,8 +621,7 @@ const EstimatePreview = () => {
       <div className="flex-1 px-6 flex gap-6 overflow-hidden mx-auto">
         {/* Left Index Panel */}
         <EstimatePreviewIndex
-          taskDataMap={taskDataMap}
-          tasksOrder={currentEstimate.tasks_order}
+          orderedTasks={orderedTaskDataForIndex}
           selectedItems={selectedSections}
           onToggleItem={handleToggleSection}
           onToggleAll={handleToggleAllSections}
@@ -594,8 +649,8 @@ const EstimatePreview = () => {
           />
 
           {/* Tasks and Sections */}
-          {currentEstimate.tasks && currentEstimate.tasks.length > 0 ? (
-            currentEstimate.tasks.map((task) => (
+          {orderedEstimateTasks.length > 0 ? (
+            orderedEstimateTasks.map((task) => (
               <EstimatePreviewTask
                 key={task.est_task_id}
                 task={task}

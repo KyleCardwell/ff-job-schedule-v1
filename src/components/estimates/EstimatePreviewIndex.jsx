@@ -9,8 +9,7 @@ import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
  * Similar to ScrollableIndex but with checkbox functionality for estimate preview
  */
 const EstimatePreviewIndex = ({
-  taskDataMap,
-  tasksOrder = [],
+  orderedTasks = [],
   selectedItems,
   onToggleItem,
   onToggleAll,
@@ -28,18 +27,9 @@ const EstimatePreviewIndex = ({
 }) => {
   const [activeItemId, setActiveItemId] = useState(null);
 
-  // Sort tasks by tasks_order array
-  const orderedTasks = useMemo(() => {
-    if (!tasksOrder || tasksOrder.length === 0) {
-      return Object.values(taskDataMap);
-    }
-
-    return tasksOrder.map((taskId) => taskDataMap[taskId]).filter(Boolean); // Remove any undefined tasks
-  }, [taskDataMap, tasksOrder]);
-
   // Check if all sections are selected
   const allSectionsSelected = useMemo(() => {
-    // Get all possible section IDs from taskDataMap
+    // Get all possible section IDs from ordered tasks
     const allPossibleSectionIds = orderedTasks.flatMap((task) =>
       (task.sections || []).map((section) => section.sectionId),
     );
@@ -121,7 +111,7 @@ const EstimatePreviewIndex = ({
 
       // Find the section to determine which offset to use
       let sectionInfo = null;
-      Object.values(taskDataMap).forEach((task) => {
+      orderedTasks.forEach((task) => {
         const section = task.sections?.find((s) => s.sectionId === itemId);
         if (section) {
           sectionInfo = section;
@@ -144,7 +134,7 @@ const EstimatePreviewIndex = ({
     }
   };
 
-  if (!taskDataMap || Object.keys(taskDataMap).length === 0) return null;
+  if (!orderedTasks || orderedTasks.length === 0) return null;
 
   return (
     <div className={`w-64 flex-none ${className}`}>
@@ -350,8 +340,21 @@ const EstimatePreviewIndex = ({
 };
 
 EstimatePreviewIndex.propTypes = {
-  taskDataMap: PropTypes.object.isRequired,
-  tasksOrder: PropTypes.array,
+  orderedTasks: PropTypes.arrayOf(
+    PropTypes.shape({
+      taskId: PropTypes.number.isRequired,
+      taskName: PropTypes.string,
+      sections: PropTypes.arrayOf(
+        PropTypes.shape({
+          sectionId: PropTypes.number.isRequired,
+          sectionName: PropTypes.string,
+          scheduledTaskId: PropTypes.number,
+          hasMultipleSections: PropTypes.bool,
+          isFirstSection: PropTypes.bool,
+        }),
+      ),
+    }),
+  ).isRequired,
   selectedItems: PropTypes.object.isRequired,
   onToggleItem: PropTypes.func.isRequired,
   onToggleAll: PropTypes.func.isRequired,
