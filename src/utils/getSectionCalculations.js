@@ -2349,6 +2349,7 @@ export const getSectionCalculations = (section, context = {}) => {
   if (!section) {
     return {
       totalPrice: 0,
+      totalPriceWithRoomQuantity: 0,
       faceCounts: {},
       facePrices: {},
       boxTotal: 0,
@@ -2372,6 +2373,7 @@ export const getSectionCalculations = (section, context = {}) => {
       approxBaseLengthFeet: 0,
       approxCrownLengthFeet: 0,
       quantity: 0,
+      roomQuantity: 1,
       profit: 0,
       commission: 0,
       discount: 0,
@@ -2785,8 +2787,22 @@ export const getSectionCalculations = (section, context = {}) => {
   // If quantity is 0, calculate as if it's 1 (for display purposes)
   // Otherwise use the actual quantity for multiplication
   const effectiveQuantity = section.quantity > 0 ? section.quantity : 1;
+
+  const matchedTask = (context?.estimate?.tasks || []).find(
+    (task) => task?.est_task_id === section?.est_task_id,
+  );
+  const rawRoomQuantity = matchedTask?.quantity;
+  const parsedRoomQuantity = Number(rawRoomQuantity);
+  const roomQuantity =
+    rawRoomQuantity == null
+      ? 1
+      : Number.isFinite(parsedRoomQuantity)
+        ? parsedRoomQuantity
+        : 1;
+
   const unitPrice = roundPriceUpTo5; // Price for one section
   const totalPrice = roundPriceUpTo5 * effectiveQuantity;
+  const totalPriceWithRoomQuantity = totalPrice * roomQuantity;
 
   // Calculate total accessories count and price (including glass from faces)
   const accessoriesCount = Object.values(accessoriesTotal)
@@ -2805,6 +2821,7 @@ export const getSectionCalculations = (section, context = {}) => {
   return {
     unitPrice,
     totalPrice,
+    totalPriceWithRoomQuantity,
     subTotalPrice,
     partsTotalPrice,
     faceCounts: cabinetTotals.faceCounts,
@@ -2840,6 +2857,7 @@ export const getSectionCalculations = (section, context = {}) => {
     otherCount,
     otherTotal,
     quantity: section.quantity,
+    roomQuantity,
     profit: sectionProfit,
     profitRate: section.profit,
     commission: sectionCommission,

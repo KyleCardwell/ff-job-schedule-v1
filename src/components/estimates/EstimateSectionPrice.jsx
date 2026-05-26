@@ -138,26 +138,48 @@ const EstimateSectionPrice = ({
     if (!sectionCalculations)
       return {
         unitPrice: 0,
+        sectionTotalPrice: 0,
         displayTotal: 0,
         actualQuantity: 0,
-        showAmberUnitPrice: false,
+        roomQuantity: 1,
+        amberPriceValue: 0,
+        showAmberPrice: false,
+        showAmberSectionQuantity: false,
+        showAmberRoomQuantity: false,
         showTotalRow: false,
       };
 
     const actualQuantity = section.quantity;
+    const roomQuantity = sectionCalculations.roomQuantity ?? 1;
+    const sectionTotalPrice = sectionCalculations.totalPrice ?? 0;
+    const isSectionQuantityZero = actualQuantity === 0;
+    const isRoomQuantityZero = roomQuantity === 0;
 
     // unitPrice comes from sectionCalculations (price for one section)
     const unitPrice = sectionCalculations.unitPrice;
 
     // Display total is 0 if quantity is 0, otherwise use calculated total
     const displayTotal =
-      actualQuantity === 0 ? 0 : sectionCalculations.totalPrice;
+      actualQuantity === 0
+        ? 0
+        : sectionCalculations.totalPriceWithRoomQuantity ?? sectionCalculations.totalPrice;
+
+    const amberPriceValue = isSectionQuantityZero
+      ? unitPrice
+      : isRoomQuantityZero
+        ? sectionTotalPrice
+        : displayTotal;
 
     return {
       unitPrice,
+      sectionTotalPrice,
       displayTotal,
       actualQuantity,
-      showAmberUnitPrice: actualQuantity === 0, // Show amber when quantity is 0
+      roomQuantity,
+      amberPriceValue,
+      showAmberPrice: isSectionQuantityZero || isRoomQuantityZero,
+      showAmberSectionQuantity: isSectionQuantityZero,
+      showAmberRoomQuantity: isRoomQuantityZero,
       showTotalRow: actualQuantity > 1, // Show "Total" row when quantity > 1
     };
   }, [section.quantity, sectionCalculations]);
@@ -196,12 +218,12 @@ const EstimateSectionPrice = ({
         </div>
         <div
           className={`text-xl font-bold ${
-            displayValues.showAmberUnitPrice ? "text-amber-400" : "text-teal-400"
+            displayValues.showAmberPrice ? "text-amber-400" : "text-teal-400"
           }`}
         >
           {formatCurrency(
-            displayValues.showAmberUnitPrice
-              ? displayValues.unitPrice
+            displayValues.showAmberPrice
+              ? displayValues.amberPriceValue
               : displayValues.displayTotal,
             {
               noCents: true,
@@ -269,13 +291,13 @@ const EstimateSectionPrice = ({
             </div>
           {/* )} */}
           <div
-            className={`grid grid-cols-[3fr,1fr,3fr] gap-1 ${
-              displayValues.showAmberUnitPrice ? "bg-amber-400 px-1" : ""
+            className={`grid grid-cols-[3fr,1fr,3fr] gap-1 pb-1 mb-2 border-b border-gray-700 ${
+              displayValues.showAmberSectionQuantity ? "bg-amber-400 px-1" : ""
             }`}
           >
             <div
               className={`text-left ${
-                displayValues.showAmberUnitPrice
+                displayValues.showAmberSectionQuantity
                   ? "text-lg font-bold text-slate-900"
                   : "text-sm text-slate-300"
               }`}
@@ -285,12 +307,36 @@ const EstimateSectionPrice = ({
             <div></div>
             <div
               className={`text-right font-bold ${
-                displayValues.showAmberUnitPrice
+                displayValues.showAmberSectionQuantity
                   ? "text-lg text-slate-900"
                   : "text-sm text-teal-400"
               }`}
             >
               {sectionCalculations.quantity}
+            </div>
+          </div>
+          <div
+            className={`grid grid-cols-[4fr,3fr] gap-1 ${
+              displayValues.showAmberRoomQuantity ? "bg-amber-400 px-1" : ""
+            }`}
+          >
+            <div
+              className={`text-left ${
+                displayValues.showAmberRoomQuantity
+                  ? "text-lg font-bold text-slate-900"
+                  : "text-sm text-slate-300"
+              }`}
+            >
+              Room Quantity
+            </div>
+            <div
+              className={`text-right font-bold ${
+                displayValues.showAmberRoomQuantity
+                  ? "text-lg text-slate-900"
+                  : "text-sm text-teal-400"
+              }`}
+            >
+              {displayValues.roomQuantity}
             </div>
           </div>
         </EstimateSectionPriceGroup>

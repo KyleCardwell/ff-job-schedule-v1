@@ -104,14 +104,16 @@ const EstimatePreviewSection = ({
   const sectionData = useMemo(() => {
     if (!calculations || !effectiveSection) return null;
 
-    // Use quantity 1 for calculations if quantity is 0, but preserve actual quantity for display
     const actualQuantity = effectiveSection.quantity;
-    const calculationQuantity = actualQuantity === 0 ? 1 : actualQuantity;
-    const unitPrice = calculations.totalPrice / calculationQuantity;
-
-    // If actual quantity is 0, total should be 0
-    const displayTotalPrice =
-      actualQuantity === 0 ? 0 : calculations.totalPrice;
+    const parsedSectionQuantity = Number(actualQuantity);
+    const sectionQuantity =
+      actualQuantity == null
+        ? 1
+        : Number.isFinite(parsedSectionQuantity)
+          ? parsedSectionQuantity
+          : 1;
+    const sectionTotalPrice = Number(calculations.unitPrice) || 0;
+    const sectionTotalPriceWithQuantity = sectionTotalPrice * sectionQuantity;
 
     // Get readable names for materials and styles
     const cabinetStyleName =
@@ -225,9 +227,10 @@ const EstimatePreviewSection = ({
       sectionNameDisplay,
       taskName,
       displayName, // For PDF display
-      quantity: actualQuantity,
-      unitPrice,
-      totalPrice: displayTotalPrice,
+      quantity: sectionQuantity,
+      unitPrice: sectionTotalPrice,
+      totalPrice: sectionTotalPrice,
+      totalPriceWithQuantity: sectionTotalPriceWithQuantity,
       // Description details for PDF
       cabinetStyle: cabinetStyleName,
       faceMaterial: context.selectedFaceMaterial?.material?.name || "",
@@ -274,7 +277,7 @@ const EstimatePreviewSection = ({
   // Notify parent when section data changes (only if value actually changed)
   useEffect(() => {
     if (onTotalCalculated && sectionData) {
-      const currentTotal = sectionData.totalPrice;
+      const currentTotal = sectionData.totalPriceWithQuantity;
       // Only call if the total has actually changed
       if (prevTotalRef.current !== currentTotal) {
         prevTotalRef.current = currentTotal;
@@ -459,17 +462,13 @@ const EstimatePreviewSection = ({
             </div>
           )}
           <div
-            className={`flex justify-between ${section.quantity === 0 ? "px-1 bg-amber-400 text-slate-900" : "text-slate-300"}`}
+            className="flex justify-between text-slate-300"
           >
             <span>Quantity:</span>
-            <span>× {section.quantity}</span>
+            <span>× {sectionData.quantity}</span>
           </div>
           <div
-            className={`${
-              section.quantity === 0
-                ? "px-1 bg-amber-400 text-slate-900"
-                : "text-teal-400"
-            } flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2`}
+            className="text-teal-400 flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2"
           >
             <span>
               {hasMultipleSections ? `Section ${sectionNumber}` : "Room"} Total
@@ -482,11 +481,7 @@ const EstimatePreviewSection = ({
               </div>
             )}
             <span>
-              {formatCurrency(
-                section.quantity === 0
-                  ? sectionData.unitPrice
-                  : sectionData.totalPrice,
-              )}
+              {formatCurrency(sectionData.totalPriceWithQuantity)}
             </span>
           </div>
         </div>

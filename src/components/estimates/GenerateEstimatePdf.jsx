@@ -158,18 +158,35 @@ const GenerateEstimatePdf = ({
 
       // Build all section rows - no borders, they'll be drawn via canvas
       const allRows = [];
+      let selectedLineItemsTotal = 0;
 
       // Aggregate totals by task so multi-section tasks show pricing once
       const taskSummaries = new Map();
       allSections.forEach((section, index) => {
         const taskKey = section.taskId ?? section.taskName ?? `task-${index}`;
         const sectionKey = section.sectionId ?? index;
-        const quantity = Number(section.quantity) || 0;
-        const unitPrice = Number(section.unitPrice) || 0;
-        const sectionTotal = roundToHundredth(quantity * unitPrice);
+        const rawTaskQuantity = section.taskQuantity;
+        const parsedTaskQuantity = Number(rawTaskQuantity);
+        const taskQuantity =
+          rawTaskQuantity == null
+            ? 1
+            : Number.isFinite(parsedTaskQuantity)
+              ? parsedTaskQuantity
+              : 1;
+        const rawSectionQuantity = section.quantity;
+        const parsedSectionQuantity = Number(rawSectionQuantity);
+        const sectionQuantity =
+          rawSectionQuantity == null
+            ? 1
+            : Number.isFinite(parsedSectionQuantity)
+              ? parsedSectionQuantity
+              : 1;
+        const sectionBasePrice = Number(section.totalPrice ?? section.unitPrice) || 0;
+        const sectionTotal = roundToHundredth(sectionBasePrice * sectionQuantity);
 
         if (!taskSummaries.has(taskKey)) {
           taskSummaries.set(taskKey, {
+            taskQuantity,
             costPrice: 0,
             totalPrice: 0,
             sectionCount: 0,
@@ -178,8 +195,9 @@ const GenerateEstimatePdf = ({
         }
 
         const summary = taskSummaries.get(taskKey);
-        summary.costPrice = roundToHundredth(summary.costPrice + unitPrice);
-        summary.totalPrice = roundToHundredth(summary.totalPrice + sectionTotal);
+        summary.taskQuantity = taskQuantity;
+        summary.costPrice = roundToHundredth(summary.costPrice + sectionTotal);
+        summary.totalPrice = roundToHundredth(summary.costPrice * summary.taskQuantity);
         summary.sectionCount += 1;
       });
 
@@ -251,32 +269,43 @@ const GenerateEstimatePdf = ({
         const summary = taskSummaries.get(taskKey);
         const hasMultipleSections = summary?.sectionCount > 1;
         const isFirstSection = summary?.firstSectionKey === sectionKey;
-        const quantity = Number(section.quantity) || 0;
-        const actualQuantityText = String(quantity);
-        const unitPrice = Number(section.unitPrice) || 0;
-        const totalPrice = roundToHundredth(quantity * unitPrice);
-        const groupedCostPrice = summary?.costPrice ?? unitPrice;
-        const groupedTotalPrice = summary?.totalPrice ?? totalPrice;
+        const rawTaskQuantity = summary?.taskQuantity;
+        const parsedTaskQuantity = Number(rawTaskQuantity);
+        const taskQuantity =
+          rawTaskQuantity == null
+            ? 1
+            : Number.isFinite(parsedTaskQuantity)
+              ? parsedTaskQuantity
+              : 1;
+        const rawSectionQuantity = section.quantity;
+        const parsedSectionQuantity = Number(rawSectionQuantity);
+        const sectionQuantity =
+          rawSectionQuantity == null
+            ? 1
+            : Number.isFinite(parsedSectionQuantity)
+              ? parsedSectionQuantity
+              : 1;
+        const sectionBasePrice = Number(section.totalPrice ?? section.unitPrice) || 0;
+        const sectionTotal = roundToHundredth(sectionBasePrice * sectionQuantity);
+        const groupedCostPrice = summary?.costPrice ?? sectionTotal;
+        const groupedTotalPrice = summary?.totalPrice ?? roundToHundredth(sectionTotal * taskQuantity);
         const displayQuantity = hasMultipleSections
-          ? isFirstSection || quantity !== 1
-            ? actualQuantityText
+          ? isFirstSection
+            ? String(taskQuantity)
             : ""
-          : section.quantity?.toString() ?? "";
+          : String(taskQuantity);
         const displayCost = hasMultipleSections
           ? isFirstSection
             ? formatCurrency(groupedCostPrice)
             : ""
-          : formatCurrency(unitPrice);
+          : formatCurrency(sectionTotal);
         const displayTotal = hasMultipleSections
           ? isFirstSection
             ? formatCurrency(groupedTotalPrice)
             : ""
-          : formatCurrency(totalPrice);
-        const shouldAnnotateQuantityInNotes =
-          hasMultipleSections &&
-          quantity !== 1 &&
-          displayQuantity !== actualQuantityText;
-        const quantityNotePrefix = `Quantity - ${actualQuantityText}. `;
+          : formatCurrency(roundToHundredth(sectionTotal * taskQuantity));
+        const shouldAnnotateQuantityInNotes = sectionQuantity !== 1;
+        const quantityNotePrefix = `Quantity: ${sectionQuantity}. `;
         let notesForPdf = buildProcessedSectionNotes(section.notes, null);
 
         if (shouldAnnotateQuantityInNotes) {
@@ -420,6 +449,7 @@ const GenerateEstimatePdf = ({
               item.quantity && item.cost
                 ? parseFloat(item.quantity) * parseFloat(item.cost)
                 : 0;
+            selectedLineItemsTotal += itemTotal;
 
             allRows.push([
               {
@@ -469,6 +499,7 @@ const GenerateEstimatePdf = ({
                 subItem.quantity && subItem.cost
                   ? parseFloat(subItem.quantity) * parseFloat(subItem.cost)
                   : 0;
+              selectedLineItemsTotal += subTotal;
 
               allRows.push([
                 {
@@ -509,6 +540,16 @@ const GenerateEstimatePdf = ({
           }
         });
       }
+
+      const sectionsGrandTotal = Array.from(taskSummaries.values()).reduce(
+        (sum, summary) => sum + (summary.totalPrice || 0),
+        0,
+      );
+      const computedGrandTotal = roundToHundredth(
+        sectionsGrandTotal + selectedLineItemsTotal,
+      );
+      const finalGrandTotal =
+        computedGrandTotal || roundToHundredth(Number(grandTotal) || 0);
 
       // Build PDF content - single table with all rows
       const content = [
@@ -892,7 +933,7 @@ const GenerateEstimatePdf = ({
                               border: [false, true, false, true],
                             },
                             {
-                              text: formatCurrency(grandTotal),
+                              text: formatCurrency(finalGrandTotal),
                               alignment: "right",
                               bold: true,
                               fontSize: 12,

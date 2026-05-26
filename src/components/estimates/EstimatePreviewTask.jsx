@@ -16,6 +16,13 @@ const EstimatePreviewTask = ({
   selectedSections,
 }) => {
   const [sectionDataMap, setSectionDataMap] = useState({});
+  const parsedTaskQuantity = Number(task?.quantity);
+  const taskQuantity =
+    task?.quantity == null
+      ? 1
+      : Number.isFinite(parsedTaskQuantity)
+        ? parsedTaskQuantity
+        : 1;
 
   // Helper function to calculate breakdown from sections
   const calculateBreakdown = useCallback(
@@ -146,10 +153,11 @@ const EstimatePreviewTask = ({
 
         // Calculate task total and build task data object
         const sections = Object.values(updated);
-        const taskTotal = sections.reduce(
-          (sum, s) => sum + (s.totalPrice || 0),
+        const roomCost = sections.reduce(
+          (sum, s) => sum + (s.totalPriceWithQuantity || 0),
           0,
         );
+        const taskTotal = roomCost * taskQuantity;
 
         // Add metadata for scroll offset logic
         const hasMultipleSections = task.sections.length > 1;
@@ -158,12 +166,15 @@ const EstimatePreviewTask = ({
           hasMultipleSections,
           isFirstSection: index === 0,
           taskId: task.est_task_id,
+          taskQuantity,
         }));
 
         const taskData = {
           taskId: task.est_task_id,
           taskName: task.est_task_name,
+          taskQuantity,
           sections: sectionsWithMetadata,
+          roomCost,
           totalPrice: taskTotal,
         };
 
@@ -181,6 +192,7 @@ const EstimatePreviewTask = ({
       task.est_task_id,
       task.est_task_name,
       task.sections.length,
+      taskQuantity,
       onTaskDataChange,
       calculateBreakdown,
     ],
@@ -196,34 +208,23 @@ const EstimatePreviewTask = ({
 
   const scheduled = task.sections.every(section => section.scheduled_task_id !== null);
 
-  const { selectedRoomTotal, selectedRoomWouldBeTotal, selectedSectionCount } =
-    useMemo(() => {
+  const { selectedRoomCost, selectedRoomTotal, selectedSectionCount } = useMemo(() => {
     const sections = Object.values(sectionDataMap);
     const selectedSectionsForTask = sections.filter(
       (sectionData) => selectedSections?.[sectionData.sectionId],
     );
 
-    return {
-      selectedRoomTotal: selectedSectionsForTask.reduce(
-        (sum, sectionData) => sum + (sectionData.totalPrice || 0),
-        0,
-      ),
-      selectedRoomWouldBeTotal: selectedSectionsForTask.reduce(
-        (sum, sectionData) => {
-          const quantity = Number(sectionData.quantity) || 0;
-          const sectionTotal = Number(sectionData.totalPrice) || 0;
-          const sectionWouldBeTotal =
-            quantity === 0 ? Number(sectionData.unitPrice) || 0 : sectionTotal;
+    const selectedRoomCost = selectedSectionsForTask.reduce(
+      (sum, sectionData) => sum + (sectionData.totalPriceWithQuantity || 0),
+      0,
+    );
 
-          return sum + sectionWouldBeTotal;
-        },
-        0,
-      ),
+    return {
+      selectedRoomCost,
+      selectedRoomTotal: selectedRoomCost * taskQuantity,
       selectedSectionCount: selectedSectionsForTask.length,
     };
-    }, [sectionDataMap, selectedSections]);
-
-  const hasWouldBeRoomTotal = selectedRoomWouldBeTotal !== selectedRoomTotal;
+    }, [sectionDataMap, selectedSections, taskQuantity]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
@@ -265,22 +266,33 @@ const EstimatePreviewTask = ({
               />
             ))}
 
-            {task.sections.length > 1 && (
+            {(task.sections.length > 1 || taskQuantity !== 1) && (
               <div className="border-t border-slate-600 pt-4 mt-2">
                 <div
-                  className={`flex justify-between text-lg font-semibold ${
+                  className={`flex justify-between text-sm ${
+                    selectedSectionCount === 0 ? "text-slate-400" : "text-slate-300"
+                  }`}
+                >
+                  <span>Room Quantity</span>
+                  <span>× {taskQuantity}</span>
+                </div>
+                {taskQuantity !== 1 && (
+                  <div
+                    className={`flex justify-between text-sm mt-1 ${
+                      selectedSectionCount === 0 ? "text-slate-400" : "text-slate-300"
+                    }`}
+                  >
+                    <span>Room Cost</span>
+                    <span>{formatCurrency(selectedRoomCost)}</span>
+                  </div>
+                )}
+                <div
+                  className={`flex justify-between text-lg font-semibold mt-1 ${
                     selectedSectionCount === 0 ? "text-slate-400" : "text-teal-400"
                   }`}
                 >
                   <span>Room Total</span>
-                  <div className="flex items-center gap-2">
-                    <span>{formatCurrency(selectedRoomTotal)}</span>
-                    {hasWouldBeRoomTotal && (
-                      <span className="px-1 bg-amber-400 text-slate-900 text-base">
-                        {formatCurrency(selectedRoomWouldBeTotal)}
-                      </span>
-                    )}
-                  </div>
+                  <span>{formatCurrency(selectedRoomTotal)}</span>
                 </div>
               </div>
             )}

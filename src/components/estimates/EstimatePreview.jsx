@@ -250,10 +250,19 @@ const EstimatePreview = () => {
       )
     );
 
-    const tasksTotal = selectedSectionsArray.reduce(
-      (sum, section) => sum + (section.totalPrice || 0),
-      0
-    );
+    const tasksTotal = selectedSectionsArray.reduce((sum, section) => {
+      const sectionTotalWithQuantity =
+        Number(section.totalPriceWithQuantity ?? section.totalPrice) || 0;
+      const parsedTaskQuantity = Number(section.taskQuantity);
+      const taskQuantity =
+        section.taskQuantity == null
+          ? 1
+          : Number.isFinite(parsedTaskQuantity)
+            ? parsedTaskQuantity
+            : 1;
+
+      return sum + sectionTotalWithQuantity * taskQuantity;
+    }, 0);
 
     // Calculate line items total (only selected items)
     let lineItemsTotal = 0;
