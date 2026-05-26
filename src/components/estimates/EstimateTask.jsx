@@ -44,10 +44,18 @@ const EstimateTask = ({
   );
   const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
+  const [taskQuantity, setTaskQuantity] = useState(
+    task?.quantity == null ? "1" : String(task.quantity),
+  );
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] =
     useState(false);
   const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
+
+  const normalizeTaskQuantity = (value) => {
+    const parsedValue = Number.parseFloat(value);
+    return Number.isFinite(parsedValue) ? parsedValue : 1;
+  };
 
   useEffect(() => {
     if (isNew) {
@@ -57,15 +65,23 @@ const EstimateTask = ({
 
   const handleSave = async () => {
     try {
+      const quantity = normalizeTaskQuantity(taskQuantity);
+
       if (isNew) {
         const newTask = await dispatch(
           addTask(currentEstimate.estimate_id, taskName),
         );
-        onSave?.(newTask);
+        const updatedTask = await dispatch(
+          updateTask(currentEstimate.estimate_id, newTask.est_task_id, {
+            quantity,
+          }),
+        );
+        onSave?.(updatedTask);
       } else {
         await dispatch(
           updateTask(currentEstimate.estimate_id, task.est_task_id, {
             est_task_name: taskName,
+            quantity,
           }),
         );
         setIsEditing(false);
@@ -90,6 +106,7 @@ const EstimateTask = ({
       onCancel?.();
     } else {
       setTaskName(task.est_task_name);
+      setTaskQuantity(task?.quantity == null ? "1" : String(task.quantity));
       setIsEditing(false);
     }
   };
@@ -116,14 +133,33 @@ const EstimateTask = ({
       <div className={`group ${className}`}>
         {isEditing ? (
           <div className="flex flex-col items-center space-x-2 px-4 py-3">
-            <input
-              type="text"
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-              className="flex-1 h-8 p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-slate-700 text-slate-200"
-              autoFocus
-              placeholder="Room Name"
-            />
+            <div className="w-full">
+              <label className="block mb-1 text-xs font-medium text-slate-300">
+                Name
+              </label>
+              <input
+                type="text"
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+                className="h-8 p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-slate-700 text-slate-200"
+                autoFocus
+                placeholder="Room Name"
+              />
+            </div>
+            <div className="mt-2 w-full">
+              <label className="block mb-1 text-xs font-medium text-slate-300">
+                Qty
+              </label>
+              <input
+                type="number"
+                value={taskQuantity}
+                onChange={(e) => setTaskQuantity(e.target.value)}
+                className="h-8 p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-slate-700 text-slate-200"
+                placeholder="Quantity"
+                min="0"
+                step="any"
+              />
+            </div>
             <div className="flex space-x-2">
               <button
                 onClick={handleSave}
@@ -160,7 +196,7 @@ const EstimateTask = ({
               {task.est_task_name}
             </span>
             <div className="invisible group-hover/task:visible pl-2 flex gap-1">
-              <Tooltip text="Edit Room Name" position="top">
+              <Tooltip text="Edit Room Name & Quantity" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -286,6 +322,7 @@ EstimateTask.propTypes = {
   task: PropTypes.shape({
     est_task_id: PropTypes.number.isRequired,
     est_task_name: PropTypes.string.isRequired,
+    quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     sections: PropTypes.array,
   }).isRequired,
   isSelected: PropTypes.bool,
