@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-.env
-.env.local
 
 # Editor directories and files
 .vscode/*
@@ -26,3 +24,4 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+config.bat

@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
+import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
@@ -13,6 +14,7 @@ import {
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
+import ReorderModal from "../common/ReorderModal.jsx";
 import Tooltip from "../common/Tooltip.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
@@ -50,7 +52,32 @@ const EstimateTask = ({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] =
     useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
+
+  const orderedSections = useMemo(() => {
+    const sourceSections = task.sections || sections || [];
+    const sectionOrder = Array.isArray(task.sections_order)
+      ? task.sections_order
+      : [];
+
+    if (!sectionOrder.length) {
+      return sourceSections;
+    }
+
+    const sectionsById = new Map(
+      sourceSections.map((section) => [section.est_section_id, section]),
+    );
+    const ordered = sectionOrder
+      .map((sectionId) => sectionsById.get(sectionId))
+      .filter(Boolean);
+    const orderedIds = new Set(ordered.map((section) => section.est_section_id));
+    const remaining = sourceSections.filter(
+      (section) => !orderedIds.has(section.est_section_id),
+    );
+
+    return [...ordered, ...remaining];
+  }, [task.sections, task.sections_order, sections]);
 
   const normalizeTaskQuantity = (value) => {
     const parsedValue = Number.parseFloat(value);
@@ -114,7 +141,7 @@ const EstimateTask = ({
   const handleDuplicateSection = async (options) => {
     try {
       // Duplicate all sections in the task
-      for (const section of sections) {
+      for (const section of orderedSections) {
         await dispatch(duplicateSection(section.est_section_id, options));
       }
       setIsDuplicateSectionModalOpen(false);
@@ -127,6 +154,19 @@ const EstimateTask = ({
   const scheduled = task?.sections?.every(
     (section) => section?.scheduled_task_id !== null,
   );
+
+  const handleSaveSectionOrder = async (orderedSectionIds) => {
+    try {
+      await dispatch(
+        updateTask(currentEstimate.estimate_id, task.est_task_id, {
+          sections_order: orderedSectionIds,
+        }),
+      );
+      setIsReorderModalOpen(false);
+    } catch (error) {
+      console.error("Error reordering sections:", error);
+    }
+  };
 
   return (
     <>
@@ -179,7 +219,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] group/task
+              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] group/task
               ${
                 hasErrorState
                   ? isSelected && sections.length === 1
@@ -195,7 +235,7 @@ const EstimateTask = ({
               {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""}{" "}
               {task.est_task_name}
             </span>
-            <div className="invisible group-hover/task:visible pl-2 flex gap-1">
+            <div className="invisible group-hover/task:visible pl-2 flex gap-1 justify-end">
               <Tooltip text="Edit Room Name & Quantity" position="top">
                 <button
                   onClick={(e) => {
@@ -211,7 +251,7 @@ const EstimateTask = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSectionToDuplicate(sections[0]); // Still need to pass a section for modal context
+                    setSectionToDuplicate(orderedSections[0]); // Still need to pass a section for modal context
                     setIsDuplicateSectionModalOpen(true);
                   }}
                   className="p-1 text-slate-400 hover:text-blue-400"
@@ -219,6 +259,19 @@ const EstimateTask = ({
                   <FiCopy size={14} />
                 </button>
               </Tooltip>
+              {orderedSections.length > 1 && (
+                <Tooltip text="Reorder Sections" position="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReorderModalOpen(true);
+                    }}
+                    className="p-1 text-slate-400 hover:text-teal-400"
+                  >
+                    <LuArrowDownUp size={14} />
+                  </button>
+                </Tooltip>
+              )}
               <Tooltip text="Delete Room" position="top">
                 <button
                   onClick={(e) => {
@@ -235,9 +288,9 @@ const EstimateTask = ({
         )}
 
         {/* Sections List */}
-        {task.sections?.length > 1 && (
+        {orderedSections.length > 1 && (
           <div className="pl-6">
-            {task.sections.map((section, index) => {
+            {orderedSections.map((section, index) => {
               // Calculate the effective style using three-tier fallback
               const effectiveStyle =
                 getEffectiveValueOnly(
@@ -314,6 +367,20 @@ const EstimateTask = ({
           isDuplicatingTask={true}
         />
       )}
+
+      <ReorderModal
+        open={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        onSave={handleSaveSectionOrder}
+        items={orderedSections.map((section, index) => ({
+          est_section_id: section.est_section_id,
+          name:
+            section.section_name?.trim() ||
+            `Section ${index + 1}`,
+        }))}
+        title="Reorder Sections"
+        idKey="est_section_id"
+      />
     </>
   );
 };
@@ -324,6 +391,7 @@ EstimateTask.propTypes = {
     est_task_name: PropTypes.string.isRequired,
     quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     sections: PropTypes.array,
+    sections_order: PropTypes.arrayOf(PropTypes.number),
   }).isRequired,
   isSelected: PropTypes.bool,
   hasErrorState: PropTypes.bool,
