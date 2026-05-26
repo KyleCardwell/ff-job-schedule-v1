@@ -386,8 +386,8 @@ const calculateFaceTotals = (section, context) => {
         if (["open", "container", "reveal"].includes(faceType)) return;
 
         const sectionStyleToUse =
-          faceType === FACE_NAMES.drawer_front ||
-          faceType === FACE_NAMES.false_front
+          faceType === FACE_NAMES.DRAWER_FRONT ||
+          faceType === FACE_NAMES.FALSE_FRONT
             ? effectiveValues.drawer_front_style
             : effectiveValues.door_style;
 
