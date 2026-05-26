@@ -20,29 +20,47 @@ const EstimateTaskForm = ({
   );
 
   const [taskName, setTaskName] = useState("");
+  const [taskQuantity, setTaskQuantity] = useState("1");
   const [isEditing, setIsEditing] = useState(isNew);
   const [showSectionForm, setShowSectionForm] = useState(false);
   const [editingSectionIndex, setEditingSectionIndex] = useState(null);
 
+  const normalizeTaskQuantity = (value) => {
+    const parsedValue = Number.parseFloat(value);
+    return Number.isFinite(parsedValue) ? parsedValue : 1;
+  };
+
   useEffect(() => {
     if (selectedTask) {
       setTaskName(selectedTask.est_task_name);
+      setTaskQuantity(
+        selectedTask.quantity == null ? "1" : String(selectedTask.quantity)
+      );
     } else if (isNew) {
       setIsEditing(true);
+      setTaskQuantity("1");
     }
   }, [selectedTask, isNew]);
 
   const handleSave = async () => {
     try {
+      const quantity = normalizeTaskQuantity(taskQuantity);
+
       if (isNew) {
         const newTask = await dispatch(
           addTask(currentEstimate.estimate_id, taskName)
+        );
+        await dispatch(
+          updateTask(currentEstimate.estimate_id, newTask.est_task_id, {
+            quantity,
+          })
         );
         onTaskSaved?.(newTask.est_task_id);
       } else {
         await dispatch(
           updateTask(currentEstimate.estimate_id, selectedTask.est_task_id, {
             est_task_name: taskName,
+            quantity,
           })
         );
       }
@@ -103,12 +121,26 @@ const EstimateTaskForm = ({
               autoFocus
               placeholder="Room Name"
             />
+            <input
+              type="number"
+              value={taskQuantity}
+              onChange={(e) => setTaskQuantity(e.target.value)}
+              className="w-24 h-9 p-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              placeholder="Qty"
+              min="0"
+              step="any"
+            />
             <button
               onClick={() => {
                 if (isNew) {
                   onCancel?.();
                 } else {
                   setTaskName(selectedTask?.est_task_name || "");
+                  setTaskQuantity(
+                    selectedTask?.quantity == null
+                      ? "1"
+                      : String(selectedTask.quantity)
+                  );
                   setIsEditing(false);
                 }
               }}

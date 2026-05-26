@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
+import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
@@ -13,6 +14,7 @@ import {
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
+import ReorderModal from "../common/ReorderModal.jsx";
 import Tooltip from "../common/Tooltip.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
@@ -44,10 +46,43 @@ const EstimateTask = ({
   );
   const [isEditing, setIsEditing] = useState(isNew);
   const [taskName, setTaskName] = useState(task.est_task_name);
+  const [taskQuantity, setTaskQuantity] = useState(
+    task?.quantity == null ? "1" : String(task.quantity),
+  );
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] =
     useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
+
+  const orderedSections = useMemo(() => {
+    const sourceSections = task.sections || sections || [];
+    const sectionOrder = Array.isArray(task.sections_order)
+      ? task.sections_order
+      : [];
+
+    if (!sectionOrder.length) {
+      return sourceSections;
+    }
+
+    const sectionsById = new Map(
+      sourceSections.map((section) => [section.est_section_id, section]),
+    );
+    const ordered = sectionOrder
+      .map((sectionId) => sectionsById.get(sectionId))
+      .filter(Boolean);
+    const orderedIds = new Set(ordered.map((section) => section.est_section_id));
+    const remaining = sourceSections.filter(
+      (section) => !orderedIds.has(section.est_section_id),
+    );
+
+    return [...ordered, ...remaining];
+  }, [task.sections, task.sections_order, sections]);
+
+  const normalizeTaskQuantity = (value) => {
+    const parsedValue = Number.parseFloat(value);
+    return Number.isFinite(parsedValue) ? parsedValue : 1;
+  };
 
   useEffect(() => {
     if (isNew) {
@@ -57,15 +92,23 @@ const EstimateTask = ({
 
   const handleSave = async () => {
     try {
+      const quantity = normalizeTaskQuantity(taskQuantity);
+
       if (isNew) {
         const newTask = await dispatch(
           addTask(currentEstimate.estimate_id, taskName),
         );
-        onSave?.(newTask);
+        const updatedTask = await dispatch(
+          updateTask(currentEstimate.estimate_id, newTask.est_task_id, {
+            quantity,
+          }),
+        );
+        onSave?.(updatedTask);
       } else {
         await dispatch(
           updateTask(currentEstimate.estimate_id, task.est_task_id, {
             est_task_name: taskName,
+            quantity,
           }),
         );
         setIsEditing(false);
@@ -90,6 +133,7 @@ const EstimateTask = ({
       onCancel?.();
     } else {
       setTaskName(task.est_task_name);
+      setTaskQuantity(task?.quantity == null ? "1" : String(task.quantity));
       setIsEditing(false);
     }
   };
@@ -97,7 +141,7 @@ const EstimateTask = ({
   const handleDuplicateSection = async (options) => {
     try {
       // Duplicate all sections in the task
-      for (const section of sections) {
+      for (const section of orderedSections) {
         await dispatch(duplicateSection(section.est_section_id, options));
       }
       setIsDuplicateSectionModalOpen(false);
@@ -111,19 +155,51 @@ const EstimateTask = ({
     (section) => section?.scheduled_task_id !== null,
   );
 
+  const handleSaveSectionOrder = async (orderedSectionIds) => {
+    try {
+      await dispatch(
+        updateTask(currentEstimate.estimate_id, task.est_task_id, {
+          sections_order: orderedSectionIds,
+        }),
+      );
+      setIsReorderModalOpen(false);
+    } catch (error) {
+      console.error("Error reordering sections:", error);
+    }
+  };
+
   return (
     <>
       <div className={`group ${className}`}>
         {isEditing ? (
           <div className="flex flex-col items-center space-x-2 px-4 py-3">
-            <input
-              type="text"
-              value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-              className="flex-1 h-8 p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-slate-700 text-slate-200"
-              autoFocus
-              placeholder="Room Name"
-            />
+            <div className="w-full">
+              <label className="block mb-1 text-xs font-medium text-slate-300">
+                Name
+              </label>
+              <input
+                type="text"
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+                className="h-8 p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-slate-700 text-slate-200"
+                autoFocus
+                placeholder="Room Name"
+              />
+            </div>
+            <div className="mt-2 w-full">
+              <label className="block mb-1 text-xs font-medium text-slate-300">
+                Qty
+              </label>
+              <input
+                type="number"
+                value={taskQuantity}
+                onChange={(e) => setTaskQuantity(e.target.value)}
+                className="h-8 p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-slate-700 text-slate-200"
+                placeholder="Quantity"
+                min="0"
+                step="any"
+              />
+            </div>
             <div className="flex space-x-2">
               <button
                 onClick={handleSave}
@@ -143,7 +219,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] group/task
+              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] group/task
               ${
                 hasErrorState
                   ? isSelected && sections.length === 1
@@ -159,8 +235,8 @@ const EstimateTask = ({
               {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""}{" "}
               {task.est_task_name}
             </span>
-            <div className="invisible group-hover/task:visible pl-2 flex gap-1">
-              <Tooltip text="Edit Room Name" position="top">
+            <div className="invisible group-hover/task:visible pl-2 flex gap-1 justify-end">
+              <Tooltip text="Edit Room Name & Quantity" position="top">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -175,7 +251,7 @@ const EstimateTask = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSectionToDuplicate(sections[0]); // Still need to pass a section for modal context
+                    setSectionToDuplicate(orderedSections[0]); // Still need to pass a section for modal context
                     setIsDuplicateSectionModalOpen(true);
                   }}
                   className="p-1 text-slate-400 hover:text-blue-400"
@@ -183,6 +259,19 @@ const EstimateTask = ({
                   <FiCopy size={14} />
                 </button>
               </Tooltip>
+              {orderedSections.length > 1 && (
+                <Tooltip text="Reorder Sections" position="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReorderModalOpen(true);
+                    }}
+                    className="p-1 text-slate-400 hover:text-teal-400"
+                  >
+                    <LuArrowDownUp size={14} />
+                  </button>
+                </Tooltip>
+              )}
               <Tooltip text="Delete Room" position="top">
                 <button
                   onClick={(e) => {
@@ -199,9 +288,9 @@ const EstimateTask = ({
         )}
 
         {/* Sections List */}
-        {task.sections?.length > 1 && (
+        {orderedSections.length > 1 && (
           <div className="pl-6">
-            {task.sections.map((section, index) => {
+            {orderedSections.map((section, index) => {
               // Calculate the effective style using three-tier fallback
               const effectiveStyle =
                 getEffectiveValueOnly(
@@ -278,6 +367,20 @@ const EstimateTask = ({
           isDuplicatingTask={true}
         />
       )}
+
+      <ReorderModal
+        open={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        onSave={handleSaveSectionOrder}
+        items={orderedSections.map((section, index) => ({
+          est_section_id: section.est_section_id,
+          name:
+            section.section_name?.trim() ||
+            `Section ${index + 1}`,
+        }))}
+        title="Reorder Sections"
+        idKey="est_section_id"
+      />
     </>
   );
 };
@@ -286,7 +389,9 @@ EstimateTask.propTypes = {
   task: PropTypes.shape({
     est_task_id: PropTypes.number.isRequired,
     est_task_name: PropTypes.string.isRequired,
+    quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     sections: PropTypes.array,
+    sections_order: PropTypes.arrayOf(PropTypes.number),
   }).isRequired,
   isSelected: PropTypes.bool,
   hasErrorState: PropTypes.bool,

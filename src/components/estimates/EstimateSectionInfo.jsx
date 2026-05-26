@@ -106,17 +106,19 @@ const EstimateSectionInfo = ({
     if (boxMaterial?.needs_finish === false) {
       return PRE_FINISHED;
     }
-    return boxFinish?.length
-      ? boxFinish
-          .map(
-            (f) => {
-              const option = finishes?.finishes?.find((fin) => fin.id === f);
-              return option
-                ? getOptionDisplayName("finishes", option)
-                : NOT_SELECTED;
-            },
-          )
-          .join(", ")
+    return Array.isArray(boxFinish)
+      ? boxFinish.length
+        ? boxFinish
+            .map(
+              (f) => {
+                const option = finishes?.finishes?.find((fin) => fin.id === f);
+                return option
+                  ? getOptionDisplayName("finishes", option)
+                  : NOT_SELECTED;
+              },
+            )
+            .join(", ")
+        : NONE
       : NOT_SELECTED;
   };
 
