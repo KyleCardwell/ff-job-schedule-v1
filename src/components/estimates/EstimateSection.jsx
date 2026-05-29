@@ -154,19 +154,6 @@ const EstimateSection = ({
               )}
             </span>
             <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/section:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
-              {section.revision > 1 && (
-                <Tooltip text="Section Versions" position="top">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsRevisionModalOpen(true);
-                    }}
-                    className="p-1 text-slate-400 hover:text-amber-400"
-                  >
-                    <FiClock size={14} />
-                  </button>
-                </Tooltip>
-              )}
               <Tooltip text="Edit Section Name" position="top">
                 <button
                   onClick={(e) => {
@@ -200,6 +187,19 @@ const EstimateSection = ({
                   <FiGitBranch size={14} />
                 </button>
               </Tooltip>
+              {/* {section.revision > 1 && ( */}
+                <Tooltip text="Section Versions" position="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRevisionModalOpen(true);
+                    }}
+                    className="p-1 text-slate-400 hover:text-amber-400"
+                  >
+                    <FiClock size={14} />
+                  </button>
+                </Tooltip>
+              {/* )} */}
               <Tooltip text="Delete Section" position="top">
                 <button
                   onClick={(e) => {

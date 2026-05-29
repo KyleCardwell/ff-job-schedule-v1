@@ -1,6 +1,13 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
-import { FiEdit2, FiTrash2, FiCopy, FiCalendar, FiGitBranch, FiClock } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiTrash2,
+  FiCopy,
+  FiCalendar,
+  FiGitBranch,
+  FiClock,
+} from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -75,7 +82,9 @@ const EstimateTask = ({
     const ordered = sectionOrder
       .map((sectionId) => sectionsById.get(sectionId))
       .filter(Boolean);
-    const orderedIds = new Set(ordered.map((section) => section.est_section_id));
+    const orderedIds = new Set(
+      ordered.map((section) => section.est_section_id),
+    );
     const remaining = sourceSections.filter(
       (section) => !orderedIds.has(section.est_section_id),
     );
@@ -247,13 +256,21 @@ const EstimateTask = ({
             `}
           >
             <span className="truncate pr-2">
-              {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""}{" "}
+              {scheduled ? (
+                <FiCalendar
+                  size={14}
+                  className={`inline ${TASK_SCHEDULED_COLOR}`}
+                />
+              ) : (
+                ""
+              )}{" "}
               {task.est_task_name}
-              {orderedSections.length === 1 && orderedSections[0]?.revision > 1 && (
-                <span className="ml-1 text-xs text-amber-400/70 font-normal">
-                  v{orderedSections[0].revision}
-                </span>
-              )}
+              {orderedSections.length === 1 &&
+                orderedSections[0]?.revision > 1 && (
+                  <span className="ml-1 text-xs text-amber-400/70 font-normal">
+                    v{orderedSections[0].revision}
+                  </span>
+                )}
             </span>
             <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/task:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
               <Tooltip text="Edit Room Name & Quantity" position="top">
@@ -292,7 +309,7 @@ const EstimateTask = ({
                   </button>
                 </Tooltip>
               )}
-              {/* {orderedSections.length === 1 && orderedSections[0]?.revision > 1 && ( */}
+              {orderedSections.length === 1 && (
                 <Tooltip text="Section Versions" position="top">
                   <button
                     onClick={(e) => {
@@ -304,7 +321,7 @@ const EstimateTask = ({
                     <FiClock size={14} />
                   </button>
                 </Tooltip>
-              {/* )} */}
+              )}
               {orderedSections.length > 1 && (
                 <Tooltip text="Reorder Sections" position="top">
                   <button
@@ -421,9 +438,7 @@ const EstimateTask = ({
         onSave={handleSaveSectionOrder}
         items={orderedSections.map((section, index) => ({
           est_section_id: section.est_section_id,
-          name:
-            section.section_name?.trim() ||
-            `Section ${index + 1}`,
+          name: section.section_name?.trim() || `Section ${index + 1}`,
         }))}
         title="Reorder Sections"
         idKey="est_section_id"
