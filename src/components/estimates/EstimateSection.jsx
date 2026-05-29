@@ -1,10 +1,10 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
-import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCopy, FiCalendar, FiGitBranch } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
-import { deleteSection, updateSection, duplicateSection } from "../../redux/actions/estimates";
+import { deleteSection, updateSection, duplicateSection, reviseSection } from "../../redux/actions/estimates";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
 import Tooltip from "../common/Tooltip.jsx";
@@ -79,6 +79,15 @@ const EstimateSection = ({
     }
   };
 
+  const handleReviseSection = async () => {
+    try {
+      await dispatch(reviseSection(section.est_section_id));
+      onSelect?.();
+    } catch (error) {
+      console.error("Error revising section:", error);
+    }
+  };
+
   // Display name: use custom name if exists, otherwise "Section #"
   const displayName = section.section_name || `Section ${sectionNumber}`;
   const scheduled = section.scheduled_task_id !== null;
@@ -115,7 +124,7 @@ const EstimateSection = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-2 pl-2 pr-1 text-sm font-medium text-left grid grid-cols-[2fr_80px] justify-between group/section
+              relative w-full py-2 pl-2 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] justify-between group/section
               ${
                 hasErrorState
                   ? isSelected
@@ -127,8 +136,8 @@ const EstimateSection = ({
               }
             `}
           >
-            <span>{scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {displayName}</span>
-            <div className="invisible group-hover/section:visible pl-2 flex gap-1">
+            <span className="truncate pr-2">{scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""} {displayName}</span>
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/section:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
               <Tooltip text="Edit Section Name" position="top">
                 <button
                   onClick={(e) => {
@@ -149,6 +158,17 @@ const EstimateSection = ({
                   className="p-1 text-slate-400 hover:text-blue-400"
                 >
                   <FiCopy size={14} />
+                </button>
+              </Tooltip>
+              <Tooltip text="Create New Version" position="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReviseSection();
+                  }}
+                  className="p-1 text-slate-400 hover:text-amber-400"
+                >
+                  <FiGitBranch size={14} />
                 </button>
               </Tooltip>
               <Tooltip text="Delete Section" position="top">

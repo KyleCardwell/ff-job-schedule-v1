@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
-import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
+import { FiEdit2, FiTrash2, FiCopy, FiCalendar, FiGitBranch } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -10,6 +10,7 @@ import {
   deleteTask,
   addTask,
   duplicateSection,
+  reviseSection,
 } from "../../redux/actions/estimates";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
@@ -118,6 +119,17 @@ const EstimateTask = ({
     }
   };
 
+  const handleReviseSection = async () => {
+    if (!orderedSections.length) return;
+
+    try {
+      await dispatch(reviseSection(orderedSections[0].est_section_id));
+      onSelect?.();
+    } catch (error) {
+      console.error("Error revising section:", error);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       await dispatch(deleteTask(currentEstimate.estimate_id, task.est_task_id));
@@ -219,7 +231,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] group/task
+              relative w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] group/task
               ${
                 hasErrorState
                   ? isSelected && sections.length === 1
@@ -231,11 +243,11 @@ const EstimateTask = ({
               }
             `}
           >
-            <span>
+            <span className="truncate pr-2">
               {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""}{" "}
               {task.est_task_name}
             </span>
-            <div className="invisible group-hover/task:visible pl-2 flex gap-1 justify-end">
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/task:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
               <Tooltip text="Edit Room Name & Quantity" position="top">
                 <button
                   onClick={(e) => {
@@ -259,6 +271,19 @@ const EstimateTask = ({
                   <FiCopy size={14} />
                 </button>
               </Tooltip>
+              {orderedSections.length === 1 && (
+                <Tooltip text="Create New Version" position="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReviseSection();
+                    }}
+                    className="p-1 text-slate-400 hover:text-amber-400"
+                  >
+                    <FiGitBranch size={14} />
+                  </button>
+                </Tooltip>
+              )}
               {orderedSections.length > 1 && (
                 <Tooltip text="Reorder Sections" position="top">
                   <button
