@@ -30,6 +30,8 @@ DECLARE
   v_section_columns TEXT;
   v_section_select_columns TEXT;
   v_sql TEXT;
+
+  v_original_sections_order BIGINT[];
 BEGIN
   SELECT *
   INTO v_source_section
@@ -39,6 +41,11 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Source section not found: %', p_section_id;
   END IF;
+
+  SELECT et.sections_order
+  INTO v_original_sections_order
+  FROM public.estimate_tasks et
+  WHERE et.est_task_id = v_source_section.est_task_id;
 
   SELECT COALESCE(MAX(revision), 0) + 1
   INTO v_next_revision
@@ -172,8 +179,9 @@ BEGIN
 
   UPDATE public.estimate_tasks
   SET sections_order = CASE
-    WHEN array_position(sections_order, p_section_id) IS NULL THEN sections_order
-    ELSE array_replace(sections_order, p_section_id, v_new_section_id)
+    WHEN v_original_sections_order IS NULL THEN sections_order
+    WHEN array_position(v_original_sections_order, p_section_id) IS NULL THEN sections_order
+    ELSE array_replace(v_original_sections_order, p_section_id, v_new_section_id)
   END
   WHERE est_task_id = v_source_section.est_task_id;
 
