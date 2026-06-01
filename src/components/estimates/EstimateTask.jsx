@@ -60,6 +60,7 @@ const EstimateTask = ({
     task?.quantity == null ? "1" : String(task.quantity),
   );
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showReviseConfirmation, setShowReviseConfirmation] = useState(false);
   const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] =
     useState(false);
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
@@ -132,10 +133,14 @@ const EstimateTask = ({
   };
 
   const handleReviseSection = async () => {
-    if (!orderedSections.length) return;
+    if (!orderedSections.length) {
+      setShowReviseConfirmation(false);
+      return;
+    }
 
     try {
       await dispatch(reviseSection(orderedSections[0].est_section_id));
+      setShowReviseConfirmation(false);
       onSelect?.();
     } catch (error) {
       console.error("Error revising section:", error);
@@ -301,7 +306,7 @@ const EstimateTask = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleReviseSection();
+                      setShowReviseConfirmation(true);
                     }}
                     className="p-1 text-slate-400 hover:text-amber-400"
                   >
@@ -412,6 +417,20 @@ const EstimateTask = ({
         confirmText="Delete"
         cancelText="Cancel"
         confirmButtonClass="bg-red-500 hover:bg-red-600"
+      />
+
+      <ConfirmationModal
+        isOpen={showReviseConfirmation}
+        title="Create New Version"
+        message={[
+          `Create a new version of "${task.est_task_name} - ${orderedSections[0]?.section_name || "Section 1"}"?`,
+          "This will keep the current version in revision history.",
+        ]}
+        onConfirm={handleReviseSection}
+        onCancel={() => setShowReviseConfirmation(false)}
+        confirmText="Create Version"
+        cancelText="Cancel"
+        confirmButtonClass="bg-amber-500 hover:bg-amber-600"
       />
 
       {sectionToDuplicate && (
