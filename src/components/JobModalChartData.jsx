@@ -17,7 +17,10 @@ import {
 } from "../assets/tailwindConstants";
 import { usePermissions } from "../hooks/usePermissions";
 import { updateEmployeeSchedulingConflicts } from "../redux/actions/builders";
-import { createProjectFinancials } from "../redux/actions/financialsData";
+import {
+  createProjectFinancials,
+  refreshFinancialsFromEstimate,
+} from "../redux/actions/financialsData";
 import { completeProjectTasks, saveProject } from "../redux/actions/projects";
 import { selectSchedulableEmployees } from "../redux/selectors";
 import {
@@ -1029,6 +1032,25 @@ const JobModal = ({
       // Check if the result has an error property
       if (result.error) {
         throw new Error(result.error?.message || "Failed to complete project");
+      }
+
+      const completedScheduleTaskIds = [...new Set(
+        roomsToComplete
+          .map((room) => Number(room.task_id))
+          .filter((taskId) => Number.isFinite(taskId)),
+      )];
+
+      if (completedScheduleTaskIds.length > 0) {
+        const refreshResult = await dispatch(
+          refreshFinancialsFromEstimate(completedScheduleTaskIds),
+        );
+
+        if (!refreshResult?.success) {
+          throw new Error(
+            refreshResult?.error ||
+              "Failed to refresh financials from estimate data",
+          );
+        }
       }
 
       if (projectCompletedAt) {

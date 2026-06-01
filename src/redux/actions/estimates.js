@@ -2190,3 +2190,89 @@ export const duplicateSection = (sourceSectionId, options = {}) => {
     }
   };
 };
+
+export const reviseSection = (sectionId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { currentEstimate } = getState().estimates;
+
+      const { data: revisedSectionId, error: rpcError } = await supabase.rpc("revise_section", {
+        p_section_id: sectionId,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const resolvedSectionIdRaw = Array.isArray(revisedSectionId)
+        ? revisedSectionId[0]?.est_section_id ||
+          revisedSectionId[0]?.new_section_id ||
+          revisedSectionId[0]?.revise_section
+        : typeof revisedSectionId === "object" && revisedSectionId !== null
+          ? revisedSectionId.est_section_id ||
+            revisedSectionId.new_section_id ||
+            revisedSectionId.revise_section
+          : revisedSectionId;
+
+      const newSectionId = Number(resolvedSectionIdRaw);
+
+      if (!Number.isFinite(newSectionId) || newSectionId <= 0) {
+        throw new Error("Revise section did not return a valid section ID");
+      }
+
+      await dispatch(fetchEstimateById(currentEstimate.estimate_id));
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "section_revised",
+          data: { sourceSectionId: sectionId, newSectionId },
+        },
+      });
+
+      return newSectionId;
+    } catch (error) {
+      console.error("Error revising section:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};
+
+export const switchSectionRevision = (taskId, lineageId, targetSectionId) => {
+  return async (dispatch, getState) => {
+    try {
+      dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
+
+      const { currentEstimate } = getState().estimates;
+
+      const { error: rpcError } = await supabase.rpc("switch_section_revision", {
+        p_task_id: taskId,
+        p_lineage_id: lineageId,
+        p_target_section_id: targetSectionId,
+      });
+
+      if (rpcError) throw rpcError;
+
+      await dispatch(fetchEstimateById(currentEstimate.estimate_id));
+
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_SUCCESS,
+        payload: {
+          type: "section_revision_switched",
+          data: { taskId, lineageId, targetSectionId },
+        },
+      });
+    } catch (error) {
+      console.error("Error switching section revision:", error);
+      dispatch({
+        type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
+        payload: error.message,
+      });
+      throw error;
+    }
+  };
+};

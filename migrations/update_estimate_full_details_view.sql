@@ -109,6 +109,7 @@ SELECT
                     )
                     FROM estimate_sections es
                     WHERE es.est_task_id = et.est_task_id
+                      AND es.est_section_id = ANY(et.sections_order)
                 )
             )
             ORDER BY COALESCE(array_position(e.tasks_order, et.est_task_id), 99999), et.est_task_id

@@ -1,6 +1,13 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo } from "react";
-import { FiEdit2, FiTrash2, FiCopy, FiCalendar } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiTrash2,
+  FiCopy,
+  FiCalendar,
+  FiGitBranch,
+  FiClock,
+} from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -10,11 +17,14 @@ import {
   deleteTask,
   addTask,
   duplicateSection,
+  reviseSection,
+  switchSectionRevision,
 } from "../../redux/actions/estimates";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 import DuplicateSectionModal from "../common/DuplicateSectionModal.jsx";
 import ReorderModal from "../common/ReorderModal.jsx";
+import SectionRevisionModal from "../common/SectionRevisionModal.jsx";
 import Tooltip from "../common/Tooltip.jsx";
 
 import EstimateSection from "./EstimateSection.jsx";
@@ -50,8 +60,10 @@ const EstimateTask = ({
     task?.quantity == null ? "1" : String(task.quantity),
   );
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showReviseConfirmation, setShowReviseConfirmation] = useState(false);
   const [isDuplicateSectionModalOpen, setIsDuplicateSectionModalOpen] =
     useState(false);
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [sectionToDuplicate, setSectionToDuplicate] = useState(null);
 
@@ -71,7 +83,9 @@ const EstimateTask = ({
     const ordered = sectionOrder
       .map((sectionId) => sectionsById.get(sectionId))
       .filter(Boolean);
-    const orderedIds = new Set(ordered.map((section) => section.est_section_id));
+    const orderedIds = new Set(
+      ordered.map((section) => section.est_section_id),
+    );
     const remaining = sourceSections.filter(
       (section) => !orderedIds.has(section.est_section_id),
     );
@@ -115,6 +129,21 @@ const EstimateTask = ({
       }
     } catch (error) {
       console.error("Error saving task:", error);
+    }
+  };
+
+  const handleReviseSection = async () => {
+    if (!orderedSections.length) {
+      setShowReviseConfirmation(false);
+      return;
+    }
+
+    try {
+      await dispatch(reviseSection(orderedSections[0].est_section_id));
+      setShowReviseConfirmation(false);
+      onSelect?.();
+    } catch (error) {
+      console.error("Error revising section:", error);
     }
   };
 
@@ -219,7 +248,7 @@ const EstimateTask = ({
           <button
             onClick={onSelect}
             className={`
-              w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] group/task
+              relative w-full py-3 pl-4 pr-1 text-sm font-medium text-left grid grid-cols-[minmax(0,1fr)_auto] group/task
               ${
                 hasErrorState
                   ? isSelected && sections.length === 1
@@ -231,11 +260,24 @@ const EstimateTask = ({
               }
             `}
           >
-            <span>
-              {scheduled ? <FiCalendar size={14} className={`inline ${TASK_SCHEDULED_COLOR}`} /> : ""}{" "}
+            <span className="truncate pr-2">
+              {scheduled ? (
+                <FiCalendar
+                  size={14}
+                  className={`inline ${TASK_SCHEDULED_COLOR}`}
+                />
+              ) : (
+                ""
+              )}{" "}
               {task.est_task_name}
+              {orderedSections.length === 1 &&
+                orderedSections[0]?.revision > 1 && (
+                  <span className="ml-1 text-xs text-amber-400/70 font-normal">
+                    v{orderedSections[0].revision}
+                  </span>
+                )}
             </span>
-            <div className="invisible group-hover/task:visible pl-2 flex gap-1 justify-end">
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/task:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
               <Tooltip text="Edit Room Name & Quantity" position="top">
                 <button
                   onClick={(e) => {
@@ -259,6 +301,32 @@ const EstimateTask = ({
                   <FiCopy size={14} />
                 </button>
               </Tooltip>
+              {orderedSections.length === 1 && (
+                <Tooltip text="Create New Version" position="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowReviseConfirmation(true);
+                    }}
+                    className="p-1 text-slate-400 hover:text-amber-400"
+                  >
+                    <FiGitBranch size={14} />
+                  </button>
+                </Tooltip>
+              )}
+              {orderedSections.length === 1 && (
+                <Tooltip text="Section Versions" position="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRevisionModalOpen(true);
+                    }}
+                    className="p-1 text-slate-400 hover:text-amber-400"
+                  >
+                    <FiClock size={14} />
+                  </button>
+                </Tooltip>
+              )}
               {orderedSections.length > 1 && (
                 <Tooltip text="Reorder Sections" position="top">
                   <button
@@ -316,6 +384,7 @@ const EstimateTask = ({
                   task={task}
                   isSelected={selectedSectionId === section.est_section_id}
                   hasErrorState={hasErrorCabinets}
+                  setSelectedSectionId={setSelectedSectionId}
                   onSelect={() => {
                     setSelectedTaskId(task.est_task_id);
                     setSelectedSectionId(section.est_section_id);
@@ -350,6 +419,20 @@ const EstimateTask = ({
         confirmButtonClass="bg-red-500 hover:bg-red-600"
       />
 
+      <ConfirmationModal
+        isOpen={showReviseConfirmation}
+        title="Create New Version"
+        message={[
+          `Create a new version of "${task.est_task_name} - ${orderedSections[0]?.section_name || "Section 1"}"?`,
+          "This will keep the current version in revision history.",
+        ]}
+        onConfirm={handleReviseSection}
+        onCancel={() => setShowReviseConfirmation(false)}
+        confirmText="Create Version"
+        cancelText="Cancel"
+        confirmButtonClass="bg-amber-500 hover:bg-amber-600"
+      />
+
       {sectionToDuplicate && (
         <DuplicateSectionModal
           open={isDuplicateSectionModalOpen}
@@ -374,13 +457,30 @@ const EstimateTask = ({
         onSave={handleSaveSectionOrder}
         items={orderedSections.map((section, index) => ({
           est_section_id: section.est_section_id,
-          name:
-            section.section_name?.trim() ||
-            `Section ${index + 1}`,
+          name: section.section_name?.trim() || `Section ${index + 1}`,
         }))}
         title="Reorder Sections"
         idKey="est_section_id"
       />
+
+      {orderedSections.length === 1 && orderedSections[0] && (
+        <SectionRevisionModal
+          open={isRevisionModalOpen}
+          onClose={() => setIsRevisionModalOpen(false)}
+          section={orderedSections[0]}
+          task={task}
+          onSwitch={async (targetSectionId) => {
+            await dispatch(
+              switchSectionRevision(
+                task.est_task_id,
+                orderedSections[0].section_lineage_id,
+                targetSectionId,
+              ),
+            );
+            setSelectedSectionId?.(targetSectionId);
+          }}
+        />
+      )}
     </>
   );
 };

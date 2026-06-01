@@ -12,7 +12,7 @@ CREATE OR REPLACE FUNCTION add_estimate_to_schedule(
   p_next_task_number INTEGER,
   p_chart_config_id BIGINT,
   p_groups JSONB,
-  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "line_item_id": "uuid", "financial_data": { ... } }
+  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "line_item_id": "uuid", "adjustments": { ... }, "financial_data": { ... }, "section_financial_data": { "1": { ... }, "2": { ... } } }
   p_existing_task_id BIGINT DEFAULT NULL,
   p_estimate_id BIGINT DEFAULT NULL
   -- If sections from this estimate are already scheduled, pass one of their
@@ -114,6 +114,7 @@ BEGIN
     INSERT INTO project_financials (
       task_id,
       team_id,
+      adjustments,
       financial_data,
       financials_created_at,
       financials_updated_at
@@ -121,6 +122,11 @@ BEGIN
     VALUES (
       v_task_id,
       p_team_id,
+      CASE
+        WHEN jsonb_typeof(v_group->'adjustments') = 'object'
+          THEN v_group->'adjustments'
+        ELSE NULL
+      END,
       COALESCE(v_group->'financial_data', '{}'::jsonb),
       v_created_at,
       v_created_at
@@ -129,6 +135,11 @@ BEGIN
     DO UPDATE SET
       team_id = EXCLUDED.team_id,
       financials_updated_at = EXCLUDED.financials_updated_at,
+      adjustments = CASE
+        WHEN project_financials.costing_complete IS NOT NULL
+          THEN project_financials.adjustments
+        ELSE COALESCE(EXCLUDED.adjustments, project_financials.adjustments)
+      END,
       financial_data = CASE
         WHEN project_financials.financial_data IS NULL
           OR project_financials.financial_data = '{}'::jsonb
@@ -152,6 +163,16 @@ BEGIN
     UPDATE estimate_sections
     SET scheduled_task_id = v_task_id
     WHERE est_section_id = ANY(
+      SELECT (value)::BIGINT
+      FROM jsonb_array_elements_text(v_group->'section_ids')
+    );
+
+    UPDATE estimate_sections es
+    SET financial_data = COALESCE(
+      v_group->'section_financial_data'->(es.est_section_id::TEXT),
+      v_group->'financial_data'
+    )
+    WHERE es.est_section_id = ANY(
       SELECT (value)::BIGINT
       FROM jsonb_array_elements_text(v_group->'section_ids')
     );
