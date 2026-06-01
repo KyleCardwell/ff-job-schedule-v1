@@ -72,6 +72,43 @@ export const createProjectFinancials = (_projectId, tasks) => {
   };
 };
 
+export const refreshFinancialsFromEstimate = (taskIds = []) => {
+  return async (dispatch) => {
+    const normalizedTaskIds = [...new Set(
+      (taskIds || [])
+        .map((taskId) => Number(taskId))
+        .filter((taskId) => Number.isFinite(taskId)),
+    )];
+
+    if (normalizedTaskIds.length === 0) {
+      return { success: true, data: null };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc("refresh_financials_from_estimate", {
+        p_task_ids: normalizedTaskIds,
+      });
+
+      if (error) {
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to refresh financial records",
+          );
+        }
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      dispatch({
+        type: Actions.financialsData.SAVE_TASK_FINANCIALS_ERROR,
+        payload: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  };
+};
+
 export const splitProjectFinancialsCosts = ({
   projectId,
   categoryId,
