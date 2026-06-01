@@ -12,7 +12,7 @@ CREATE OR REPLACE FUNCTION add_estimate_to_schedule(
   p_next_task_number INTEGER,
   p_chart_config_id BIGINT,
   p_groups JSONB,
-  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "line_item_id": "uuid", "financial_data": { ... } }
+  -- Each group: { "name": "Task Name", "duration": 12.5, "section_ids": [1, 2, 3], "line_item_id": "uuid", "financial_data": { ... }, "section_financial_data": { "1": { ... }, "2": { ... } } }
   p_existing_task_id BIGINT DEFAULT NULL,
   p_estimate_id BIGINT DEFAULT NULL
   -- If sections from this estimate are already scheduled, pass one of their
@@ -152,6 +152,16 @@ BEGIN
     UPDATE estimate_sections
     SET scheduled_task_id = v_task_id
     WHERE est_section_id = ANY(
+      SELECT (value)::BIGINT
+      FROM jsonb_array_elements_text(v_group->'section_ids')
+    );
+
+    UPDATE estimate_sections es
+    SET financial_data = COALESCE(
+      v_group->'section_financial_data'->(es.est_section_id::TEXT),
+      v_group->'financial_data'
+    )
+    WHERE es.est_section_id = ANY(
       SELECT (value)::BIGINT
       FROM jsonb_array_elements_text(v_group->'section_ids')
     );

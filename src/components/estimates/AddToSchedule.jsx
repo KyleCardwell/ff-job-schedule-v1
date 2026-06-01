@@ -22,6 +22,7 @@ import {
   FiArrowLeft,
   FiCalendar,
   FiCheck,
+  FiClock,
   FiMenu,
   FiMove,
 } from "react-icons/fi";
@@ -39,6 +40,7 @@ import { fetchCabinetTypes } from "../../redux/actions/cabinetTypes.js";
 import {
   fetchEstimateById,
   setCurrentEstimate,
+  switchSectionRevision,
 } from "../../redux/actions/estimates";
 import { fetchFinishes } from "../../redux/actions/finishes.js";
 import {
@@ -61,6 +63,8 @@ import { createSectionContext } from "../../utils/createSectionContext";
 import { normalizeDate } from "../../utils/dateUtils";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
+import { supabase } from "../../utils/supabase";
+import SectionRevisionModal from "../common/SectionRevisionModal.jsx";
 
 const EMPTY_ARRAY = [];
 
@@ -382,6 +386,9 @@ const AddToSchedule = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+  const [revisionModalSection, setRevisionModalSection] = useState(null);
+  const [revisionModalTask, setRevisionModalTask] = useState(null);
 
   const normalizedEstimateSections = useMemo(
     () => normalizeEstimateSections(estimateSections),
@@ -643,6 +650,51 @@ const AddToSchedule = () => {
     ],
   );
 
+  const buildSectionCalcEntry = useCallback(
+    (section, task, sectionIndex, estimateToUse = currentEstimate) => {
+      if (!section || !task || !estimateToUse) return null;
+
+      const { context, effectiveSection } = createSectionContext(
+        section,
+        estimateToUse,
+        catalogData,
+      );
+      const calcs = getSectionCalculations(effectiveSection, context);
+
+      const hoursByService = {};
+      let totalHours = 0;
+
+      if (calcs.laborCosts?.costsByService) {
+        Object.entries(calcs.laborCosts.costsByService).forEach(
+          ([serviceId, data]) => {
+            const hours = roundToHundredth(data.hours || 0);
+            hoursByService[serviceId] = hours;
+            totalHours += hours;
+          },
+        );
+      }
+
+      const sectionName = section.section_name
+        ? `${task.est_task_name} - ${section.section_name}`
+        : task.sections.length > 1
+          ? `${task.est_task_name} - Section ${sectionIndex + 1}`
+          : task.est_task_name;
+
+      return {
+        sectionId: section.est_section_id,
+        hoursByService,
+        totalHours: roundToHundredth(totalHours),
+        sectionName,
+        taskName: task.est_task_name,
+        taskId: task.est_task_id,
+        scheduledTaskId: section.scheduled_task_id || null,
+        calculations: calcs,
+        section: effectiveSection,
+      };
+    },
+    [catalogData, currentEstimate],
+  );
+
   // sectionCalcsMap: { sectionId: { hoursByService: { serviceId: hours }, totalHours, sectionName, taskName, taskId } }
   const sectionCalcsMap = useMemo(() => {
     if (!currentEstimate?.tasks || services.length === 0) return {};
@@ -659,48 +711,18 @@ const AddToSchedule = () => {
 
     sortedTasks.forEach((task) => {
       task.sections?.forEach((section, sectionIndex) => {
-        const { context, effectiveSection } = createSectionContext(
+        const sectionCalcEntry = buildSectionCalcEntry(
           section,
-          currentEstimate,
-          catalogData,
+          task,
+          sectionIndex,
         );
-        const calcs = getSectionCalculations(effectiveSection, context);
-
-        const hoursByService = {};
-        let totalHours = 0;
-
-        if (calcs.laborCosts?.costsByService) {
-          Object.entries(calcs.laborCosts.costsByService).forEach(
-            ([serviceId, data]) => {
-              const hours = roundToHundredth(data.hours || 0);
-              hoursByService[serviceId] = hours;
-              totalHours += hours;
-            },
-          );
-        }
-
-        const sectionName = section.section_name
-          ? `${task.est_task_name} - ${section.section_name}`
-          : task.sections.length > 1
-            ? `${task.est_task_name} - Section ${sectionIndex + 1}`
-            : task.est_task_name;
-
-        map[section.est_section_id] = {
-          sectionId: section.est_section_id,
-          hoursByService,
-          totalHours: roundToHundredth(totalHours),
-          sectionName,
-          taskName: task.est_task_name,
-          taskId: task.est_task_id,
-          scheduledTaskId: section.scheduled_task_id || null,
-          calculations: calcs,
-          section: effectiveSection,
-        };
+        if (!sectionCalcEntry) return;
+        map[section.est_section_id] = sectionCalcEntry;
       });
     });
 
     return map;
-  }, [currentEstimate, catalogData, services]);
+  }, [currentEstimate, services.length, buildSectionCalcEntry]);
 
   // Build ordered lists of section IDs, split into unscheduled and already-scheduled.
   // Scheduled sections are grouped by shared scheduled_task_id so sections that were
@@ -978,8 +1000,8 @@ const AddToSchedule = () => {
     [financialSections, otherFinancialSectionId],
   );
 
-  const buildGroupFinancialData = useCallback(
-    (group) => {
+  const buildGroupFinancialDataWithSectionMap = useCallback(
+    (group, sectionCalcsById, lineItemRowsById = lineItemRowsBySectionId) => {
       const categoryTotals = {
         cabinets: 0,
         doors: 0,
@@ -995,7 +1017,7 @@ const AddToSchedule = () => {
       };
       let hasSectionFinancialData = false;
       const lineItemInputRows = group.sectionIds.flatMap(
-        (sectionId) => lineItemRowsBySectionId[sectionId] || EMPTY_ARRAY,
+        (sectionId) => lineItemRowsById[sectionId] || EMPTY_ARRAY,
       );
       const lineItemsTotalCost = roundToHundredth(
         lineItemInputRows.reduce((sum, row) => sum + (Number(row.cost) || 0), 0),
@@ -1007,7 +1029,7 @@ const AddToSchedule = () => {
       };
 
       group.sectionIds.forEach((sectionId) => {
-        const sectionData = sectionCalcsMap[sectionId];
+        const sectionData = sectionCalcsById[sectionId];
         const calculations = sectionData?.calculations;
         if (!calculations) return;
         hasSectionFinancialData = true;
@@ -1060,7 +1082,23 @@ const AddToSchedule = () => {
         categoryTotals,
         financialSections,
       );
-      const groupHours = getGroupHours(group);
+      const groupHoursByService = {};
+
+      group.sectionIds.forEach((sectionId) => {
+        const sectionData = sectionCalcsById[sectionId];
+        if (!sectionData?.hoursByService) return;
+
+        Object.entries(sectionData.hoursByService).forEach(([serviceId, hours]) => {
+          if (!groupHoursByService[serviceId]) groupHoursByService[serviceId] = 0;
+          groupHoursByService[serviceId] += hours;
+        });
+      });
+
+      Object.keys(groupHoursByService).forEach((serviceId) => {
+        groupHoursByService[serviceId] = roundToHundredth(
+          groupHoursByService[serviceId],
+        );
+      });
 
       const hardwareActuals = {
         hinges: 0,
@@ -1094,7 +1132,7 @@ const AddToSchedule = () => {
 
       const hoursData = services
         .map((service) => {
-          const hours = groupHours.hoursByService[service.service_id] || 0;
+          const hours = groupHoursByService[service.service_id] || 0;
           if (!hours) return null;
           return {
             team_service_id: service.team_service_id,
@@ -1149,14 +1187,136 @@ const AddToSchedule = () => {
       return financialData;
     },
     [
-      sectionCalcsMap,
-      lineItemRowsBySectionId,
       buildMinimalLineItemFinancialData,
       financialSections,
       otherFinancialSectionId,
       services,
-      getGroupHours,
       hardware,
+      lineItemRowsBySectionId,
+    ],
+  );
+
+  const buildGroupFinancialData = useCallback(
+    (group) =>
+      buildGroupFinancialDataWithSectionMap(
+        group,
+        sectionCalcsMap,
+        lineItemRowsBySectionId,
+      ),
+    [buildGroupFinancialDataWithSectionMap, sectionCalcsMap, lineItemRowsBySectionId],
+  );
+
+  const findTaskAndSectionBySectionId = useCallback(
+    (sectionId, estimateData = currentEstimate) => {
+      const parsedSectionId = Number(sectionId);
+      if (!Number.isFinite(parsedSectionId) || !estimateData?.tasks) return null;
+
+      for (const task of estimateData.tasks) {
+        const sectionIndex = task.sections?.findIndex(
+          (section) => section.est_section_id === parsedSectionId,
+        );
+
+        if (sectionIndex >= 0) {
+          return {
+            task,
+            section: task.sections[sectionIndex],
+            sectionIndex,
+          };
+        }
+      }
+
+      return null;
+    },
+    [currentEstimate],
+  );
+
+  const handleOpenRevisionModal = useCallback(
+    (sectionId) => {
+      const matchedSection = findTaskAndSectionBySectionId(sectionId);
+      if (!matchedSection?.section?.section_lineage_id || !matchedSection?.task?.est_task_id) {
+        return;
+      }
+
+      setRevisionModalSection(matchedSection.section);
+      setRevisionModalTask(matchedSection.task);
+      setIsRevisionModalOpen(true);
+    },
+    [findTaskAndSectionBySectionId],
+  );
+
+  const handleCloseRevisionModal = useCallback(() => {
+    setIsRevisionModalOpen(false);
+    setRevisionModalSection(null);
+    setRevisionModalTask(null);
+  }, []);
+
+  const handleApproveScheduledRevision = useCallback(
+    async (targetSectionId) => {
+      if (!revisionModalSection || !revisionModalTask || !currentEstimateId) return;
+
+      setSaveError(null);
+      setSaveSuccess(false);
+
+      try {
+        await dispatch(
+          switchSectionRevision(
+            revisionModalTask.est_task_id,
+            revisionModalSection.section_lineage_id,
+            targetSectionId,
+          ),
+        );
+
+        const refreshedEstimate = await dispatch(fetchEstimateById(currentEstimateId));
+        const matchedSection = findTaskAndSectionBySectionId(
+          targetSectionId,
+          refreshedEstimate,
+        );
+
+        if (!matchedSection?.section || !matchedSection?.task) {
+          throw new Error("Failed to find selected revision after switch.");
+        }
+
+        const sectionCalcsEntry = buildSectionCalcEntry(
+          matchedSection.section,
+          matchedSection.task,
+          matchedSection.sectionIndex,
+          refreshedEstimate,
+        );
+
+        if (!sectionCalcsEntry) {
+          throw new Error(
+            "Failed to recompute financial data for selected revision.",
+          );
+        }
+
+        const sectionIdKey = String(targetSectionId);
+        const financialData = buildGroupFinancialDataWithSectionMap(
+          { sectionIds: [sectionIdKey] },
+          { [sectionIdKey]: sectionCalcsEntry },
+          {},
+        );
+
+        const { error: updateError } = await supabase
+          .from("estimate_sections")
+          .update({ financial_data: financialData })
+          .eq("est_section_id", targetSectionId);
+
+        if (updateError) throw updateError;
+
+        await dispatch(fetchEstimateById(currentEstimateId));
+      } catch (error) {
+        setSaveError(error.message || "Failed to approve revision");
+        throw error;
+      }
+    },
+    [
+      revisionModalSection,
+      revisionModalTask,
+      currentEstimateId,
+      dispatch,
+      findTaskAndSectionBySectionId,
+      buildSectionCalcEntry,
+      buildGroupFinancialDataWithSectionMap,
     ],
   );
 
@@ -1412,6 +1572,14 @@ const AddToSchedule = () => {
           const sectionIds = group.sectionIds.filter(
             (id) => !lineItemData[id],
           );
+          const parsedSectionIds = sectionIds.map((id) => parseInt(id, 10));
+          const sectionFinancialData = parsedSectionIds.reduce((acc, sectionId) => {
+            acc[sectionId] = buildGroupFinancialData({
+              ...group,
+              sectionIds: [sectionId],
+            });
+            return acc;
+          }, {});
           const lineItemIds = group.sectionIds
             .map((id) => lineItemData[id]?.lineItemId)
             .filter((id) => typeof id === "string" && id);
@@ -1423,8 +1591,9 @@ const AddToSchedule = () => {
           const groupPayload = {
             name,
             duration: shopHours,
-            section_ids: sectionIds.map((id) => parseInt(id, 10)),
+            section_ids: parsedSectionIds,
             financial_data: financialData,
+            section_financial_data: sectionFinancialData,
           };
 
           if (lineItemIds.length > 0) {
@@ -2068,8 +2237,20 @@ const AddToSchedule = () => {
                                     <div></div>
                                   </>
                                 )}
-                                <div className="min-w-0 truncate">
-                                  {sectionNames[sectionId] || calc.sectionName}
+                                <div className="min-w-0 flex items-center gap-2">
+                                  <span className="truncate">
+                                    {sectionNames[sectionId] || calc.sectionName}
+                                  </span>
+                                  {canEditSchedule && (
+                                    <button
+                                      onClick={() => handleOpenRevisionModal(sectionId)}
+                                      className="p-1 rounded text-slate-400 hover:text-amber-300 hover:bg-slate-700/50"
+                                      title="Approve Revision"
+                                      aria-label="Approve Revision"
+                                    >
+                                      <FiClock size={13} />
+                                    </button>
+                                  )}
                                 </div>
                                 {activeServices.map((service) => (
                                   <div
@@ -2157,6 +2338,14 @@ const AddToSchedule = () => {
               </div>
             </div>
           )}
+
+          <SectionRevisionModal
+            open={isRevisionModalOpen}
+            onClose={handleCloseRevisionModal}
+            section={revisionModalSection}
+            task={revisionModalTask}
+            onSwitch={handleApproveScheduledRevision}
+          />
         </div>
       </div>
     </div>

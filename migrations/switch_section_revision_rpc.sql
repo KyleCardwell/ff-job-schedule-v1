@@ -45,6 +45,16 @@ BEGIN
       p_lineage_id;
   END IF;
 
+  UPDATE public.estimate_sections target
+  SET scheduled_task_id = source.scheduled_task_id
+  FROM public.estimate_sections source
+  WHERE target.est_section_id = p_target_section_id
+    AND source.est_section_id = v_old_section_id;
+
+  UPDATE public.estimate_sections
+  SET scheduled_task_id = NULL
+  WHERE est_section_id = v_old_section_id;
+
   UPDATE public.estimate_tasks
   SET sections_order = array_replace(sections_order, v_old_section_id, p_target_section_id)
   WHERE est_task_id = p_task_id;
@@ -53,4 +63,4 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.switch_section_revision(BIGINT, BIGINT, BIGINT) TO authenticated;
 
-COMMENT ON FUNCTION public.switch_section_revision(BIGINT, BIGINT, BIGINT) IS 'Swaps which revision of a section lineage is active for a task by updating estimate_tasks.sections_order.';
+COMMENT ON FUNCTION public.switch_section_revision(BIGINT, BIGINT, BIGINT) IS 'Swaps which revision of a section lineage is active for a task by updating estimate_tasks.sections_order and transferring scheduled_task_id to the target section.';
