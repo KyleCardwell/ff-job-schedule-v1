@@ -1,6 +1,7 @@
 -- Refresh project_financials.financial_data from scheduled estimate section financial snapshots.
 
 DROP FUNCTION IF EXISTS public.refresh_financials_from_estimate(BIGINT[]);
+DROP FUNCTION IF EXISTS public.refresh_financials_from_estimate(BIGINT[], JSONB);
 
 CREATE OR REPLACE FUNCTION public.refresh_financials_from_estimate(
   p_task_ids BIGINT[]
@@ -13,6 +14,8 @@ DECLARE
   v_task_id BIGINT;
   v_team_id UUID;
   v_has_sections BOOLEAN;
+  v_task_adjustments JSONB;
+  v_section_adjustments JSONB;
 
   v_section_financial_data JSONB;
   v_category_key TEXT;
@@ -62,6 +65,8 @@ BEGIN
       CONTINUE;
     END IF;
 
+    v_task_adjustments := NULL;
+
     v_merged_financial_data := '{}'::JSONB;
 
     FOR v_section_financial_data IN
@@ -69,10 +74,25 @@ BEGIN
       FROM estimate_sections es
       WHERE es.scheduled_task_id = v_task_id
     LOOP
+      v_section_adjustments := NULL;
+      IF jsonb_typeof(v_section_financial_data -> '__meta' -> 'adjustments') = 'object' THEN
+        v_section_adjustments := v_section_financial_data -> '__meta' -> 'adjustments';
+      ELSIF jsonb_typeof(v_section_financial_data -> 'adjustments') = 'object' THEN
+        v_section_adjustments := v_section_financial_data -> 'adjustments';
+      END IF;
+
+      IF v_section_adjustments IS NOT NULL THEN
+        v_task_adjustments := v_section_adjustments;
+      END IF;
+
       FOR v_category_key, v_category_value IN
         SELECT e.key, e.value
         FROM jsonb_each(v_section_financial_data) AS e
       LOOP
+        IF LEFT(v_category_key, 2) = '__' OR v_category_key = 'adjustments' THEN
+          CONTINUE;
+        END IF;
+
         IF jsonb_typeof(v_category_value) <> 'object' THEN
           CONTINUE;
         END IF;
@@ -243,6 +263,7 @@ BEGIN
     INSERT INTO project_financials (
       task_id,
       team_id,
+      adjustments,
       financial_data,
       financials_created_at,
       financials_updated_at
@@ -250,6 +271,7 @@ BEGIN
     VALUES (
       v_task_id,
       v_team_id,
+      v_task_adjustments,
       v_merged_financial_data,
       NOW(),
       NOW()
@@ -257,6 +279,7 @@ BEGIN
     ON CONFLICT (task_id)
     DO UPDATE SET
       team_id = EXCLUDED.team_id,
+      adjustments = COALESCE(EXCLUDED.adjustments, project_financials.adjustments),
       financial_data = EXCLUDED.financial_data,
       financials_updated_at = EXCLUDED.financials_updated_at;
   END LOOP;
@@ -266,4 +289,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.refresh_financials_from_estimate(BIGINT[]) TO authenticated;
 
 COMMENT ON FUNCTION public.refresh_financials_from_estimate(BIGINT[]) IS
-'Refreshes project_financials.financial_data for scheduled tasks by aggregating estimate_sections.financial_data per task, including hours merged by team_service_id.';
+'Refreshes project_financials.financial_data for scheduled tasks by aggregating estimate_sections.financial_data per task, including hours merged by team_service_id. Applies adjustments from section financial snapshot metadata when present.';

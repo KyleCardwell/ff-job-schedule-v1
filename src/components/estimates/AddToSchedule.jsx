@@ -1138,7 +1138,7 @@ const AddToSchedule = () => {
             team_service_id: service.team_service_id,
             estimate: roundToHundredth(hours),
             fixedAmount: 0,
-            rateOverride: null,
+            rateOverride: Number(service.hourly_rate) || 0,
             actual_cost: 0,
             inputRows: [],
           };
@@ -1250,6 +1250,62 @@ const AddToSchedule = () => {
     setRevisionModalTask(null);
   }, []);
 
+  const buildEstimateAdjustments = useCallback((estimate, effectiveSection = null) => {
+    const toFiniteOrNull = (value) => {
+      if (value === null || value === undefined || value === "") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    if (effectiveSection) {
+      const sectionProfit = toFiniteOrNull(effectiveSection.profit);
+      const sectionCommission = toFiniteOrNull(effectiveSection.commission);
+      const sectionDiscount = toFiniteOrNull(effectiveSection.discount);
+
+      return {
+        profit: sectionProfit ?? 0,
+        commission: sectionCommission ?? 0,
+        discount: sectionDiscount ?? 0,
+        quantity: 1,
+        addToSubtotal: 0,
+        addToTotal: 0,
+      };
+    }
+
+    const firstFinite = (...values) => {
+      for (const value of values) {
+        const parsed = toFiniteOrNull(value);
+        if (parsed !== null) return parsed;
+      }
+      return null;
+    };
+
+    const parsedProfit = firstFinite(
+      estimate?.default_profit,
+      teamDefaults?.default_profit,
+      20,
+    );
+    const parsedCommission = firstFinite(
+      estimate?.default_commission,
+      teamDefaults?.default_commission,
+      10,
+    );
+    const parsedDiscount = firstFinite(
+      estimate?.default_discount,
+      teamDefaults?.default_discount,
+      0,
+    );
+
+    return {
+      profit: Number.isFinite(parsedProfit) ? parsedProfit : 20,
+      commission: Number.isFinite(parsedCommission) ? parsedCommission : 10,
+      discount: Number.isFinite(parsedDiscount) ? parsedDiscount : 0,
+      quantity: 1,
+      addToSubtotal: 0,
+      addToTotal: 0,
+    };
+  }, [teamDefaults]);
+
   const handleApproveScheduledRevision = useCallback(
     async (targetSectionId) => {
       if (!revisionModalSection || !revisionModalTask || !currentEstimateId) return;
@@ -1290,11 +1346,22 @@ const AddToSchedule = () => {
         }
 
         const sectionIdKey = String(targetSectionId);
-        const financialData = buildGroupFinancialDataWithSectionMap(
+        const computedFinancialData = buildGroupFinancialDataWithSectionMap(
           { sectionIds: [sectionIdKey] },
           { [sectionIdKey]: sectionCalcsEntry },
           {},
         );
+        const revisionAdjustments = buildEstimateAdjustments(
+          refreshedEstimate,
+          sectionCalcsEntry?.section,
+        );
+        const financialData = {
+          ...computedFinancialData,
+          __meta: {
+            ...(computedFinancialData.__meta || {}),
+            adjustments: revisionAdjustments,
+          },
+        };
 
         const { error: updateError } = await supabase
           .from("estimate_sections")
@@ -1317,6 +1384,7 @@ const AddToSchedule = () => {
       findTaskAndSectionBySectionId,
       buildSectionCalcEntry,
       buildGroupFinancialDataWithSectionMap,
+      buildEstimateAdjustments,
     ],
   );
 
@@ -1554,6 +1622,11 @@ const AddToSchedule = () => {
     };
   }, [groups, selectedGroups, getGroupHours, getGroupEstimatedPrice]);
 
+  const estimateAdjustments = useMemo(
+    () => buildEstimateAdjustments(currentEstimate),
+    [buildEstimateAdjustments, currentEstimate],
+  );
+
   // ---------- Add to Schedule handler ----------
   const handleAddToSchedule = useCallback(async () => {
     if (selectedGroups.size === 0 || isSaving) return;
@@ -1574,15 +1647,35 @@ const AddToSchedule = () => {
           );
           const parsedSectionIds = sectionIds.map((id) => parseInt(id, 10));
           const sectionFinancialData = parsedSectionIds.reduce((acc, sectionId) => {
-            acc[sectionId] = buildGroupFinancialData({
+            const sectionCalcEntry = sectionCalcsMap[sectionId];
+            const sectionAdjustments = buildEstimateAdjustments(
+              currentEstimate,
+              sectionCalcEntry?.section,
+            );
+            const snapshot = buildGroupFinancialData({
               ...group,
               sectionIds: [sectionId],
             });
+            acc[sectionId] = {
+              ...snapshot,
+              __meta: {
+                ...(snapshot.__meta || {}),
+                adjustments: sectionAdjustments,
+              },
+            };
             return acc;
           }, {});
           const lineItemIds = group.sectionIds
             .map((id) => lineItemData[id]?.lineItemId)
             .filter((id) => typeof id === "string" && id);
+
+          const groupAdjustments =
+            parsedSectionIds.length > 0
+              ? buildEstimateAdjustments(
+                  currentEstimate,
+                  sectionCalcsMap[parsedSectionIds[0]]?.section,
+                )
+              : estimateAdjustments;
 
           // Determine task name: use group name for multi-section groups,
           // or section name for single-section groups
@@ -1592,6 +1685,7 @@ const AddToSchedule = () => {
             name,
             duration: shopHours,
             section_ids: parsedSectionIds,
+            adjustments: groupAdjustments,
             financial_data: financialData,
             section_financial_data: sectionFinancialData,
           };
@@ -1651,12 +1745,15 @@ const AddToSchedule = () => {
     groups,
     getGroupHours,
     buildGroupFinancialData,
+    buildEstimateAdjustments,
+    sectionCalcsMap,
     lineItemData,
     getGroupDisplayName,
     scheduledGroups,
     scheduledLineItemSectionIds,
     dispatch,
     currentEstimate,
+    estimateAdjustments,
     currentEstimateId,
     defaultEmployeeId,
     dayWidth,
