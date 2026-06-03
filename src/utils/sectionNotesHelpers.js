@@ -147,11 +147,8 @@ export const buildPanelModNote = (effectiveSection = {}) => {
   if (Array.isArray(effectiveSection.cabinets)) {
     effectiveSection.cabinets.forEach((cabinet) => {
       if (cabinet?.face_config) {
-        const numericQuantity = Number(cabinet.quantity);
-        const cabinetQuantity =
-          Number.isFinite(numericQuantity) && numericQuantity > 0
-            ? numericQuantity
-            : 1;
+        const cabinetQuantity = resolveItemQuantity(cabinet.quantity);
+        if (cabinetQuantity <= 0) return;
 
         collectPanelModsFromNode(cabinet.face_config, cabinetQuantity);
       }
@@ -331,6 +328,17 @@ const normalizeFinishArray = (value) => {
     .sort((a, b) => String(a).localeCompare(String(b)));
 };
 
+const resolveItemQuantity = (value) => {
+  if (value === null || value === undefined || value === "") return 1;
+
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    return numeric > 0 ? numeric : 0;
+  }
+
+  return 1;
+};
+
 const formatFinishNames = (finishIds = [], finishTypes = []) => {
   if (!Array.isArray(finishIds)) return "";
   if (finishIds.length === 0) return UNFINISHED;
@@ -408,9 +416,8 @@ export const buildFinishedBackOverridesNote = ({
       finish: finishOverrideIds,
     });
 
-    const numericQuantity = Number(cabinet.quantity);
-    const cabinetCount =
-      Number.isFinite(numericQuantity) && numericQuantity > 0 ? numericQuantity : 1;
+    const cabinetCount = resolveItemQuantity(cabinet.quantity);
+    if (cabinetCount <= 0) return;
 
     if (!groupedOverrides.has(overrideKey)) {
       groupedOverrides.set(overrideKey, {
@@ -480,10 +487,9 @@ const formatGroupedLengthNames = (names = []) => {
     const name = typeof entry === "string" ? entry : entry?.name;
     if (!name) return;
 
-    const quantityValue =
-      typeof entry === "string" ? 1 : Number(entry?.quantity);
     const quantity =
-      Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1;
+      typeof entry === "string" ? 1 : resolveItemQuantity(entry?.quantity);
+    if (quantity <= 0) return;
 
     counts.set(name, (counts.get(name) || 0) + quantity);
   });
@@ -517,6 +523,9 @@ export const buildLengthMaterialFinishNote = ({
 
   sectionLengths.forEach((lengthItem, index) => {
     if (!lengthItem) return;
+
+    const lengthQuantity = resolveItemQuantity(lengthItem.quantity);
+    if (lengthQuantity <= 0) return;
 
     const materialOverrideId = normalizeOptionalId(lengthItem.length_mat);
     const finishOverrideIds = normalizeFinishArray(lengthItem.length_finish);
@@ -566,7 +575,7 @@ export const buildLengthMaterialFinishNote = ({
 
     groupedOverrides.get(groupKey).names.push({
       name: lengthName,
-      quantity: lengthItem.quantity,
+      quantity: lengthQuantity,
     });
   });
 
