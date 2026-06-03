@@ -260,28 +260,43 @@ BEGIN
       END LOOP;
     END LOOP;
 
-    INSERT INTO project_financials (
-      task_id,
-      team_id,
-      adjustments,
-      financial_data,
-      financials_created_at,
-      financials_updated_at
-    )
-    VALUES (
-      v_task_id,
-      v_team_id,
-      v_task_adjustments,
-      v_merged_financial_data,
-      NOW(),
-      NOW()
-    )
-    ON CONFLICT (task_id)
-    DO UPDATE SET
-      team_id = EXCLUDED.team_id,
-      adjustments = COALESCE(EXCLUDED.adjustments, project_financials.adjustments),
-      financial_data = EXCLUDED.financial_data,
-      financials_updated_at = EXCLUDED.financials_updated_at;
+    UPDATE project_financials
+    SET
+      team_id = v_team_id,
+      adjustments = COALESCE(v_task_adjustments, adjustments),
+      financial_data = v_merged_financial_data,
+      financials_updated_at = NOW()
+    WHERE task_id = v_task_id;
+
+    IF NOT FOUND THEN
+      BEGIN
+        INSERT INTO project_financials (
+          task_id,
+          team_id,
+          adjustments,
+          financial_data,
+          financials_created_at,
+          financials_updated_at
+        )
+        VALUES (
+          v_task_id,
+          v_team_id,
+          v_task_adjustments,
+          v_merged_financial_data,
+          NOW(),
+          NOW()
+        );
+      EXCEPTION
+        WHEN unique_violation THEN
+          UPDATE project_financials
+          SET
+            team_id = v_team_id,
+            adjustments = COALESCE(v_task_adjustments, adjustments),
+            financial_data = v_merged_financial_data,
+            financials_updated_at = NOW()
+          WHERE task_id = v_task_id;
+      END;
+    END IF;
   END LOOP;
 END;
 $$;

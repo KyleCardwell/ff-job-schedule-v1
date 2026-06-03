@@ -28,6 +28,8 @@ DECLARE
   v_task_id BIGINT;
   v_subtask_id BIGINT;
   v_group JSONB;
+  v_group_adjustments JSONB;
+  v_group_financial_data JSONB;
   v_task_number INTEGER;
   v_group_index INTEGER := 0;
   v_results JSONB := '[]'::JSONB;
@@ -70,6 +72,13 @@ BEGIN
   LOOP
     v_group_index := v_group_index + 1;
     v_created_at := v_now + (v_group_index * INTERVAL '5 milliseconds');
+    v_group_adjustments := CASE
+      WHEN jsonb_typeof(v_group->'adjustments') = 'object'
+        THEN v_group->'adjustments'
+      ELSE NULL
+    END;
+    v_group_financial_data := COALESCE(v_group->'financial_data', '{}'::jsonb);
+
     -- Create task
     INSERT INTO tasks (
       project_id,
@@ -111,41 +120,61 @@ BEGIN
     RETURNING subtask_id INTO v_subtask_id;
 
     -- Seed project_financials with initial estimate data (if provided)
-    INSERT INTO project_financials (
-      task_id,
-      team_id,
-      adjustments,
-      financial_data,
-      financials_created_at,
-      financials_updated_at
-    )
-    VALUES (
-      v_task_id,
-      p_team_id,
-      CASE
-        WHEN jsonb_typeof(v_group->'adjustments') = 'object'
-          THEN v_group->'adjustments'
-        ELSE NULL
-      END,
-      COALESCE(v_group->'financial_data', '{}'::jsonb),
-      v_created_at,
-      v_created_at
-    )
-    ON CONFLICT (task_id)
-    DO UPDATE SET
-      team_id = EXCLUDED.team_id,
-      financials_updated_at = EXCLUDED.financials_updated_at,
+    UPDATE project_financials
+    SET
+      team_id = p_team_id,
+      financials_updated_at = v_created_at,
       adjustments = CASE
-        WHEN project_financials.costing_complete IS NOT NULL
-          THEN project_financials.adjustments
-        ELSE COALESCE(EXCLUDED.adjustments, project_financials.adjustments)
+        WHEN costing_complete IS NOT NULL
+          THEN adjustments
+        ELSE COALESCE(v_group_adjustments, adjustments)
       END,
       financial_data = CASE
-        WHEN project_financials.financial_data IS NULL
-          OR project_financials.financial_data = '{}'::jsonb
-        THEN EXCLUDED.financial_data
-        ELSE project_financials.financial_data
+        WHEN financial_data IS NULL
+          OR financial_data = '{}'::jsonb
+        THEN v_group_financial_data
+        ELSE financial_data
+      END
+    WHERE task_id = v_task_id;
+
+    IF NOT FOUND THEN
+      BEGIN
+        INSERT INTO project_financials (
+          task_id,
+          team_id,
+          adjustments,
+          financial_data,
+          financials_created_at,
+          financials_updated_at
+        )
+        VALUES (
+          v_task_id,
+          p_team_id,
+          v_group_adjustments,
+          v_group_financial_data,
+          v_created_at,
+          v_created_at
+        );
+      EXCEPTION
+        WHEN unique_violation THEN
+          UPDATE project_financials
+          SET
+            team_id = p_team_id,
+            financials_updated_at = v_created_at,
+            adjustments = CASE
+              WHEN costing_complete IS NOT NULL
+                THEN adjustments
+              ELSE COALESCE(v_group_adjustments, adjustments)
+            END,
+            financial_data = CASE
+              WHEN financial_data IS NULL
+                OR financial_data = '{}'::jsonb
+              THEN v_group_financial_data
+              ELSE financial_data
+            END
+          WHERE task_id = v_task_id;
       END;
+    END IF;
 
     -- Validate: no section in this group is already scheduled
     IF EXISTS (
