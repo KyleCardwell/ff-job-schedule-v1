@@ -1499,10 +1499,17 @@ const JobModal = ({
     if (!tasksForExport.length) return;
 
     const csvRows = [
-      "Project Name",
-      ...tasksForExport.map((task) =>
-        escapeCsvValue(formatBusybusyProjectName(task, fallbackProjectName)),
-      ),
+      ["Project Name", "tracker_id", "tracker_name", "tracker_room"].join(","),
+      ...tasksForExport.map((task) => {
+        const trackerName = (task.project_name || fallbackProjectName || "").trim();
+
+        return [
+          escapeCsvValue(formatBusybusyProjectName(task, fallbackProjectName)),
+          escapeCsvValue(task.task_number),
+          escapeCsvValue(trackerName),
+          escapeCsvValue(task.task_name),
+        ].join(",");
+      }),
     ];
 
     const blob = new Blob([`${csvRows.join("\n")}\n`], {
@@ -1592,8 +1599,6 @@ const JobModal = ({
                         !localRooms.length && !(projectData?.completed_rooms?.length > 0)
                       }
                       className={`${buttonClass} bg-emerald-600 ${
-                        !canEditSchedule ? "hidden" : ""
-                      } ${
                         !localRooms.length && !(projectData?.completed_rooms?.length > 0)
                           ? "opacity-50 cursor-not-allowed"
                           : ""
