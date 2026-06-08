@@ -49,6 +49,19 @@ export const getEffectiveValueOnly = (sectionValue, estimateValue, teamValue) =>
  * @returns {Object} Object with all effective default values (just values, no source metadata)
  */
 export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => {
+  const hasTeamDoorPullDefault =
+    Object.prototype.hasOwnProperty.call(team, "default_door_pull_id");
+  const hasTeamDrawerPullDefault =
+    Object.prototype.hasOwnProperty.call(team, "default_drawer_pull_id");
+  const teamIncludesDoorPulls = hasTeamDoorPullDefault
+    ? team.default_door_pull_id !== null &&
+      team.default_door_pull_id !== undefined
+    : true;
+  const teamIncludesDrawerPulls = hasTeamDrawerPullDefault
+    ? team.default_drawer_pull_id !== null &&
+      team.default_drawer_pull_id !== undefined
+    : true;
+
   return {
     // Cabinet style (required field)
     cabinet_style_id: getEffectiveValueOnly(
@@ -107,16 +120,17 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       team.default_drawer_pull_id
     ),
     // Include pulls booleans (null = inherit/include, false = none)
-    // Team level always includes pulls, so we default to true at the team tier
+    // Team defaults do not have include_* columns, so derive team-tier behavior
+    // from whether a team default pull ID exists.
     include_door_pulls: getEffectiveValueOnly(
       section.include_door_pulls,
       estimate.default_include_door_pulls,
-      true
+      teamIncludesDoorPulls
     ),
     include_drawer_pulls: getEffectiveValueOnly(
       section.include_drawer_pulls,
       estimate.default_include_drawer_pulls,
-      true
+      teamIncludesDrawerPulls
     ),
     
     // Finishes (arrays)

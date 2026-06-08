@@ -297,6 +297,18 @@ const EstimateSectionForm = ({
       return <span className="flex-1 px-1 border border-amber-400 ml-1"></span>;
     }
 
+    const estimatePullValue =
+      editType === EDIT_TYPES.ESTIMATE
+        ? null
+        : currentEstimate?.[pullEstimateKey];
+    const teamPullValue = teamDefaults?.[pullTeamKey];
+
+    // Team defaults don't have include_* columns. Treat a null team pull default as
+    // effective "None" when resolving inherited include behavior.
+    const teamIncludeFallback = teamDefaults
+      ? teamPullValue !== null && teamPullValue !== undefined
+      : true;
+
     const estimateIncludeValue =
       editType === EDIT_TYPES.ESTIMATE
         ? null
@@ -304,7 +316,7 @@ const EstimateSectionForm = ({
     const { value: effectiveIncludePulls } = getEffectiveValue(
       null,
       estimateIncludeValue,
-      true,
+      teamIncludeFallback,
     );
 
     if (effectiveIncludePulls === false) {
@@ -315,11 +327,6 @@ const EstimateSectionForm = ({
       );
     }
 
-    const estimatePullValue =
-      editType === EDIT_TYPES.ESTIMATE
-        ? null
-        : currentEstimate?.[pullEstimateKey];
-    const teamPullValue = teamDefaults?.[pullTeamKey];
     const { value: effectivePullValue } = getEffectiveValue(
       null,
       estimatePullValue,
@@ -327,7 +334,14 @@ const EstimateSectionForm = ({
     );
 
     if (effectivePullValue === null || effectivePullValue === undefined) {
-      return null;
+      if (!teamDefaults) {
+        return null;
+      }
+      return (
+        <span className={`flex-1 px-1 text-white text-sm bg-${COLOR_CLASS} ml-1`}>
+          {NONE}
+        </span>
+      );
     }
 
     const displayValue = formatPullName(effectivePullValue);
@@ -562,14 +576,30 @@ const EstimateSectionForm = ({
           ? 'include_door_pulls'
           : 'default_include_door_pulls';
         if (data[includeDoorPullsField] === false || data.include_door_pulls === false) return "none";
-        return data[doorPullField] || data.door_pull_id || initialDefaults.door_pull_id || "";
+        const hasScopedDoorPull = Object.prototype.hasOwnProperty.call(data, doorPullField);
+        const hasSectionDoorPull = Object.prototype.hasOwnProperty.call(data, "door_pull_id");
+        const rawDoorPullId = hasScopedDoorPull
+          ? data[doorPullField]
+          : hasSectionDoorPull
+            ? data.door_pull_id
+            : initialDefaults.door_pull_id;
+        if (editType === EDIT_TYPES.TEAM && rawDoorPullId === null) return "none";
+        return rawDoorPullId || "";
       })(),
       drawer_pull_id: (() => {
         const includeDrawerPullsField = editType === EDIT_TYPES.SECTION
           ? 'include_drawer_pulls'
           : 'default_include_drawer_pulls';
         if (data[includeDrawerPullsField] === false || data.include_drawer_pulls === false) return "none";
-        return data[drawerPullField] || data.drawer_pull_id || initialDefaults.drawer_pull_id || "";
+        const hasScopedDrawerPull = Object.prototype.hasOwnProperty.call(data, drawerPullField);
+        const hasSectionDrawerPull = Object.prototype.hasOwnProperty.call(data, "drawer_pull_id");
+        const rawDrawerPullId = hasScopedDrawerPull
+          ? data[drawerPullField]
+          : hasSectionDrawerPull
+            ? data.drawer_pull_id
+            : initialDefaults.drawer_pull_id;
+        if (editType === EDIT_TYPES.TEAM && rawDrawerPullId === null) return "none";
+        return rawDrawerPullId || "";
       })(),
       drawer_box_mat:
         data[drawerBoxMatField] ||
@@ -647,13 +677,20 @@ const EstimateSectionForm = ({
       const optionHasId = (options, value, idKey = "id") =>
         options.some((option) => String(option[idKey]) === String(value));
 
-      const sanitizeSingleOptionId = (field, options, idKey = "id") => {
+      const sanitizeSingleOptionId = (
+        field,
+        options,
+        idKey = "id",
+        { allowNoneSentinel = false } = {},
+      ) => {
         if (!Array.isArray(options) || options.length === 0) return;
 
         const current = prev[field];
         let sanitized = current;
 
-        if (current === "" || current === undefined) {
+        if (allowNoneSentinel && current === "none") {
+          sanitized = "none";
+        } else if (current === "" || current === undefined) {
           sanitized = null;
         } else if (current !== null && !optionHasId(options, current, idKey)) {
           sanitized = null;
@@ -709,14 +746,18 @@ const EstimateSectionForm = ({
       sanitizeSingleOptionId("faceMaterial", FACE_MATERIAL_OPTIONS);
       sanitizeSingleOptionId("hinge_id", DOOR_HINGE_OPTIONS);
       sanitizeSingleOptionId("slide_id", DRAWER_SLIDE_OPTIONS);
-      sanitizeSingleOptionId("door_pull_id", PULL_OPTIONS);
-      sanitizeSingleOptionId("drawer_pull_id", PULL_OPTIONS);
+      sanitizeSingleOptionId("door_pull_id", PULL_OPTIONS, "id", {
+        allowNoneSentinel: true,
+      });
+      sanitizeSingleOptionId("drawer_pull_id", PULL_OPTIONS, "id", {
+        allowNoneSentinel: true,
+      });
       sanitizeSingleOptionId("drawer_box_mat", DRAWER_BOX_OPTIONS);
       sanitizeSingleOptionId("doorStyle", DOOR_STYLE_OPTIONS);
       sanitizeSingleOptionId("drawerFrontStyle", DOOR_STYLE_OPTIONS);
 
-      sanitizeSingleAllowedValue("doorPanelModId", [0, 15, 22]);
-      sanitizeSingleAllowedValue("drawerPanelModId", [0, 15, 22]);
+      sanitizeSingleAllowedValue("doorPanelModId", [0, 15, 22, 24]);
+      sanitizeSingleAllowedValue("drawerPanelModId", [0, 15, 22, 24]);
 
       sanitizeArrayOptionIds("faceFinish", FINISH_OPTIONS);
       sanitizeArrayOptionIds("boxFinish", FINISH_OPTIONS);
@@ -1285,11 +1326,11 @@ const EstimateSectionForm = ({
         newErrors.slide_id = "Drawer slide type is required";
       }
 
-      if (!formData.door_pull_id || formData.door_pull_id === "none") {
+      if (!formData.door_pull_id && formData.door_pull_id !== "none") {
         newErrors.door_pull_id = "Door pull type is required";
       }
 
-      if (!formData.drawer_pull_id || formData.drawer_pull_id === "none") {
+      if (!formData.drawer_pull_id && formData.drawer_pull_id !== "none") {
         newErrors.drawer_pull_id = "Drawer pull type is required";
       }
 
@@ -1439,9 +1480,21 @@ const EstimateSectionForm = ({
     e.preventDefault();
     setSaveError(null); // Clear any previous errors
 
-    if (validateForm()) {
-      try {
-        if (editType === EDIT_TYPES.TEAM) {
+    const isValid = validateForm();
+    if (!isValid) {
+      setSaveError("Please fix the highlighted fields before saving.");
+      window.requestAnimationFrame(() => {
+        const formEl = document.getElementById("estimate-section-form");
+        const firstInvalidField = formEl?.querySelector(".border-red-500");
+        if (firstInvalidField && typeof firstInvalidField.scrollIntoView === "function") {
+          firstInvalidField.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+      return;
+    }
+
+    try {
+      if (editType === EDIT_TYPES.TEAM) {
           // Update team defaults using Redux action
           // Convert profit/commission/discount to numbers
           const updatePayload = {
@@ -1473,10 +1526,10 @@ const EstimateSectionForm = ({
             default_discount: Number(formData.discount),
           };
 
-          await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
-          onSave?.();
-          onCancel?.();
-        } else if (editType === EDIT_TYPES.ESTIMATE) {
+        await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
+        onSave?.();
+        onCancel?.();
+      } else if (editType === EDIT_TYPES.ESTIMATE) {
           // Update estimate defaults using Redux action
           // Convert profit/commission/discount to numbers (nullable for estimates)
           const defaultsPayload = {
@@ -1539,15 +1592,15 @@ const EstimateSectionForm = ({
                 : null,
           };
 
-          await dispatch(
-            updateEstimateDefaults(
-              estimateData.estimate_id || currentEstimate.estimate_id,
-              defaultsPayload,
-            ),
-          );
-          onSave?.();
-          onCancel?.();
-        } else {
+        await dispatch(
+          updateEstimateDefaults(
+            estimateData.estimate_id || currentEstimate.estimate_id,
+            defaultsPayload,
+          ),
+        );
+        onSave?.();
+        onCancel?.();
+      } else {
           // Section mode - original logic
           const processedData = { ...formData };
 
@@ -1629,29 +1682,28 @@ const EstimateSectionForm = ({
             }
           });
 
-          if (section?.est_section_id) {
-            // Update existing section
-            await dispatch(
-              updateSection(
-                currentEstimate.estimate_id,
-                taskId,
-                section.est_section_id,
-                processedData,
-              ),
-            );
-          } else {
-            // Create new section
-            const newSection = await dispatch(
-              addSection(currentEstimate.estimate_id, taskId, processedData),
-            );
-            onSave?.(newSection.est_section_id);
-          }
-          onCancel?.();
+        if (section?.est_section_id) {
+          // Update existing section
+          await dispatch(
+            updateSection(
+              currentEstimate.estimate_id,
+              taskId,
+              section.est_section_id,
+              processedData,
+            ),
+          );
+        } else {
+          // Create new section
+          const newSection = await dispatch(
+            addSection(currentEstimate.estimate_id, taskId, processedData),
+          );
+          onSave?.(newSection.est_section_id);
         }
-      } catch (error) {
-        console.error(`Error saving ${editType}:`, error);
-        setSaveError(error.message || "Failed to save. Please try again.");
+        onCancel?.();
       }
+    } catch (error) {
+      console.error(`Error saving ${editType}:`, error);
+      setSaveError(error.message || "Failed to save. Please try again.");
     }
   };
 
@@ -2420,9 +2472,7 @@ const EstimateSectionForm = ({
                           <option value="">
                             {getPlaceholder("door pull type")}
                           </option>
-                          {editType !== EDIT_TYPES.TEAM && (
-                            <option value="none">None</option>
-                          )}
+                          <option value="none">None</option>
                           {PULL_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
                               {`${getOptionDisplayName("hardware.pulls", option)} - $${getOptionDisplayPrice("hardware.pulls", option, "price")}/pull`}
@@ -2828,9 +2878,7 @@ const EstimateSectionForm = ({
                           <option value="">
                             {getPlaceholder("drawer pull type")}
                           </option>
-                          {editType !== EDIT_TYPES.TEAM && (
-                            <option value="none">None</option>
-                          )}
+                          <option value="none">None</option>
                           {PULL_OPTIONS.map((option) => (
                             <option key={option.id} value={option.id}>
                               {`${getOptionDisplayName("hardware.pulls", option)} - $${getOptionDisplayPrice("hardware.pulls", option, "price")}/pull`}
