@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
 import {
+  FACE_NAMES,
   FINISHED,
   NONE,
   PRE_FINISHED,
@@ -12,7 +13,7 @@ import {
 } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
-import { formatDoorDrawerStyle } from "../../utils/helpers";
+import { formatFaceStyleSummary } from "../../utils/helpers";
 import {
   buildAdditionalSectionNotesText,
   buildDisplayNotesLines,
@@ -242,10 +243,18 @@ const EstimatePreviewSection = ({
         : "None",
       drawerBoxMaterial: drawerBoxMaterialName,
       doorStyle: hasDoors
-        ? formatDoorDrawerStyle(effectiveSection.door_style)
+        ? formatFaceStyleSummary({
+            cabinets: effectiveSection.cabinets,
+            defaultStyle: effectiveSection.door_style,
+            faceTypes: [FACE_NAMES.DOOR, FACE_NAMES.PAIR_DOOR],
+          })
         : "None",
       drawerFrontStyle: hasDrawerFronts
-        ? formatDoorDrawerStyle(effectiveSection.drawer_front_style)
+        ? formatFaceStyleSummary({
+            cabinets: effectiveSection.cabinets,
+            defaultStyle: effectiveSection.drawer_front_style,
+            faceTypes: [FACE_NAMES.DRAWER_FRONT, FACE_NAMES.FALSE_FRONT],
+          })
         : "None",
       faceFinish: faceFinishNames,
       boxFinish: hasBoxes ? boxFinishNames : "None",

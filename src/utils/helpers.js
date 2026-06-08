@@ -663,3 +663,89 @@ export const formatDoorDrawerStyle = (style) => {
   // Default: replace underscores with spaces
   return style.replace(/_/g, " ");
 };
+
+const STYLE_DISPLAY_ORDER = ["5-Piece", "Slab"];
+
+const sortStylesForDisplay = (styles = []) => {
+  return [...styles].sort((a, b) => {
+    const aIndex = STYLE_DISPLAY_ORDER.indexOf(a);
+    const bIndex = STYLE_DISPLAY_ORDER.indexOf(b);
+
+    const normalizedAIndex = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+    const normalizedBIndex = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+
+    if (normalizedAIndex !== normalizedBIndex) {
+      return normalizedAIndex - normalizedBIndex;
+    }
+
+    return a.localeCompare(b);
+  });
+};
+
+const collectFaceStylesFromNode = ({
+  node,
+  targetFaceTypes,
+  defaultStyle,
+  styleSet,
+}) => {
+  if (!node) return;
+
+  const nodeType = String(node.type);
+
+  if (targetFaceTypes.has(nodeType)) {
+    const resolvedStyle = node.style ?? defaultStyle;
+    const formattedStyle = formatDoorDrawerStyle(resolvedStyle);
+
+    if (formattedStyle && formattedStyle !== "—") {
+      styleSet.add(formattedStyle);
+    }
+  }
+
+  if (Array.isArray(node.children)) {
+    node.children.forEach((child) => {
+      collectFaceStylesFromNode({
+        node: child,
+        targetFaceTypes,
+        defaultStyle,
+        styleSet,
+      });
+    });
+  }
+};
+
+export const getFaceStyleOptions = ({
+  cabinets = [],
+  defaultStyle = null,
+  faceTypes = [],
+}) => {
+  const targetFaceTypes = new Set(faceTypes.map((faceType) => String(faceType)));
+  const styleSet = new Set();
+
+  cabinets.forEach((cabinet) => {
+    if (!cabinet?.face_config) return;
+
+    collectFaceStylesFromNode({
+      node: cabinet.face_config,
+      targetFaceTypes,
+      defaultStyle,
+      styleSet,
+    });
+  });
+
+  const styles = sortStylesForDisplay(Array.from(styleSet));
+
+  if (styles.length > 0) {
+    return styles;
+  }
+
+  const fallbackStyle = formatDoorDrawerStyle(defaultStyle);
+  return fallbackStyle && fallbackStyle !== "—" ? [fallbackStyle] : [];
+};
+
+export const formatFaceStyleSummary = ({
+  cabinets = [],
+  defaultStyle = null,
+  faceTypes = [],
+}) => {
+  return getFaceStyleOptions({ cabinets, defaultStyle, faceTypes }).join("/");
+};
