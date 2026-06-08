@@ -2535,6 +2535,28 @@ export const generateCabinetSummary = (
     });
   };
 
+  const buildStyleOverrideSummaries = (
+    nodes,
+    { singularLabel, pluralLabel, defaultStyle } = {},
+  ) => {
+    if (!nodes.length) return [];
+
+    const grouped = new Map();
+
+    nodes.forEach((node) => {
+      const styleLabel = getStyleDifferenceLabel(node.style, defaultStyle);
+      if (!styleLabel) return;
+
+      const count = getNodeCount(node);
+      grouped.set(styleLabel, (grouped.get(styleLabel) || 0) + count);
+    });
+
+    return Array.from(grouped.entries()).map(([styleLabel, count]) => {
+      const label = count === 1 ? singularLabel : pluralLabel;
+      return `${count} ${label} (${styleLabel})`;
+    });
+  };
+
   // Count doors and glass panels
   const doorNodes = allNodes.filter(
     (node) =>
@@ -2589,6 +2611,14 @@ export const generateCabinetSummary = (
         : drawerLabel,
     );
   }
+
+  summary.push(
+    ...buildStyleOverrideSummaries(drawerNodes, {
+      singularLabel: "drawer",
+      pluralLabel: "drawers",
+      defaultStyle: effectiveDrawerStyle,
+    }),
+  );
 
   // Count false fronts
   const falseFrontNodes = allNodes.filter(
