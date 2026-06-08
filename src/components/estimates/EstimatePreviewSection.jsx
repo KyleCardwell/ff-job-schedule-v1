@@ -193,6 +193,9 @@ const EstimatePreviewSection = ({
     } =
       buildAdditionalSectionNotesText({
         effectiveSection,
+        section,
+        estimate,
+        team: teamDefaults,
         hasDoors,
         hasDrawerFronts,
         hasDrawerBoxes,
@@ -263,6 +266,8 @@ const EstimatePreviewSection = ({
     calculations,
     effectiveSection,
     section,
+    estimate,
+    teamDefaults,
     sectionNumber,
     taskName,
     cabinetStyles,

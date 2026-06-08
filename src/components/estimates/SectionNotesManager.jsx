@@ -191,6 +191,9 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
 
     const { additionalNotesText, includesText, doesNotIncludeText } = buildAdditionalSectionNotesText({
       effectiveSection,
+      section,
+      estimate: currentEstimate,
+      team: teamDefaults,
       hasDoors,
       hasDrawerFronts,
       hasDrawerBoxes,

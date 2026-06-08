@@ -624,19 +624,59 @@ export const buildHorizontalGrainNote = (effectiveSection = {}) => {
 export const buildExcludedPullsNote = (
   effectiveSection = {},
   hasDoors = false,
-  hasDrawerFronts = false
+  hasDrawerFronts = false,
+  {
+    section = null,
+    estimate = null,
+    team = null,
+  } = {},
 ) => {
+  const isInheritedTeamNoPull = (includeField, teamPullField, estimateIncludeField) => {
+    const explicitSectionNoPulls = section?.[includeField] === false;
+    const explicitEstimateNoPulls = estimate?.[estimateIncludeField] === false;
+
+    if (explicitSectionNoPulls || explicitEstimateNoPulls) {
+      return false;
+    }
+
+    const hasTeamPullField =
+      team && Object.prototype.hasOwnProperty.call(team, teamPullField);
+    if (!hasTeamPullField) {
+      return false;
+    }
+
+    return team?.[teamPullField] === null || team?.[teamPullField] === undefined;
+  };
+
   const noDoorPulls = hasDoors && effectiveSection.include_door_pulls === false;
   const noDrawerPulls =
     hasDrawerFronts && effectiveSection.include_drawer_pulls === false;
 
-  if (noDoorPulls && noDrawerPulls) {
+  const suppressDoorPullsNote =
+    noDoorPulls &&
+    isInheritedTeamNoPull(
+      "include_door_pulls",
+      "default_door_pull_id",
+      "default_include_door_pulls",
+    );
+  const suppressDrawerPullsNote =
+    noDrawerPulls &&
+    isInheritedTeamNoPull(
+      "include_drawer_pulls",
+      "default_drawer_pull_id",
+      "default_include_drawer_pulls",
+    );
+
+  const showDoorPullsNote = noDoorPulls && !suppressDoorPullsNote;
+  const showDrawerPullsNote = noDrawerPulls && !suppressDrawerPullsNote;
+
+  if (showDoorPullsNote && showDrawerPullsNote) {
     return "Door & Drawer Front Pulls.";
   }
-  if (noDoorPulls) {
+  if (showDoorPullsNote) {
     return "Door Pulls.";
   }
-  if (noDrawerPulls) {
+  if (showDrawerPullsNote) {
     return "Drawer Front Pulls.";
   }
   return "";
@@ -766,6 +806,9 @@ export const buildOtherItemsIncludesNote = (effectiveSection = {}) => {
 
 export const buildAdditionalSectionNotesText = ({
   effectiveSection,
+  section,
+  estimate,
+  team,
   hasDoors,
   hasDrawerFronts,
   hasDrawerBoxes,
@@ -800,6 +843,11 @@ export const buildAdditionalSectionNotesText = ({
     effectiveSection,
     hasDoors,
     hasDrawerFronts,
+    {
+      section,
+      estimate,
+      team,
+    },
   );
   const { doorPullNote, drawerPullNote, hingeNote, slideNote } =
     buildHardwareAutoNotes({
