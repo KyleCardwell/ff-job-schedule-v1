@@ -345,27 +345,31 @@ const GenerateEstimatePdf = ({
         // rightColumn.push({ text: [{ text: "Wood: ", bold: true }, { text: section.faceMaterial }] });
         // rightColumn.push({ text: [{ text: "Finish: ", bold: true }, { text: section.faceFinish }] });
 
-        const maxDetailRows = Math.max(leftColumn.length, rightColumn.length);
-
-        // Build details stack for the description column
-        const detailsStack = [];
-        for (let i = 0; i < maxDetailRows; i++) {
-          detailsStack.push({
+        // Build details stack for the description column with independent column flow.
+        // This prevents text wrapping in one column from adding visual gaps to the other.
+        const detailsStack = [
+          {
             columns: [
               {
-                text: leftColumn[i] || "",
                 width: "*",
-                fontSize: GROUP_DATA_FONT_SIZE,
+                stack: leftColumn.map((text) => ({
+                  text,
+                  fontSize: GROUP_DATA_FONT_SIZE,
+                  margin: [0, 0, 0, 4],
+                })),
               },
               {
-                text: rightColumn[i] || "",
                 width: "*",
-                fontSize: GROUP_DATA_FONT_SIZE,
+                stack: rightColumn.map((text) => ({
+                  text,
+                  fontSize: GROUP_DATA_FONT_SIZE,
+                  margin: [0, 0, 0, 4],
+                })),
               },
             ],
-            margin: [GROUP_DATA_INDENT, 0, 0, 4], // Left indent
-          });
-        }
+            margin: [GROUP_DATA_INDENT, 0, 0, 0],
+          },
+        ];
 
         // Add notes if present (handle both array and string formats)
         if (notesForPdf) {

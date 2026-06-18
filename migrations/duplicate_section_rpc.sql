@@ -54,7 +54,9 @@ BEGIN
       'cabinets_order',
       'lengths_order',
       'accessories_order',
-      'other_order'
+      'other_order',
+      'section_lineage_id',
+      'revision'
     );
 
   -- Use existing section if provided, otherwise create a new one

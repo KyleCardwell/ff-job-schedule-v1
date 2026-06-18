@@ -162,7 +162,9 @@ BEGIN
       'cabinets_order',
       'lengths_order',
       'accessories_order',
-      'other_order'
+      'other_order',
+      'section_lineage_id',
+      'revision'
     );
 
   FOR v_source_task IN
