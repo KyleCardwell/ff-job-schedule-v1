@@ -13,6 +13,18 @@ import {
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
+const normalizeBooleanFlag = (value, fallback = false) => {
+  if (value === null || value === undefined) return fallback;
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    if (normalizedValue === "true") return true;
+    if (normalizedValue === "false") return false;
+  }
+
+  return Boolean(value);
+};
+
 /**
  * Calculate molding cost for a door or drawer front
  * @param {number} width - Width of the face in inches
@@ -59,6 +71,7 @@ export const calculateMoldingCost = (
   if (insideMolding) {
     cost += Math.max(insidePerimeterFeet * insideMoldingPricePerFoot, 50);
   }
+
   if (outsideMolding) {
     cost += Math.max(outsidePerimeterFeet * outsideMoldingPricePerFoot, 68);
   }
@@ -1341,8 +1354,54 @@ export const calculateSlabSheetFacePriceBulk = (
     return sum + 2 * (face.width + face.height);
   }, 0);
 
-  // Prepare faces for packing (add kerf spacing to each face)
-  const packerParts = faces.map((face, index) => ({
+  // Split faces that exceed sheet height into stackable segments for packing
+  // This avoids treating every tall face as its own oversized sheet/bin.
+  const facesForPacking = faces.flatMap((face, faceIndex) => {
+    const faceWidth = Number(face.width) || 0;
+    const faceHeight = Number(face.height) || 0;
+
+    if (sheetHeight <= 0 || faceHeight <= sheetHeight) {
+      return [
+        {
+          ...face,
+          sourceFaceIndex: faceIndex,
+          splitSegmentIndex: 0,
+          splitSegmentCount: 1,
+        },
+      ];
+    }
+
+    const splitSegmentCount = Math.ceil(faceHeight / sheetHeight);
+    const baseArea =
+      typeof face.area === "number" ? face.area : faceWidth * faceHeight;
+
+    let remainingHeight = faceHeight;
+    const splitSegments = [];
+
+    for (let splitSegmentIndex = 0; splitSegmentIndex < splitSegmentCount; splitSegmentIndex++) {
+      const segmentHeight = Math.min(remainingHeight, sheetHeight);
+      const segmentArea =
+        faceHeight > 0
+          ? (baseArea * segmentHeight) / faceHeight
+          : faceWidth * segmentHeight;
+
+      splitSegments.push({
+        ...face,
+        height: segmentHeight,
+        area: segmentArea,
+        sourceFaceIndex: faceIndex,
+        splitSegmentIndex,
+        splitSegmentCount,
+      });
+
+      remainingHeight -= segmentHeight;
+    }
+
+    return splitSegments;
+  });
+
+  // Prepare faces for packing (add kerf spacing to each packed segment)
+  const packerParts = facesForPacking.map((face, index) => ({
     width: face.width + kerfWidth,
     height: face.height + kerfWidth,
     data: {
@@ -1351,6 +1410,9 @@ export const calculateSlabSheetFacePriceBulk = (
       area: face.area,
       cabinetId: face.cabinetId,
       faceType: face.faceType,
+      sourceFaceIndex: face.sourceFaceIndex,
+      splitSegmentIndex: face.splitSegmentIndex,
+      splitSegmentCount: face.splitSegmentCount,
       index,
     },
   }));
@@ -1441,6 +1503,11 @@ export const calculateSlabSheetFacePriceBulk = (
   const sheetCost = roundedSheets * sheetPrice;
   const setupCost = Math.ceil(roundedSheets) * setupCostPerSheet;
 
+  const defaultDoorInsideMolding = normalizeBooleanFlag(doorInsideMolding);
+  const defaultDoorOutsideMolding = normalizeBooleanFlag(doorOutsideMolding);
+  const defaultDrawerInsideMolding = normalizeBooleanFlag(drawerInsideMolding);
+  const defaultDrawerOutsideMolding = normalizeBooleanFlag(drawerOutsideMolding);
+
   // Calculate total perimeter for cutting cost
   const totalPerimeter = faces.reduce((sum, face) => {
     return sum + 2 * (face.width + face.height);
@@ -1452,6 +1519,10 @@ export const calculateSlabSheetFacePriceBulk = (
 
   // Calculate molding costs for each face based on faceType
   const moldingCost = faces.reduce((sum, face) => {
+    if (face.isShopBuilt || face.isNosing) {
+      return sum;
+    }
+
     const faceType = face.faceType;
     let insideMolding = false;
     let outsideMolding = false;
@@ -1462,14 +1533,26 @@ export const calculateSlabSheetFacePriceBulk = (
       faceType === FACE_NAMES.PAIR_DOOR ||
       faceType === FACE_NAMES.PANEL
     ) {
-      insideMolding = doorInsideMolding;
-      outsideMolding = doorOutsideMolding;
+      insideMolding = normalizeBooleanFlag(
+        face.insideMolding,
+        defaultDoorInsideMolding,
+      );
+      outsideMolding = normalizeBooleanFlag(
+        face.outsideMolding,
+        defaultDoorOutsideMolding,
+      );
     } else if (
       faceType === FACE_NAMES.DRAWER_FRONT ||
       faceType === FACE_NAMES.FALSE_FRONT
     ) {
-      insideMolding = drawerInsideMolding;
-      outsideMolding = drawerOutsideMolding;
+      insideMolding = normalizeBooleanFlag(
+        face.insideMolding,
+        defaultDrawerInsideMolding,
+      );
+      outsideMolding = normalizeBooleanFlag(
+        face.outsideMolding,
+        defaultDrawerOutsideMolding,
+      );
     }
 
     return (
@@ -1496,6 +1579,7 @@ export const calculateSlabSheetFacePriceBulk = (
     packingEfficiency: parseFloat((packingEfficiency * 100).toFixed(1)),
     kerfWaste: parseFloat(totalKerfWaste.toFixed(2)),
     partCount: faces.length,
+    packedPartCount: facesForPacking.length,
     bandingLength: parseFloat(totalBandingLength.toFixed(2)),
     sheetDimensions: {
       width: sheetWidth,
@@ -1518,6 +1602,9 @@ export const calculateSlabSheetFacePriceBulk = (
         height: rect.height,
         rotated: rect.rot || false,
         faceType: rect.data.faceType,
+        sourceFaceIndex: rect.data.sourceFaceIndex,
+        splitSegmentIndex: rect.data.splitSegmentIndex,
+        splitSegmentCount: rect.data.splitSegmentCount,
       })),
     })),
     breakdown: {

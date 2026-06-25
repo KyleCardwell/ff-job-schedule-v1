@@ -57,6 +57,18 @@ const getEffectiveMoldingCount = (cabinet, optionName, legacyOptionName) => {
 // Calculate face counts and prices for all cabinets in a section
 // Aggregates faces across all cabinets by style for efficient bulk calculation
 const calculateFaceTotals = (section, context) => {
+  const normalizeBooleanFlag = (value, fallback = false) => {
+    if (value === null || value === undefined) return fallback;
+
+    if (typeof value === "string") {
+      const normalizedValue = value.trim().toLowerCase();
+      if (normalizedValue === "true") return true;
+      if (normalizedValue === "false") return false;
+    }
+
+    return Boolean(value);
+  };
+
   const totals = {
     faceCounts: {},
     facePrices: {},
@@ -229,6 +241,8 @@ const calculateFaceTotals = (section, context) => {
           faceType,
           cabinetId: cabinet.id || cabinet.temp_id,
           isShopBuilt: true, // Mark for reference
+          insideMolding: false,
+          outsideMolding: false,
         });
 
         // Add to facesByStyle for pricing (multiplied by cabinet quantity)
@@ -240,6 +254,8 @@ const calculateFaceTotals = (section, context) => {
             faceType,
             cabinetId: cabinet.id || cabinet.temp_id,
             isShopBuilt: true,
+            insideMolding: false,
+            outsideMolding: false,
           });
         }
 
@@ -276,6 +292,8 @@ const calculateFaceTotals = (section, context) => {
                   faceType,
                   cabinetId: cabinet.id || cabinet.temp_id,
                   isNosing: true, // Mark as nosing to exclude from counts
+                  insideMolding: false,
+                  outsideMolding: false,
                 });
               }
               // Don't update face counts for nosing parts
@@ -331,6 +349,8 @@ const calculateFaceTotals = (section, context) => {
                 faceType,
                 cabinetId: cabinet.id || cabinet.temp_id,
                 isNosing: true, // Mark as nosing to exclude from counts
+                insideMolding: false,
+                outsideMolding: false,
               });
             }
 
@@ -633,23 +653,45 @@ const calculateFaceTotals = (section, context) => {
 
         // Accumulate molding flags for this material group
         if (isDrawerType) {
+          const faceInsideMolding =
+            face.isNosing || face.isShopBuilt
+              ? false
+              : normalizeBooleanFlag(
+                  face.insideMolding,
+                  normalizeBooleanFlag(section.drawer_inside_molding, false),
+                );
+          const faceOutsideMolding =
+            face.isNosing || face.isShopBuilt
+              ? false
+              : normalizeBooleanFlag(
+                  face.outsideMolding,
+                  normalizeBooleanFlag(section.drawer_outside_molding, false),
+                );
+
           materialGroup.drawerInsideMolding =
-            materialGroup.drawerInsideMolding ||
-            section.drawer_inside_molding ||
-            false;
+            materialGroup.drawerInsideMolding || faceInsideMolding;
           materialGroup.drawerOutsideMolding =
-            materialGroup.drawerOutsideMolding ||
-            section.drawer_outside_molding ||
-            false;
+            materialGroup.drawerOutsideMolding || faceOutsideMolding;
         } else {
+          const faceInsideMolding =
+            face.isNosing || face.isShopBuilt
+              ? false
+              : normalizeBooleanFlag(
+                  face.insideMolding,
+                  normalizeBooleanFlag(section.door_inside_molding, false),
+                );
+          const faceOutsideMolding =
+            face.isNosing || face.isShopBuilt
+              ? false
+              : normalizeBooleanFlag(
+                  face.outsideMolding,
+                  normalizeBooleanFlag(section.door_outside_molding, false),
+                );
+
           materialGroup.doorInsideMolding =
-            materialGroup.doorInsideMolding ||
-            section.door_inside_molding ||
-            false;
+            materialGroup.doorInsideMolding || faceInsideMolding;
           materialGroup.doorOutsideMolding =
-            materialGroup.doorOutsideMolding ||
-            section.door_outside_molding ||
-            false;
+            materialGroup.doorOutsideMolding || faceOutsideMolding;
         }
       });
 
