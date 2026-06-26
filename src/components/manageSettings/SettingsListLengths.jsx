@@ -6,14 +6,13 @@ const SettingsListLengths = ({
   onDelete,
   onCancelDelete,
   onChange,
-  onAdd,
-  addLabel,
   inputRefs,
   itemPrefix,
   renderRulesSection,
 }) => {
   const coreFieldOrder = [
     "name",
+    "is_default",
     "requires_miters",
     "requires_cutouts",
     "default_width",
@@ -216,14 +215,6 @@ const SettingsListLengths = ({
           </div>
         ))}
       </div>
-
-      {/* Add Button */}
-      <button
-        onClick={onAdd}
-        className="mt-4 px-3 py-1 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500 absolute right-0 -top-4"
-      >
-        {addLabel}
-      </button>
     </div>
   );
 };
@@ -249,8 +240,6 @@ SettingsListLengths.propTypes = {
   onDelete: PropTypes.func,
   onCancelDelete: PropTypes.func,
   onChange: PropTypes.func,
-  onAdd: PropTypes.func,
-  addLabel: PropTypes.string,
   inputRefs: PropTypes.object,
   itemPrefix: PropTypes.string,
   renderRulesSection: PropTypes.func,

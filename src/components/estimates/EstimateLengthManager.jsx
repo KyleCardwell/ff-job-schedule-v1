@@ -12,6 +12,434 @@ import SectionItemList from "./SectionItemList.jsx";
 
 const DEFAULT_NEW_LENGTH_QUANTITY = 1;
 const FINISH_NONE = "none";
+const LENGTH_TYPE_ORDER = ["molding", "base", "shelf", "top", "other"];
+const LENGTH_TYPE_LABELS = {
+  molding: "Molding",
+  base: "Base",
+  shelf: "Shelf",
+  top: "Top",
+  other: "Other",
+};
+
+const getAutoLengthForType = (type, approxBaseLengthFeet, approxCrownLengthFeet) => {
+  if (type === "molding") {
+    const crown = Number(approxCrownLengthFeet);
+    return Number.isFinite(crown) && crown > 0 ? crown : "";
+  }
+
+  if (type === "base") {
+    const base = Number(approxBaseLengthFeet);
+    return Number.isFinite(base) && base > 0 ? base : "";
+  }
+
+  return "";
+};
+
+const BulkAddLengthsModal = ({
+  isOpen,
+  onClose,
+  onAddSelected,
+  catalog,
+  approxBaseLengthFeet,
+  approxCrownLengthFeet,
+}) => {
+  const [rows, setRows] = useState([]);
+  const [errors, setErrors] = useState({});
+
+  const lengthsByType = useMemo(() => {
+    return (catalog || []).reduce((acc, lengthItem) => {
+      if (!lengthItem?.type) return acc;
+      if (!acc[lengthItem.type]) acc[lengthItem.type] = [];
+      acc[lengthItem.type].push(lengthItem);
+      return acc;
+    }, {});
+  }, [catalog]);
+
+  const lengthById = useMemo(() => {
+    return new Map((catalog || []).map((lengthItem) => [String(lengthItem.id), lengthItem]));
+  }, [catalog]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const defaultLengthRows = (catalog || [])
+      .filter((lengthItem) => lengthItem.is_default)
+      .map((lengthItem) => ({
+        row_id: uuid(),
+        include: true,
+        type: lengthItem.type,
+        length_catalog_id: Number(lengthItem.id),
+        quantity: DEFAULT_NEW_LENGTH_QUANTITY,
+        length: getAutoLengthForType(
+          lengthItem.type,
+          approxBaseLengthFeet,
+          approxCrownLengthFeet,
+        ),
+        width: "",
+        thickness: "",
+        miter_count: 0,
+        cutout_count: 0,
+      }));
+
+    setRows(defaultLengthRows);
+    setErrors({});
+  }, [isOpen, catalog, approxBaseLengthFeet, approxCrownLengthFeet]);
+
+  if (!isOpen) return null;
+
+  const parseOptionalNumber = (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return null;
+    }
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  };
+
+  const handleRowChange = (rowId, field, rawValue) => {
+    const value =
+      field === "include"
+        ? Boolean(rawValue)
+        : field === "length_catalog_id"
+          ? (rawValue === "" ? "" : Number(rawValue))
+          : rawValue;
+
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.row_id !== rowId) return row;
+
+        const updatedRow = {
+          ...row,
+          [field]: value,
+        };
+
+        if (field === "length_catalog_id") {
+          const selectedLengthItem = lengthById.get(String(value));
+          if (selectedLengthItem && !selectedLengthItem.requires_miters) {
+            updatedRow.miter_count = 0;
+          }
+          if (selectedLengthItem && !selectedLengthItem.requires_cutouts) {
+            updatedRow.cutout_count = 0;
+          }
+        }
+
+        return updatedRow;
+      }),
+    );
+
+    setErrors((prev) => {
+      if (!prev[rowId]) return prev;
+      const nextRowErrors = { ...prev[rowId] };
+      delete nextRowErrors[field];
+
+      const nextErrors = { ...prev };
+      if (Object.keys(nextRowErrors).length === 0) {
+        delete nextErrors[rowId];
+      } else {
+        nextErrors[rowId] = nextRowErrors;
+      }
+
+      return nextErrors;
+    });
+  };
+
+  const handleAddSelected = () => {
+    const selectedRows = rows.filter((row) => row.include);
+    if (selectedRows.length === 0) {
+      setErrors({
+        _form: {
+          include: "Select at least one length row to add.",
+        },
+      });
+      return;
+    }
+
+    const nextErrors = {};
+    const newItems = [];
+
+    selectedRows.forEach((row) => {
+      const rowErrors = {};
+      const selectedLengthItem = lengthById.get(String(row.length_catalog_id));
+
+      if (!selectedLengthItem) {
+        rowErrors.length_catalog_id = "Select a valid length item.";
+      }
+
+      const quantity = Number(row.quantity);
+      if (
+        row.quantity === "" ||
+        row.quantity === null ||
+        row.quantity === undefined ||
+        Number.isNaN(quantity) ||
+        quantity < 0
+      ) {
+        rowErrors.quantity = "Qty must be 0 or greater.";
+      }
+
+      const length = Number(row.length);
+      if (
+        row.length === "" ||
+        row.length === null ||
+        row.length === undefined ||
+        Number.isNaN(length) ||
+        length <= 0
+      ) {
+        rowErrors.length = "Length must be greater than 0.";
+      }
+
+      const width = parseOptionalNumber(row.width);
+      if (row.width !== "" && width !== null && width <= 0) {
+        rowErrors.width = "Width must be greater than 0.";
+      }
+
+      const thickness = parseOptionalNumber(row.thickness);
+      if (row.thickness !== "" && thickness !== null && thickness <= 0) {
+        rowErrors.thickness = "Thickness must be greater than 0.";
+      }
+
+      const miterCount = parseOptionalNumber(row.miter_count);
+      const requiresMiters = selectedLengthItem?.requires_miters === true;
+      if (requiresMiters && miterCount !== null && miterCount < 0) {
+        rowErrors.miter_count = "Miters must be 0 or greater.";
+      }
+
+      const cutoutCount = parseOptionalNumber(row.cutout_count);
+      const requiresCutouts = selectedLengthItem?.requires_cutouts === true;
+      if (requiresCutouts && cutoutCount !== null && cutoutCount < 0) {
+        rowErrors.cutout_count = "Cutouts must be 0 or greater.";
+      }
+
+      if (Object.keys(rowErrors).length > 0) {
+        nextErrors[row.row_id] = rowErrors;
+        return;
+      }
+
+      newItems.push({
+        temp_id: uuid(),
+        length_catalog_id: Number(row.length_catalog_id),
+        quantity,
+        length,
+        width,
+        thickness,
+        miter_count: requiresMiters ? miterCount ?? 0 : 0,
+        cutout_count: requiresCutouts ? cutoutCount ?? 0 : 0,
+        length_mat: null,
+        length_finish: null,
+      });
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    onAddSelected(newItems);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[88vh] flex flex-col">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-slate-800">Add Default Length Items</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-500 hover:text-slate-700"
+            aria-label="Close add defaults modal"
+          >
+            <FiX size={18} />
+          </button>
+        </div>
+
+        <div className="px-4 py-3 overflow-auto space-y-4">
+          {rows.length === 0 ? (
+            <div className="text-sm text-slate-600">
+              No default lengths found. Mark lengths as default in Manage Settings to use Bulk Add.
+            </div>
+          ) : (
+            LENGTH_TYPE_ORDER.map((type) => {
+              const typeRows = rows.filter((row) => row.type === type);
+              if (typeRows.length === 0) return null;
+
+              return (
+                <div key={type} className="border border-slate-200 rounded-md p-3">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                    {LENGTH_TYPE_LABELS[type] || type}
+                  </h4>
+
+                  <div className="grid grid-cols-[70px_minmax(180px,1fr)_70px_90px_90px_100px_85px_85px] gap-2 text-[11px] uppercase tracking-wide text-slate-500 font-semibold mb-1">
+                    <div>Include</div>
+                    <div>Item</div>
+                    <div>Qty</div>
+                    <div>Length</div>
+                    <div>Width</div>
+                    <div>Thickness</div>
+                    <div>Miters</div>
+                    <div>Cutouts</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {typeRows.map((row) => {
+                      const selectedLengthItem = lengthById.get(String(row.length_catalog_id));
+                      const typeOptions = lengthsByType[type] || [];
+                      const rowErrors = errors[row.row_id] || {};
+
+                      return (
+                        <div key={row.row_id} className="space-y-1">
+                          <div className="grid grid-cols-[70px_minmax(180px,1fr)_70px_90px_90px_100px_85px_85px] gap-2 items-center">
+                            <div className="flex justify-center">
+                              <input
+                                type="checkbox"
+                                checked={row.include}
+                                onChange={(e) => handleRowChange(row.row_id, "include", e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-300"
+                              />
+                            </div>
+
+                            <select
+                              value={row.length_catalog_id}
+                              onChange={(e) =>
+                                handleRowChange(row.row_id, "length_catalog_id", e.target.value)
+                              }
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                rowErrors.length_catalog_id ? "border-red-500" : "border-slate-300"
+                              }`}
+                            >
+                              {typeOptions.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              value={row.quantity}
+                              onChange={(e) => handleRowChange(row.row_id, "quantity", e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                rowErrors.quantity ? "border-red-500" : "border-slate-300"
+                              }`}
+                            />
+
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              value={row.length}
+                              onChange={(e) => handleRowChange(row.row_id, "length", e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                rowErrors.length ? "border-red-500" : "border-slate-300"
+                              }`}
+                            />
+
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              value={row.width}
+                              placeholder={
+                                selectedLengthItem?.default_width
+                                  ? `Def ${selectedLengthItem.default_width}`
+                                  : "Optional"
+                              }
+                              onChange={(e) => handleRowChange(row.row_id, "width", e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                rowErrors.width ? "border-red-500" : "border-slate-300"
+                              }`}
+                            />
+
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              value={row.thickness}
+                              placeholder={
+                                selectedLengthItem?.default_thickness
+                                  ? `Def ${selectedLengthItem.default_thickness}`
+                                  : "Optional"
+                              }
+                              onChange={(e) => handleRowChange(row.row_id, "thickness", e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm ${
+                                rowErrors.thickness ? "border-red-500" : "border-slate-300"
+                              }`}
+                            />
+
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              value={row.miter_count}
+                              disabled={!selectedLengthItem?.requires_miters}
+                              onChange={(e) => handleRowChange(row.row_id, "miter_count", e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm disabled:bg-slate-100 disabled:text-slate-400 ${
+                                rowErrors.miter_count ? "border-red-500" : "border-slate-300"
+                              }`}
+                            />
+
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              value={row.cutout_count}
+                              disabled={!selectedLengthItem?.requires_cutouts}
+                              onChange={(e) => handleRowChange(row.row_id, "cutout_count", e.target.value)}
+                              className={`w-full px-2 py-1 border rounded text-sm disabled:bg-slate-100 disabled:text-slate-400 ${
+                                rowErrors.cutout_count ? "border-red-500" : "border-slate-300"
+                              }`}
+                            />
+                          </div>
+
+                          {Object.keys(rowErrors).length > 0 && (
+                            <div className="text-xs text-red-600 px-1">
+                              {Object.values(rowErrors)[0]}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {errors._form?.include && (
+            <div className="text-sm text-red-600">{errors._form.include}</div>
+          )}
+        </div>
+
+        <div className="px-4 py-3 border-t border-slate-200 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleAddSelected}
+            disabled={rows.length === 0}
+            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
+          >
+            Add Selected
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+BulkAddLengthsModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onAddSelected: PropTypes.func.isRequired,
+  catalog: PropTypes.arrayOf(PropTypes.object),
+  approxBaseLengthFeet: PropTypes.number,
+  approxCrownLengthFeet: PropTypes.number,
+};
 
 const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
   const faceMaterialOptions = useSelector(
@@ -750,6 +1178,7 @@ const EstimateLengthManager = ({
     (state) => state.materials?.faceMaterials || []
   );
   const finishOptions = useSelector((state) => state.finishes?.finishes || []);
+  const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
 
   const currentSection = useMemo(() => {
     const sectionId = Number(currentSectionId);
@@ -910,6 +1339,11 @@ const EstimateLengthManager = ({
     onReorderItems(reorderedItems);
   };
 
+  const handleBulkAddItems = (bulkItems) => {
+    if (!Array.isArray(bulkItems) || bulkItems.length === 0) return;
+    onUpdateItems([...items, ...bulkItems]);
+  };
+
   const getReorderItemName = (item) => {
     const lengthName = getLengthName(item.length_catalog_id);
     const length = item.length ? `${item.length} ft` : "";
@@ -918,8 +1352,17 @@ const EstimateLengthManager = ({
 
   return (
     <>
-      <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
-        Approx. molding coverage (rounded up): Base {approxBaseLengthFeet} ft | Crown {approxCrownLengthFeet} ft
+      <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between gap-3">
+        <span>
+          Approx. molding coverage (rounded up): Base {approxBaseLengthFeet} ft | Crown {approxCrownLengthFeet} ft
+        </span>
+        <button
+          type="button"
+          onClick={() => setIsBulkAddModalOpen(true)}
+          className="px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
+        >
+          Add Defaults
+        </button>
       </div>
       <SectionItemList
         items={items}
@@ -938,6 +1381,15 @@ const EstimateLengthManager = ({
         listType="length"
         currentTaskId={currentTaskId}
         currentSectionId={currentSectionId}
+      />
+
+      <BulkAddLengthsModal
+        isOpen={isBulkAddModalOpen}
+        onClose={() => setIsBulkAddModalOpen(false)}
+        onAddSelected={handleBulkAddItems}
+        catalog={catalog}
+        approxBaseLengthFeet={approxBaseLengthFeet}
+        approxCrownLengthFeet={approxCrownLengthFeet}
       />
     </>
   );

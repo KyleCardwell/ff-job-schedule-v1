@@ -110,6 +110,7 @@ const LengthsSettings = forwardRef((props, ref) => {
       id: uuidv4(),
       name: "",
       type: type,
+      is_default: false,
       requires_miters: false,
       requires_cutouts: false,
       default_width: null,
@@ -574,6 +575,20 @@ const LengthsSettings = forwardRef((props, ref) => {
       hasError: (item) => !!getItemErrors(item.id, type).name,
     },
     {
+      field: "is_default",
+      label: "Default",
+      width: "90px",
+      render: (item, onChange) => (
+        <input
+          type="checkbox"
+          checked={item.is_default || false}
+          onChange={(e) => onChange("is_default", e.target.checked)}
+          disabled={item.markedForDeletion}
+          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+      ),
+    },
+    {
       field: "requires_miters",
       label: "Miters",
       width: "80px",
@@ -636,6 +651,12 @@ const LengthsSettings = forwardRef((props, ref) => {
                 label: typeConfig.label,
                 columns: [
                   { field: "name", label: "Name", width: "*" },
+                  {
+                    field: "is_default",
+                    label: "Default",
+                    width: 50,
+                    format: (value) => (value ? "Yes" : "No"),
+                  },
                   { field: "requires_miters", label: "Miters", width: 45 },
                   { field: "requires_cutouts", label: "Cutouts", width: 50 },
                   { field: "default_width", label: "Width (in)", width: 55 },
@@ -686,6 +707,14 @@ const LengthsSettings = forwardRef((props, ref) => {
                     key={typeConfig.value}
                     title={typeConfig.label}
                     maxWidthClass={maxWidthClass}
+                    headerActions={
+                      <button
+                        onClick={() => handleAddLength(typeConfig.value)}
+                        className="px-3 py-1 text-sm bg-slate-600 text-slate-200 hover:bg-slate-500"
+                      >
+                        {`+ Add ${typeConfig.label}`}
+                      </button>
+                    }
                   >
                     <SettingsListLengths
                       items={typeItems}
@@ -694,8 +723,6 @@ const LengthsSettings = forwardRef((props, ref) => {
                       onDelete={handleDeleteLength}
                       onCancelDelete={handleCancelDeleteLength}
                       onChange={handleCatalogChange}
-                      onAdd={() => handleAddLength(typeConfig.value)}
-                      addLabel={`+ Add ${typeConfig.label}`}
                       inputRefs={inputRefs}
                       itemPrefix={`catalog-${typeConfig.value}`}
                     />
