@@ -2622,9 +2622,9 @@ export const generateCabinetSummary = (
     });
   };
 
-  const buildStyleOverrideSummaries = (
+  const buildStyleOverrideGroups = (
     nodes,
-    { singularLabel, pluralLabel, defaultStyle } = {},
+    { defaultStyle } = {},
   ) => {
     if (!nodes.length) return [];
 
@@ -2638,10 +2638,10 @@ export const generateCabinetSummary = (
       grouped.set(styleLabel, (grouped.get(styleLabel) || 0) + count);
     });
 
-    return Array.from(grouped.entries()).map(([styleLabel, count]) => {
-      const label = count === 1 ? singularLabel : pluralLabel;
-      return `${count} ${label} (${styleLabel})`;
-    });
+    return Array.from(grouped.entries()).map(([styleLabel, count]) => ({
+      styleLabel,
+      count,
+    }));
   };
 
   // Count doors and glass panels
@@ -2690,22 +2690,33 @@ export const generateCabinetSummary = (
 
   if (totalDrawers > 0) {
     const drawerLabel = `${totalDrawers} drawer${totalDrawers !== 1 ? "s" : ""}`;
-    summary.push(
-      totalDrawersWithDividers > 0
-        ? totalDrawersWithDividers === totalDrawers
-          ? `${drawerLabel} with dividers`
-          : `${drawerLabel} (${totalDrawersWithDividers} with dividers)`
-        : drawerLabel,
-    );
-  }
+    const drawerDetailParts = [];
 
-  summary.push(
-    ...buildStyleOverrideSummaries(drawerNodes, {
-      singularLabel: "drawer",
-      pluralLabel: "drawers",
+    if (totalDrawersWithDividers > 0 && totalDrawersWithDividers < totalDrawers) {
+      drawerDetailParts.push(`${totalDrawersWithDividers} with dividers`);
+    }
+
+    const drawerStyleOverrideGroups = buildStyleOverrideGroups(drawerNodes, {
       defaultStyle: effectiveDrawerStyle,
-    }),
-  );
+    });
+
+    drawerStyleOverrideGroups.forEach(({ styleLabel, count }) => {
+      drawerDetailParts.push(`${count} ${styleLabel}`);
+    });
+
+    const hasAllDividers =
+      totalDrawersWithDividers > 0 && totalDrawersWithDividers === totalDrawers;
+    const drawerSummaryBase = hasAllDividers
+      ? `${drawerLabel} with dividers`
+      : drawerLabel;
+
+    const drawerSummary =
+      drawerDetailParts.length > 0
+        ? `${drawerSummaryBase} (${drawerDetailParts.join(", ")})`
+        : drawerSummaryBase;
+
+    summary.push(drawerSummary);
+  }
 
   // Count false fronts
   const falseFrontNodes = allNodes.filter(
