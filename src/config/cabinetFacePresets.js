@@ -4,6 +4,7 @@ const CABINET_TYPE_IDS = {
   BASE: 1,
   UPPER: 2,
   TALL: 3,
+  APPLIANCE_PANEL: 11,
 };
 
 const STYLE_BASE_DRAWER_HEIGHT = {
@@ -47,6 +48,19 @@ const B4D_ROOT_LAYOUT = {
  */
 export const CABINET_FACE_PRESETS = {
   [ITEM_TYPES.CABINET.type]: [
+    {
+      key: "2df",
+      label: "2Df",
+      description: "2-drawer stack",
+      cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      layout: {
+        direction: SPLIT_DIRECTIONS.VERTICAL,
+        children: [
+          { type: FACE_NAMES.DRAWER_FRONT },
+          { type: FACE_NAMES.DRAWER_FRONT },
+        ],
+      },
+    },
     {
       key: "3df",
       label: "3Df",
@@ -111,7 +125,10 @@ export const CABINET_FACE_PRESETS = {
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
-        children: [{ type: FACE_NAMES.DRAWER_FRONT, height: STYLE_BASE_DRAWER_HEIGHT }, { type: FACE_NAMES.DOOR }],
+        children: [
+          { type: FACE_NAMES.DRAWER_FRONT, height: STYLE_BASE_DRAWER_HEIGHT },
+          { type: FACE_NAMES.DOOR },
+        ],
       },
     },
     {
@@ -134,11 +151,38 @@ export const CABINET_FACE_PRESETS = {
         children: [
           {
             type: FACE_NAMES.PAIR_DOOR,
-            height: {default: 36}
+            height: { default: 36 },
           },
           {
             direction: SPLIT_DIRECTIONS.VERTICAL,
-            children: [{ type: FACE_NAMES.OPEN, height: {default: 30} }, B2Dw_ROOT_LAYOUT],
+            children: [
+              { type: FACE_NAMES.OPEN, height: { default: 30 } },
+              B2Dw_ROOT_LAYOUT,
+            ],
+          },
+        ],
+      },
+    },
+  ],
+  [ITEM_TYPES.APPLIANCE_PANEL.type]: [
+    {
+      key: "g_d_df",
+      label: "G/D/Df",
+      description: "Grille, Door, Drawer front",
+      cabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
+      layout: {
+        direction: SPLIT_DIRECTIONS.VERTICAL,
+        children: [
+          {
+            type: FACE_NAMES.PANEL,
+            height: { default: 7.75 },
+          },
+          {
+            direction: SPLIT_DIRECTIONS.VERTICAL,
+            children: [
+              { type: FACE_NAMES.PANEL },
+              { type: FACE_NAMES.PANEL, height: { default: 20 } },
+            ],
           },
         ],
       },
@@ -154,7 +198,10 @@ export const getCabinetFacePresets = (itemType, cabinetTypeId = null) => {
   }
 
   return presets.filter((preset) => {
-    if (!Array.isArray(preset.cabinetTypeId) || preset.cabinetTypeId.length === 0) {
+    if (
+      !Array.isArray(preset.cabinetTypeId) ||
+      preset.cabinetTypeId.length === 0
+    ) {
       return true;
     }
 
