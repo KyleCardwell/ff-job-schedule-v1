@@ -1072,7 +1072,7 @@ const CabinetItemForm = ({
 
             // double vertical partitions for cabinet style 14 (Inset Face Frame)
             if (
-              cabStyleId === 14 &&
+              (cabStyleId === 14 || cabStyleId === 15) &&
               node.splitDirection === SPLIT_DIRECTIONS.HORIZONTAL
             ) {
               partitionCount += 1;

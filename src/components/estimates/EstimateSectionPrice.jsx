@@ -199,6 +199,18 @@ const EstimateSectionPrice = ({
     return roundToHundredth(parseFloat(hours || 0));
   };
 
+  const totalLaborHours = useMemo(() => {
+    const costsByService = sectionCalculations?.laborCosts?.costsByService || {};
+
+    return Object.values(costsByService).reduce(
+      (total, serviceData) =>
+        serviceData?.isIncluded === false
+          ? total
+          : total + parseFloat(serviceData?.hours || 0),
+      0,
+    );
+  }, [sectionCalculations?.laborCosts?.costsByService]);
+
   // Breakdown is now handled in EstimateSectionManager (not here)
   if (!sectionCalculations) {
     return <div className="text-slate-400 text-center p-4">Loading...</div>;
@@ -374,7 +386,7 @@ const EstimateSectionPrice = ({
         >
           {/* Header row */}
           <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
-            <div className="text-xs font-medium text-slate-400">Type</div>
+            <div className="text-xs font-medium text-slate-400 text-left">Type</div>
             <div className="text-xs font-medium text-slate-400 text-center">
               Qty
             </div>
@@ -789,8 +801,8 @@ const EstimateSectionPrice = ({
         <EstimateSectionPriceGroup title="Labor Breakdown">
           {/* Labor Hours - Content - Grid Layout */}
           {/* Header row */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
-            <div className="text-xs font-medium text-slate-400">Category</div>
+          <div className="grid grid-cols-[2fr,1fr,2fr] gap-1 pb-1 mb-2 border-b border-gray-700">
+            <div className="text-xs font-medium text-slate-400 text-left">Category</div>
             <div className="text-xs font-medium text-slate-400 text-center">
               Hours
             </div>
@@ -809,7 +821,7 @@ const EstimateSectionPrice = ({
                   className={`grid ${
                     isEditingToggles
                       ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
-                      : "grid-cols-[3fr,1fr,2fr]"
+                      : "grid-cols-[2fr,1fr,2fr]"
                   } gap-1 py-1 border-b border-gray-700`}
                 >
                   {isEditingToggles && (
@@ -845,11 +857,13 @@ const EstimateSectionPrice = ({
           )}
 
           {/* Total Labor Cost */}
-          <div className="grid grid-cols-[3fr,1fr,2fr] gap-1 mt-1 pt-2">
+          <div className="grid grid-cols-[2fr,1fr,2fr] gap-1 mt-1 pt-2">
             <span className="text-sm font-medium text-white text-left">
               Total Labor:
             </span>
-            <span className="text-sm font-medium"></span>
+            <span className="text-sm font-medium text-white text-center bg-gray-700 px-1 py-0.5 rounded-md justify-self-center">
+              {formatHours(totalLaborHours)}
+            </span>
             <span className="text-sm font-bold text-teal-400 text-right">
               {formatCurrency(sectionCalculations.laborCosts.totalLaborCost)}
             </span>
