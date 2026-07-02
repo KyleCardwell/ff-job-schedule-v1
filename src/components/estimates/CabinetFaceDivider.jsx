@@ -976,7 +976,8 @@ const CabinetFaceDivider = ({
         };
 
         // Face frames and end panels (type 10) should have x=0
-        const xVal = cabinetTypeId === 10 || isFaceFrame ? 0 : -reveals.left;
+        const xVal =
+          cabinetTypeId === 10 || isFaceFrame ? 0 : leftRevealNode.x;
 
         cabinetGroup
           .append("rect")

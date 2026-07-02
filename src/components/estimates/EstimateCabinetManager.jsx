@@ -2132,44 +2132,44 @@ const CabinetItemForm = ({
   };
 
   const handleFaceConfigSave = useCallback((faceConfig) => {
-    console.log("[EstimateCabinetManager] handleFaceConfigSave called");
-    console.log(
-      "[EstimateCabinetManager] Incoming faceConfig.rootReveals:",
-      faceConfig?.rootReveals,
-    );
-    console.log("[EstimateCabinetManager] Incoming faceConfig dimensions:", {
-      width: faceConfig?.width,
-      height: faceConfig?.height,
-      x: faceConfig?.x,
-      y: faceConfig?.y,
-    });
+    // console.log("[EstimateCabinetManager] handleFaceConfigSave called");
+    // console.log(
+    //   "[EstimateCabinetManager] Incoming faceConfig.rootReveals:",
+    //   faceConfig?.rootReveals,
+    // );
+    // console.log("[EstimateCabinetManager] Incoming faceConfig dimensions:", {
+    //   width: faceConfig?.width,
+    //   height: faceConfig?.height,
+    //   x: faceConfig?.x,
+    //   y: faceConfig?.y,
+    // });
 
     // Use functional update to avoid needing formData.face_config in dependencies
     setFormData((prevData) => {
-      console.log(
-        "[EstimateCabinetManager] Previous face_config.rootReveals:",
-        prevData.face_config?.rootReveals,
-      );
-      console.log("[EstimateCabinetManager] Previous face_config dimensions:", {
-        width: prevData.face_config?.width,
-        height: prevData.face_config?.height,
-        x: prevData.face_config?.x,
-        y: prevData.face_config?.y,
-      });
+      // console.log(
+      //   "[EstimateCabinetManager] Previous face_config.rootReveals:",
+      //   prevData.face_config?.rootReveals,
+      // );
+      // console.log("[EstimateCabinetManager] Previous face_config dimensions:", {
+      //   width: prevData.face_config?.width,
+      //   height: prevData.face_config?.height,
+      //   x: prevData.face_config?.x,
+      //   y: prevData.face_config?.y,
+      // });
 
       // Only update if the face_config has actually changed
       if (JSON.stringify(prevData.face_config) !== JSON.stringify(faceConfig)) {
-        console.log(
-          "[EstimateCabinetManager] face_config changed - updating formData",
-        );
+        // console.log(
+        //   "[EstimateCabinetManager] face_config changed - updating formData",
+        // );
         return {
           ...prevData,
           face_config: faceConfig,
         };
       } else {
-        console.log(
-          "[EstimateCabinetManager] face_config unchanged - skipping update",
-        );
+        // console.log(
+        //   "[EstimateCabinetManager] face_config unchanged - skipping update",
+        // );
         return prevData;
       }
     });
