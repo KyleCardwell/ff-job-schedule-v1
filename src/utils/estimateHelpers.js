@@ -1417,13 +1417,24 @@ export const calculateSlabSheetFacePriceBulk = (
     },
   }));
 
+  packerParts.sort((a, b) => {
+    const areaDiff = (b.data.area || 0) - (a.data.area || 0);
+    if (areaDiff !== 0) return areaDiff;
+
+    const longestSideDiff =
+      Math.max(b.width, b.height) - Math.max(a.width, a.height);
+    if (longestSideDiff !== 0) return longestSideDiff;
+
+    return Math.min(b.width, b.height) - Math.min(a.width, a.height);
+  });
+
   // Initialize packer with sheet dimensions
   const packer = new MaxRectsPacker(
-    sheetWidth + kerfWidth,
-    sheetHeight + kerfWidth,
+    sheetWidth,
+    sheetHeight,
     0,
     {
-      smart: true,
+      smart: false,
       pot: false,
       square: false,
       allowRotation: false,
@@ -1447,9 +1458,9 @@ export const calculateSlabSheetFacePriceBulk = (
   if (sheetsUsed === 0) {
     roundedSheets = 0;
   } else if (sheetsUsed === 1) {
-    // For single sheet, calculate fractional usage based on area (min 0.5 sheets)
+    // For single sheet, calculate fractional usage based on area (min 1 sheets)
     const fractionalUsage = totalPartsArea / sheetArea;
-    roundedSheets = Math.max(fractionalUsage, 0.5);
+    roundedSheets = Math.max(fractionalUsage, 1);
   } else {
     // For multiple sheets, find the one with the most unused space
     let maxFreeArea = 0;
@@ -2262,7 +2273,7 @@ export const calculateBoxSheetsCNC = (
 
       const effectiveArea = totalPartsArea + totalKerfWaste;
       const rawSheets = effectiveArea / (sheetArea * safeUtilizationFactor);
-      const roundedSheets = Math.max(Math.ceil(rawSheets * 2) / 2, 0.5);
+      const roundedSheets = Math.max(Math.ceil(rawSheets * 2) / 2, 1);
 
       // Calculate effective packing efficiency against billed sheet area
       const totalSheetArea = roundedSheets * sheetArea;
