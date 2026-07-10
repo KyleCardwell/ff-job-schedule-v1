@@ -256,6 +256,11 @@ const SectionItemList = ({
       currentEstimate?.default_door_panel_mod_id,
       teamDefaults?.default_door_panel_mod_id,
     );
+    const effectiveDrawerPanelModId = getEffectiveValueOnly(
+      currentSection?.drawer_panel_mod_id,
+      currentEstimate?.default_drawer_panel_mod_id,
+      teamDefaults?.default_drawer_panel_mod_id,
+    );
     const effectiveDoorStyle = getEffectiveValueOnly(
       currentSection?.door_style,
       currentEstimate?.default_door_style,
@@ -344,6 +349,7 @@ const SectionItemList = ({
       accessories?.glass || [],
       {
         effectiveDoorPanelModId,
+        effectiveDrawerPanelModId,
         effectiveDoorStyle,
         effectiveDrawerStyle,
         effectiveDoorInsideMolding,

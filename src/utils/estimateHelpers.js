@@ -2465,6 +2465,7 @@ export const generateCabinetSummary = (
 
   const {
     effectiveDoorPanelModId = null,
+    effectiveDrawerPanelModId = null,
     effectiveDoorStyle = null,
     effectiveDrawerStyle = null,
     effectiveDoorInsideMolding = null,
@@ -2488,28 +2489,46 @@ export const generateCabinetSummary = (
   const normalizeBoolean = (value) =>
     value === true || value === "true" || value === 1 || value === "1";
 
-  const normalizedDefaultPanelModId =
+  const normalizedDefaultDoorPanelModId =
     effectiveDoorPanelModId != null ? +effectiveDoorPanelModId : null;
+  const normalizedDefaultDrawerPanelModId =
+    effectiveDrawerPanelModId != null ? +effectiveDrawerPanelModId : null;
 
   const getPanelModName = (panelModId) =>
     PANEL_MOD_DISPLAY_NAMES[panelModId] || `Panel Mod ${panelModId}`;
 
-  const defaultPanelModName =
-    normalizedDefaultPanelModId && normalizedDefaultPanelModId > 0
-      ? getPanelModName(normalizedDefaultPanelModId)
-      : null;
+  const getDefaultPanelModIdForNodeType = (nodeType) => {
+    if (
+      nodeType === FACE_NAMES.DRAWER_FRONT ||
+      nodeType === FACE_NAMES.FALSE_FRONT
+    ) {
+      return normalizedDefaultDrawerPanelModId;
+    }
 
-  const getPanelModDifferenceLabel = (panelModValue) => {
+    if (
+      nodeType === FACE_NAMES.DOOR ||
+      nodeType === FACE_NAMES.PAIR_DOOR ||
+      nodeType === FACE_NAMES.PANEL
+    ) {
+      return normalizedDefaultDoorPanelModId;
+    }
+
+    return null;
+  };
+
+  const getPanelModDifferenceLabel = (panelModValue, defaultPanelModId = null) => {
     if (panelModValue == null) return null;
 
     const panelModId = +panelModValue;
     if (Number.isNaN(panelModId)) return null;
 
-    if (normalizedDefaultPanelModId && normalizedDefaultPanelModId > 0) {
+    if (defaultPanelModId && defaultPanelModId > 0) {
+      const defaultPanelModName = getPanelModName(defaultPanelModId);
+
       if (panelModId === 0) {
         return `Not ${defaultPanelModName}`;
       }
-      if (panelModId > 0 && panelModId !== normalizedDefaultPanelModId) {
+      if (panelModId > 0 && panelModId !== defaultPanelModId) {
         return getPanelModName(panelModId);
       }
       return null;
@@ -2542,6 +2561,7 @@ export const generateCabinetSummary = (
       defaultOutsideMolding,
       includeGlass = false,
       includePanelMod = false,
+      defaultPanelModId = null,
       staticDetails = [],
     } = {},
   ) => {
@@ -2553,7 +2573,10 @@ export const generateCabinetSummary = (
     }
 
     if (includePanelMod) {
-      const panelModLabel = getPanelModDifferenceLabel(node.panelMod);
+      const panelModLabel = getPanelModDifferenceLabel(
+        node.panelMod,
+        defaultPanelModId ?? getDefaultPanelModIdForNodeType(node.type),
+      );
       if (panelModLabel) {
         labels.push(panelModLabel);
       }
@@ -2599,6 +2622,7 @@ export const generateCabinetSummary = (
       defaultOutsideMolding,
       includeGlass = false,
       includePanelMod = false,
+      defaultPanelModId = null,
       staticDetails = [],
     } = {},
   ) => {
@@ -2614,6 +2638,7 @@ export const generateCabinetSummary = (
         defaultOutsideMolding,
         includeGlass,
         includePanelMod,
+        defaultPanelModId,
         staticDetails,
       });
       const key = details.join("|");
@@ -2633,9 +2658,9 @@ export const generateCabinetSummary = (
     });
   };
 
-  const buildStyleOverrideGroups = (
+  const buildDrawerOverrideGroups = (
     nodes,
-    { defaultStyle } = {},
+    { defaultStyle, defaultPanelModId = null } = {},
   ) => {
     if (!nodes.length) return [];
 
@@ -2643,16 +2668,38 @@ export const generateCabinetSummary = (
 
     nodes.forEach((node) => {
       const styleLabel = getStyleDifferenceLabel(node.style, defaultStyle);
-      if (!styleLabel) return;
+      const panelModLabel = getPanelModDifferenceLabel(
+        node.panelMod,
+        defaultPanelModId ?? getDefaultPanelModIdForNodeType(node.type),
+      );
+      const hasDividers = normalizeBoolean(node.drawerDividers);
 
+      const detailParts = [];
+      if (styleLabel) {
+        detailParts.push(
+          panelModLabel ? `${styleLabel} (${panelModLabel})` : styleLabel,
+        );
+      } else if (panelModLabel) {
+        detailParts.push(panelModLabel);
+      }
+
+      if (hasDividers) {
+        detailParts.push("with dividers");
+      }
+
+      if (detailParts.length === 0) return;
+
+      const detailLabel = detailParts.join(" ");
       const count = getNodeCount(node);
-      grouped.set(styleLabel, (grouped.get(styleLabel) || 0) + count);
+
+      if (!grouped.has(detailLabel)) {
+        grouped.set(detailLabel, { count: 0, detailLabel });
+      }
+
+      grouped.get(detailLabel).count += count;
     });
 
-    return Array.from(grouped.entries()).map(([styleLabel, count]) => ({
-      styleLabel,
-      count,
-    }));
+    return Array.from(grouped.values());
   };
 
   // Count doors and glass panels
@@ -2670,6 +2717,7 @@ export const generateCabinetSummary = (
       defaultOutsideMolding: effectiveDoorOutsideMolding,
       includeGlass: true,
       includePanelMod: true,
+      defaultPanelModId: normalizedDefaultDoorPanelModId,
     }),
   );
 
@@ -2701,30 +2749,40 @@ export const generateCabinetSummary = (
 
   if (totalDrawers > 0) {
     const drawerLabel = `${totalDrawers} drawer${totalDrawers !== 1 ? "s" : ""}`;
-    const drawerDetailParts = [];
+    const drawerOverrideGroups = buildDrawerOverrideGroups(drawerNodes, {
+      defaultStyle: effectiveDrawerStyle,
+      defaultPanelModId: normalizedDefaultDrawerPanelModId,
+    });
 
-    if (totalDrawersWithDividers > 0 && totalDrawersWithDividers < totalDrawers) {
-      drawerDetailParts.push(`${totalDrawersWithDividers} with dividers`);
+    if (isDrawerBoxItem && totalDrawersWithDividers > 0) {
+      drawerOverrideGroups.push({
+        count: totalDrawersWithDividers,
+        detailLabel: "with dividers",
+      });
     }
 
-    const drawerStyleOverrideGroups = buildStyleOverrideGroups(drawerNodes, {
-      defaultStyle: effectiveDrawerStyle,
-    });
+    const drawerDetailParts = drawerOverrideGroups
+      .slice()
+      .sort((a, b) => {
+        const aIsDividerOnly = a.detailLabel === "with dividers";
+        const bIsDividerOnly = b.detailLabel === "with dividers";
+        if (aIsDividerOnly === bIsDividerOnly) return 0;
+        return aIsDividerOnly ? 1 : -1;
+      })
+      .map(({ count, detailLabel }) =>
+        count === totalDrawers ? detailLabel : `${count} ${detailLabel}`,
+      );
 
-    drawerStyleOverrideGroups.forEach(({ styleLabel, count }) => {
-      drawerDetailParts.push(`${count} ${styleLabel}`);
-    });
+    const onlyAllDividers =
+      drawerOverrideGroups.length === 1 &&
+      drawerOverrideGroups[0].detailLabel === "with dividers" &&
+      drawerOverrideGroups[0].count === totalDrawers;
 
-    const hasAllDividers =
-      totalDrawersWithDividers > 0 && totalDrawersWithDividers === totalDrawers;
-    const drawerSummaryBase = hasAllDividers
+    const drawerSummary = onlyAllDividers
       ? `${drawerLabel} with dividers`
-      : drawerLabel;
-
-    const drawerSummary =
-      drawerDetailParts.length > 0
-        ? `${drawerSummaryBase} (${drawerDetailParts.join(", ")})`
-        : drawerSummaryBase;
+      : drawerDetailParts.length > 0
+        ? `${drawerLabel} (${drawerDetailParts.join("; ")})`
+        : drawerLabel;
 
     summary.push(drawerSummary);
   }
@@ -2740,6 +2798,8 @@ export const generateCabinetSummary = (
       defaultStyle: effectiveDrawerStyle,
       defaultInsideMolding: effectiveDrawerInsideMolding,
       defaultOutsideMolding: effectiveDrawerOutsideMolding,
+      includePanelMod: true,
+      defaultPanelModId: normalizedDefaultDrawerPanelModId,
     }),
   );
 
@@ -2761,6 +2821,7 @@ export const generateCabinetSummary = (
       defaultInsideMolding: effectiveDoorInsideMolding,
       defaultOutsideMolding: effectiveDoorOutsideMolding,
       includePanelMod: true,
+      defaultPanelModId: normalizedDefaultDoorPanelModId,
       staticDetails: typeSpecificOptions?.shop_built ? ["shop-built"] : [],
     }),
   );
