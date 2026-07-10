@@ -7,12 +7,33 @@ const CABINET_TYPE_IDS = {
   APPLIANCE_PANEL: 11,
 };
 
-const STYLE_BASE_DRAWER_HEIGHT = {
-  byCabinetStyleId: {
-    13: 6,
-  },
-  default: 5,
+const CABINET_STYLE_IDS = {
+  STYLE_13: 13,
+  STYLE_14: 14,
+  STYLE_15: 15,
 };
+
+const styleDimension = (defaultValue, byCabinetStyleId = {}) => ({
+  default: defaultValue,
+  byCabinetStyleId,
+});
+
+const STYLE_BASE_DRAWER_HEIGHT = styleDimension(5, {
+  [CABINET_STYLE_IDS.STYLE_13]: 6,
+  [CABINET_STYLE_IDS.STYLE_14]: 5,
+  [CABINET_STYLE_IDS.STYLE_15]: 5,
+});
+
+const STYLE_PD_O_2DF_PAIR_DOOR_HEIGHT = styleDimension(36);
+const STYLE_PD_O_2DF_OPEN_HEIGHT = styleDimension(30);
+const STYLE_BOTTOM_HEIGHT = styleDimension(30.25, {
+  [CABINET_STYLE_IDS.STYLE_13]: 30.25,
+  [CABINET_STYLE_IDS.STYLE_14]: 27.5,
+  [CABINET_STYLE_IDS.STYLE_15]: 27,
+});
+
+const STYLE_APPLIANCE_PANEL_GRILLE_HEIGHT = styleDimension(7.75);
+const STYLE_APPLIANCE_PANEL_DRAWER_HEIGHT = styleDimension(20);
 
 const B2Dw_ROOT_LAYOUT = {
   direction: SPLIT_DIRECTIONS.VERTICAL,
@@ -138,7 +159,42 @@ export const CABINET_FACE_PRESETS = {
       cabinetTypeId: [CABINET_TYPE_IDS.TALL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
-        children: [{ type: FACE_NAMES.DOOR }, B4D_ROOT_LAYOUT],
+        children: [
+          { type: FACE_NAMES.DOOR },
+          {
+            ...B4D_ROOT_LAYOUT,
+            height: STYLE_BOTTOM_HEIGHT,
+          },
+        ],
+      },
+    },
+    {
+      key: "pd_3df",
+      label: "PD/3Df",
+      description: "Top pair door with 3Df below",
+      cabinetTypeId: [CABINET_TYPE_IDS.TALL],
+      layout: {
+        direction: SPLIT_DIRECTIONS.VERTICAL,
+        children: [
+          { type: FACE_NAMES.PAIR_DOOR },
+          {
+            direction: SPLIT_DIRECTIONS.VERTICAL,
+            height: STYLE_BOTTOM_HEIGHT,
+            children: [
+              {
+                type: FACE_NAMES.DRAWER_FRONT,
+                height: STYLE_BASE_DRAWER_HEIGHT,
+              },
+              {
+                direction: SPLIT_DIRECTIONS.VERTICAL,
+                children: [
+                  { type: FACE_NAMES.DRAWER_FRONT },
+                  { type: FACE_NAMES.DRAWER_FRONT },
+                ],
+              },
+            ],
+          },
+        ],
       },
     },
     {
@@ -151,12 +207,12 @@ export const CABINET_FACE_PRESETS = {
         children: [
           {
             type: FACE_NAMES.PAIR_DOOR,
-            height: { default: 36 },
+            height: STYLE_PD_O_2DF_PAIR_DOOR_HEIGHT,
           },
           {
             direction: SPLIT_DIRECTIONS.VERTICAL,
             children: [
-              { type: FACE_NAMES.OPEN, height: { default: 30 } },
+              { type: FACE_NAMES.OPEN, height: STYLE_PD_O_2DF_OPEN_HEIGHT },
               B2Dw_ROOT_LAYOUT,
             ],
           },
@@ -165,6 +221,28 @@ export const CABINET_FACE_PRESETS = {
     },
   ],
   [ITEM_TYPES.APPLIANCE_PANEL.type]: [
+    {
+      key: "pd_df",
+      label: "PD/Df",
+      description: "Pair door over drawer front",
+      cabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
+      layout: {
+        direction: SPLIT_DIRECTIONS.VERTICAL,
+        children: [
+          {
+            direction: SPLIT_DIRECTIONS.HORIZONTAL,
+            children: [
+              { type: FACE_NAMES.PANEL },
+              { type: FACE_NAMES.PANEL },
+            ],
+          },
+          {
+            type: FACE_NAMES.PANEL,
+            height: STYLE_APPLIANCE_PANEL_DRAWER_HEIGHT,
+          },
+        ],
+      },
+    },
     {
       key: "g_d_df",
       label: "G/D/Df",
@@ -175,13 +253,16 @@ export const CABINET_FACE_PRESETS = {
         children: [
           {
             type: FACE_NAMES.PANEL,
-            height: { default: 7.75 },
+            height: STYLE_APPLIANCE_PANEL_GRILLE_HEIGHT,
           },
           {
             direction: SPLIT_DIRECTIONS.VERTICAL,
             children: [
               { type: FACE_NAMES.PANEL },
-              { type: FACE_NAMES.PANEL, height: { default: 20 } },
+              {
+                type: FACE_NAMES.PANEL,
+                height: STYLE_APPLIANCE_PANEL_DRAWER_HEIGHT,
+              },
             ],
           },
         ],
