@@ -2702,14 +2702,128 @@ export const generateCabinetSummary = (
     return Array.from(grouped.values());
   };
 
+  const buildFaceOverrideGroups = (
+    nodes,
+    {
+      defaultStyle,
+      defaultInsideMolding,
+      defaultOutsideMolding,
+      includeGlass = false,
+      includePanelMod = false,
+      defaultPanelModId = null,
+      staticDetails = [],
+    } = {},
+  ) => {
+    if (!nodes.length) return [];
+
+    const grouped = new Map();
+
+    nodes.forEach((node) => {
+      const details = [];
+
+      if (includeGlass && node.glassPanel) {
+        const glassItem = accessoryCatalog.find((acc) => acc.id === +node.glassPanel);
+        details.push(glassItem?.name || "glass");
+      }
+
+      const styleLabel = getStyleDifferenceLabel(node.style, defaultStyle);
+      const panelModLabel = includePanelMod
+        ? getPanelModDifferenceLabel(
+            node.panelMod,
+            defaultPanelModId ?? getDefaultPanelModIdForNodeType(node.type),
+          )
+        : null;
+
+      if (styleLabel) {
+        details.push(panelModLabel ? `${styleLabel} (${panelModLabel})` : styleLabel);
+      } else if (panelModLabel) {
+        details.push(panelModLabel);
+      }
+
+      const insideLabel = getMoldingDifferenceLabel(
+        node.insideMolding,
+        defaultInsideMolding,
+        "Inside Molding",
+      );
+      if (insideLabel) {
+        details.push(insideLabel);
+      }
+
+      const outsideLabel = getMoldingDifferenceLabel(
+        node.outsideMolding,
+        defaultOutsideMolding,
+        "Outside Molding",
+      );
+      if (outsideLabel) {
+        details.push(outsideLabel);
+      }
+
+      if (staticDetails.length > 0) {
+        details.push(...staticDetails);
+      }
+
+      if (details.length === 0) return;
+
+      const detailLabel = details.join(", ");
+      const count = getNodeCount(node);
+
+      if (!grouped.has(detailLabel)) {
+        grouped.set(detailLabel, { count: 0, detailLabel });
+      }
+
+      grouped.get(detailLabel).count += count;
+    });
+
+    return Array.from(grouped.values());
+  };
+
+  const buildFaceSummaryWithOverrides = (
+    nodes,
+    {
+      singularLabel,
+      pluralLabel,
+      defaultStyle,
+      defaultInsideMolding,
+      defaultOutsideMolding,
+      includeGlass = false,
+      includePanelMod = false,
+      defaultPanelModId = null,
+      staticDetails = [],
+    } = {},
+  ) => {
+    if (!nodes.length) return null;
+
+    const totalCount = nodes.reduce((sum, node) => sum + getNodeCount(node), 0);
+    if (totalCount <= 0) return null;
+
+    const overrideGroups = buildFaceOverrideGroups(nodes, {
+      defaultStyle,
+      defaultInsideMolding,
+      defaultOutsideMolding,
+      includeGlass,
+      includePanelMod,
+      defaultPanelModId,
+      staticDetails,
+    });
+
+    const detailParts = overrideGroups.map(({ count, detailLabel }) =>
+      count === totalCount ? detailLabel : `${count} ${detailLabel}`,
+    );
+
+    const label = totalCount === 1 ? singularLabel : pluralLabel;
+
+    return detailParts.length > 0
+      ? `${totalCount} ${label} (${detailParts.join("; ")})`
+      : `${totalCount} ${label}`;
+  };
+
   // Count doors and glass panels
   const doorNodes = allNodes.filter(
     (node) =>
       node.type === FACE_NAMES.DOOR || node.type === FACE_NAMES.PAIR_DOOR,
   );
 
-  summary.push(
-    ...buildGroupedFaceSummaries(doorNodes, {
+  const doorSummary = buildFaceSummaryWithOverrides(doorNodes, {
       singularLabel: "door",
       pluralLabel: "doors",
       defaultStyle: effectiveDoorStyle,
@@ -2718,8 +2832,10 @@ export const generateCabinetSummary = (
       includeGlass: true,
       includePanelMod: true,
       defaultPanelModId: normalizedDefaultDoorPanelModId,
-    }),
-  );
+    });
+  if (doorSummary) {
+    summary.push(doorSummary);
+  }
 
   // Count drawer fronts (aggregate divider count)
   const drawerNodes = allNodes.filter(
@@ -2813,8 +2929,7 @@ export const generateCabinetSummary = (
 
   // Count panels
   const panelNodes = allNodes.filter((node) => node.type === FACE_NAMES.PANEL);
-  summary.push(
-    ...buildGroupedFaceSummaries(panelNodes, {
+  const panelSummary = buildFaceSummaryWithOverrides(panelNodes, {
       singularLabel: "panel",
       pluralLabel: "panels",
       defaultStyle: effectiveDoorStyle,
@@ -2823,8 +2938,10 @@ export const generateCabinetSummary = (
       includePanelMod: true,
       defaultPanelModId: normalizedDefaultDoorPanelModId,
       staticDetails: typeSpecificOptions?.shop_built ? ["shop-built"] : [],
-    }),
-  );
+    });
+  if (panelSummary) {
+    summary.push(panelSummary);
+  }
 
   // Count shelves and glass shelves
   let totalShelves = 0;
