@@ -85,7 +85,7 @@ export const buildPanelModNote = (effectiveSection = {}) => {
     baseNote = `${drawerSegment}.`;
   }
 
-  const panelModCountsByName = {};
+  const panelModCountsByNameAndFaceType = {};
   const panelModEligibleTypes = new Set([
     FACE_NAMES.DOOR,
     FACE_NAMES.PAIR_DOOR,
@@ -113,6 +113,42 @@ export const buildPanelModNote = (effectiveSection = {}) => {
     return 0;
   };
 
+  const getFaceTypeNoteMeta = (faceType) => {
+    if (faceType === FACE_NAMES.DOOR || faceType === FACE_NAMES.PAIR_DOOR) {
+      return {
+        key: "door",
+        singular: "Door",
+        plural: "Doors",
+      };
+    }
+
+    if (faceType === FACE_NAMES.DRAWER_FRONT) {
+      return {
+        key: "drawer_front",
+        singular: "Drawer Front",
+        plural: "Drawer Fronts",
+      };
+    }
+
+    if (faceType === FACE_NAMES.FALSE_FRONT) {
+      return {
+        key: "false_front",
+        singular: "False Front",
+        plural: "False Fronts",
+      };
+    }
+
+    if (faceType === FACE_NAMES.PANEL) {
+      return {
+        key: "panel",
+        singular: "Panel",
+        plural: "Panels",
+      };
+    }
+
+    return null;
+  };
+
   const collectPanelModsFromNode = (node, cabinetQuantity = 1) => {
     if (!node) return;
 
@@ -132,8 +168,20 @@ export const buildPanelModNote = (effectiveSection = {}) => {
 
         if (!panelModName) return;
 
-        panelModCountsByName[panelModName] =
-          (panelModCountsByName[panelModName] || 0) + count;
+        const faceTypeMeta = getFaceTypeNoteMeta(node.type);
+        if (!faceTypeMeta) return;
+
+        const countKey = `${panelModName}::${faceTypeMeta.key}`;
+
+        if (!panelModCountsByNameAndFaceType[countKey]) {
+          panelModCountsByNameAndFaceType[countKey] = {
+            panelModName,
+            faceTypeMeta,
+            count: 0,
+          };
+        }
+
+        panelModCountsByNameAndFaceType[countKey].count += count;
       }
     }
 
@@ -155,13 +203,13 @@ export const buildPanelModNote = (effectiveSection = {}) => {
     });
   }
 
-  const panelModEntries = Object.entries(panelModCountsByName);
+  const panelModEntries = Object.values(panelModCountsByNameAndFaceType);
   if (panelModEntries.length > 0) {
     const panelModParts = panelModEntries
-      .map(
-        ([panelModName, count]) =>
-          `${count} ${panelModName} panel${count !== 1 ? "s" : ""}`,
-      )
+      .map(({ panelModName, faceTypeMeta, count }) => {
+        const faceLabel = count === 1 ? faceTypeMeta.singular : faceTypeMeta.plural;
+        return `${count} ${panelModName} ${faceLabel}`;
+      })
       .join(", ");
 
     if (baseNote) {
