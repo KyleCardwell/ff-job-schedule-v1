@@ -1571,9 +1571,7 @@ const CabinetFaceDivider = ({
         // Calculate rollout dimensions for all nodes with rollouts
         const processNode = (node) => {
           // Auto-adjust shelfNosing based on cabinet style and face type/width
-          if (cabinetStyleId !== 13 && node.type === FACE_NAMES.OPEN) {
-            node.shelfNosing = 1.5;
-          } else if (node.width > 36) {
+          if (node.width > 36 && node.shelfNosing === 0) {
             node.shelfNosing = 1.5;
           }
 
@@ -2003,7 +2001,10 @@ const CabinetFaceDivider = ({
           : node.shelfQty || "",
       glassPanel: node.glassPanel || "",
       glassShelves: node.glassShelves || "",
-      shelfNosing: node.shelfNosing || "",
+      shelfNosing:
+        node.shelfNosing === null || node.shelfNosing === undefined
+          ? ""
+          : truncateTrailingZeros(node.shelfNosing),
       panelMod: node.panelMod ?? "",
       insideMolding:
         node.insideMolding === null || node.insideMolding === undefined
