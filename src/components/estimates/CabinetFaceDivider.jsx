@@ -2828,6 +2828,7 @@ const CabinetFaceDivider = ({
                             onChange={(e) => handleRoShQtyChange(e, "shelfQty")}
                             className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                             step="1"
+                            min="0"
                           />
                         </div>
 
@@ -2867,6 +2868,7 @@ const CabinetFaceDivider = ({
                             }
                             className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                             step="1"
+                            min="0"
                           />
                         </div>
                         <div className="col-start-2 flex flex-col items-center">
@@ -2882,6 +2884,7 @@ const CabinetFaceDivider = ({
                             }
                             className="w-16 px-1 py-0.5 text-xs border border-slate-300 rounded"
                             step="1"
+                            min="0"
                           />
                         </div>
                         
