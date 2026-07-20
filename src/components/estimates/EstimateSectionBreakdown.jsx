@@ -16,6 +16,7 @@ import {
 } from "../../utils/sectionBreakdownHelpers";
 
 import GenerateSectionBreakdownPdf from "./GenerateSectionBreakdownPdf.jsx";
+import GenerateSectionItemsPdf from "./GenerateSectionItemsPdf.jsx";
 
 const EstimateSectionBreakdown = ({
   sectionCalculations,
@@ -160,6 +161,12 @@ const EstimateSectionBreakdown = ({
           Section Parts & Labor Breakdown
         </h2>
         <div className="flex gap-3">
+          <GenerateSectionItemsPdf
+            section={section}
+            projectName={projectName}
+            taskName={taskName}
+            sectionName={sectionName}
+          />
           <GenerateSectionBreakdownPdf
             sectionCalculations={sectionCalculations}
             section={section}
