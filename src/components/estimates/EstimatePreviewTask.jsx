@@ -83,9 +83,19 @@ const EstimatePreviewTask = ({
       );
 
       selectedSectionsForTask.forEach((section) => {
-        if (!(Number(section.quantity) > 0)) {
+        const parsedSectionQuantity = Number(section.quantity);
+        const sectionQuantity =
+          section.quantity == null
+            ? 1
+            : Number.isFinite(parsedSectionQuantity)
+              ? parsedSectionQuantity
+              : 1;
+
+        if (!(sectionQuantity > 0)) {
           return;
         }
+
+        const quantityMultiplier = sectionQuantity * taskQuantity;
 
         // Aggregate services from laborCosts
         if (section.laborCosts?.costsByService) {
@@ -98,8 +108,10 @@ const EstimatePreviewTask = ({
                   cost: 0,
                 };
               }
-              taskBreakdown.services[serviceId].hours += data.hours || 0;
-              taskBreakdown.services[serviceId].cost += data.cost || 0;
+              taskBreakdown.services[serviceId].hours +=
+                (data.hours || 0) * quantityMultiplier;
+              taskBreakdown.services[serviceId].cost +=
+                (data.cost || 0) * quantityMultiplier;
             },
           );
         }
@@ -109,57 +121,81 @@ const EstimatePreviewTask = ({
           const calc = section.calculations;
 
           // Aggregate box data
-          taskBreakdown.parts.boxTotal += calc.boxTotal || 0;
-          taskBreakdown.parts.boxCount += calc.boxCount || 0;
+          taskBreakdown.parts.boxTotal +=
+            (calc.boxTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.boxCount +=
+            (calc.boxCount || 0) * quantityMultiplier;
 
           // Aggregate face prices and counts
           if (calc.facePrices) {
             Object.entries(calc.facePrices).forEach(([type, price]) => {
               taskBreakdown.parts.facePrices[type] =
-                (taskBreakdown.parts.facePrices[type] || 0) + price;
+                (taskBreakdown.parts.facePrices[type] || 0) +
+                (price || 0) * quantityMultiplier;
             });
           }
           if (calc.faceCounts) {
             Object.entries(calc.faceCounts).forEach(([type, count]) => {
               taskBreakdown.parts.faceCounts[type] =
-                (taskBreakdown.parts.faceCounts[type] || 0) + count;
+                (taskBreakdown.parts.faceCounts[type] || 0) +
+                (count || 0) * quantityMultiplier;
             });
           }
 
           // Aggregate drawer boxes and rollouts
-          taskBreakdown.parts.drawerBoxTotal += calc.drawerBoxTotal || 0;
-          taskBreakdown.parts.drawerBoxCount += calc.drawerBoxCount || 0;
-          taskBreakdown.parts.rollOutTotal += calc.rollOutTotal || 0;
-          taskBreakdown.parts.rollOutCount += calc.rollOutCount || 0;
+          taskBreakdown.parts.drawerBoxTotal +=
+            (calc.drawerBoxTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.drawerBoxCount +=
+            (calc.drawerBoxCount || 0) * quantityMultiplier;
+          taskBreakdown.parts.rollOutTotal +=
+            (calc.rollOutTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.rollOutCount +=
+            (calc.rollOutCount || 0) * quantityMultiplier;
 
           // Aggregate hardware
-          taskBreakdown.parts.hingesTotal += calc.hingesTotal || 0;
-          taskBreakdown.parts.hingesCount += calc.hingesCount || 0;
-          taskBreakdown.parts.slidesTotal += calc.slidesTotal || 0;
-          taskBreakdown.parts.slidesCount += calc.slidesCount || 0;
-          taskBreakdown.parts.pullsTotal += calc.pullsTotal || 0;
-          taskBreakdown.parts.pullsCount += calc.pullsCount || 0;
+          taskBreakdown.parts.hingesTotal +=
+            (calc.hingesTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.hingesCount +=
+            (calc.hingesCount || 0) * quantityMultiplier;
+          taskBreakdown.parts.slidesTotal +=
+            (calc.slidesTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.slidesCount +=
+            (calc.slidesCount || 0) * quantityMultiplier;
+          taskBreakdown.parts.pullsTotal +=
+            (calc.pullsTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.pullsCount +=
+            (calc.pullsCount || 0) * quantityMultiplier;
 
           // Aggregate wood and accessories
-          taskBreakdown.parts.woodTotal += calc.woodTotal || 0;
-          taskBreakdown.parts.woodCount += calc.woodCount || 0;
-          taskBreakdown.parts.accessoriesTotal += calc.accessoriesTotal || 0;
-          taskBreakdown.parts.accessoriesCount += calc.accessoriesCount || 0;
-          taskBreakdown.parts.otherTotal += calc.otherTotal || 0;
-          taskBreakdown.parts.otherCount += calc.otherCount || 0;
+          taskBreakdown.parts.woodTotal +=
+            (calc.woodTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.woodCount +=
+            (calc.woodCount || 0) * quantityMultiplier;
+          taskBreakdown.parts.accessoriesTotal +=
+            (calc.accessoriesTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.accessoriesCount +=
+            (calc.accessoriesCount || 0) * quantityMultiplier;
+          taskBreakdown.parts.otherTotal +=
+            (calc.otherTotal || 0) * quantityMultiplier;
+          taskBreakdown.parts.otherCount +=
+            (calc.otherCount || 0) * quantityMultiplier;
         }
 
         // Aggregate other totals
-        taskBreakdown.partsTotal += section.partsTotalPrice || 0;
-        taskBreakdown.subtotal += section.subTotalPrice || 0;
-        taskBreakdown.profit += section.profit || 0;
-        taskBreakdown.commission += section.commission || 0;
-        taskBreakdown.discount += section.discount || 0;
+        taskBreakdown.partsTotal +=
+          (section.partsTotalPrice || 0) * quantityMultiplier;
+        taskBreakdown.subtotal +=
+          (section.subTotalPrice || 0) * quantityMultiplier;
+        taskBreakdown.profit += (section.profit || 0) * quantityMultiplier;
+        taskBreakdown.commission +=
+          (section.commission || 0) * quantityMultiplier;
+        taskBreakdown.discount +=
+          (section.discount || 0) * quantityMultiplier;
       });
 
       onTaskBreakdownChange(taskBreakdown);
     },
-    [task.est_task_id, selectedSections, onTaskBreakdownChange],
+    [task.est_task_id, taskQuantity, selectedSections, onTaskBreakdownChange],
   );
 
   const handleSectionData = useCallback(
