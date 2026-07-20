@@ -211,7 +211,7 @@ const CabinetItemForm = ({
   );
 
   const [nosingOrFinish, setNosingOrFinish] = useState(
-    currentCabinetType?.cabinet_type_id === 10 ? "Nosing" : "Finish",
+    currentCabinetType?.cabinet_type_id === 10 ? "Nosing/Miter" : "Finish",
   );
   const itemType = currentCabinetType?.item_type || "cabinet";
   const [itemTypeConfig, setItemTypeConfig] = useState(
@@ -2313,6 +2313,7 @@ const CabinetItemForm = ({
                       id="quantity"
                       name="quantity"
                       value={formData.quantity}
+                      min="0"
                       onChange={handleChange}
                       className={`w-full px-3 py-2 border ${
                         errors.quantity ? "border-red-500" : "border-slate-300"

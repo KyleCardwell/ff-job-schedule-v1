@@ -167,7 +167,7 @@ export const CABINET_ITEM_TYPES = {
         name: "count_top_molding",
         type: "checkbox",
         label: "Top",
-        defaultValue: true,
+        defaultValue: false,
         description: "Add top molding to cabinet",
         serviceMultipliers: {},
       },

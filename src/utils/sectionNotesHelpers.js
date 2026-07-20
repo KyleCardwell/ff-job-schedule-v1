@@ -970,7 +970,7 @@ export const SECTION_NOTES_OPTIONS = [
       const text = typeof value === "string" ? value.trim() : "";
       return text
         ? `Cabinets Assumed ${text}ft Tall.`
-        : "Cabinets Assumed __ft Tall.";
+        : "Cabinets Assumed 8ft Tall.";
     },
   },
   {
@@ -979,6 +979,20 @@ export const SECTION_NOTES_OPTIONS = [
     type: "boolean",
     label: "Lighting (By Others)",
     estimateText: () => "Lighting (By Others).",
+  },
+  {
+    key: "wallPaneling",
+    noteIndex: 2,
+    type: "boolean",
+    label: "Wall Paneling (By Others)",
+    estimateText: () => "Wall Paneling (By Others).",
+  },
+  {
+    key: "wireMesh",
+    noteIndex: 2,
+    type: "boolean",
+    label: "Wire Mesh (Need Spec)",
+    estimateText: () => "Wire Mesh (Need Spec).",
   },
 ];
 
