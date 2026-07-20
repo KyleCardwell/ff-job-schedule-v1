@@ -12,6 +12,8 @@ import DuplicateItemModal from "../common/DuplicateItemModal.jsx";
 import ReorderModal from "../common/ReorderModal.jsx";
 import Tooltip from "../common/Tooltip.jsx";
 
+import CabinetFacePreview from "./CabinetFacePreview.jsx";
+
 const SectionItemList = ({
   items,
   columns,
@@ -60,6 +62,16 @@ const SectionItemList = ({
 
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
+
+  const hasLayoutPreviewColumn =
+    listType === ITEM_TYPES.CABINET.type &&
+    columns.some((column) => column.key === "layout");
+  const layoutColumn = hasLayoutPreviewColumn
+    ? columns.find((column) => column.key === "layout")
+    : null;
+  const visibleColumns = hasLayoutPreviewColumn
+    ? columns.filter((column) => column.key !== "layout")
+    : columns;
 
   // Clear the recently closed highlight after 2 seconds
   useEffect(() => {
@@ -459,24 +471,77 @@ const SectionItemList = ({
     return item[col.key];
   };
 
+  const renderSummaryRow = (item, index, summaryColumns) => {
+    const customSummary = getItemSummary?.(item, index);
+    const cabinetSummary =
+      listType === ITEM_TYPES.CABINET.type && item.type !== 5
+        ? generateTextSummary(item)
+        : null;
+    const summaryContent = customSummary || cabinetSummary;
+
+    if (!summaryContent) return null;
+
+    if (!summaryColumns[0]?.width) {
+      return <div className="px-3 text-sm text-left">{summaryContent}</div>;
+    }
+
+    return (
+      <div
+        className="grid gap-4 px-3 text-sm text-left"
+        style={{
+          gridTemplateColumns: summaryColumns[0].width + " " + "1fr",
+        }}
+      >
+        <span></span>
+        {summaryContent}
+      </div>
+    );
+  };
+
   return (
     <div className="mx-auto">
       {/* Column Headers */}
-      <div
-        className="grid gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200 items-center"
-        style={{
-          gridTemplateColumns: columns.map((c) => c.width).join(" "),
-        }}
-      >
-        {columns.map((col) => (
+      {hasLayoutPreviewColumn && layoutColumn ? (
+        <div className="flex gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200 items-center">
           <div
-            key={col.key}
             className="text-xs font-medium text-slate-500 uppercase tracking-wider"
+            style={{ width: layoutColumn.width, minWidth: layoutColumn.width }}
           >
-            {col.label}
+            {layoutColumn.label}
           </div>
-        ))}
-      </div>
+          <div
+            className="grid gap-4 flex-1 items-center"
+            style={{
+              gridTemplateColumns: visibleColumns.map((c) => c.width).join(" "),
+            }}
+          >
+            {visibleColumns.map((col) => (
+              <div
+                key={col.key}
+                className="text-xs font-medium text-slate-500 uppercase tracking-wider"
+              >
+                {col.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="grid gap-4 bg-slate-50 py-3 px-3 border-b border-slate-200 items-center"
+          style={{
+            gridTemplateColumns: visibleColumns.map((c) => c.width).join(" "),
+          }}
+        >
+          {visibleColumns.map((col) => (
+            <div
+              key={col.key}
+              className="text-xs font-medium text-slate-500 uppercase tracking-wider"
+            >
+              {col.label}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Items List */}
       <div className="">
@@ -519,42 +584,73 @@ const SectionItemList = ({
                   : "bg-slate-700 text-white border-slate-600 hover:bg-slate-600 hover:text-slate-200"
               }`}
             >
-              <div
-                className={`grid gap-4 items-center py-1 px-3`}
-                style={{
-                  gridTemplateColumns: columns.map((c) => c.width).join(" "),
-                }}
-              >
-                {columns.map((col) => {
-                  return (
-                    <div key={col.key} className="text-sm">
-                      {renderCellContent(item, index, col)}
-                    </div>
-                  );
-                })}
-              </div>
-              {(() => {
-                const customSummary = getItemSummary?.(item, index);
-                const cabinetSummary =
-                  listType === ITEM_TYPES.CABINET.type && item.type !== 5
-                    ? generateTextSummary(item)
-                    : null;
-                const summaryContent = customSummary || cabinetSummary;
-
-                if (!summaryContent) return null;
-
-                return (
+              {hasLayoutPreviewColumn && layoutColumn ? (
+                <div className="flex items-stretch">
                   <div
-                    className={`grid gap-4 px-3 text-sm text-left`}
+                    className={`flex items-center justify-center px-2 py-1 border-r ${
+                      item.errorState ? "border-red-500" : "border-slate-600"
+                    }`}
+                    style={{ width: layoutColumn.width, minWidth: layoutColumn.width }}
+                  >
+                    <CabinetFacePreview
+                      faceConfig={item.face_config}
+                      cabinetWidth={item.width}
+                      cabinetHeight={item.height}
+                      cabinetTypeId={item.type}
+                      cabinetStyleId={
+                        item.cabinet_style_override &&
+                        item.cabinet_style_override !== -1
+                          ? item.cabinet_style_override
+                          : formProps?.cabinetStyleId
+                      }
+                      itemType={
+                        cabinetTypes.find(
+                          (type) => type.cabinet_type_id === item.type,
+                        )?.item_type || ITEM_TYPES.CABINET.type
+                      }
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={`grid gap-4 items-center py-1 px-3`}
+                      style={{
+                        gridTemplateColumns: visibleColumns
+                          .map((c) => c.width)
+                          .join(" "),
+                      }}
+                    >
+                      {visibleColumns.map((col) => {
+                        return (
+                          <div key={col.key} className="text-sm">
+                            {renderCellContent(item, index, col)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {renderSummaryRow(item, index, visibleColumns)}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className={`grid gap-4 items-center py-1 px-3`}
                     style={{
-                      gridTemplateColumns: columns[0].width + " " + "1fr",
+                      gridTemplateColumns: visibleColumns
+                        .map((c) => c.width)
+                        .join(" "),
                     }}
                   >
-                    <span></span>
-                    {summaryContent}
+                    {visibleColumns.map((col) => {
+                      return (
+                        <div key={col.key} className="text-sm">
+                          {renderCellContent(item, index, col)}
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })()}
+                  {renderSummaryRow(item, index, visibleColumns)}
+                </>
+              )}
             </div>
           ),
         )}

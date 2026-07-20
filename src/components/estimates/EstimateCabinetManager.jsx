@@ -2996,6 +2996,7 @@ const EstimateCabinetManager = ({
   currentSectionId,
 }) => {
   const columns = [
+    { key: "layout", label: "Layout", width: "96px" },
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
     { key: "type", label: "Type", width: ITEM_FORM_WIDTHS.DEFAULT },
     {
