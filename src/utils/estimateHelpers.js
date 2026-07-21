@@ -806,6 +806,9 @@ export const calculateDoorPartsTime = (
   if (doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD) {
     // 5-piece doors always need finish
     partsListId = PARTS_LIST_MAPPING["5_piece_door_finished"];
+  } else if (doorStyle === FACE_STYLE_VALUES.MICRO_SHAKER) {
+    // Micro shaker uses dedicated service anchors
+    partsListId = PARTS_LIST_MAPPING.micro_shaker_finished;
   } else if (
     doorStyle === FACE_STYLE_VALUES.SLAB_SHEET ||
     doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD
@@ -886,6 +889,7 @@ export const calculateDoorPartsTime = (
       // For 5-piece doors, ALWAYS apply finish multipliers
       const shouldApplyMultipliers =
         doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+        doorStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
         materialForMultipliers?.material?.needs_finish;
 
       if (shouldApplyMultipliers && globalServices) {
@@ -1328,6 +1332,7 @@ export const calculateSlabSheetFacePriceBulk = (
     doorOutsideMolding = false,
     drawerInsideMolding = false,
     drawerOutsideMolding = false,
+    excludeBandingFaceTypes = [],
   } = {},
 ) => {
   if (!faces || faces.length === 0 || !selectedMaterial) {
@@ -1349,8 +1354,15 @@ export const calculateSlabSheetFacePriceBulk = (
   // Calculate total area of all faces
   const totalPartsArea = faces.reduce((sum, face) => sum + face.area, 0);
 
+  const excludedBandingFaceTypeSet = new Set(
+    excludeBandingFaceTypes.map((faceType) => String(faceType)),
+  );
+
   // Calculate total banding length (all 4 sides of each face)
   const totalBandingLength = faces.reduce((sum, face) => {
+    if (excludedBandingFaceTypeSet.has(String(face.faceType))) {
+      return sum;
+    }
     return sum + 2 * (face.width + face.height);
   }, 0);
 

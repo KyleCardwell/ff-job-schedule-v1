@@ -1184,6 +1184,7 @@ const EstimateSectionForm = ({
           const isValidDoorMat =
             (doorMaterial.five_piece === true &&
               (effectiveDoorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDoorStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
                 effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
                 effectiveDoorStyle ===
                   FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
@@ -1208,6 +1209,7 @@ const EstimateSectionForm = ({
           const isValidDoorStyle =
             (material.five_piece === true &&
               (effectiveDoorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDoorStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
                 effectiveDoorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
                 effectiveDoorStyle ===
                   FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
@@ -1239,6 +1241,7 @@ const EstimateSectionForm = ({
             (drawerFrontMaterial.five_piece === true &&
               (effectiveDrawerFrontStyle ===
                 FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDrawerFrontStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
                 effectiveDrawerFrontStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
                 effectiveDrawerFrontStyle ===
                   FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
@@ -1270,6 +1273,7 @@ const EstimateSectionForm = ({
             (material.five_piece === true &&
               (effectiveDrawerFrontStyle ===
                 FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                effectiveDrawerFrontStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
                 effectiveDrawerFrontStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
                 effectiveDrawerFrontStyle ===
                   FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
@@ -1408,6 +1412,7 @@ const EstimateSectionForm = ({
           const isValidDoorStyle =
             (material.five_piece === true &&
               (formData.doorStyle === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                formData.doorStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
                 formData.doorStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
                 formData.doorStyle ===
                   FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
@@ -1433,6 +1438,7 @@ const EstimateSectionForm = ({
             (material.five_piece === true &&
               (formData.drawerFrontStyle ===
                 FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+                formData.drawerFrontStyle === FACE_STYLE_VALUES.MICRO_SHAKER ||
                 formData.drawerFrontStyle === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
                 formData.drawerFrontStyle ===
                   FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED)) ||
@@ -1882,6 +1888,7 @@ const EstimateSectionForm = ({
       if (selectedFaceMaterial.five_piece === true) {
         if (
           option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD ||
+          option.id === FACE_STYLE_VALUES.MICRO_SHAKER ||
           option.id === FACE_STYLE_VALUES.SLAB_HARDWOOD ||
           option.id === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD_REEDED
         ) {

@@ -54,6 +54,71 @@ const getEffectiveMoldingCount = (cabinet, optionName, legacyOptionName) => {
   return getMoldingCountOverride(cabinet, [optionName, legacyOptionName]);
 };
 
+const MICRO_SHAKER_PERIMETER_WIDTH_INCHES = 2;
+const MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES = new Set([
+  FACE_NAMES.DOOR,
+  FACE_NAMES.PAIR_DOOR,
+  FACE_NAMES.PANEL,
+  FACE_NAMES.DRAWER_FRONT,
+  FACE_NAMES.FALSE_FRONT,
+]);
+
+const MICRO_SHAKER_5PIECE_BASE_WIDTH = 23;
+const MICRO_SHAKER_5PIECE_BASE_HEIGHT = 31;
+const MICRO_SHAKER_5PIECE_BASE_PRICE = 78;
+const MICRO_SHAKER_5PIECE_SETUP_FEE = 12;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.05;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 3.05;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT = 0.95;
+
+const FIVE_PIECE_BASE_WIDTH = 23;
+const FIVE_PIECE_BASE_HEIGHT = 31;
+
+const calculateMicroShakerPerimeterWoodCost = (faces = [], material) => {
+  if (!material) {
+    return { boardFeet: 0, cost: 0 };
+  }
+
+  const bdFtPrice = Number(material.bd_ft_price) * 2|| 0;
+  const thickness = Number(material.thickness) + 0.25 || 1;
+
+  if (bdFtPrice <= 0 || thickness <= 0) {
+    return { boardFeet: 0, cost: 0 };
+  }
+
+  const totalPerimeterInches = faces.reduce((sum, face) => {
+    if (face?.isShopBuilt || face?.isNosing) {
+      return sum;
+    }
+    const faceType = face?.faceType;
+    const isDoorOrDrawerFront =
+      faceType === FACE_NAMES.DOOR ||
+      faceType === FACE_NAMES.PAIR_DOOR ||
+      faceType === FACE_NAMES.DRAWER_FRONT ||
+      faceType === FACE_NAMES.FALSE_FRONT;
+
+    if (!isDoorOrDrawerFront) {
+      return sum;
+    }
+
+    return sum + 2 * ((Number(face.width) || 0) + (Number(face.height) || 0));
+  }, 0);
+
+  if (totalPerimeterInches <= 0) {
+    return { boardFeet: 0, cost: 0 };
+  }
+
+  const boardFeet =
+    (totalPerimeterInches * MICRO_SHAKER_PERIMETER_WIDTH_INCHES * thickness) /
+    144;
+  const cost = boardFeet * bdFtPrice;
+
+  return {
+    boardFeet: roundToHundredth(boardFeet),
+    cost: roundToHundredth(cost),
+  };
+};
+
 // Calculate face counts and prices for all cabinets in a section
 // Aggregates faces across all cabinets by style for efficient bulk calculation
 const calculateFaceTotals = (section, context) => {
@@ -102,6 +167,85 @@ const calculateFaceTotals = (section, context) => {
   } = context;
 
   if (!selectedFaceMaterial) return totals;
+
+  const calculate5PieceDoorPrice = (
+    face,
+    materialToUse,
+    { isMicroShaker = false } = {},
+  ) => {
+    const width = parseFloat(face.width);
+    const height = parseFloat(face.height);
+
+    if (
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      !materialToUse
+    ) {
+      return 0;
+    }
+
+    const pricePerBoardFoot = Number(materialToUse.bd_ft_price) || 0;
+    const baseWidth = isMicroShaker
+      ? MICRO_SHAKER_5PIECE_BASE_WIDTH
+      : FIVE_PIECE_BASE_WIDTH;
+    const baseHeight = isMicroShaker
+      ? MICRO_SHAKER_5PIECE_BASE_HEIGHT
+      : FIVE_PIECE_BASE_HEIGHT;
+    const baseArea = baseWidth * baseHeight;
+    const doorArea = width * height;
+
+    const basePrice = isMicroShaker
+      ? MICRO_SHAKER_5PIECE_BASE_PRICE
+      : 30 * Math.pow(pricePerBoardFoot, 0.65);
+    const oversizeRate = isMicroShaker
+      ? MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER *
+        Math.pow(
+          Math.max(pricePerBoardFoot, 0.01) /
+            MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR,
+          MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT,
+        )
+      : 0.065 * Math.pow(pricePerBoardFoot / 3.05, 0.95) * 1.15;
+    const extra = doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
+    const setupFee = isMicroShaker
+      ? MICRO_SHAKER_5PIECE_SETUP_FEE
+      : 10 + pricePerBoardFoot * 1.5;
+
+    const taxRate = 8;
+    const deliveryFee = 2;
+    const creditCardFee = 3;
+    const markup = 1 + taxRate / 100 + deliveryFee / 100 + creditCardFee / 100;
+
+    const doorPrice = (basePrice + extra + setupFee) * markup;
+
+    const faceType = face.faceType;
+    let insideMolding = false;
+    let outsideMolding = false;
+
+    if (
+      faceType === FACE_NAMES.DOOR ||
+      faceType === FACE_NAMES.PAIR_DOOR ||
+      faceType === FACE_NAMES.PANEL
+    ) {
+      insideMolding = face.insideMolding ?? section.door_inside_molding ?? false;
+      outsideMolding = face.outsideMolding ?? section.door_outside_molding ?? false;
+    } else if (
+      faceType === FACE_NAMES.DRAWER_FRONT ||
+      faceType === FACE_NAMES.FALSE_FRONT
+    ) {
+      insideMolding = face.insideMolding ?? section.drawer_inside_molding ?? false;
+      outsideMolding = face.outsideMolding ?? section.drawer_outside_molding ?? false;
+    }
+
+    const moldingCost = calculateMoldingCost(
+      width,
+      height,
+      insideMolding,
+      outsideMolding,
+      materialToUse,
+    );
+
+    return doorPrice + moldingCost;
+  };
 
   // Resolve effective values using three-tier fallback (section → estimate → team)
   const effectiveValues = getEffectiveDefaults(section, estimate, team);
@@ -619,7 +763,13 @@ const calculateFaceTotals = (section, context) => {
   Object.entries(facesByStyle).forEach(([styleToUse, faces]) => {
     if (faces.length === 0) return;
 
-    if (styleToUse === "slab_sheet") {
+    if (
+      styleToUse === FACE_STYLE_VALUES.SLAB_SHEET ||
+      styleToUse === FACE_STYLE_VALUES.MICRO_SHAKER
+    ) {
+      const isMicroShakerStyle =
+        styleToUse === FACE_STYLE_VALUES.MICRO_SHAKER;
+
       // Group faces by their effective material to avoid duplicate calculations
       // Key: material ID, Value: { faces, moldings }
       const facesByMaterial = new Map();
@@ -720,6 +870,17 @@ const calculateFaceTotals = (section, context) => {
                   kerfWidth: 3,
                 }
               : {}),
+            ...(isMicroShakerStyle
+              ? {
+                  edgeBandPricePerFoot: 0,
+                  excludeBandingFaceTypes: [
+                    FACE_NAMES.DOOR,
+                    FACE_NAMES.PAIR_DOOR,
+                    FACE_NAMES.DRAWER_FRONT,
+                    FACE_NAMES.FALSE_FRONT,
+                  ],
+                }
+              : {}),
           };
 
           const result = calculateSlabSheetFacePriceBulk(
@@ -727,6 +888,13 @@ const calculateFaceTotals = (section, context) => {
             material,
             slabPricingOptions,
           );
+
+          let styleTotalCost = result.totalCost;
+          if (isMicroShakerStyle) {
+            const { cost: perimeterWoodCost } =
+              calculateMicroShakerPerimeterWoodCost(materialFaces, material);
+            styleTotalCost += perimeterWoodCost;
+          }
 
           // Distribute cost proportionally across face types
           const totalArea = materialFaces.reduce(
@@ -748,91 +916,49 @@ const calculateFaceTotals = (section, context) => {
               totals.facePrices[faceType] = 0;
             }
             const proportion = totalArea > 0 ? area / totalArea : 0;
-            totals.facePrices[faceType] += result.totalCost * proportion;
+            totals.facePrices[faceType] += styleTotalCost * proportion;
           });
+
+          if (isMicroShakerStyle) {
+            materialFaces.forEach((face) => {
+              const faceType = face.faceType;
+              if (!MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES.has(faceType)) {
+                return;
+              }
+
+              if (!totals.facePrices[faceType]) {
+                totals.facePrices[faceType] = 0;
+              }
+
+              totals.facePrices[faceType] +=
+                calculate5PieceDoorPrice(face, material, {
+                  isMicroShaker: true,
+                });
+            });
+          }
         },
       );
     } else if (styleToUse === FACE_STYLE_VALUES.FIVE_PIECE_HARDWOOD) {
       // For 5-piece hardwood, calculate individual prices and aggregate by face type
       // Each door has a specific price based on its size and board feet
-      const calculate5PieceDoorPrice = (face) => {
-        const width = parseFloat(face.width);
-        const height = parseFloat(face.height);
-
-        // Use appropriate material based on face type
+      faces.forEach((face) => {
+        const faceType = face.faceType;
         let materialToUse;
         if (
           face.faceType === FACE_NAMES.DRAWER_FRONT ||
           face.faceType === FACE_NAMES.FALSE_FRONT
         ) {
           materialToUse =
-            selectedDrawerFrontMaterial?.material ||
-            selectedFaceMaterial.material;
+            selectedDrawerFrontMaterial?.material || selectedFaceMaterial.material;
         } else {
           materialToUse =
             selectedDoorMaterial?.material || selectedFaceMaterial.material;
         }
 
-        const pricePerBoardFoot = materialToUse.bd_ft_price;
-
-        // Use the same pricing logic as the bulk function
-        const baseWidth = 23;
-        const baseHeight = 31;
-        const baseArea = baseWidth * baseHeight;
-        const doorArea = width * height;
-
-        const basePrice = 30 * Math.pow(pricePerBoardFoot, 0.65);
-        const oversizeRate =
-          0.065 * Math.pow(pricePerBoardFoot / 3.05, 0.95) * 1.15;
-        const extra =
-          doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
-        const setupFee = 10 + pricePerBoardFoot * 1.5;
-
-        const taxRate = 8;
-        const deliveryFee = 2;
-        const creditCardFee = 3;
-        const markup =
-          1 + taxRate / 100 + deliveryFee / 100 + creditCardFee / 100;
-
-        const doorPrice = (basePrice + extra + setupFee) * markup;
-
-        // Add molding costs based on faceType
-        const faceType = face.faceType;
-        let insideMolding = false;
-        let outsideMolding = false;
-
-        if (
-          faceType === FACE_NAMES.DOOR ||
-          faceType === FACE_NAMES.PAIR_DOOR ||
-          faceType === FACE_NAMES.PANEL
-        ) {
-          insideMolding = face.insideMolding ?? section.door_inside_molding ?? false;
-          outsideMolding = face.outsideMolding ?? section.door_outside_molding ?? false;
-        } else if (
-          faceType === FACE_NAMES.DRAWER_FRONT ||
-          faceType === FACE_NAMES.FALSE_FRONT
-        ) {
-          insideMolding = face.insideMolding ?? section.drawer_inside_molding ?? false;
-          outsideMolding = face.outsideMolding ?? section.drawer_outside_molding ?? false;
-        }
-
-        const moldingCost = calculateMoldingCost(
-          width,
-          height,
-          insideMolding,
-          outsideMolding,
-          materialToUse,
-        );
-
-        return doorPrice + moldingCost;
-      };
-
-      faces.forEach((face) => {
-        const faceType = face.faceType;
         if (!totals.facePrices[faceType]) {
           totals.facePrices[faceType] = 0;
         }
-        totals.facePrices[faceType] += calculate5PieceDoorPrice(face);
+        totals.facePrices[faceType] += calculate5PieceDoorPrice(face, materialToUse);
       });
     } else if (styleToUse === "slab_hardwood") {
       // For slab hardwood, calculate individual prices based on board feet

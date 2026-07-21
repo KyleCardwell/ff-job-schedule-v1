@@ -233,6 +233,7 @@ export const FACE_STYLE_VALUES = {
   SLAB_HARDWOOD: "slab_hardwood",
   SLAB_SHEET: "slab_sheet",
   SLAB_SHEET_REEDED: "slab_sheet_reeded",
+  MICRO_SHAKER: "micro_shaker",
 };
 
 // Face styles array (works for both UI dropdowns and database)
@@ -252,6 +253,11 @@ export const FACE_STYLES = [
     id: FACE_STYLE_VALUES.SLAB_SHEET,
     label: "Slab Sheet",
     value: FACE_STYLE_VALUES.SLAB_SHEET,
+  },
+  {
+    id: FACE_STYLE_VALUES.MICRO_SHAKER,
+    label: "Micro Shaker",
+    value: FACE_STYLE_VALUES.MICRO_SHAKER,
   },
   // { id: FACE_STYLE_VALUES.SLAB_SHEET_REEDED, label: "Slab Sheet Reeded", value: FACE_STYLE_VALUES.SLAB_SHEET_REEDED }
 ];
@@ -322,6 +328,7 @@ export const PARTS_LIST_MAPPING = {
   panel_mod_grooved_finished: 22,
   filler_t_shape_finished: 23,
   panel_mod_slatted_finished: 24,
+  micro_shaker_finished: 25,
 };
 
 export const PART_NAMES = {
