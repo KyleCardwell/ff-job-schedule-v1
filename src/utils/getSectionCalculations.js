@@ -65,8 +65,7 @@ const MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES = new Set([
 
 const MICRO_SHAKER_5PIECE_BASE_WIDTH = 23;
 const MICRO_SHAKER_5PIECE_BASE_HEIGHT = 31;
-const MICRO_SHAKER_5PIECE_BASE_PRICE = 78;
-const MICRO_SHAKER_5PIECE_SETUP_FEE = 12;
+const MICRO_SHAKER_5PIECE_BASE_PRICE_FACTOR = 1.22;
 const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.05;
 const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 3.05;
 const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT = 0.95;
@@ -194,9 +193,10 @@ const calculateFaceTotals = (section, context) => {
     const baseArea = baseWidth * baseHeight;
     const doorArea = width * height;
 
+    const standardBasePrice = 30 * Math.pow(pricePerBoardFoot, 0.65);
     const basePrice = isMicroShaker
-      ? MICRO_SHAKER_5PIECE_BASE_PRICE
-      : 30 * Math.pow(pricePerBoardFoot, 0.65);
+      ? standardBasePrice * MICRO_SHAKER_5PIECE_BASE_PRICE_FACTOR
+      : standardBasePrice;
     const oversizeRate = isMicroShaker
       ? MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER *
         Math.pow(
@@ -206,9 +206,7 @@ const calculateFaceTotals = (section, context) => {
         )
       : 0.065 * Math.pow(pricePerBoardFoot / 3.05, 0.95) * 1.15;
     const extra = doorArea > baseArea ? (doorArea - baseArea) * oversizeRate : 0;
-    const setupFee = isMicroShaker
-      ? MICRO_SHAKER_5PIECE_SETUP_FEE
-      : 10 + pricePerBoardFoot * 1.5;
+    const setupFee = 10 + pricePerBoardFoot * 1.5;
 
     const taxRate = 8;
     const deliveryFee = 2;
