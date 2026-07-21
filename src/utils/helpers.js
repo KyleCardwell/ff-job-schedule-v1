@@ -656,6 +656,10 @@ export const formatDoorDrawerStyle = (style) => {
     return "5-Piece";
   }
 
+  if (style.includes("micro_shaker")) {
+    return "Micro Shaker";
+  }
+
   if (style.includes("slab_sheet") || style.includes("slab_hardwood")) {
     return "Slab";
   }
