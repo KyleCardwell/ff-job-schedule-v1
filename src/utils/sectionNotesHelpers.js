@@ -981,6 +981,13 @@ export const SECTION_NOTES_OPTIONS = [
     estimateText: () => "Lighting (By Others).",
   },
   {
+    key: "hood",
+    noteIndex: 2,
+    type: "boolean",
+    label: "Hood (By Others)",
+    estimateText: () => "Hood (By Others).",
+  },
+  {
     key: "wallPaneling",
     noteIndex: 2,
     type: "boolean",
