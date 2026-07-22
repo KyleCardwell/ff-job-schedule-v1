@@ -65,10 +65,10 @@ const MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES = new Set([
 
 const MICRO_SHAKER_5PIECE_BASE_WIDTH = 23;
 const MICRO_SHAKER_5PIECE_BASE_HEIGHT = 31;
-const MICRO_SHAKER_5PIECE_BASE_PRICE_FACTOR = 1.1;
-const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.14;
-const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 3.05;
-const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT = 0.95;
+const MICRO_SHAKER_5PIECE_BASE_PRICE_FACTOR = 0.6;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.06;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 5.05;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT = 0.75;
 
 const FIVE_PIECE_BASE_WIDTH = 23;
 const FIVE_PIECE_BASE_HEIGHT = 31;
@@ -862,7 +862,7 @@ const calculateFaceTotals = (section, context) => {
             drawerOutsideMolding,
             ...(section.horizontal_grain
               ? {
-                  cutPricePerFoot: 7.5,
+                  cutPricePerFoot: 7.7,
                   edgeBandPricePerFoot: 2,
                   setupCostPerSheet: 35,
                   kerfWidth: 3,
@@ -871,6 +871,9 @@ const calculateFaceTotals = (section, context) => {
             ...(isMicroShakerStyle
               ? {
                   edgeBandPricePerFoot: 0,
+                  cutPricePerFoot: 9,
+                  setupCostPerSheet: 36,
+                  kerfWidth: 2,
                   excludeBandingFaceTypes: [
                     FACE_NAMES.DOOR,
                     FACE_NAMES.PAIR_DOOR,
@@ -888,9 +891,13 @@ const calculateFaceTotals = (section, context) => {
           );
 
           let styleTotalCost = result.totalCost;
+          let perimeterWoodCost = 0;
           if (isMicroShakerStyle) {
-            const { cost: perimeterWoodCost } =
-              calculateMicroShakerPerimeterWoodCost(materialFaces, material);
+            const perimeterCostResult = calculateMicroShakerPerimeterWoodCost(
+              materialFaces,
+              material,
+            );
+            perimeterWoodCost = perimeterCostResult.cost;
             styleTotalCost += perimeterWoodCost;
           }
 
@@ -909,15 +916,23 @@ const calculateFaceTotals = (section, context) => {
             areaByFaceType[faceType] += face.area;
           });
 
+          const sheetContributionByFaceType = {};
           Object.entries(areaByFaceType).forEach(([faceType, area]) => {
             if (!totals.facePrices[faceType]) {
               totals.facePrices[faceType] = 0;
             }
             const proportion = totalArea > 0 ? area / totalArea : 0;
-            totals.facePrices[faceType] += styleTotalCost * proportion;
+            const sheetContribution = styleTotalCost * proportion;
+            sheetContributionByFaceType[faceType] = roundToHundredth(
+              sheetContribution,
+            );
+            totals.facePrices[faceType] += sheetContribution;
           });
 
           if (isMicroShakerStyle) {
+            const fivePieceAddonByFaceType = {};
+            let fivePieceAddonTotal = 0;
+
             materialFaces.forEach((face) => {
               const faceType = face.faceType;
               if (!MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES.has(faceType)) {
@@ -928,10 +943,30 @@ const calculateFaceTotals = (section, context) => {
                 totals.facePrices[faceType] = 0;
               }
 
-              totals.facePrices[faceType] +=
-                calculate5PieceDoorPrice(face, material, {
-                  isMicroShaker: true,
-                });
+              const fivePieceAddonPrice = calculate5PieceDoorPrice(face, material, {
+                isMicroShaker: true,
+              });
+
+              fivePieceAddonByFaceType[faceType] = roundToHundredth(
+                (fivePieceAddonByFaceType[faceType] || 0) + fivePieceAddonPrice,
+              );
+              fivePieceAddonTotal += fivePieceAddonPrice;
+
+              totals.facePrices[faceType] += fivePieceAddonPrice;
+            });
+
+            console.log("🧮 Micro Shaker price comparison", {
+              materialId: material?.id,
+              faceCount: materialFaces.length,
+              slabSheetTotal: roundToHundredth(result.totalCost),
+              perimeterWoodCost: roundToHundredth(perimeterWoodCost),
+              includedSlabTotal: roundToHundredth(styleTotalCost),
+              includedFivePieceTotal: roundToHundredth(fivePieceAddonTotal),
+              includedCombinedTotal: roundToHundredth(
+                styleTotalCost + fivePieceAddonTotal,
+              ),
+              sheetContributionByFaceType,
+              fivePieceAddonByFaceType,
             });
           }
         },
