@@ -181,12 +181,17 @@ export const getLaborAdjustmentHours = (addHours) => {
 
   // Process service-specific hours (excluding install_setup_hours and finish_setup_hours)
   Object.entries(addHours).forEach(([key, hours]) => {
-    if (key === "install_setup_hours" || key === "finish_setup_hours") return;
+    if (
+      key === "install_setup_hours" ||
+      key === "finish_setup_hours" ||
+      key === "parts_adjustments"
+    )
+      return;
 
     const serviceId = parseInt(key);
     const numericHours = parseFloat(hours) || 0;
 
-    if (numericHours !== 0) {
+    if (numericHours !== 0 && Number.isFinite(serviceId)) {
       hoursByService[serviceId] = numericHours;
       hasAnyHours = true;
     }

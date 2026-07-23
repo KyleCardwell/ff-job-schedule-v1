@@ -70,6 +70,21 @@ const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.08;
 const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 4.75;
 const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT = 0.75;
 
+const PART_ADJUSTMENT_KEYS = [
+  "boxTotal",
+  "facePrices.door",
+  "facePrices.drawer_front",
+  "facePrices.false_front",
+  "facePrices.panel",
+  "drawerBoxTotal",
+  "rollOutTotal",
+  "hingesTotal",
+  "slidesTotal",
+  "pullsTotal",
+  "woodTotal",
+  "accessoriesTotal",
+];
+
 const FIVE_PIECE_BASE_WIDTH = 23;
 const FIVE_PIECE_BASE_HEIGHT = 31;
 
@@ -2598,6 +2613,17 @@ export const getSectionCalculations = (section, context = {}) => {
   // Get parts_included toggles (default all to true)
   const partsIncluded = section.parts_included || {};
 
+  const rawPartsAdjustments =
+    section?.add_hours?.parts_adjustments &&
+    typeof section.add_hours.parts_adjustments === "object"
+      ? section.add_hours.parts_adjustments
+      : {};
+
+  const partsAdjustments = PART_ADJUSTMENT_KEYS.reduce((acc, key) => {
+    acc[key] = roundToHundredth(Number(rawPartsAdjustments?.[key]) || 0);
+    return acc;
+  }, {});
+
   // Helper function to check if a part should be included
   const isPartIncluded = (partKey) => partsIncluded[partKey] !== false;
 
@@ -2634,6 +2660,22 @@ export const getSectionCalculations = (section, context = {}) => {
     (Number(cabinetTotals.pullsTotal) || 0) +
     (Number(accessoryHardwareTotals.pulls.total) || 0);
 
+  const adjustedBoxTotal = roundToHundredth(
+    (Number(cabinetTotals.boxPrice) || 0) + partsAdjustments.boxTotal,
+  );
+  const adjustedDrawerBoxTotal = roundToHundredth(
+    (Number(cabinetTotals.drawerBoxTotal) || 0) + partsAdjustments.drawerBoxTotal,
+  );
+  const adjustedRollOutTotal = roundToHundredth(
+    (Number(cabinetTotals.rollOutTotal) || 0) + partsAdjustments.rollOutTotal,
+  );
+  const adjustedHingesTotal = roundToHundredth(
+    combinedHingesTotal + partsAdjustments.hingesTotal,
+  );
+  const adjustedSlidesTotal = roundToHundredth(
+    combinedSlidesTotal + partsAdjustments.slidesTotal,
+  );
+
   const combinedHardwareHoursByService = {};
   addHoursByService(combinedHardwareHoursByService, cabinetTotals.categoryHours?.hardware);
   addHoursByService(
@@ -2664,17 +2706,19 @@ export const getSectionCalculations = (section, context = {}) => {
 
   // Calculate individual face prices that can be toggled
   const doorPrice = isPartIncluded("facePrices.door")
-    ? cabinetTotals.facePrices?.door || 0
-    : 0;
+    ? (cabinetTotals.facePrices?.door || 0) + partsAdjustments["facePrices.door"]
+    : partsAdjustments["facePrices.door"];
   const drawerFrontPrice = isPartIncluded("facePrices.drawer_front")
-    ? cabinetTotals.facePrices?.drawer_front || 0
-    : 0;
+    ? (cabinetTotals.facePrices?.drawer_front || 0) +
+      partsAdjustments["facePrices.drawer_front"]
+    : partsAdjustments["facePrices.drawer_front"];
   const falseFrontPrice = isPartIncluded("facePrices.false_front")
-    ? cabinetTotals.facePrices?.false_front || 0
-    : 0;
+    ? (cabinetTotals.facePrices?.false_front || 0) +
+      partsAdjustments["facePrices.false_front"]
+    : partsAdjustments["facePrices.false_front"];
   const panelPrice = isPartIncluded("facePrices.panel")
-    ? cabinetTotals.facePrices?.panel || 0
-    : 0;
+    ? (cabinetTotals.facePrices?.panel || 0) + partsAdjustments["facePrices.panel"]
+    : partsAdjustments["facePrices.panel"];
 
   // Calculate other face prices (not individually toggled)
   const otherFacePrice = Object.entries(cabinetTotals.facePrices || {}).reduce(
@@ -2722,28 +2766,70 @@ export const getSectionCalculations = (section, context = {}) => {
           excludedPullsPrice,
       )
     : 0;
+  const adjustedPullsTotal = roundToHundredth(
+    includedPullsPrice + partsAdjustments.pullsTotal,
+  );
+
+  const adjustedWoodTotal = roundToHundredth(
+    (Number(cabinetTotals.woodTotal) || 0) +
+      (Number(lengthTotals.materialTotal) || 0) +
+      partsAdjustments.woodTotal,
+  );
+
+  const accessoriesBaseTotal =
+    accessoriesTotal.glass.total +
+    accessoriesTotal.insert.total +
+    accessoriesTotal.hardware.total +
+    accessoriesTotal.shop_built.total +
+    accessoriesTotal.organizer.total +
+    accessoriesTotal.other.total;
+  const includedAccessoriesTotal = isPartIncluded("accessoriesTotal")
+    ? accessoriesBaseTotal
+    : 0;
+  const adjustedAccessoriesTotal = roundToHundredth(
+    includedAccessoriesTotal + partsAdjustments.accessoriesTotal,
+  );
+
+  const adjustedFacePrices = {
+    ...(cabinetTotals.facePrices || {}),
+    door: roundToHundredth(
+      (Number(cabinetTotals.facePrices?.door) || 0) +
+        partsAdjustments["facePrices.door"],
+    ),
+    drawer_front: roundToHundredth(
+      (Number(cabinetTotals.facePrices?.drawer_front) || 0) +
+        partsAdjustments["facePrices.drawer_front"],
+    ),
+    false_front: roundToHundredth(
+      (Number(cabinetTotals.facePrices?.false_front) || 0) +
+        partsAdjustments["facePrices.false_front"],
+    ),
+    panel: roundToHundredth(
+      (Number(cabinetTotals.facePrices?.panel) || 0) +
+        partsAdjustments["facePrices.panel"],
+    ),
+  };
 
   // Calculate parts total price with toggles
   const partsTotalPrice =
     totalFacePriceWithToggles +
     (isPartIncluded("boxTotal") ? cabinetTotals.boxPrice : 0) +
+    partsAdjustments.boxTotal +
     (isPartIncluded("drawerBoxTotal") ? cabinetTotals.drawerBoxTotal : 0) +
+    partsAdjustments.drawerBoxTotal +
     (isPartIncluded("rollOutTotal") ? cabinetTotals.rollOutTotal : 0) +
+    partsAdjustments.rollOutTotal +
     (isPartIncluded("hingesTotal") ? combinedHingesTotal : 0) +
+    partsAdjustments.hingesTotal +
     includedPullsPrice +
+    partsAdjustments.pullsTotal +
     (isPartIncluded("slidesTotal") ? combinedSlidesTotal : 0) +
+    partsAdjustments.slidesTotal +
     (isPartIncluded("woodTotal") ? cabinetTotals.woodTotal : 0) +
     (isPartIncluded("woodTotal") ? lengthTotals.materialTotal : 0) +
+    partsAdjustments.woodTotal +
     otherTotal +
-    // Include all accessories (including glass from faceSummary)
-    (isPartIncluded("accessoriesTotal")
-      ? accessoriesTotal.glass.total +
-        accessoriesTotal.insert.total +
-        accessoriesTotal.hardware.total +
-        accessoriesTotal.shop_built.total +
-        accessoriesTotal.organizer.total +
-        accessoriesTotal.other.total
-      : 0);
+    adjustedAccessoriesTotal;
 
   // Merge hoursByService from cabinets, lengths, and accessories
   const finalHoursByService = { ...cabinetTotals.hoursByService };
@@ -2892,14 +2978,15 @@ export const getSectionCalculations = (section, context = {}) => {
       // Skip install_setup_hours and finish_setup_hours as they're handled separately below
       if (
         serviceId === "install_setup_hours" ||
-        serviceId === "finish_setup_hours"
+        serviceId === "finish_setup_hours" ||
+        serviceId === "parts_adjustments"
       )
         return;
 
       const numericServiceId = parseInt(serviceId);
       const numericHours = parseFloat(hours) || 0;
 
-      if (numericHours !== 0) {
+      if (numericHours !== 0 && Number.isFinite(numericServiceId)) {
         if (!finalHoursByService[numericServiceId]) {
           finalHoursByService[numericServiceId] = 0;
         }
@@ -3026,24 +3113,24 @@ export const getSectionCalculations = (section, context = {}) => {
     subTotalPrice,
     partsTotalPrice,
     faceCounts: cabinetTotals.faceCounts,
-    facePrices: cabinetTotals.facePrices,
-    boxTotal: cabinetTotals.boxPrice,
+    facePrices: adjustedFacePrices,
+    boxTotal: adjustedBoxTotal,
     boxCount: cabinetTotals.boxCount,
     approxBaseLengthFeet: cabinetTotals.approxBaseLengthFeet || 0,
     approxCrownLengthFeet: cabinetTotals.approxCrownLengthFeet || 0,
     hoodCount: cabinetTotals.hoodCount || 0,
     laborCosts,
     drawerBoxCount: cabinetTotals.drawerBoxCount,
-    drawerBoxTotal: cabinetTotals.drawerBoxTotal,
+    drawerBoxTotal: adjustedDrawerBoxTotal,
     rollOutCount: cabinetTotals.rollOutCount,
-    rollOutTotal: cabinetTotals.rollOutTotal,
+    rollOutTotal: adjustedRollOutTotal,
     hingesCount: combinedHingesCount,
-    hingesTotal: combinedHingesTotal,
+    hingesTotal: adjustedHingesTotal,
     pullsCount: includedPullsCount,
-    pullsTotal: includedPullsPrice,
+    pullsTotal: adjustedPullsTotal,
     slidesCount: combinedSlidesCount,
-    slidesTotal: combinedSlidesTotal,
-    woodTotal: cabinetTotals.woodTotal + lengthTotals.materialTotal,
+    slidesTotal: adjustedSlidesTotal,
+    woodTotal: adjustedWoodTotal,
     woodCount: roundToHundredth(
       cabinetTotals.woodCount + lengthTotals.woodCount,
     ),
@@ -3054,7 +3141,9 @@ export const getSectionCalculations = (section, context = {}) => {
     ),
     fillerCount: cabinetTotals.fillerCount,
     accessoriesCount,
-    accessoriesTotal: accessoriesTotalPrice,
+    accessoriesTotal: roundToHundredth(
+      accessoriesTotalPrice + partsAdjustments.accessoriesTotal,
+    ),
     otherCount,
     otherTotal,
     quantity: section.quantity,

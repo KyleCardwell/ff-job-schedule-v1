@@ -3,6 +3,48 @@ import { useState, useEffect } from "react";
 import { FiEdit2, FiSave, FiX, FiXCircle } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+const PART_ADJUSTMENT_FIELDS = [
+  { key: "boxTotal", label: "Cabinet Boxes" },
+  { key: "facePrices.door", label: "Doors" },
+  { key: "facePrices.drawer_front", label: "Drawer Fronts" },
+  { key: "facePrices.false_front", label: "False Fronts" },
+  { key: "facePrices.panel", label: "Panels" },
+  { key: "drawerBoxTotal", label: "Drawer Boxes" },
+  { key: "rollOutTotal", label: "Rollouts" },
+  { key: "hingesTotal", label: "Hinges" },
+  { key: "slidesTotal", label: "Slides" },
+  { key: "pullsTotal", label: "Pulls" },
+  { key: "woodTotal", label: "Wood" },
+  { key: "accessoriesTotal", label: "Accessories" },
+];
+
+const getInitialPartsAdjustments = (partsAdjustments = {}) => {
+  const initialData = {};
+  PART_ADJUSTMENT_FIELDS.forEach(({ key }) => {
+    initialData[key] = partsAdjustments?.[key] ?? 0;
+  });
+  return initialData;
+};
+
+const formatNumericInputValue = (value, defaultValue = 0) => {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  const stringValue = String(value);
+
+  if (["-", ".", "-."].includes(stringValue) || stringValue.endsWith(".")) {
+    return stringValue;
+  }
+
+  const numericValue = Number(stringValue);
+  if (!Number.isFinite(numericValue)) {
+    return defaultValue;
+  }
+
+  return String(numericValue);
+};
+
 /**
  * Component for manually adding hours by service type to a section
  * Always visible, with edit/save/cancel functionality
@@ -21,14 +63,21 @@ const LaborAdjustmentsManager = ({
   const [formData, setFormData] = useState({});
   const [installSetupHours, setInstallSetupHours] = useState(1);
   const [finishSetupHours, setFinishSetupHours] = useState(1);
+  const [partsAdjustments, setPartsAdjustments] = useState(
+    getInitialPartsAdjustments(),
+  );
 
   // Initialize form data from props
   useEffect(() => {
     // Initialize add hours
     if (addHours && typeof addHours === "object") {
       // Extract install_setup_hours and finish_setup_hours separately
-      const { install_setup_hours, finish_setup_hours, ...otherHours } =
-        addHours;
+      const {
+        install_setup_hours,
+        finish_setup_hours,
+        parts_adjustments,
+        ...otherHours
+      } = addHours;
       setInstallSetupHours(
         install_setup_hours !== undefined ? install_setup_hours : 1,
       );
@@ -36,6 +85,7 @@ const LaborAdjustmentsManager = ({
         finish_setup_hours !== undefined ? finish_setup_hours : 1,
       );
       setFormData(otherHours);
+      setPartsAdjustments(getInitialPartsAdjustments(parts_adjustments));
     } else {
       const initialData = {};
       activeServices.forEach((service) => {
@@ -44,6 +94,7 @@ const LaborAdjustmentsManager = ({
       setFormData(initialData);
       setInstallSetupHours(1);
       setFinishSetupHours(1);
+      setPartsAdjustments(getInitialPartsAdjustments());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addHours]);
@@ -55,8 +106,12 @@ const LaborAdjustmentsManager = ({
   const handleCancel = () => {
     // Reset form data to original values
     if (addHours && typeof addHours === "object") {
-      const { install_setup_hours, finish_setup_hours, ...otherHours } =
-        addHours;
+      const {
+        install_setup_hours,
+        finish_setup_hours,
+        parts_adjustments,
+        ...otherHours
+      } = addHours;
       setInstallSetupHours(
         install_setup_hours !== undefined ? install_setup_hours : 1,
       );
@@ -64,6 +119,7 @@ const LaborAdjustmentsManager = ({
         finish_setup_hours !== undefined ? finish_setup_hours : 1,
       );
       setFormData(otherHours);
+      setPartsAdjustments(getInitialPartsAdjustments(parts_adjustments));
     } else {
       const initialData = {};
       activeServices.forEach((service) => {
@@ -72,6 +128,7 @@ const LaborAdjustmentsManager = ({
       setFormData(initialData);
       setInstallSetupHours(1);
       setFinishSetupHours(1);
+      setPartsAdjustments(getInitialPartsAdjustments());
     }
 
     setIsEditing(false);
@@ -99,6 +156,18 @@ const LaborAdjustmentsManager = ({
       cleanedData.finish_setup_hours = numericFinishSetupHours;
     }
 
+    const cleanedPartAdjustments = {};
+    Object.entries(partsAdjustments).forEach(([partKey, value]) => {
+      const numericValue = parseFloat(value) || 0;
+      if (numericValue !== 0) {
+        cleanedPartAdjustments[partKey] = numericValue;
+      }
+    });
+
+    if (Object.keys(cleanedPartAdjustments).length > 0) {
+      cleanedData.parts_adjustments = cleanedPartAdjustments;
+    }
+
     // Save all data to parent
     onSave({
       add_hours: Object.keys(cleanedData).length > 0 ? cleanedData : null,
@@ -120,6 +189,20 @@ const LaborAdjustmentsManager = ({
     }));
   };
 
+  const handlePartAdjustmentChange = (partKey, value) => {
+    setPartsAdjustments((prev) => ({
+      ...prev,
+      [partKey]: value,
+    }));
+  };
+
+  const handleClearPartAdjustment = (partKey) => {
+    setPartsAdjustments((prev) => ({
+      ...prev,
+      [partKey]: 0,
+    }));
+  };
+
   const getTotalHours = () => {
     const serviceHours = Object.values(formData).reduce((sum, hours) => {
       return sum + (parseFloat(hours) || 0);
@@ -127,6 +210,22 @@ const LaborAdjustmentsManager = ({
     const setup = parseFloat(installSetupHours) || 0;
     const finishSetup = parseFloat(finishSetupHours) || 0;
     return serviceHours + setup + finishSetup;
+  };
+
+  const getTotalPartsAdjustment = () => {
+    return Object.values(partsAdjustments).reduce(
+      (sum, value) => sum + (parseFloat(value) || 0),
+      0,
+    );
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount || 0);
   };
 
   return (
@@ -203,8 +302,7 @@ const LaborAdjustmentsManager = ({
             <input
               id="finish-setup-hours"
               type="number"
-              step="1"
-              value={finishSetupHours}
+              value={formatNumericInputValue(finishSetupHours)}
               onChange={(e) => setFinishSetupHours(e.target.value)}
               disabled={!isEditing}
               className={`
@@ -246,8 +344,7 @@ const LaborAdjustmentsManager = ({
             <input
               id="setup-hours"
               type="number"
-              step="1"
-              value={installSetupHours}
+              value={formatNumericInputValue(installSetupHours)}
               onChange={(e) => setInstallSetupHours(e.target.value)}
               disabled={!isEditing}
               className={`
@@ -264,75 +361,148 @@ const LaborAdjustmentsManager = ({
         </div>
       </div>
 
-      {/* Service Inputs - Single Column Layout */}
-      <div className="space-y-3">
-        {/* Header Row */}
-        <div className="grid grid-cols-[3fr_2fr] gap-4 pb-2 border-b border-slate-300">
-          <div className="text-xs font-semibold text-slate-300 text-center">
-            Service Name
-          </div>
-          <div className="text-xs font-semibold text-slate-300 text-center">
-            Add Hours
-          </div>
-        </div>
-
-        {/* Service Rows */}
-        {activeServices.map((service) => (
-          <div
-            key={service.service_id}
-            className="grid grid-cols-[3fr_2fr] gap-4 items-center py-1"
-          >
-            {/* Service Name */}
-            <label
-              htmlFor={`hours-${service.service_id}`}
-              className="text-sm text-white font-medium"
-            >
-              {service.service_name}
-            </label>
-
-            {/* Add Hours Input */}
-            <div className="flex items-center gap-2">
-              {isEditing &&
-                parseFloat(formData[service.service_id] || 0) !== 0 && (
-                  <button
-                    onClick={() => handleClearInput(service.service_id)}
-                    className="text-slate-400 hover:text-red-500 transition-colors"
-                    title="Clear hours"
-                  >
-                    <FiXCircle size={14} />
-                  </button>
-                )}
-              <input
-                id={`hours-${service.service_id}`}
-                type="number"
-                step="1"
-                value={formData[service.service_id] || 0}
-                onChange={(e) =>
-                  handleInputChange(service.service_id, e.target.value)
-                }
-                disabled={!isEditing}
-                className={`
-                  w-full px-2 py-1 text-sm border rounded
-                  ${
-                    isEditing
-                      ? "border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      : "border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
-                  }
-                `}
-                placeholder="0"
-              />
+      <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-4 items-start">
+        <div className="p-3 border border-slate-200 rounded-lg">
+          <div className="grid grid-cols-[3fr_2fr] gap-4 pb-2 border-b border-slate-300 mb-3">
+            <div className="text-xs font-semibold text-slate-300 text-center">
+              Part Name
+            </div>
+            <div className="text-xs font-semibold text-slate-300 text-center">
+              Add Cost
             </div>
           </div>
-        ))}
+
+          <div className="space-y-3">
+            {PART_ADJUSTMENT_FIELDS.map((partField) => (
+              <div
+                key={partField.key}
+                className="grid grid-cols-[3fr_2fr] gap-4 items-center py-1"
+              >
+                <label
+                  htmlFor={`part-adjustment-${partField.key}`}
+                  className="text-sm text-white font-medium"
+                >
+                  {partField.label}
+                </label>
+                <div className="flex items-center gap-2">
+                  {isEditing &&
+                    parseFloat(partsAdjustments[partField.key] || 0) !== 0 && (
+                      <button
+                        onClick={() => handleClearPartAdjustment(partField.key)}
+                        className="text-slate-400 hover:text-red-500 transition-colors"
+                        title="Clear part adjustment"
+                      >
+                        <FiXCircle size={14} />
+                      </button>
+                    )}
+                  <input
+                    id={`part-adjustment-${partField.key}`}
+                    type="number"
+                    value={formatNumericInputValue(
+                      partsAdjustments[partField.key],
+                    )}
+                    onChange={(e) =>
+                      handlePartAdjustmentChange(partField.key, e.target.value)
+                    }
+                    disabled={!isEditing}
+                    className={`
+                      w-full px-2 py-1 text-sm border rounded
+                      ${
+                        isEditing
+                          ? "border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          : "border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
+                      }
+                    `}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!isEditing && (
+            <div className="mt-3 flex justify-end">
+              <span className="text-xs text-slate-300">
+                Parts Adjustments Total: {formatCurrency(getTotalPartsAdjustment())}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="p-3 border border-slate-200 rounded-lg">
+          <div className="space-y-3">
+            <div className="grid grid-cols-[3fr_2fr] gap-4 pb-2 border-b border-slate-300">
+              <div className="text-xs font-semibold text-slate-300 text-center">
+                Service Name
+              </div>
+              <div className="text-xs font-semibold text-slate-300 text-center">
+                Add Hours
+              </div>
+            </div>
+
+            {activeServices.map((service) => (
+              <div
+                key={service.service_id}
+                className="grid grid-cols-[3fr_2fr] gap-4 items-center py-1"
+              >
+                <label
+                  htmlFor={`hours-${service.service_id}`}
+                  className="text-sm text-white font-medium"
+                >
+                  {service.service_name}
+                </label>
+
+                <div className="flex items-center gap-2">
+                  {isEditing &&
+                    parseFloat(formData[service.service_id] || 0) !== 0 && (
+                      <button
+                        onClick={() => handleClearInput(service.service_id)}
+                        className="text-slate-400 hover:text-red-500 transition-colors"
+                        title="Clear hours"
+                      >
+                        <FiXCircle size={14} />
+                      </button>
+                    )}
+                  <input
+                    id={`hours-${service.service_id}`}
+                    type="number"
+                    value={formatNumericInputValue(formData[service.service_id])}
+                    onChange={(e) =>
+                      handleInputChange(service.service_id, e.target.value)
+                    }
+                    disabled={!isEditing}
+                    className={`
+                      w-full px-2 py-1 text-sm border rounded
+                      ${
+                        isEditing
+                          ? "border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          : "border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed"
+                      }
+                    `}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Total Display (when editing) */}
       {isEditing && (
-        <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center">
-          <span className="text-sm font-medium text-white">Total:</span>
-          <span className="text-sm font-bold text-teal-400">
-            {getTotalHours().toFixed(2)} hour{getTotalHours() !== 1 ? "s" : ""}
-          </span>
+        <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-white">Total Hours:</span>
+            <span className="text-sm font-bold text-teal-400">
+              {getTotalHours().toFixed(2)} hour{getTotalHours() !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-white">Total Parts Adds:</span>
+            <span className="text-sm font-bold text-teal-400">
+              {formatCurrency(getTotalPartsAdjustment())}
+            </span>
+          </div>
         </div>
       )}
     </div>
