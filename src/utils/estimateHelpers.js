@@ -2387,8 +2387,6 @@ export const generateCabinetSummary = (
   accessoryCatalog = [],
   effectiveFaceDefaults = {},
 ) => {
-  if (!faceConfig) return "";
-
   const summary = [];
 
   if (typeSpecificOptions?.cabinetStyleOverride) {
@@ -2401,6 +2399,29 @@ export const generateCabinetSummary = (
 
   if (typeSpecificOptions.corner_45) {
     summary.push("45° Corner");
+  }
+
+  if (cabinetItemType === 5) {
+    if (
+      typeSpecificOptions?.t_shape === true ||
+      typeSpecificOptions?.t_shape === "true" ||
+      typeSpecificOptions?.t_shape === 1 ||
+      typeSpecificOptions?.t_shape === "1"
+    ) {
+      summary.push("T-shape");
+    } else {
+      summary.push("L-shape");
+    }
+
+    return cabinetItemQuantity && cabinetItemQuantity > 1
+      ? `Each: ${summary.join(", ")}`
+      : summary.join(", ");
+  }
+
+  if (!faceConfig) {
+    return cabinetItemQuantity && cabinetItemQuantity > 1
+      ? `Each: ${summary.join(", ")}`
+      : summary.join(", ");
   }
 
   const sideLabels = [

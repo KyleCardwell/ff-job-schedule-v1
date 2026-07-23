@@ -275,7 +275,7 @@ const GenerateSectionItemsPdf = ({
       };
 
       const getCabinetSummary = (item) => {
-        if (!item?.face_config || item.type === 5) return "";
+        if (!item?.face_config) return "";
 
         const styleOverrideName = item.cabinet_style_override
           ? allCabinetStyles.find(

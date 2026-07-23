@@ -474,7 +474,7 @@ const SectionItemList = ({
   const renderSummaryRow = (item, index, summaryColumns) => {
     const customSummary = getItemSummary?.(item, index);
     const cabinetSummary =
-      listType === ITEM_TYPES.CABINET.type && item.type !== 5
+      listType === ITEM_TYPES.CABINET.type
         ? generateTextSummary(item)
         : null;
     const summaryContent = customSummary || cabinetSummary;
