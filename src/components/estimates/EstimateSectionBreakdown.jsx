@@ -28,6 +28,30 @@ const EstimateSectionBreakdown = ({
 }) => {
   const allServices = useSelector((state) => state.services.allServices);
 
+  const EXCLUDED_COST_PART_KEYS_BY_CATEGORY = {
+    "Cabinet Boxes": ["boxTotal"],
+    Doors: ["facePrices.door"],
+    "Drawer Fronts": ["facePrices.drawer_front"],
+    "False Fronts": ["facePrices.false_front"],
+    Panels: ["facePrices.panel"],
+    "Drawer Boxes": ["drawerBoxTotal"],
+    Rollouts: ["rollOutTotal"],
+    Hinges: ["hingesTotal"],
+    "Drawer Slides": ["slidesTotal"],
+    Pulls: ["pullsTotal"],
+    "Face Frame": ["woodTotal"],
+    Fillers: ["woodTotal"],
+    Lengths: ["woodTotal"],
+    Nosing: ["woodTotal"],
+    Accessories: ["accessoriesTotal"],
+    "Panel Mods": [
+      "facePrices.door",
+      "facePrices.drawer_front",
+      "facePrices.false_front",
+      "facePrices.panel",
+    ],
+  };
+
   const hasExcludedPartKey = (partKey) =>
     sectionCalculations?.partsIncluded?.[partKey] === false;
 
@@ -79,6 +103,25 @@ const EstimateSectionBreakdown = ({
       hasExcludedPartKey(partKey),
     );
     return excludeCategoryHours ? numericTotalHours : 0;
+  };
+
+  const hasExcludedCostForCategory = (categoryTitle) => {
+    if (categoryTitle === "Pulls") {
+      if (hasExcludedPartKey("pullsTotal")) return true;
+
+      return Object.values(PULLS_PART_KEYS_BY_TYPE).some((partKeys) =>
+        (partKeys || []).some((partKey) => hasExcludedPartKey(partKey)),
+      );
+    }
+
+    if (categoryTitle === "Panel Mods") {
+      return Object.values(PANEL_MOD_PART_KEY_BY_FACE_TYPE).some((partKey) =>
+        hasExcludedPartKey(partKey),
+      );
+    }
+
+    const partKeys = EXCLUDED_COST_PART_KEYS_BY_CATEGORY[categoryTitle] || [];
+    return partKeys.some((partKey) => hasExcludedPartKey(partKey));
   };
 
   const getItemHourRows = (categoryTitle) => {
@@ -244,6 +287,7 @@ const EstimateSectionBreakdown = ({
             category.showAggregateNote && !category.skipHours;
           const itemHourRows = getItemHourRows(category.title);
           const hasItemHourRows = itemHourRows.length > 0;
+          const hasExcludedCost = hasExcludedCostForCategory(category.title);
           const hasExcludedHours =
             !category.skipHours &&
             Object.entries(category.hoursByService || {}).some(
@@ -277,7 +321,11 @@ const EstimateSectionBreakdown = ({
                     {countDisplay}
                   </span>
                 </div>
-                <div className="text-teal-400 text-right font-semibold text-sm">
+                <div
+                  className={`text-right font-semibold text-sm ${
+                    hasExcludedCost ? "text-amber-400" : "text-teal-400"
+                  }`}
+                >
                   {hasItemHourRows
                     ? `(${formatCurrency(category.cost)})`
                     : formatCurrency(category.cost)}
@@ -362,7 +410,11 @@ const EstimateSectionBreakdown = ({
                         ? `(${itemHours.quantity})`
                         : ""}
                   </div>
-                  <div className="text-slate-400 text-right text-xs">
+                  <div
+                    className={`text-right text-xs ${
+                      hasExcludedCost ? "text-amber-400" : "text-slate-400"
+                    }`}
+                  >
                     {itemHours.price ? formatCurrency(itemHours.price) : "-"}
                   </div>
                   {serviceIds.map((serviceId) => {

@@ -30,6 +30,30 @@ const GenerateSectionBreakdownPdf = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const allServices = useSelector((state) => state.services.allServices);
 
+  const EXCLUDED_COST_PART_KEYS_BY_CATEGORY = {
+    "Cabinet Boxes": ["boxTotal"],
+    Doors: ["facePrices.door"],
+    "Drawer Fronts": ["facePrices.drawer_front"],
+    "False Fronts": ["facePrices.false_front"],
+    Panels: ["facePrices.panel"],
+    "Drawer Boxes": ["drawerBoxTotal"],
+    Rollouts: ["rollOutTotal"],
+    Hinges: ["hingesTotal"],
+    "Drawer Slides": ["slidesTotal"],
+    Pulls: ["pullsTotal"],
+    "Face Frame": ["woodTotal"],
+    Fillers: ["woodTotal"],
+    Lengths: ["woodTotal"],
+    Nosing: ["woodTotal"],
+    Accessories: ["accessoriesTotal"],
+    "Panel Mods": [
+      "facePrices.door",
+      "facePrices.drawer_front",
+      "facePrices.false_front",
+      "facePrices.panel",
+    ],
+  };
+
   const hasExcludedPartKey = (partKey) =>
     sectionCalculations?.partsIncluded?.[partKey] === false;
 
@@ -82,6 +106,25 @@ const GenerateSectionBreakdownPdf = ({
       hasExcludedPartKey(partKey),
     );
     return excludeCategoryHours ? numericTotalHours : 0;
+  };
+
+  const hasExcludedCostForCategory = (categoryTitle) => {
+    if (categoryTitle === "Pulls") {
+      if (hasExcludedPartKey("pullsTotal")) return true;
+
+      return Object.values(PULLS_PART_KEYS_BY_TYPE).some((partKeys) =>
+        (partKeys || []).some((partKey) => hasExcludedPartKey(partKey)),
+      );
+    }
+
+    if (categoryTitle === "Panel Mods") {
+      return Object.values(PANEL_MOD_PART_KEY_BY_FACE_TYPE).some((partKey) =>
+        hasExcludedPartKey(partKey),
+      );
+    }
+
+    const partKeys = EXCLUDED_COST_PART_KEYS_BY_CATEGORY[categoryTitle] || [];
+    return partKeys.some((partKey) => hasExcludedPartKey(partKey));
   };
 
   const getCategoryServiceHoursPdfText = ({
@@ -462,6 +505,7 @@ const GenerateSectionBreakdownPdf = ({
         const showAggregate = category.showAggregateNote && !category.skipHours;
         const itemHourRows = getItemHourRows(category.title);
         const hasItemHourRows = itemHourRows.length > 0;
+        const hasExcludedCost = hasExcludedCostForCategory(category.title);
         const hasExcludedHours =
           !category.skipHours &&
           Object.entries(category.hoursByService || {}).some(
@@ -485,6 +529,7 @@ const GenerateSectionBreakdownPdf = ({
               ? `(${formatCurrency(category.cost)})`
               : formatCurrency(category.cost),
             alignment: "right",
+            color: hasExcludedCost ? "#d97706" : undefined,
           },
         ];
 
@@ -518,7 +563,11 @@ const GenerateSectionBreakdownPdf = ({
             {
               text: itemHours.price ? formatCurrency(itemHours.price) : "-",
               alignment: "right",
-              color: itemHours.price ? "#4b5563" : "#9ca3af",
+              color: hasExcludedCost
+                ? "#d97706"
+                : itemHours.price
+                  ? "#4b5563"
+                  : "#9ca3af",
             },
           ];
 
