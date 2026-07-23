@@ -65,9 +65,9 @@ const MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES = new Set([
 
 const MICRO_SHAKER_5PIECE_BASE_WIDTH = 23;
 const MICRO_SHAKER_5PIECE_BASE_HEIGHT = 31;
-const MICRO_SHAKER_5PIECE_BASE_PRICE_FACTOR = 0.6;
-const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.06;
-const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 5.05;
+const MICRO_SHAKER_5PIECE_BASE_PRICE_FACTOR = 0.65;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_MULTIPLIER = 0.08;
+const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_DIVISOR = 4.75;
 const MICRO_SHAKER_5PIECE_OVERSIZE_RATE_EXPONENT = 0.75;
 
 const FIVE_PIECE_BASE_WIDTH = 23;
@@ -871,7 +871,7 @@ const calculateFaceTotals = (section, context) => {
             ...(isMicroShakerStyle
               ? {
                   edgeBandPricePerFoot: 0,
-                  cutPricePerFoot: 9,
+                  cutPricePerFoot: 8.25,
                   setupCostPerSheet: 36,
                   kerfWidth: 2,
                   excludeBandingFaceTypes: [
