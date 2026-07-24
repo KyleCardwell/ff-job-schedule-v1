@@ -114,6 +114,45 @@ const CabinetFaceDivider = ({
     style: "",
   });
 
+  const isDefaultDropdownValue = (value) =>
+    value === "" || value === null || value === undefined;
+
+  const getDropdownClassName = (value) =>
+    `px-1 py-0.5 text-xs border rounded ${
+      isDefaultDropdownValue(value)
+        ? "bg-white border-slate-300 text-slate-900"
+        : "bg-amber-100 border-amber-300 text-amber-900"
+    }`;
+
+  const formatToNearestSixtyFourth = (value) => {
+    if (value === null || value === undefined || value === "") return "";
+
+    const num = Number(value);
+    if (Number.isNaN(num)) return String(value);
+
+    const isNegative = num < 0;
+    const abs = Math.abs(num);
+    const totalSixtyFourths = Math.round(abs * 64);
+    const wholeNumber = Math.floor(totalSixtyFourths / 64);
+    const remainder = totalSixtyFourths % 64;
+
+    if (remainder === 0) {
+      return `${isNegative ? "-" : ""}${wholeNumber}`;
+    }
+
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    const divisor = gcd(remainder, 64);
+    const numerator = remainder / divisor;
+    const denominator = 64 / divisor;
+    const fraction = `${numerator}/${denominator}`;
+
+    if (wholeNumber === 0) {
+      return `${isNegative ? "-" : ""}${fraction}`;
+    }
+
+    return `${isNegative ? "-" : ""}${wholeNumber} ${fraction}`;
+  };
+
   const clampPopupPosition = useCallback(
     (position, popupElement, options = {}) => {
       if (!popupElement) return position;
@@ -754,6 +793,7 @@ const CabinetFaceDivider = ({
     const height = Math.max(0, node.height * scale - strokeWidth);
 
     const faceType = availableFaceTypes.find((t) => t.value === node.type);
+    const textColor = faceType?.color || "#334155";
     // Draw rectangle
     const cabinetGroup = d3.select(svgRef.current).select("g");
     cabinetGroup
@@ -810,8 +850,8 @@ const CabinetFaceDivider = ({
         .attr("y", y + height / 2)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
-        .attr("fill", "#FFFFFF")
-        .attr("font-size", "12px")
+        .attr("fill", textColor)
+        .attr("font-size", "20px")
         .attr("font-weight", "bold")
         .attr("pointer-events", "none")
         .text(faceType?.label || "");
@@ -827,13 +867,13 @@ const CabinetFaceDivider = ({
       cabinetGroup
         .append("text")
         .attr("x", x + width / 2)
-        .attr("y", y + height / 2 + 15)
+        .attr("y", y + height / 2 + 20)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
-        .attr("fill", "#ffffff")
-        .attr("font-size", "10px")
+        .attr("fill", textColor)
+        .attr("font-size", "18px")
         .text(
-          `${truncateTrailingZeros(node.width)}" × ${truncateTrailingZeros(
+          `${formatToNearestSixtyFourth(node.width)} × ${formatToNearestSixtyFourth(
             node.height,
           )} ${node.rollOutQty > 0 ? ` - ${node.rollOutQty} RO` : ""}`,
         )
@@ -2775,7 +2815,7 @@ const CabinetFaceDivider = ({
                             name="style"
                             value={inputValues.style}
                             onChange={(e) => handleStyleChange(e)}
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                            className={getDropdownClassName(inputValues.style)}
                           >
                             <option value="">Section Default</option>
                             {FACE_STYLES.map((styleOption) => (
@@ -2804,7 +2844,9 @@ const CabinetFaceDivider = ({
                                 name="glassShelves"
                                 value={inputValues.glassShelves}
                                 onChange={(e) => handleGlassShelvesChange(e)}
-                                className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                                className={getDropdownClassName(
+                                  inputValues.glassShelves,
+                                )}
                               >
                                 <option value="">Box Material</option>
                                 {accessories.glass.map((glass) => (
@@ -2917,7 +2959,9 @@ const CabinetFaceDivider = ({
                               name="glassPanel"
                               value={inputValues.glassPanel}
                               onChange={(e) => handleGlassPanelChange(e)}
-                              className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                              className={getDropdownClassName(
+                                inputValues.glassPanel,
+                              )}
                             >
                               <option value="">Section Default</option>
                               {glassPanelOptions(selectedNode.type).map(
@@ -2939,7 +2983,7 @@ const CabinetFaceDivider = ({
                             name="panelMod"
                             value={inputValues.panelMod}
                             onChange={(e) => handlePanelModChange(e)}
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                            className={getDropdownClassName(inputValues.panelMod)}
                           >
                             <option value="">Section Default</option>
                             <option value="0">None</option>
@@ -2963,7 +3007,9 @@ const CabinetFaceDivider = ({
                             onChange={(e) =>
                               handleMoldingChange(e, "insideMolding")
                             }
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                            className={getDropdownClassName(
+                              inputValues.insideMolding,
+                            )}
                           >
                             <option value="">Section Default</option>
                             <option value="true">Yes</option>
@@ -2981,7 +3027,9 @@ const CabinetFaceDivider = ({
                             onChange={(e) =>
                               handleMoldingChange(e, "outsideMolding")
                             }
-                            className="px-1 py-0.5 text-xs border border-slate-300 rounded"
+                            className={getDropdownClassName(
+                              inputValues.outsideMolding,
+                            )}
                           >
                             <option value="">Section Default</option>
                             <option value="true">Yes</option>
