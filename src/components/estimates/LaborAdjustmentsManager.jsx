@@ -37,6 +37,16 @@ const formatNumericInputValue = (value, defaultValue = 0) => {
     return stringValue;
   }
 
+  // Preserve decimal typing exactly as entered (e.g. 0.0, 2.0, 0.02)
+  if (/^-?\d*\.\d*$/.test(stringValue)) {
+    return stringValue;
+  }
+
+  // Normalize integer values that have leading zeros (e.g. 01 -> 1)
+  if (/^-?0\d+$/.test(stringValue)) {
+    return String(Number(stringValue));
+  }
+
   const numericValue = Number(stringValue);
   if (!Number.isFinite(numericValue)) {
     return defaultValue;
