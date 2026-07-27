@@ -376,6 +376,18 @@ const normalizeFinishArray = (value) => {
     .sort((a, b) => String(a).localeCompare(String(b)));
 };
 
+const normalizeBooleanFlag = (value, fallback = false) => {
+  if (value === null || value === undefined) return fallback;
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+    if (normalizedValue === "true") return true;
+    if (normalizedValue === "false") return false;
+  }
+
+  return Boolean(value);
+};
+
 const resolveItemQuantity = (value) => {
   if (value === null || value === undefined || value === "") return 1;
 
@@ -418,6 +430,10 @@ export const buildFinishedBackOverridesNote = ({
     const panelModOverrideId = normalizeOptionalId(cabinet.fin_back_panel_mod);
     const materialOverrideId = normalizeOptionalId(cabinet.fin_back_mat);
     const finishOverrideIds = normalizeFinishArray(cabinet.fin_back_finish);
+    const applyToWholeInterior = normalizeBooleanFlag(
+      cabinet.finish_whole_interior,
+      false,
+    );
 
     const hasOverride =
       panelModOverrideId !== null ||
@@ -455,13 +471,29 @@ export const buildFinishedBackOverridesNote = ({
       materialFinishText = `(${finishName})`;
     }
 
-    const overrideLabel = [panelModName, materialFinishText].filter(Boolean).join(" ");
+    const materialTarget =
+      materialFinishText && applyToWholeInterior ? "interior" : "back";
+
+    let overrideLabel = "";
+    if (panelModName && materialFinishText) {
+      if (applyToWholeInterior) {
+        overrideLabel = `${panelModName} back, ${materialFinishText} ${materialTarget}`;
+      } else {
+        overrideLabel = `${panelModName} ${materialFinishText} back`;
+      }
+    } else if (panelModName) {
+      overrideLabel = `${panelModName} back`;
+    } else if (materialFinishText) {
+      overrideLabel = `${materialFinishText} ${materialTarget}`;
+    }
+
     if (!overrideLabel) return;
 
     const overrideKey = JSON.stringify({
       panelMod: panelModOverrideId,
       material: materialOverrideId,
       finish: finishOverrideIds,
+      materialScope: materialFinishText ? materialTarget : null,
     });
 
     const cabinetCount = resolveItemQuantity(cabinet.quantity);
@@ -486,9 +518,8 @@ export const buildFinishedBackOverridesNote = ({
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
     .map(({ label, count }) => {
       const countText = formatCount(count);
-      const backLabel = count === 1 ? "back" : "backs";
       const cabinetLabel = count === 1 ? "cabinet" : "cabinets";
-      return `${label} ${backLabel} in ${countText} ${cabinetLabel}`;
+      return `${label} in ${countText} ${cabinetLabel}`;
     })
     .join(", ");
 

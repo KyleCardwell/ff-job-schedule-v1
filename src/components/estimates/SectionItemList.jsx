@@ -351,6 +351,7 @@ const SectionItemList = ({
         finishedTop: item.finished_top,
         finishedBottom: item.finished_bottom,
         finishedBack: item.finished_back,
+        finishWholeInterior: item.finish_whole_interior,
         finBackMaterialSummary,
         finBackFinishSummary,
         finBackPanelModSummary,

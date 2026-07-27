@@ -241,6 +241,7 @@ const CabinetItemForm = ({
     finished_top: item.finished_top,
     finished_bottom: item.finished_bottom,
     finished_back: item.finished_back,
+    finish_whole_interior: item.finish_whole_interior ?? false,
     fin_back_mat: item.fin_back_mat ?? null,
     fin_back_finish: Array.isArray(item.fin_back_finish)
       ? item.fin_back_finish
@@ -383,6 +384,13 @@ const CabinetItemForm = ({
     setFormData((prev) => ({
       ...prev,
       fin_back_panel_mod: value === "" ? null : Number(value),
+    }));
+  };
+
+  const handleFinBackScopeChange = (applyWholeInterior) => {
+    setFormData((prev) => ({
+      ...prev,
+      finish_whole_interior: applyWholeInterior,
     }));
   };
 
@@ -565,6 +573,7 @@ const CabinetItemForm = ({
                 selectedItemTypeConfig.typeSpecificOptions || [],
                 selectedType.cabinet_type_id,
               );
+              updates.finish_whole_interior = false;
               updates.fin_back_mat = null;
               updates.fin_back_finish = null;
               updates.fin_back_panel_mod = null;
@@ -610,9 +619,17 @@ const CabinetItemForm = ({
           });
         }
       } else if (type === "checkbox") {
+        const checkboxUpdates = {
+          [name]: checked,
+        };
+
+        if (name === "finished_interior" && !checked) {
+          checkboxUpdates.finish_whole_interior = false;
+        }
+
         setFormData({
           ...formData,
-          [name]: checked,
+          ...checkboxUpdates,
         });
       } else {
         setFormData({
@@ -817,6 +834,10 @@ const CabinetItemForm = ({
         finalFormData.fin_back_mat = null;
         finalFormData.fin_back_finish = null;
         finalFormData.fin_back_panel_mod = null;
+      }
+
+      if (!finalFormData.finished_interior) {
+        finalFormData.finish_whole_interior = false;
       }
 
       // Convert cabinet_style_override to null if default option (-1) is selected
@@ -2537,9 +2558,33 @@ const CabinetItemForm = ({
               {/* Finished Back Options */}
               {finBackEnabled && (
                 <div className="mt-4 p-3 border border-slate-300 rounded-md bg-slate-50">
-                  <p className="text-xs font-semibold text-slate-700 mb-2">
-                    Finished Back Options
-                  </p>
+                  <div className="flex flex-col gap-2 mb-3">
+                    <p className="text-xs font-semibold text-slate-700">
+                      Apply Override To
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-slate-700">
+                      <label className="inline-flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="fin_back_scope"
+                          checked={!formData.finish_whole_interior}
+                          onChange={() => handleFinBackScopeChange(false)}
+                          className="border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <span>Back only</span>
+                      </label>
+                      <label className="inline-flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name="fin_back_scope"
+                          checked={Boolean(formData.finish_whole_interior)}
+                          onChange={() => handleFinBackScopeChange(true)}
+                          className="border-slate-300 text-slate-600 focus:ring-slate-500"
+                        />
+                        <span>Whole interior</span>
+                      </label>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 gap-3">
                     {/* Material */}
                     <div>
@@ -2623,7 +2668,10 @@ const CabinetItemForm = ({
                     </div>
 
                     {/* Panel Mod */}
-                    <div>
+                    <div className="pt-2 border-t border-slate-300">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
+                        Back Only
+                      </p>
                       <label className="flex items-center text-xs font-medium text-slate-700 mb-1">
                         <span>Panel Mod</span>
                         {getEffectiveDefaultDisplay(

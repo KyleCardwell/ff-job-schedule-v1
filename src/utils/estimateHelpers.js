@@ -141,6 +141,29 @@ const resolveFinBackMultipliers = (cab, context) => {
   return { finishMultiplier, shopMultiplier };
 };
 
+const resolveFinBackMaterialContext = (cab, context) => {
+  const selectedFaceMaterial = context?.selectedFaceMaterial;
+  if (!selectedFaceMaterial) return null;
+
+  const finBackMatId = cab?.fin_back_mat ?? null;
+  const finBackMaterial = finBackMatId
+    ? context?.faceMaterials?.find((m) => Number(m.id) === Number(finBackMatId)) ||
+      selectedFaceMaterial.material
+    : selectedFaceMaterial.material;
+
+  const finBackMultipliers = resolveFinBackMultipliers(cab, context);
+
+  return {
+    material: finBackMaterial,
+    shopMultiplier:
+      finBackMultipliers?.shopMultiplier ?? selectedFaceMaterial.shopMultiplier ?? 1,
+    finishMultiplier:
+      finBackMultipliers?.finishMultiplier ??
+      selectedFaceMaterial.finishMultiplier ??
+      1,
+  };
+};
+
 /**
  * Generic interpolation function for calculating time based on area
  * @param {Array} anchors - Array of anchor objects with dimensions and services
@@ -509,19 +532,27 @@ const calculatePartsTimeForCabinet = (
     hoursByService[serviceId] = 0;
   });
 
+  const applyFinBackOverrideToWholeInterior = normalizeBooleanFlag(
+    cabinet?.finish_whole_interior,
+    false,
+  );
+  const finBackMaterialContext = resolveFinBackMaterialContext(cabinet, context);
+
   // Process each part
   boxPartsList.forEach((part) => {
     // Determine which material this part uses based on finish boolean
     // - part.finish === true: use selectedFaceMaterial
     // - part.finish === false/null: use selectedBoxMaterial
-    const partMaterial = part.finish
-      ? selectedFaceMaterial
-      : selectedBoxMaterial;
     const isFinishedBack =
       cabinet && part.type === PART_NAMES.BACK && part.finish === true;
-    const finBackMultipliers = isFinishedBack
-      ? resolveFinBackMultipliers(cabinet, context)
-      : null;
+    const usesFinBackMaterialContext =
+      part.finish === true &&
+      (isFinishedBack || applyFinBackOverrideToWholeInterior);
+    const partMaterial = usesFinBackMaterialContext
+      ? finBackMaterialContext || selectedFaceMaterial
+      : part.finish
+        ? selectedFaceMaterial
+        : selectedBoxMaterial;
     const finBackPanelModId = isFinishedBack
       ? cabinet?.fin_back_panel_mod
       : null;
@@ -584,8 +615,7 @@ const calculatePartsTimeForCabinet = (
             service.service_id === 2
             // && partMaterial.shopMultiplier
           ) {
-            totalMinutes *=
-              finBackMultipliers?.shopMultiplier ?? partMaterial.shopMultiplier;
+            totalMinutes *= partMaterial.shopMultiplier;
           }
           // Finish multiplier for service ID 3
           if (
@@ -593,8 +623,7 @@ const calculatePartsTimeForCabinet = (
             service.service_id === 3
             // && partMaterial.finishMultiplier
           ) {
-            totalMinutes *=
-              finBackMultipliers?.finishMultiplier ?? partMaterial.finishMultiplier;
+            totalMinutes *= partMaterial.finishMultiplier;
           }
         }
       }
@@ -2067,6 +2096,10 @@ export const calculateBoxSheetsCNC = (
         selectedFaceMaterial
       : selectedFaceMaterial;
     const finBackMaterialKey = finBackMatId ? `finBack-${finBackMatId}` : "face";
+    const applyFinBackOverrideToWholeInterior = normalizeBooleanFlag(
+      cab.finish_whole_interior,
+      false,
+    );
 
     if (!cab.face_config?.boxSummary?.boxPartsList) return;
     // Only process cabinet boxes
@@ -2090,19 +2123,24 @@ export const calculateBoxSheetsCNC = (
       };
     }
 
+    const materialKeysUsedByCabinet = new Set();
+
     // Add parts from this cabinet (multiplied by quantity)
     // Separate oversized parts and finished parts into their own groups
     boxPartsList.forEach((part) => {
-      // Back parts with finish use the fin_back override material
+      // Back-only or whole-interior mode can route finished parts through fin_back material
       const isFinishedBack = part.finish && part.type === PART_NAMES.BACK;
-      const baseMaterialKey = isFinishedBack
+      const usesFinBackOverrideMaterial =
+        part.finish &&
+        (isFinishedBack || applyFinBackOverrideToWholeInterior);
+      const baseMaterialKey = usesFinBackOverrideMaterial
         ? finBackMaterialKey
         : part.finish
           ? "face"
           : boxMaterialKey;
 
       // Get the appropriate material for this part
-      const partMaterial = isFinishedBack
+      const partMaterial = usesFinBackOverrideMaterial
         ? finBackMaterial
         : part.finish
           ? selectedFaceMaterial
@@ -2118,6 +2156,7 @@ export const calculateBoxSheetsCNC = (
       const materialKey = isOversized
         ? `${baseMaterialKey}-oversize`
         : baseMaterialKey;
+      materialKeysUsedByCabinet.add(materialKey);
 
       // Initialize material group if needed (for face material or oversized)
       if (!materialGroups[materialKey]) {
@@ -2139,7 +2178,7 @@ export const calculateBoxSheetsCNC = (
             },
             cabinets: [],
           };
-        } else if (isFinishedBack) {
+        } else if (usesFinBackOverrideMaterial) {
           materialGroups[materialKey] = {
             material: partMaterial,
             parts: [],
@@ -2186,50 +2225,48 @@ export const calculateBoxSheetsCNC = (
       }
     });
 
+    const totalsTargetKey = (() => {
+      if (materialKeysUsedByCabinet.has(boxMaterialKey)) {
+        return boxMaterialKey;
+      }
+
+      const nonOversizedUsedKey = Array.from(materialKeysUsedByCabinet).find(
+        (key) => !key.endsWith("-oversize"),
+      );
+      if (nonOversizedUsedKey) {
+        return nonOversizedUsedKey;
+      }
+
+      return Array.from(materialKeysUsedByCabinet)[0] || boxMaterialKey;
+    })();
+
     // Accumulate totals (only to regular group, not oversized)
     // Oversized groups are just for accurate sheet pricing/counts
-    materialGroups[boxMaterialKey].totals.bandingLength += bandingLength * qty;
-    materialGroups[boxMaterialKey].totals.hinges +=
+    materialGroups[totalsTargetKey].totals.bandingLength += bandingLength * qty;
+    materialGroups[totalsTargetKey].totals.hinges +=
       (boxHardware?.totalHinges || 0) * qty;
-    materialGroups[boxMaterialKey].totals.slides +=
+    materialGroups[totalsTargetKey].totals.slides +=
       (boxHardware?.totalSlides || 0) * qty;
-    materialGroups[boxMaterialKey].totals.shelfDrillHoles +=
+    materialGroups[totalsTargetKey].totals.shelfDrillHoles +=
       (shelfDrillHoles || 0) * qty;
 
-    // Add cabinet to all material groups it uses
-    materialGroups[boxMaterialKey].cabinets.push(cab);
-
-    // Add cabinet to oversized box group if it exists
-    if (
-      materialGroups[`${boxMaterialKey}-oversize`] &&
-      !materialGroups[`${boxMaterialKey}-oversize`].cabinets.find(
-        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id),
-      )
-    ) {
-      materialGroups[`${boxMaterialKey}-oversize`].cabinets.push(cab);
-    }
-
-    // Add cabinet to face material groups if they exist (for finished parts)
-    if (
-      materialGroups["face"] &&
-      !materialGroups["face"].cabinets.find(
-        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id),
-      )
-    ) {
-      materialGroups["face"].cabinets.push(cab);
-    }
-    if (
-      materialGroups["face-oversize"] &&
-      !materialGroups["face-oversize"].cabinets.find(
-        (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id),
-      )
-    ) {
-      materialGroups["face-oversize"].cabinets.push(cab);
-    }
+    // Add cabinet to all material groups that actually received parts
+    materialKeysUsedByCabinet.forEach((materialKey) => {
+      if (
+        materialGroups[materialKey] &&
+        !materialGroups[materialKey].cabinets.find(
+          (c) => (c.id || c.temp_id) === (cab.id || cab.temp_id),
+        )
+      ) {
+        materialGroups[materialKey].cabinets.push(cab);
+      }
+    });
   });
 
   // Process each material group with packing algorithm
-  const materialResults = Object.entries(materialGroups).map(
+  const materialResults = Object.entries(materialGroups)
+    .filter(([, group]) => group?.parts?.length > 0)
+    .map(
     ([materialKey, group]) => {
       const { material, parts, totals } = group;
 
@@ -2438,6 +2475,10 @@ export const generateCabinetSummary = (
   const finBackMaterial = typeSpecificOptions?.finBackMaterialSummary;
   const finBackFinish = typeSpecificOptions?.finBackFinishSummary;
   const finBackPanelMod = typeSpecificOptions?.finBackPanelModSummary;
+  const finBackScopeWholeInterior = normalizeBooleanFlag(
+    typeSpecificOptions?.finishWholeInterior,
+    false,
+  );
 
   let finBackMaterialFinish = null;
   if (finBackMaterial != null && finBackFinish != null) {
@@ -2456,8 +2497,13 @@ export const generateCabinetSummary = (
     finBackDetails.push(finBackPanelMod);
   }
 
+  const backOverrideTargetLabel = finBackScopeWholeInterior
+    ? "interior"
+    : "back";
   const backOverrideLabel =
-    finBackDetails.length > 0 ? `back (${finBackDetails.join(", ")})` : null;
+    finBackDetails.length > 0
+      ? `${backOverrideTargetLabel} (${finBackDetails.join(", ")})`
+      : null;
 
   const finishedSideDetails = finishedSides.map((side) =>
     side === "back" && backOverrideLabel ? backOverrideLabel : side,

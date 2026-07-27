@@ -221,6 +221,7 @@ create table public.estimate_cabinets (
   fin_back_mat bigint null,
   fin_back_finish bigint[] null,
   fin_back_panel_mod bigint null,
+  finish_whole_interior boolean not null default false,
   constraint estimate_cabinets_pkey primary key (id),
   constraint estimate_cabinets_id_key unique (id),
   constraint estimate_cabinets_cabinet_style_override_fkey foreign KEY (cabinet_style_override) references cabinet_styles (id) on update CASCADE,
