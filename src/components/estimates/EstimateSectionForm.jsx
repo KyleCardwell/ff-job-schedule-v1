@@ -2811,10 +2811,7 @@ const EstimateSectionForm = ({
                               id="doorPreWireBrushed"
                               name="doorPreWireBrushed"
                               value={getBooleanSelectValue(
-                                formData.doorPreWireBrushed ??
-                                  (editType === EDIT_TYPES.TEAM
-                                    ? null
-                                    : effectiveFacePreWireBrushedForDisplay),
+                                formData.doorPreWireBrushed,
                               )}
                               onChange={handleChange}
                               className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
@@ -3307,10 +3304,7 @@ const EstimateSectionForm = ({
                               id="drawerFrontPreWireBrushed"
                               name="drawerFrontPreWireBrushed"
                               value={getBooleanSelectValue(
-                                formData.drawerFrontPreWireBrushed ??
-                                  (editType === EDIT_TYPES.TEAM
-                                    ? null
-                                    : effectiveFacePreWireBrushedForDisplay),
+                                formData.drawerFrontPreWireBrushed,
                               )}
                               onChange={handleChange}
                               className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
