@@ -148,11 +148,20 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
   const [collapsedSections, setCollapsedSections] = useState({});
   const [saveError, setSaveError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [preWireBrushedUpcharge, setPreWireBrushedUpcharge] = useState(
+    estimate?.pre_wire_brushed_sheet_upcharge ?? "",
+  );
+  const teamPreWireBrushedUpcharge =
+    state.teamEstimateDefaults?.teamDefaults
+      ?.pre_wire_brushed_sheet_upcharge ?? 0;
 
   // Reset form when estimate changes
   useEffect(() => {
     setFormData(buildFormState(estimate?.price_overrides));
-  }, [estimate?.price_overrides]);
+    setPreWireBrushedUpcharge(
+      estimate?.pre_wire_brushed_sheet_upcharge ?? "",
+    );
+  }, [estimate?.price_overrides, estimate?.pre_wire_brushed_sheet_upcharge]);
 
   // Get catalog options for each section, memoized
   const sectionOptions = useMemo(() => {
@@ -267,12 +276,24 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
 
   const handleSave = async () => {
     if (!estimate?.estimate_id) return;
+    if (
+      preWireBrushedUpcharge !== "" &&
+      (!Number.isFinite(Number(preWireBrushedUpcharge)) ||
+        Number(preWireBrushedUpcharge) < 0)
+    ) {
+      setSaveError("Pre Wire Brushed price must be zero or greater");
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     try {
       const priceOverrides = buildPriceOverrides();
       await dispatch(
-        updateEstimatePriceOverrides(estimate.estimate_id, priceOverrides)
+        updateEstimatePriceOverrides(
+          estimate.estimate_id,
+          priceOverrides,
+          preWireBrushedUpcharge,
+        )
       );
       onSave?.();
     } catch (error) {
@@ -286,6 +307,9 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
   const handleCancel = () => {
     // Reset to previously saved state (does not navigate away)
     setFormData(buildFormState(estimate?.price_overrides));
+    setPreWireBrushedUpcharge(
+      estimate?.pre_wire_brushed_sheet_upcharge ?? "",
+    );
     setSaveError(null);
   };
 
@@ -295,6 +319,7 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
       emptyState[key] = [];
     });
     setFormData(emptyState);
+    setPreWireBrushedUpcharge("");
   };
 
   // Style constants matching EstimateSectionForm
@@ -355,6 +380,39 @@ const EstimatePriceOverrides = ({ estimate, onSave }) => {
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-6">
+        <div className={STYLES.sectionBorder}>
+          <h3 className={STYLES.sectionHeader}>Pre Wire Brushed</h3>
+          <div className="mt-3 max-w-sm">
+            <label
+              htmlFor="estimate-pre-wire-brushed-upcharge"
+              className={STYLES.label}
+            >
+              Additional Cost per Sheet
+            </label>
+            <input
+              id="estimate-pre-wire-brushed-upcharge"
+              type="number"
+              min="0"
+              step="0.01"
+              value={preWireBrushedUpcharge}
+              placeholder={`Team price: $${Number(teamPreWireBrushedUpcharge).toFixed(2)}`}
+              onChange={(event) =>
+                setPreWireBrushedUpcharge(event.target.value)
+              }
+              className={STYLES.input}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Leave empty to use the team price.
+            </p>
+            {estimate?.frozen_pre_wire_brushed_sheet_upcharge != null && (
+              <p className="mt-2 text-xs text-slate-300">
+                Frozen price: ${Number(
+                  estimate.frozen_pre_wire_brushed_sheet_upcharge,
+                ).toFixed(2)} per sheet
+              </p>
+            )}
+          </div>
+        </div>
         {SECTION_ORDER.map((sectionKey) => {
           const config = SECTION_CONFIG[sectionKey];
           const rows = formData[sectionKey] || [];

@@ -1,5 +1,6 @@
 import { ACCESSORY_TYPES, ACCESSORY_UNITS } from "./constants";
 import { roundToHundredth } from "./estimateHelpers";
+import { getEffectiveSheetPrice } from "./materialPricing";
 
 /**
  * Get the display unit label based on calculation type
@@ -304,7 +305,7 @@ export const calculateShopBuiltMaterialCost = (
     const boardFeet = volume / 144;
     const boardFeetWithWaste = boardFeet * wasteFactor;
     materialCost = boardFeetWithWaste * material.bd_ft_price * quantity;
-  } else if (material.sheet_price && material.area) {
+  } else if (getEffectiveSheetPrice(material) && material.area) {
     // Sheet goods: calculate area/volume ratio
     // For 3D items, we approximate by treating as solid volume
     const volumeWithWaste = volume * wasteFactor;
@@ -313,7 +314,7 @@ export const calculateShopBuiltMaterialCost = (
     
     if (sheetVolume > 0) {
       const sheetsNeeded = volumeWithWaste / sheetVolume;
-      materialCost = sheetsNeeded * material.sheet_price * quantity;
+      materialCost = sheetsNeeded * getEffectiveSheetPrice(material) * quantity;
     }
   }
 

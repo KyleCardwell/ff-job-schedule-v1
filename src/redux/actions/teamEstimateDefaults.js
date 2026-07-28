@@ -40,7 +40,12 @@ export const fetchTeamDefaults = () => {
           default_profit,
           default_commission,
           default_discount,
-          default_estimate_notes
+          default_estimate_notes,
+          pre_wire_brushed_sheet_upcharge,
+          default_box_pre_wire_brushed,
+          default_face_pre_wire_brushed,
+          default_door_pre_wire_brushed,
+          default_drawer_front_pre_wire_brushed
         `)
         .eq("team_id", teamId)
         .single();
@@ -100,6 +105,14 @@ export const updateTeamDefaults = (teamId, defaults) => {
         default_commission: defaults.default_commission,
         default_discount: defaults.default_discount,
         default_estimate_notes: defaults.default_estimate_notes,
+        default_box_pre_wire_brushed:
+          defaults.default_box_pre_wire_brushed,
+        default_face_pre_wire_brushed:
+          defaults.default_face_pre_wire_brushed,
+        default_door_pre_wire_brushed:
+          defaults.default_door_pre_wire_brushed,
+        default_drawer_front_pre_wire_brushed:
+          defaults.default_drawer_front_pre_wire_brushed,
         updated_at: new Date(),
       };
 
@@ -138,7 +151,12 @@ export const updateTeamDefaults = (teamId, defaults) => {
           default_profit,
           default_commission,
           default_discount,
-          default_estimate_notes
+          default_estimate_notes,
+          pre_wire_brushed_sheet_upcharge,
+          default_box_pre_wire_brushed,
+          default_face_pre_wire_brushed,
+          default_door_pre_wire_brushed,
+          default_drawer_front_pre_wire_brushed
         `)
         .eq("team_id", teamId)
         .single();
@@ -159,5 +177,33 @@ export const updateTeamDefaults = (teamId, defaults) => {
       });
       throw error;
     }
+  };
+};
+
+export const updateTeamPreWireBrushedUpcharge = (teamId, upcharge) => {
+  return async (dispatch, getState) => {
+    const value = Number(upcharge);
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error("Pre Wire Brushed price must be zero or greater");
+    }
+
+    const { data, error } = await supabase
+      .from("teams")
+      .update({
+        pre_wire_brushed_sheet_upcharge: value,
+        updated_at: new Date(),
+      })
+      .eq("team_id", teamId)
+      .select("pre_wire_brushed_sheet_upcharge")
+      .single();
+
+    if (error) throw error;
+
+    const current = getState().teamEstimateDefaults.teamDefaults || {};
+    dispatch({
+      type: teamEstimateDefaults.UPDATE_TEAM_DEFAULTS_SUCCESS,
+      payload: { ...current, ...data },
+    });
+    return data;
   };
 };

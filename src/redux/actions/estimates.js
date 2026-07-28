@@ -299,6 +299,15 @@ export const fetchEstimateById = (estimateId) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
         default_service_price_overrides: data.default_service_price_overrides,
+        default_box_pre_wire_brushed: data.default_box_pre_wire_brushed,
+        default_face_pre_wire_brushed: data.default_face_pre_wire_brushed,
+        default_door_pre_wire_brushed: data.default_door_pre_wire_brushed,
+        default_drawer_front_pre_wire_brushed:
+          data.default_drawer_front_pre_wire_brushed,
+        pre_wire_brushed_sheet_upcharge:
+          data.pre_wire_brushed_sheet_upcharge,
+        frozen_pre_wire_brushed_sheet_upcharge:
+          data.frozen_pre_wire_brushed_sheet_upcharge,
 
         // Custom notes: { default_notes: {}, custom_notes: [] }
         custom_notes: data.custom_notes || { default_notes: {}, custom_notes: [] },
@@ -729,6 +738,10 @@ export const addSection = (estimateId, taskId, sectionData) => {
         drawerPanelModId,
         doorStyle,
         drawerFrontStyle,
+        box_pre_wire_brushed,
+        face_pre_wire_brushed,
+        door_pre_wire_brushed,
+        drawer_front_pre_wire_brushed,
       } = sectionData;
 
       // Create the new section
@@ -777,6 +790,11 @@ export const addSection = (estimateId, taskId, sectionData) => {
               drawerPanelModId !== undefined ? drawerPanelModId : null,
             door_style: doorStyle || null,
             drawer_front_style: drawerFrontStyle || null,
+            box_pre_wire_brushed: box_pre_wire_brushed ?? null,
+            face_pre_wire_brushed: face_pre_wire_brushed ?? null,
+            door_pre_wire_brushed: door_pre_wire_brushed ?? null,
+            drawer_front_pre_wire_brushed:
+              drawer_front_pre_wire_brushed ?? null,
             est_task_id: taskId,
           },
         ])
@@ -858,6 +876,10 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
         services_included,
         service_price_overrides,
         use_default_prices,
+        box_pre_wire_brushed,
+        face_pre_wire_brushed,
+        door_pre_wire_brushed,
+        drawer_front_pre_wire_brushed,
       } = updates;
 
       // Prepare the update payload for Supabase
@@ -928,6 +950,18 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
           drawer_front_style: drawerFrontStyle || null,
         }),
         ...(add_hours !== undefined && { add_hours: add_hours || null }),
+        ...(box_pre_wire_brushed !== undefined && {
+          box_pre_wire_brushed,
+        }),
+        ...(face_pre_wire_brushed !== undefined && {
+          face_pre_wire_brushed,
+        }),
+        ...(door_pre_wire_brushed !== undefined && {
+          door_pre_wire_brushed,
+        }),
+        ...(drawer_front_pre_wire_brushed !== undefined && {
+          drawer_front_pre_wire_brushed,
+        }),
         ...(parts_included !== undefined && { parts_included: parts_included || null }),
         ...(services_included !== undefined && { services_included: services_included || null }),
         ...(service_price_overrides !== undefined && { service_price_overrides: service_price_overrides || null }),
@@ -1250,6 +1284,14 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_commission: defaults.default_commission ?? null,
         default_discount: defaults.default_discount ?? null,
         default_service_price_overrides: defaults.default_service_price_overrides ?? null,
+        default_box_pre_wire_brushed:
+          defaults.default_box_pre_wire_brushed ?? null,
+        default_face_pre_wire_brushed:
+          defaults.default_face_pre_wire_brushed ?? null,
+        default_door_pre_wire_brushed:
+          defaults.default_door_pre_wire_brushed ?? null,
+        default_drawer_front_pre_wire_brushed:
+          defaults.default_drawer_front_pre_wire_brushed ?? null,
         updated_at: new Date(),
       };
 
@@ -1313,6 +1355,15 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
         default_commission: data.default_commission,
         default_discount: data.default_discount,
         default_service_price_overrides: data.default_service_price_overrides,
+        default_box_pre_wire_brushed: data.default_box_pre_wire_brushed,
+        default_face_pre_wire_brushed: data.default_face_pre_wire_brushed,
+        default_door_pre_wire_brushed: data.default_door_pre_wire_brushed,
+        default_drawer_front_pre_wire_brushed:
+          data.default_drawer_front_pre_wire_brushed,
+        pre_wire_brushed_sheet_upcharge:
+          data.pre_wire_brushed_sheet_upcharge,
+        frozen_pre_wire_brushed_sheet_upcharge:
+          data.frozen_pre_wire_brushed_sheet_upcharge,
 
         // Price overrides
         price_overrides: data.price_overrides || {},
@@ -1387,13 +1438,23 @@ export const updateCustomNotes = (estimateId, customNotes) => {
 };
 
 // Update estimate price overrides
-export const updateEstimatePriceOverrides = (estimateId, priceOverrides) => {
+export const updateEstimatePriceOverrides = (
+  estimateId,
+  priceOverrides,
+  preWireBrushedSheetUpcharge,
+) => {
   return async (dispatch, getState) => {
     try {
       const { error: updateError } = await supabase
         .from("estimates")
         .update({
           price_overrides: priceOverrides,
+          pre_wire_brushed_sheet_upcharge:
+            preWireBrushedSheetUpcharge === "" ||
+            preWireBrushedSheetUpcharge === null ||
+            preWireBrushedSheetUpcharge === undefined
+              ? null
+              : Number(preWireBrushedSheetUpcharge),
           updated_at: new Date(),
         })
         .eq("estimate_id", estimateId);
@@ -1408,6 +1469,12 @@ export const updateEstimatePriceOverrides = (estimateId, priceOverrides) => {
           payload: {
             ...currentEstimate,
             price_overrides: priceOverrides,
+            pre_wire_brushed_sheet_upcharge:
+              preWireBrushedSheetUpcharge === "" ||
+              preWireBrushedSheetUpcharge === null ||
+              preWireBrushedSheetUpcharge === undefined
+                ? null
+                : Number(preWireBrushedSheetUpcharge),
           },
         });
       }
@@ -1766,6 +1833,11 @@ export const finalizeEstimate = (estimateId, catalogData) => {
       // Merge with existing price_overrides (existing overrides take precedence - they were manually set)
       const existingOverrides = currentEstimate.price_overrides || {};
       const mergedOverrides = mergeOverrides(existingOverrides, priceOverrides);
+      const frozenPreWireBrushedSheetUpcharge = Number(
+        currentEstimate.pre_wire_brushed_sheet_upcharge ??
+          teamDefaults?.pre_wire_brushed_sheet_upcharge ??
+          0,
+      );
 
       const now = new Date().toISOString();
 
@@ -1775,6 +1847,8 @@ export const finalizeEstimate = (estimateId, catalogData) => {
         .update({
           status: ESTIMATE_STATUS.FINALIZED,
           finalized_on: now,
+          frozen_pre_wire_brushed_sheet_upcharge:
+            frozenPreWireBrushedSheetUpcharge,
           price_overrides: mergedOverrides,
           updated_by: session.user.id,
           updated_at: new Date(),
@@ -1788,6 +1862,8 @@ export const finalizeEstimate = (estimateId, catalogData) => {
         ...currentEstimate,
         status: ESTIMATE_STATUS.FINALIZED,
         finalized_on: now,
+        frozen_pre_wire_brushed_sheet_upcharge:
+          frozenPreWireBrushedSheetUpcharge,
         price_overrides: mergedOverrides,
       };
 
@@ -2112,6 +2188,30 @@ export const duplicateEstimate = (
       if (!Number.isFinite(resolvedEstimateId) || resolvedEstimateId <= 0) {
         throw new Error("Duplicate estimate did not return a valid estimate ID");
       }
+
+      // The database duplication RPC predates these pricing settings. Copy them
+      // explicitly while keeping the new draft's frozen value empty.
+      const { data: sourcePricing, error: sourcePricingError } = await supabase
+        .from("estimates")
+        .select(`
+          pre_wire_brushed_sheet_upcharge,
+          default_box_pre_wire_brushed,
+          default_face_pre_wire_brushed,
+          default_door_pre_wire_brushed,
+          default_drawer_front_pre_wire_brushed
+        `)
+        .eq("estimate_id", sourceEstimateId)
+        .single();
+      if (sourcePricingError) throw sourcePricingError;
+
+      const { error: pricingCopyError } = await supabase
+        .from("estimates")
+        .update({
+          ...sourcePricing,
+          frozen_pre_wire_brushed_sheet_upcharge: null,
+        })
+        .eq("estimate_id", resolvedEstimateId);
+      if (pricingCopyError) throw pricingCopyError;
 
       await dispatch(fetchEstimateById(resolvedEstimateId));
       await dispatch(fetchEstimates());

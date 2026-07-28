@@ -16,6 +16,7 @@ import {
   saveSheetGoods,
   saveDrawerBoxMaterials,
 } from "../../redux/actions/materials";
+import { updateTeamPreWireBrushedUpcharge } from "../../redux/actions/teamEstimateDefaults";
 
 import GenerateSettingsPdf from "./GenerateSettingsPdf.jsx";
 import SettingsList from "./SettingsList.jsx";
@@ -27,6 +28,10 @@ const MaterialsSettings = forwardRef((props, ref) => {
   const { drawerBoxMaterials, loading, error } = useSelector(
     (state) => state.materials
   );
+  const teamId = useSelector((state) => state.auth.teamId);
+  const teamDefaults = useSelector(
+    (state) => state.teamEstimateDefaults.teamDefaults,
+  );
 
   // Local state for editing
   const [localSheetGoods, setLocalSheetGoods] = useState([]);
@@ -37,6 +42,9 @@ const MaterialsSettings = forwardRef((props, ref) => {
   );
   const [validationErrors, setValidationErrors] = useState({});
   const [focusItemId, setFocusItemId] = useState(null);
+  const [preWireBrushedUpcharge, setPreWireBrushedUpcharge] = useState("0");
+  const [originalPreWireBrushedUpcharge, setOriginalPreWireBrushedUpcharge] =
+    useState("0");
   const inputRefs = useRef({});
 
   useEffect(() => {
@@ -66,6 +74,12 @@ const MaterialsSettings = forwardRef((props, ref) => {
       JSON.parse(JSON.stringify(drawerBoxMaterials || []))
     );
   }, [drawerBoxMaterials]);
+
+  useEffect(() => {
+    const value = String(teamDefaults?.pre_wire_brushed_sheet_upcharge ?? 0);
+    setPreWireBrushedUpcharge(value);
+    setOriginalPreWireBrushedUpcharge(value);
+  }, [teamDefaults?.pre_wire_brushed_sheet_upcharge]);
 
   // Sheet Goods handlers
   const handleSheetGoodChange = (id, field, value) => {
@@ -197,6 +211,15 @@ const MaterialsSettings = forwardRef((props, ref) => {
 
   const validateInputs = () => {
     const newErrors = {};
+
+    if (
+      preWireBrushedUpcharge === "" ||
+      !Number.isFinite(Number(preWireBrushedUpcharge)) ||
+      Number(preWireBrushedUpcharge) < 0
+    ) {
+      newErrors.preWireBrushedUpcharge =
+        "Pre Wire Brushed price must be zero or greater";
+    }
 
     // Validate sheet goods
     localSheetGoods.forEach((item) => {
@@ -334,6 +357,19 @@ const MaterialsSettings = forwardRef((props, ref) => {
         );
       }
 
+      if (
+        teamId &&
+        preWireBrushedUpcharge !== originalPreWireBrushedUpcharge
+      ) {
+        await dispatch(
+          updateTeamPreWireBrushedUpcharge(
+            teamId,
+            Number(preWireBrushedUpcharge),
+          ),
+        );
+        setOriginalPreWireBrushedUpcharge(preWireBrushedUpcharge);
+      }
+
       setValidationErrors({}); // Clear errors on successful save
     } catch (error) {
       console.error("Error saving materials:", error);
@@ -346,6 +382,7 @@ const MaterialsSettings = forwardRef((props, ref) => {
     setLocalDrawerBoxMaterials(
       JSON.parse(JSON.stringify(originalDrawerBoxMaterials))
     );
+    setPreWireBrushedUpcharge(originalPreWireBrushedUpcharge);
     setValidationErrors({});
   };
 
@@ -598,6 +635,35 @@ const MaterialsSettings = forwardRef((props, ref) => {
                 title="Sheet Goods"
                 maxWidthClass={maxWidthClass}
               >
+                <div className="mb-4 w-full">
+                  <div className="flex w-full items-center gap-2">
+                    <label
+                      htmlFor="pre-wire-brushed-upcharge"
+                      className="flex-1 whitespace-nowrap text-sm font-medium text-slate-200 text-right"
+                    >
+                      Pre Wire Brushed — Additional Cost per Sheet
+                    </label>
+                    <input
+                      id="pre-wire-brushed-upcharge"
+                      type="number"
+                      min="0"
+                      value={preWireBrushedUpcharge}
+                      onChange={(event) =>
+                        setPreWireBrushedUpcharge(event.target.value)
+                      }
+                      className={`block h-9 w-124 shrink-0 pl-2 rounded-md text-sm bg-slate-800 text-slate-200 ${
+                        validationErrors.preWireBrushedUpcharge
+                          ? "border-red-500"
+                          : "border-slate-300"
+                      } focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
+                    />
+                  </div>
+                  {validationErrors.preWireBrushedUpcharge && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {validationErrors.preWireBrushedUpcharge}
+                    </p>
+                  )}
+                </div>
                 <SettingsList
                   items={localSheetGoods}
                   columns={sheetGoodsColumns}

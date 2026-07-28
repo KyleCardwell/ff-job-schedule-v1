@@ -486,6 +486,12 @@ const EstimateSectionForm = ({
     const commissionField = getFieldName("commission");
     const discountField = getFieldName("discount");
     const servicePriceOverridesField = getFieldName("service_price_overrides");
+    const boxPreWireBrushedField = getFieldName("box_pre_wire_brushed");
+    const facePreWireBrushedField = getFieldName("face_pre_wire_brushed");
+    const doorPreWireBrushedField = getFieldName("door_pre_wire_brushed");
+    const drawerFrontPreWireBrushedField = getFieldName(
+      "drawer_front_pre_wire_brushed",
+    );
 
     const normalizeTeamFinishValue = (value) => {
       if (
@@ -642,6 +648,22 @@ const EstimateSectionForm = ({
         initialDefaults.service_price_overrides ??
         {},
       use_default_prices: data.use_default_prices ?? false,
+      boxPreWireBrushed:
+        data[boxPreWireBrushedField] ??
+        data.box_pre_wire_brushed ??
+        (editType === EDIT_TYPES.TEAM ? false : null),
+      facePreWireBrushed:
+        data[facePreWireBrushedField] ??
+        data.face_pre_wire_brushed ??
+        (editType === EDIT_TYPES.TEAM ? false : null),
+      doorPreWireBrushed:
+        data[doorPreWireBrushedField] ??
+        data.door_pre_wire_brushed ??
+        (editType === EDIT_TYPES.TEAM ? false : null),
+      drawerFrontPreWireBrushed:
+        data[drawerFrontPreWireBrushedField] ??
+        data.drawer_front_pre_wire_brushed ??
+        (editType === EDIT_TYPES.TEAM ? false : null),
     };
   });
 
@@ -785,9 +807,14 @@ const EstimateSectionForm = ({
         formData.door_mat !== undefined) ||
       (formData.door_finish !== null &&
         formData.door_finish !== undefined &&
-        Array.isArray(formData.door_finish))
+        Array.isArray(formData.door_finish)) ||
+      formData.doorPreWireBrushed !== null
     );
-  }, [formData.door_mat, formData.door_finish]);
+  }, [
+    formData.door_mat,
+    formData.door_finish,
+    formData.doorPreWireBrushed,
+  ]);
 
   const isDrawerFrontMaterialCustomized = useMemo(() => {
     return (
@@ -796,9 +823,14 @@ const EstimateSectionForm = ({
         formData.drawer_front_mat !== undefined) ||
       (formData.drawer_front_finish !== null &&
         formData.drawer_front_finish !== undefined &&
-        Array.isArray(formData.drawer_front_finish))
+        Array.isArray(formData.drawer_front_finish)) ||
+      formData.drawerFrontPreWireBrushed !== null
     );
-  }, [formData.drawer_front_mat, formData.drawer_front_finish]);
+  }, [
+    formData.drawer_front_mat,
+    formData.drawer_front_finish,
+    formData.drawerFrontPreWireBrushed,
+  ]);
 
   const clearFinishes = useCallback(
     (section) => {
@@ -885,6 +917,10 @@ const EstimateSectionForm = ({
       "drawerInsideMolding",
       "drawerOutsideMolding",
       "horizontalGrain",
+      "boxPreWireBrushed",
+      "facePreWireBrushed",
+      "doorPreWireBrushed",
+      "drawerFrontPreWireBrushed",
     ];
 
     // Handle panel mod ID fields (foreign keys)
@@ -1039,6 +1075,10 @@ const EstimateSectionForm = ({
         door_mat: "",
         door_finish: null,
         drawer_front_mat: "",
+        boxPreWireBrushed: null,
+        facePreWireBrushed: null,
+        doorPreWireBrushed: null,
+        drawerFrontPreWireBrushed: null,
         drawer_front_finish: null,
         quantity: 1,
         profit: "",
@@ -1066,6 +1106,11 @@ const EstimateSectionForm = ({
       drawerFrontStyle: sourceSection.drawer_front_style || "",
       drawer_front_finish: sourceSection.drawer_front_finish,
       drawer_front_mat: sourceSection.drawer_front_mat || "",
+      boxPreWireBrushed: sourceSection.box_pre_wire_brushed ?? null,
+      facePreWireBrushed: sourceSection.face_pre_wire_brushed ?? null,
+      doorPreWireBrushed: sourceSection.door_pre_wire_brushed ?? null,
+      drawerFrontPreWireBrushed:
+        sourceSection.drawer_front_pre_wire_brushed ?? null,
       doorInsideMolding: sourceSection.door_inside_molding ?? null,
       doorOutsideMolding: sourceSection.door_outside_molding ?? null,
       drawerInsideMolding: sourceSection.drawer_inside_molding ?? null,
@@ -1530,6 +1575,11 @@ const EstimateSectionForm = ({
             default_profit: Number(formData.profit),
             default_commission: Number(formData.commission),
             default_discount: Number(formData.discount),
+            default_box_pre_wire_brushed: formData.boxPreWireBrushed,
+            default_face_pre_wire_brushed: formData.facePreWireBrushed,
+            default_door_pre_wire_brushed: formData.doorPreWireBrushed,
+            default_drawer_front_pre_wire_brushed:
+              formData.drawerFrontPreWireBrushed,
           };
 
         await dispatch(updateTeamDefaults(teamData.team_id, updatePayload));
@@ -1596,6 +1646,11 @@ const EstimateSectionForm = ({
               ).length > 0
                 ? formData.service_price_overrides
                 : null,
+            default_box_pre_wire_brushed: formData.boxPreWireBrushed,
+            default_face_pre_wire_brushed: formData.facePreWireBrushed,
+            default_door_pre_wire_brushed: formData.doorPreWireBrushed,
+            default_drawer_front_pre_wire_brushed:
+              formData.drawerFrontPreWireBrushed,
           };
 
         await dispatch(
@@ -1609,6 +1664,11 @@ const EstimateSectionForm = ({
       } else {
           // Section mode - original logic
           const processedData = { ...formData };
+          processedData.box_pre_wire_brushed = formData.boxPreWireBrushed;
+          processedData.face_pre_wire_brushed = formData.facePreWireBrushed;
+          processedData.door_pre_wire_brushed = formData.doorPreWireBrushed;
+          processedData.drawer_front_pre_wire_brushed =
+            formData.drawerFrontPreWireBrushed;
 
           // Convert quantity to number (ensure it's at least 1)
           processedData.quantity =
@@ -2166,6 +2226,33 @@ const EstimateSectionForm = ({
                       {errors.boxMaterial && (
                         <p className={STYLES.errorText}>{errors.boxMaterial}</p>
                       )}
+                      <label
+                        htmlFor="boxPreWireBrushed"
+                        className={`${STYLES.label} mt-2`}
+                      >
+                        <span>Pre Wire Brushed</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.boxPreWireBrushed,
+                          "default_box_pre_wire_brushed",
+                          "default_box_pre_wire_brushed",
+                          formatBoolean,
+                        )}
+                      </label>
+                      <select
+                        id="boxPreWireBrushed"
+                        name="boxPreWireBrushed"
+                        value={getBooleanSelectValue(
+                          formData.boxPreWireBrushed,
+                        )}
+                        onChange={handleChange}
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                      >
+                        {editType !== EDIT_TYPES.TEAM && (
+                          <option value="">{getPlaceholder("setting")}</option>
+                        )}
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
                       <div className="h-6">
                         <p
                           className={`${STYLES.material_finish_warn} col-span-2 px-2 pt-1 transition-opacity duration-200 ${
@@ -2282,6 +2369,33 @@ const EstimateSectionForm = ({
                           {errors.faceMaterial}
                         </p>
                       )}
+                      <label
+                        htmlFor="facePreWireBrushed"
+                        className={`${STYLES.label} mt-2`}
+                      >
+                        <span>Pre Wire Brushed</span>
+                        {getEffectiveDefaultDisplay(
+                          formData.facePreWireBrushed,
+                          "default_face_pre_wire_brushed",
+                          "default_face_pre_wire_brushed",
+                          formatBoolean,
+                        )}
+                      </label>
+                      <select
+                        id="facePreWireBrushed"
+                        name="facePreWireBrushed"
+                        value={getBooleanSelectValue(
+                          formData.facePreWireBrushed,
+                        )}
+                        onChange={handleChange}
+                        className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                      >
+                        {editType !== EDIT_TYPES.TEAM && (
+                          <option value="">{getPlaceholder("setting")}</option>
+                        )}
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
                       <div className="h-6">
                         <p
                           className={`${STYLES.material_finish_warn} col-span-2 px-2 pt-1 transition-opacity duration-200 ${
@@ -2607,7 +2721,7 @@ const EstimateSectionForm = ({
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
                         showDoorMaterialOptions
-                          ? "max-h-96 opacity-100 mt-4"
+                          ? "max-h-[32rem] opacity-100 mt-4"
                           : "max-h-0 opacity-0"
                       }`}
                     >
@@ -2656,6 +2770,35 @@ const EstimateSectionForm = ({
                             <p className="text-xs text-slate-400 mt-1 px-2">
                               Leave empty to use face material
                             </p>
+                            <label
+                              htmlFor="doorPreWireBrushed"
+                              className={`${STYLES.label} mt-2`}
+                            >
+                              <span>Pre Wire Brushed</span>
+                              {getEffectiveDefaultDisplay(
+                                formData.doorPreWireBrushed,
+                                "default_door_pre_wire_brushed",
+                                "default_door_pre_wire_brushed",
+                                formatBoolean,
+                              )}
+                            </label>
+                            <select
+                              id="doorPreWireBrushed"
+                              name="doorPreWireBrushed"
+                              value={getBooleanSelectValue(
+                                formData.doorPreWireBrushed,
+                              )}
+                              onChange={handleChange}
+                              className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                            >
+                              {editType !== EDIT_TYPES.TEAM && (
+                                <option value="">
+                                  {getPlaceholder("setting")}
+                                </option>
+                              )}
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
                             <div className="h-6">
                               <p
                                 className={`${STYLES.material_finish_warn} px-2 pt-1 transition-opacity duration-200 ${
@@ -3064,7 +3207,7 @@ const EstimateSectionForm = ({
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-in-out ${
                         showDrawerFrontMaterialOptions
-                          ? "max-h-96 opacity-100 mt-4"
+                          ? "max-h-[32rem] opacity-100 mt-4"
                           : "max-h-0 opacity-0"
                       }`}
                     >
@@ -3116,6 +3259,35 @@ const EstimateSectionForm = ({
                             <p className="text-xs text-slate-400 mt-1 px-2">
                               Leave empty to use face material
                             </p>
+                            <label
+                              htmlFor="drawerFrontPreWireBrushed"
+                              className={`${STYLES.label} mt-2`}
+                            >
+                              <span>Pre Wire Brushed</span>
+                              {getEffectiveDefaultDisplay(
+                                formData.drawerFrontPreWireBrushed,
+                                "default_drawer_front_pre_wire_brushed",
+                                "default_drawer_front_pre_wire_brushed",
+                                formatBoolean,
+                              )}
+                            </label>
+                            <select
+                              id="drawerFrontPreWireBrushed"
+                              name="drawerFrontPreWireBrushed"
+                              value={getBooleanSelectValue(
+                                formData.drawerFrontPreWireBrushed,
+                              )}
+                              onChange={handleChange}
+                              className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
+                            >
+                              {editType !== EDIT_TYPES.TEAM && (
+                                <option value="">
+                                  {getPlaceholder("setting")}
+                                </option>
+                              )}
+                              <option value="true">Yes</option>
+                              <option value="false">No</option>
+                            </select>
                             <div className="h-6">
                               <p
                                 className={`${STYLES.material_finish_warn} px-2 pt-1 transition-opacity duration-200 ${

@@ -1,4 +1,5 @@
 import { calculateNosingTime, roundToHundredth } from "./estimateHelpers";
+import { getEffectiveSheetPrice } from "./materialPricing";
 
 /**
  * Registry of available length rule keys with metadata for UI display.
@@ -88,8 +89,8 @@ const handleNosing = (itemContext, params) => {
   // Material: add nosing area when material_extra_area is enabled and thickness > 0.75
   if (params.material_extra_area && thickness > 0.75 && material) {
     const nosingArea = lengthInches * thickness; // square inches
-    if (material.sheet_price && material.area) {
-      const pricePerSqIn = material.sheet_price / material.area;
+    if (getEffectiveSheetPrice(material) && material.area) {
+      const pricePerSqIn = getEffectiveSheetPrice(material) / material.area;
       const nosingAreaWithWaste = nosingArea * 1.1;
       result.materialAddon = nosingAreaWithWaste * pricePerSqIn * quantity;
     }

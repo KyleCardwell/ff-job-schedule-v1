@@ -53,6 +53,32 @@ const sanitizeFinishArray = (value, finishOptions) => {
   return filtered.length > 0 ? filtered : null;
 };
 
+const parseBooleanOrNull = (value) => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  if (value === true) return true;
+  if (value === false) return false;
+  return null;
+};
+
+const resolveInheritedPreWireBrushed = (faceValue, specificValue) => {
+  const faceEnabled = parseBooleanOrNull(faceValue) === true;
+  const specificEnabled = parseBooleanOrNull(specificValue);
+
+  if (specificEnabled === true) {
+    return true;
+  }
+
+  if (specificEnabled === false) {
+    return false;
+  }
+
+  return faceEnabled;
+};
+
 /**
  * Creates the context object needed for getSectionCalculations
  * Extracted from EstimateSectionPrice to be reusable across components
@@ -251,6 +277,13 @@ export const createSectionContext = (section, estimate, catalogData) => {
       faceMaterials || [],
     );
 
+  const explicitDoorPreWireBrushed = parseBooleanOrNull(
+    normalizedSection.door_pre_wire_brushed,
+  );
+  const explicitDrawerFrontPreWireBrushed = parseBooleanOrNull(
+    normalizedSection.drawer_front_pre_wire_brushed,
+  );
+
   // Merge the effective defaults with the section, preserving cabinet items and other data
   const effectiveSection = {
     ...section,
@@ -261,6 +294,10 @@ export const createSectionContext = (section, estimate, catalogData) => {
     drawer_box_mat: effectiveDefaults.drawer_box_mat,
     door_mat: effectiveDefaults.door_mat,
     drawer_front_mat: effectiveDefaults.drawer_front_mat,
+    box_pre_wire_brushed: effectiveDefaults.box_pre_wire_brushed,
+    face_pre_wire_brushed: effectiveDefaults.face_pre_wire_brushed,
+    door_pre_wire_brushed: explicitDoorPreWireBrushed,
+    drawer_front_pre_wire_brushed: explicitDrawerFrontPreWireBrushed,
     hinge_id: effectiveDefaults.hinge_id,
     slide_id: effectiveDefaults.slide_id,
     door_pull_id: effectiveDefaults.door_pull_id,
@@ -289,12 +326,55 @@ export const createSectionContext = (section, estimate, catalogData) => {
     discount: effectiveDefaults.discount || 0,
   };
 
+  const currentPreWireBrushedUpcharge =
+    estimate?.pre_wire_brushed_sheet_upcharge ??
+    normalizedTeamDefaults?.pre_wire_brushed_sheet_upcharge ??
+    0;
+  const preWireBrushedSheetUpcharge =
+    !section?.use_default_prices &&
+    estimate?.finalized_on &&
+    estimate?.frozen_pre_wire_brushed_sheet_upcharge != null
+      ? Number(estimate.frozen_pre_wire_brushed_sheet_upcharge)
+      : Number(currentPreWireBrushedUpcharge);
+
+  const resolvedDoorPreWireBrushed = resolveInheritedPreWireBrushed(
+    effectiveSection.face_pre_wire_brushed,
+    explicitDoorPreWireBrushed,
+  );
+  const resolvedDrawerFrontPreWireBrushed = resolveInheritedPreWireBrushed(
+    effectiveSection.face_pre_wire_brushed,
+    explicitDrawerFrontPreWireBrushed,
+  );
+
+  const withSheetUpcharge = (material, enabled) => {
+    const shouldApplyUpcharge = material && parseBooleanOrNull(enabled) === true;
+
+    console.log("[withSheetUpcharge]", {
+      materialId: material?.id ?? null,
+      materialName: material?.name ?? null,
+      enabledRaw: enabled,
+      enabledParsed: parseBooleanOrNull(enabled),
+      shouldApplyUpcharge,
+      incomingSheetPrice: Number(material?.sheet_price || 0),
+      incomingSheetPriceUpcharge: Number(material?.sheet_price_upcharge || 0),
+      appliedUpchargeValue: shouldApplyUpcharge ? preWireBrushedSheetUpcharge : 0,
+    });
+
+    if (!shouldApplyUpcharge) return material;
+
+    return {
+      ...material,
+      sheet_price_upcharge: preWireBrushedSheetUpcharge,
+    };
+  };
+
   // Create selectedFaceMaterial with finish multipliers
   const selectedFaceMaterial = (() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveSection.face_mat,
+    const material = withSheetUpcharge(
+      faceMaterials?.find((mat) => mat.id === effectiveSection.face_mat),
+      effectiveSection.face_pre_wire_brushed,
     );
 
       // // Check if finish should be applied using three-tier fallback
@@ -325,8 +405,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
   const selectedBoxMaterial = (() => {
     let finishMultiplier = 0;
     let shopMultiplier = 1;
-    const material = boxMaterials?.find(
-      (mat) => mat.id === effectiveSection.box_mat,
+    const material = withSheetUpcharge(
+      boxMaterials?.find((mat) => mat.id === effectiveSection.box_mat),
+      effectiveSection.box_pre_wire_brushed,
     );
 
     // // Check if finish should be applied using three-tier fallback
@@ -359,8 +440,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
     let shopMultiplier = 1;
     const effectiveDoorMatId =
       effectiveSection.door_mat || effectiveSection.face_mat;
-    const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveDoorMatId,
+    const material = withSheetUpcharge(
+      faceMaterials?.find((mat) => mat.id === effectiveDoorMatId),
+      resolvedDoorPreWireBrushed,
     );
 
     // // Check if finish should be applied
@@ -399,8 +481,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
     let shopMultiplier = 1;
     const effectiveDrawerFrontMatId =
       effectiveSection.drawer_front_mat || effectiveSection.face_mat;
-    const material = faceMaterials?.find(
-      (mat) => mat.id === effectiveDrawerFrontMatId,
+    const material = withSheetUpcharge(
+      faceMaterials?.find((mat) => mat.id === effectiveDrawerFrontMatId),
+      resolvedDrawerFrontPreWireBrushed,
     );
 
     // // Check if finish should be applied
@@ -436,7 +519,9 @@ export const createSectionContext = (section, estimate, catalogData) => {
   // Build the complete context object
   const context = {
     boxMaterials,
-    faceMaterials,
+    faceMaterials: faceMaterials?.map((material) =>
+      withSheetUpcharge(material, effectiveSection.face_pre_wire_brushed),
+    ),
     drawerBoxMaterials,
     selectedFaceMaterial,
     selectedBoxMaterial,
@@ -454,6 +539,7 @@ export const createSectionContext = (section, estimate, catalogData) => {
     estimate: normalizedEstimate,
     team: normalizedTeamDefaults,
     effectiveSection,
+    preWireBrushedSheetUpcharge,
   };
 
   // Check if this section uses any items that have price overrides

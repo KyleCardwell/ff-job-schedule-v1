@@ -97,6 +97,28 @@ export const getEffectiveDefaults = (section = {}, estimate = {}, team = {}) => 
       estimate.default_face_mat,
       team.default_face_mat
     ),
+
+    // Pre-wire-brushing is independent for each material role.
+    box_pre_wire_brushed: getEffectiveValueOnly(
+      section.box_pre_wire_brushed,
+      estimate.default_box_pre_wire_brushed,
+      team.default_box_pre_wire_brushed
+    ),
+    face_pre_wire_brushed: getEffectiveValueOnly(
+      section.face_pre_wire_brushed,
+      estimate.default_face_pre_wire_brushed,
+      team.default_face_pre_wire_brushed
+    ),
+    door_pre_wire_brushed: getEffectiveValueOnly(
+      section.door_pre_wire_brushed,
+      estimate.default_door_pre_wire_brushed,
+      team.default_door_pre_wire_brushed
+    ),
+    drawer_front_pre_wire_brushed: getEffectiveValueOnly(
+      section.drawer_front_pre_wire_brushed,
+      estimate.default_drawer_front_pre_wire_brushed,
+      team.default_drawer_front_pre_wire_brushed
+    ),
     
     // Hardware
     hinge_id: getEffectiveValueOnly(
@@ -261,6 +283,10 @@ export const DEFAULTS_FIELD_MAPPING = {
   drawer_box_mat: 'drawer_box_mat',
   door_mat: 'door_mat',
   drawer_front_mat: 'drawer_front_mat',
+  boxPreWireBrushed: 'box_pre_wire_brushed',
+  facePreWireBrushed: 'face_pre_wire_brushed',
+  doorPreWireBrushed: 'door_pre_wire_brushed',
+  drawerFrontPreWireBrushed: 'drawer_front_pre_wire_brushed',
   hinge_id: 'hinge_id',
   slide_id: 'slide_id',
   door_pull_id: 'door_pull_id',

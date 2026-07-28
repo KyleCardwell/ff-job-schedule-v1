@@ -30,6 +30,7 @@ import {
   interpolateTimeByArea,
 } from "./estimateHelpers";
 import { applyLengthRules } from "./lengthRuleEngine";
+import { getEffectiveSheetPrice } from "./materialPricing";
 
 const getMoldingCountOverride = (cabinet, optionNames) => {
   for (const optionName of optionNames) {
@@ -783,8 +784,21 @@ const calculateFaceTotals = (section, context) => {
       const isMicroShakerStyle =
         styleToUse === FACE_STYLE_VALUES.MICRO_SHAKER;
 
+      const getFaceMaterialGroupKey = (material) => {
+        if (!material) return "unknown";
+
+        return [
+          material.id ?? "no-id",
+          Number(material.sheet_price ?? 0),
+          Number(material.sheet_price_upcharge ?? 0),
+          Number(material.width ?? 0),
+          Number(material.height ?? 0),
+        ].join("|");
+      };
+
       // Group faces by their effective material to avoid duplicate calculations
-      // Key: material ID, Value: { faces, moldings }
+      // Key includes ID + sheet pricing context so per-face upcharge variants
+      // (e.g., door vs drawer pre-wire-brushed) are priced separately.
       const facesByMaterial = new Map();
 
       faces.forEach((face) => {
@@ -796,9 +810,20 @@ const calculateFaceTotals = (section, context) => {
           ? selectedDrawerFrontMaterial
           : selectedDoorMaterial;
 
+        console.log("[slabSheetFaceMaterialSelection]", {
+          faceType: face.faceType,
+          selectedPath: isDrawerType ? "selectedDrawerFrontMaterial" : "selectedDoorMaterial",
+          materialId: effectiveMaterial?.material?.id ?? null,
+          materialName: effectiveMaterial?.material?.name ?? null,
+          sheetPrice: Number(effectiveMaterial?.material?.sheet_price || 0),
+          sheetPriceUpcharge: Number(
+            effectiveMaterial?.material?.sheet_price_upcharge || 0,
+          ),
+        });
+
         if (!effectiveMaterial?.material) return;
 
-        const materialKey = effectiveMaterial.material.id;
+        const materialKey = getFaceMaterialGroupKey(effectiveMaterial.material);
 
         if (!facesByMaterial.has(materialKey)) {
           facesByMaterial.set(materialKey, {
@@ -1537,7 +1562,7 @@ const calculateFillerMaterials = (section, context) => {
     } else {
       const totalArea = (faceArea + returnArea) * wasteFactor;
       const sheetArea = totalArea / material.area;
-      totals.woodTotal += sheetArea * material.sheet_price * quantity;
+      totals.woodTotal += sheetArea * getEffectiveSheetPrice(material) * quantity;
     }
   });
 
@@ -1596,7 +1621,7 @@ const calculateEndPanelNosingMaterials = (section, context) => {
     } else {
       const totalAreaWithWaste = totalArea * wasteFactor;
       const sheetArea = totalAreaWithWaste / material.area;
-      totals.woodTotal += sheetArea * material.sheet_price * quantity;
+      totals.woodTotal += sheetArea * getEffectiveSheetPrice(material) * quantity;
     }
   });
 
@@ -2190,11 +2215,11 @@ const calculateLengthTotals = (items, context) => {
       totals.woodCount += boardFeetWithWaste * quantity;
       lengthCatalogHours.price = Number(lengthCatalogHours.price) || 0;
       lengthCatalogHours.price += price;
-    } else if (material.sheet_price && material.area) {
+    } else if (getEffectiveSheetPrice(material) && material.area) {
       // Sheet goods: calculate area as fraction of sheet
       const area = (lengthInches * effectiveWidth) / 144; // Square feet
       const areaWithWaste = area * 1.1; // 10% waste
-      const pricePerSqFt = material.sheet_price / (material.area / 144);
+      const pricePerSqFt = getEffectiveSheetPrice(material) / (material.area / 144);
       const price = areaWithWaste * pricePerSqFt * quantity || 0;
       totals.materialTotal += price;
       lengthCatalogHours.price = Number(lengthCatalogHours.price) || 0;
@@ -2429,7 +2454,7 @@ const calculateAccessoriesTotal = (items, context, section) => {
             const boardFeet = volume / 144;
             const boardFeetWithWaste = boardFeet * wasteFactor;
             price = boardFeetWithWaste * material.bd_ft_price;
-          } else if (material?.sheet_price && material?.area) {
+          } else if (getEffectiveSheetPrice(material) && material?.area) {
             // Sheet goods calculation
             const volumeWithWaste = volume * wasteFactor;
             const materialThickness = material.thickness || 0.75;
@@ -2438,7 +2463,7 @@ const calculateAccessoriesTotal = (items, context, section) => {
 
             if (sheetVolume > 0) {
               const sheetsNeeded = volumeWithWaste / sheetVolume;
-              price = sheetsNeeded * material.sheet_price;
+              price = sheetsNeeded * getEffectiveSheetPrice(material);
             }
           }
         }

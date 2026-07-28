@@ -10,6 +10,7 @@ import {
   PART_NAMES,
   PARTS_LIST_MAPPING,
 } from "./constants";
+import { getEffectiveSheetPrice } from "./materialPricing";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
@@ -1378,7 +1379,7 @@ export const calculateSlabSheetFacePriceBulk = (
   const sheetWidth = selectedMaterial.width || 49;
   const sheetHeight = selectedMaterial.height || 97;
   const sheetArea = sheetWidth * sheetHeight;
-  const sheetPrice = selectedMaterial.sheet_price || 0;
+  const sheetPrice = getEffectiveSheetPrice(selectedMaterial);
 
   // Calculate total area of all faces
   const totalPartsArea = faces.reduce((sum, face) => sum + face.area, 0);
@@ -1681,7 +1682,7 @@ export const calculateSlabSheetFacePrice = (faceData, selectedMaterial) => {
   // Calculate price based on total area and material price
   const pricePerSquareInch =
     selectedMaterial.sq_in_price ||
-    selectedMaterial.sheet_price / selectedMaterial.area;
+    getEffectiveSheetPrice(selectedMaterial) / selectedMaterial.area;
 
   let totalPrice = 0;
 
@@ -2276,7 +2277,7 @@ export const calculateBoxSheetsCNC = (
       const sheetArea = sheetWidth * sheetHeight;
 
       // Calculate oversized sheet pricing if this is an oversized material group
-      let effectiveSheetPrice = material.sheet_price;
+      let effectiveSheetPrice = getEffectiveSheetPrice(material);
       if (material.isOversized) {
         // Find the base material to get standard pricing
         const baseMaterialKey = materialKey.replace("-oversize", "");
@@ -2302,6 +2303,7 @@ export const calculateBoxSheetsCNC = (
           // Add a premium for oversized sheets (e.g., 15% surcharge for special handling)
           const oversizePremium = 1.5;
           effectiveSheetPrice *= oversizePremium;
+          effectiveSheetPrice += Number(material.sheet_price_upcharge || 0);
         }
       }
 
