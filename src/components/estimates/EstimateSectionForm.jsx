@@ -449,9 +449,9 @@ const EstimateSectionForm = ({
   const [mustSelectDrawerFrontFinish, setMustSelectDrawerFrontFinish] =
     useState(false);
   const [selectedFaceMaterial, setSelectedFaceMaterial] = useState(null);
-  const [selectedBoxMaterial, setSelectedBoxMaterial] = useState(null);
-  const [selectedDoorMaterial, setSelectedDoorMaterial] = useState(null);
-  const [selectedDrawerFrontMaterial, setSelectedDrawerFrontMaterial] =
+  const [, setSelectedBoxMaterial] = useState(null);
+  const [, setSelectedDoorMaterial] = useState(null);
+  const [, setSelectedDrawerFrontMaterial] =
     useState(null);
   const [showDoorMaterialOptions, setShowDoorMaterialOptions] = useState(false);
   const [showDrawerFrontMaterialOptions, setShowDrawerFrontMaterialOptions] =
@@ -830,6 +830,28 @@ const EstimateSectionForm = ({
     formData.drawer_front_mat,
     formData.drawer_front_finish,
     formData.drawerFrontPreWireBrushed,
+  ]);
+
+  const effectiveFacePreWireBrushedForDisplay = useMemo(() => {
+    if (editType === EDIT_TYPES.TEAM) {
+      return formData.facePreWireBrushed ?? null;
+    }
+
+    const estimateFacePreWireBrushed =
+      editType === EDIT_TYPES.ESTIMATE
+        ? null
+        : currentEstimate?.default_face_pre_wire_brushed ?? null;
+
+    return getEffectiveValueOnly(
+      formData.facePreWireBrushed,
+      estimateFacePreWireBrushed,
+      teamDefaults?.default_face_pre_wire_brushed ?? null,
+    );
+  }, [
+    editType,
+    formData.facePreWireBrushed,
+    currentEstimate?.default_face_pre_wire_brushed,
+    teamDefaults?.default_face_pre_wire_brushed,
   ]);
 
   const clearFinishes = useCallback(
@@ -1768,7 +1790,6 @@ const EstimateSectionForm = ({
         onCancel?.();
       }
     } catch (error) {
-      console.error(`Error saving ${editType}:`, error);
       setSaveError(error.message || "Failed to save. Please try again.");
     }
   };
@@ -2777,16 +2798,23 @@ const EstimateSectionForm = ({
                               <span>Pre Wire Brushed</span>
                               {getEffectiveDefaultDisplay(
                                 formData.doorPreWireBrushed,
-                                "default_door_pre_wire_brushed",
-                                "default_door_pre_wire_brushed",
+                                null,
+                                null,
                                 formatBoolean,
+                                false,
+                                false,
+                                true,
+                                effectiveFacePreWireBrushedForDisplay,
                               )}
                             </label>
                             <select
                               id="doorPreWireBrushed"
                               name="doorPreWireBrushed"
                               value={getBooleanSelectValue(
-                                formData.doorPreWireBrushed,
+                                formData.doorPreWireBrushed ??
+                                  (editType === EDIT_TYPES.TEAM
+                                    ? null
+                                    : effectiveFacePreWireBrushedForDisplay),
                               )}
                               onChange={handleChange}
                               className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
@@ -3266,16 +3294,23 @@ const EstimateSectionForm = ({
                               <span>Pre Wire Brushed</span>
                               {getEffectiveDefaultDisplay(
                                 formData.drawerFrontPreWireBrushed,
-                                "default_drawer_front_pre_wire_brushed",
-                                "default_drawer_front_pre_wire_brushed",
+                                null,
+                                null,
                                 formatBoolean,
+                                false,
+                                false,
+                                true,
+                                effectiveFacePreWireBrushedForDisplay,
                               )}
                             </label>
                             <select
                               id="drawerFrontPreWireBrushed"
                               name="drawerFrontPreWireBrushed"
                               value={getBooleanSelectValue(
-                                formData.drawerFrontPreWireBrushed,
+                                formData.drawerFrontPreWireBrushed ??
+                                  (editType === EDIT_TYPES.TEAM
+                                    ? null
+                                    : effectiveFacePreWireBrushedForDisplay),
                               )}
                               onChange={handleChange}
                               className={`${STYLES.select} ${STYLES.inputNormal} ${STYLES.inputFocus}`}
