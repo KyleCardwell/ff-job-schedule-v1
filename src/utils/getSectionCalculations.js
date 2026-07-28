@@ -1402,8 +1402,8 @@ const calculateFaceFramePrices = (section, context) => {
       cabinet.cabinet_style_override || section.cabinet_style_id;
 
     frameParts.framePieces.forEach((piece) => {
-      const length = piece.length || 0;
-      const width = piece.width || 0;
+      const length = Number(piece.length) || 0;
+      const width = Number(piece.width) || 0;
 
       if (selectedFaceMaterial?.material?.bd_ft_price) {
         const boardFeet =
@@ -1418,6 +1418,7 @@ const calculateFaceFramePrices = (section, context) => {
 
       if (faceFrameAnchors && faceFrameAnchors.length > 0) {
         const area = length * width;
+        if (area <= 0) return;
 
         globalServices?.forEach((service) => {
           const teamServiceId = service.team_service_id;
