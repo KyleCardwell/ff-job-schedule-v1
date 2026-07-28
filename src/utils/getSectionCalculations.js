@@ -647,22 +647,6 @@ const calculateFaceTotals = (section, context) => {
   totals.approxBaseLengthFeet = Math.ceil(approxBaseLengthInches / 12);
   totals.approxCrownLengthFeet = Math.ceil(approxCrownLengthInches / 12);
 
-  // Log what's in facesByStyle for comparison
-  console.log("📊 facesByStyle summary:");
-  Object.entries(facesByStyle).forEach(([style, faces]) => {
-    const byType = faces.reduce((acc, face) => {
-      acc[face.faceType] = (acc[face.faceType] || 0) + 1;
-      return acc;
-    }, {});
-    console.log(`  Style "${style}": ${faces.length} faces`, byType);
-  });
-
-  // Calculate hours using parts list anchors
-  console.log(
-    "🔵 Starting face hours calculation, allFacesForHours count:",
-    allFacesForHours.length,
-  );
-
   allFacesForHours.forEach(
     (
       {
@@ -810,17 +794,6 @@ const calculateFaceTotals = (section, context) => {
           ? selectedDrawerFrontMaterial
           : selectedDoorMaterial;
 
-        console.log("[slabSheetFaceMaterialSelection]", {
-          faceType: face.faceType,
-          selectedPath: isDrawerType ? "selectedDrawerFrontMaterial" : "selectedDoorMaterial",
-          materialId: effectiveMaterial?.material?.id ?? null,
-          materialName: effectiveMaterial?.material?.name ?? null,
-          sheetPrice: Number(effectiveMaterial?.material?.sheet_price || 0),
-          sheetPriceUpcharge: Number(
-            effectiveMaterial?.material?.sheet_price_upcharge || 0,
-          ),
-        });
-
         if (!effectiveMaterial?.material) return;
 
         const materialKey = getFaceMaterialGroupKey(effectiveMaterial.material);
@@ -956,23 +929,16 @@ const calculateFaceTotals = (section, context) => {
             areaByFaceType[faceType] += face.area;
           });
 
-          const sheetContributionByFaceType = {};
           Object.entries(areaByFaceType).forEach(([faceType, area]) => {
             if (!totals.facePrices[faceType]) {
               totals.facePrices[faceType] = 0;
             }
             const proportion = totalArea > 0 ? area / totalArea : 0;
             const sheetContribution = styleTotalCost * proportion;
-            sheetContributionByFaceType[faceType] = roundToHundredth(
-              sheetContribution,
-            );
             totals.facePrices[faceType] += sheetContribution;
           });
 
           if (isMicroShakerStyle) {
-            const fivePieceAddonByFaceType = {};
-            let fivePieceAddonTotal = 0;
-
             materialFaces.forEach((face) => {
               const faceType = face.faceType;
               if (!MICRO_SHAKER_5PIECE_ADDON_FACE_TYPES.has(faceType)) {
@@ -987,27 +953,9 @@ const calculateFaceTotals = (section, context) => {
                 isMicroShaker: true,
               });
 
-              fivePieceAddonByFaceType[faceType] = roundToHundredth(
-                (fivePieceAddonByFaceType[faceType] || 0) + fivePieceAddonPrice,
-              );
-              fivePieceAddonTotal += fivePieceAddonPrice;
-
               totals.facePrices[faceType] += fivePieceAddonPrice;
             });
 
-            console.log("🧮 Micro Shaker price comparison", {
-              materialId: material?.id,
-              faceCount: materialFaces.length,
-              slabSheetTotal: roundToHundredth(result.totalCost),
-              perimeterWoodCost: roundToHundredth(perimeterWoodCost),
-              includedSlabTotal: roundToHundredth(styleTotalCost),
-              includedFivePieceTotal: roundToHundredth(fivePieceAddonTotal),
-              includedCombinedTotal: roundToHundredth(
-                styleTotalCost + fivePieceAddonTotal,
-              ),
-              sheetContributionByFaceType,
-              fivePieceAddonByFaceType,
-            });
           }
         },
       );

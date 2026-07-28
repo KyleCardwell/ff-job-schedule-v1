@@ -231,10 +231,43 @@ export const buildDoorDrawerMaterialNote = ({
 }) => {
   if (!effectiveSection) return "";
 
+  const parseBooleanOrNull = (value) => {
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+    }
+
+    if (value === true) return true;
+    if (value === false) return false;
+    return null;
+  };
+
+  const resolveInheritedPreWireBrushed = (faceValue, specificValue) => {
+    const faceEnabled = parseBooleanOrNull(faceValue) === true;
+    const specificEnabled = parseBooleanOrNull(specificValue);
+
+    if (specificEnabled === true) return true;
+    if (specificEnabled === false) return false;
+    return faceEnabled;
+  };
+
   const doorMatId = effectiveSection.door_mat || effectiveSection.face_mat;
   const drawerFrontMatId =
     effectiveSection.drawer_front_mat || effectiveSection.face_mat;
   const faceMatId = effectiveSection.face_mat;
+
+  const facePreWireBrushed = parseBooleanOrNull(
+    effectiveSection.face_pre_wire_brushed,
+  ) === true;
+  const doorPreWireBrushed = resolveInheritedPreWireBrushed(
+    effectiveSection.face_pre_wire_brushed,
+    effectiveSection.door_pre_wire_brushed,
+  );
+  const drawerFrontPreWireBrushed = resolveInheritedPreWireBrushed(
+    effectiveSection.face_pre_wire_brushed,
+    effectiveSection.drawer_front_pre_wire_brushed,
+  );
 
   const doorMaterial = faceMaterials?.find((m) => m.id === doorMatId);
   const drawerFrontMaterial = faceMaterials?.find(
@@ -247,6 +280,12 @@ export const buildDoorDrawerMaterialNote = ({
 
   const doorMaterialName = doorMaterial?.name || "";
   const drawerFrontMaterialName = drawerFrontMaterial?.name || "";
+  const doorMaterialDisplayName = doorPreWireBrushed
+    ? `${doorMaterialName}, Wire Brushed`
+    : doorMaterialName;
+  const drawerFrontMaterialDisplayName = drawerFrontPreWireBrushed
+    ? `${drawerFrontMaterialName}, Wire Brushed`
+    : drawerFrontMaterialName;
 
   const resolveFinishIds = (finishValue, fallbackFinishValue, needsFinish) => {
     if (!needsFinish) return [];
@@ -315,25 +354,31 @@ export const buildDoorDrawerMaterialNote = ({
   const drawerFrontFinishDiffersFromFace =
     Array.isArray(effectiveSection.drawer_front_finish) &&
     !isEqual(drawerFrontFinishIds, faceFinishIds);
+  const doorWireBrushedNeedsNote = doorPreWireBrushed && !facePreWireBrushed;
+  const drawerFrontWireBrushedNeedsNote =
+    drawerFrontPreWireBrushed && !facePreWireBrushed;
 
   const doorNeedsNote =
     hasDoors &&
     (doorDiffersFromFace ||
       doorFinishDiffersFromFace ||
-      doorHasExplicitUnfinished);
+      doorHasExplicitUnfinished ||
+      doorWireBrushedNeedsNote);
   const drawerFrontNeedsNote =
     hasDrawerFronts &&
     (drawerFrontDiffersFromFace ||
       drawerFrontFinishDiffersFromFace ||
-      drawerFrontHasExplicitUnfinished);
+      drawerFrontHasExplicitUnfinished ||
+      drawerFrontWireBrushedNeedsNote);
 
   if (doorNeedsNote && drawerFrontNeedsNote) {
     if (
       doorMatId === drawerFrontMatId &&
-      doorFinishNames === drawerFrontFinishNames
+      doorFinishNames === drawerFrontFinishNames &&
+      doorPreWireBrushed === drawerFrontPreWireBrushed
     ) {
       const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
-      return `Doors & Drawer Fronts - ${doorMaterialName}${finishPart}.`;
+      return `Doors & Drawer Fronts - ${doorMaterialDisplayName}${finishPart}.`;
     }
 
     const doorFinishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
@@ -341,19 +386,19 @@ export const buildDoorDrawerMaterialNote = ({
       ? ` (${drawerFrontFinishNames})`
       : "";
 
-    return `Doors - ${doorMaterialName}${doorFinishPart}. Drawer Fronts - ${drawerFrontMaterialName}${drawerFinishPart}.`;
+    return `Doors - ${doorMaterialDisplayName}${doorFinishPart}. Drawer Fronts - ${drawerFrontMaterialDisplayName}${drawerFinishPart}.`;
   }
 
   if (doorNeedsNote) {
     const finishPart = doorFinishNames ? ` (${doorFinishNames})` : "";
-    return `Doors - ${doorMaterialName}${finishPart}.`;
+    return `Doors - ${doorMaterialDisplayName}${finishPart}.`;
   }
 
   if (drawerFrontNeedsNote) {
     const finishPart = drawerFrontFinishNames
       ? ` (${drawerFrontFinishNames})`
       : "";
-    return `Drawer Fronts - ${drawerFrontMaterialName}${finishPart}.`;
+    return `Drawer Fronts - ${drawerFrontMaterialDisplayName}${finishPart}.`;
   }
 
   return "";

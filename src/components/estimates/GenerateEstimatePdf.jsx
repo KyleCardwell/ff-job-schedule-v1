@@ -323,6 +323,12 @@ const GenerateEstimatePdf = ({
         }
         const leftColumn = [];
         const rightColumn = [];
+        const faceMaterialText = (() => {
+          const base = section.faceMaterial || "";
+          if (!section.facePreWireBrushed) return base;
+          if (!base || base.includes(", Wire Brushed")) return base;
+          return `${base}, Wire Brushed`;
+        })();
 
         // Build detail columns
         leftColumn.push(`Style: ${section.cabinetStyle}`);
@@ -332,7 +338,7 @@ const GenerateEstimatePdf = ({
 
         rightColumn.push(`Doors: ${section.doorStyle}`);
         rightColumn.push(`Drawer Fronts: ${section.drawerFrontStyle}`);
-        rightColumn.push(`Wood: ${section.faceMaterial}`);
+        rightColumn.push(`Wood: ${faceMaterialText}`);
         rightColumn.push(`Finish: ${section.faceFinish}`);
 
         // leftColumn.push({ text: [{ text: "Style: ", bold: true }, { text: section.cabinetStyle }] });
@@ -698,7 +704,7 @@ const GenerateEstimatePdf = ({
           };
         },
         // Header function for each page
-        header: (currentPage, pageCount) => ({
+        header: () => ({
           table: {
             widths: ["*"],
             body: [
@@ -1077,8 +1083,7 @@ const GenerateEstimatePdf = ({
         pdfDoc.download(fileName);
         openPdfInNewTab(pdfBlob);
       }
-    } catch (error) {
-      console.error("Error generating PDF:", error);
+    } catch {
       alert("There was an error generating the PDF. Please try again.");
     } finally {
       setIsGenerating(false);

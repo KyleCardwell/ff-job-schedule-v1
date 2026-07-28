@@ -349,17 +349,6 @@ export const createSectionContext = (section, estimate, catalogData) => {
   const withSheetUpcharge = (material, enabled) => {
     const shouldApplyUpcharge = material && parseBooleanOrNull(enabled) === true;
 
-    console.log("[withSheetUpcharge]", {
-      materialId: material?.id ?? null,
-      materialName: material?.name ?? null,
-      enabledRaw: enabled,
-      enabledParsed: parseBooleanOrNull(enabled),
-      shouldApplyUpcharge,
-      incomingSheetPrice: Number(material?.sheet_price || 0),
-      incomingSheetPriceUpcharge: Number(material?.sheet_price_upcharge || 0),
-      appliedUpchargeValue: shouldApplyUpcharge ? preWireBrushedSheetUpcharge : 0,
-    });
-
     if (!shouldApplyUpcharge) return material;
 
     return {

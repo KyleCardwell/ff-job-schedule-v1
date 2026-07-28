@@ -39,6 +39,17 @@ const EstimateSectionInfo = ({
     (state) => state.teamEstimateDefaults.teamDefaults,
   );
 
+  const parseBooleanOrNull = (value) => {
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+    }
+    if (value === true) return true;
+    if (value === false) return false;
+    return null;
+  };
+
   const getPriceOverrideForItem = (sectionKey, itemId) => {
     if (itemId === null || itemId === undefined) return null;
     const sectionOverrides = sectionKey
@@ -143,9 +154,13 @@ const EstimateSectionInfo = ({
       : NOT_SELECTED;
   };
 
-  const getFaceMaterialName = (id) => {
+  const getFaceMaterialName = (id, wireBrushed = false) => {
     const option = materials?.faceMaterials?.find((m) => m.id === id);
-    return getOptionDisplayName("materials", option);
+    const baseName = getOptionDisplayName("materials", option);
+    if (wireBrushed && baseName !== NOT_SELECTED) {
+      return `${baseName}, Wire Brushed`;
+    }
+    return baseName;
   };
 
   const getBoxMaterialName = (id) => {
@@ -334,6 +349,11 @@ const EstimateSectionInfo = ({
                   "default_face_mat",
                   "default_face_mat",
                 );
+                const { value: facePreWireBrushed } = getSectionEffectiveValue(
+                  showEstimateDefaults ? null : section?.face_pre_wire_brushed,
+                  "default_face_pre_wire_brushed",
+                  "default_face_pre_wire_brushed",
+                );
                 return (
                   <>
                     <div className="text-slate-400 flex items-center gap-2">
@@ -341,7 +361,10 @@ const EstimateSectionInfo = ({
                       <span>Face Material:</span>
                     </div>
                     <div className="pl-5 mb-3">
-                      {getFaceMaterialName(value)}
+                      {getFaceMaterialName(
+                        value,
+                        parseBooleanOrNull(facePreWireBrushed) === true,
+                      )}
                     </div>
                   </>
                 );

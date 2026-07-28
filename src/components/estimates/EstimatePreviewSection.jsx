@@ -20,6 +20,18 @@ import {
   buildProcessedSectionNotes,
 } from "../../utils/sectionNotesHelpers";
 
+const parseBooleanOrNull = (value) => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+
+  if (value === true) return true;
+  if (value === false) return false;
+  return null;
+};
+
 const EstimatePreviewSection = ({
   section,
   sectionNumber,
@@ -214,6 +226,14 @@ const EstimatePreviewSection = ({
     );
     const displayNotesLines = buildDisplayNotesLines(processedNotes);
 
+    const faceMaterialName = context.selectedFaceMaterial?.material?.name || "";
+    const facePreWireBrushed =
+      parseBooleanOrNull(effectiveSection.face_pre_wire_brushed) === true;
+    const faceMaterialDisplayName =
+      facePreWireBrushed && faceMaterialName
+        ? `${faceMaterialName}, Wire Brushed`
+        : faceMaterialName;
+
     // Determine section name display
     let sectionNameDisplay = "";
     if (hasMultipleSections) {
@@ -237,7 +257,8 @@ const EstimatePreviewSection = ({
       totalPriceWithQuantity: sectionTotalPriceWithQuantity,
       // Description details for PDF
       cabinetStyle: cabinetStyleName,
-      faceMaterial: context.selectedFaceMaterial?.material?.name || "",
+      faceMaterial: faceMaterialDisplayName,
+      facePreWireBrushed,
       boxMaterial: hasBoxes
         ? context.selectedBoxMaterial?.material?.name || ""
         : "None",
