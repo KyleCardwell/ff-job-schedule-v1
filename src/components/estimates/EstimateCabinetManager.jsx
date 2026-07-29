@@ -2560,7 +2560,7 @@ const CabinetItemForm = ({
                 <div className="mt-4 p-3 border border-slate-300 rounded-md bg-slate-50">
                   <div className="flex flex-col gap-2 mb-3">
                     <p className="text-xs font-semibold text-slate-700">
-                      Apply Override To
+                      Interior Material/Finish Override
                     </p>
                     <div className="flex items-center gap-4 text-xs text-slate-700">
                       <label className="inline-flex items-center gap-1.5">

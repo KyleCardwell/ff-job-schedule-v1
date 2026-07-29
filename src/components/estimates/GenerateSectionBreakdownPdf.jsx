@@ -224,8 +224,17 @@ const GenerateSectionBreakdownPdf = ({
 
     return Object.values(itemHoursByCatalog)
       .filter((item) => {
-        if (!item?.hoursByService) return false;
-        return Object.values(item.hoursByService).some((hours) => hours > 0);
+        const hasHours = Object.values(item?.hoursByService || {}).some(
+          (hours) => hours > 0,
+        );
+
+        if (categoryTitle === "Accessories") {
+          const hasQuantity = Number(item?.quantity) > 0;
+          const hasPrice = Number(item?.price) > 0;
+          return hasHours || hasQuantity || hasPrice;
+        }
+
+        return hasHours;
       })
       .sort((a, b) => (a?.name || "").localeCompare(b?.name || ""));
   };
