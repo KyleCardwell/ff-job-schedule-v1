@@ -1050,6 +1050,13 @@ export const SECTION_NOTES_OPTIONS = [
     },
   },
   {
+    key: "led_lighting",
+    noteIndex: 1,
+    type: "boolean",
+    label: "LED Lighting",
+    estimateText: () => "LED Lighting.",
+  },
+  {
     key: "lighting",
     noteIndex: 2,
     type: "boolean",
