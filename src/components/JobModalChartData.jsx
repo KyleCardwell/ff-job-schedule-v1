@@ -1499,17 +1499,21 @@ const JobModal = ({
     if (!tasksForExport.length) return;
 
     const csvRows = [
-      ["Project Name", "tracker_id", "tracker_name", "tracker_room"].join(","),
-      ...tasksForExport.map((task) => {
-        const trackerName = (task.project_name || fallbackProjectName || "").trim();
-
-        return [
-          escapeCsvValue(formatBusybusyProjectName(task, fallbackProjectName)),
-          escapeCsvValue(task.task_number),
-          escapeCsvValue(trackerName),
-          escapeCsvValue(task.task_name),
-        ].join(",");
-      }),
+      "Project Name",
+      // Legacy Busybusy tracker export format (keep for quick restore if needed):
+      // ["Project Name", "tracker_id", "tracker_name", "tracker_room"].join(","),
+      // ...tasksForExport.map((task) => {
+      //   const trackerName = (task.project_name || fallbackProjectName || "").trim();
+      //   return [
+      //     escapeCsvValue(formatBusybusyProjectName(task, fallbackProjectName)),
+      //     escapeCsvValue(task.task_number),
+      //     escapeCsvValue(trackerName),
+      //     escapeCsvValue(task.task_name),
+      //   ].join(",");
+      // }),
+      ...tasksForExport.map((task) =>
+        escapeCsvValue(formatBusybusyProjectName(task, fallbackProjectName)),
+      ),
     ];
 
     const blob = new Blob([`${csvRows.join("\n")}\n`], {
