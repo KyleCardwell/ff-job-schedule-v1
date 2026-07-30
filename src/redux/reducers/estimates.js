@@ -153,12 +153,18 @@ export const estimatesReducer = (state = initialState, action) => {
           error: null
         };
       } else if (type === 'task') {
+        const hasTasksOrder = Object.prototype.hasOwnProperty.call(
+          data,
+          "tasks_order",
+        );
         return {
           ...state,
           currentEstimate: {
             ...state.currentEstimate,
             tasks: data.tasks,
-            tasks_order: data.tasks_order,
+            tasks_order: hasTasksOrder
+              ? data.tasks_order
+              : state.currentEstimate?.tasks_order,
           },
           loading: false,
           error: null

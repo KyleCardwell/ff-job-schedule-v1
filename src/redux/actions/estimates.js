@@ -644,6 +644,7 @@ export const updateTask = (estimateId, taskId, updates) => {
           data: {
             estimateId,
             tasks: updatedTasks,
+            tasks_order: currentEstimate?.tasks_order,
           },
         },
       });
@@ -675,7 +676,7 @@ export const deleteTask = (estimateId, taskId) => {
 
       // Remove the task ID from the order array in the estimate
       const { currentEstimate } = getState().estimates;
-      const newTasksOrder = currentEstimate.tasks_order.filter(
+      const newTasksOrder = (currentEstimate.tasks_order || []).filter(
         (id) => id !== taskId
       );
       await updateOrderArray(

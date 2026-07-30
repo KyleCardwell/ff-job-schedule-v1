@@ -26,3 +26,11 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Python cache artifacts
+__pycache__/
+*.py[cod]
+
+# Supabase local dump/export artifacts
+supabase/functions/dump/
+supabase/functions/*.zip
