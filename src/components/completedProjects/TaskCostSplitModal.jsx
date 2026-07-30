@@ -337,6 +337,25 @@ const TaskCostSplitModal = ({
     });
   };
 
+  const handleAddOneRowPerTask = () => {
+    setSplitRows((prev) => {
+      const populatedRows = prev.filter(
+        (row) => row.taskId || row.amount !== null || row.isTaxed,
+      );
+      const existingTaskIds = new Set(
+        populatedRows.map((row) => String(row.taskId)).filter(Boolean),
+      );
+      const taskRows = taskOptions
+        .filter((taskOption) => !existingTaskIds.has(taskOption.value))
+        .map((taskOption) => ({
+          ...createSplitRow(),
+          taskId: taskOption.value,
+        }));
+
+      return [...populatedRows, ...taskRows];
+    });
+  };
+
   const handleSave = async () => {
     setSaveError(null);
 
@@ -522,15 +541,25 @@ const TaskCostSplitModal = ({
               <h3 className="text-sm font-bold uppercase text-gray-700">
                 Task Split Amounts
               </h3>
-              <button
-                type="button"
-                onClick={() =>
-                  setSplitRows((prev) => [...prev, createSplitRow()])
-                }
-                className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900"
-              >
-                <FiPlus size={14} /> Add Task Row
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={handleAddOneRowPerTask}
+                  disabled={taskOptions.length === 0}
+                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <FiPlus size={14} /> 1 per task
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSplitRows((prev) => [...prev, createSplitRow()])
+                  }
+                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900"
+                >
+                  <FiPlus size={14} /> Add Task Row
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-[2fr_1fr_110px_40px] gap-3 text-xs font-semibold text-gray-600 uppercase mb-1">
