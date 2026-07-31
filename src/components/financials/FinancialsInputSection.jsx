@@ -6,7 +6,11 @@ import { v4 as uuidv4 } from "uuid";
 
 import { usePermissions } from "../../hooks/usePermissions";
 import { FIXED_AMOUNT } from "../../utils/constants.js";
-import { calculateHoursRowCost } from "../../utils/financialsHelpers";
+import {
+  calculateHoursRowCost,
+  isEmptyFinancialInputRow,
+  isEmptyHoursInputRow,
+} from "../../utils/financialsHelpers";
 import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
 
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
@@ -258,6 +262,79 @@ const FinancialsInputSection = ({
     });
   };
 
+  const pruneEmptyInvoiceRows = () => {
+    const retainedRows = localInputRows.filter((row) =>
+      !isEmptyFinancialInputRow({
+        ...row,
+        cost: inputValues[`${row.id}-cost`] ?? row.cost,
+        taxRate: inputValues[`${row.id}-tax`] ?? row.taxRate,
+      }),
+    );
+
+    if (retainedRows.length === localInputRows.length) return;
+
+    const retainedIds = new Set(retainedRows.map((row) => row.id));
+    setInputValues((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).filter(([key]) =>
+          [...retainedIds].some((rowId) => key.startsWith(`${rowId}-`)),
+        ),
+      ),
+    );
+    handleUpdateRows(retainedRows);
+
+    const actual_cost = retainedRows.reduce((sum, row) => {
+      const cost = row.cost || 0;
+      const taxRate = row.taxRate || 0;
+      return sum + (taxRate > 0 ? cost * (1 + taxRate / 100) : cost);
+    }, 0);
+    onUpdate({ estimate, actual_cost, inputRows: retainedRows });
+  };
+
+  const pruneEmptyHoursRows = (teamServiceId = null) => {
+    let removedAnyRows = false;
+    const updatedData = localData.map((serviceData) => {
+      if (
+        teamServiceId !== null &&
+        serviceData.team_service_id !== teamServiceId
+      ) {
+        return serviceData;
+      }
+
+      const retainedRows = (serviceData.inputRows || []).filter(
+        (row) => !isEmptyHoursInputRow(row),
+      );
+      if (retainedRows.length === (serviceData.inputRows || []).length) {
+        return serviceData;
+      }
+
+      removedAnyRows = true;
+      const actual_cost = retainedRows.reduce(
+        (sum, row) => sum + (row.actual_cost || 0),
+        0,
+      );
+      return { ...serviceData, inputRows: retainedRows, actual_cost };
+    });
+
+    if (!removedAnyRows) return;
+    handleUpdateRows(updatedData);
+    onUpdate(updatedData);
+  };
+
+  const handleToggleSection = () => {
+    if (isExpanded) {
+      if (isHoursSection) {
+        pruneEmptyHoursRows();
+        setExpandedServiceId(null);
+      } else {
+        pruneEmptyInvoiceRows();
+      }
+    } else if (!isHoursSection && localInputRows.length === 0) {
+      handleAddInvoiceRow();
+    }
+    onToggle();
+  };
+
   const handleInputChange = (rowId, field, value) => {
     if (field === "delete") {
       handleDeleteRow(rowId);
@@ -451,7 +528,17 @@ const FinancialsInputSection = ({
   };
 
   const handleToggleService = (teamServiceId) => {
-    // const teamServiceId = services.find((s) => s.service_id === serviceId)?.team_service_id;
+    const isOpening = expandedServiceId !== teamServiceId;
+    const serviceData = localData.find(
+      (service) => service.team_service_id === teamServiceId
+    );
+
+    if (isOpening && (serviceData?.inputRows || []).length === 0) {
+      handleAddHoursRow(teamServiceId);
+    } else if (!isOpening) {
+      pruneEmptyHoursRows(teamServiceId);
+    }
+
     setExpandedServiceId((current) =>
       current === teamServiceId ? null : teamServiceId
     );
@@ -521,7 +608,7 @@ const FinancialsInputSection = ({
     <div className="flex gap-4">
       <div className="border border-gray-200 rounded-lg mb-4 flex-1">
         <button
-          onClick={onToggle}
+          onClick={handleToggleSection}
           className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors duration-150 ease-in-out"
         >
           <h3 className="text-lg font-medium text-gray-900">{sectionName}</h3>
@@ -812,6 +899,7 @@ FinancialsInputSection.propTypes = {
   inputRows: PropTypes.array,
   data: PropTypes.array,
   onUpdate: PropTypes.func,
+  isExpanded: PropTypes.bool,
   onToggle: PropTypes.func,
   sectionId: PropTypes.string,
   employees: PropTypes.array,

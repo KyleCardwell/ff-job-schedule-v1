@@ -1,3 +1,7 @@
+import {
+  isEmptyFinancialInputRow,
+  isEmptyHoursInputRow,
+} from "../../utils/financialsHelpers";
 import { supabase } from "../../utils/supabase";
 import { Actions } from "../actions";
 
@@ -400,8 +404,11 @@ export const saveProjectFinancials = (
         if (section.id === "hours") {
           // For hours section, maintain the employee type data structure
           const processedData = section.data.map((typeData) => {
+            const filteredInputRows = (typeData.inputRows || []).filter(
+              (row) => !isEmptyHoursInputRow(row),
+            );
             // Calculate actual_cost for this type from inputRows
-            const typeActualCost = (typeData.inputRows || []).reduce(
+            const typeActualCost = filteredInputRows.reduce(
               (sum, row) => sum + (row.actual_cost || 0),
               0
             );
@@ -411,7 +418,7 @@ export const saveProjectFinancials = (
               fixedAmount: typeData.fixedAmount || 0,
               rateOverride: typeData.rateOverride || null,
               actual_cost: typeActualCost,
-              inputRows: typeData.inputRows || [],
+              inputRows: filteredInputRows,
               team_service_id: typeData.team_service_id,
             };
           });
@@ -431,7 +438,10 @@ export const saveProjectFinancials = (
           };
         } else {
           // For non-hours sections
-          const actualCost = (section.inputRows || []).reduce(
+          const filteredInputRows = (section.inputRows || []).filter(
+            (row) => !isEmptyFinancialInputRow(row),
+          );
+          const actualCost = filteredInputRows.reduce(
             (sum, row) => {
               const cost = row.cost || 0;
               const taxRate = row.taxRate || 0;
@@ -445,7 +455,7 @@ export const saveProjectFinancials = (
             name: section.sectionName.toLowerCase(),
             estimate: section.estimate || 0,
             actual_cost: actualCost,
-            data: section.inputRows || [],
+            data: filteredInputRows,
             completedAt: section.completedAt || null,
           };
         }

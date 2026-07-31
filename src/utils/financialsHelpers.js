@@ -1,4 +1,35 @@
-import { FIXED_AMOUNT } from "./constants";
+import { FIXED_AMOUNT } from "./constants.js";
+
+const hasExplicitValue = (value) =>
+  value !== null &&
+  value !== undefined &&
+  (typeof value !== "string" || value.trim() !== "");
+
+export const isEmptyFinancialInputRow = (row = {}) =>
+  ![
+    row.invoice,
+    row.description,
+    row.cost,
+    row.taxRate,
+  ].some(hasExplicitValue);
+
+export const isEmptyHoursInputRow = (row = {}) => {
+  const hours = row.hours;
+  const hasExplicitHours =
+    typeof hours === "object" && hours !== null
+      ? hasExplicitValue(hours.display) || Number(hours.decimal) !== 0
+      : typeof hours === "number"
+        ? hours !== 0
+        : hasExplicitValue(hours);
+
+  return ![
+    row.employee_id,
+    row.invoice,
+    row.description,
+    row.cost,
+    row.taxRate,
+  ].some(hasExplicitValue) && !hasExplicitHours && !row.isOvertime;
+};
 
 /**
  * Calculate actual_cost for a single hours input row.
