@@ -51,6 +51,25 @@ const formatOtherInputRowLabel = (row) => {
   return parts.join(" - ") || "(No details)";
 };
 
+const calculateProfitPercent = (profit, estimate) => {
+  const numericProfit = Number(profit);
+  const numericEstimate = Number(estimate);
+
+  if (
+    !Number.isFinite(numericProfit) ||
+    !Number.isFinite(numericEstimate) ||
+    numericEstimate === 0
+  ) {
+    return null;
+  }
+
+  const percent = (numericProfit / numericEstimate) * 100;
+  return Number.isFinite(percent) ? percent : null;
+};
+
+const formatProfitPercent = (percent) =>
+  percent === null ? "--" : `${percent.toFixed(2)}%`;
+
 const PDF_LINE_COLOR = "#aaa";
 const COMPACT_TABLE_LAYOUT = {
   hLineWidth: function () {
@@ -178,8 +197,10 @@ const GeneratePdfButton = ({
         ],
       ];
 
-      const profitPercent =
-        ((projectTotals.profit || 0) / (projectTotals.estimate || 0)) * 100;
+      const profitPercent = calculateProfitPercent(
+        projectTotals.profit || 0,
+        projectTotals.estimate || 0,
+      );
 
       // Content array for the PDF
       const content = [
@@ -266,7 +287,7 @@ const GeneratePdfButton = ({
                   alignment: "center",
                 },
                 {
-                  text: `${profitPercent.toFixed(2)}%`,
+                  text: formatProfitPercent(profitPercent),
                   color:
                     profitPercent > 0
                       ? "green"
@@ -324,7 +345,7 @@ const GeneratePdfButton = ({
         const estimate = adjustedTotals.total || adjustedTotals.estimate || 0;
         const actual = adjustedTotals.actual || 0;
         const taskProfit = estimate - actual;
-        const profitPercent = (taskProfit / estimate) * 100;
+        const profitPercent = calculateProfitPercent(taskProfit, estimate);
 
         // Add to summary table
         summaryTableBody.push([
@@ -353,7 +374,7 @@ const GeneratePdfButton = ({
             alignment: "right",
           },
           {
-            text: `${profitPercent.toFixed(2)}%`,
+            text: formatProfitPercent(profitPercent),
             color:
               profitPercent > 0 ? "green" : profitPercent < 0 ? "red" : "blue",
             alignment: "right",
