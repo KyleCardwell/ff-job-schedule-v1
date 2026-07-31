@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { FaEye } from "react-icons/fa";
 import {
   FiCheck,
@@ -16,9 +16,11 @@ import { buttonClass } from "../../assets/tailwindConstants.js";
 import { usePermissions } from "../../hooks/usePermissions";
 import { Actions } from "../../redux/actions";
 import {
+  applyProjectHoursSplit,
+  fetchProjectHoursSplitData,
   fetchProjectFinancials,
-  splitProjectFinancialsCosts,
   fetchTaskFinancials,
+  splitProjectFinancialsCosts,
 } from "../../redux/actions/financialsData";
 import Tooltip from "../common/Tooltip.jsx";
 
@@ -75,6 +77,14 @@ const CompletedProjectCard = ({
   const handleSplitCostSave = async (payload) => {
     return dispatch(splitProjectFinancialsCosts(payload));
   };
+
+  const handleHoursSplitLoad = useCallback(async () => {
+    return dispatch(fetchProjectHoursSplitData(project.project_id));
+  }, [dispatch, project.project_id]);
+
+  const handleHoursSplitSave = useCallback(async (payload) => {
+    return dispatch(applyProjectHoursSplit(payload));
+  }, [dispatch]);
 
   const handleViewClick = async (e) => {
     e.stopPropagation();
@@ -166,13 +176,13 @@ const CompletedProjectCard = ({
                 <span className="p-2 bg-gray-300">Costing Complete</span>
                 <div className="bg-gray-300 p-1 flex flex-col items-center justify-center gap-1">
                   <span>Actions</span>
-                  <Tooltip text="Split cost between multiple tasks">
+                  <Tooltip text="Split costs or employee hours between tasks">
                     <button
                       type="button"
                       onClick={() => setIsSplitCostModalOpen(true)}
                       className={`${buttonClass} bg-blue-700`}
                     >
-                      Split Cost
+                      Split Costs / Hours
                     </button>
                   </Tooltip>
                 </div>
@@ -256,6 +266,8 @@ const CompletedProjectCard = ({
         projectName={project.project_name}
         tasks={project.tasks}
         onSave={handleSplitCostSave}
+        onLoadHours={handleHoursSplitLoad}
+        onSaveHours={handleHoursSplitSave}
       />
     </div>
   );

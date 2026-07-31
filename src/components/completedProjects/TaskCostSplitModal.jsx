@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
-import { FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiAlertTriangle, FiPlus, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import { useSelector } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,8 +9,15 @@ import {
   modalContainerClass,
   modalOverlayClass,
 } from "../../assets/tailwindConstants";
-import { DEFAULT_FINANCIAL_SECTIONS } from "../../utils/constants";
+import { DEFAULT_FINANCIAL_SECTIONS, FIXED_AMOUNT } from "../../utils/constants";
 import { roundToHundredth } from "../../utils/estimateHelpers";
+import {
+  buildHoursSplitPreview,
+  getApplicableHoursTaskIds,
+  getAvailableHoursEmployees,
+  getAvailableHoursServices,
+  getTaskHoursService,
+} from "../../utils/hoursSplitHelpers";
 import { formatNumberValue, safeEvaluate } from "../../utils/mathUtils";
 
 const normalizeSectionName = (name) =>
@@ -55,6 +62,27 @@ const formatCurrency = (value) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+
+const renderHoursDisplay = (value, showPlus = false) => {
+  const decimalHours = Number(value) || 0;
+  const totalMinutes = Math.round(Math.abs(decimalHours) * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const sign = decimalHours < 0 ? "-" : showPlus ? "+" : "";
+  const clock = `${sign}${String(hours).padStart(2, "0")}:${String(
+    minutes,
+  ).padStart(2, "0")}`;
+
+  return (
+    <span className="inline-flex flex-col align-middle leading-tight">
+      <span>{clock}</span>
+      <span className="text-[11px] font-normal opacity-70">
+        {sign}
+        {Math.abs(decimalHours).toFixed(2)} hrs
+      </span>
+    </span>
+  );
+};
 
 const buildSharedDistributionByTask = (sharedRow, taskIds, taskWeightsById = null) => {
   if (!taskIds.length) return [];
@@ -110,9 +138,12 @@ const TaskCostSplitModal = ({
   projectName,
   tasks,
   onSave,
+  onLoadHours,
+  onSaveHours,
 }) => {
   const chartConfig = useSelector((state) => state.chartConfig);
   const services = useSelector((state) => state.services?.allServices || []);
+  const employees = useSelector((state) => state.builders?.employees || []);
 
   const sectionCategoryOptions = useMemo(() => {
     const chartSections = Array.isArray(chartConfig?.estimate_sections)
@@ -182,6 +213,15 @@ const TaskCostSplitModal = ({
   const [inputValues, setInputValues] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [activeTab, setActiveTab] = useState("cost");
+  const [hoursSplitData, setHoursSplitData] = useState(null);
+  const [isHoursLoading, setIsHoursLoading] = useState(false);
+  const [hoursLoadError, setHoursLoadError] = useState(null);
+  const [hoursLoadVersion, setHoursLoadVersion] = useState(0);
+  const [hoursServiceId, setHoursServiceId] = useState("");
+  const [selectedHoursTaskIds, setSelectedHoursTaskIds] = useState([]);
+  const [selectedHoursEmployeeIds, setSelectedHoursEmployeeIds] = useState([]);
+  const [hoursPreview, setHoursPreview] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -196,7 +236,59 @@ const TaskCostSplitModal = ({
     setInputValues({});
     setIsSaving(false);
     setSaveError(null);
+    setActiveTab("cost");
+    setHoursSplitData(null);
+    setIsHoursLoading(false);
+    setHoursLoadError(null);
+    setHoursLoadVersion(0);
+    setHoursServiceId("");
+    setSelectedHoursTaskIds([]);
+    setSelectedHoursEmployeeIds([]);
+    setHoursPreview(null);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      activeTab !== "hours" ||
+      hoursSplitData ||
+      !onLoadHours
+    ) {
+      return;
+    }
+
+    let isCurrent = true;
+    setIsHoursLoading(true);
+    setHoursLoadError(null);
+
+    onLoadHours()
+      .then((result) => {
+        if (!isCurrent) return;
+        if (result?.success === false) {
+          setHoursLoadError(result.error || "Failed to load project hours.");
+          return;
+        }
+        setHoursSplitData(result?.data || { tasks: [] });
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setHoursLoadError(error?.message || "Failed to load project hours.");
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsHoursLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    activeTab,
+    hoursSplitData,
+    hoursLoadVersion,
+    isOpen,
+    onLoadHours,
+  ]);
 
   const selectedCategory = useMemo(
     () =>
@@ -216,6 +308,48 @@ const TaskCostSplitModal = ({
         label: `${task.task_number || ""} - ${task.task_name || ""}`,
       })),
     [tasks],
+  );
+
+  const hoursTasks = useMemo(() => {
+    const availableTaskIds = new Set((tasks || []).map((task) => String(task.task_id)));
+    return (hoursSplitData?.tasks || []).filter((task) =>
+      availableTaskIds.has(String(task.taskId)),
+    );
+  }, [hoursSplitData, tasks]);
+
+  const hoursServiceOptions = useMemo(() => {
+    const availableServiceIds = new Set(getAvailableHoursServices(hoursTasks));
+    return services
+      .filter((service) =>
+        availableServiceIds.has(String(service.team_service_id)),
+      )
+      .map((service) => ({
+        value: String(service.team_service_id),
+        label: service.service_name,
+      }));
+  }, [hoursTasks, services]);
+
+  const applicableHoursTaskIds = useMemo(
+    () => getApplicableHoursTaskIds(hoursTasks, hoursServiceId),
+    [hoursTasks, hoursServiceId],
+  );
+
+  const availableHoursEmployees = useMemo(
+    () =>
+      getAvailableHoursEmployees(
+        hoursTasks,
+        hoursServiceId,
+        selectedHoursTaskIds,
+      ).map((employeeTotal) => {
+        const employee = employees.find(
+          (item) => String(item.employee_id) === employeeTotal.employeeId,
+        );
+        return {
+          ...employeeTotal,
+          name: employee?.employee_name || `Employee #${employeeTotal.employeeId}`,
+        };
+      }),
+    [employees, hoursServiceId, hoursTasks, selectedHoursTaskIds],
   );
 
   const splitSubtotal = useMemo(
@@ -356,6 +490,140 @@ const TaskCostSplitModal = ({
     });
   };
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSaveError(null);
+  };
+
+  const handleHoursServiceChange = (serviceId) => {
+    setHoursServiceId(serviceId);
+    setSelectedHoursTaskIds([]);
+    setSelectedHoursEmployeeIds([]);
+    setHoursPreview(null);
+    setSaveError(null);
+  };
+
+  const handleHoursTaskToggle = (taskId) => {
+    const normalizedTaskId = String(taskId);
+    const currentlyAllEmployeesSelected = availableHoursEmployees.every(
+      (employee) => selectedHoursEmployeeIds.includes(employee.employeeId),
+    );
+    const nextTaskIds = selectedHoursTaskIds.includes(normalizedTaskId)
+      ? selectedHoursTaskIds.filter((id) => id !== normalizedTaskId)
+      : [...selectedHoursTaskIds, normalizedTaskId];
+    const nextAvailableEmployees = getAvailableHoursEmployees(
+      hoursTasks,
+      hoursServiceId,
+      nextTaskIds,
+    );
+    const nextAvailableEmployeeIds = nextAvailableEmployees.map(
+      (employee) => employee.employeeId,
+    );
+
+    setSelectedHoursTaskIds(nextTaskIds);
+    setSelectedHoursEmployeeIds(
+      currentlyAllEmployeesSelected
+        ? nextAvailableEmployeeIds
+        : selectedHoursEmployeeIds.filter((employeeId) =>
+            nextAvailableEmployeeIds.includes(employeeId),
+          ),
+    );
+    setHoursPreview(null);
+    setSaveError(null);
+  };
+
+  const handleSelectAllHoursTasks = () => {
+    const shouldClear =
+      applicableHoursTaskIds.length > 0 &&
+      applicableHoursTaskIds.every((taskId) =>
+        selectedHoursTaskIds.includes(taskId),
+      );
+    const nextTaskIds = shouldClear ? [] : applicableHoursTaskIds;
+    const nextEmployees = getAvailableHoursEmployees(
+      hoursTasks,
+      hoursServiceId,
+      nextTaskIds,
+    );
+
+    setSelectedHoursTaskIds(nextTaskIds);
+    setSelectedHoursEmployeeIds(
+      shouldClear ? [] : nextEmployees.map((employee) => employee.employeeId),
+    );
+    setHoursPreview(null);
+    setSaveError(null);
+  };
+
+  const handleHoursEmployeeToggle = (employeeId) => {
+    const normalizedEmployeeId = String(employeeId);
+    setSelectedHoursEmployeeIds((prev) =>
+      prev.includes(normalizedEmployeeId)
+        ? prev.filter((id) => id !== normalizedEmployeeId)
+        : [...prev, normalizedEmployeeId],
+    );
+    setHoursPreview(null);
+    setSaveError(null);
+  };
+
+  const handleSelectAllHoursEmployees = () => {
+    const availableEmployeeIds = availableHoursEmployees.map(
+      (employee) => employee.employeeId,
+    );
+    const shouldClear =
+      availableEmployeeIds.length > 0 &&
+      availableEmployeeIds.every((employeeId) =>
+        selectedHoursEmployeeIds.includes(employeeId),
+      );
+
+    setSelectedHoursEmployeeIds(shouldClear ? [] : availableEmployeeIds);
+    setHoursPreview(null);
+    setSaveError(null);
+  };
+
+  const handleCalculateHoursSplit = () => {
+    setSaveError(null);
+    const preview = buildHoursSplitPreview({
+      tasks: hoursTasks,
+      serviceId: hoursServiceId,
+      selectedTaskIds: selectedHoursTaskIds,
+      selectedEmployeeIds: selectedHoursEmployeeIds,
+      splitBatchId: uuidv4(),
+    });
+
+    if (preview.error) {
+      setHoursPreview(null);
+      setSaveError(preview.error);
+      return;
+    }
+
+    setHoursPreview(preview);
+  };
+
+  const handleSaveHoursSplit = async () => {
+    if (!hoursPreview || !onSaveHours) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const saveResult = await onSaveHours({
+        projectId,
+        teamServiceId: Number(hoursServiceId),
+        employeeIds: selectedHoursEmployeeIds.map(Number),
+        taskUpdates: hoursPreview.taskUpdates,
+      });
+
+      if (saveResult?.success === false) {
+        setSaveError(saveResult.error || "Failed to save the hours split.");
+        return;
+      }
+
+      onClose?.();
+    } catch (error) {
+      setSaveError(error?.message || "Failed to save the hours split.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaveError(null);
 
@@ -493,6 +761,31 @@ const TaskCostSplitModal = ({
       >
         <div className="flex-shrink-0 mb-4 pb-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-center">{projectName}</h2>
+          <div className="mt-4 flex border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => handleTabChange("cost")}
+              className={`px-5 py-2 text-sm font-semibold border-b-2 ${
+                activeTab === "cost"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Split Cost
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("hours")}
+              className={`px-5 py-2 text-sm font-semibold border-b-2 ${
+                activeTab === "hours"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Split Hours
+            </button>
+          </div>
+          {activeTab === "cost" && (
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
@@ -533,9 +826,12 @@ const TaskCostSplitModal = ({
               />
             </div>
           </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0 space-y-6 pr-1">
+          {activeTab === "cost" ? (
+            <>
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold uppercase text-gray-700">
@@ -829,6 +1125,380 @@ const TaskCostSplitModal = ({
               </div>
             </div>
           </section>
+            </>
+          ) : (
+            <section className="space-y-5">
+              <div className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                <FiAlertTriangle className="mt-0.5 flex-shrink-0" size={18} />
+                <div>
+                  <div className="font-semibold">
+                    Do not split hours until all hours have been entered.
+                  </div>
+                  <p className="mt-1 text-amber-800">
+                    This redistributes existing employee hours and labor cost
+                    across tasks. It does not add or remove hours from the
+                    project.
+                  </p>
+                </div>
+              </div>
+
+              {isHoursLoading && (
+                <div className="py-10 text-center text-sm text-gray-500">
+                  Loading project hours...
+                </div>
+              )}
+
+              {!isHoursLoading && hoursLoadError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <p>{hoursLoadError}</p>
+                  <button
+                    type="button"
+                    onClick={() => setHoursLoadVersion((version) => version + 1)}
+                    className="mt-3 inline-flex items-center gap-1 font-semibold text-red-700 hover:text-red-900"
+                  >
+                    <FiRefreshCw size={14} /> Try Again
+                  </button>
+                </div>
+              )}
+
+              {!isHoursLoading && !hoursLoadError && hoursSplitData && (
+                <>
+                  {hoursServiceOptions.length === 0 ? (
+                    <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                      No service hour data is available for these tasks.
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
+                          Service
+                        </label>
+                        <select
+                          value={hoursServiceId}
+                          onChange={(event) =>
+                            handleHoursServiceChange(event.target.value)
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select service</option>
+                          {hoursServiceOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {hoursServiceId && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.15fr)] gap-5">
+                          <div className="rounded-md border border-gray-200">
+                            <div className="relative flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+                              <div className="flex-1">
+                                <h3 className="text-sm font-bold uppercase text-gray-700">
+                                  Tasks
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                  Select at least two tasks.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleSelectAllHoursTasks}
+                                className="absolute right-4 text-xs font-semibold text-blue-700 hover:text-blue-900"
+                              >
+                                {applicableHoursTaskIds.length > 0 &&
+                                applicableHoursTaskIds.every((taskId) =>
+                                  selectedHoursTaskIds.includes(taskId),
+                                )
+                                  ? "Clear all"
+                                  : "Select all"}
+                              </button>
+                            </div>
+                            <div className="max-h-64 divide-y divide-gray-100 overflow-y-auto">
+                              {hoursTasks
+                                .filter((task) =>
+                                  applicableHoursTaskIds.includes(
+                                    String(task.taskId),
+                                  ),
+                                )
+                                .map((task) => {
+                                  const service = getTaskHoursService(
+                                    task,
+                                    hoursServiceId,
+                                  );
+                                  const actualHours = (
+                                    service?.inputRows || []
+                                  ).reduce((sum, row) => {
+                                    if (
+                                      !row.employee_id ||
+                                      row.employee_id === FIXED_AMOUNT
+                                    ) {
+                                      return sum;
+                                    }
+                                    return (
+                                      sum +
+                                      Number(
+                                        row.hours?.decimal ?? row.hours ?? 0,
+                                      )
+                                    );
+                                  }, 0);
+
+                                  return (
+                                    <label
+                                      key={task.taskId}
+                                      className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-blue-50"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedHoursTaskIds.includes(
+                                          String(task.taskId),
+                                        )}
+                                        onChange={() =>
+                                          handleHoursTaskToggle(task.taskId)
+                                        }
+                                        className="mt-1 h-4 w-4"
+                                      />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-medium text-gray-800">
+                                          {task.taskNumber} - {task.taskName}
+                                        </span>
+                                        <span className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500">
+                                          <span>
+                                            Est:{" "}
+                                            {renderHoursDisplay(service?.estimate)}
+                                          </span>
+                                          <span>
+                                            Current:{" "}
+                                            {renderHoursDisplay(actualHours)}
+                                          </span>
+                                          <span
+                                            className={
+                                              task.hours?.completedAt
+                                                ? "text-green-700"
+                                                : "font-semibold text-amber-700"
+                                            }
+                                          >
+                                            {task.hours?.completedAt
+                                              ? "Hours complete"
+                                              : "Hours not marked complete"}
+                                          </span>
+                                        </span>
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                            </div>
+                          </div>
+
+                          <div className="rounded-md border border-gray-200">
+                            <div className="relative flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+                              <div className="flex-1">
+                                <h3 className="text-sm font-bold uppercase text-gray-700">
+                                  Employees
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                  Only selected employees will be changed.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleSelectAllHoursEmployees}
+                                disabled={availableHoursEmployees.length === 0}
+                                className="absolute right-4 text-xs font-semibold text-blue-700 hover:text-blue-900 disabled:text-gray-400"
+                              >
+                                {availableHoursEmployees.length > 0 &&
+                                availableHoursEmployees.every((employee) =>
+                                  selectedHoursEmployeeIds.includes(
+                                    employee.employeeId,
+                                  ),
+                                )
+                                  ? "Clear all"
+                                  : "Select all"}
+                              </button>
+                            </div>
+                            <div>
+                              <div>
+                                <div className="grid grid-cols-[20px_minmax(56px,.75fr)_repeat(3,minmax(56px,72px))] items-center gap-1 border-b border-gray-200 bg-gray-50 px-2 py-2 text-xs font-semibold uppercase text-gray-600 sm:grid-cols-[24px_minmax(70px,1fr)_repeat(3,minmax(54px,72px))] sm:px-3">
+                                  <span />
+                                  <span>Employee</span>
+                                  <span className="text-right">Reg</span>
+                                  <span className="text-right">OT</span>
+                                  <span className="text-right">Total</span>
+                                </div>
+                                <div className="max-h-64 divide-y divide-gray-100 overflow-y-auto">
+                                  {availableHoursEmployees.length === 0 ? (
+                                    <div className="px-4 py-6 text-center text-sm text-gray-500">
+                                      Select tasks containing employee hours.
+                                    </div>
+                                  ) : (
+                                    availableHoursEmployees.map((employee) => (
+                                      <label
+                                        key={employee.employeeId}
+                                        className="grid cursor-pointer grid-cols-[20px_minmax(56px,1fr)_repeat(3,minmax(44px,60px))] items-center gap-1 px-2 py-3 hover:bg-blue-50 sm:grid-cols-[24px_minmax(70px,1fr)_repeat(3,minmax(54px,72px))] sm:px-3"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedHoursEmployeeIds.includes(
+                                            employee.employeeId,
+                                          )}
+                                          onChange={() =>
+                                            handleHoursEmployeeToggle(
+                                              employee.employeeId,
+                                            )
+                                          }
+                                          className="h-4 w-4"
+                                        />
+                                        <span className="truncate text-sm font-medium text-gray-800">
+                                          {employee.name}
+                                        </span>
+                                        <span className="text-right text-xs text-gray-600">
+                                          {renderHoursDisplay(
+                                            employee.regularHours,
+                                          )}
+                                        </span>
+                                        <span className="text-right text-xs text-gray-600">
+                                          {renderHoursDisplay(
+                                            employee.overtimeHours,
+                                          )}
+                                        </span>
+                                        <span className="text-right text-xs font-semibold text-gray-800">
+                                          {renderHoursDisplay(employee.hours)}
+                                        </span>
+                                      </label>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {hoursServiceId && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleCalculateHoursSplit}
+                            disabled={
+                              selectedHoursTaskIds.length < 2 ||
+                              selectedHoursEmployeeIds.length === 0
+                            }
+                            className={`${buttonClass} bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400`}
+                          >
+                            Calculate Split
+                          </button>
+                        </div>
+                      )}
+
+                      {hoursPreview && (
+                        <div className="rounded-md border border-blue-200">
+                          <div className="border-b border-blue-200 bg-blue-50 px-4 py-3">
+                            <h3 className="text-sm font-bold uppercase text-blue-900">
+                              Split Preview
+                            </h3>
+                            <p className="mt-1 text-xs text-blue-800">
+                              Total hours and saved labor cost are preserved.
+                              Regular and overtime hours are split separately.
+                            </p>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <div className="min-w-[760px]">
+                              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase text-gray-600">
+                                <span>Task</span>
+                                <span className="text-right">Estimated</span>
+                                <span className="text-right">Weight</span>
+                                <span className="text-right">Current</span>
+                                <span className="text-right">New</span>
+                                <span className="text-right">Change</span>
+                              </div>
+                              {hoursPreview.taskSummaries.map((summary) => (
+                                <div
+                                  key={summary.taskId}
+                                  className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0"
+                                >
+                                  <span className="font-medium text-gray-800">
+                                    {summary.taskNumber} - {summary.taskName}
+                                  </span>
+                                  <span className="text-right">
+                                    {renderHoursDisplay(
+                                      summary.estimatedHours,
+                                    )}
+                                  </span>
+                                  <span className="text-right">
+                                    {(summary.weight * 100).toFixed(1)}%
+                                  </span>
+                                  <span className="text-right">
+                                    {renderHoursDisplay(
+                                      summary.currentHours,
+                                    )}
+                                  </span>
+                                  <span className="text-right font-semibold">
+                                    {renderHoursDisplay(
+                                      summary.proposedHours,
+                                    )}
+                                  </span>
+                                  <span
+                                    className={`text-right font-semibold ${
+                                      summary.proposedHours -
+                                        summary.currentHours >=
+                                      0
+                                        ? "text-green-700"
+                                        : "text-red-700"
+                                    }`}
+                                  >
+                                    {renderHoursDisplay(
+                                      summary.proposedHours -
+                                        summary.currentHours,
+                                      true,
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                              <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-t-2 border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-950">
+                                <span>Totals</span>
+                                <span className="text-right">
+                                  {renderHoursDisplay(
+                                    hoursPreview.totals.estimatedHours,
+                                  )}
+                                </span>
+                                <span className="text-right">100.0%</span>
+                                <span className="text-right">
+                                  {renderHoursDisplay(
+                                    hoursPreview.totals.currentHours,
+                                  )}
+                                </span>
+                                <span className="text-right">
+                                  {renderHoursDisplay(
+                                    hoursPreview.totals.proposedHours,
+                                  )}
+                                </span>
+                                <span
+                                  className={`text-right ${
+                                    Math.abs(
+                                      hoursPreview.totals.proposedHours -
+                                        hoursPreview.totals.currentHours,
+                                    ) < 0.000001
+                                      ? "text-blue-800"
+                                      : "text-red-700"
+                                  }`}
+                                >
+                                  {renderHoursDisplay(
+                                    hoursPreview.totals.proposedHours -
+                                      hoursPreview.totals.currentHours,
+                                    true,
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </section>
+          )}
         </div>
 
         <div className="flex-shrink-0 mt-5 pt-4 border-t border-gray-200 flex justify-between">
@@ -842,11 +1512,18 @@ const TaskCostSplitModal = ({
           </button>
           <button
             type="button"
-            className={`${buttonClass} bg-blue-500`}
-            onClick={handleSave}
-            disabled={isSaving}
+            className={`${buttonClass} bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-400`}
+            onClick={activeTab === "cost" ? handleSave : handleSaveHoursSplit}
+            disabled={
+              isSaving ||
+              (activeTab === "hours" && (!hoursPreview || !onSaveHours))
+            }
           >
-            {isSaving ? "Saving..." : "Save"}
+            {isSaving
+              ? "Saving..."
+              : activeTab === "cost"
+                ? "Save Split Cost"
+                : "Save Split Hours"}
           </button>
         </div>
         {saveError && (
@@ -870,6 +1547,8 @@ TaskCostSplitModal.propTypes = {
     }),
   ),
   onSave: PropTypes.func,
+  onLoadHours: PropTypes.func,
+  onSaveHours: PropTypes.func,
 };
 
 export default TaskCostSplitModal;

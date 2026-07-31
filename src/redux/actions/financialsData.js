@@ -150,6 +150,69 @@ export const splitProjectFinancialsCosts = ({
   };
 };
 
+export const fetchProjectHoursSplitData = (projectId) => {
+  return async (dispatch) => {
+    try {
+      const { data, error } = await supabase.rpc(
+        "get_project_hours_split_data",
+        { p_project_id: projectId },
+      );
+
+      if (error) {
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to view financial records",
+          );
+        }
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      dispatch({
+        type: Actions.financialsData.SAVE_TASK_FINANCIALS_ERROR,
+        payload: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  };
+};
+
+export const applyProjectHoursSplit = ({
+  projectId,
+  teamServiceId,
+  employeeIds,
+  taskUpdates,
+}) => {
+  return async (dispatch) => {
+    try {
+      const { data, error } = await supabase.rpc("apply_project_hours_split", {
+        p_project_id: projectId,
+        p_team_service_id: teamServiceId,
+        p_employee_ids: employeeIds || [],
+        p_task_updates: taskUpdates || [],
+      });
+
+      if (error) {
+        if (error.code === "PGRST204") {
+          throw new Error(
+            "You do not have permission to modify financial records",
+          );
+        }
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      dispatch({
+        type: Actions.financialsData.SAVE_TASK_FINANCIALS_ERROR,
+        payload: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  };
+};
+
 export const fetchTaskFinancials = (taskId) => {
   return async (dispatch, getState) => {
     dispatch(setLoading(true));
