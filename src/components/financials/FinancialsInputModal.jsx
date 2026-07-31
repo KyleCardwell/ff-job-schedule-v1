@@ -66,8 +66,11 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   const [csvImportError, setCsvImportError] = useState(null);
   const [uploadedCsvFileName, setUploadedCsvFileName] = useState("");
   const [isHoursCsvOpen, setIsHoursCsvOpen] = useState(false);
+  const [cabinetDoorsActualTotal, setCabinetDoorsActualTotal] = useState(null);
 
   useEffect(() => {
+    setCabinetDoorsActualTotal(null);
+
     if (!financialSections) {
       setAdjustments(DEFAULT_ADJUSTMENTS);
       return;
@@ -248,6 +251,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   };
 
   const handleSectionUpdate = (sectionId, newData) => {
+    setCabinetDoorsActualTotal(null);
     setLocalSections((prevSections) =>
       prevSections.map((section) => {
         if (section.id === sectionId) {
@@ -276,6 +280,7 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
   };
 
   const handleImportRow = (row) => {
+    setCabinetDoorsActualTotal(null);
     setLocalSections((prevSections) => applyCsvRowToSections(prevSections, row));
     setAdjustments((prev) => applyCsvRowToAdjustments(prev, row));
   };
@@ -381,6 +386,40 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCalculateCabinetDoorsActual = () => {
+    if (cabinetDoorsActualTotal !== null) {
+      setCabinetDoorsActualTotal(null);
+      return;
+    }
+
+    const includedIds = new Set(["cabinets", "doors"]);
+    const includedNames = new Set(["cabinets", "doors & drawer fronts"]);
+    const total = localSections.reduce((sum, section) => {
+      if (
+        !includedIds.has(String(section.id)) &&
+        !includedNames.has(normalizeSectionName(section.sectionName))
+      ) {
+        return sum;
+      }
+
+      const sectionActual = (section.inputRows || []).reduce(
+        (sectionSum, row) => {
+          const cost = parseFloat(row.cost) || 0;
+          const taxRate = parseFloat(row.taxRate) || 0;
+          return (
+            sectionSum +
+            (taxRate > 0 ? cost * (1 + taxRate / 100) : cost)
+          );
+        },
+        0,
+      );
+
+      return sum + sectionActual;
+    }, 0);
+
+    setCabinetDoorsActualTotal(total);
   };
 
   const formatCurrency = (value) => {
@@ -520,15 +559,29 @@ const FinancialsInputModal = ({ isOpen, onClose, selectedTask }) => {
                 </div>
 
                 {/* Fixed Footer */}
-                <div className="modal-actions flex-shrink-0 flex justify-between mt-4">
+                <div className="modal-actions flex-shrink-0 grid grid-cols-[1fr_auto_1fr] items-center mt-4">
                   <button
-                    className={`${buttonClass} bg-red-500`}
+                    className={`${buttonClass} bg-red-500 justify-self-start`}
                     onClick={onClose}
                   >
                     Cancel
                   </button>
+                  <div className="relative justify-self-center">
+                    <button
+                      type="button"
+                      className={`${buttonClass} bg-emerald-600`}
+                      onClick={handleCalculateCabinetDoorsActual}
+                    >
+                      Cabs + D/Dfs
+                    </button>
+                    {cabinetDoorsActualTotal !== null && (
+                      <span className="absolute left-full top-1/2 ml-3 -translate-y-1/2 whitespace-nowrap font-bold text-gray-800">
+                        ${formatCurrency(cabinetDoorsActualTotal)}
+                      </span>
+                    )}
+                  </div>
                   <button
-                    className={`${buttonClass} bg-blue-500`}
+                    className={`${buttonClass} bg-blue-500 justify-self-end`}
                     onClick={handleSave}
                     disabled={isSaving}
                   >
