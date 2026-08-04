@@ -16,6 +16,14 @@ const FinancialsAccordion = ({
     setOpenSectionId(openSectionId === sectionId ? null : sectionId);
   };
 
+  const handleCompletionChange = (sectionId, isCompleted) => {
+    onCompletionChange?.(sectionId, isCompleted);
+
+    if (isCompleted && openSectionId === sectionId) {
+      setOpenSectionId(null);
+    }
+  };
+
   return (
     <div>
       {sections.map((section) => (
@@ -28,7 +36,7 @@ const FinancialsAccordion = ({
           isExpanded={openSectionId === section.id}
           onToggle={() => handleToggleSection(section.id)}
           onUpdate={(updates) => onSectionUpdate(section.id, updates)}
-          onCompletionChange={onCompletionChange}
+          onCompletionChange={handleCompletionChange}
         />
       ))}
     </div>
