@@ -334,7 +334,8 @@ export const sortAndAdjustDates = (
 
   for (let i = 0; i < arrayToProcess.length; i++) {
     const current = arrayToProcess[i];
-    const { isDragged, ...taskWithoutDragFlag } = current;
+    const taskWithoutDragFlag = { ...current };
+    delete taskWithoutDragFlag.isDragged;
 
     // Calculate start date
     let start_date = normalizeDate(current.start_date);
@@ -575,13 +576,14 @@ export const calculateFinancialTotals = (
     const discountAmount =
       (subtotal + profitAmount + commissionAmount) *
       (adjustments.discount / 100);
+    const preRoundedEstimate =
+      subtotal + profitAmount + commissionAmount - discountAmount;
+    const roundedPerUnitEstimate = Math.ceil(preRoundedEstimate / 5) * 5;
+    const roundingAmount =
+      (roundedPerUnitEstimate - preRoundedEstimate) * adjustments.quantity;
     // Round up to nearest 5
     const adjustedEstimate =
-      Math.ceil(
-        (subtotal + profitAmount + commissionAmount - discountAmount) / 5
-      ) *
-        5 *
-        adjustments.quantity +
+      roundedPerUnitEstimate * adjustments.quantity +
       (adjustments.addToTotal || 0);
 
     const adjustedActual =
@@ -622,8 +624,18 @@ export const calculateFinancialTotals = (
           "discount",
           {
             name: "discount",
-            estimate: discountAmount,
-            actual_cost: discountAmount,
+            // Discount affects selling price, not tracked cost, so show it as
+            // a negative estimate with no actual-cost value.
+            estimate: -discountAmount,
+            actual_cost: 0,
+          },
+        ],
+        [
+          "rounding",
+          {
+            name: "rounding",
+            estimate: roundingAmount,
+            actual_cost: 0,
           },
         ],
         [

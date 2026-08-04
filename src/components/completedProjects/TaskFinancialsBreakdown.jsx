@@ -42,6 +42,14 @@ const isOtherSection = (sectionId, sectionName) =>
   sectionId === "other" ||
   (sectionName || "").trim().toLowerCase() === "other";
 
+const NON_ACTUAL_ADJUSTMENT_IDS = new Set([
+  "addToSubtotal",
+  "profit",
+  "discount",
+  "rounding",
+  "addToTotal",
+]);
+
 const formatOtherInputRowLabel = (row) => {
   const parts = [row?.invoice, row?.description]
     .map((value) => (typeof value === "string" ? value.trim() : ""))
@@ -166,6 +174,11 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
           }
 
           const sectionIsOther = isOtherSection(id, sectionData.name);
+          const isNonActualAdjustment = NON_ACTUAL_ADJUSTMENT_IDS.has(id);
+          const sectionEstimate = sectionData.estimate || 0;
+          const sectionActual = sectionData.actual_cost || 0;
+          const sectionProfit =
+            sectionEstimate - (isNonActualAdjustment ? 0 : sectionActual);
           const otherInputRows = sectionIsOther
             ? Array.isArray(sectionData.data)
               ? sectionData.data
@@ -181,29 +194,26 @@ const TaskFinancialsBreakdown = ({ task, services, color, adjustments }) => {
                 </div>
                 <div className="text-right">
                   $
-                  {sectionData.estimate.toLocaleString(undefined, {
+                  {sectionEstimate.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </div>
                 <div className="text-right">
-                  $
-                  {sectionData.actual_cost.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {isNonActualAdjustment
+                    ? "--"
+                    : `$${sectionActual.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`}
                 </div>
                 <div
                   className={`text-right mx-2 ${
-                    sectionData.estimate - sectionData.actual_cost >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
+                    sectionProfit >= 0 ? "text-green-600" : "text-red-600"
                   }`}
                 >
                   $
-                  {(
-                    sectionData.estimate - sectionData.actual_cost
-                  ).toLocaleString(undefined, {
+                  {sectionProfit.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}

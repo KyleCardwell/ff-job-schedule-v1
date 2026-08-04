@@ -58,6 +58,7 @@ export const ADJUSTMENT_ORDER = [
   "profit",
   "commission",
   "discount",
+  "rounding",
   "addToTotal",
 ];
 

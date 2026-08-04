@@ -55,11 +55,19 @@ const isOtherSection = (sectionId, sectionName) =>
   sectionId === "other" ||
   (sectionName || "").trim().toLowerCase() === "other";
 
+const NON_ACTUAL_ADJUSTMENT_IDS = new Set([
+  "addToSubtotal",
+  "profit",
+  "discount",
+  "rounding",
+  "addToTotal",
+]);
+
 const CompletedProjectView = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask] = useState(null);
   const [isFinancialsModalOpen, setIsFinancialsModalOpen] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [isTotalsExpanded, setIsTotalsExpanded] = useState(false);
@@ -389,9 +397,11 @@ const CompletedProjectView = () => {
               {orderedProjectSections.map(
                 ([sectionId, sectionData]) => {
                   const sectionIsOther = isOtherSection(sectionId, sectionData.name);
-                  const profit =
-                    (sectionData.estimate || 0) -
-                    (sectionData.actual_cost || 0);
+                  const isNonActualAdjustment =
+                    NON_ACTUAL_ADJUSTMENT_IDS.has(sectionId);
+                  const sectionEstimate = sectionData.estimate || 0;
+                  const sectionActual = sectionData.actual_cost || 0;
+                  const profit = sectionEstimate - (isNonActualAdjustment ? 0 : sectionActual);
                   const otherInputRows = sectionIsOther
                     ? sectionData.inputRows?.length
                       ? sectionData.inputRows
@@ -415,7 +425,7 @@ const CompletedProjectView = () => {
                           <div className="capitalize">{sectionData.name}</div>
                           <div className="text-right">
                             $
-                            {(sectionData.estimate || 0).toLocaleString(
+                            {sectionEstimate.toLocaleString(
                               undefined,
                               {
                                 minimumFractionDigits: 2,
@@ -424,14 +434,12 @@ const CompletedProjectView = () => {
                             )}
                           </div>
                           <div className="text-right">
-                            $
-                            {(sectionData.actual_cost || 0).toLocaleString(
-                              undefined,
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              }
-                            )}
+                            {isNonActualAdjustment
+                              ? "--"
+                              : `$${sectionActual.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}`}
                           </div>
                           <div
                             className={`text-right font-medium ${
