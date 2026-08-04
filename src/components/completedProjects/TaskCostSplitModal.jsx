@@ -78,7 +78,8 @@ const buildDistributedCostExpression = (
   if (shareCents === totalCents) {
     return baseExpression;
   }
-  const allocationPercent = roundToHundredth((shareCents / totalCents) * 100);
+  const allocationPercent =
+    Math.round(((shareCents / totalCents) * 100 + Number.EPSILON) * 1000) / 1000;
   return `(${baseExpression}) * ${allocationPercent}%`;
 };
 
