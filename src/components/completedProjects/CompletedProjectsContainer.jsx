@@ -1,9 +1,8 @@
 import PropTypes from "prop-types";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
-import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   fetchCompletedProjects,
   restoreProjectToSchedule,
@@ -17,8 +16,18 @@ import "./CompletedProjectsContainer.css";
 import PdfCompletedListComponent from "./PdfCompletedListComponent.jsx";
 import ProjectSearchFilter from "./ProjectSearchFilter.jsx";
 
+const getDefaultDateRange = () => {
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+  startDate.setFullYear(endDate.getFullYear() - 1);
+
+  return {
+    start: startDate.toISOString().split("T")[0],
+    end: endDate.toISOString().split("T")[0],
+  };
+};
+
 const CompletedProjectsContainer = () => {
-  const { canEditSchedule } = usePermissions();
   const dispatch = useDispatch();
   const { completedProjects, loading, error } = useSelector(
     (state) => state.completedProjects
@@ -35,9 +44,18 @@ const CompletedProjectsContainer = () => {
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [isRestoring, setIsRestoring] = useState(false);
 
-  const handleFilterChange = (filters) => {
-    dispatch(fetchCompletedProjects(filters));
-  };
+  const handleFilterChange = useCallback((filters = {}) => {
+    const searchTerm = filters.searchTerm?.trim() || "";
+    const dateRange = filters.dateRange || {};
+    const hasDateFilter = Boolean(dateRange.start || dateRange.end);
+
+    const requestFilters =
+      searchTerm || hasDateFilter
+        ? { ...filters, searchTerm }
+        : { ...filters, searchTerm, dateRange: getDefaultDateRange() };
+
+    dispatch(fetchCompletedProjects(requestFilters));
+  }, [dispatch]);
 
     const handleSort = (key) => {
     setSortConfig((prev) => {
@@ -129,8 +147,8 @@ const CompletedProjectsContainer = () => {
   }, [completedProjects, sortConfig]);
 
   useEffect(() => {
-    dispatch(fetchCompletedProjects());
-  }, [dispatch]);
+    handleFilterChange();
+  }, [handleFilterChange]);
 
   if (loading) {
     return (

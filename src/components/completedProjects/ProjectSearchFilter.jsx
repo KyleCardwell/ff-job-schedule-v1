@@ -80,6 +80,10 @@ const ProjectSearchFilter = ({ onFilterChange }) => {
           </button>
         </div>
       </div>
+      <p className="mt-2 text-xs text-gray-600">
+        Default view shows shop-completed projects from the last 12 months.
+        Search will still include all dates.
+      </p>
     </form>
   );
 };
