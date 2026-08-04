@@ -532,6 +532,11 @@ const CompletedProjectView = () => {
                         <div>
                           {otherInputRows.map((row, index) => {
                             const rowCost = parseFloat(row?.cost) || 0;
+                            const taxRate = parseFloat(row?.taxRate) || 0;
+                            const rowTotal =
+                              taxRate > 0
+                                ? rowCost * (1 + taxRate / 100)
+                                : rowCost;
                             return (
                               <div
                                 key={`${sectionId}-other-row-${row?.id || index}`}
@@ -540,7 +545,7 @@ const CompletedProjectView = () => {
                                 <div className="pl-4">{formatOtherInputRowLabel(row)}</div>
                                 <div className="text-right"></div>
                                 <div className="text-right">
-                                  ${rowCost.toLocaleString(undefined, {
+                                  ${rowTotal.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                   })}
