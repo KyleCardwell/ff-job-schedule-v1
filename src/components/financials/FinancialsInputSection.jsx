@@ -1,4 +1,3 @@
-import _ from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
@@ -12,8 +11,15 @@ import {
   isEmptyHoursInputRow,
 } from "../../utils/financialsHelpers";
 import { safeEvaluate, formatNumberValue } from "../../utils/mathUtils";
+import ExpressionInput from "../common/ExpressionInput.jsx";
 
 import EmployeeTypeAccordion from "./EmployeeTypeAccordion.jsx";
+
+const normalizeExpression = (value) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
 
 const FinancialsInputSection = ({
   sectionName,
@@ -238,7 +244,9 @@ const FinancialsInputSection = ({
       invoice: "",
       description: "",
       cost: "",
+      costExpression: null,
       taxRate: "",
+      taxRateExpression: null,
     };
     const updatedRows = [...localInputRows, newRow];
     handleUpdateRows(updatedRows);
@@ -383,7 +391,7 @@ const FinancialsInputSection = ({
     });
   };
 
-  const handleCostBlur = (rowId, value) => {
+  const handleCostBlur = (rowId, value, shouldUpdateExpression = true) => {
     let numValue;
 
     if (value.trim() === "") {
@@ -401,12 +409,17 @@ const FinancialsInputSection = ({
       }
     }
 
+    const expression = numValue === "" ? null : normalizeExpression(value);
+
     // Update the model with the numeric value
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
         return {
           ...row,
           cost: numValue === "" ? null : numValue, // store null for empty
+          costExpression: shouldUpdateExpression
+            ? expression
+            : row.costExpression,
         };
       }
       return row;
@@ -433,7 +446,7 @@ const FinancialsInputSection = ({
     });
   };
 
-  const handleTaxBlur = (rowId, value) => {
+  const handleTaxBlur = (rowId, value, shouldUpdateExpression = true) => {
     let numValue;
 
     if (value.trim() === "") {
@@ -451,12 +464,17 @@ const FinancialsInputSection = ({
       }
     }
 
+    const expression = numValue === "" ? null : normalizeExpression(value);
+
     // Update the model with the numeric value
     const updatedRows = localInputRows.map((row) => {
       if (row.id === rowId) {
         return {
           ...row,
           taxRate: numValue === "" ? null : numValue, // store null for empty
+          taxRateExpression: shouldUpdateExpression
+            ? expression
+            : row.taxRateExpression,
         };
       }
       return row;
@@ -598,11 +616,6 @@ const FinancialsInputSection = ({
       { estimate: 0, actual: 0, totalHours: 0, actualHours: 0 }
     );
   }, [isHoursSection, localData, services]);
-
-  const formatEstimate = (value) => {
-    if (value === null || value === undefined || value === "") return "";
-    return value === 0 ? "" : value.toString();
-  };
 
   return (
     <div className="flex gap-4">
@@ -816,25 +829,31 @@ const FinancialsInputSection = ({
                           placeholder="Description"
                         />
                       )}
-                      <input
+                      <ExpressionInput
                         type="text"
                         name="cost"
                         value={inputValues[`${row.id}-cost`] ?? ""}
+                        expression={row.costExpression}
                         onChange={(e) =>
                           handleInputChange(row.id, "cost", e.target.value)
                         }
-                        onBlur={(e) => handleCostBlur(row.id, e.target.value)}
+                        onCommit={({ value, didEdit }) =>
+                          handleCostBlur(row.id, value, didEdit)
+                        }
                         className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Cost"
                       />
-                      <input
+                      <ExpressionInput
                         type="text"
                         name="tax"
                         value={inputValues[`${row.id}-tax`] ?? ""}
+                        expression={row.taxRateExpression}
                         onChange={(e) =>
                           handleInputChange(row.id, "tax", e.target.value)
                         }
-                        onBlur={(e) => handleTaxBlur(row.id, e.target.value)}
+                        onCommit={({ value, didEdit }) =>
+                          handleTaxBlur(row.id, value, didEdit)
+                        }
                         className="min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Tax Rate %"
                       />

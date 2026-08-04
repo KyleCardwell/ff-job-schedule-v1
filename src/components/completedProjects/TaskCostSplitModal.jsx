@@ -19,6 +19,7 @@ import {
   getTaskHoursService,
 } from "../../utils/hoursSplitHelpers";
 import { formatNumberValue, safeEvaluate } from "../../utils/mathUtils";
+import ExpressionInput from "../common/ExpressionInput.jsx";
 
 const normalizeSectionName = (name) =>
   String(name || "")
@@ -29,6 +30,7 @@ const createSplitRow = () => ({
   id: uuidv4(),
   taskId: "",
   amount: null,
+  amountExpression: null,
   isTaxed: false,
 });
 
@@ -36,8 +38,15 @@ const createSharedRow = () => ({
   id: uuidv4(),
   description: "",
   amount: null,
+  amountExpression: null,
   isTaxed: false,
 });
+
+const normalizeExpression = (value) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
 
 const parseMathInputValue = (rawValue) => {
   if (!rawValue || rawValue.trim() === "") {
@@ -126,6 +135,9 @@ const buildSharedDistributionByTask = (sharedRow, taskIds, taskWeightsById = nul
         description: sharedRow.description || "",
         cost: shareCents / 100,
         taxRate: sharedRow.taxRate || 0,
+        costExpression: sharedRow.costExpression || null,
+        taxRateExpression: sharedRow.taxRateExpression || null,
+        taxAmountExpression: sharedRow.taxAmountExpression || null,
       },
     };
   });
@@ -208,8 +220,11 @@ const TaskCostSplitModal = ({
   const [splitRows, setSplitRows] = useState([]);
   const [sharedRows, setSharedRows] = useState([]);
   const [sharedTaxAmount, setSharedTaxAmount] = useState(null);
+  const [sharedTaxExpression, setSharedTaxExpression] = useState(null);
   const [deliveryFeeAmount, setDeliveryFeeAmount] = useState(null);
+  const [deliveryFeeExpression, setDeliveryFeeExpression] = useState(null);
   const [creditCardFeeAmount, setCreditCardFeeAmount] = useState(null);
+  const [creditCardFeeExpression, setCreditCardFeeExpression] = useState(null);
   const [inputValues, setInputValues] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -231,8 +246,11 @@ const TaskCostSplitModal = ({
     setSplitRows([createSplitRow()]);
     setSharedRows([createSharedRow()]);
     setSharedTaxAmount(null);
+    setSharedTaxExpression(null);
     setDeliveryFeeAmount(null);
+    setDeliveryFeeExpression(null);
     setCreditCardFeeAmount(null);
+    setCreditCardFeeExpression(null);
     setInputValues({});
     setIsSaving(false);
     setSaveError(null);
@@ -431,13 +449,22 @@ const TaskCostSplitModal = ({
     }));
   };
 
-  const handleRowAmountBlur = (rowType, rowId, value) => {
+  const handleRowAmountBlur = (rowType, rowId, value, shouldUpdateExpression = true) => {
     const { setRows, inputKeyPrefix } = getRowTypeConfig(rowType);
     const parsedValue = parseMathInputValue(value);
+    const expression = parsedValue === null ? null : normalizeExpression(value);
 
     setRows((prev) =>
       prev.map((row) =>
-        row.id === rowId ? { ...row, amount: parsedValue ?? null } : row,
+        row.id === rowId
+          ? {
+              ...row,
+              amount: parsedValue ?? null,
+              amountExpression: shouldUpdateExpression
+                ? expression
+                : row.amountExpression,
+            }
+          : row,
       ),
     );
 
@@ -452,9 +479,19 @@ const TaskCostSplitModal = ({
     setInputValues((prev) => ({ ...prev, [fieldKey]: value }));
   };
 
-  const handleFeeBlur = (fieldKey, value, setAmount) => {
+  const handleFeeBlur = (
+    fieldKey,
+    value,
+    setAmount,
+    setExpression,
+    shouldUpdateExpression = true,
+  ) => {
     const parsedValue = parseMathInputValue(value);
+    const expression = parsedValue === null ? null : normalizeExpression(value);
     setAmount(parsedValue ?? null);
+    if (shouldUpdateExpression) {
+      setExpression(expression);
+    }
     setInputValues((prev) => ({
       ...prev,
       [fieldKey]: parsedValue === null ? "" : parsedValue.toString(),
@@ -626,6 +663,8 @@ const TaskCostSplitModal = ({
 
   const handleSave = async () => {
     setSaveError(null);
+    const taxAmountExpression =
+      sharedTaxAmount === null ? null : sharedTaxExpression;
 
     const preparedSplitRows = splitRows
       .filter((row) => row.taskId && row.amount !== null)
@@ -635,6 +674,8 @@ const TaskCostSplitModal = ({
         description: "",
         cost: row.amount,
         taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
+        costExpression: row.amountExpression || null,
+        taxAmountExpression: row.isTaxed ? taxAmountExpression : null,
       }));
 
     const splitAmountsByTask = preparedSplitRows.reduce((acc, row) => {
@@ -650,6 +691,8 @@ const TaskCostSplitModal = ({
         description: row.description,
         cost: row.amount,
         taxRate: row.isTaxed ? roundedEffectiveTaxRate : 0,
+        costExpression: row.amountExpression || null,
+        taxAmountExpression: row.isTaxed ? taxAmountExpression : null,
       }));
 
     const preparedFeeRows = [
@@ -657,11 +700,13 @@ const TaskCostSplitModal = ({
         description: "Delivery Fee",
         invoice: invoice ? `${invoice} - delivery fee` : "delivery fee",
         cost: deliveryFeeAmount,
+        costExpression: deliveryFeeExpression || null,
       },
       {
         description: "Credit Card Fee",
         invoice: invoice ? `${invoice} - credit card fee` : "credit card fee",
         cost: creditCardFeeAmount,
+        costExpression: creditCardFeeExpression || null,
       },
     ]
       .filter((row) => row.cost !== null)
@@ -670,6 +715,7 @@ const TaskCostSplitModal = ({
         description: row.description,
         cost: row.cost,
         taxRate: 0,
+        costExpression: row.costExpression || null,
       }));
 
     const selectedTaskIds = [
@@ -694,8 +740,11 @@ const TaskCostSplitModal = ({
     preparedSplitRows.forEach((row) => {
       taskRowsMap[row.taskId].push({
         invoice: row.invoice,
+        description: row.description,
         cost: row.cost,
         taxRate: row.taxRate,
+        costExpression: row.costExpression || null,
+        taxAmountExpression: row.taxAmountExpression || null,
       });
     });
 
@@ -885,9 +934,10 @@ const TaskCostSplitModal = ({
                       </option>
                     ))}
                   </select>
-                  <input
+                  <ExpressionInput
                     type="text"
                     value={inputValues[`split-${row.id}`] ?? ""}
+                    expression={row.amountExpression}
                     onChange={(e) =>
                       handleRowAmountInputChange(
                         "split",
@@ -895,8 +945,8 @@ const TaskCostSplitModal = ({
                         e.target.value,
                       )
                     }
-                    onBlur={(e) =>
-                      handleRowAmountBlur("split", row.id, e.target.value)
+                    onCommit={({ value, didEdit }) =>
+                      handleRowAmountBlur("split", row.id, value, didEdit)
                     }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={amountColumnLabel}
@@ -951,17 +1001,20 @@ const TaskCostSplitModal = ({
                 <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
                   Delivery Fee
                 </label>
-                <input
+                <ExpressionInput
                   type="text"
                   value={inputValues.deliveryFee ?? ""}
+                  expression={deliveryFeeExpression}
                   onChange={(e) =>
                     handleFeeInputChange("deliveryFee", e.target.value)
                   }
-                  onBlur={(e) =>
+                  onCommit={({ value, didEdit }) =>
                     handleFeeBlur(
                       "deliveryFee",
-                      e.target.value,
+                      value,
                       setDeliveryFeeAmount,
+                      setDeliveryFeeExpression,
+                      didEdit,
                     )
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -973,17 +1026,20 @@ const TaskCostSplitModal = ({
                 <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
                   Credit Card Fee
                 </label>
-                <input
+                <ExpressionInput
                   type="text"
                   value={inputValues.creditCardFee ?? ""}
+                  expression={creditCardFeeExpression}
                   onChange={(e) =>
                     handleFeeInputChange("creditCardFee", e.target.value)
                   }
-                  onBlur={(e) =>
+                  onCommit={({ value, didEdit }) =>
                     handleFeeBlur(
                       "creditCardFee",
-                      e.target.value,
+                      value,
                       setCreditCardFeeAmount,
+                      setCreditCardFeeExpression,
+                      didEdit,
                     )
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -995,17 +1051,20 @@ const TaskCostSplitModal = ({
                 <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase">
                   Tax Amount
                 </label>
-                <input
+                <ExpressionInput
                   type="text"
                   value={inputValues.sharedTax ?? ""}
+                  expression={sharedTaxExpression}
                   onChange={(e) =>
                     handleFeeInputChange("sharedTax", e.target.value)
                   }
-                  onBlur={(e) =>
+                  onCommit={({ value, didEdit }) =>
                     handleFeeBlur(
                       "sharedTax",
-                      e.target.value,
+                      value,
                       setSharedTaxAmount,
+                      setSharedTaxExpression,
+                      didEdit,
                     )
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1045,9 +1104,10 @@ const TaskCostSplitModal = ({
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Description"
                   />
-                  <input
+                  <ExpressionInput
                     type="text"
                     value={inputValues[`shared-${row.id}`] ?? ""}
+                    expression={row.amountExpression}
                     onChange={(e) =>
                       handleRowAmountInputChange(
                         "shared",
@@ -1055,8 +1115,8 @@ const TaskCostSplitModal = ({
                         e.target.value,
                       )
                     }
-                    onBlur={(e) =>
-                      handleRowAmountBlur("shared", row.id, e.target.value)
+                    onCommit={({ value, didEdit }) =>
+                      handleRowAmountBlur("shared", row.id, value, didEdit)
                     }
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={amountColumnLabel}

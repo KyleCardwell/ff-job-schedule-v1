@@ -179,7 +179,10 @@ BEGIN
             'invoice', COALESCE(v_row->>'invoice', ''),
             'description', NULLIF(v_row->>'description', ''),
             'cost', COALESCE(NULLIF(v_row->>'cost', '')::NUMERIC, 0),
-            'taxRate', COALESCE(NULLIF(v_row->>'taxRate', '')::NUMERIC, 0)
+            'taxRate', COALESCE(NULLIF(v_row->>'taxRate', '')::NUMERIC, 0),
+            'costExpression', NULLIF(v_row->>'costExpression', ''),
+            'taxRateExpression', NULLIF(v_row->>'taxRateExpression', ''),
+            'taxAmountExpression', NULLIF(v_row->>'taxAmountExpression', '')
           )
         )
       );
@@ -215,7 +218,10 @@ BEGIN
               'invoice', COALESCE(v_row->>'invoice', ''),
               'description', NULLIF(v_row->>'description', ''),
               'cost', COALESCE(NULLIF(v_row->>'cost', '')::NUMERIC, 0),
-              'taxRate', COALESCE(NULLIF(v_row->>'taxRate', '')::NUMERIC, 0)
+              'taxRate', COALESCE(NULLIF(v_row->>'taxRate', '')::NUMERIC, 0),
+              'costExpression', NULLIF(v_row->>'costExpression', ''),
+              'taxRateExpression', NULLIF(v_row->>'taxRateExpression', ''),
+              'taxAmountExpression', NULLIF(v_row->>'taxAmountExpression', '')
             )
           )
         );
