@@ -66,6 +66,22 @@ const parseMathInputValue = (rawValue) => {
   return formatNumberValue(parsed);
 };
 
+const buildDistributedCostExpression = (
+  baseExpression,
+  shareCents,
+  totalCents,
+) => {
+  if (!baseExpression) return null;
+  if (shareCents === 0 || totalCents === 0) {
+    return `(${baseExpression}) * 0`;
+  }
+  if (shareCents === totalCents) {
+    return baseExpression;
+  }
+  const allocationPercent = roundToHundredth((shareCents / totalCents) * 100);
+  return `(${baseExpression}) * ${allocationPercent}%`;
+};
+
 const formatCurrency = (value) =>
   `$${(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -97,6 +113,11 @@ const buildSharedDistributionByTask = (sharedRow, taskIds, taskWeightsById = nul
   if (!taskIds.length) return [];
 
   const totalCents = Math.round((sharedRow.cost || 0) * 100);
+  const baseCostExpression =
+    sharedRow.costExpression ||
+    (sharedRow.cost === null || sharedRow.cost === undefined
+      ? null
+      : String(sharedRow.cost));
   const weightedTasks = taskIds.map((taskId) => ({
     taskId,
     weight: Math.max(0, taskWeightsById?.[String(taskId)] || 0),
@@ -135,7 +156,11 @@ const buildSharedDistributionByTask = (sharedRow, taskIds, taskWeightsById = nul
         description: sharedRow.description || "",
         cost: shareCents / 100,
         taxRate: sharedRow.taxRate || 0,
-        costExpression: sharedRow.costExpression || null,
+        costExpression: buildDistributedCostExpression(
+          baseCostExpression,
+          shareCents,
+          totalCents,
+        ),
         taxRateExpression: sharedRow.taxRateExpression || null,
         taxAmountExpression: sharedRow.taxAmountExpression || null,
       },

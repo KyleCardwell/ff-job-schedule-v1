@@ -53,17 +53,186 @@ export const preprocessFractions = (expression) => {
   return result;
 };
 
+const tokenizeExpression = (expression) => {
+  const tokens = [];
+  let index = 0;
+
+  while (index < expression.length) {
+    const char = expression[index];
+
+    if (/\s/.test(char)) {
+      index += 1;
+      continue;
+    }
+
+    if (/[+\-*/()]/.test(char)) {
+      tokens.push({ type: char });
+      index += 1;
+      continue;
+    }
+
+    if (/[0-9.]/.test(char)) {
+      let numberText = "";
+      let dotCount = 0;
+
+      while (index < expression.length && /[0-9.]/.test(expression[index])) {
+        if (expression[index] === ".") {
+          dotCount += 1;
+        }
+        numberText += expression[index];
+        index += 1;
+      }
+
+      if (dotCount > 1 || numberText === ".") {
+        throw new Error("Invalid number format");
+      }
+
+      const numericValue = Number(numberText);
+      if (!Number.isFinite(numericValue)) {
+        throw new Error("Invalid number");
+      }
+
+      while (index < expression.length && /\s/.test(expression[index])) {
+        index += 1;
+      }
+
+      if (expression[index] === "%") {
+        tokens.push({ type: "percent", value: numericValue / 100 });
+        index += 1;
+      } else {
+        tokens.push({ type: "number", value: numericValue });
+      }
+      continue;
+    }
+
+    throw new Error("Unsupported token");
+  }
+
+  return tokens;
+};
+
+const evaluateWithSubtotalPercent = (expression) => {
+  const tokens = tokenizeExpression(expression);
+  let position = 0;
+
+  const currentToken = () => tokens[position];
+  const consumeToken = () => {
+    const token = tokens[position];
+    position += 1;
+    return token;
+  };
+
+  const parseExpression = () => {
+    let left = parseTerm();
+
+    while (currentToken()?.type === "+" || currentToken()?.type === "-") {
+      const operator = consumeToken().type;
+      const right = parseTerm();
+
+      if (right.isPercentLiteral) {
+        left = {
+          value:
+            operator === "+"
+              ? left.value + left.value * right.value
+              : left.value - left.value * right.value,
+          isPercentLiteral: false,
+        };
+      } else {
+        left = {
+          value:
+            operator === "+"
+              ? left.value + right.value
+              : left.value - right.value,
+          isPercentLiteral: false,
+        };
+      }
+    }
+
+    return left;
+  };
+
+  const parseTerm = () => {
+    let left = parseFactor();
+
+    while (currentToken()?.type === "*" || currentToken()?.type === "/") {
+      const operator = consumeToken().type;
+      const right = parseFactor();
+
+      left = {
+        value:
+          operator === "*"
+            ? left.value * right.value
+            : left.value / right.value,
+        isPercentLiteral: false,
+      };
+    }
+
+    return left;
+  };
+
+  const parseFactor = () => {
+    const token = currentToken();
+
+    if (!token) {
+      throw new Error("Unexpected end of expression");
+    }
+
+    if (token.type === "+") {
+      consumeToken();
+      return parseFactor();
+    }
+
+    if (token.type === "-") {
+      consumeToken();
+      const factor = parseFactor();
+      return { value: -factor.value, isPercentLiteral: false };
+    }
+
+    if (token.type === "number") {
+      consumeToken();
+      return { value: token.value, isPercentLiteral: false };
+    }
+
+    if (token.type === "percent") {
+      consumeToken();
+      return { value: token.value, isPercentLiteral: true };
+    }
+
+    if (token.type === "(") {
+      consumeToken();
+      const value = parseExpression();
+      if (currentToken()?.type !== ")") {
+        throw new Error("Missing closing parenthesis");
+      }
+      consumeToken();
+      return value;
+    }
+
+    throw new Error("Unexpected token");
+  };
+
+  const parsed = parseExpression();
+
+  if (position !== tokens.length) {
+    throw new Error("Unexpected trailing token");
+  }
+
+  return parsed.value;
+};
+
 export const safeEvaluate = (expression) => {
   try {
     // Preprocess fractions in the expression first
     const preprocessed = preprocessFractions(expression);
 
     // Only allow basic math operations and numbers
-    if (!/^[0-9+\-*/().\s]*$/.test(preprocessed)) {
+    if (!/^[0-9+\-*/().%\s]*$/.test(preprocessed)) {
       return null;
     }
 
-    const result = limitedEvaluate(preprocessed);
+    const result = preprocessed.includes("%")
+      ? evaluateWithSubtotalPercent(preprocessed)
+      : limitedEvaluate(preprocessed);
     return !isNaN(result) && isFinite(result) ? result : null;
   } catch {
     return null;
