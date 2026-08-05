@@ -1,71 +1,11 @@
--- Read and atomically redistribute selected employee hour rows across tasks.
-
-DROP FUNCTION IF EXISTS get_project_hours_split_data(BIGINT);
-
-CREATE OR REPLACE FUNCTION get_project_hours_split_data(
-  p_project_id BIGINT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY INVOKER
-AS $$
-DECLARE
-  v_team_id UUID;
-  v_tasks JSONB;
-BEGIN
-  SELECT p.team_id
-  INTO v_team_id
-  FROM projects p
-  WHERE p.project_id = p_project_id
-    AND EXISTS (
-      SELECT 1
-      FROM team_members tm
-      WHERE tm.team_id = p.team_id
-        AND tm.user_id = auth.uid()
-    );
-
-  IF v_team_id IS NULL THEN
-    RAISE EXCEPTION 'Project % not found or not accessible', p_project_id;
-  END IF;
-
-  SELECT COALESCE(
-    jsonb_agg(
-      jsonb_build_object(
-        'taskId', t.task_id,
-        'taskNumber', t.task_number,
-        'taskName', t.task_name,
-        'financialsUpdatedAt', pf.financials_updated_at,
-        'hours', COALESCE(pf.financial_data->'hours', '{}'::JSONB)
-      )
-      ORDER BY t.task_created_at, t.task_id
-    ),
-    '[]'::JSONB
-  )
-  INTO v_tasks
-  FROM tasks t
-  LEFT JOIN project_financials pf ON pf.task_id = t.task_id
-  WHERE t.project_id = p_project_id
-    AND t.task_completed_at IS NOT NULL;
-
-  RETURN jsonb_build_object(
-    'projectId', p_project_id,
-    'tasks', v_tasks
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION get_project_hours_split_data(BIGINT) TO authenticated;
-
-COMMENT ON FUNCTION get_project_hours_split_data IS
-'Returns only the hours financial data needed to preview an employee-hours redistribution for completed tasks in an accessible project.';
-
-
 DROP FUNCTION IF EXISTS apply_project_hours_split(BIGINT, BIGINT, BIGINT[], JSONB);
+DROP FUNCTION IF EXISTS apply_project_hours_split(BIGINT, BIGINT, BIGINT[], BOOLEAN, JSONB);
 
 CREATE OR REPLACE FUNCTION apply_project_hours_split(
   p_project_id BIGINT,
   p_team_service_id BIGINT,
   p_employee_ids BIGINT[],
+  p_include_fixed_amount BOOLEAN DEFAULT FALSE,
   p_task_updates JSONB DEFAULT '[]'::JSONB
 )
 RETURNS JSONB
@@ -92,6 +32,7 @@ DECLARE
   v_employee_id_text TEXT;
   v_hours NUMERIC;
   v_actual_cost NUMERIC;
+  v_fixed_amount_value NUMERIC;
   v_service_actual_cost NUMERIC;
   v_hours_actual_cost NUMERIC;
   v_service_found BOOLEAN;
@@ -111,8 +52,10 @@ BEGIN
     RAISE EXCEPTION 'A valid service is required';
   END IF;
 
-  IF COALESCE(array_length(p_employee_ids, 1), 0) = 0 THEN
-    RAISE EXCEPTION 'At least one employee is required';
+  IF COALESCE(array_length(p_employee_ids, 1), 0) = 0
+    AND NOT COALESCE(p_include_fixed_amount, FALSE)
+  THEN
+    RAISE EXCEPTION 'Select at least one employee or include fixed amounts';
   END IF;
 
   IF jsonb_typeof(COALESCE(p_task_updates, '[]'::JSONB)) <> 'array' THEN
@@ -261,6 +204,24 @@ BEGIN
             CONTINUE;
           END IF;
 
+          IF COALESCE(p_include_fixed_amount, FALSE)
+            AND v_employee_id_text = 'fixed_amount'
+          THEN
+            v_fixed_amount_value := COALESCE(
+              NULLIF(v_existing_row->>'actual_cost', '')::NUMERIC,
+              NULLIF(v_existing_row->'hours'->>'decimal', '')::NUMERIC,
+              CASE
+                WHEN jsonb_typeof(v_existing_row->'hours') = 'number'
+                THEN (v_existing_row->>'hours')::NUMERIC
+                ELSE 0
+              END,
+              0
+            );
+            v_original_hours := v_original_hours + v_fixed_amount_value;
+            v_original_actual_cost := v_original_actual_cost + v_fixed_amount_value;
+            CONTINUE;
+          END IF;
+
           v_updated_input_rows := v_updated_input_rows || jsonb_build_array(v_existing_row);
         END LOOP;
 
@@ -273,7 +234,53 @@ BEGIN
           FROM jsonb_array_elements(COALESCE(v_task_update->'rows', '[]'::JSONB))
         LOOP
           v_employee_id_text := NULLIF(v_replacement_row->>'employee_id', '');
-          IF v_employee_id_text IS NULL OR v_employee_id_text !~ '^[0-9]+$' THEN
+          IF v_employee_id_text IS NULL THEN
+            RAISE EXCEPTION 'Replacement rows require a valid employee_id';
+          END IF;
+
+          IF v_employee_id_text = 'fixed_amount' THEN
+            IF NOT COALESCE(p_include_fixed_amount, FALSE) THEN
+              RAISE EXCEPTION 'Replacement fixed_amount rows were not selected';
+            END IF;
+
+            v_hours := COALESCE(NULLIF(v_replacement_row->'hours'->>'decimal', '')::NUMERIC, 0);
+            v_actual_cost := COALESCE(
+              NULLIF(v_replacement_row->>'actual_cost', '')::NUMERIC,
+              v_hours
+            );
+            IF v_hours < 0 OR v_actual_cost < 0 THEN
+              RAISE EXCEPTION 'Replacement fixed amounts cannot be negative';
+            END IF;
+
+            v_replacement_hours := v_replacement_hours + v_hours;
+            v_replacement_actual_cost := v_replacement_actual_cost + v_actual_cost;
+
+            v_updated_input_rows := v_updated_input_rows || jsonb_build_array(
+              jsonb_strip_nulls(
+                jsonb_build_object(
+                  'id', COALESCE(
+                    NULLIF(v_replacement_row->>'id', ''),
+                    md5(random()::TEXT || clock_timestamp()::TEXT || v_task_id::TEXT)
+                  ),
+                  'employee_id', 'fixed_amount',
+                  'hours', jsonb_build_object(
+                    'display', COALESCE(
+                      NULLIF(v_replacement_row->'hours'->>'display', ''),
+                      v_hours::TEXT
+                    ),
+                    'decimal', v_hours
+                  ),
+                  'isOvertime', FALSE,
+                  'actual_cost', v_actual_cost,
+                  'split_batch_id', NULLIF(v_replacement_row->>'split_batch_id', '')
+                )
+              )
+            );
+            v_replacement_count := v_replacement_count + 1;
+            CONTINUE;
+          END IF;
+
+          IF v_employee_id_text !~ '^[0-9]+$' THEN
             RAISE EXCEPTION 'Replacement rows require a valid employee_id';
           END IF;
 
@@ -378,7 +385,7 @@ BEGIN
   END LOOP;
 
   IF ABS(v_original_hours - v_replacement_hours) > 0.000001 THEN
-    RAISE EXCEPTION 'The calculated split does not preserve total employee hours';
+    RAISE EXCEPTION 'The calculated distribution does not preserve selected hours/fixed amounts';
   END IF;
 
   IF ABS(v_original_actual_cost - v_replacement_actual_cost) > 0.0001 THEN
@@ -398,8 +405,9 @@ GRANT EXECUTE ON FUNCTION apply_project_hours_split(
   BIGINT,
   BIGINT,
   BIGINT[],
+  BOOLEAN,
   JSONB
 ) TO authenticated;
 
 COMMENT ON FUNCTION apply_project_hours_split IS
-'Atomically replaces only the selected employees'' rows for one service across completed project tasks, preserving other rows and recalculating service and hours actual-cost totals.';
+'Atomically replaces selected employee rows (and optional fixed_amount rows) for one service across completed project tasks, preserving other rows and recalculating service and hours actual-cost totals.';

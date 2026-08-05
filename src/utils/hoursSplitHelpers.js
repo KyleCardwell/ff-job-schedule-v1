@@ -8,6 +8,14 @@ const toNumber = (value) => {
 const getRowHours = (row) =>
   toNumber(row?.hours?.decimal ?? row?.hours ?? 0);
 
+const getRowActualCost = (row) => toNumber(row?.actual_cost);
+
+const getFixedAmountValue = (row) => {
+  const explicitActualCost = getRowActualCost(row);
+  if (explicitActualCost !== 0) return explicitActualCost;
+  return getRowHours(row);
+};
+
 const formatHoursAsClock = (value) => {
   const totalMinutes = Math.round(Math.max(0, toNumber(value)) * 60);
   const hours = Math.floor(totalMinutes / 60);
@@ -17,6 +25,8 @@ const formatHoursAsClock = (value) => {
 
 const isEmployeeRow = (row) =>
   row?.employee_id && row.employee_id !== FIXED_AMOUNT;
+
+const isFixedAmountRow = (row) => row?.employee_id === FIXED_AMOUNT;
 
 export const getTaskHoursService = (task, serviceId) => {
   const services = Array.isArray(task?.hours?.data) ? task.hours.data : [];
@@ -51,8 +61,11 @@ export const getApplicableHoursTaskIds = (tasks = [], serviceId) =>
       const hasEmployeeHours = (service.inputRows || []).some(
         (row) => isEmployeeRow(row) && getRowHours(row) > 0,
       );
+      const hasFixedAmount = (service.inputRows || []).some(
+        (row) => isFixedAmountRow(row) && getFixedAmountValue(row) > 0,
+      );
 
-      return hasEstimate || hasEmployeeHours;
+      return hasEstimate || hasEmployeeHours || hasFixedAmount;
     })
     .map((task) => String(task.taskId));
 
@@ -63,12 +76,20 @@ export const getAvailableHoursEmployees = (
 ) => {
   const selectedIds = new Set(selectedTaskIds.map(String));
   const employeeTotals = new Map();
+  let fixedAmountTotal = 0;
+  let hasFixedAmountRow = false;
 
   tasks.forEach((task) => {
     if (!selectedIds.has(String(task.taskId))) return;
 
     const service = getTaskHoursService(task, serviceId);
     (service?.inputRows || []).forEach((row) => {
+      if (isFixedAmountRow(row)) {
+        fixedAmountTotal += getFixedAmountValue(row);
+        hasFixedAmountRow = true;
+        return;
+      }
+
       if (!isEmployeeRow(row)) return;
 
       const employeeId = String(row.employee_id);
@@ -86,14 +107,32 @@ export const getAvailableHoursEmployees = (
       } else {
         current.regularHours += rowHours;
       }
-      current.actualCost += toNumber(row.actual_cost);
+      current.actualCost += getRowActualCost(row);
       employeeTotals.set(employeeId, current);
     });
   });
 
-  return [...employeeTotals.values()].sort((a, b) =>
+  const employees = [...employeeTotals.values()].sort((a, b) =>
     a.employeeId.localeCompare(b.employeeId, undefined, { numeric: true }),
   );
+
+  if (!hasFixedAmountRow) {
+    return employees;
+  }
+
+  return [
+    {
+      employeeId: FIXED_AMOUNT,
+      name: "Fixed Amount",
+      hours: 0,
+      regularHours: 0,
+      overtimeHours: 0,
+      fixedAmount: fixedAmountTotal,
+      actualCost: fixedAmountTotal,
+      isFixedAmount: true,
+    },
+    ...employees,
+  ];
 };
 
 const allocateByWeight = (total, weights, precision) => {
@@ -139,7 +178,9 @@ export const buildHoursSplitPreview = ({
     return { error: "Please select a service." };
   }
   if (selectedTasks.length < 2) {
-    return { error: "Please select at least two tasks to split hours across." };
+    return {
+      error: "Please select at least two tasks to distribute hours across.",
+    };
   }
   if (selectedEmployeeIdSet.size === 0) {
     return { error: "Please select at least one employee." };
@@ -168,13 +209,14 @@ export const buildHoursSplitPreview = ({
 
   taskServices.forEach(({ task, service }) => {
     const taskId = String(task.taskId);
-    const taskCurrent = { hours: 0, actualCost: 0 };
+    const taskCurrent = { hours: 0, actualCost: 0, fixedAmount: 0 };
 
     (service.inputRows || []).forEach((row) => {
       const employeeId = String(row?.employee_id || "");
       if (!selectedEmployeeIdSet.has(employeeId)) return;
 
-      const isOvertime = !!row.isOvertime;
+      const fixedAmountRow = employeeId === FIXED_AMOUNT;
+      const isOvertime = fixedAmountRow ? false : !!row.isOvertime;
       const poolKey = buildPoolKey(employeeId, isOvertime);
       const pool = pools.get(poolKey) || {
         employeeId,
@@ -182,13 +224,19 @@ export const buildHoursSplitPreview = ({
         hours: 0,
         actualCost: 0,
       };
-      const rowHours = getRowHours(row);
-      const rowActualCost = toNumber(row.actual_cost);
+      const rowHours = fixedAmountRow ? getFixedAmountValue(row) : getRowHours(row);
+      const rowActualCost = fixedAmountRow
+        ? getFixedAmountValue(row)
+        : getRowActualCost(row);
 
       pool.hours += rowHours;
       pool.actualCost += rowActualCost;
       pools.set(poolKey, pool);
-      taskCurrent.hours += rowHours;
+      if (fixedAmountRow) {
+        taskCurrent.fixedAmount += rowActualCost;
+      } else {
+        taskCurrent.hours += rowHours;
+      }
       taskCurrent.actualCost += rowActualCost;
     });
 
@@ -209,42 +257,59 @@ export const buildHoursSplitPreview = ({
   const proposedByTask = new Map(
     selectedTasks.map((task) => [
       String(task.taskId),
-      { hours: 0, actualCost: 0 },
+      { hours: 0, actualCost: 0, fixedAmount: 0 },
     ]),
   );
 
   pools.forEach((pool) => {
+    const isFixedAmountPool = pool.employeeId === FIXED_AMOUNT;
     const hourShares = allocateByWeight(pool.hours, weights, 2);
-    const costShares = allocateByWeight(pool.actualCost, weights, 6);
+    const costShares = allocateByWeight(pool.actualCost, weights, isFixedAmountPool ? 2 : 6);
 
     selectedTasks.forEach((task, taskIndex) => {
       const hours = hourShares[taskIndex];
       const actualCost = costShares[taskIndex];
+      const replacementHours = isFixedAmountPool ? actualCost : hours;
+      const replacementActualCost = isFixedAmountPool ? replacementHours : actualCost;
       const taskId = String(task.taskId);
-      if (hours === 0 && actualCost === 0) return;
+      if (replacementHours === 0 && replacementActualCost === 0) return;
 
       replacementRowsByTask.get(taskId).push({
         id: `${splitBatchId}-${pool.employeeId}-${pool.isOvertime ? "ot" : "reg"}-${taskId}`,
         employee_id: pool.employeeId,
         hours: {
-          display: formatHoursAsClock(hours),
-          decimal: hours,
+          display: isFixedAmountPool
+            ? replacementHours.toFixed(2)
+            : formatHoursAsClock(replacementHours),
+          decimal: replacementHours,
         },
-        isOvertime: pool.isOvertime,
-        actual_cost: actualCost,
+        isOvertime: isFixedAmountPool ? false : pool.isOvertime,
+        actual_cost: replacementActualCost,
         split_batch_id: splitBatchId,
       });
 
       const taskProposed = proposedByTask.get(taskId);
-      taskProposed.hours += hours;
-      taskProposed.actualCost += actualCost;
+      if (isFixedAmountPool) {
+        taskProposed.fixedAmount += replacementActualCost;
+      } else {
+        taskProposed.hours += replacementHours;
+      }
+      taskProposed.actualCost += replacementActualCost;
     });
   });
 
   const taskSummaries = taskServices.map(({ task }, index) => {
     const taskId = String(task.taskId);
-    const current = currentByTask.get(taskId) || { hours: 0, actualCost: 0 };
-    const proposed = proposedByTask.get(taskId) || { hours: 0, actualCost: 0 };
+    const current = currentByTask.get(taskId) || {
+      hours: 0,
+      actualCost: 0,
+      fixedAmount: 0,
+    };
+    const proposed = proposedByTask.get(taskId) || {
+      hours: 0,
+      actualCost: 0,
+      fixedAmount: 0,
+    };
 
     return {
       taskId,
@@ -254,6 +319,8 @@ export const buildHoursSplitPreview = ({
       weight: weights[index] / totalEstimatedHours,
       currentHours: current.hours,
       proposedHours: proposed.hours,
+      currentFixedAmount: current.fixedAmount,
+      proposedFixedAmount: proposed.fixedAmount,
       currentActualCost: current.actualCost,
       proposedActualCost: proposed.actualCost,
     };
@@ -264,6 +331,8 @@ export const buildHoursSplitPreview = ({
       estimatedHours: acc.estimatedHours + summary.estimatedHours,
       currentHours: acc.currentHours + summary.currentHours,
       proposedHours: acc.proposedHours + summary.proposedHours,
+      currentFixedAmount: acc.currentFixedAmount + summary.currentFixedAmount,
+      proposedFixedAmount: acc.proposedFixedAmount + summary.proposedFixedAmount,
       currentActualCost:
         acc.currentActualCost + summary.currentActualCost,
       proposedActualCost:
@@ -273,6 +342,8 @@ export const buildHoursSplitPreview = ({
       estimatedHours: 0,
       currentHours: 0,
       proposedHours: 0,
+      currentFixedAmount: 0,
+      proposedFixedAmount: 0,
       currentActualCost: 0,
       proposedActualCost: 0,
     },

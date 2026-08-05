@@ -666,6 +666,13 @@ const TaskCostSplitModal = ({
         hoursServiceId,
         selectedHoursTaskIds,
       ).map((employeeTotal) => {
+        if (employeeTotal.isFixedAmount) {
+          return {
+            ...employeeTotal,
+            name: employeeTotal.name || "Fixed Amount",
+          };
+        }
+
         const employee = employees.find(
           (item) => String(item.employee_id) === employeeTotal.employeeId,
         );
@@ -984,24 +991,30 @@ const TaskCostSplitModal = ({
   const handleSaveHoursSplit = async () => {
     if (!hoursPreview || !onSaveHours) return;
 
+    const includeFixedAmount = selectedHoursEmployeeIds.includes(FIXED_AMOUNT);
+    const selectedNumericEmployeeIds = selectedHoursEmployeeIds
+      .map((employeeId) => Number(employeeId))
+      .filter((employeeId) => Number.isFinite(employeeId));
+
     setIsSaving(true);
     setSaveError(null);
     try {
       const saveResult = await onSaveHours({
         projectId,
         teamServiceId: Number(hoursServiceId),
-        employeeIds: selectedHoursEmployeeIds.map(Number),
+        employeeIds: selectedNumericEmployeeIds,
+        includeFixedAmount,
         taskUpdates: hoursPreview.taskUpdates,
       });
 
       if (saveResult?.success === false) {
-        setSaveError(saveResult.error || "Failed to save the hours split.");
+        setSaveError(saveResult.error || "Failed to save the hours distribution.");
         return;
       }
 
       onClose?.();
     } catch (error) {
-      setSaveError(error?.message || "Failed to save the hours split.");
+      setSaveError(error?.message || "Failed to save the hours distribution.");
     } finally {
       setIsSaving(false);
     }
@@ -1258,7 +1271,7 @@ const TaskCostSplitModal = ({
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
-              Split Hours
+              Distribute Hours
             </button>
             <button
               type="button"
@@ -1630,12 +1643,11 @@ const TaskCostSplitModal = ({
                 <FiAlertTriangle className="mt-0.5 flex-shrink-0" size={18} />
                 <div>
                   <div className="font-semibold">
-                    Do not split hours until all hours have been entered.
+                    Do not distribute until all hours are entered.
                   </div>
                   <p className="mt-1 text-amber-800">
-                    This redistributes existing employee hours and labor cost
-                    across tasks. It does not add or remove hours from the
-                    project.
+                    This redistributes selected employee hours and fixed-amount
+                    rows across tasks. It does not change project totals.
                   </p>
                 </div>
               </div>
@@ -1663,7 +1675,8 @@ const TaskCostSplitModal = ({
                 <>
                   {hoursServiceOptions.length === 0 ? (
                     <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                      No service hour data is available for these tasks.
+                      No service hour or fixed-amount data is available for
+                      these tasks.
                     </div>
                   ) : (
                     <>
@@ -1740,6 +1753,21 @@ const TaskCostSplitModal = ({
                                       )
                                     );
                                   }, 0);
+                                  const fixedAmount = (
+                                    service?.inputRows || []
+                                  ).reduce((sum, row) => {
+                                    if (row.employee_id !== FIXED_AMOUNT) {
+                                      return sum;
+                                    }
+                                    const actualCost = Number(row.actual_cost);
+                                    if (Number.isFinite(actualCost) && actualCost !== 0) {
+                                      return sum + actualCost;
+                                    }
+                                    return (
+                                      sum +
+                                      Number(row.hours?.decimal ?? row.hours ?? 0)
+                                    );
+                                  }, 0);
 
                                   return (
                                     <label
@@ -1769,6 +1797,11 @@ const TaskCostSplitModal = ({
                                             Current:{" "}
                                             {renderHoursDisplay(actualHours)}
                                           </span>
+                                          {fixedAmount > 0 && (
+                                            <span>
+                                              Fixed: {formatCurrency(fixedAmount)}
+                                            </span>
+                                          )}
                                           <span
                                             className={
                                               task.hours?.completedAt
@@ -1826,7 +1859,8 @@ const TaskCostSplitModal = ({
                                 <div className="max-h-64 divide-y divide-gray-100 overflow-y-auto">
                                   {availableHoursEmployees.length === 0 ? (
                                     <div className="px-4 py-6 text-center text-sm text-gray-500">
-                                      Select tasks containing employee hours.
+                                      Select tasks containing employee hours or
+                                      fixed amounts.
                                     </div>
                                   ) : (
                                     availableHoursEmployees.map((employee) => (
@@ -1850,17 +1884,27 @@ const TaskCostSplitModal = ({
                                           {employee.name}
                                         </span>
                                         <span className="text-right text-xs text-gray-600">
-                                          {renderHoursDisplay(
-                                            employee.regularHours,
-                                          )}
+                                          {employee.isFixedAmount
+                                            ? "--"
+                                            : renderHoursDisplay(
+                                                employee.regularHours,
+                                              )}
                                         </span>
                                         <span className="text-right text-xs text-gray-600">
-                                          {renderHoursDisplay(
-                                            employee.overtimeHours,
-                                          )}
+                                          {employee.isFixedAmount
+                                            ? "--"
+                                            : renderHoursDisplay(
+                                                employee.overtimeHours,
+                                              )}
                                         </span>
                                         <span className="text-right text-xs font-semibold text-gray-800">
-                                          {renderHoursDisplay(employee.hours)}
+                                          {employee.isFixedAmount
+                                            ? formatCurrency(
+                                                employee.fixedAmount ??
+                                                  employee.actualCost ??
+                                                  0,
+                                              )
+                                            : renderHoursDisplay(employee.hours)}
                                         </span>
                                       </label>
                                     ))
@@ -1883,7 +1927,7 @@ const TaskCostSplitModal = ({
                             }
                             className={`${buttonClass} bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400`}
                           >
-                            Calculate Split
+                            Calculate Distribution
                           </button>
                         </div>
                       )}
@@ -1892,11 +1936,12 @@ const TaskCostSplitModal = ({
                         <div className="rounded-md border border-blue-200">
                           <div className="border-b border-blue-200 bg-blue-50 px-4 py-3">
                             <h3 className="text-sm font-bold uppercase text-blue-900">
-                              Split Preview
+                              Distribution Preview
                             </h3>
                             <p className="mt-1 text-xs text-blue-800">
-                              Total hours and saved labor cost are preserved.
-                              Regular and overtime hours are split separately.
+                              Total selected hours, fixed amounts, and saved
+                              labor cost are preserved. Regular and overtime
+                              hours are split separately.
                             </p>
                           </div>
                           <div className="overflow-x-auto">
@@ -1915,7 +1960,17 @@ const TaskCostSplitModal = ({
                                   className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0"
                                 >
                                   <span className="font-medium text-gray-800">
-                                    {summary.taskNumber} - {summary.taskName}
+                                    <span className="block">
+                                      {summary.taskNumber} - {summary.taskName}
+                                    </span>
+                                    {(summary.currentFixedAmount > 0 ||
+                                      summary.proposedFixedAmount > 0) && (
+                                      <span className="mt-1 block text-xs font-normal text-gray-500">
+                                        Fixed: {formatCurrency(summary.currentFixedAmount)}
+                                        {" → "}
+                                        {formatCurrency(summary.proposedFixedAmount)}
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="text-right">
                                     {renderHoursDisplay(
@@ -2310,7 +2365,7 @@ const TaskCostSplitModal = ({
               : activeTab === "cost"
                 ? "Save Split Cost"
                 : activeTab === "hours"
-                  ? "Save Split Hours"
+                  ? "Save Distributed Hours"
                   : "Save Distributed Costs"}
           </button>
         </div>

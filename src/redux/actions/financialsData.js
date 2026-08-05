@@ -214,6 +214,7 @@ export const applyProjectHoursSplit = ({
   projectId,
   teamServiceId,
   employeeIds,
+  includeFixedAmount = false,
   taskUpdates,
 }) => {
   return async (dispatch) => {
@@ -222,6 +223,7 @@ export const applyProjectHoursSplit = ({
         p_project_id: projectId,
         p_team_service_id: teamServiceId,
         p_employee_ids: employeeIds || [],
+        p_include_fixed_amount: includeFixedAmount,
         p_task_updates: taskUpdates || [],
       });
 
