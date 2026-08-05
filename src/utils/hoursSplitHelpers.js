@@ -10,6 +10,8 @@ const getRowHours = (row) =>
 
 const getRowActualCost = (row) => toNumber(row?.actual_cost);
 
+const getServiceEstimate = (service) => Math.max(0, toNumber(service?.estimate));
+
 const getFixedAmountValue = (row) => {
   const explicitActualCost = getRowActualCost(row);
   if (explicitActualCost !== 0) return explicitActualCost;
@@ -36,6 +38,14 @@ export const getTaskHoursService = (task, serviceId) => {
   );
 };
 
+const getTaskTotalEstimate = (task) => {
+  const services = Array.isArray(task?.hours?.data) ? task.hours.data : [];
+  return services.reduce(
+    (sum, service) => sum + getServiceEstimate(service),
+    0,
+  );
+};
+
 export const getAvailableHoursServices = (tasks = []) => {
   const serviceIds = new Set();
 
@@ -55,17 +65,7 @@ export const getApplicableHoursTaskIds = (tasks = [], serviceId) =>
   tasks
     .filter((task) => {
       const service = getTaskHoursService(task, serviceId);
-      if (!service) return false;
-
-      const hasEstimate = toNumber(service.estimate) > 0;
-      const hasEmployeeHours = (service.inputRows || []).some(
-        (row) => isEmployeeRow(row) && getRowHours(row) > 0,
-      );
-      const hasFixedAmount = (service.inputRows || []).some(
-        (row) => isFixedAmountRow(row) && getFixedAmountValue(row) > 0,
-      );
-
-      return hasEstimate || hasEmployeeHours || hasFixedAmount;
+      return !!service;
     })
     .map((task) => String(task.taskId));
 
@@ -194,14 +194,36 @@ export const buildHoursSplitPreview = ({
     return { error: "The selected service is missing from one or more tasks." };
   }
 
-  const weights = taskServices.map(({ service }) =>
-    Math.max(0, toNumber(service.estimate)),
+  const serviceEstimateWeights = taskServices.map(({ service }) =>
+    getServiceEstimate(service),
   );
-  const totalEstimatedHours = weights.reduce((sum, weight) => sum + weight, 0);
-  if (totalEstimatedHours <= 0) {
-    return {
-      error: "The selected tasks have no estimated hours for this service.",
-    };
+  const totalEstimatedHours = serviceEstimateWeights.reduce(
+    (sum, weight) => sum + weight,
+    0,
+  );
+
+  let weights = serviceEstimateWeights;
+  let totalWeight = totalEstimatedHours;
+  let weightStrategy = "service_estimate";
+
+  if (totalWeight <= 0) {
+    const taskEstimateWeights = taskServices.map(({ task }) =>
+      getTaskTotalEstimate(task),
+    );
+    const totalTaskEstimatedHours = taskEstimateWeights.reduce(
+      (sum, weight) => sum + weight,
+      0,
+    );
+
+    if (totalTaskEstimatedHours > 0) {
+      weights = taskEstimateWeights;
+      totalWeight = totalTaskEstimatedHours;
+      weightStrategy = "task_total_estimate";
+    } else {
+      weights = taskServices.map(() => 1);
+      totalWeight = weights.length;
+      weightStrategy = "equal";
+    }
   }
 
   const pools = new Map();
@@ -315,8 +337,8 @@ export const buildHoursSplitPreview = ({
       taskId,
       taskNumber: task.taskNumber,
       taskName: task.taskName,
-      estimatedHours: weights[index],
-      weight: weights[index] / totalEstimatedHours,
+      estimatedHours: serviceEstimateWeights[index],
+      weight: weights[index] / totalWeight,
       currentHours: current.hours,
       proposedHours: proposed.hours,
       currentFixedAmount: current.fixedAmount,
@@ -352,6 +374,7 @@ export const buildHoursSplitPreview = ({
   return {
     error: null,
     totalEstimatedHours,
+    weightStrategy,
     taskSummaries,
     totals,
     taskUpdates: selectedTasks.map((task) => ({

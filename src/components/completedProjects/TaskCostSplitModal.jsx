@@ -1641,7 +1641,7 @@ const TaskCostSplitModal = ({
             <section className="space-y-5">
               <div className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
                 <FiAlertTriangle className="mt-0.5 flex-shrink-0" size={18} />
-                <div>
+                <div className="flex-1">
                   <div className="font-semibold">
                     Do not distribute until all hours are entered.
                   </div>
@@ -1943,6 +1943,15 @@ const TaskCostSplitModal = ({
                               labor cost are preserved. Regular and overtime
                               hours are split separately.
                             </p>
+                            {hoursPreview.weightStrategy !==
+                              "service_estimate" && (
+                              <p className="mt-1 text-xs font-semibold text-blue-900">
+                                {hoursPreview.weightStrategy ===
+                                "task_total_estimate"
+                                  ? "Weights are based on each task's total estimated hours (selected service estimates are all zero)."
+                                  : "Weights are evenly split across selected tasks (all estimated hours are zero)."}
+                              </p>
+                            )}
                           </div>
                           <div className="overflow-x-auto">
                             <div className="min-w-[760px]">
@@ -2055,7 +2064,7 @@ const TaskCostSplitModal = ({
             <section className="space-y-5">
               <div className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
                 <FiAlertTriangle className="mt-0.5 flex-shrink-0" size={18} />
-                <div>
+                <div className="flex-1">
                   <div className="font-semibold">
                     Distribute only after section costs are complete.
                   </div>
