@@ -263,6 +263,7 @@ BEGIN
                     md5(random()::TEXT || clock_timestamp()::TEXT || v_task_id::TEXT)
                   ),
                   'employee_id', 'fixed_amount',
+                  'invoice', NULLIF(BTRIM(v_replacement_row->>'invoice'), ''),
                   'hours', jsonb_build_object(
                     'display', COALESCE(
                       NULLIF(v_replacement_row->'hours'->>'display', ''),

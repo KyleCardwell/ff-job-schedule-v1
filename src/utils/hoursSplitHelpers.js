@@ -18,6 +18,8 @@ const getFixedAmountValue = (row) => {
   return getRowHours(row);
 };
 
+const normalizeInvoice = (value) => String(value || "").trim();
+
 const formatHoursAsClock = (value) => {
   const totalMinutes = Math.round(Math.max(0, toNumber(value)) * 60);
   const hours = Math.floor(totalMinutes / 60);
@@ -158,8 +160,8 @@ const allocateByWeight = (total, weights, precision) => {
   return allocatedUnits.map((value) => value / factor);
 };
 
-const buildPoolKey = (employeeId, isOvertime) =>
-  `${employeeId}:${isOvertime ? "overtime" : "regular"}`;
+const buildPoolKey = (employeeId, isOvertime, invoice = "") =>
+  `${employeeId}:${isOvertime ? "overtime" : "regular"}:${invoice}`;
 
 export const buildHoursSplitPreview = ({
   tasks = [],
@@ -239,10 +241,12 @@ export const buildHoursSplitPreview = ({
 
       const fixedAmountRow = employeeId === FIXED_AMOUNT;
       const isOvertime = fixedAmountRow ? false : !!row.isOvertime;
-      const poolKey = buildPoolKey(employeeId, isOvertime);
+      const invoice = fixedAmountRow ? normalizeInvoice(row?.invoice) : "";
+      const poolKey = buildPoolKey(employeeId, isOvertime, invoice);
       const pool = pools.get(poolKey) || {
         employeeId,
         isOvertime,
+        invoice,
         hours: 0,
         actualCost: 0,
       };
@@ -283,7 +287,10 @@ export const buildHoursSplitPreview = ({
     ]),
   );
 
+  let poolIndex = 0;
   pools.forEach((pool) => {
+    const poolId = poolIndex;
+    poolIndex += 1;
     const isFixedAmountPool = pool.employeeId === FIXED_AMOUNT;
     const hourShares = allocateByWeight(pool.hours, weights, 2);
     const costShares = allocateByWeight(pool.actualCost, weights, isFixedAmountPool ? 2 : 6);
@@ -297,8 +304,9 @@ export const buildHoursSplitPreview = ({
       if (replacementHours === 0 && replacementActualCost === 0) return;
 
       replacementRowsByTask.get(taskId).push({
-        id: `${splitBatchId}-${pool.employeeId}-${pool.isOvertime ? "ot" : "reg"}-${taskId}`,
+        id: `${splitBatchId}-${poolId}-${taskId}`,
         employee_id: pool.employeeId,
+        ...(isFixedAmountPool ? { invoice: pool.invoice || "" } : {}),
         hours: {
           display: isFixedAmountPool
             ? replacementHours.toFixed(2)

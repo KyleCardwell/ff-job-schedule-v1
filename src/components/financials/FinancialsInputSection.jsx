@@ -121,6 +121,7 @@ const FinancialsInputSection = ({
     const newRow = {
       id: uuidv4(),
       employee_id: "",
+      invoice: "",
       hours: 0,
       isOvertime: false,
     };
@@ -178,12 +179,14 @@ const FinancialsInputSection = ({
                 return {
                   ...row,
                   [field]: value,
+                  invoice: row.invoice || "",
                   isOvertime: false, // Reset overtime flag
                 };
               }
               return {
                 ...row,
                 [field]: value,
+                invoice: "",
               };
             }
 

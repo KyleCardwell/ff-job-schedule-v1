@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import { useMemo, useRef, useEffect } from "react";
 
-
 import { usePermissions } from "../../hooks/usePermissions";
 import { FIXED_AMOUNT } from "../../utils/constants";
 
@@ -21,37 +20,36 @@ const EmployeeTypeAccordion = ({
   const selectRefs = useRef({});
   const prevRowsLengthRef = useRef(serviceData?.inputRows?.length || 0);
 
-  const availableEmployees = useMemo(
-    () => {
-      // Get employees currently assigned to this service
-      const currentServiceEmployees = employees.filter(
-        (e) => e.team_service_id === service.team_service_id
-      );
+  const availableEmployees = useMemo(() => {
+    // Get employees currently assigned to this service
+    const currentServiceEmployees = employees.filter(
+      (e) => e.team_service_id === service.team_service_id,
+    );
 
-      // Get employee IDs that are already selected in rows
-      const selectedEmployeeIds = new Set(
-        (serviceData?.inputRows || []).map((row) => row.employee_id).filter(Boolean)
-      );
+    // Get employee IDs that are already selected in rows
+    const selectedEmployeeIds = new Set(
+      (serviceData?.inputRows || [])
+        .map((row) => row.employee_id)
+        .filter(Boolean),
+    );
 
-      // Find previously assigned employees (not in current service but selected in rows)
-      const previouslyAssignedEmployees = employees.filter(
-        (e) =>
-          e.team_service_id !== service.team_service_id &&
-          selectedEmployeeIds.has(e.employee_id)
-      );
+    // Find previously assigned employees (not in current service but selected in rows)
+    const previouslyAssignedEmployees = employees.filter(
+      (e) =>
+        e.team_service_id !== service.team_service_id &&
+        selectedEmployeeIds.has(e.employee_id),
+    );
 
-      return [
-        {
-          employee_id: FIXED_AMOUNT,
-          employee_name: "Fixed Amount",
-          is_fixed_amount: true,
-        },
-        ...currentServiceEmployees,
-        ...previouslyAssignedEmployees,
-      ];
-    },
-    [employees, service.team_service_id, serviceData?.inputRows]
-  );
+    return [
+      {
+        employee_id: FIXED_AMOUNT,
+        employee_name: "Fixed Amount",
+        is_fixed_amount: true,
+      },
+      ...currentServiceEmployees,
+      ...previouslyAssignedEmployees,
+    ];
+  }, [employees, service.team_service_id, serviceData?.inputRows]);
 
   const actualHours = useMemo(
     () =>
@@ -60,7 +58,7 @@ const EmployeeTypeAccordion = ({
         const hoursValue = row.hours?.decimal ?? row.hours ?? 0;
         return sum + hoursValue;
       }, 0),
-    [serviceData?.inputRows]
+    [serviceData?.inputRows],
   );
   const estimatedHours = serviceData?.estimate || 0;
   const difference = estimatedHours - actualHours;
@@ -163,12 +161,14 @@ const EmployeeTypeAccordion = ({
 
             // Get the service name for the reassigned employee
             const newService = isCurrentReassigned
-              ? services.find((s) => s.team_service_id === currentEmployee.team_service_id)
+              ? services.find(
+                  (s) => s.team_service_id === currentEmployee.team_service_id,
+                )
               : null;
 
             return (
               <div key={row.id} className="space-y-1">
-                <div className="grid grid-cols-[1fr,1fr,80px,auto,auto] gap-4 items-center bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-[minmax(170px,1fr)_minmax(120px,0.8fr)_56px_minmax(130px,0.7fr)_auto_auto] gap-2 items-center bg-gray-50 p-4 rounded-lg">
                   <select
                     ref={(el) => (selectRefs.current[row.id] = el)}
                     value={row.employee_id}
@@ -189,7 +189,8 @@ const EmployeeTypeAccordion = ({
                       // Add currently assigned employees
                       availableEmployees.forEach((employee) => {
                         const isPreviouslyAssigned =
-                          employee.team_service_id !== service.team_service_id &&
+                          employee.team_service_id !==
+                            service.team_service_id &&
                           !employee.is_fixed_amount;
                         options.push(
                           <option
@@ -199,7 +200,7 @@ const EmployeeTypeAccordion = ({
                           >
                             {employee.employee_name}
                             {isPreviouslyAssigned ? " (reassign)" : ""}
-                          </option>
+                          </option>,
                         );
                       });
 
@@ -207,7 +208,7 @@ const EmployeeTypeAccordion = ({
                       if (
                         isCurrentReassigned &&
                         !availableEmployees.find(
-                          (e) => e.employee_id === currentEmployee.employee_id
+                          (e) => e.employee_id === currentEmployee.employee_id,
                         )
                       ) {
                         options.push(
@@ -217,7 +218,7 @@ const EmployeeTypeAccordion = ({
                             disabled
                           >
                             {currentEmployee.employee_name}
-                          </option>
+                          </option>,
                         );
                       }
 
@@ -231,7 +232,9 @@ const EmployeeTypeAccordion = ({
                       (typeof row.hours === "object" ? "" : row.hours) ||
                       ""
                     }
-                    onChange={(e) => onInputChange(row.id, "hours", e.target.value)}
+                    onChange={(e) =>
+                      onInputChange(row.id, "hours", e.target.value)
+                    }
                     onBlur={onBlur}
                     disabled={!row.employee_id}
                     className={`px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -241,8 +244,8 @@ const EmployeeTypeAccordion = ({
                       !row.employee_id
                         ? "Select employee first"
                         : row.employee_id === FIXED_AMOUNT
-                        ? "Amount"
-                        : "Hours (HH:MM or decimal)"
+                          ? "Amount"
+                          : "Hours (HH:MM or decimal)"
                     }
                     pattern="^(\d*\.?\d*)|(\d{1,2}:\d{0,2})$"
                   />
@@ -279,6 +282,29 @@ const EmployeeTypeAccordion = ({
                       Overtime
                     </label>
                   </div>
+                  {row.employee_id === FIXED_AMOUNT ? (
+                    <div className="relative">
+                      <label
+                        htmlFor={`invoice-${row.id}`}
+                        className="pointer-events-none absolute -top-3.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
+                      >
+                        Invoice
+                      </label>
+                      <input
+                        id={`invoice-${row.id}`}
+                        type="text"
+                        value={row.invoice || ""}
+                        onChange={(e) =>
+                          onInputChange(row.id, "invoice", e.target.value)
+                        }
+                        onBlur={onBlur}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Invoice #"
+                      />
+                    </div>
+                  ) : (
+                    <div />
+                  )}
                   <button
                     onClick={() => onDeleteRow(row.id)}
                     className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
@@ -300,7 +326,8 @@ const EmployeeTypeAccordion = ({
                 </div>
                 {isCurrentReassigned && (
                   <div className="px-4 text-sm text-red-600">
-                    Move {currentEmployee.employee_name} to {newService?.service_name || 'their new service'}
+                    Move {currentEmployee.employee_name} to{" "}
+                    {newService?.service_name || "their new service"}
                   </div>
                 )}
               </div>

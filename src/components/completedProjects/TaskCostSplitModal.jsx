@@ -995,6 +995,16 @@ const TaskCostSplitModal = ({
     const selectedNumericEmployeeIds = selectedHoursEmployeeIds
       .map((employeeId) => Number(employeeId))
       .filter((employeeId) => Number.isFinite(employeeId));
+    const taskUpdatesWithInvoice = (hoursPreview.taskUpdates || []).map(
+      (taskUpdate) => ({
+        ...taskUpdate,
+        rows: (taskUpdate.rows || []).map((row) =>
+          row.employee_id === FIXED_AMOUNT
+            ? { ...row, invoice: row.invoice || "" }
+            : row,
+        ),
+      }),
+    );
 
     setIsSaving(true);
     setSaveError(null);
@@ -1004,7 +1014,7 @@ const TaskCostSplitModal = ({
         teamServiceId: Number(hoursServiceId),
         employeeIds: selectedNumericEmployeeIds,
         includeFixedAmount,
-        taskUpdates: hoursPreview.taskUpdates,
+        taskUpdates: taskUpdatesWithInvoice,
       });
 
       if (saveResult?.success === false) {
