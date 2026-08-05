@@ -16,7 +16,9 @@ import { buttonClass } from "../../assets/tailwindConstants.js";
 import { usePermissions } from "../../hooks/usePermissions";
 import { Actions } from "../../redux/actions";
 import {
+  applyProjectCostDistribution,
   applyProjectHoursSplit,
+  fetchProjectCostDistributionData,
   fetchProjectHoursSplitData,
   fetchProjectFinancials,
   fetchTaskFinancials,
@@ -84,6 +86,14 @@ const CompletedProjectCard = ({
 
   const handleHoursSplitSave = useCallback(async (payload) => {
     return dispatch(applyProjectHoursSplit(payload));
+  }, [dispatch]);
+
+  const handleCostDistributionLoad = useCallback(async () => {
+    return dispatch(fetchProjectCostDistributionData(project.project_id));
+  }, [dispatch, project.project_id]);
+
+  const handleCostDistributionSave = useCallback(async (payload) => {
+    return dispatch(applyProjectCostDistribution(payload));
   }, [dispatch]);
 
   const handleViewClick = async (e) => {
@@ -268,6 +278,8 @@ const CompletedProjectCard = ({
         onSave={handleSplitCostSave}
         onLoadHours={handleHoursSplitLoad}
         onSaveHours={handleHoursSplitSave}
+        onLoadCostDistribution={handleCostDistributionLoad}
+        onSaveCostDistribution={handleCostDistributionSave}
       />
     </div>
   );

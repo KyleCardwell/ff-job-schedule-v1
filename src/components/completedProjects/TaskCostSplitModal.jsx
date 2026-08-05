@@ -169,6 +169,222 @@ const buildSharedDistributionByTask = (sharedRow, taskIds, taskWeightsById = nul
   });
 };
 
+const COST_DISTRIBUTION_EXCLUDED_CATEGORY_IDS = new Set([
+  "hours",
+  "addToSubtotal",
+  "profit",
+  "commission",
+  "discount",
+  "rounding",
+  "addToTotal",
+]);
+
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getTaskCostSection = (task, categoryId) =>
+  (task?.sections || []).find(
+    (section) => String(section?.id) === String(categoryId),
+  );
+
+const getCostRowTotal = (row) => {
+  const cost = toNumber(row?.cost);
+  const taxRate = toNumber(row?.taxRate);
+  return cost * (1 + taxRate / 100);
+};
+
+const allocateCentsByWeight = (totalCents, weights) => {
+  const total = Math.trunc(toNumber(totalCents));
+  const sign = total < 0 ? -1 : 1;
+  const absoluteTotal = Math.abs(total);
+  const weightTotal = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0);
+
+  if (absoluteTotal === 0 || weightTotal <= 0) {
+    return weights.map(() => 0);
+  }
+
+  const normalizedWeights = weights.map((weight) => Math.max(0, weight));
+  const rawShares = normalizedWeights.map(
+    (weight) => (absoluteTotal * weight) / weightTotal,
+  );
+  const allocated = rawShares.map(Math.floor);
+  let remainder = absoluteTotal - allocated.reduce((sum, value) => sum + value, 0);
+  const remainderOrder = rawShares
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+
+  for (let index = 0; index < remainder; index += 1) {
+    allocated[remainderOrder[index % remainderOrder.length].index] += 1;
+  }
+
+  return allocated.map((value) => value * sign);
+};
+
+const buildCostDistributionPreview = ({
+  tasks = [],
+  categoryId,
+  selectedTaskIds = [],
+  mode = "estimate",
+}) => {
+  if (!categoryId) {
+    return { error: "Please select a section." };
+  }
+
+  if ((selectedTaskIds || []).length < 2) {
+    return { error: "Please select at least two tasks to distribute costs across." };
+  }
+
+  const selectedTaskIdSet = new Set((selectedTaskIds || []).map(String));
+  const selectedTasks = tasks.filter((task) =>
+    selectedTaskIdSet.has(String(task.taskId)),
+  );
+
+  if (selectedTasks.length < 2) {
+    return { error: "Please select at least two tasks to distribute costs across." };
+  }
+
+  const taskSections = selectedTasks.map((task) => ({
+    task,
+    section: getTaskCostSection(task, categoryId),
+  }));
+
+  if (taskSections.some(({ section }) => !section)) {
+    return {
+      error: "The selected section is missing from one or more selected tasks.",
+    };
+  }
+
+  if (selectedTasks.some((task) => !task.financialsUpdatedAt)) {
+    return {
+      error:
+        "One or more selected tasks are missing financial records. Save those task financials first, then try again.",
+    };
+  }
+
+  const pooledRows = taskSections.flatMap(({ section }) => section.rows || []);
+  if (pooledRows.length === 0) {
+    return { error: "The selected tasks do not have any rows to distribute." };
+  }
+
+  const weights = taskSections.map(({ section }) => {
+    if (mode === "equal") return 1;
+    return Math.max(0, toNumber(section.estimate));
+  });
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+  const normalizedWeights =
+    weightTotal > 0 ? weights : taskSections.map(() => 1);
+  const normalizedWeightTotal = normalizedWeights.reduce(
+    (sum, weight) => sum + weight,
+    0,
+  );
+
+  const rowsByTask = new Map(
+    selectedTasks.map((task) => [String(task.taskId), []]),
+  );
+  const currentTotalsByTask = new Map(
+    selectedTasks.map((task) => [String(task.taskId), 0]),
+  );
+  const proposedTotalsByTask = new Map(
+    selectedTasks.map((task) => [String(task.taskId), 0]),
+  );
+
+  taskSections.forEach(({ task, section }) => {
+    const taskId = String(task.taskId);
+    const currentTotal = (section.rows || []).reduce(
+      (sum, row) => sum + getCostRowTotal(row),
+      0,
+    );
+    currentTotalsByTask.set(taskId, currentTotal);
+  });
+
+  pooledRows.forEach((row) => {
+    const cents = Math.round(toNumber(row?.cost) * 100);
+    const shares = allocateCentsByWeight(cents, normalizedWeights);
+
+    selectedTasks.forEach((task, taskIndex) => {
+      const shareCents = shares[taskIndex] || 0;
+      if (shareCents === 0) return;
+      const distributedCost = shareCents / 100;
+      const taxRate = toNumber(row?.taxRate);
+      const taskId = String(task.taskId);
+      const taskRows = rowsByTask.get(taskId) || [];
+
+      taskRows.push({
+        invoice: row?.invoice || "",
+        description: row?.description || "",
+        cost: distributedCost,
+        taxRate,
+        costExpression: buildDistributedCostExpression(
+          row?.costExpression ||
+            (row?.cost === null || row?.cost === undefined
+              ? null
+              : String(row.cost)),
+          shareCents,
+          cents,
+        ),
+        taxRateExpression: row?.taxRateExpression || null,
+        taxAmountExpression: row?.taxAmountExpression || null,
+      });
+      rowsByTask.set(taskId, taskRows);
+
+      proposedTotalsByTask.set(
+        taskId,
+        (proposedTotalsByTask.get(taskId) || 0) +
+          distributedCost * (1 + taxRate / 100),
+      );
+    });
+  });
+
+  const taskSummaries = selectedTasks.map((task, index) => {
+    const taskId = String(task.taskId);
+    const currentTotal = currentTotalsByTask.get(taskId) || 0;
+    const proposedTotal = proposedTotalsByTask.get(taskId) || 0;
+    return {
+      taskId,
+      taskNumber: task.taskNumber,
+      taskName: task.taskName,
+      estimate: Math.max(0, toNumber(taskSections[index]?.section?.estimate)),
+      weight: normalizedWeights[index] / Math.max(normalizedWeightTotal, 1),
+      currentTotal,
+      proposedTotal,
+      change: proposedTotal - currentTotal,
+      rowCount: (rowsByTask.get(taskId) || []).length,
+      expectedFinancialsUpdatedAt: task.financialsUpdatedAt || null,
+    };
+  });
+
+  const taskUpdates = selectedTasks.map((task) => {
+    const taskId = String(task.taskId);
+    const summary = taskSummaries.find((item) => item.taskId === taskId);
+    return {
+      taskId,
+      expectedFinancialsUpdatedAt: summary?.expectedFinancialsUpdatedAt || null,
+      rows: rowsByTask.get(taskId) || [],
+    };
+  });
+
+  const totals = taskSummaries.reduce(
+    (acc, summary) => ({
+      currentTotal: acc.currentTotal + summary.currentTotal,
+      proposedTotal: acc.proposedTotal + summary.proposedTotal,
+    }),
+    { currentTotal: 0, proposedTotal: 0 },
+  );
+
+  return {
+    categoryId,
+    mode,
+    taskSummaries,
+    taskUpdates,
+    totals: {
+      ...totals,
+      change: totals.proposedTotal - totals.currentTotal,
+    },
+  };
+};
+
 const TaskCostSplitModal = ({
   isOpen,
   onClose,
@@ -178,6 +394,8 @@ const TaskCostSplitModal = ({
   onSave,
   onLoadHours,
   onSaveHours,
+  onLoadCostDistribution,
+  onSaveCostDistribution,
 }) => {
   const chartConfig = useSelector((state) => state.chartConfig);
   const services = useSelector((state) => state.services?.allServices || []);
@@ -263,6 +481,14 @@ const TaskCostSplitModal = ({
   const [selectedHoursTaskIds, setSelectedHoursTaskIds] = useState([]);
   const [selectedHoursEmployeeIds, setSelectedHoursEmployeeIds] = useState([]);
   const [hoursPreview, setHoursPreview] = useState(null);
+  const [costDistributionData, setCostDistributionData] = useState(null);
+  const [isCostDistributionLoading, setIsCostDistributionLoading] = useState(false);
+  const [costDistributionLoadError, setCostDistributionLoadError] = useState(null);
+  const [costDistributionLoadVersion, setCostDistributionLoadVersion] = useState(0);
+  const [costDistributionCategoryId, setCostDistributionCategoryId] = useState("");
+  const [costDistributionMode, setCostDistributionMode] = useState("estimate");
+  const [selectedCostDistributionTaskIds, setSelectedCostDistributionTaskIds] = useState([]);
+  const [costDistributionPreview, setCostDistributionPreview] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -289,6 +515,14 @@ const TaskCostSplitModal = ({
     setSelectedHoursTaskIds([]);
     setSelectedHoursEmployeeIds([]);
     setHoursPreview(null);
+    setCostDistributionData(null);
+    setIsCostDistributionLoading(false);
+    setCostDistributionLoadError(null);
+    setCostDistributionLoadVersion(0);
+    setCostDistributionCategoryId("");
+    setCostDistributionMode("estimate");
+    setSelectedCostDistributionTaskIds([]);
+    setCostDistributionPreview(null);
   }, [isOpen]);
 
   useEffect(() => {
@@ -332,6 +566,53 @@ const TaskCostSplitModal = ({
     hoursLoadVersion,
     isOpen,
     onLoadHours,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      activeTab !== "distribute" ||
+      costDistributionData ||
+      !onLoadCostDistribution
+    ) {
+      return;
+    }
+
+    let isCurrent = true;
+    setIsCostDistributionLoading(true);
+    setCostDistributionLoadError(null);
+
+    onLoadCostDistribution()
+      .then((result) => {
+        if (!isCurrent) return;
+        if (result?.success === false) {
+          setCostDistributionLoadError(
+            result.error || "Failed to load project costs.",
+          );
+          return;
+        }
+        setCostDistributionData(result?.data || { tasks: [] });
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setCostDistributionLoadError(
+            error?.message || "Failed to load project costs.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsCostDistributionLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    activeTab,
+    costDistributionData,
+    costDistributionLoadVersion,
+    isOpen,
+    onLoadCostDistribution,
   ]);
 
   const selectedCategory = useMemo(
@@ -394,6 +675,45 @@ const TaskCostSplitModal = ({
         };
       }),
     [employees, hoursServiceId, hoursTasks, selectedHoursTaskIds],
+  );
+
+  const costDistributionTasks = useMemo(() => {
+    const availableTaskIds = new Set((tasks || []).map((task) => String(task.task_id)));
+    return (costDistributionData?.tasks || []).filter((task) =>
+      availableTaskIds.has(String(task.taskId)),
+    );
+  }, [costDistributionData, tasks]);
+
+  const costDistributionCategoryOptions = useMemo(() => {
+    const optionsMap = new Map();
+
+    costDistributionTasks.forEach((task) => {
+      (task.sections || []).forEach((section) => {
+        const sectionId = String(section?.id || "");
+        if (!sectionId || COST_DISTRIBUTION_EXCLUDED_CATEGORY_IDS.has(sectionId)) {
+          return;
+        }
+
+        if (!optionsMap.has(sectionId)) {
+          optionsMap.set(sectionId, {
+            value: sectionId,
+            label: section?.name || sectionId,
+          });
+        }
+      });
+    });
+
+    return [...optionsMap.values()].sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+    );
+  }, [costDistributionTasks]);
+
+  const applicableCostDistributionTaskIds = useMemo(
+    () =>
+      costDistributionTasks
+        .filter((task) => getTaskCostSection(task, costDistributionCategoryId))
+        .map((task) => String(task.taskId)),
+    [costDistributionCategoryId, costDistributionTasks],
   );
 
   const splitSubtotal = useMemo(
@@ -687,6 +1007,87 @@ const TaskCostSplitModal = ({
     }
   };
 
+  const handleCostDistributionCategoryChange = (nextCategoryId) => {
+    setCostDistributionCategoryId(nextCategoryId);
+    setSelectedCostDistributionTaskIds([]);
+    setCostDistributionPreview(null);
+    setSaveError(null);
+  };
+
+  const handleCostDistributionModeChange = (nextMode) => {
+    setCostDistributionMode(nextMode);
+    setCostDistributionPreview(null);
+    setSaveError(null);
+  };
+
+  const handleCostDistributionTaskToggle = (taskId) => {
+    const normalizedTaskId = String(taskId);
+    setSelectedCostDistributionTaskIds((prev) =>
+      prev.includes(normalizedTaskId)
+        ? prev.filter((id) => id !== normalizedTaskId)
+        : [...prev, normalizedTaskId],
+    );
+    setCostDistributionPreview(null);
+    setSaveError(null);
+  };
+
+  const handleSelectAllCostDistributionTasks = () => {
+    const shouldClear =
+      applicableCostDistributionTaskIds.length > 0 &&
+      applicableCostDistributionTaskIds.every((taskId) =>
+        selectedCostDistributionTaskIds.includes(taskId),
+      );
+
+    setSelectedCostDistributionTaskIds(
+      shouldClear ? [] : applicableCostDistributionTaskIds,
+    );
+    setCostDistributionPreview(null);
+    setSaveError(null);
+  };
+
+  const handleCalculateCostDistribution = () => {
+    setSaveError(null);
+    const preview = buildCostDistributionPreview({
+      tasks: costDistributionTasks,
+      categoryId: costDistributionCategoryId,
+      selectedTaskIds: selectedCostDistributionTaskIds,
+      mode: costDistributionMode,
+    });
+
+    if (preview.error) {
+      setCostDistributionPreview(null);
+      setSaveError(preview.error);
+      return;
+    }
+
+    setCostDistributionPreview(preview);
+  };
+
+  const handleSaveCostDistribution = async () => {
+    if (!costDistributionPreview || !onSaveCostDistribution) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const saveResult = await onSaveCostDistribution({
+        projectId,
+        categoryId: costDistributionCategoryId,
+        taskUpdates: costDistributionPreview.taskUpdates,
+      });
+
+      if (saveResult?.success === false) {
+        setSaveError(saveResult.error || "Failed to save the cost distribution.");
+        return;
+      }
+
+      onClose?.();
+    } catch (error) {
+      setSaveError(error?.message || "Failed to save the cost distribution.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaveError(null);
     const taxAmountExpression =
@@ -858,6 +1259,17 @@ const TaskCostSplitModal = ({
               }`}
             >
               Split Hours
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("distribute")}
+              className={`px-5 py-2 text-sm font-semibold border-b-2 ${
+                activeTab === "distribute"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Distribute Costs
             </button>
           </div>
           {activeTab === "cost" && (
@@ -1212,7 +1624,7 @@ const TaskCostSplitModal = ({
             </div>
           </section>
             </>
-          ) : (
+          ) : activeTab === "hours" ? (
             <section className="space-y-5">
               <div className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
                 <FiAlertTriangle className="mt-0.5 flex-shrink-0" size={18} />
@@ -1584,6 +1996,286 @@ const TaskCostSplitModal = ({
                 </>
               )}
             </section>
+          ) : (
+            <section className="space-y-5">
+              <div className="flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                <FiAlertTriangle className="mt-0.5 flex-shrink-0" size={18} />
+                <div>
+                  <div className="font-semibold">
+                    Distribute only after section costs are complete.
+                  </div>
+                  <p className="mt-1 text-amber-800">
+                    This redistributes existing non-hours cost rows across tasks
+                    in the selected section. It keeps the pooled total cost the
+                    same.
+                  </p>
+                </div>
+              </div>
+
+              {isCostDistributionLoading && (
+                <div className="py-10 text-center text-sm text-gray-500">
+                  Loading project costs...
+                </div>
+              )}
+
+              {!isCostDistributionLoading && costDistributionLoadError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <p>{costDistributionLoadError}</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCostDistributionLoadVersion((version) => version + 1)
+                    }
+                    className="mt-3 inline-flex items-center gap-1 font-semibold text-red-700 hover:text-red-900"
+                  >
+                    <FiRefreshCw size={14} /> Try Again
+                  </button>
+                </div>
+              )}
+
+              {!isCostDistributionLoading &&
+                !costDistributionLoadError &&
+                costDistributionData && (
+                  <>
+                    {costDistributionCategoryOptions.length === 0 ? (
+                      <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                        No non-hours cost rows were found on these tasks.
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase text-gray-600">
+                              Section
+                            </label>
+                            <select
+                              value={costDistributionCategoryId}
+                              onChange={(event) =>
+                                handleCostDistributionCategoryChange(
+                                  event.target.value,
+                                )
+                              }
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select section</option>
+                              {costDistributionCategoryOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase text-gray-600">
+                              Distribution Mode
+                            </label>
+                            <select
+                              value={costDistributionMode}
+                              onChange={(event) =>
+                                handleCostDistributionModeChange(event.target.value)
+                              }
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="estimate">By section estimate</option>
+                              <option value="equal">Equal split by task</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {costDistributionCategoryId && (
+                          <>
+                            {applicableCostDistributionTaskIds.length < 2 ? (
+                              <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                                At least two tasks in this section are needed to
+                                distribute costs.
+                              </div>
+                            ) : (
+                              <div className="rounded-md border border-gray-200">
+                                <div className="relative flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+                                  <div className="flex-1">
+                                    <h3 className="text-sm font-bold uppercase text-gray-700">
+                                      Tasks
+                                    </h3>
+                                    <p className="text-xs text-gray-500">
+                                      Select at least two tasks.
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleSelectAllCostDistributionTasks}
+                                    className="absolute right-4 text-xs font-semibold text-blue-700 hover:text-blue-900"
+                                  >
+                                    {applicableCostDistributionTaskIds.length > 0 &&
+                                    applicableCostDistributionTaskIds.every((taskId) =>
+                                      selectedCostDistributionTaskIds.includes(taskId),
+                                    )
+                                      ? "Clear all"
+                                      : "Select all"}
+                                  </button>
+                                </div>
+                                <div className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
+                                  {costDistributionTasks
+                                    .filter((task) =>
+                                      applicableCostDistributionTaskIds.includes(
+                                        String(task.taskId),
+                                      ),
+                                    )
+                                    .map((task) => {
+                                      const section = getTaskCostSection(
+                                        task,
+                                        costDistributionCategoryId,
+                                      );
+                                      const currentTotal = (section?.rows || []).reduce(
+                                        (sum, row) => sum + getCostRowTotal(row),
+                                        0,
+                                      );
+                                      return (
+                                        <label
+                                          key={task.taskId}
+                                          className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-blue-50"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedCostDistributionTaskIds.includes(
+                                              String(task.taskId),
+                                            )}
+                                            onChange={() =>
+                                              handleCostDistributionTaskToggle(task.taskId)
+                                            }
+                                            className="mt-1 h-4 w-4"
+                                          />
+                                          <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-medium text-gray-800">
+                                              {task.taskNumber} - {task.taskName}
+                                            </span>
+                                            <span className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500">
+                                              <span>
+                                                Estimate:{" "}
+                                                {formatCurrency(section?.estimate || 0)}
+                                              </span>
+                                              <span>
+                                                Current: {formatCurrency(currentTotal)}
+                                              </span>
+                                              <span>
+                                                Rows: {(section?.rows || []).length}
+                                              </span>
+                                            </span>
+                                          </span>
+                                        </label>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={handleCalculateCostDistribution}
+                                disabled={selectedCostDistributionTaskIds.length < 2}
+                                className={`${buttonClass} bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-400`}
+                              >
+                                Calculate Distribution
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {costDistributionPreview && (
+                          <div className="rounded-md border border-blue-200">
+                            <div className="border-b border-blue-200 bg-blue-50 px-4 py-3">
+                              <h3 className="text-sm font-bold uppercase text-blue-900">
+                                Distribution Preview
+                              </h3>
+                              <p className="mt-1 text-xs text-blue-800">
+                                Total cost is preserved. Task row counts may increase.
+                              </p>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <div className="min-w-[760px]">
+                                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase text-gray-600">
+                                  <span>Task</span>
+                                  <span className="text-right">Estimate</span>
+                                  <span className="text-right">Weight</span>
+                                  <span className="text-right">Current</span>
+                                  <span className="text-right">New</span>
+                                  <span className="text-right">Change</span>
+                                </div>
+                                {costDistributionPreview.taskSummaries.map(
+                                  (summary) => (
+                                    <div
+                                      key={summary.taskId}
+                                      className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0"
+                                    >
+                                      <span className="font-medium text-gray-800">
+                                        {summary.taskNumber} - {summary.taskName}
+                                      </span>
+                                      <span className="text-right">
+                                        {formatCurrency(summary.estimate)}
+                                      </span>
+                                      <span className="text-right">
+                                        {(summary.weight * 100).toFixed(1)}%
+                                      </span>
+                                      <span className="text-right">
+                                        {formatCurrency(summary.currentTotal)}
+                                      </span>
+                                      <span className="text-right font-semibold">
+                                        {formatCurrency(summary.proposedTotal)}
+                                      </span>
+                                      <span
+                                        className={`text-right font-semibold ${
+                                          summary.change >= 0
+                                            ? "text-green-700"
+                                            : "text-red-700"
+                                        }`}
+                                      >
+                                        {summary.change >= 0 ? "+" : ""}
+                                        {formatCurrency(summary.change)}
+                                      </span>
+                                    </div>
+                                  ),
+                                )}
+                                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-3 border-t-2 border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-950">
+                                  <span>Totals</span>
+                                  <span className="text-right">--</span>
+                                  <span className="text-right">100.0%</span>
+                                  <span className="text-right">
+                                    {formatCurrency(
+                                      costDistributionPreview.totals.currentTotal,
+                                    )}
+                                  </span>
+                                  <span className="text-right">
+                                    {formatCurrency(
+                                      costDistributionPreview.totals.proposedTotal,
+                                    )}
+                                  </span>
+                                  <span
+                                    className={`text-right ${
+                                      Math.abs(
+                                        costDistributionPreview.totals.change,
+                                      ) < 0.000001
+                                        ? "text-blue-800"
+                                        : "text-red-700"
+                                    }`}
+                                  >
+                                    {costDistributionPreview.totals.change >= 0
+                                      ? "+"
+                                      : ""}
+                                    {formatCurrency(
+                                      costDistributionPreview.totals.change,
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+            </section>
           )}
         </div>
 
@@ -1599,17 +2291,27 @@ const TaskCostSplitModal = ({
           <button
             type="button"
             className={`${buttonClass} bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-400`}
-            onClick={activeTab === "cost" ? handleSave : handleSaveHoursSplit}
+            onClick={
+              activeTab === "cost"
+                ? handleSave
+                : activeTab === "hours"
+                  ? handleSaveHoursSplit
+                  : handleSaveCostDistribution
+            }
             disabled={
               isSaving ||
-              (activeTab === "hours" && (!hoursPreview || !onSaveHours))
+              (activeTab === "hours" && (!hoursPreview || !onSaveHours)) ||
+              (activeTab === "distribute" &&
+                (!costDistributionPreview || !onSaveCostDistribution))
             }
           >
             {isSaving
               ? "Saving..."
               : activeTab === "cost"
                 ? "Save Split Cost"
-                : "Save Split Hours"}
+                : activeTab === "hours"
+                  ? "Save Split Hours"
+                  : "Save Distributed Costs"}
           </button>
         </div>
         {saveError && (
@@ -1635,6 +2337,8 @@ TaskCostSplitModal.propTypes = {
   onSave: PropTypes.func,
   onLoadHours: PropTypes.func,
   onSaveHours: PropTypes.func,
+  onLoadCostDistribution: PropTypes.func,
+  onSaveCostDistribution: PropTypes.func,
 };
 
 export default TaskCostSplitModal;
