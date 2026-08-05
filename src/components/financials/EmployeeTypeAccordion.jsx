@@ -168,7 +168,7 @@ const EmployeeTypeAccordion = ({
 
             return (
               <div key={row.id} className="space-y-1">
-                <div className="grid grid-cols-[minmax(170px,1fr)_minmax(120px,0.8fr)_56px_minmax(130px,0.7fr)_auto_auto] gap-2 items-center bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-[minmax(145px,0.8fr)_minmax(120px,1fr)_60px_auto_minmax(120px,0.7fr)_auto] gap-1.5 items-center bg-gray-50 p-4 rounded-lg">
                   <select
                     ref={(el) => (selectRefs.current[row.id] = el)}
                     value={row.employee_id}
@@ -273,7 +273,7 @@ const EmployeeTypeAccordion = ({
                     />
                     <label
                       htmlFor={`overtime-${row.id}`}
-                      className={`ml-2 text-sm ${
+                      className={`ml-1 text-sm ${
                         !row.employee_id || row.employee_id === FIXED_AMOUNT
                           ? "text-gray-400 cursor-not-allowed"
                           : "text-gray-700"
@@ -282,32 +282,38 @@ const EmployeeTypeAccordion = ({
                       Overtime
                     </label>
                   </div>
-                  {row.employee_id === FIXED_AMOUNT ? (
-                    <div className="relative">
-                      <label
-                        htmlFor={`invoice-${row.id}`}
-                        className="pointer-events-none absolute -top-3.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
-                      >
-                        Invoice
-                      </label>
-                      <input
-                        id={`invoice-${row.id}`}
-                        type="text"
-                        value={row.invoice || ""}
-                        onChange={(e) =>
-                          onInputChange(row.id, "invoice", e.target.value)
-                        }
-                        onBlur={onBlur}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Invoice #"
-                      />
-                    </div>
-                  ) : (
-                    <div />
-                  )}
+                  <div className="ml-3 relative">
+                    <label
+                      htmlFor={`invoice-${row.id}`}
+                      className={`pointer-events-none absolute -top-3.5 px-1 text-[10px] font-semibold uppercase tracking-wide ${
+                        row.employee_id === FIXED_AMOUNT
+                          ? "text-gray-500"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      Invoice
+                    </label>
+                    <input
+                      id={`invoice-${row.id}`}
+                      type="text"
+                      value={row.invoice || ""}
+                      onChange={(e) =>
+                        onInputChange(row.id, "invoice", e.target.value)
+                      }
+                      onBlur={onBlur}
+                      disabled={row.employee_id !== FIXED_AMOUNT}
+                      className={`w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        row.employee_id !== FIXED_AMOUNT
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : ""
+                      }`}
+                      placeholder="Invoice #"
+                    />
+                  </div>
                   <button
+                    type="button"
                     onClick={() => onDeleteRow(row.id)}
-                    className="p-2 text-red-600 hover:text-red-800 focus:outline-none"
+                    className="rounded-md p-2 text-red-600 hover:text-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
                   >
                     <svg
                       className="w-5 h-5"
