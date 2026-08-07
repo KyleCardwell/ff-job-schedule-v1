@@ -1810,6 +1810,8 @@ export const calculateSlabHardwoodFacePriceBulk = (faces, selectedMaterial) => {
     return 0;
   }
 
+  const laborCost = 12
+
   // For slab hardwood, we use price per board foot
   const pricePerBoardFoot = selectedMaterial.bd_ft_price;
   let totalPrice = 0;
@@ -1830,7 +1832,7 @@ export const calculateSlabHardwoodFacePriceBulk = (faces, selectedMaterial) => {
 
     // Calculate price for this face
     const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
-    totalPrice += facePrice;
+    totalPrice += facePrice + laborCost;
   });
 
   return totalPrice;

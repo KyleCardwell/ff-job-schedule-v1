@@ -982,6 +982,7 @@ const calculateFaceTotals = (section, context) => {
         totals.facePrices[faceType] += calculate5PieceDoorPrice(face, materialToUse);
       });
     } else if (styleToUse === "slab_hardwood") {
+      const laborCost = 12
       // For slab hardwood, calculate individual prices based on board feet
       faces.forEach((face) => {
         const width = parseFloat(face.width);
@@ -1007,7 +1008,7 @@ const calculateFaceTotals = (section, context) => {
 
         // Calculate board feet: (width * height * thickness) / 144
         const boardFeet = (width * height * thickness) / 144;
-        const facePrice = roundToHundredth(boardFeet * pricePerBoardFoot);
+        const facePrice = roundToHundredth(laborCost + (boardFeet * pricePerBoardFoot));
 
         // Add molding costs based on faceType
         let insideMolding = false;
