@@ -27,201 +27,937 @@
     { "abbr": "as", "meaning": "Adjustable Shelves" },
     { "abbr": "OH", "meaning": "Overhang" },
     { "abbr": "CV", "meaning": "Cabinet Vision" },
-    { "abbr": "T / B / L / R", "meaning": "Top / Bottom / Left / Right (used in reveal notation)" }
+    {
+      "abbr": "T / B / L / R",
+      "meaning": "Top / Bottom / Left / Right (used in reveal notation)"
+    }
   ],
   "sections": [
     {
       "name": "General",
       "entries": [
-        { "id": "general-clearance-check", "tags": ["safety-critical", "general"], "rule": "Double-check that nothing will hit appliance handles and that all drawers in corners will open clear and not hit anything (farm sinks!). Are fillers big enough for appliance/cabinet doors to clear house casings?" },
-        { "id": "general-add-cabinet-notes", "tags": ["general", "how-to"], "rule": "Add Cabinet Notes in Cabinet Vision by right-clicking on a cabinet and choosing the Comments tab." },
-        { "id": "general-add-subassembly-notes", "tags": ["general", "how-to"], "rule": "Add notes for a sub-assembly part by clicking the Reports tab from within the cabinet editor, then Order Entry (on the left)." }
+        {
+          "id": "general-clearance-check",
+          "tags": ["safety-critical", "general"],
+          "rule": "Double-check that nothing will hit appliance handles and that all drawers in corners will open clear and not hit anything (farm sinks!). Are fillers big enough for appliance/cabinet doors to clear house casings?"
+        },
+        {
+          "id": "general-add-cabinet-notes",
+          "tags": ["general", "how-to"],
+          "rule": "Add Cabinet Notes in Cabinet Vision by right-clicking on a cabinet and choosing the Comments tab."
+        },
+        {
+          "id": "general-add-subassembly-notes",
+          "tags": ["general", "how-to"],
+          "rule": "Add notes for a sub-assembly part by clicking the Reports tab from within the cabinet editor, then Order Entry (on the left)."
+        }
       ]
     },
     {
       "name": "Room Notes",
       "description": "Room Properties > Room > Notes tab. Affects all order forms.",
       "entries": [
-        { "id": "room-notes-grain-direction", "tags": ["room-notes", "alpha"], "rule": "Alpha Grain Direction.", "example": "(VH) Vertical/Horizontal, (V) Vertical, (H) Horizontal" },
-        { "id": "room-notes-custom-profile", "tags": ["room-notes", "doors"], "rule": "Custom * Profile - will REPLACE the room's selected profiles on the Door Order Form." },
-        { "id": "room-notes-edgeband-match", "tags": ["room-notes", "edgeband"], "rule": "Door/DF Edgeband - \"MATCH\" or specify the banding if known ahead of time." },
-        { "id": "room-notes-edgeband-alert", "tags": ["room-notes", "edgeband"], "rule": "Edgeband Alert? (N or Y) - Y adds the edgeband alert near the top of the Main Shipping List in red. Edgeband Alert Text is the text displayed (not shown if Alert? is N)." },
-        { "id": "room-notes-face-frame-flag", "tags": ["room-notes", "face-frame"], "rule": "Face Frame (N or Y) - Y adds \"- FACE FRAME\" to the room name on all reports and notes on ProBox Order Form." },
-        { "id": "room-notes-box-material", "tags": ["room-notes", "box-material"], "rule": "Room Box Material (1, 2, 3) - \"WHITE MELAMINE\" or specify a different material. Split into 3 boxes in room notes for spacing purposes on the title block; all 3 combine on the reports." },
-        { "id": "room-notes-drawer-assembly", "tags": ["room-notes", "drawers"], "rule": "Room Drawer Assembly/Finish - \"WALNUT\" or any custom drawer box material (ProBox Order Form)." },
-        { "id": "room-notes-drawer-material", "tags": ["room-notes", "drawers"], "rule": "Room Drawer Material (1, 2) - \"BALTIC BIRCH\" or any drawer box material; 1 & 2 combine on the reports." },
-        { "id": "room-notes-edge-type", "tags": ["room-notes", "edgeband"], "rule": "Room Edge Type - (P) PVC (standard), (V) Veneer, (O) Other." },
-        { "id": "room-notes-edgeband", "tags": ["room-notes", "edgeband"], "rule": "Room Edgeband - \"ALPHA'S CHOICE\" or specify the banding if known ahead of time. Black Melamine box material should have \"BLACK\" edge banding." },
-        { "id": "room-notes-finish-extra", "tags": ["room-notes", "finish"], "rule": "Room Finish Extra - anything typed here combines with the finish on the title block and reports." },
-        { "id": "room-notes-material-extra", "tags": ["room-notes", "material"], "rule": "Room Material Extra - anything typed here combines with the wood on the title block and reports." }
+        {
+          "id": "room-notes-grain-direction",
+          "tags": ["room-notes", "alpha"],
+          "rule": "Alpha Grain Direction.",
+          "example": "(VH) Vertical/Horizontal, (V) Vertical, (H) Horizontal"
+        },
+        {
+          "id": "room-notes-custom-profile",
+          "tags": ["room-notes", "doors"],
+          "rule": "Custom * Profile - will REPLACE the room's selected profiles on the Door Order Form."
+        },
+        {
+          "id": "room-notes-edgeband-match",
+          "tags": ["room-notes", "edgeband"],
+          "rule": "Door/DF Edgeband - \"MATCH\" or specify the banding if known ahead of time."
+        },
+        {
+          "id": "room-notes-edgeband-alert",
+          "tags": ["room-notes", "edgeband"],
+          "rule": "Edgeband Alert? (N or Y) - Y adds the edgeband alert near the top of the Main Shipping List in red. Edgeband Alert Text is the text displayed (not shown if Alert? is N)."
+        },
+        {
+          "id": "room-notes-face-frame-flag",
+          "tags": ["room-notes", "face-frame"],
+          "rule": "Face Frame (N or Y) - Y adds \"- FACE FRAME\" to the room name on all reports and notes on ProBox Order Form."
+        },
+        {
+          "id": "room-notes-box-material",
+          "tags": ["room-notes", "box-material"],
+          "rule": "Room Box Material (1, 2, 3) - \"WHITE MELAMINE\" or specify a different material. Split into 3 boxes in room notes for spacing purposes on the title block; all 3 combine on the reports."
+        },
+        {
+          "id": "room-notes-drawer-assembly",
+          "tags": ["room-notes", "drawers"],
+          "rule": "Room Drawer Assembly/Finish - \"WALNUT\" or any custom drawer box material (ProBox Order Form)."
+        },
+        {
+          "id": "room-notes-drawer-material",
+          "tags": ["room-notes", "drawers"],
+          "rule": "Room Drawer Material (1, 2) - \"BALTIC BIRCH\" or any drawer box material; 1 & 2 combine on the reports."
+        },
+        {
+          "id": "room-notes-edge-type",
+          "tags": ["room-notes", "edgeband"],
+          "rule": "Room Edge Type - (P) PVC (standard), (V) Veneer, (O) Other."
+        },
+        {
+          "id": "room-notes-edgeband",
+          "tags": ["room-notes", "edgeband"],
+          "rule": "Room Edgeband - \"ALPHA'S CHOICE\" or specify the banding if known ahead of time. Black Melamine box material should have \"BLACK\" edge banding."
+        },
+        {
+          "id": "room-notes-finish-extra",
+          "tags": ["room-notes", "finish"],
+          "rule": "Room Finish Extra - anything typed here combines with the finish on the title block and reports."
+        },
+        {
+          "id": "room-notes-material-extra",
+          "tags": ["room-notes", "material"],
+          "rule": "Room Material Extra - anything typed here combines with the wood on the title block and reports."
+        }
       ]
     },
     {
       "name": "Cabinet Notes Checklist",
       "entries": [
-        { "id": "box-material-override", "tags": ["box-material"], "rule": "Box Material if not room default (usually for a finished-interior cabinet).", "example": "RIFT WHITE OAK BOX" },
-        { "id": "base-cabinet-full-top", "tags": ["base-cabinet", "tops"], "rule": "All non-sink/cooktop Base Cabinets need a full top note.", "example": "full top" },
-        { "id": "face-frame-room-notes-flag", "tags": ["face-frame", "room-notes", "safety-critical"], "rule": "If Face Frame (ff): if the whole room is FF, make sure Face Frame is marked \"Y\" in Room Notes (\"N\" for Euro)." },
-        { "id": "ff-deck-height", "tags": ["face-frame", "base-cabinet", "tall-cabinet"], "rule": "Bases & Talls in Face Frame rooms: deck height note (with supports). FF rail height minus half of deck (1 1/2 - 3/8 = 1 1/8).", "example": "deck up 1 1/8\" (with supports)" },
-        { "id": "reveals-general", "tags": ["reveals"], "rule": "Reveals (RV's) if different from standard (Top, Bottom, Left, Right)." },
-        { "id": "reveals-euro-standard", "tags": ["reveals", "euro", "base-cabinet", "wall-cabinet", "tall-cabinet"], "rule": "Standard Euro reveals by cabinet type.", "example": "BASE — RV's (1/4\" T, 1/8\" B, 1/16\" L, 1/16\" R)\nWALL — RV's (1/8\" T, 1/8\" OH B, 1/16\" L, 1/16\" R)\nTALL — RV's (1/8\" T, 1/8\" B, 1/16\" L, 1/16\" R)" },
-        { "id": "reveals-euro-below-wood-top", "tags": ["reveals", "euro", "wood-tops"], "rule": "Euro base cabinets below a shop-built wood top.", "example": "RV's (1/8\" T)" },
-        { "id": "reveals-face-frame-standard", "tags": ["reveals", "face-frame", "base-cabinet", "wall-cabinet", "tall-cabinet"], "rule": "Standard Face Frame reveals by cabinet type.", "example": "BASE — RV's (1 9/16\" T, 1 9/16\" B, 13/16\" L, 13/16\" R)\nWALL — RV's (1 9/16\" T, 13/16\" B, 13/16\" L, 13/16\" R)\nTALL — RV's (1 9/16\" T, 1 9/16\" B, 13/16\" L, 13/16\" R)" },
-        { "id": "reveals-ff-hanging-base", "tags": ["reveals", "face-frame", "base-cabinet"], "rule": "Face Frame Hanging Base Units.", "example": "RV's (13/16\" B)" },
-        { "id": "reveals-pencil-drawers", "tags": ["reveals", "drawers"], "rule": "Pencil Drawers (Euro or Face Frame).", "example": "full top\nRV's (1/4\" T, 0\" B, 1/16\" L & R)\nno deck" },
-        { "id": "back-thickness", "tags": ["backs"], "rule": "Back Thickness - inset or applied? Standard is 1/4\" with dados.", "example": "3/4\" inset back or 1/4\" applied back" },
-        { "id": "blind-corner-cabinet", "tags": ["corner-cabinet", "fillers"], "rule": "Blind Corner Cabinet - make sure to include a flat filler as a separate part number. Include the door width and blind width.", "example": "Door x 17 7/8\"\nBlind x 21 1/2\"" },
-        { "id": "sink-cabinet-apron", "tags": ["sink-cabinet"], "rule": "Sink Cabinets - apron height.", "example": "7 1/2\" apron" },
-        { "id": "partitions", "tags": ["partitions"], "rule": "Vertical Partitions (pt) or Double Partitions (dbl pt) - cabinet width > 36\" will need a pt (or nosing on shelves). Dimension to center (oc) of pt from Left or Right of cabinet box exterior. Note per section: Left Sec (...), Right Sec (...)." },
-        { "id": "fixed-shelves", "tags": ["fixed-shelves"], "rule": "Fixed Shelves (fs). Euro: fs usually splits space between 2 vertical doors/drawer fronts. Face Frame: behind horizontal face frames, the top edge lines up with the top of the face frame rail. Dimension from bottom of box to center (oc) of fixed shelf.", "example": "fs up 72 1/4\" oc" },
-        { "id": "fixed-shelf-banding", "tags": ["fixed-shelves", "banding"], "rule": "Fixed shelves: banding is standard on Euro cabinets. If hidden behind face frame, note no banding.", "example": "no banding" },
-        { "id": "fixed-shelf-oven-support", "tags": ["fixed-shelves", "appliances"], "rule": "Ovens usually need to sit on a double fixed shelf to support weight.", "example": "2 fs (up 12 1/8\", 12 7/8\")" },
-        { "id": "section-notes", "tags": ["sections"], "rule": "For Each Section between Fixed Shelves (or the only section if none): note per section.", "example": "Top Sec (...), Mid Sec (...), Mid Btm Sec (...), Btm Sec (...), etc." },
-        { "id": "section-doors-hinges", "tags": ["sections", "doors", "hinges"], "rule": "Doors or Drawer Fronts (DF's) or No Doors? Hinge Plate Holes (standard) or No Hinge Plate Holes. If No Doors: appliance? open? back or no back?", "example": "NPH (No Doors)" },
-        { "id": "section-line-bore", "tags": ["sections", "shelves"], "rule": "Line Bore (standard, holes for adjustable shelves) or No Line Bore?", "example": "NLB" },
-        { "id": "section-adjustable-shelf-qty", "tags": ["sections", "shelves"], "rule": "Quantity of Adjustable Shelves (approx. 12\" between each).", "example": "4 as" },
-        { "id": "section-shelf-banding", "tags": ["sections", "shelves", "banding"], "rule": "Adjustable shelf banding is standard. If shop will add nosing instead, note it. If not hardwood, add depth for cut & fold nosing.", "example": "no banding - add 1 1/2\" nosing\n+2\" as depth - FF to cut & fold for 1 1/2\" nosing" },
-        { "id": "section-drawer-roll-out-qty", "tags": ["sections", "drawers", "roll-outs"], "rule": "Quantity & depth of drawers (drw) / Roll-outs (ro) per section.", "example": "21\" drws or 2 ro - 18\"" },
-        { "id": "hinge-side", "tags": ["hinges", "doors"], "rule": "Hinge side if one door.", "example": "hl or hr" },
-        { "id": "hinge-bore", "tags": ["hinges", "alpha"], "rule": "Check hinge bore note on Alpha confirmation & update notes if not 4\".", "example": "2 1/2\" hinge bore" },
-        { "id": "flipper-outer", "tags": ["flipper-door"], "rule": "Flipper Door Outer Cabinet: top RV for doors to clear; standard deck, deck up note, or no deck; comment/note for no line bore/no hinge plate holes.", "example": "RV's (13/16\" T); deck up 1 1/8\" or no deck; NLB, NPH (No Doors)" },
-        { "id": "flipper-inner", "tags": ["flipper-door"], "rule": "Flipper Door Inner Cabinet (sits inside outer cabinet): width is 4\" narrower than the outer box interior opening width; height matches outer box interior opening height; depth is 1 1/4\" less than outer box exterior (1\" for back, 1/4\" for front so flipper hinges clear); inner box has a finished interior.", "example": "MDF BOX" },
-        { "id": "finished-ends", "tags": ["finished-ends"], "rule": "Cabinets with Finished Ends: note dowel front hole side, assuming the back of the cabinet will not be visible (confirmat construction).", "example": "fl/dowel front hole OR fr/dowel front hole" },
-        { "id": "doors-panels-mid-rail-check", "tags": ["doors", "panels", "safety-critical"], "rule": "Double-check ALL doors and panels - do they have mid rails (MR) or mid stiles (MS)? Mesh or glass panels need a sash note.", "example": "sash panel for glass or sash panel for mesh" },
-        { "id": "each-door-dimensions", "tags": ["doors", "panels", "dimensions"], "rule": "EACH door/panel needs Top Rail (TR), Bottom Rail (BR), Left Stile (LS), Right Stile (RS) dimensions if different from room standard, plus a note for MR/MS placement on center from the edge of the door." },
-        { "id": "mid-rail-stile-width-rule", "tags": ["doors", "mid-rail", "mid-stile"], "rule": "MR/MS are generally wider than the outside stiles & rails by the width of one molding profile.", "example": "On a 3\" S&R door, 3 5/8\" MR up 31 1/2\" oc (if the inside profile is 5/8\" wide)" },
-        { "id": "glass-mesh-min-stile", "tags": ["doors", "glass", "mesh", "safety-critical"], "rule": "5-Piece Glass/Mesh Panel Doors MUST have a minimum of 2 1/2\" stiles & rails." },
-        { "id": "slab-molding-veneer-rule", "tags": ["doors", "slab", "veneer"], "rule": "Slab Doors/DF's with outside molding should be ordered as veneer panels.", "example": "SLAB - MDF CORE" },
-        { "id": "ff-overlay-height", "tags": ["face-frame", "overlays", "doors"], "rule": "For Face Frame Cabinets with Doors/DF's that do NOT have square outside edges - PAIR & SINGLE DOORS & DF's: size must be 3/16\" smaller than the face frame opening in height.", "example": "For Cabinet Vision: -3/32\" overlays for top & bottom" },
-        { "id": "ff-overlay-pair-width", "tags": ["face-frame", "overlays", "doors"], "rule": "PAIR DOORS: overall size must be 1/4\" smaller than the face frame opening in width.", "example": "For Cabinet Vision: -1/8\" overlays for left & right" },
-        { "id": "ff-overlay-single-width", "tags": ["face-frame", "overlays", "doors", "drawer-fronts"], "rule": "SINGLE DOORS & DRAWER FRONTS: size must be 3/16\" smaller than the face frame opening in width.", "example": "For Cabinet Vision: -3/32\" overlays for left & right" },
-        { "id": "euro-pair-door-gap", "tags": ["euro", "reveals", "doors"], "rule": "For a Single Euro Cabinet captured between any combo of End Panels & Fillers - gaps between pair doors need 1/4\" overall (1/8\" between doors + Left & Right reveals).", "example": "For Cabinet Vision: 1/16\" Left & Right reveals; if End Panels/T-fillers cover front edges of cabinets, reveals are 13/16\"" },
-        { "id": "euro-single-door-gap", "tags": ["euro", "reveals", "doors", "drawer-fronts"], "rule": "Single doors/drawer fronts need 3/16\" overall (Left + Right reveals).", "example": "For Cabinet Vision: 3/32\" Left & Right reveals; if End Panels/T-fillers cover front edges of cabinets, reveals are 27/32\"" }
+        {
+          "id": "box-material-override",
+          "tags": ["box-material"],
+          "rule": "Box Material if not room default (usually for a finished-interior cabinet).",
+          "example": "RIFT WHITE OAK BOX"
+        },
+        {
+          "id": "base-cabinet-full-top",
+          "tags": ["base-cabinet", "tops"],
+          "rule": "All non-sink/cooktop Base Cabinets need a full top note.",
+          "example": "full top"
+        },
+        {
+          "id": "face-frame-room-notes-flag",
+          "tags": ["face-frame", "room-notes", "safety-critical"],
+          "rule": "If Face Frame (ff): if the whole room is FF, make sure Face Frame is marked \"Y\" in Room Notes (\"N\" for Euro)."
+        },
+        {
+          "id": "ff-deck-height",
+          "tags": ["face-frame", "base-cabinet", "tall-cabinet"],
+          "rule": "Bases & Talls in Face Frame rooms: deck height note (with supports). FF rail height minus half of deck (1 1/2 - 3/8 = 1 1/8).",
+          "example": "deck up 1 1/8\" (with supports)"
+        },
+        {
+          "id": "reveals-general",
+          "tags": ["reveals"],
+          "rule": "Reveals (RV's) if different from standard (Top, Bottom, Left, Right).",
+          "children": [
+            {
+              "id": "reveals-euro-standard",
+              "tags": [
+                "reveals",
+                "euro",
+                "base-cabinet",
+                "wall-cabinet",
+                "tall-cabinet"
+              ],
+              "rule": "Standard Euro reveals by cabinet type.",
+              "example": "BASE — RV's (1/4\" T, 1/8\" B, 1/16\" L, 1/16\" R)\nWALL — RV's (1/8\" T, 1/8\" OH B, 1/16\" L, 1/16\" R)\nTALL — RV's (1/8\" T, 1/8\" B, 1/16\" L, 1/16\" R)"
+            },
+            {
+              "id": "reveals-euro-below-wood-top",
+              "tags": ["reveals", "euro", "wood-tops"],
+              "rule": "Euro base cabinets below a shop-built wood top.",
+              "example": "RV's (1/8\" T)"
+            },
+            {
+              "id": "reveals-face-frame-standard",
+              "tags": [
+                "reveals",
+                "face-frame",
+                "base-cabinet",
+                "wall-cabinet",
+                "tall-cabinet"
+              ],
+              "rule": "Standard Face Frame reveals by cabinet type.",
+              "example": "BASE — RV's (1 9/16\" T, 1 9/16\" B, 13/16\" L, 13/16\" R)\nWALL — RV's (1 9/16\" T, 13/16\" B, 13/16\" L, 13/16\" R)\nTALL — RV's (1 9/16\" T, 1 9/16\" B, 13/16\" L, 13/16\" R)"
+            },
+            {
+              "id": "reveals-ff-hanging-base",
+              "tags": ["reveals", "face-frame", "base-cabinet"],
+              "rule": "Face Frame Hanging Base Units.",
+              "example": "RV's (13/16\" B)"
+            },
+            {
+              "id": "reveals-pencil-drawers",
+              "tags": ["reveals", "drawers"],
+              "rule": "Pencil Drawers (Euro or Face Frame).",
+              "example": "full top\nRV's (1/4\" T, 0\" B, 1/16\" L & R)\nno deck"
+            }
+          ]
+        },
+        {
+          "id": "back-thickness",
+          "tags": ["backs"],
+          "rule": "Back Thickness - inset or applied? Standard is 1/4\" with dados.",
+          "examples": [
+            {
+              "id": "inset",
+              "label": "Inset",
+              "text": "3/4\" inset back"
+            },
+            {
+              "id": "applied",
+              "label": "Applied",
+              "text": "1/4\" applied back"
+            }
+          ]
+        },
+        {
+          "id": "blind-corner-cabinet",
+          "tags": ["corner-cabinet", "fillers"],
+          "rule": "Blind Corner Cabinet - make sure to include a flat filler as a separate part number. Include the door width and blind width.",
+          "example": "Door x 17 7/8\"\nBlind x 21 1/2\""
+        },
+        {
+          "id": "sink-cabinet-apron",
+          "tags": ["sink-cabinet"],
+          "rule": "Sink Cabinets - apron height.",
+          "example": "7 1/2\" apron"
+        },
+        {
+          "id": "partitions",
+          "tags": ["partitions"],
+          "rule": "Vertical Partitions (pt) or Double Partitions (dbl pt) - cabinet width > 36\" will need a pt (or nosing on shelves). Dimension to center (oc) of pt from Left or Right of cabinet box exterior. Note per section: Left Sec (...), Right Sec (...)."
+        },
+        {
+          "id": "fixed-shelves",
+          "tags": ["fixed-shelves"],
+          "rule": "Fixed Shelves (fs). Euro: fs usually splits space between 2 vertical doors/drawer fronts. Face Frame: behind horizontal face frames, the top edge lines up with the top of the face frame rail. Dimension from bottom of box to center (oc) of fixed shelf.",
+          "example": "fs up 72 1/4\" oc"
+        },
+        {
+          "id": "fixed-shelf-banding",
+          "tags": ["fixed-shelves", "banding"],
+          "rule": "Fixed shelves: banding is standard on Euro cabinets. If hidden behind face frame, note no banding.",
+          "example": "no banding"
+        },
+        {
+          "id": "fixed-shelf-oven-support",
+          "tags": ["fixed-shelves", "appliances"],
+          "rule": "Ovens usually need to sit on a double fixed shelf to support weight.",
+          "example": "2 fs (up 12 1/8\", 12 7/8\")"
+        },
+        {
+          "id": "section-notes",
+          "tags": ["sections"],
+          "rule": "For Each Section between Fixed Shelves (or the only section if none): note per section.",
+          "example": "Top Sec (...), Mid Sec (...), Mid Btm Sec (...), Btm Sec (...), etc.",
+          "children": [
+            {
+              "id": "section-doors-hinges",
+              "tags": ["sections", "doors", "hinges"],
+              "rule": "Doors or Drawer Fronts (DF's) or No Doors? Hinge Plate Holes (standard) or No Hinge Plate Holes. If No Doors: appliance? open? back or no back?",
+              "example": "NPH (No Doors)"
+            },
+            {
+              "id": "section-line-bore",
+              "tags": ["sections", "shelves"],
+              "rule": "Line Bore (standard, holes for adjustable shelves) or No Line Bore?",
+              "example": "NLB"
+            },
+            {
+              "id": "section-adjustable-shelf-qty",
+              "tags": ["sections", "shelves"],
+              "rule": "Quantity of Adjustable Shelves (approx. 12\" between each).",
+              "example": "4 as"
+            },
+            {
+              "id": "section-shelf-banding",
+              "tags": ["sections", "shelves", "banding"],
+              "rule": "Adjustable shelf banding is standard. If shop will add nosing instead, note it. If not hardwood, add depth for cut & fold nosing.",
+              "examples": [
+                {
+                  "id": "no-banding",
+                  "label": "No banding",
+                  "text": "2 as, no banding - add 1 1/2\" nosing"
+                },
+                {
+                  "id": "cut-fold-nosing",
+                  "label": "Cut & fold nosing",
+                  "text": "2 as, +2\" as depth - FF to cut & fold for 1 1/2\" nosing"
+                }
+              ]
+            },
+            {
+              "id": "section-drawer-roll-out-qty",
+              "tags": ["sections", "drawers", "roll-outs"],
+              "rule": "Quantity & depth of drawers (drw) / Roll-outs (ro) per section.",
+              "examples": [
+                {
+                  "id": "drawers",
+                  "label": "Drawers",
+                  "text": "21\" drws"
+                },
+                {
+                  "id": "roll-outs",
+                  "label": "Roll-outs",
+                  "text": "2 ro - 18\""
+                }
+              ]
+            },
+            {
+              "id": "hinge-side",
+              "tags": ["hinges", "doors"],
+              "rule": "Hinge side if one door.",
+              "examples": [
+                {
+                  "id": "hinge-left",
+                  "label": "Hinge left",
+                  "text": "hl"
+                },
+                {
+                  "id": "hinge-right",
+                  "label": "Hinge right",
+                  "text": "hr"
+                }
+              ]
+            },
+            {
+              "id": "hinge-bore",
+              "tags": ["hinges", "alpha"],
+              "rule": "Check hinge bore note on Alpha confirmation & update notes if not 4\".",
+              "example": "2 1/2\" hinge bore"
+            }
+          ]
+        },
+        {
+          "id": "flipper-outer",
+          "tags": ["flipper-door"],
+          "rule": "Flipper Door Outer Cabinet: top RV for doors to clear; standard deck, deck up note, or no deck; comment/note for no line bore/no hinge plate holes.",
+          "examples": [
+            {
+              "id": "deck-up",
+              "label": "Deck up",
+              "text": "RV's (13/16\" T); deck up 1 1/8\"; NLB, NPH (No Doors)"
+            },
+            {
+              "id": "no-deck",
+              "label": "No deck",
+              "text": "RV's (13/16\" T)\nno deck\nNLB, NPH (No Doors)"
+            }
+          ]
+        },
+        {
+          "id": "flipper-inner",
+          "tags": ["flipper-door"],
+          "rule": "Flipper Door Inner Cabinet (sits inside outer cabinet): width is 4\" narrower than the outer box interior opening width; height matches outer box interior opening height; depth is 1 1/4\" less than outer box exterior (1\" for back, 1/4\" for front so flipper hinges clear); inner box has a finished interior.",
+          "example": "MDF BOX"
+        },
+        {
+          "id": "finished-ends",
+          "tags": ["finished-ends"],
+          "rule": "Cabinets with Finished Ends: note dowel front hole side, assuming the back of the cabinet will not be visible (confirmat construction).",
+          "examples": [
+            {
+              "id": "front-left",
+              "label": "Front left",
+              "text": "fl/dowel front hole"
+            },
+            {
+              "id": "front-right",
+              "label": "Front right",
+              "text": "fr/dowel front hole"
+            }
+          ]
+        },
+        {
+          "id": "doors-panels-mid-rail-check",
+          "tags": ["doors", "panels", "safety-critical"],
+          "rule": "Double-check ALL doors and panels - do they have mid rails (MR) or mid stiles (MS)? Mesh or glass panels need a sash note.",
+          "examples": [
+            {
+              "id": "glass",
+              "label": "Glass",
+              "text": "sash panel for glass"
+            },
+            {
+              "id": "mesh",
+              "label": "Mesh",
+              "text": "sash panel for mesh"
+            }
+          ]
+        },
+        {
+          "id": "each-door-dimensions",
+          "tags": ["doors", "panels", "dimensions"],
+          "rule": "EACH door/panel needs Top Rail (TR), Bottom Rail (BR), Left Stile (LS), Right Stile (RS) dimensions if different from room standard, plus a note for MR/MS placement on center from the edge of the door."
+        },
+        {
+          "id": "mid-rail-stile-width-rule",
+          "tags": ["doors", "mid-rail", "mid-stile"],
+          "rule": "MR/MS are generally wider than the outside stiles & rails by the width of one molding profile.",
+          "examples": [
+            {
+              "id": "three-inch-stile-rail",
+              "label": "On a 3\" S&R door if the inside profile is 5/8\" wide",
+              "text": "3 5/8\" MR up 31 1/2\" oc"
+            }
+          ]
+        },
+        {
+          "id": "glass-mesh-min-stile",
+          "tags": ["doors", "glass", "mesh", "safety-critical"],
+          "rule": "5-Piece Glass/Mesh Panel Doors MUST have a minimum of 2 1/2\" stiles & rails."
+        },
+        {
+          "id": "slab-molding-veneer-rule",
+          "tags": ["doors", "slab", "veneer"],
+          "rule": "Slab Doors/DF's with outside molding should be ordered as veneer panels.",
+          "example": "SLAB - MDF CORE"
+        },
+        {
+          "id": "ff-overlay-height",
+          "tags": ["face-frame", "overlays", "doors"],
+          "rule": "For Face Frame Cabinets with Doors/DF's that do NOT have square outside edges - PAIR & SINGLE DOORS & DF's: size must be 3/16\" smaller than the face frame opening in height.",
+          "example": "For Cabinet Vision: -3/32\" overlays for top & bottom"
+        },
+        {
+          "id": "ff-overlay-pair-width",
+          "tags": ["face-frame", "overlays", "doors"],
+          "rule": "PAIR DOORS: overall size must be 1/4\" smaller than the face frame opening in width.",
+          "example": "For Cabinet Vision: -1/8\" overlays for left & right"
+        },
+        {
+          "id": "ff-overlay-single-width",
+          "tags": ["face-frame", "overlays", "doors", "drawer-fronts"],
+          "rule": "SINGLE DOORS & DRAWER FRONTS: size must be 3/16\" smaller than the face frame opening in width.",
+          "example": "For Cabinet Vision: -3/32\" overlays for left & right"
+        },
+        {
+          "id": "euro-pair-door-gap",
+          "tags": ["euro", "reveals", "doors"],
+          "rule": "For a Single Euro Cabinet captured between any combo of End Panels & Fillers - gaps between pair doors need 1/4\" overall (1/8\" between doors + Left & Right reveals).",
+          "example": "For Cabinet Vision: 1/16\" Left & Right reveals; if End Panels/T-fillers cover front edges of cabinets, reveals are 13/16\""
+        },
+        {
+          "id": "euro-single-door-gap",
+          "tags": ["euro", "reveals", "doors", "drawer-fronts"],
+          "rule": "Single doors/drawer fronts need 3/16\" overall (Left + Right reveals).",
+          "example": "For Cabinet Vision: 3/32\" Left & Right reveals; if End Panels/T-fillers cover front edges of cabinets, reveals are 27/32\""
+        }
       ]
     },
     {
       "name": "Drawer Boxes & Roll-Outs",
       "entries": [
-        { "id": "drawer-slide-standard", "tags": ["drawers", "roll-outs", "hardware"], "rule": "Typically use Blum Soft-close Slides; heavy-duty drawers/roll-outs need Accuride 3832 (or 4034 for really heavy-duty)." },
-        { "id": "drawer-guide-schedule", "tags": ["drawers", "roll-outs", "cabinet-vision", "hardware"], "rule": "CV drawer width & depth are determined by Room Properties > Cabinet > Hardware > Drawer Guide Schedule. Choose ONLY schedules that have 'No Notch' at the end of their names. Also change Properties > Cabinet > Construction > Drawer Box/Roll Outs to match the selected guide.", "example": "FFI Blum No Dovetail or FFI Accuride No Dovetail" },
-        { "id": "drawer-accuride-shallow", "tags": ["drawers", "hardware"], "rule": "If Drawer Box < 15\" deep AND DF > 5 7/8\" tall - use Accuride Slides for that drawer only." },
-        { "id": "file-drawer-slides", "tags": ["drawers", "file-drawer", "hardware"], "rule": "File Drawers (DF at least 13\" tall, 10 1/4\" tall drawer box) need Accuride 3832 (NOT soft-close)." },
-        { "id": "file-drawer-wide-slides", "tags": ["drawers", "file-drawer", "hardware"], "rule": "File Drawers wider than 24\" need Accuride 4034 (NOT soft-close)." },
-        { "id": "drawer-front-height-match", "tags": ["drawers", "drawer-fronts", "safety-critical"], "rule": "Drawer Fronts that are the same height (per cabinet) should have drawer boxes that are the same height." },
-        { "id": "drawer-notes-howto", "tags": ["drawers", "roll-outs", "how-to"], "rule": "Add Drw/RO notes in Cabinet Vision by clicking on the \"drw box sub-front\" or \"ro sub-front\" and adding a comment." },
-        { "id": "drawer-clips-ff", "tags": ["drawers", "face-frame", "hardware"], "rule": "Drawers in FF boxes need \"Adjustable Clips\" (FF rooms get this by default; does not apply to ROs)." },
-        { "id": "drawer-clips-euro", "tags": ["drawers", "euro", "hardware"], "rule": "Drawers in Euro boxes need \"Standard Clips\" (Euro rooms get this by default; does not apply to ROs)." },
-        { "id": "drawer-nonstandard-note", "tags": ["drawers", "probox"], "rule": "Cabinets different from the room standard need a note on EACH drawer (check the ProBox report, should be automatic)." },
-        { "id": "sink-cabinet-ro-depth", "tags": ["sink-cabinet", "roll-outs", "drawers"], "rule": "ANY SINK CABINET WITH A RO - the RO depth should be 3\" less than standard (to allow for plumbing at back). Drawers in a sink cabinet should get a note to notch around plumbing.", "example": "notch drw around plumbing" },
-        { "id": "drawer-stabilizers", "tags": ["drawers", "drawer-fronts"], "rule": "Drawer Fronts wider than 36\" - cabinet box note needs drawer stabilizers.", "example": "drawer stabilizers" },
-        { "id": "prefinished-maple-euro-drawers", "tags": ["drawers", "euro", "maple"], "rule": "Pre-finished Maple EURO Cabinets - drawers will be 1/16\" wider than usual.", "example": "FFI Blum - Euro, Prefin Maple Cabinet - No Notch OR Accuride 3832 - Maple Cab - No Notch" },
-        { "id": "charging-drawers", "tags": ["drawers", "charging"], "rule": "Charging Drawers - minimum 2\" clearance behind drawer box (order drawer box 1 size down if necessary)." }
+        {
+          "id": "drawer-slide-standard",
+          "tags": ["drawers", "roll-outs", "hardware"],
+          "rule": "Typically use Blum Soft-close Slides; heavy-duty drawers/roll-outs need Accuride 3832 (or 4034 for really heavy-duty)."
+        },
+        {
+          "id": "drawer-guide-schedule",
+          "tags": ["drawers", "roll-outs", "cabinet-vision", "hardware"],
+          "rule": "CV drawer width & depth are determined by Room Properties > Cabinet > Hardware > Drawer Guide Schedule. Choose ONLY schedules that have 'No Notch' at the end of their names. Also change Properties > Cabinet > Construction > Drawer Box/Roll Outs to match the selected guide.",
+          "examples": [
+            {
+              "id": "blum",
+              "label": "Blum",
+              "text": "FFI Blum No Dovetail"
+            },
+            {
+              "id": "accuride",
+              "label": "Accuride",
+              "text": "FFI Accuride No Dovetail"
+            }
+          ]
+        },
+        {
+          "id": "drawer-accuride-shallow",
+          "tags": ["drawers", "hardware"],
+          "rule": "If Drawer Box < 15\" deep AND DF > 5 7/8\" tall - use Accuride Slides for that drawer only."
+        },
+        {
+          "id": "file-drawer-slides",
+          "tags": ["drawers", "file-drawer", "hardware"],
+          "rule": "File Drawers (DF at least 13\" tall, 10 1/4\" tall drawer box) need Accuride 3832 (NOT soft-close)."
+        },
+        {
+          "id": "file-drawer-wide-slides",
+          "tags": ["drawers", "file-drawer", "hardware"],
+          "rule": "File Drawers wider than 24\" need Accuride 4034 (NOT soft-close)."
+        },
+        {
+          "id": "drawer-front-height-match",
+          "tags": ["drawers", "drawer-fronts", "safety-critical"],
+          "rule": "Drawer Fronts that are the same height (per cabinet) should have drawer boxes that are the same height."
+        },
+        {
+          "id": "drawer-notes-howto",
+          "tags": ["drawers", "roll-outs", "how-to"],
+          "rule": "Add Drw/RO notes in Cabinet Vision by clicking on the \"drw box sub-front\" or \"ro sub-front\" and adding a comment."
+        },
+        {
+          "id": "drawer-clips-ff",
+          "tags": ["drawers", "face-frame", "hardware"],
+          "rule": "Drawers in FF boxes need \"Adjustable Clips\" (FF rooms get this by default; does not apply to ROs)."
+        },
+        {
+          "id": "drawer-clips-euro",
+          "tags": ["drawers", "euro", "hardware"],
+          "rule": "Drawers in Euro boxes need \"Standard Clips\" (Euro rooms get this by default; does not apply to ROs)."
+        },
+        {
+          "id": "drawer-nonstandard-note",
+          "tags": ["drawers", "probox"],
+          "rule": "Cabinets different from the room standard need a note on EACH drawer (check the ProBox report, should be automatic)."
+        },
+        {
+          "id": "sink-cabinet-ro-depth",
+          "tags": ["sink-cabinet", "roll-outs", "drawers"],
+          "rule": "ANY SINK CABINET WITH A RO - the RO depth should be 3\" less than standard (to allow for plumbing at back). Drawers in a sink cabinet should get a note to notch around plumbing.",
+          "example": "notch drw around plumbing"
+        },
+        {
+          "id": "drawer-stabilizers",
+          "tags": ["drawers", "drawer-fronts"],
+          "rule": "Drawer Fronts wider than 36\" - cabinet box note needs drawer stabilizers.",
+          "example": "drawer stabilizers"
+        },
+        {
+          "id": "prefinished-maple-euro-drawers",
+          "tags": ["drawers", "euro", "maple"],
+          "rule": "Pre-finished Maple EURO Cabinets - drawers will be 1/16\" wider than usual.",
+          "examples": [
+            {
+              "id": "blum",
+              "label": "Blum",
+              "text": "FFI Blum - Euro, Prefin Maple Cabinet - No Notch"
+            },
+            {
+              "id": "accuride",
+              "label": "Accuride 3832",
+              "text": "Accuride 3832 - Maple Cab - No Notch"
+            }
+          ]
+        },
+        {
+          "id": "charging-drawers",
+          "tags": ["drawers", "charging"],
+          "rule": "Charging Drawers - minimum 2\" clearance behind drawer box (order drawer box 1 size down if necessary)."
+        }
       ]
     },
     {
       "name": "Fillers & End Panels",
       "entries": [
-        { "id": "euro-wall-filler-height", "tags": ["fillers", "end-panels", "euro", "wall-cabinet"], "rule": "Euro Wall - Fillers & End Panels should be 1/8\" taller than box (for 1/8\" bottom overhang)." },
-        { "id": "filler-shape", "tags": ["fillers"], "rule": "Will the filler be \"L-shape\", \"U-shape\", \"T-shape\", \"C-shape\", \"J-shape\", or something else?" },
-        { "id": "filler-appliance-match", "tags": ["fillers", "appliances"], "rule": "Fillers next to appliances should match toekick.", "example": "match toekick" },
-        { "id": "ff-wall-end-panel-height", "tags": ["end-panels", "face-frame", "wall-cabinet"], "rule": "Face Frame Wall - End Panels should be 3/4\" taller than box (for 3/4\" bottom overhang)." },
-        { "id": "scribe-note", "tags": ["scribe", "end-panels"], "rule": "Will need scribe if touching a wall or the floor (typically 1/2\"). End panels with scribe need to widen the stiles (Left, Right) and/or rails (Top, Bottom) that touch the wall/floor.", "example": "3 1/2\" Left Stile => 3 1/2\" LS; 7 1/2\" Bottom Rail => 7 1/2\" BR" },
-        { "id": "end-panel-dimension-reversal", "tags": ["end-panels", "cabinet-vision", "safety-critical"], "rule": "Anything with the phrase \"End Panel\" will have its width and depth reversed on Cabinet Vision reports." },
-        { "id": "t-fillers", "tags": ["fillers", "t-filler"], "rule": "T-Fillers - add note to cabinet boxes that the filler covers.", "example": "FF to rabbet sides for T-filler, FF to rabbet left side for T-filler, or FF to rabbet top and bottom for T-filler" },
-        { "id": "end-panel-stillwater", "tags": ["end-panels", "stillwater"], "rule": "End Panels ordered from Stillwater - note not to sand edges.", "example": "do not sand edges" },
-        { "id": "end-panels-inset-ff-paint-grade", "tags": ["end-panels", "face-frame", "paint-grade"], "rule": "END PANELS INSET IN FACE FRAMES (usually Doran Taylor jobs) - Paint Grade: regular, full-size end panels; order stiles & rails wider to be kerfed to appear as face frame.", "example": "do not sand edges - 4 1/2\" S&R - 7 1/2\" MR up 31 1/4\" oc" },
-        { "id": "end-panels-inset-ff-not-paint-grade", "tags": ["end-panels", "face-frame"], "rule": "END PANELS INSET IN FACE FRAMES - NOT Paint Grade: panels to be 1/8\" wider & 1/8\" taller than face frame opening, S&R to match doors." }
+        {
+          "id": "euro-wall-filler-height",
+          "tags": ["fillers", "end-panels", "euro", "wall-cabinet"],
+          "rule": "Euro Wall - Fillers & End Panels should be 1/8\" taller than box (for 1/8\" bottom overhang)."
+        },
+        {
+          "id": "filler-shape",
+          "tags": ["fillers"],
+          "rule": "Will the filler be \"L-shape\", \"T-shape\", \"U-shape\", \"C-shape\", \"J-shape\", or something else?",
+          "examples": [
+            {
+              "id": "l-shape",
+              "label": "L-shape",
+              "text": "L-shape"
+            },
+            {
+              "id": "t-shape",
+              "label": "T-shape",
+              "text": "T-shape"
+            },
+            {
+              "id": "u-shape",
+              "label": "U-shape",
+              "text": "U-shape"
+            },
+            {
+              "id": "c-shape",
+              "label": "C-shape",
+              "text": "C-shape"
+            },
+            {
+              "id": "j-shape",
+              "label": "J-shape",
+              "text": "J-shape"
+            }
+          ]
+        },
+        {
+          "id": "filler-appliance-match",
+          "tags": ["fillers", "appliances"],
+          "rule": "Fillers next to appliances should match toekick.",
+          "example": "match toekick"
+        },
+        {
+          "id": "ff-wall-end-panel-height",
+          "tags": ["end-panels", "face-frame", "wall-cabinet"],
+          "rule": "Face Frame Wall - End Panels should be 3/4\" taller than box (for 3/4\" bottom overhang)."
+        },
+        {
+          "id": "scribe-note",
+          "tags": ["scribe", "end-panels"],
+          "rule": "Will need scribe if touching a wall or the floor (typically 1/2\"). End panels with scribe need to widen the stiles (Left, Right) and/or rails (Top, Bottom) that touch the wall/floor.",
+          "example": "3 1/2\" Left Stile => 3 1/2\" LS; 7 1/2\" Bottom Rail => 7 1/2\" BR"
+        },
+        {
+          "id": "end-panel-dimension-reversal",
+          "tags": ["end-panels", "cabinet-vision", "safety-critical"],
+          "rule": "Anything with the phrase \"End Panel\" will have its width and depth reversed on Cabinet Vision reports."
+        },
+        {
+          "id": "t-fillers",
+          "tags": ["fillers", "t-filler"],
+          "rule": "T-Fillers - add note to cabinet boxes that the filler covers.",
+          "examples": [
+            {
+              "id": "both-sides",
+              "label": "Both sides",
+              "text": "FF to rabbet sides for T-filler"
+            },
+            {
+              "id": "left-side",
+              "label": "Left side",
+              "text": "FF to rabbet left side for T-filler"
+            },
+            {
+              "id": "top-and-bottom",
+              "label": "Top and bottom",
+              "text": "FF to rabbet top and bottom for T-filler"
+            }
+          ]
+        },
+        {
+          "id": "end-panel-stillwater",
+          "tags": ["end-panels", "stillwater"],
+          "rule": "End Panels ordered from Stillwater - note not to sand edges.",
+          "example": "do not sand edges"
+        },
+        {
+          "id": "end-panels-inset-ff-paint-grade",
+          "tags": ["end-panels", "face-frame", "paint-grade"],
+          "rule": "END PANELS INSET IN FACE FRAMES (usually Doran Taylor jobs) - Paint Grade: regular, full-size end panels; order stiles & rails wider to be kerfed to appear as face frame.",
+          "example": "do not sand edges - 4 1/2\" S&R - 7 1/2\" MR up 31 1/4\" oc"
+        },
+        {
+          "id": "end-panels-inset-ff-not-paint-grade",
+          "tags": ["end-panels", "face-frame"],
+          "rule": "END PANELS INSET IN FACE FRAMES - NOT Paint Grade: panels to be 1/8\" wider & 1/8\" taller than face frame opening, S&R to match doors."
+        }
       ]
     },
     {
       "name": "Roll-Out Trash (ROT) Commandments",
       "entries": [
-        { "id": "rot-22-deep", "tags": ["roll-out-trash"], "rule": "24\" deep cabinet, 18\"-23 7/8\" in width shall have a 22\" deep trash drawer (ROT).", "example": "bottom up 1 3/4\"" },
-        { "id": "rot-21-deep-24-wide", "tags": ["roll-out-trash"], "rule": "24\" wide cabinet shall have 21\" deep ROT, standard bottom (up 1/2\")." },
-        { "id": "rot-24-deep-26-plus", "tags": ["roll-out-trash"], "rule": "26\" or greater deep cabinet shall have a 24\" deep ROT, standard bottom (up 1/2\")." },
-        { "id": "rot-21-deep-narrow", "tags": ["roll-out-trash"], "rule": "24\" deep cabinet, less than 18\" wide shall have a 21\" deep ROT, standard bottom (up 1/2\")." },
-        { "id": "rot-22-deep-bottom", "tags": ["roll-out-trash"], "rule": "22\" deep trash drawer shall have bottom up 1 3/4\" (to allow modification for 21\" Blum soft-close slides)." }
+        {
+          "id": "rot-22-deep",
+          "tags": ["roll-out-trash"],
+          "rule": "24\" deep cabinet, 18\"-23 7/8\" in width shall have a 22\" deep trash drawer (ROT).",
+          "example": "bottom up 1 3/4\""
+        },
+        {
+          "id": "rot-21-deep-24-wide",
+          "tags": ["roll-out-trash"],
+          "rule": "24\" wide cabinet shall have 21\" deep ROT, standard bottom (up 1/2\")."
+        },
+        {
+          "id": "rot-24-deep-26-plus",
+          "tags": ["roll-out-trash"],
+          "rule": "26\" or greater deep cabinet shall have a 24\" deep ROT, standard bottom (up 1/2\")."
+        },
+        {
+          "id": "rot-21-deep-narrow",
+          "tags": ["roll-out-trash"],
+          "rule": "24\" deep cabinet, less than 18\" wide shall have a 21\" deep ROT, standard bottom (up 1/2\")."
+        },
+        {
+          "id": "rot-22-deep-bottom",
+          "tags": ["roll-out-trash"],
+          "rule": "22\" deep trash drawer shall have bottom up 1 3/4\" (to allow modification for 21\" Blum soft-close slides)."
+        }
       ]
     },
     {
       "name": "Roll-Out Hampers",
       "entries": [
-        { "id": "hamper-min-size", "tags": ["roll-out-hamper"], "rule": "6 1/4\" tall drawer box, minimum 15\" x 22\" (w x d or d x w) - roll-out placed near top of door." },
-        { "id": "hamper-clearance", "tags": ["roll-out-hamper"], "rule": "Minimum 11\" clear below drawer box." }
+        {
+          "id": "hamper-min-size",
+          "tags": ["roll-out-hamper"],
+          "rule": "6 1/4\" tall drawer box, minimum 15\" x 22\" (w x d or d x w) - roll-out placed near top of door."
+        },
+        {
+          "id": "hamper-clearance",
+          "tags": ["roll-out-hamper"],
+          "rule": "Minimum 11\" clear below drawer box."
+        }
       ]
     },
     {
       "name": "In-Cabinet Lighting",
       "entries": [
-        { "id": "led-recess-note", "tags": ["lighting"], "rule": "In-cabinet lighting note for recessed aluminum LED track.", "example": "FF to recess aluminum track for LEDs" }
+        {
+          "id": "led-recess-note",
+          "tags": ["lighting"],
+          "rule": "In-cabinet lighting note for recessed aluminum LED track.",
+          "example": "FF to recess aluminum track for LEDs"
+        }
       ]
     },
     {
       "name": "Face Frames",
       "entries": [
-        { "id": "ff-scribe-in-dimensions", "tags": ["face-frame", "scribe"], "rule": "Include scribe as part of stile or rail dimensions (when 1 1/2\" will be visible after install).", "example": "2\" left & right stiles" },
-        { "id": "ff-mitered-outside-stiles", "tags": ["face-frame", "stiles"], "rule": "Outside stiles that miter to end panels or other face frames are actually 1 9/16\".", "example": "1 9/16\" Left & Right Stiles" }
+        {
+          "id": "ff-scribe-in-dimensions",
+          "tags": ["face-frame", "scribe"],
+          "rule": "Include scribe as part of stile or rail dimensions (when 1 1/2\" will be visible after install).",
+          "example": "2\" left & right stiles"
+        },
+        {
+          "id": "ff-mitered-outside-stiles",
+          "tags": ["face-frame", "stiles"],
+          "rule": "Outside stiles that miter to end panels or other face frames are actually 1 9/16\".",
+          "example": "1 9/16\" Left & Right Stiles"
+        }
       ]
     },
     {
       "name": "Face Frames for Bookcases",
       "entries": [
-        { "id": "bookcase-overhang-variance", "tags": ["face-frame", "bookcase"], "rule": "Inside overhang CAN be different on the same open cabinet because it's not noticeable." },
-        { "id": "bookcase-ff-proportion", "tags": ["face-frame", "bookcase", "lighting"], "rule": "Face Frame should be proportional to the size of the bookcase. Preferred 2\" minimum on bookcases (if NO door/drawers) to have 1/4\" inside overhangs; bigger overhangs (usually 3/4\"-1\") if there will be LEDs." },
-        { "id": "bookcase-ff-with-doors", "tags": ["face-frame", "bookcase", "doors"], "rule": "1 1/2\" face frames if the cabinet also has doors or drawers that line up with the bookcase openings." }
+        {
+          "id": "bookcase-overhang-variance",
+          "tags": ["face-frame", "bookcase"],
+          "rule": "Inside overhang CAN be different on the same open cabinet because it's not noticeable."
+        },
+        {
+          "id": "bookcase-ff-proportion",
+          "tags": ["face-frame", "bookcase", "lighting"],
+          "rule": "Face Frame should be proportional to the size of the bookcase. Preferred 2\" minimum on bookcases (if NO door/drawers) to have 1/4\" inside overhangs; bigger overhangs (usually 3/4\"-1\") if there will be LEDs."
+        },
+        {
+          "id": "bookcase-ff-with-doors",
+          "tags": ["face-frame", "bookcase", "doors"],
+          "rule": "1 1/2\" face frames if the cabinet also has doors or drawers that line up with the bookcase openings."
+        }
       ]
     },
     {
       "name": "Wood Tops",
       "entries": [
-        { "id": "wood-top-depth", "tags": ["wood-tops"], "rule": "Depth on a 24\" deep base cabinet (typically a 3/4\" overhang on all finished sides).", "example": "Backs wall WITH scribe - 26 1/8\" deep; backs wall WITHOUT scribe - 25 5/8\" deep" },
-        { "id": "wood-top-cabinet-reveal", "tags": ["wood-tops", "reveals"], "rule": "Cabinets directly below wood tops should have a top reveal note.", "example": "RV's (1/8\" T)" }
+        {
+          "id": "wood-top-depth",
+          "tags": ["wood-tops"],
+          "rule": "Depth on a 24\" deep base cabinet (typically a 3/4\" overhang on all finished sides).",
+          "examples": [
+            {
+              "id": "with-scribe",
+              "text": "Backs wall WITH scribe - 26 1/8\" deep"
+            },
+            {
+              "id": "without-scribe",
+              "text": "Backs wall WITHOUT scribe - 25 5/8\" deep"
+            }
+          ]
+        },
+        {
+          "id": "wood-top-cabinet-reveal",
+          "tags": ["wood-tops", "reveals"],
+          "rule": "Cabinets directly below wood tops should have a top reveal note.",
+          "example": "RV's (1/8\" T)"
+        }
       ]
     },
     {
       "name": "Corner Cabinets on an Angle",
       "entries": [
-        { "id": "corner-cabinet-fillers", "tags": ["corner-cabinet", "fillers"], "rule": "Cabinets that die into a corner cabinet get L-fillers; the corner cabinet gets 2 L-fillers to be mitered on site. Should be 4 fillers total if cabinets on 2 walls die into the corner cabinet." }
+        {
+          "id": "corner-cabinet-fillers",
+          "tags": ["corner-cabinet", "fillers"],
+          "rule": "Cabinets that die into a corner cabinet get L-fillers; the corner cabinet gets 2 L-fillers to be mitered on site. Should be 4 fillers total if cabinets on 2 walls die into the corner cabinet."
+        }
       ]
     },
     {
       "name": "Closets",
       "entries": [
-        { "id": "closet-shelves-rods", "tags": ["closets"], "rule": "Adjustable Shelves AND rods?", "example": "3rd row lb" },
-        { "id": "closet-rod-height", "tags": ["closets"], "rule": "Fixed rods - approx. 40\" from deck of shelf to rod center for most people's clothes to fit without dragging." }
+        {
+          "id": "closet-shelves-rods",
+          "tags": ["closets"],
+          "rule": "Adjustable Shelves AND rods?",
+          "example": "3rd row lb"
+        },
+        {
+          "id": "closet-rod-height",
+          "tags": ["closets"],
+          "rule": "Fixed rods - approx. 40\" from deck of shelf to rod center for most people's clothes to fit without dragging."
+        }
       ]
     },
     {
       "name": "Custom Cabinet Names",
       "description": "These will alter if a cabinet shows up on Cabinet Vision Reports.",
       "entries": [
-        { "id": "name-noco", "tags": ["custom-names"], "rule": "NOCO - Not On Cabinet Order." },
-        { "id": "name-noco-nosize", "tags": ["custom-names"], "rule": "NOCO NOSIZE - Not On Cabinet Order, size will not show." },
-        { "id": "name-nosize", "tags": ["custom-names"], "rule": "NOSIZE - add to any cabinet name and size will not show." },
-        { "id": "name-noal", "tags": ["custom-names"], "rule": "NOAL - Not On Any List." },
-        { "id": "name-ras", "tags": ["custom-names"], "rule": "RAS - Rev-A-Shelf (will not show up on Cabinet Order)." },
-        { "id": "name-hafele", "tags": ["custom-names"], "rule": "HAFELE - Hafele (will not show up on Cabinet Order)." }
+        {
+          "id": "name-noco",
+          "tags": ["custom-names"],
+          "rule": "NOCO - Not On Cabinet Order."
+        },
+        {
+          "id": "name-noco-nosize",
+          "tags": ["custom-names"],
+          "rule": "NOCO NOSIZE - Not On Cabinet Order, size will not show."
+        },
+        {
+          "id": "name-nosize",
+          "tags": ["custom-names"],
+          "rule": "NOSIZE - add to any cabinet name and size will not show."
+        },
+        {
+          "id": "name-noal",
+          "tags": ["custom-names"],
+          "rule": "NOAL - Not On Any List."
+        },
+        {
+          "id": "name-ras",
+          "tags": ["custom-names"],
+          "rule": "RAS - Rev-A-Shelf (will not show up on Cabinet Order)."
+        },
+        {
+          "id": "name-hafele",
+          "tags": ["custom-names"],
+          "rule": "HAFELE - Hafele (will not show up on Cabinet Order)."
+        }
       ]
     },
     {
       "name": "Where to Order Parts From",
       "entries": [
-        { "id": "order-5piece", "tags": ["ordering", "stillwater", "shop-built"], "rule": "5-piece Doors & DF's: Doors & DF's from Stillwater (if wire-brushed, order all UNASSEMBLED - wire-brushing done in-house; note 'WIRE BRUSHED' on report headers). Fillers, Slab End Panels, Floating Shelves, Toe Kick, Top Mold are Shop-Built." },
-        { "id": "order-slab-textured-melamine", "tags": ["ordering", "alpha", "slab"], "rule": "Slab - Textured Melamine: Doors & DF's from Alpha; Fillers, End Panels, Floating Shelves, Toe Kick (rips), Top Mold (rips) from Alpha." },
-        { "id": "order-slab-veneer-wire-brushed", "tags": ["ordering", "alpha", "slab", "veneer"], "rule": "Slab - Veneer - Wire Brushed: Doors & DF's from Alpha (note 'WIRE BRUSHED' on report headers); Fillers, End Panels, Floating Shelves, Top Mold (rips) from Alpha; Toe Kick Shop-Built." },
-        { "id": "order-slab-veneer-grain", "tags": ["ordering", "alpha", "slab", "veneer"], "rule": "Slab - Veneer: Vertical Grain OR Horizontal Grain: Doors & DF's from Alpha; Fillers, End Panels, Floating Shelves, Top Mold (rips) from Alpha; Toe Kick Shop-Built." },
-        { "id": "order-slab-paint-grade", "tags": ["ordering", "alpha", "slab", "paint-grade"], "rule": "Slab - Paint Grade: Doors & DF's from Alpha; Fillers, End Panels (with nosing), Floating Shelves, Toe Kick, Top Mold Shop-Built; Slab End Panels (3/4\" thick, with banding) from Alpha." },
-        { "id": "order-alpha-attribute", "tags": ["ordering", "alpha", "cabinet-vision"], "rule": "Parts ordered from Alpha may require selecting \"Get from Alpha\" in the Cabinet Vision part attribute." }
+        {
+          "id": "order-5piece",
+          "tags": ["ordering", "stillwater", "shop-built"],
+          "rule": "5-piece Doors & DF's",
+          "examplesTitle": "Order parts from",
+          "examples": [
+            {
+              "id": "stillwater",
+              "label": "Stillwater",
+              "text": "Doors & DF's\nif wire-brushed, order all UNASSEMBLED (wire-brushing done in-house)\nnote 'WIRE BRUSHED' on report headers by adding it to Room Notes"
+            },
+            {
+              "id": "shop-built",
+              "label": "Shop-Built",
+              "text": "Fillers, Slab End Panels, Floating Shelves, Toe Kick, Top Mold"
+            }
+          ]
+        },
+        {
+          "id": "order-slab-textured-melamine",
+          "tags": ["ordering", "alpha", "slab"],
+          "rule": "Slab - Textured Melamine",
+          "examplesTitle": "Order parts from",
+          "examples": [
+            {
+              "id": "alpha",
+              "label": "Alpha",
+              "text": "Doors & DF's, Fillers, End Panels, Floating Shelves, Toe Kick (rips), Top Mold (rips)"
+            }
+          ]
+        },
+        {
+          "id": "order-slab-veneer-wire-brushed",
+          "tags": ["ordering", "alpha", "slab", "veneer"],
+          "rule": "Slab - Veneer - Wire Brushed",
+          "examplesTitle": "Order parts from",
+          "examples": [
+            {
+              "id": "alpha",
+              "label": "Alpha",
+              "text": "Doors & DF's (note 'WIRE BRUSHED' on report headers), Fillers, End Panels, Floating Shelves, Top Mold (rips)"
+            },
+            {
+              "id": "shop-built",
+              "label": "Shop-Built",
+              "text": "Toe Kick"
+            }
+          ]
+        },
+        {
+          "id": "order-slab-veneer-grain",
+          "tags": ["ordering", "alpha", "slab", "veneer"],
+          "rule": "Slab - Veneer - Vertical Grain OR Horizontal Grain",
+          "examplesTitle": "Order parts from",
+          "examples": [
+            {
+              "id": "alpha",
+              "label": "Alpha",
+              "text": "Doors & DF's, Fillers, End Panels, Floating Shelves, Top Mold (rips)"
+            },
+            {
+              "id": "shop-built",
+              "label": "Shop-Built",
+              "text": "Toe Kick"
+            }
+          ]
+        },
+        {
+          "id": "order-slab-paint-grade",
+          "tags": ["ordering", "alpha", "slab", "paint-grade"],
+          "rule": "Slab - Paint Grade",
+          "examplesTitle": "Order parts from",
+          "examples": [
+            {
+              "id": "alpha",
+              "label": "Alpha",
+              "text": "Doors & DF's, Slab End Panels (3/4\" thick, with banding)"
+            },
+            {
+              "id": "shop-built",
+              "label": "Shop-Built",
+              "text": "Fillers, End Panels (with nosing), Floating Shelves, Toe Kick, Top Mold"
+            }
+          ]
+        },
+        {
+          "id": "order-alpha-attribute",
+          "tags": ["ordering", "alpha", "cabinet-vision"],
+          "rule": "Parts ordered from Alpha may require selecting \"Get from Alpha\" in the Cabinet Vision part attribute."
+        }
       ]
     },
     {
       "name": "Doors/Parts Ordered from Alpha",
       "entries": [
-        { "id": "alpha-textured-melamine-style", "tags": ["alpha", "slab", "doors"], "rule": "Textured Melamine, Laminate, Slab Veneer, etc. (slab, sheet-goods stuff) - choose \"SLAB - MDF CORE\" as the Door Style (Room Properties > Cabinet > Doors)." },
-        { "id": "alpha-filler-banding-note", "tags": ["alpha", "fillers", "banding"], "rule": "Note for Fillers: \"band 2w, 1h\" (band 2 widths, 1 height). For L-shape fillers, note cut & fold (make fillers at least 7\" wide so the shop can cut & fold).", "example": "cut & fold for L-shape" },
-        { "id": "alpha-end-panel-banding-note", "tags": ["alpha", "end-panels", "banding"], "rule": "Note for End Panels: \"band 2w, 1h\"." },
-        { "id": "alpha-top-mold-light-rail-banding", "tags": ["alpha", "top-mold", "banding"], "rule": "Top Mold, Light Rail: \"band 1h\" - each should be wider than its finish/install dimension so it can be cut & folded by the shop." },
-        { "id": "alpha-toe-kick-order", "tags": ["alpha", "toe-kick"], "rule": "Toe Kick - order enough rips to cover total length (does not need banding).", "example": "3 ea; 3 7/8\" wide rips" }
+        {
+          "id": "alpha-textured-melamine-style",
+          "tags": ["alpha", "slab", "doors"],
+          "rule": "Textured Melamine, Laminate, Slab Veneer, etc. (slab, sheet-goods stuff) - choose \"SLAB - MDF CORE\" as the Door Style (Room Properties > Cabinet > Doors)."
+        },
+        {
+          "id": "alpha-filler-banding-note",
+          "tags": ["alpha", "fillers", "banding"],
+          "rule": "Note for Fillers: \"band 2w, 1h\" (band 2 widths, 1 height). For L-shape fillers, note cut & fold (make fillers at least 7\" wide so the shop can cut & fold).",
+          "example": "cut & fold for L-shape"
+        },
+        {
+          "id": "alpha-end-panel-banding-note",
+          "tags": ["alpha", "end-panels", "banding"],
+          "rule": "Note for End Panels: \"band 2w, 1h\"."
+        },
+        {
+          "id": "alpha-top-mold-light-rail-banding",
+          "tags": ["alpha", "top-mold", "banding"],
+          "rule": "Top Mold, Light Rail: \"band 1h\" - each should be wider than its finish/install dimension so it can be cut & folded by the shop."
+        },
+        {
+          "id": "alpha-toe-kick-order",
+          "tags": ["alpha", "toe-kick"],
+          "rule": "Toe Kick - order enough rips to cover total length (does not need banding).",
+          "example": "3 ea; 3 7/8\" wide rips"
+        }
       ]
     }
   ]

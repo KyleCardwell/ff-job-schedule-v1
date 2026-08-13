@@ -16,6 +16,12 @@ import {
 
 import checklist from "../../data/room-processing-checklist.json";
 
+const PINNED_SECTION_NAMES = [
+  "General",
+  "Room Notes",
+  "Cabinet Notes Checklist",
+];
+
 const slugify = (value) =>
   value
     .toLowerCase()
@@ -65,7 +71,20 @@ const filterEntryTree = (sourceEntries, matchingIds, activeTag) =>
     })
     .filter(Boolean);
 
-const sections = checklist.sections.map((section) => {
+const orderedSections = [...checklist.sections].sort((sectionA, sectionB) => {
+  const pinnedIndexA = PINNED_SECTION_NAMES.indexOf(sectionA.name);
+  const pinnedIndexB = PINNED_SECTION_NAMES.indexOf(sectionB.name);
+
+  if (pinnedIndexA !== -1 || pinnedIndexB !== -1) {
+    if (pinnedIndexA === -1) return 1;
+    if (pinnedIndexB === -1) return -1;
+    return pinnedIndexA - pinnedIndexB;
+  }
+
+  return sectionA.name.localeCompare(sectionB.name);
+});
+
+const sections = orderedSections.map((section) => {
   const normalizedSection = {
     ...section,
     id: `section-${slugify(section.name)}`,
@@ -92,6 +111,8 @@ const fuzzySearch = new Fuse(entries, {
   keys: [
     { name: "rule", weight: 0.6 },
     { name: "example", weight: 0.25 },
+    { name: "examples.text", weight: 0.25 },
+    { name: "examples.label", weight: 0.15 },
     { name: "tags", weight: 0.15 },
   ],
 });
@@ -163,6 +184,20 @@ const formatDate = (dateString) => {
   }).format(new Date(year, month - 1, day));
 };
 
+const getExampleOptions = (entry) => {
+  if (entry.examples?.length) {
+    return entry.examples.map((option, index) => ({
+      id: option.id ?? String(index),
+      label: option.label,
+      text: option.text,
+    }));
+  }
+
+  return entry.example
+    ? [{ id: "default", label: null, text: entry.example }]
+    : [];
+};
+
 const ChecklistEntry = ({
   entry,
   searchResultById,
@@ -173,7 +208,9 @@ const ChecklistEntry = ({
 }) => {
   const result = searchResultById.get(entry.id);
   const matches = result?.matches;
-  const isReferenceBlock = entry.example?.includes("\n");
+  const exampleOptions = getExampleOptions(entry);
+  const isReferenceBlock =
+    exampleOptions.length === 1 && exampleOptions[0].text.includes("\n");
   const isChild = entry.depth > 0;
 
   return (
@@ -192,11 +229,11 @@ const ChecklistEntry = ({
             : "print:px-0"
         }`}
       >
-        {isChild && (
+        {/* {isChild && (
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700 print:text-[8px] print:text-black">
             Sub-entry
           </div>
-        )}
+        )} */}
         {entry.isContextOnly && (
           <div className="mb-2 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 print:hidden">
             Parent context
@@ -232,39 +269,73 @@ const ChecklistEntry = ({
               </button>
             </div>
 
-            {entry.example && (
+            {exampleOptions.length > 0 && (
               <div className="mt-3 rounded-lg border-l-4 border-teal-600 bg-slate-950 px-3.5 py-3 text-slate-50 print:mt-1.5 print:rounded-none print:border print:border-slate-400 print:bg-white print:px-2 print:py-1.5 print:text-black">
-                <div className="mb-2 flex items-center justify-between gap-3 print:mb-1">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-300 print:text-[8px] print:text-black">
-                    {isReferenceBlock
-                      ? "Cabinet Vision reference"
-                      : "Type in Cabinet Vision"}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onCopyExample(entry)}
-                    className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-100 transition hover:border-teal-400 hover:bg-slate-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-slate-950 print:hidden"
-                    aria-label={`Copy Cabinet Vision text: ${entry.example}`}
-                  >
-                    {copiedExampleId === entry.id ? (
-                      <>
-                        <FiCheck aria-hidden="true" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <FiCopy aria-hidden="true" />
-                        Copy
-                      </>
-                    )}
-                  </button>
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-300 print:mb-1 print:text-[8px] print:text-black">
+                  {entry.examplesTitle ?? (isReferenceBlock
+                    ? "Cabinet Vision reference"
+                    : exampleOptions.length > 1
+                      ? "Cabinet Vision options"
+                      : "Type in Cabinet Vision")}
                 </div>
-                <code className="whitespace-pre-wrap break-words font-mono text-sm leading-6 print:text-[10px] print:leading-4">
-                  {highlightText(
-                    entry.example,
-                    getMatchIndices(matches, "example"),
-                  )}
-                </code>
+                <div className="divide-y divide-slate-700 print:divide-slate-300">
+                  {exampleOptions.map((option, optionIndex) => {
+                    const copyId = `${entry.id}:${option.id}`;
+                    const matchKey = entry.examples ? "examples.text" : "example";
+
+                    return (
+                      <div
+                        key={option.id}
+                        className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          {option.label && (
+                            <div className="mb-1 text-xs font-bold text-teal-200 print:text-[9px] print:text-black">
+                              {highlightText(
+                                option.label,
+                                getMatchIndices(
+                                  matches,
+                                  "examples.label",
+                                  optionIndex,
+                                ),
+                              )}
+                            </div>
+                          )}
+                          <code className="whitespace-pre-wrap break-words font-mono text-sm leading-6 print:text-[10px] print:leading-4">
+                            {highlightText(
+                              option.text,
+                              getMatchIndices(
+                                matches,
+                                matchKey,
+                                entry.examples ? optionIndex : undefined,
+                              ),
+                            )}
+                          </code>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onCopyExample(entry.id, option.id, option.text)
+                          }
+                          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-100 transition hover:border-teal-400 hover:bg-slate-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-slate-950 print:hidden"
+                          aria-label={`Copy Cabinet Vision text: ${option.text}`}
+                        >
+                          {copiedExampleId === copyId ? (
+                            <>
+                              <FiCheck aria-hidden="true" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <FiCopy aria-hidden="true" />
+                              Copy
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -434,9 +505,9 @@ const RoomProcessingChecklist = () => {
     window.setTimeout(() => setCopiedEntryId(""), 1800);
   };
 
-  const copyExampleText = async (entry) => {
-    await copyText(entry.example);
-    setCopiedExampleId(entry.id);
+  const copyExampleText = async (entryId, exampleId, text) => {
+    await copyText(text);
+    setCopiedExampleId(`${entryId}:${exampleId}`);
     window.setTimeout(() => setCopiedExampleId(""), 1800);
   };
 
