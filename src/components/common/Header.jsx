@@ -52,6 +52,10 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
       return "Completed Projects";
     }
 
+    if (location.pathname === PATHS.PROCESSING) {
+      return "Room Processing Checklist";
+    }
+
     switch (location.pathname) {
       case PATHS.HOME:
         return `${company_name} Schedule`;
@@ -61,7 +65,7 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
   };
 
   return (
-    <header className="h-[50px] bg-slate-900 print:bg-white fixed top-0 left-0 right-0 z-30 flex items-center print:justify-center">
+    <header className="h-[50px] bg-slate-900 print:bg-white fixed top-0 left-0 right-0 z-30 flex items-center print:static print:justify-center">
       {/* Left section with menu button */}
       <button
         onClick={onMenuClick}

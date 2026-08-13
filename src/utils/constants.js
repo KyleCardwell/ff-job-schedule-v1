@@ -17,6 +17,7 @@ export const PATHS = {
   MANAGE_TEAM_ESTIMATE_DEFAULTS: "/manage/estimate-defaults",
   COMPLETED: "/completed",
   COMPLETED_PROJECT: "/completed/:projectId",
+  PROCESSING: "/processing",
   SETTINGS: "/settings",
   LOGOUT: "/logout",
   ESTIMATES: "/estimates",

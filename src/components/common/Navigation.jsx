@@ -4,6 +4,7 @@ import {
   FiCheckSquare,
   FiLogOut,
   FiDollarSign,
+  FiBookOpen,
 } from "react-icons/fi";
 import { GoGear } from "react-icons/go";
 import { useSelector , useDispatch } from "react-redux";
@@ -36,6 +37,7 @@ const Navigation = ({ isOpen, onClose }) => {
       : []),
     { icon: FiCalendar, label: "Schedule", path: PATHS.HOME },
     { icon: FiCheckSquare, label: "Completed", path: PATHS.COMPLETED },
+    { icon: FiBookOpen, label: "Processing", path: PATHS.PROCESSING },
   ];
 
   const handleLogout = async () => {

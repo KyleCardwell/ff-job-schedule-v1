@@ -25,6 +25,7 @@ import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout.jsx";
 import EstimatePreview from "./components/estimates/EstimatePreview.jsx";
 import EstimatesList from "./components/estimates/InProgressEstimates.jsx";
+import RoomProcessingChecklist from "./components/processing/RoomProcessingChecklist.jsx";
 import MockAuth from "./mocks/mockAuth.js";
 import { fetchEmployees } from "./redux/actions/builders";
 import { fetchChartConfig } from "./redux/actions/chartConfig";
@@ -256,7 +257,7 @@ const AppContent = () => {
       <div className="App min-h-screen bg-gray-50">
         <ErrorBoundary>
           <Header onMenuClick={() => setIsOpen(!isOpen)} isMenuOpen={isOpen} />
-          <main className="pt-[50px] flex-1 h-screen">
+          <main className="pt-[50px] flex-1 h-screen print:pt-0">
             <Navigation isOpen={isOpen} onClose={() => setIsOpen(false)} />
             <Routes>
               <Route path={PATHS.HOME} element={<ChartContainer />} />
@@ -361,6 +362,10 @@ const AppContent = () => {
                     <CompletedProjectView />
                   </ProtectedRoute>
                 }
+              />
+              <Route
+                path={PATHS.PROCESSING}
+                element={<RoomProcessingChecklist />}
               />
               <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
             </Routes>

@@ -111,7 +111,7 @@ export const chartDataReducer = (state = initialState, action) => {
 				chartData: updatedChartData,
 			};
 		}
-		case Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART:
+		case Actions.chartData.REMOVE_COMPLETED_JOB_FROM_CHART: {
 			const updatedChartData = state.chartData.filter(
 				(item) => item.project_id !== action.payload
 			);
@@ -120,6 +120,7 @@ export const chartDataReducer = (state = initialState, action) => {
 				...state,
 				chartData: updatedChartData,
 			};
+		}
 
 		default:
 			return state;
