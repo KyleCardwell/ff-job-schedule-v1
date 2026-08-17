@@ -53,6 +53,8 @@ import EstimateSectionManager from "./EstimateSectionManager.jsx"; // Import Est
 import EstimateSectionPrice from "./EstimateSectionPrice.jsx";
 import EstimateTask from "./EstimateTask.jsx";
 
+const EMPTY_ARRAY = [];
+
 const EstimateLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -89,6 +91,8 @@ const EstimateLayout = () => {
   const [isDuplicatingEstimate, setIsDuplicatingEstimate] = useState(false);
   const [isMoveRoomsModalOpen, setIsMoveRoomsModalOpen] = useState(false);
   const [isMovingRooms, setIsMovingRooms] = useState(false);
+  const [sectionCalculations, setSectionCalculations] = useState(null);
+  const [isSectionCalculating, setIsSectionCalculating] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -110,8 +114,7 @@ const EstimateLayout = () => {
           }
         }
         setLoading(false);
-      } catch (error) {
-        console.error("Error loading estimate:", error);
+      } catch {
         navigate(listPath);
         setLoading(false);
       }
@@ -136,7 +139,7 @@ const EstimateLayout = () => {
     dispatch(fetchAccessoriesCatalog());
     dispatch(fetchAccessoryTimeAnchors());
     dispatch(fetchLengthsCatalog());
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     // Close section form when task changes
@@ -162,65 +165,105 @@ const EstimateLayout = () => {
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
     (state) => state.materials,
   );
-  const services = useSelector((state) => state.services?.allServices || []);
-  const finishTypes = useSelector((state) => state.finishes?.finishes || []);
-  const cabinetStyles = useSelector(
-    (state) =>
-      state.cabinetStyles?.styles.filter((style) => style.is_active) || [],
+  const allServices = useSelector((state) => state.services?.allServices);
+  const allFinishTypes = useSelector((state) => state.finishes?.finishes);
+  const allCabinetStyles = useSelector((state) => state.cabinetStyles?.styles);
+  const allCabinetTypes = useSelector((state) => state.cabinetTypes?.types);
+  const hardware = useSelector((state) => state.hardware);
+  const accessories = useSelector((state) => state.accessories);
+  const lengths = useSelector((state) => state.lengths);
+  const allPartsListAnchors = useSelector(
+    (state) => state.partsListAnchors?.itemsByPartsList,
   );
-  const cabinetTypes = useSelector(
-    (state) => state.cabinetTypes?.types.filter((type) => type.is_active) || [],
-  );
-  const { hardware, accessories, lengths } = useSelector((state) => state);
-  const partsListAnchors = useSelector(
-    (state) => state.partsListAnchors?.itemsByPartsList || [],
-  );
-  const cabinetAnchors = useSelector(
-    (state) => state.cabinetAnchors?.itemsByType || [],
+  const allCabinetAnchors = useSelector(
+    (state) => state.cabinetAnchors?.itemsByType,
   );
 
-  // Calculate section calculations for the selected section
-  const sectionCalculations = useMemo(() => {
-    if (!selectedSection) return null;
+  const services = allServices || EMPTY_ARRAY;
+  const finishTypes = allFinishTypes || EMPTY_ARRAY;
+  const partsListAnchors = allPartsListAnchors || EMPTY_ARRAY;
+  const cabinetAnchors = allCabinetAnchors || EMPTY_ARRAY;
+  const cabinetStyles = useMemo(
+    () => (allCabinetStyles || EMPTY_ARRAY).filter((style) => style.is_active),
+    [allCabinetStyles],
+  );
+  const cabinetTypes = useMemo(
+    () => (allCabinetTypes || EMPTY_ARRAY).filter((type) => type.is_active),
+    [allCabinetTypes],
+  );
 
-    const catalogData = {
-      boxMaterials,
-      faceMaterials,
-      drawerBoxMaterials,
-      finishTypes,
-      cabinetStyles,
-      cabinetTypes,
-      hardware,
-      partsListAnchors,
-      cabinetAnchors,
-      globalServices: services,
-      lengthsCatalog: lengths?.catalog || [],
-      accessories,
-      teamDefaults,
+  // Run heavy section pricing work after yielding a frame so the UI can show loading state.
+  useEffect(() => {
+    if (!selectedSection) {
+      setSectionCalculations(null);
+      setIsSectionCalculating(false);
+      return undefined;
+    }
+
+    let isCancelled = false;
+    setIsSectionCalculating(true);
+
+    const calculationTimer = window.setTimeout(() => {
+      try {
+        const catalogData = {
+          boxMaterials,
+          faceMaterials,
+          drawerBoxMaterials,
+          finishTypes,
+          cabinetStyles,
+          cabinetTypes,
+          hardware,
+          partsListAnchors,
+          cabinetAnchors,
+          globalServices: services,
+          lengthsCatalog: lengths?.catalog || [],
+          accessories,
+          teamDefaults,
+        };
+
+        const { context, effectiveSection, hasPriceOverrides } =
+          createSectionContext(selectedSection, currentEstimate, catalogData);
+        const calcs = getSectionCalculations(effectiveSection, context);
+
+        // Default rates (estimate → team fallback) for when section value is null
+        const defaultProfit = getEffectiveValueOnly(
+          null,
+          currentEstimate?.default_profit,
+          teamDefaults?.default_profit,
+        ) || 0;
+        const defaultCommission = getEffectiveValueOnly(
+          null,
+          currentEstimate?.default_commission,
+          teamDefaults?.default_commission,
+        ) || 0;
+        const defaultDiscount = getEffectiveValueOnly(
+          null,
+          currentEstimate?.default_discount,
+          teamDefaults?.default_discount,
+        ) || 0;
+
+        if (!isCancelled) {
+          setSectionCalculations({
+            ...calcs,
+            hasPriceOverrides,
+            defaultProfit,
+            defaultCommission,
+            defaultDiscount,
+          });
+          setIsSectionCalculating(false);
+        }
+      } catch {
+        if (!isCancelled) {
+          setSectionCalculations(null);
+          setIsSectionCalculating(false);
+        }
+      }
+    }, 0);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(calculationTimer);
     };
-
-    const { context, effectiveSection, hasPriceOverrides } =
-      createSectionContext(selectedSection, currentEstimate, catalogData);
-    const calcs = getSectionCalculations(effectiveSection, context);
-
-    // Default rates (estimate → team fallback) for when section value is null
-    const defaultProfit = getEffectiveValueOnly(
-      null,
-      currentEstimate?.default_profit,
-      teamDefaults?.default_profit,
-    ) || 0;
-    const defaultCommission = getEffectiveValueOnly(
-      null,
-      currentEstimate?.default_commission,
-      teamDefaults?.default_commission,
-    ) || 0;
-    const defaultDiscount = getEffectiveValueOnly(
-      null,
-      currentEstimate?.default_discount,
-      teamDefaults?.default_discount,
-    ) || 0;
-
-    return { ...calcs, hasPriceOverrides, defaultProfit, defaultCommission, defaultDiscount };
   }, [
     selectedSection,
     currentEstimate,
@@ -313,7 +356,7 @@ const EstimateLayout = () => {
       setShowProjectInfo(!firstTask);
       setIsMoveRoomsModalOpen(false);
     } catch (error) {
-      console.error("Error moving rooms:", error);
+      void error;
     } finally {
       setIsMovingRooms(false);
     }
@@ -341,7 +384,7 @@ const EstimateLayout = () => {
       setIsDuplicateEstimateModalOpen(false);
       navigate(`${PATHS.IN_PROGRESS_ESTIMATES}/${newEstimateId}`);
     } catch (error) {
-      console.error("Error duplicating estimate:", error);
+      void error;
     } finally {
       setIsDuplicatingEstimate(false);
     }
@@ -719,6 +762,7 @@ const EstimateLayout = () => {
                   <EstimateSectionPrice
                     section={selectedSection}
                     sectionCalculations={sectionCalculations}
+                    isSectionCalculating={isSectionCalculating}
                     onSaveToggles={handleSaveToggles}
                     onSaveTargetPrice={handleSaveTargetPrice}
                     hasPriceOverrides={sectionCalculations?.hasPriceOverrides}

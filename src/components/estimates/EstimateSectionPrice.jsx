@@ -12,6 +12,7 @@ import TargetPriceModal from "./TargetPriceModal.jsx";
 const EstimateSectionPrice = ({
   section,
   sectionCalculations,
+  isSectionCalculating,
   onSaveToggles,
   onSaveTargetPrice,
   hasPriceOverrides,
@@ -228,18 +229,27 @@ const EstimateSectionPrice = ({
             </div>
           )}
         </div>
-        <div
-          className={`text-xl font-bold ${
-            displayValues.showAmberPrice ? "text-amber-400" : "text-teal-400"
-          }`}
-        >
-          {formatCurrency(
-            displayValues.showAmberPrice
-              ? displayValues.amberPriceValue
-              : displayValues.displayTotal,
-            {
-              noCents: true,
-            },
+        <div className="min-h-[28px] flex items-center justify-end">
+          {isSectionCalculating ? (
+            <span
+              className="inline-block h-5 w-5 rounded-full border-2 border-slate-500 border-t-teal-300 animate-spin"
+              aria-label="Updating section total price"
+            />
+          ) : (
+            <span
+              className={`text-xl font-bold ${
+                displayValues.showAmberPrice ? "text-amber-400" : "text-teal-400"
+              }`}
+            >
+              {formatCurrency(
+                displayValues.showAmberPrice
+                  ? displayValues.amberPriceValue
+                  : displayValues.displayTotal,
+                {
+                  noCents: true,
+                },
+              )}
+            </span>
           )}
         </div>
       </div>
@@ -890,6 +900,7 @@ const EstimateSectionPrice = ({
 EstimateSectionPrice.propTypes = {
   section: PropTypes.object.isRequired,
   sectionCalculations: PropTypes.object,
+  isSectionCalculating: PropTypes.bool,
   onSaveToggles: PropTypes.func,
   onSaveTargetPrice: PropTypes.func,
   hasPriceOverrides: PropTypes.bool,
