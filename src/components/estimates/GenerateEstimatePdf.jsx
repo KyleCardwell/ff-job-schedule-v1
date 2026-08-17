@@ -1019,9 +1019,11 @@ const GenerateEstimatePdf = ({
       };
 
       // Generate and download PDF
-      const fileName = `${
-        estimate.est_project_name || ""
-      } Estimate ${formatDateShort(today)}.pdf`;
+      const safeProjectName = (estimate.est_project_name || "").replace(
+        /[\\/]/g,
+        "-",
+      );
+      const fileName = `${safeProjectName} Estimate ${formatDateShort(today)}.pdf`;
       const pdfDoc = window.pdfMake.createPdf(docDefinition);
       const pdfBlob = await new Promise((resolve, reject) => {
         pdfDoc.getBlob((blob) => {
