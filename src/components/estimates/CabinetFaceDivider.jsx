@@ -2301,6 +2301,9 @@ const CabinetFaceDivider = ({
         // The last child should expand to fill the parent's dimensions
         lastChild.width = parent.width;
         lastChild.height = parent.height;
+        if (lastChild.children) {
+          updateChildrenFromParent(lastChild);
+        }
 
         if (grandParent) {
           const parentIndex = grandParent.children.findIndex(
@@ -2344,11 +2347,16 @@ const CabinetFaceDivider = ({
         remainingFaces.forEach((face) => {
           const proportion = face[dimension] / totalFaceSize;
           face[dimension] += deletedNodeSize * proportion;
+
+          if (face.children) {
+            updateChildrenFromParent(face);
+          }
         });
       }
     }
 
-    setConfig(newConfig);
+    const layoutConfig = calculateLayout(newConfig);
+    setConfig(layoutConfig);
     setSelectedNode(null);
     setShowTypeSelector(false);
   };
