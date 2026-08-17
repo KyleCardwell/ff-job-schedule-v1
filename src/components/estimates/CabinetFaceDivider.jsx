@@ -2316,6 +2316,7 @@ const CabinetFaceDivider = ({
           // Parent is the root, so the last child becomes the new root
           Object.assign(newConfig, {
             ...lastChild,
+            id: FACE_NAMES.ROOT,
             width: cabinetWidth - reveals.left - reveals.right,
             height: newHeight,
             x: parent.x,
