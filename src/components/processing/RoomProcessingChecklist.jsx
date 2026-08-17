@@ -535,14 +535,6 @@ const RoomProcessingChecklist = () => {
             <div className="flex shrink-0 flex-wrap gap-2 print:hidden">
               <button
                 type="button"
-                onClick={() => setIsGlossaryOpen(true)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-teal-500 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-              >
-                <FiBookOpen aria-hidden="true" />
-                Glossary
-              </button>
-              <button
-                type="button"
                 onClick={() => window.print()}
                 className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-teal-500 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
               >
@@ -554,11 +546,11 @@ const RoomProcessingChecklist = () => {
         </header>
 
         <div className="sticky top-[50px] z-20 -mx-4 mb-5 border-y border-slate-700 bg-slate-900/95 px-4 py-3 shadow-sm backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 print:hidden">
-          <div className="mx-auto max-w-[1436px]">
-            <label htmlFor="processing-search" className="sr-only">
-              Search checklist rules, Cabinet Vision notes, and tags
-            </label>
-            <div className="relative">
+          <div className="mx-auto flex max-w-[1436px] items-center gap-2 sm:gap-3">
+            <div className="relative min-w-0 flex-1">
+              <label htmlFor="processing-search" className="sr-only">
+                Search checklist rules, Cabinet Vision notes, and tags
+              </label>
               <FiSearch
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"
                 aria-hidden="true"
@@ -582,6 +574,15 @@ const RoomProcessingChecklist = () => {
                 </button>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setIsGlossaryOpen(true)}
+              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-teal-500 hover:text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-slate-900 sm:px-4"
+              aria-haspopup="dialog"
+            >
+              <FiBookOpen aria-hidden="true" />
+              Glossary
+            </button>
           </div>
         </div>
 
