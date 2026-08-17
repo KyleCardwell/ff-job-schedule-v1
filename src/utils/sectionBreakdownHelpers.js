@@ -23,6 +23,14 @@ export const getHoursDisplay = (hoursByService, showAggregateNote = false) => {
   return { hoursByService, showAggregateNote };
 };
 
+const getFaceCategoryCostWithoutMolding = (sectionCalculations, faceType) => {
+  const faceCost = Number(sectionCalculations?.facePrices?.[faceType]) || 0;
+  const faceMoldingCost =
+    Number(sectionCalculations?.faceMoldingPrices?.[faceType]) || 0;
+
+  return roundToHundredth(faceCost - faceMoldingCost);
+};
+
 /**
  * Get breakdown categories configuration
  */
@@ -36,31 +44,38 @@ export const getBreakdownCategories = (sectionCalculations) => [
   },
   {
     title: "Doors",
-    cost: sectionCalculations?.facePrices?.door || 0,
+    cost: getFaceCategoryCostWithoutMolding(sectionCalculations, "door"),
     count: sectionCalculations?.faceCounts?.door || 0,
     unit: "doors",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.door),
   },
   {
     title: "Drawer Fronts",
-    cost: sectionCalculations?.facePrices?.drawer_front || 0,
+    cost: getFaceCategoryCostWithoutMolding(sectionCalculations, "drawer_front"),
     count: sectionCalculations?.faceCounts?.drawer_front || 0,
     unit: "fronts",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.drawer_front),
   },
   {
     title: "False Fronts",
-    cost: sectionCalculations?.facePrices?.false_front || 0,
+    cost: getFaceCategoryCostWithoutMolding(sectionCalculations, "false_front"),
     count: sectionCalculations?.faceCounts?.false_front || 0,
     unit: "fronts",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.false_front),
   },
   {
     title: "Panels",
-    cost: sectionCalculations?.facePrices?.panel || 0,
+    cost: getFaceCategoryCostWithoutMolding(sectionCalculations, "panel"),
     count: sectionCalculations?.faceCounts?.panel || 0,
     unit: "panels",
     ...getHoursDisplay(sectionCalculations?.categoryHours?.panel),
+  },
+  {
+    title: "Face Molding",
+    cost: roundToHundredth(sectionCalculations?.faceMoldingTotal || 0),
+    count: 0,
+    unit: "faces",
+    skipHours: true,
   },
   {
     title: "Hood",

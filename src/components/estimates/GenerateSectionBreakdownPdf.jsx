@@ -36,6 +36,12 @@ const GenerateSectionBreakdownPdf = ({
     "Drawer Fronts": ["facePrices.drawer_front"],
     "False Fronts": ["facePrices.false_front"],
     Panels: ["facePrices.panel"],
+    "Face Molding": [
+      "facePrices.door",
+      "facePrices.drawer_front",
+      "facePrices.false_front",
+      "facePrices.panel",
+    ],
     "Drawer Boxes": ["drawerBoxTotal"],
     Rollouts: ["rollOutTotal"],
     Hinges: ["hingesTotal"],
@@ -871,7 +877,6 @@ const GenerateSectionBreakdownPdf = ({
       const fileName = `${projectName} - ${taskName} - ${sectionName} - Breakdown`;
       window.pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
     } catch (error) {
-      console.error("Error generating PDF:", error);
       alert("There was an error generating the PDF. Please try again.");
     } finally {
       setIsGenerating(false);

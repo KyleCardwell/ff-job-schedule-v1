@@ -34,6 +34,12 @@ const EstimateSectionBreakdown = ({
     "Drawer Fronts": ["facePrices.drawer_front"],
     "False Fronts": ["facePrices.false_front"],
     Panels: ["facePrices.panel"],
+    "Face Molding": [
+      "facePrices.door",
+      "facePrices.drawer_front",
+      "facePrices.false_front",
+      "facePrices.panel",
+    ],
     "Drawer Boxes": ["drawerBoxTotal"],
     Rollouts: ["rollOutTotal"],
     Hinges: ["hingesTotal"],
