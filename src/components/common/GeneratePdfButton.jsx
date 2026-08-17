@@ -693,10 +693,12 @@ const GeneratePdfButton = ({
         },
       };
 
+      const safeProjectName = (project.project_name || "").replace(/[\\/]/g, "-");
+
       // Use the global pdfMake instance
       window.pdfMake
         .createPdf(docDefinition)
-        .download(`${project.project_name}-financials.pdf`);
+        .download(`${safeProjectName}-financials.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("There was an error generating the PDF. Please try again.");
