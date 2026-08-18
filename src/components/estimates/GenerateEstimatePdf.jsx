@@ -323,23 +323,69 @@ const GenerateEstimatePdf = ({
         }
         const leftColumn = [];
         const rightColumn = [];
+        const sectionPartsIncluded = section?.calculations?.partsIncluded || {};
+        const isSectionPartIncluded = (partKey) =>
+          sectionPartsIncluded[partKey] !== false;
+        const doorCount = Number(section?.calculations?.faceCounts?.door) || 0;
+        const panelCount = Number(section?.calculations?.faceCounts?.panel) || 0;
+        const drawerFrontCount =
+          Number(section?.calculations?.faceCounts?.drawer_front) || 0;
+        const falseFrontCount =
+          Number(section?.calculations?.faceCounts?.false_front) || 0;
+        const drawerBoxCount = Number(section?.calculations?.drawerBoxCount) || 0;
+        const rollOutCount = Number(section?.calculations?.rollOutCount) || 0;
+        const boxCount = Number(section?.calculations?.boxCount) || 0;
+
+        const showCabinetDetails =
+          isSectionPartIncluded("boxTotal") && boxCount > 0;
+        const showDoorDetails =
+          (isSectionPartIncluded("facePrices.door") && doorCount > 0) ||
+          (isSectionPartIncluded("facePrices.panel") && panelCount > 0);
+        const showDrawerFrontDetails =
+          (isSectionPartIncluded("facePrices.drawer_front") &&
+            drawerFrontCount > 0) ||
+          (isSectionPartIncluded("facePrices.false_front") &&
+            falseFrontCount > 0);
+        const showFaceDetails = showDoorDetails || showDrawerFrontDetails;
+        const showDrawerBoxDetails =
+          (isSectionPartIncluded("drawerBoxTotal") && drawerBoxCount > 0) ||
+          (isSectionPartIncluded("rollOutTotal") && rollOutCount > 0);
+        const detailOrNone = (value) => value || "None";
+
         const faceMaterialText = (() => {
           const base = section.faceMaterial || "";
           if (!section.facePreWireBrushed) return base;
+          if (base.trim().toLowerCase() === "none") return base;
           if (!base || base.includes(", Wire Brushed")) return base;
           return `${base}, Wire Brushed`;
         })();
 
         // Build detail columns
-        leftColumn.push(`Style: ${section.cabinetStyle}`);
-        leftColumn.push(`Drawer Boxes: ${section.drawerBoxMaterial}`);
-        leftColumn.push(`Cabinets: ${section.boxMaterial}`);
-        leftColumn.push(`Finish: ${section.boxFinish}`);
+        leftColumn.push(
+          `Style: ${detailOrNone(section.cabinetStyle)}`,
+        );
+        leftColumn.push(
+          `Drawer Boxes: ${showDrawerBoxDetails ? detailOrNone(section.drawerBoxMaterial) : "None"}`,
+        );
+        leftColumn.push(
+          `Cabinets: ${showCabinetDetails ? detailOrNone(section.boxMaterial) : "None"}`,
+        );
+        leftColumn.push(
+          `Finish: ${showCabinetDetails ? detailOrNone(section.boxFinish) : "None"}`,
+        );
 
-        rightColumn.push(`Doors: ${section.doorStyle}`);
-        rightColumn.push(`Drawer Fronts: ${section.drawerFrontStyle}`);
-        rightColumn.push(`Wood: ${faceMaterialText}`);
-        rightColumn.push(`Finish: ${section.faceFinish}`);
+        rightColumn.push(
+          `Doors: ${showDoorDetails ? detailOrNone(section.doorStyle) : "None"}`,
+        );
+        rightColumn.push(
+          `Drawer Fronts: ${showDrawerFrontDetails ? detailOrNone(section.drawerFrontStyle) : "None"}`,
+        );
+        rightColumn.push(
+          `Wood: ${showFaceDetails ? detailOrNone(faceMaterialText) : "None"}`,
+        );
+        rightColumn.push(
+          `Finish: ${showFaceDetails ? detailOrNone(section.faceFinish) : "None"}`,
+        );
 
         // leftColumn.push({ text: [{ text: "Style: ", bold: true }, { text: section.cabinetStyle }] });
         // leftColumn.push({ text: [{ text: "Drawer Boxes: ", bold: true }, { text: section.drawerBoxMaterial }] });
