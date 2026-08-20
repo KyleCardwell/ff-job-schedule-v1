@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-.env
-.env.local
 
 # Editor directories and files
 .vscode/*
@@ -34,3 +32,4 @@ __pycache__/
 # Supabase local dump/export artifacts
 supabase/functions/dump/
 supabase/functions/*.zip
+config.bat
