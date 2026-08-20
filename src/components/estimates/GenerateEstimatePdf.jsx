@@ -332,6 +332,9 @@ const GenerateEstimatePdf = ({
           Number(section?.calculations?.faceCounts?.drawer_front) || 0;
         const falseFrontCount =
           Number(section?.calculations?.faceCounts?.false_front) || 0;
+        const panelPrice = Number(section?.calculations?.facePrices?.panel) || 0;
+        const fillerCount = Number(section?.calculations?.fillerCount) || 0;
+        const lengthsCount = Number(section?.calculations?.lengthsCount) || 0;
         const drawerBoxCount = Number(section?.calculations?.drawerBoxCount) || 0;
         const rollOutCount = Number(section?.calculations?.rollOutCount) || 0;
         const boxCount = Number(section?.calculations?.boxCount) || 0;
@@ -346,7 +349,16 @@ const GenerateEstimatePdf = ({
             drawerFrontCount > 0) ||
           (isSectionPartIncluded("facePrices.false_front") &&
             falseFrontCount > 0);
-        const showFaceDetails = showDoorDetails || showDrawerFrontDetails;
+        const showPanelDetails =
+          isSectionPartIncluded("facePrices.panel") &&
+          (panelCount > 0 || panelPrice > 0 || fillerCount > 0);
+        const showLengthDetails =
+          isSectionPartIncluded("woodTotal") && lengthsCount > 0;
+        const showFaceDetails =
+          showDoorDetails ||
+          showDrawerFrontDetails ||
+          showPanelDetails ||
+          showLengthDetails;
         const showDrawerBoxDetails =
           (isSectionPartIncluded("drawerBoxTotal") && drawerBoxCount > 0) ||
           (isSectionPartIncluded("rollOutTotal") && rollOutCount > 0);

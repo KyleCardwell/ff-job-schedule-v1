@@ -138,17 +138,21 @@ const EstimatePreviewSection = ({
     const isPartIncluded = (partKey) => partsIncluded[partKey] !== false;
 
     // Respect part toggles so excluded parts show "None" in preview/PDF details.
+    const doorCount = Number(calculations.faceCounts?.door) || 0;
+    const panelCount = Number(calculations.faceCounts?.panel) || 0;
+    const drawerFrontCount = Number(calculations.faceCounts?.drawer_front) || 0;
+    const falseFrontCount = Number(calculations.faceCounts?.false_front) || 0;
+    const panelPrice = Number(calculations.facePrices?.panel) || 0;
+    const fillerCount = Number(calculations.fillerCount) || 0;
+    const lengthsCount = Number(calculations.lengthsCount) || 0;
+
     const hasDoors =
-      (isPartIncluded("facePrices.door") &&
-        (calculations.faceCounts?.door || 0) > 0) ||
-      (isPartIncluded("facePrices.panel") &&
-        (calculations.faceCounts?.panel || 0) > 0);
+      (isPartIncluded("facePrices.door") && doorCount > 0) ||
+      (isPartIncluded("facePrices.panel") && panelCount > 0);
 
     const hasDrawerFronts =
-      (isPartIncluded("facePrices.drawer_front") &&
-        (calculations.faceCounts?.drawer_front || 0) > 0) ||
-      (isPartIncluded("facePrices.false_front") &&
-        (calculations.faceCounts?.false_front || 0) > 0);
+      (isPartIncluded("facePrices.drawer_front") && drawerFrontCount > 0) ||
+      (isPartIncluded("facePrices.false_front") && falseFrontCount > 0);
 
     const hasDrawerBoxes =
       (isPartIncluded("drawerBoxTotal") &&
@@ -158,6 +162,13 @@ const EstimatePreviewSection = ({
     const hasBoxes =
       isPartIncluded("boxTotal") && (calculations.boxCount || 0) > 0;
     const hasFaceParts = hasDoors || hasDrawerFronts;
+    const hasPanelDrivenFaceParts =
+      isPartIncluded("facePrices.panel") &&
+      (panelCount > 0 || panelPrice > 0 || fillerCount > 0);
+    const hasLengthFaceParts =
+      isPartIncluded("woodTotal") && lengthsCount > 0;
+    const hasFaceMaterialDetails =
+      hasFaceParts || hasPanelDrivenFaceParts || hasLengthFaceParts;
 
     // Look up face material to check if it needs finish
     const faceMaterial = faceMaterials?.find(
@@ -263,7 +274,7 @@ const EstimatePreviewSection = ({
       totalPriceWithQuantity: sectionTotalPriceWithQuantity,
       // Description details for PDF
       cabinetStyle: cabinetStyleName || NONE,
-      faceMaterial: hasFaceParts ? faceMaterialDisplayName : NONE,
+      faceMaterial: hasFaceMaterialDetails ? faceMaterialDisplayName : NONE,
       facePreWireBrushed,
       boxMaterial: hasBoxes
         ? context.selectedBoxMaterial?.material?.name || ""
@@ -283,7 +294,7 @@ const EstimatePreviewSection = ({
             faceTypes: [FACE_NAMES.DRAWER_FRONT, FACE_NAMES.FALSE_FRONT],
           })
         : "None",
-      faceFinish: hasFaceParts ? faceFinishNames : NONE,
+      faceFinish: hasFaceMaterialDetails ? faceFinishNames : NONE,
       boxFinish: hasBoxes ? boxFinishNames : "None",
       doorMaterialNote: doorDrawerMaterialNote, // For PDF door/drawer material note
       notes: processedNotes, // Array format for PDF
