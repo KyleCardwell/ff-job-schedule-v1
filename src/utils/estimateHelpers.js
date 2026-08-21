@@ -11,6 +11,7 @@ import {
   PARTS_LIST_MAPPING,
 } from "./constants";
 import { getEffectiveSheetPrice } from "./materialPricing";
+import { decimalToFraction } from "./mathUtils";
 
 export const roundToHundredth = (num) => Math.round(num * 100) / 100;
 
@@ -3029,6 +3030,7 @@ export const generateCabinetSummary = (
   // Count shelves and glass shelves
   let totalShelves = 0;
   let glassShelves = 0;
+  const nosedShelvesBySize = new Map();
 
   allNodes.forEach((node) => {
     const shelfQty = parseInt(node.shelfQty, 10) || 0;
@@ -3037,21 +3039,47 @@ export const generateCabinetSummary = (
 
       // Check if this node has glass shelves
       if (node.glassShelves) {
-        const glassShelfQty = parseInt(node.shelfQty, 10) || 0;
-        glassShelves += glassShelfQty;
+        glassShelves += shelfQty;
+      }
+
+      const shelfNosing = Number(node.shelfNosing);
+      if (Number.isFinite(shelfNosing) && shelfNosing > 0) {
+        const nosingSize = decimalToFraction(shelfNosing);
+        nosedShelvesBySize.set(
+          nosingSize,
+          (nosedShelvesBySize.get(nosingSize) || 0) + shelfQty,
+        );
       }
     }
   });
 
   if (totalShelves > 0) {
-    if (glassShelves > 0) {
-      summary.push(
-        `${totalShelves} shel${
-          totalShelves !== 1 ? "ves" : "f"
-        } (${glassShelves} glass)`,
-      );
+    const shelfLabel = `${totalShelves} shel${
+      totalShelves !== 1 ? "ves" : "f"
+    }`;
+    const nosingDetails = Array.from(
+      nosedShelvesBySize,
+      ([nosingSize, shelfQty]) =>
+        `${shelfQty} with ${nosingSize}" nosing`,
+    );
+    const allShelvesShareNosing =
+      glassShelves === 0 &&
+      nosingDetails.length === 1 &&
+      Array.from(nosedShelvesBySize.values())[0] === totalShelves;
+
+    if (allShelvesShareNosing) {
+      const nosingSize = nosedShelvesBySize.keys().next().value;
+      summary.push(`${shelfLabel} with ${nosingSize}" nosing`);
     } else {
-      summary.push(`${totalShelves} shel${totalShelves !== 1 ? "ves" : "f"}`);
+      const shelfDetails = [
+        ...(glassShelves > 0 ? [`${glassShelves} glass`] : []),
+        ...nosingDetails,
+      ];
+      summary.push(
+        shelfDetails.length > 0
+          ? `${shelfLabel} (${shelfDetails.join("; ")})`
+          : shelfLabel,
+      );
     }
   }
 
