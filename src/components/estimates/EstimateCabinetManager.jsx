@@ -6,7 +6,6 @@ import { v4 as uuid } from "uuid";
 
 import { getItemTypeConfig } from "../../config/cabinetItemTypes";
 import {
-  CAN_HAVE_PULLS,
   FACE_NAMES,
   ITEM_FORM_WIDTHS,
   SPLIT_DIRECTIONS,
@@ -160,7 +159,6 @@ const CabinetItemForm = ({
   onSave,
   onCancel,
   cabinetStyleId,
-  onDeleteItem,
   currentSectionId,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
@@ -870,9 +868,6 @@ const CabinetItemForm = ({
         if (formData.type === 15) {
           const isRollout =
             formData.type_specific_options?.rollout_scoop === true;
-          const style = cabinetStyles.find(
-            (s) => s.cabinet_style_id === effectiveStyleId,
-          );
 
           if (isRollout) {
             // Convert to rollOutDimensions
@@ -3027,7 +3022,6 @@ CabinetItemForm.propTypes = {
   cabinetStyleId: PropTypes.number,
   currentSectionId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
-  onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
@@ -3051,6 +3045,12 @@ const EstimateCabinetManager = ({
       key: "interior",
       label: "Interior",
       width: ITEM_FORM_WIDTHS.THREE_FOURTHS,
+      render: (item) =>
+        [1, 2, 3].includes(Number(item.type))
+          ? item.finished_interior
+            ? "F"
+            : "U"
+          : "-",
     },
     {
       key: "width",
@@ -3083,29 +3083,21 @@ const EstimateCabinetManager = ({
     { key: "actions", label: "Actions", width: ITEM_FORM_WIDTHS.ACTIONS },
   ];
 
-  const handleSaveItem = async (item, itemIndex = -1) => {
-    try {
-      const updatedItems = [...items];
-      if (itemIndex === -1) {
-        // New item
-        updatedItems.push(item);
-      } else {
-        // Update existing item
-        updatedItems[itemIndex] = item;
-      }
-      onUpdateItems(updatedItems);
-    } catch (error) {
-      console.error("Error saving item:", error);
+  const handleSaveItem = (item, itemIndex = -1) => {
+    const updatedItems = [...items];
+    if (itemIndex === -1) {
+      // New item
+      updatedItems.push(item);
+    } else {
+      // Update existing item
+      updatedItems[itemIndex] = item;
     }
+    onUpdateItems(updatedItems);
   };
 
-  const handleDeleteItem = async (itemIndex) => {
-    try {
-      const itemToDelete = items[itemIndex];
-      onDeleteItem(itemToDelete);
-    } catch (error) {
-      console.error("Error deleting item:", error);
-    }
+  const handleDeleteItem = (itemIndex) => {
+    const itemToDelete = items[itemIndex];
+    onDeleteItem(itemToDelete);
   };
 
   const handleReorderItems = (reorderedItems) => {
@@ -3125,7 +3117,7 @@ const EstimateCabinetManager = ({
       onDuplicate={onDuplicateItem}
       onMove={onMoveItem}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyleId, onDeleteItem, cabinetTypes, currentSectionId }}
+      formProps={{ cabinetStyleId, cabinetTypes, currentSectionId }}
       listType={ITEM_TYPES.CABINET.type}
       currentTaskId={currentTaskId}
       currentSectionId={currentSectionId}
