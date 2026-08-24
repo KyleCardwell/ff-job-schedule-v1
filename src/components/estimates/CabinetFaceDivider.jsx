@@ -1542,23 +1542,26 @@ const CabinetFaceDivider = ({
 
     // Set default shelf quantity for supported types
     const shouldForceNoShelves = DEFAULT_NO_SHELVES.includes(newType);
+    const canHaveShelves = supportsShelves(newType);
 
-    if (supportsShelves(newType)) {
-      const standardShelfQty = calculateShelfQty(node.height);
-      node.shelfQty = shouldForceNoShelves
-        ? 0
-        : node.shelfQty || standardShelfQty;
-
-      setInputValues((prev) => ({
-        ...prev,
-        shelfQty: node.shelfQty,
-      }));
+    if (shouldForceNoShelves) {
+      node.shelfQty = null;
+    } else if (canHaveShelves) {
+      node.shelfQty = node.shelfQty || calculateShelfQty(node.height);
     } else {
+      node.shelfQty = 0;
+    }
+
+    setInputValues((prev) => ({
+      ...prev,
+      shelfQty: canHaveShelves && !shouldForceNoShelves ? node.shelfQty : "",
+    }));
+
+    if (!canHaveShelves) {
       // Reset roll-outs & shelves if unsupported
       node.rollOutQty = 0;
       node.drawersWithDividersQty = 0;
       node.drawerDividers = false;
-      node.shelfQty = 0;
       delete node.rollOutDimensions;
 
       setInputValues((prev) => ({
@@ -1566,7 +1569,6 @@ const CabinetFaceDivider = ({
         rollOutQty: "",
         drawersWithDividersQty: "",
         drawerDividers: false,
-        shelfQty: "",
       }));
     }
 
@@ -2416,7 +2418,8 @@ const CabinetFaceDivider = ({
 
     if (!hasChildren) {
       const nodeType = layoutNode?.type || itemConfig.defaultFaceType;
-      const canHaveShelves = supportsShelves(nodeType);
+      const canHaveShelves =
+        supportsShelves(nodeType) && !DEFAULT_NO_SHELVES.includes(nodeType);
       const canHaveRollouts = supportsRollouts(nodeType);
       const presetRollOutQty = Number.isFinite(layoutNode?.rollOutQty)
         ? Math.max(0, Math.trunc(layoutNode.rollOutQty))
