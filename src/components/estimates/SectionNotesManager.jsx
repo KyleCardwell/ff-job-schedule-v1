@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
-import { FiEdit2, FiSave, FiX } from "react-icons/fi";
+import { FiCheck, FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import { createSectionContext } from "../../utils/createSectionContext";
@@ -31,6 +31,25 @@ const createDefaultNoteEntry = (index) => ({
 
 const createEmptyNotes = () =>
   [0, 1, 2].map((index) => createDefaultNoteEntry(index));
+
+const ReadOnlyCheckbox = ({ checked }) => (
+  <span
+    role="checkbox"
+    aria-checked={checked}
+    aria-readonly="true"
+    className={`inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
+      checked
+        ? "border-slate-500 bg-slate-500 text-white"
+        : "border-slate-400 bg-slate-400"
+    }`}
+  >
+    {checked && <FiCheck className="h-3.5 w-3.5" strokeWidth={3} />}
+  </span>
+);
+
+ReadOnlyCheckbox.propTypes = {
+  checked: PropTypes.bool.isRequired,
+};
 
 const normalizeOptionValue = (opt, raw) => {
   if (opt.type === "text-boolean") {
@@ -412,15 +431,18 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
                       return (
                         <div key={opt.key} className="inline-flex items-center gap-2">
                           <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) =>
-                                handleOptionToggle(noteIndex, opt.key, opt.type, e.target.checked)
-                              }
-                              disabled={!isEditing}
-                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-60"
-                            />
+                            {isEditing ? (
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) =>
+                                  handleOptionToggle(noteIndex, opt.key, opt.type, e.target.checked)
+                                }
+                                className="h-4 w-4 rounded border-slate-300 accent-blue-700 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <ReadOnlyCheckbox checked={checked} />
+                            )}
                             <span>{opt.label}</span>
                           </label>
                           <input
@@ -445,15 +467,18 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
                         key={opt.key}
                         className="inline-flex items-center gap-2 text-sm text-slate-700"
                       >
-                        <input
-                          type="checkbox"
-                          checked={Boolean(optionValue)}
-                          onChange={(e) =>
-                            handleOptionToggle(noteIndex, opt.key, opt.type, e.target.checked)
-                          }
-                          disabled={!isEditing}
-                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-60"
-                        />
+                        {isEditing ? (
+                          <input
+                            type="checkbox"
+                            checked={Boolean(optionValue)}
+                            onChange={(e) =>
+                              handleOptionToggle(noteIndex, opt.key, opt.type, e.target.checked)
+                            }
+                            className="h-4 w-4 rounded border-slate-300 accent-blue-700 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <ReadOnlyCheckbox checked={Boolean(optionValue)} />
+                        )}
                         <span>{opt.label}</span>
                       </label>
                     );
