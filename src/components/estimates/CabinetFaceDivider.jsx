@@ -1501,81 +1501,77 @@ const CabinetFaceDivider = ({
 
   // Actually perform the type change
   const proceedWithTypeChange = (newType, nodeId) => {
-    setConfig((prevConfig) => {
-      const newConfig = cloneDeep(prevConfig);
-      const node = findNode(newConfig, nodeId);
-      if (!node || newType === FACE_NAMES.CONTAINER) return newConfig;
+    const newConfig = cloneDeep(config);
+    const node = findNode(newConfig, nodeId);
+    if (!node || newType === FACE_NAMES.CONTAINER) return;
 
-      // Remove incompatible accessories
-      if (node.accessories && node.accessories.length > 0) {
-        const compatibleAccessories = node.accessories.filter((accessory) => {
-          const accessoryCatalog = accessories?.catalog?.find(
-            (acc) => acc.id === +accessory.accessory_id,
-          );
-          return accessoryCatalog?.applies_to?.includes(newType);
-        });
-        node.accessories = compatibleAccessories;
-      }
+    // Remove incompatible accessories
+    if (node.accessories && node.accessories.length > 0) {
+      const compatibleAccessories = node.accessories.filter((accessory) => {
+        const accessoryCatalog = accessories?.catalog?.find(
+          (acc) => acc.id === +accessory.accessory_id,
+        );
+        return accessoryCatalog?.applies_to?.includes(newType);
+      });
+      node.accessories = compatibleAccessories;
+    }
 
-      node.type = newType;
-      node.children = null; // containers only, so reset
+    node.type = newType;
+    node.children = null; // containers only, so reset
 
-      // Clear drawer box dimensions if changing away from drawer_front
-      if (newType !== FACE_NAMES.DRAWER_FRONT) {
-        node.drawerDividers = false;
-        delete node.drawerBoxDimensions;
-      }
+    // Clear drawer box dimensions if changing away from drawer_front
+    if (newType !== FACE_NAMES.DRAWER_FRONT) {
+      node.drawerDividers = false;
+      delete node.drawerBoxDimensions;
+    }
 
-      // Auto-adjust shelfNosing based on cabinet style and face type/width
-      if (cabinetStyleId !== 13 && newType === FACE_NAMES.OPEN) {
-        node.shelfNosing = 1.5;
-        setInputValues((prev) => ({
-          ...prev,
-          shelfNosing: 1.5,
-        }));
-      } else if (node.width > 36) {
-        node.shelfNosing = 1.5;
-        setInputValues((prev) => ({
-          ...prev,
-          shelfNosing: 1.5,
-        }));
-      }
+    // Auto-adjust shelfNosing based on cabinet style and face type/width
+    if (cabinetStyleId !== 13 && newType === FACE_NAMES.OPEN) {
+      node.shelfNosing = 1.5;
+      setInputValues((prev) => ({
+        ...prev,
+        shelfNosing: 1.5,
+      }));
+    } else if (node.width > 36) {
+      node.shelfNosing = 1.5;
+      setInputValues((prev) => ({
+        ...prev,
+        shelfNosing: 1.5,
+      }));
+    }
 
-      // Set default shelf quantity for supported types
-      const shouldForceNoShelves = DEFAULT_NO_SHELVES.includes(newType);
+    // Set default shelf quantity for supported types
+    const shouldForceNoShelves = DEFAULT_NO_SHELVES.includes(newType);
 
-      if (supportsShelves(newType)) {
-        const standardShelfQty = calculateShelfQty(node.height);
-        node.shelfQty = shouldForceNoShelves
-          ? 0
-          : node.shelfQty || standardShelfQty;
+    if (supportsShelves(newType)) {
+      const standardShelfQty = calculateShelfQty(node.height);
+      node.shelfQty = shouldForceNoShelves
+        ? 0
+        : node.shelfQty || standardShelfQty;
 
-        setInputValues((prev) => ({
-          ...prev,
-          shelfQty: node.shelfQty,
-        }));
-      } else {
-        // Reset roll-outs & shelves if unsupported
-        node.rollOutQty = 0;
-        node.drawersWithDividersQty = 0;
-        node.drawerDividers = false;
-        node.shelfQty = 0;
-        delete node.rollOutDimensions;
+      setInputValues((prev) => ({
+        ...prev,
+        shelfQty: node.shelfQty,
+      }));
+    } else {
+      // Reset roll-outs & shelves if unsupported
+      node.rollOutQty = 0;
+      node.drawersWithDividersQty = 0;
+      node.drawerDividers = false;
+      node.shelfQty = 0;
+      delete node.rollOutDimensions;
 
-        setInputValues((prev) => ({
-          ...prev,
-          rollOutQty: "",
-          drawersWithDividersQty: "",
-          drawerDividers: false,
-          shelfQty: "",
-        }));
-      }
+      setInputValues((prev) => ({
+        ...prev,
+        rollOutQty: "",
+        drawersWithDividersQty: "",
+        drawerDividers: false,
+        shelfQty: "",
+      }));
+    }
 
-      return newConfig;
-    });
-
-    setShowTypeSelector(false);
-    setSelectedNode(null);
+    setConfig(newConfig);
+    setSelectedNode(node);
   };
 
   // Handle confirmation modal confirm
