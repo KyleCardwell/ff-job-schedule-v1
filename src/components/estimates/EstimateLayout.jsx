@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FiArrowLeft, FiCopy } from "react-icons/fi";
+import { FiArrowLeft, FiCopy, FiList } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { RiSwapBoxLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
@@ -93,6 +93,7 @@ const EstimateLayout = () => {
   const [isMovingRooms, setIsMovingRooms] = useState(false);
   const [sectionCalculations, setSectionCalculations] = useState(null);
   const [isSectionCalculating, setIsSectionCalculating] = useState(false);
+  const [showSectionBreakdown, setShowSectionBreakdown] = useState(false);
 
   useEffect(() => {
     const loadEstimate = async () => {
@@ -160,6 +161,22 @@ const EstimateLayout = () => {
       (section) => section.est_section_id === selectedSectionId,
     );
   }, [selectedTask?.sections, selectedSectionId]);
+
+  const isSectionManagerVisible = Boolean(
+    !showProjectInfo &&
+      !showEstimateDefaultsForm &&
+      !showLineItemsEditor &&
+      !showSectionForm &&
+      selectedTaskId &&
+      selectedSectionId &&
+      selectedSection,
+  );
+
+  useEffect(() => {
+    if (!isSectionManagerVisible) {
+      setShowSectionBreakdown(false);
+    }
+  }, [isSectionManagerVisible]);
 
   // Get all catalog data from Redux
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
@@ -432,6 +449,16 @@ const EstimateLayout = () => {
       {/* Preview Button - Fixed Top Right */}
       {currentEstimate && (
         <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
+          {/* Section Breakdown Button */}
+          {isSectionManagerVisible && !showSectionBreakdown && (
+            <button
+              onClick={() => setShowSectionBreakdown(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-800 text-white font-medium transition-colors border-r border-teal-500"
+            >
+              <FiList size={18} />
+              View Section Breakdown
+            </button>
+          )}
           <button
             onClick={() => navigate(`${basePath}/${estimateId}/preview`)}
             className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors"
@@ -756,6 +783,8 @@ const EstimateLayout = () => {
                     sectionId={selectedSectionId}
                     section={selectedSection}
                     sectionCalculations={sectionCalculations}
+                    showBreakdown={showSectionBreakdown}
+                    onCloseBreakdown={() => setShowSectionBreakdown(false)}
                   />
                 </div>
                 <div className="w-80 p-6 overflow-y-auto border-l border-slate-700">

@@ -5,7 +5,6 @@ import {
   FiChevronDown,
   FiChevronRight,
   FiAlertCircle,
-  FiList,
 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -34,6 +33,8 @@ const EstimateSectionManager = ({
   sectionId,
   section,
   sectionCalculations,
+  showBreakdown,
+  onCloseBreakdown,
 }) => {
   const dispatch = useDispatch();
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
@@ -65,7 +66,6 @@ const EstimateSectionManager = ({
   const [openSectionType, setOpenSectionType] = useState(
     SECTION_TYPES.CABINETS.type,
   );
-  const [showBreakdown, setShowBreakdown] = useState(false);
   const sectionRefs = useRef({});
   const hasInitializedScrollBehavior = useRef(false);
   const finishSetupNeeded = sectionCalculations?.finishSetupNeeded !== false;
@@ -174,23 +174,18 @@ const EstimateSectionManager = ({
   const saveImmediately = async (type, updatedItems, idsToDelete = []) => {
     try {
       if (!hasUnsavedChanges(type, updatedItems)) {
-        console.log(`No changes detected for ${type}. Skipping save.`);
         return;
       }
 
       if (sectionId) {
-        console.log(`Immediately saving changes for ${type}`);
-
         const tableName = sectionTableMapping[type];
 
         await dispatch(
           updateSectionItems(tableName, sectionId, updatedItems, idsToDelete),
         );
-
-        console.log(`Successfully saved ${type} changes immediately`);
       }
     } catch (error) {
-      console.error("Error saving section data:", error);
+      void error;
       setSectionData((prev) => ({
         ...prev,
         [type]: section?.[type] || [],
@@ -262,7 +257,8 @@ const EstimateSectionManager = ({
       if (!reduxItem) return true;
 
       // Strip errorState (UI-only property) before comparing
-      const { errorState: _, ...itemWithoutErrorState } = updatedItem;
+      const itemWithoutErrorState = { ...updatedItem };
+      delete itemWithoutErrorState.errorState;
 
       // Compare the items - if they're different, include in changedItems
       return !isEqual(itemWithoutErrorState, reduxItem);
@@ -270,7 +266,8 @@ const EstimateSectionManager = ({
 
     // Update changed items with current timestamp and strip errorState (UI-only)
     const changedItemsWithTimestamp = changedItems.map((item) => {
-      const { errorState, ...itemWithoutErrorState } = item;
+      const itemWithoutErrorState = { ...item };
+      delete itemWithoutErrorState.errorState;
       return {
         ...itemWithoutErrorState,
         updated_at: currentTimestamp,
@@ -323,7 +320,6 @@ const EstimateSectionManager = ({
       const itemToDuplicate = sectionData[type]?.[itemIndex];
       
       if (!itemToDuplicate || !itemToDuplicate.id) {
-        console.error("Cannot duplicate item without an ID");
         return;
       }
 
@@ -333,10 +329,8 @@ const EstimateSectionManager = ({
       await dispatch(
         duplicateItem(tableName, sectionId, targetSectionId, itemToDuplicate.id)
       );
-
-      console.log(`Successfully duplicated ${type} item to section ${targetSectionId}`);
     } catch (error) {
-      console.error(`Error duplicating ${type} item:`, error);
+      void error;
     }
   };
 
@@ -346,7 +340,6 @@ const EstimateSectionManager = ({
       const itemToMove = sectionData[type]?.[itemIndex];
       
       if (!itemToMove || !itemToMove.id) {
-        console.error("Cannot move item without an ID");
         return;
       }
 
@@ -354,10 +347,8 @@ const EstimateSectionManager = ({
       
       // Call the Redux action to move the item
       await dispatch(moveItem(tableName, itemToMove.id, targetSectionId));
-
-      console.log(`Successfully moved ${type} item to section ${targetSectionId}`);
     } catch (error) {
-      console.error(`Error moving ${type} item:`, error);
+      void error;
     }
   };
 
@@ -586,7 +577,7 @@ const EstimateSectionManager = ({
           projectName={currentEstimate?.est_project_name || ""}
           taskName={currentTask?.est_task_name || ""}
           sectionName={sectionDisplayName}
-          onClose={() => setShowBreakdown(false)}
+          onClose={onCloseBreakdown}
         />
       </div>
     );
@@ -653,17 +644,6 @@ const EstimateSectionManager = ({
         finishSetupNeeded={finishSetupNeeded}
       />
 
-      {/* Section Breakdown Button */}
-      <div className="w-full flex justify-end">
-        <button
-          onClick={() => setShowBreakdown(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium"
-        >
-          <FiList size={18} />
-          View Section Breakdown
-        </button>
-      </div>
-
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}
@@ -680,6 +660,8 @@ EstimateSectionManager.propTypes = {
   sectionId: PropTypes.number.isRequired,
   section: PropTypes.object.isRequired,
   sectionCalculations: PropTypes.object,
+  showBreakdown: PropTypes.bool.isRequired,
+  onCloseBreakdown: PropTypes.func.isRequired,
 };
 
 export default EstimateSectionManager;
