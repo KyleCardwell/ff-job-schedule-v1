@@ -47,12 +47,6 @@ const formatDimensionInches = (value) => {
   return decimalToFraction(value);
 };
 
-const formatFeet = (value) => {
-  if (value === null || value === undefined || value === "") return "-";
-  const numeric = Number(value);
-  return Number.isNaN(numeric) ? String(value) : String(numeric);
-};
-
 const buildTableBody = (headerCells, rows) => {
   const headerRow = headerCells.map((cell) => ({
     text: cell,
@@ -374,7 +368,7 @@ const GenerateSectionItemsPdf = ({
             formatNumber(item.quantity),
             LENGTH_TYPE_LABELS[catalogItem?.type] || catalogItem?.type || "-",
             catalogItem?.name || "Unknown",
-            formatFeet(item.length),
+            formatDimensionInches(item.length),
             formatDimensionInches(width),
             formatDimensionInches(thickness),
             formatNumber(item.miter_count || 0),
@@ -541,7 +535,7 @@ const GenerateSectionItemsPdf = ({
           "Qty",
           "Type",
           "Name",
-          "Length (ft)",
+          "Length (in)",
           "Width (in)",
           "Thk (in)",
           "Miters",

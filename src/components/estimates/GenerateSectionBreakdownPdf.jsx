@@ -571,7 +571,7 @@ const GenerateSectionBreakdownPdf = ({
         itemHourRows.forEach((itemHours) => {
           const itemRow = [
             {
-              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)` : itemHours.quantity ? `(${itemHours.quantity})` : ""}`,
+              text: `- ${itemHours.name} ${itemHours.length ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} in)` : itemHours.quantity ? `(${itemHours.quantity})` : ""}`,
               style: "itemSubRow",
               color: "#4b5563",
             },

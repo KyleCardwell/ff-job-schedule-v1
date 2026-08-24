@@ -2153,13 +2153,13 @@ const calculateLengthTotals = (items, context) => {
     const lengthCatalogHours = totals.itemHoursByCatalog[lengthItem.id];
 
     const quantity = item.quantity != null ? Number(item.quantity) : 1;
-    const lengthFeet = Number(item.length) || 0; // User inputs feet
-    const lengthInches = lengthFeet * 12; // Convert to inches for calculations
+    const lengthInches = Number(item.length) || 0;
+    const lengthFeet = lengthInches / 12;
     const miterCount = Number(item.miter_count) || 0;
     const cutoutCount = Number(item.cutout_count) || 0;
     const lengthMaterialConfig = resolveLengthMaterialConfig(item);
 
-    totals.itemHoursByCatalog[lengthItem.id].length += lengthFeet;
+    totals.itemHoursByCatalog[lengthItem.id].length += lengthInches;
     totals.itemHoursByCatalog[lengthItem.id].quantity = quantity;
 
     // Calculate material cost based on length

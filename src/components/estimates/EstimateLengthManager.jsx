@@ -24,12 +24,12 @@ const LENGTH_TYPE_LABELS = {
 const getAutoLengthForType = (type, approxBaseLengthFeet, approxCrownLengthFeet) => {
   if (type === "molding") {
     const crown = Number(approxCrownLengthFeet);
-    return Number.isFinite(crown) && crown > 0 ? crown : "";
+    return Number.isFinite(crown) && crown > 0 ? crown * 12 : "";
   }
 
   if (type === "base") {
     const base = Number(approxBaseLengthFeet);
-    return Number.isFinite(base) && base > 0 ? base : "";
+    return Number.isFinite(base) && base > 0 ? base * 12 : "";
   }
 
   return "";
@@ -271,7 +271,7 @@ const BulkAddLengthsModal = ({
                     <div>Include</div>
                     <div>Item</div>
                     <div>Qty</div>
-                    <div>Length</div>
+                    <div>Length (in)</div>
                     <div>Width</div>
                     <div>Thickness</div>
                     <div>Miters</div>
@@ -507,6 +507,9 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
 
   const [errors, setErrors] = useState({});
   const [selectedLengthItem, setSelectedLengthItem] = useState(null);
+  const selectedLengthItemId = selectedLengthItem?.id;
+  const selectedLengthItemRequiresMiters = selectedLengthItem?.requires_miters;
+  const selectedLengthItemRequiresCutouts = selectedLengthItem?.requires_cutouts;
 
   const mathInput = useMathInput(
     {
@@ -576,24 +579,24 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
 
   // Reset miter/cutout counts when length item changes and doesn't require them
   useEffect(() => {
-    if (selectedLengthItem) {
-      const updates = {};
-      if (!selectedLengthItem.requires_miters && formData.miter_count > 0) {
-        updates.miter_count = 0;
-      }
-      if (!selectedLengthItem.requires_cutouts && formData.cutout_count > 0) {
-        updates.cutout_count = 0;
-      }
-      if (Object.keys(updates).length > 0) {
-        setFormData((prev) => ({ ...prev, ...updates }));
-      }
+    if (selectedLengthItemId) {
+      setFormData((prev) => {
+        const updates = {};
+        if (!selectedLengthItemRequiresMiters && prev.miter_count > 0) {
+          updates.miter_count = 0;
+        }
+        if (!selectedLengthItemRequiresCutouts && prev.cutout_count > 0) {
+          updates.cutout_count = 0;
+        }
+        return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // Note: formData values intentionally excluded to prevent infinite loop
   }, [
-    selectedLengthItem?.id,
-    selectedLengthItem?.requires_miters,
-    selectedLengthItem?.requires_cutouts,
+    selectedLengthItemId,
+    selectedLengthItemRequiresMiters,
+    selectedLengthItemRequiresCutouts,
   ]);
 
   const handleChange = (e) => {
@@ -913,7 +916,7 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                 htmlFor="length"
                 className="block text-xs font-medium text-slate-700 mb-1"
               >
-                Length (ft) <span className="text-red-500">*</span>
+                Length (in) <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -1273,7 +1276,7 @@ const EstimateLengthManager = ({
       key: "length",
       label: "Length",
       width: "80px",
-      render: (item) => (item.length ? `${item.length} ft` : "-"),
+      render: (item) => (item.length ? `${item.length} in` : "-"),
     },
     {
       key: "width",
@@ -1346,7 +1349,7 @@ const EstimateLengthManager = ({
 
   const getReorderItemName = (item) => {
     const lengthName = getLengthName(item.length_catalog_id);
-    const length = item.length ? `${item.length} ft` : "";
+    const length = item.length ? `${item.length} in` : "";
     return `${lengthName}${length ? ` - ${length}` : ""}`;
   };
 
@@ -1354,7 +1357,7 @@ const EstimateLengthManager = ({
     <>
       <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs text-slate-600 flex items-center justify-between gap-3">
         <span>
-          Approx. molding coverage (rounded up): Base {approxBaseLengthFeet} ft | Crown {approxCrownLengthFeet} ft
+          Approx. molding coverage (rounded up): Base {approxBaseLengthFeet * 12} in ({approxBaseLengthFeet} ft) | Crown {approxCrownLengthFeet * 12} in ({approxCrownLengthFeet} ft)
         </span>
         <button
           type="button"

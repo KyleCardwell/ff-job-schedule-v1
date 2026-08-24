@@ -420,7 +420,7 @@ const EstimateSectionBreakdown = ({
                     <span className="text-slate-500 mr-1">-</span>
                     {itemHours.name}{" "}
                     {itemHours.length
-                      ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} ft)`
+                      ? `(${itemHours.quantity > 1 ? `${itemHours.quantity} @ ` : ""}${itemHours.length} in)`
                       : itemHours.quantity
                         ? `(${itemHours.quantity})`
                         : ""}
