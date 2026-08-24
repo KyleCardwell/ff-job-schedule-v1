@@ -5,7 +5,6 @@ import {
   FACE_NAMES,
   FACE_STYLES,
   FACE_STYLE_VALUES,
-  FACE_TYPES,
   PANEL_MOD_DISPLAY_NAMES,
   PART_NAMES,
   PARTS_LIST_MAPPING,
@@ -79,18 +78,6 @@ export const calculateMoldingCost = (
   }
 
   return cost;
-};
-
-/**
- * Get parts_list_id for a box part based on its type and finish status
- */
-const getPartsListId = (partType, isFinished) => {
-  const primaryKey = `${partType}_${isFinished ? "finished" : "unfinished"}`;
-  const fallbackKey = `${partType}_finished`;
-
-  return (
-    PARTS_LIST_MAPPING[primaryKey] ?? PARTS_LIST_MAPPING[fallbackKey] ?? null
-  );
 };
 
 const getPartAnchors = (part, partNeedsFinish, partsListAnchors) => {
@@ -1266,42 +1253,6 @@ export const calculateBoardFeetForSlabHardwoodDoor = (
   const boardFeet = totalCubicInches / 144;
 
   return roundToHundredth(boardFeet);
-};
-
-const interpolateRate = (anchors, targetWidth, team_service_id) => {
-  const rates = anchors.map((a) => {
-    const service = a.services.find(
-      (s) => s.team_service_id === team_service_id,
-    );
-    const hours = service ? service.hours : 0;
-    // volume is pre-calculated, but let's be safe
-    const volume = a.volume || a.width * a.height * a.depth;
-    if (volume === 0) return { width: a.width, rate: 0 };
-    return {
-      width: a.width,
-      rate: hours / volume,
-    };
-  });
-
-  // Ensure anchors are sorted by width
-  rates.sort((a, b) => a.width - b.width);
-
-  if (targetWidth <= rates[0].width) return rates[0].rate;
-  if (targetWidth >= rates[rates.length - 1].width)
-    return rates[rates.length - 1].rate;
-
-  for (let i = 0; i < rates.length - 1; i++) {
-    const a = rates[i],
-      b = rates[i + 1];
-    if (targetWidth >= a.width && targetWidth <= b.width) {
-      if (b.width - a.width === 0) return a.rate; // Avoid division by zero
-      const t = (targetWidth - a.width) / (b.width - a.width);
-      return a.rate + t * (b.rate - a.rate);
-    }
-  }
-
-  // Fallback for safety, should not be reached with sorted widths
-  return rates[rates.length - 1].rate;
 };
 
 // export const getCabinetHours = (
