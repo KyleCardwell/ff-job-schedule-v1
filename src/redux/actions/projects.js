@@ -375,10 +375,15 @@ const buildTaskMutationPayload = (updatedTasks = [], completedTasks = []) => {
       if (task.taskIsNew) {
         tasksToInsert.push({
           ...taskData,
-          est_duration: task.duration,
+          est_duration: task.est_duration ?? task.duration,
         });
       } else {
-        tasksToUpdate.push(taskData);
+        tasksToUpdate.push({
+          ...taskData,
+          ...(task.est_duration !== null && task.est_duration !== undefined
+            ? { est_duration: task.est_duration }
+            : {}),
+        });
       }
 
       acc[task.task_id] = taskData;

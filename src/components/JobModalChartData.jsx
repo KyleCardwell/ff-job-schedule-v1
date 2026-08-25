@@ -4,6 +4,7 @@ import { isEqual, omit } from "lodash";
 import PropTypes from "prop-types";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { FiCheck } from "react-icons/fi";
+import { RxTriangleLeft, RxTriangleRight } from "react-icons/rx";
 import { useCSVReader } from "react-papaparse";
 import { useSelector, useDispatch } from "react-redux";
 import { GridLoader } from "react-spinners";
@@ -92,9 +93,7 @@ const JobModal = ({
   const [selectedRoomsToComplete, setSelectedRoomsToComplete] = useState(
     new Set(),
   );
-  const [completedSubTasksToDelete, setCompletedSubTasksToDelete] = useState(
-    new Set(),
-  );
+  const [completedSubTasksToDelete] = useState(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [pendingConflicts, setPendingConflicts] = useState({});
@@ -103,6 +102,7 @@ const JobModal = ({
   const [selectedCsvRowIndexes, setSelectedCsvRowIndexes] = useState(new Set());
   const [csvImportError, setCsvImportError] = useState(null);
   const [uploadedCsvFileName, setUploadedCsvFileName] = useState("");
+  const [showEstimatedHours, setShowEstimatedHours] = useState(false);
 
   const [selectedEmployeeInput, setSelectedEmployeeInput] = useState({
     workPeriodId: null,
@@ -180,6 +180,7 @@ const JobModal = ({
       setSelectedCsvRowIndexes(new Set());
       setCsvImportError(null);
       setUploadedCsvFileName("");
+      setShowEstimatedHours(false);
     }
     setChangedTaskIds(new Set());
     if (jobNameInputRef.current) {
@@ -498,6 +499,7 @@ const JobModal = ({
             start_date: normalizeDate(newStartDate),
             end_date: newEndDate,
             duration: workdayHours,
+            est_duration: room.workPeriods[0]?.est_duration,
             task_active: true,
             task_completed_at: null,
             subTaskIsNew: true,
@@ -790,6 +792,42 @@ const JobModal = ({
     }
   };
 
+  const handleEstimatedDurationChange = (task_id, estDuration) => {
+    const changedWorkPeriodIds =
+      localRooms
+        .find((room) => room.task_id === task_id)
+        ?.workPeriods.map((workPeriod) => workPeriod.subtask_id) || [];
+
+    setChangedTaskIds(
+      (prev) => new Set([...prev, ...changedWorkPeriodIds]),
+    );
+    setLocalRooms((prevRooms) =>
+      prevRooms.map((room) =>
+        room.task_id === task_id
+          ? {
+              ...room,
+              workPeriods: room.workPeriods.map((workPeriod) => ({
+                ...workPeriod,
+                est_duration: estDuration,
+              })),
+            }
+          : room,
+      ),
+    );
+
+    const firstWorkPeriodId = changedWorkPeriodIds[0];
+
+    if (firstWorkPeriodId && Number(estDuration) > 0) {
+      setErrors((prevErrors) => {
+        const updatedErrors = { ...prevErrors };
+        delete updatedErrors[
+          `${task_id}-${firstWorkPeriodId}-est_duration`
+        ];
+        return updatedErrors;
+      });
+    }
+  };
+
   const handleRestoreRoom = (task_id) => {
     setSelectedRoomsToComplete((prev) => {
       const next = new Set(prev);
@@ -1060,8 +1098,7 @@ const JobModal = ({
       }
 
       onClose();
-    } catch (error) {
-      console.error("Error completing project:", error);
+    } catch {
       onDatabaseError("Failed to complete project. Please try again.");
       setSaveError("Failed to complete project. Please try again.");
     } finally {
@@ -1126,6 +1163,22 @@ const JobModal = ({
             if (!room.task_name || room.task_name.trim() === "") {
               newErrors[`${room.task_id}-${workPeriod.subtask_id}-name`] =
                 "Room name is required";
+            }
+
+            const estimatedDuration =
+              workPeriod.est_duration ?? workPeriod.duration;
+            if (
+              estimatedDuration === "" ||
+              estimatedDuration === undefined ||
+              isNaN(estimatedDuration)
+            ) {
+              newErrors[
+                `${room.task_id}-${workPeriod.subtask_id}-est_duration`
+              ] = "Valid estimated hours are required";
+            } else if (Number(estimatedDuration) <= 0) {
+              newErrors[
+                `${room.task_id}-${workPeriod.subtask_id}-est_duration`
+              ] = "Estimated hours must be greater than 0";
             }
           }
 
@@ -1309,8 +1362,7 @@ const JobModal = ({
       // If we get here, the save was successful
       onSave();
       onClose();
-    } catch (error) {
-      console.error("Error saving project:", error);
+    } catch {
       onDatabaseError("Failed to save project. Please try again.");
       setSaveError("Failed to save project. Please try again.");
     } finally {
@@ -1585,7 +1637,7 @@ const JobModal = ({
             )}
             <div className="flex justify-center mb-4">
               <CSVReader onUploadAccepted={handleOnFileLoad}>
-                {({ getRootProps, acceptedFile }) => (
+                {({ getRootProps }) => (
                   <div className="csv-import-container absolute left-5 flex gap-2">
                     <button
                       type="button"
@@ -1756,10 +1808,35 @@ const JobModal = ({
             <div className="jobDataContainer flex-grow overflow-auto min-h-0 border-y border-gray-400">
               <div className="sticky top-0 bg-white">
                 <h3 className="text-lg font-bold mb-2">Active Rooms</h3>
-                <div className="hidden md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.5fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
+                <div className="hidden md:grid grid-cols-[50px_1.25fr_90px_0.75fr_1fr_0.75fr_1.5fr] gap-2 items-center py-2 mb-1 mx-0 rounded bg-gray-300 font-bold">
                   <span>Job</span>
                   <span>Room Name</span>
-                  <span>Hours</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowEstimatedHours((showEstimated) => !showEstimated)
+                    }
+                    aria-pressed={showEstimatedHours}
+                    title={
+                      showEstimatedHours
+                        ? "Show scheduled hours"
+                        : "Show estimated hours"
+                    }
+                    className={`-my-2 flex self-stretch cursor-pointer flex-col items-center justify-center border-x border-gray-400 px-1 text-sm leading-tight transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${
+                      showEstimatedHours
+                        ? "bg-yellow-300 hover:bg-yellow-400"
+                        : "hover:bg-gray-400"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex items-center gap-0.5 leading-none"
+                    >
+                      <RxTriangleLeft />
+                      <RxTriangleRight />
+                    </span>
+                    <span>{showEstimatedHours ? "Estimated" : "Scheduled"}</span>
+                  </button>
                   <span>Employee</span>
                   <span>Start Date</span>
                   <span>Hard Start?</span>
@@ -1777,7 +1854,7 @@ const JobModal = ({
                   {room.workPeriods.map((workPeriod, subTaskIndex) => (
                     <div
                       key={workPeriod.subtask_id || subTaskIndex}
-                      className={`flex flex-col md:grid grid-cols-[50px_1.25fr_70px_0.75fr_1fr_1fr_1.5fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
+                      className={`flex flex-col md:grid grid-cols-[50px_1.25fr_90px_0.75fr_1fr_0.75fr_1.5fr] gap-2 items-center mb-1 mx-0 p-6 md:p-2 ${
                         subTaskIndex !== 0 &&
                         "border border-gray-500 md:border-none"
                       }`}
@@ -1865,35 +1942,83 @@ const JobModal = ({
                           {room.task_name}
                         </span>
                       )}
-                      {canEditSchedule ? (
-                        <input
-                          id={`${room.task_id}-${workPeriod.subtask_id}-duration`}
-                          type="number"
-                          step="1"
-                          value={workPeriod.duration || ""}
-                          onChange={(e) => {
-                            handleWorkPeriodChange(
-                              room.task_id,
-                              workPeriod.subtask_id,
-                              {
-                                duration: parseFloat(e.target.value).toFixed(2),
-                              },
-                            );
-                          }}
-                          placeholder="Hours"
-                          className={`duration-input w-full pl-1 h-8 text-sm border ${
-                            errors[
-                              `${room.task_id}-${workPeriod.subtask_id}-duration`
-                            ]
-                              ? "border-red-500"
-                              : "border-gray-300"
-                          } rounded`}
-                        />
-                      ) : (
-                        <div className="w-full pl-1 h-8 text-sm flex items-center">
-                          {workPeriod.duration || ""}
-                        </div>
-                      )}
+                      <div
+                        className={`w-full rounded p-1 ${
+                          showEstimatedHours ? "bg-yellow-200" : ""
+                        }`}
+                      >
+                        {showEstimatedHours ? (
+                          subTaskIndex === 0 ? (
+                            canEditSchedule ? (
+                              <input
+                                id={`${room.task_id}-${workPeriod.subtask_id}-est_duration`}
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={
+                                  workPeriod.est_duration ??
+                                  workPeriod.duration ??
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  handleEstimatedDurationChange(
+                                    room.task_id,
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Estimated Hours"
+                                className={`estimated-duration-input w-full pl-1 h-8 text-sm border bg-yellow-50 ${
+                                  errors[
+                                    `${room.task_id}-${workPeriod.subtask_id}-est_duration`
+                                  ]
+                                    ? "border-red-500"
+                                    : "border-yellow-400"
+                                } rounded`}
+                              />
+                            ) : (
+                              <div className="w-full pl-1 h-8 text-sm flex items-center">
+                                {workPeriod.est_duration ??
+                                  workPeriod.duration ??
+                                  ""}
+                              </div>
+                            )
+                          ) : (
+                            <div className="w-full pl-1 h-8 text-sm flex items-center">
+                              —
+                            </div>
+                          )
+                        ) : canEditSchedule ? (
+                          <input
+                            id={`${room.task_id}-${workPeriod.subtask_id}-duration`}
+                            type="number"
+                            step="1"
+                            value={workPeriod.duration || ""}
+                            onChange={(e) => {
+                              handleWorkPeriodChange(
+                                room.task_id,
+                                workPeriod.subtask_id,
+                                {
+                                  duration: parseFloat(
+                                    e.target.value,
+                                  ).toFixed(2),
+                                },
+                              );
+                            }}
+                            placeholder="Hours"
+                            className={`duration-input w-full pl-1 h-8 text-sm border ${
+                              errors[
+                                `${room.task_id}-${workPeriod.subtask_id}-duration`
+                              ]
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            } rounded`}
+                          />
+                        ) : (
+                          <div className="w-full pl-1 h-8 text-sm flex items-center">
+                            {workPeriod.duration || ""}
+                          </div>
+                        )}
+                      </div>
                       {canEditSchedule ? (
                         <select
                           id={`${room.task_id}-${workPeriod.subtask_id}-employee_id`}

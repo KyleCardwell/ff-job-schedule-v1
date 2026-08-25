@@ -155,6 +155,11 @@ BEGIN
       task_name = COALESCE(NULLIF(v_task->>'task_name', ''), t.task_name),
       task_active = COALESCE(NULLIF(v_task->>'task_active', '')::BOOLEAN, t.task_active),
       task_created_at = COALESCE(NULLIF(v_task->>'task_created_at', '')::TIMESTAMPTZ, t.task_created_at),
+      est_duration = CASE
+        WHEN v_task ? 'est_duration'
+          THEN COALESCE(NULLIF(v_task->>'est_duration', '')::NUMERIC, t.est_duration)
+        ELSE t.est_duration
+      END,
       task_completed_at = CASE
         WHEN v_task ? 'task_completed_at'
           THEN NULLIF(v_task->>'task_completed_at', '')::TIMESTAMPTZ

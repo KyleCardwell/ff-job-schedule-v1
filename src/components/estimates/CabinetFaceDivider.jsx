@@ -2736,7 +2736,6 @@ const CabinetFaceDivider = ({
                 const faceType = availableFaceTypes.find(
                   (t) => t.value === child.type,
                 );
-                const isReveal = child.type === FACE_NAMES.REVEAL;
 
                 return (
                   <div
