@@ -14,6 +14,11 @@ export const usePermissions = () => {
     canEditSchedule: roleId === 1 || permissions?.can_edit_schedule,
     canEditFinancials: roleId === 1 || permissions?.can_edit_financials,
     canViewProfitLoss: roleId === 1 || permissions?.can_view_profit_loss,
+    canCreateEstimates: roleId === 1 || permissions?.can_create_estimates,
+    canViewEstimates:
+      roleId === 1 ||
+      permissions?.can_create_estimates ||
+      permissions?.can_view_estimates,
     // Add more permission checks as needed
   };
 };

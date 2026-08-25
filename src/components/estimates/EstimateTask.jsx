@@ -12,6 +12,7 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { useDispatch, useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   updateTask,
   deleteTask,
@@ -48,6 +49,7 @@ const EstimateTask = ({
   setShowEstimateDefaultsForm,
 }) => {
   const dispatch = useDispatch();
+  const { canCreateEstimates } = usePermissions();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
   );
@@ -277,7 +279,8 @@ const EstimateTask = ({
                   </span>
                 )}
             </span>
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/task:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
+            {canCreateEstimates && (
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/task:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
               <Tooltip text="Edit Room Name & Quantity" position="top">
                 <button
                   onClick={(e) => {
@@ -351,7 +354,8 @@ const EstimateTask = ({
                   <FiTrash2 size={14} />
                 </button>
               </Tooltip>
-            </div>
+              </div>
+            )}
           </button>
         )}
 

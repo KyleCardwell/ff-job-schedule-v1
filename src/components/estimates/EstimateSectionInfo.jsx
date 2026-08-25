@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   EDIT_TYPES,
   FACE_STYLES,
@@ -21,6 +22,7 @@ const EstimateSectionInfo = ({
   currentEstimate,
   showProjectInfo,
 }) => {
+  const { canCreateEstimates } = usePermissions();
   const section = selectedSectionId
     ? selectedTask?.sections?.find(
         (s) => s.est_section_id === selectedSectionId,
@@ -729,7 +731,8 @@ const EstimateSectionInfo = ({
             </div>
           </div>
 
-          <div className="flex flex-col">
+          {canCreateEstimates && (
+            <div className="flex flex-col">
             {showEstimateDefaults ? (
               <>
                 <button
@@ -770,7 +773,8 @@ const EstimateSectionInfo = ({
                 </button>
               </>
             )}
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>

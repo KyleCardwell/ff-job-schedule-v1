@@ -21,6 +21,8 @@ const mockUser = {
     can_edit_schedule: true,
     can_edit_financials: true,
     can_view_profit_loss: true,
+    can_create_estimates: true,
+    can_view_estimates: true,
   },
   customPermissions: {},
 };

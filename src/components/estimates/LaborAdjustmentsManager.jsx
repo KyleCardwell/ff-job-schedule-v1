@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { FiEdit2, FiSave, FiX, FiXCircle } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
+
 const PART_ADJUSTMENT_FIELDS = [
   { key: "boxTotal", label: "Cabinet Boxes" },
   { key: "facePrices.door", label: "Doors" },
@@ -64,6 +66,7 @@ const LaborAdjustmentsManager = ({
   onSave,
   finishSetupNeeded = true,
 }) => {
+  const { canCreateEstimates } = usePermissions();
   const services = useSelector((state) => state.services?.allServices || []);
 
   // Filter to active services only
@@ -252,13 +255,15 @@ const LaborAdjustmentsManager = ({
         </div>
         <div className="flex gap-2">
           {!isEditing ? (
-            <button
+            canCreateEstimates && (
+              <button
               onClick={handleEdit}
               className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               <FiEdit2 size={14} />
               Edit
-            </button>
+              </button>
+            )
           ) : (
             <>
               <button

@@ -16,11 +16,17 @@ import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
 
 const EstimatePreview = () => {
   const dispatch = useDispatch();
-  const { canEditSchedule } = usePermissions();
+  const { canCreateEstimates, canEditSchedule } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const { estimateId } = useParams();
   const isFinalized = location.pathname.includes('/finalized');
+  const isArchived = location.pathname.includes('/archived');
+  const estimateBasePath = isArchived
+    ? "/estimates/archived"
+    : isFinalized
+      ? "/estimates/finalized"
+      : "/estimates/in-progress";
 
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
@@ -82,11 +88,9 @@ const EstimatePreview = () => {
             }
 
             const blob = await response.blob();
-            console.log("Logo blob type:", blob.type);
 
             // Verify it's an image
             if (!blob.type.startsWith("image/")) {
-              console.error("Invalid blob type:", blob.type);
               return;
             }
 
@@ -132,18 +136,11 @@ const EstimatePreview = () => {
 
                 // Convert to PNG data URL
                 const pngDataUrl = canvas.toDataURL("image/png");
-                console.log(
-                  `SVG converted to PNG (${Math.round(
-                    canvasWidth
-                  )}x${Math.round(canvasHeight)}), length:`,
-                  pngDataUrl.length
-                );
                 setLogoDataUrl(pngDataUrl);
                 URL.revokeObjectURL(url);
               };
 
               img.onerror = () => {
-                console.error("Failed to load SVG image");
                 URL.revokeObjectURL(url);
                 setLogoDataUrl(null);
               };
@@ -153,20 +150,15 @@ const EstimatePreview = () => {
               // For PNG/JPEG, use directly
               const reader = new FileReader();
               reader.onloadend = () => {
-                console.log(
-                  "Logo data URL created, length:",
-                  reader.result?.length
-                );
                 setLogoDataUrl(reader.result);
               };
               reader.onerror = () => {
-                console.error("FileReader error");
+                setLogoDataUrl(null);
               };
               reader.readAsDataURL(blob);
             }
           }
-        } catch (error) {
-          console.error("Error loading logo for PDF:", error);
+        } catch {
           setLogoDataUrl(null); // Clear on error
         }
       } else {
@@ -446,10 +438,9 @@ const EstimatePreview = () => {
   // Redirect to edit page if no currentEstimate exists
   useEffect(() => {
     if (!currentEstimate && estimateId) {
-      const basePath = isFinalized ? '/estimates/finalized' : '/estimates/in-progress';
-      navigate(`${basePath}/${estimateId}`);
+      navigate(`${estimateBasePath}/${estimateId}`);
     }
-  }, [currentEstimate, estimateId, navigate, isFinalized]);
+  }, [currentEstimate, estimateId, navigate, estimateBasePath]);
 
   // Initialize all sections as selected when taskDataMap changes
   useEffect(() => {
@@ -517,7 +508,7 @@ const EstimatePreview = () => {
   }, [currentEstimate]);
 
   const handleFinalize = async () => {
-    if (!currentEstimate || isFinalizing) return;
+    if (!canCreateEstimates || !currentEstimate || isFinalizing) return;
     setIsFinalizing(true);
     try {
       await dispatch(
@@ -532,7 +523,7 @@ const EstimatePreview = () => {
         })
       );
     } catch (error) {
-      console.error("Error finalizing estimate:", error);
+      void error;
     } finally {
       setIsFinalizing(false);
     }
@@ -568,7 +559,7 @@ const EstimatePreview = () => {
           (allSections.length === 0 && lineItemsTotal === 0)
         }
       >
-        {currentEstimate?.status !== ESTIMATE_STATUS.FINALIZED && (
+        {canCreateEstimates && currentEstimate?.status !== ESTIMATE_STATUS.FINALIZED && (
           <button
             onClick={handleFinalize}
             disabled={isFinalizing || !currentEstimate || (allSections.length === 0 && lineItemsTotal === 0)}
@@ -578,7 +569,7 @@ const EstimatePreview = () => {
             {isFinalizing ? "Finalizing..." : "Finalize Estimate"}
           </button>
         )}
-        {currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && canEditSchedule && (
+        {canCreateEstimates && currentEstimate?.status === ESTIMATE_STATUS.FINALIZED && canEditSchedule && (
           <button
             onClick={() =>
               navigate(`/estimates/finalized/${currentEstimate.estimate_id}/schedule`)
@@ -601,7 +592,7 @@ const EstimatePreview = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate(`/estimates/${isFinalized ? 'finalized' : 'in-progress'}/${estimateId}`)}
+                onClick={() => navigate(`${estimateBasePath}/${estimateId}`)}
                 className="hover:text-teal-400 transition-colors"
                 aria-label="Back to estimate"
               >

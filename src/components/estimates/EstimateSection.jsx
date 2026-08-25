@@ -4,6 +4,7 @@ import { FiEdit2, FiTrash2, FiCopy, FiCalendar, FiGitBranch, FiClock } from "rea
 import { useDispatch, useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants.js";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   deleteSection,
   updateSection,
@@ -27,6 +28,7 @@ const EstimateSection = ({
   setSelectedSectionId,
 }) => {
   const dispatch = useDispatch();
+  const { canCreateEstimates } = usePermissions();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate
   );
@@ -155,7 +157,8 @@ const EstimateSection = ({
                 </span>
               )}
             </span>
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/section:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
+            {canCreateEstimates && (
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 invisible group-hover/section:visible flex items-center gap-1 rounded-md bg-slate-900/80 px-1 py-0.5 z-10">
               <Tooltip text="Edit Section Name" position="top">
                 <button
                   onClick={(e) => {
@@ -213,7 +216,8 @@ const EstimateSection = ({
                   <FiTrash2 size={14} />
                 </button>
               </Tooltip>
-            </div>
+              </div>
+            )}
           </button>
         )}
       </div>

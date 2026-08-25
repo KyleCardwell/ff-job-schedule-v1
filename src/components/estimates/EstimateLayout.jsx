@@ -5,6 +5,7 @@ import { RiSwapBoxLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   fetchAccessoriesCatalog,
   fetchAccessoryTimeAnchors,
@@ -60,13 +61,15 @@ const EstimateLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { estimateId } = useParams();
+  const { canCreateEstimates } = usePermissions();
   const isFinalized = location.pathname.includes("/finalized");
-  const basePath = isFinalized
-    ? "/estimates/finalized"
-    : "/estimates/in-progress";
-  const listPath = isFinalized
-    ? PATHS.FINALIZED_ESTIMATES
-    : PATHS.IN_PROGRESS_ESTIMATES;
+  const isArchived = location.pathname.includes("/archived");
+  const basePath = isArchived
+    ? PATHS.ARCHIVED_ESTIMATES
+    : isFinalized
+      ? PATHS.FINALIZED_ESTIMATES
+      : PATHS.IN_PROGRESS_ESTIMATES;
+  const listPath = basePath;
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
   );
@@ -337,6 +340,7 @@ const EstimateLayout = () => {
   ]);
 
   const handleAddTask = () => {
+    if (!canCreateEstimates) return;
     setSelectedTaskId(null);
     setShowProjectInfo(false);
     setIsNewTask(true);
@@ -352,7 +356,7 @@ const EstimateLayout = () => {
   };
 
   const handleMoveRooms = async ({ selectedSectionIds, targetEstimateId }) => {
-    if (!currentEstimate) return;
+    if (!canCreateEstimates || !currentEstimate) return;
 
     try {
       setIsMovingRooms(true);
@@ -384,12 +388,13 @@ const EstimateLayout = () => {
   };
 
   const handleSaveTaskOrder = (reorderedTasks) => {
+    if (!canCreateEstimates) return;
     dispatch(updateTaskOrder(currentEstimate.estimate_id, reorderedTasks));
     setIsReorderModalOpen(false);
   };
 
   const handleDuplicateEstimate = async ({ selectedSectionIds }) => {
-    if (!currentEstimate) return;
+    if (!canCreateEstimates || !currentEstimate) return;
 
     try {
       setIsDuplicatingEstimate(true);
@@ -408,6 +413,7 @@ const EstimateLayout = () => {
   };
 
   const handleSaveToggles = async (data) => {
+    if (!canCreateEstimates) return;
     if (selectedTaskId && selectedSectionId && currentEstimate) {
       await dispatch(
         updateSection(
@@ -424,6 +430,7 @@ const EstimateLayout = () => {
   };
 
   const handleSaveTargetPrice = async (updates) => {
+    if (!canCreateEstimates) return;
     if (selectedTaskId && selectedSectionId && currentEstimate) {
       await dispatch(
         updateSection(
@@ -477,9 +484,11 @@ const EstimateLayout = () => {
             aria-label="Go back"
           >
             <FiArrowLeft size={20} className="inline"/>
-            {location.pathname.includes("/finalized")
-              ? "Finalized Estimates"
-              : "Estimates In Progress"}
+            {isArchived
+              ? "Archived Estimates"
+              : isFinalized
+                ? "Finalized Estimates"
+                : "Estimates In Progress"}
           </button>
         </div>
         <nav className="flex flex-col flex-1 overflow-hidden">
@@ -507,7 +516,8 @@ const EstimateLayout = () => {
               {/* Tasks List Header */}
               <div className="py-3 px-4 text-md font-medium text-slate-200 flex justify-between items-center border-b border-slate-200">
                 <span className="font-semibold">Rooms</span>
-                <div className="flex items-center gap-2">
+                {canCreateEstimates && (
+                  <div className="flex items-center gap-2">
                   <Tooltip text="Move Rooms to Another Estimate">
                     <button
                       onClick={() => setIsMoveRoomsModalOpen(true)}
@@ -539,7 +549,8 @@ const EstimateLayout = () => {
                       </button>
                     </Tooltip>
                   )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Tasks List */}
@@ -587,12 +598,14 @@ const EstimateLayout = () => {
               </div>
 
               {/* Add Task Button */}
-              <button
-                onClick={handleAddTask}
-                className="mt-auto w-full py-3 px-4 text-sm font-medium text-teal-400 hover:text-teal-300 border-t border-slate-700 bg-slate-900 hover:bg-slate-800"
-              >
-                Add Room
-              </button>
+              {canCreateEstimates && (
+                <button
+                  onClick={handleAddTask}
+                  className="mt-auto w-full py-3 px-4 text-sm font-medium text-teal-400 hover:text-teal-300 border-t border-slate-700 bg-slate-900 hover:bg-slate-800"
+                >
+                  Add Room
+                </button>
+              )}
             </>
           )}
         </nav>
@@ -680,7 +693,7 @@ const EstimateLayout = () => {
               )}
             </div>
           </div>
-        ) : showEstimateDefaultsForm ? (
+        ) : canCreateEstimates && showEstimateDefaultsForm ? (
           <div className="px-6 h-full flex flex-col">
             {/* Toggle between Defaults and Price Overrides */}
             <div className="max-w-5xl mx-auto w-full pt-4">
@@ -733,7 +746,7 @@ const EstimateLayout = () => {
               )}
             </div>
           </div>
-        ) : showLineItemsEditor ? (
+        ) : canCreateEstimates && showLineItemsEditor ? (
           <div className="p-6 overflow-y-auto h-full">
             <div className="max-w-6xl mx-auto">
               <EstimateLineItemsEditor
@@ -749,7 +762,7 @@ const EstimateLayout = () => {
               />
             </div>
           </div>
-        ) : showSectionForm ? (
+        ) : canCreateEstimates && showSectionForm ? (
           <div className="p-6 h-full">
             <div className="max-w-5xl mx-auto h-full">
               <EstimateSectionForm

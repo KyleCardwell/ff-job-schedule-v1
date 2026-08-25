@@ -27,7 +27,7 @@ export const createEstimateProject = (projectData) => {
 
       return data;
     } catch (error) {
-      console.error("Error creating estimate project:", error);
+      void error;
       dispatch({
         type: Actions.estimates.CREATE_ESTIMATE_PROJECT_ERROR,
         payload: error.message,
@@ -73,7 +73,7 @@ export const fetchEstimateProjects = (searchTerm = "") => {
 
       return data || [];
     } catch (error) {
-      console.error("Error fetching estimate projects:", error);
+      void error;
       dispatch({
         type: Actions.estimates.FETCH_ESTIMATE_PROJECTS_ERROR,
         payload: error.message,
@@ -115,7 +115,7 @@ export const createEstimate = (estimateProjectId) => {
 
       return data;
     } catch (error) {
-      console.error("Error creating estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.CREATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -162,7 +162,7 @@ export const fetchEstimates = (filters = {}) => {
 
       return estimates;
     } catch (error) {
-      console.error("Error fetching estimates:", error);
+      void error;
       dispatch({
         type: Actions.estimates.FETCH_ESTIMATES_ERROR,
         payload: error.message,
@@ -229,7 +229,7 @@ export const approveEstimate = (estimateId) => {
 
       return { estimate: updatedEstimate, project };
     } catch (error) {
-      console.error("Error approving estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.APPROVE_ESTIMATE_ERROR,
         payload: error.message,
@@ -332,7 +332,7 @@ export const fetchEstimateById = (estimateId) => {
 
       return estimate;
     } catch (error) {
-      console.error("Error fetching estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.FETCH_ESTIMATE_ERROR,
         payload: error.message,
@@ -361,7 +361,7 @@ export const deleteEstimate = (id) => {
       });
       await dispatch(fetchEstimates());
     } catch (error) {
-      console.error("Error deleting estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.DELETE_ESTIMATE_ERROR,
         payload: error.message,
@@ -412,7 +412,7 @@ export const fetchProjectsForSelection = () => {
 
       return data;
     } catch (error) {
-      console.error("Error fetching projects for selection:", error);
+      void error;
       dispatch({
         type: Actions.estimates.FETCH_PROJECTS_FOR_SELECTION_ERROR,
         payload: error.message,
@@ -453,7 +453,7 @@ export const createProjectForEstimate = (projectData) => {
 
       return data;
     } catch (error) {
-      console.error("Error creating project for estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.CREATE_PROJECT_ERROR,
         payload: error.message,
@@ -465,7 +465,7 @@ export const createProjectForEstimate = (projectData) => {
 
 // Update project information for an existing estimate
 export const updateEstimateProject = (estimateId, projectData) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_ESTIMATE_START });
 
@@ -496,7 +496,7 @@ export const updateEstimateProject = (estimateId, projectData) => {
         },
       });
     } catch (error) {
-      console.error("Error updating estimate project:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -522,7 +522,7 @@ export const updateOrderArray = async (
 
     if (error) throw error;
   } catch (error) {
-    console.error(`Error updating order for ${tableName}:`, error);
+    void error;
     throw error;
   }
 };
@@ -592,7 +592,7 @@ export const addTask = (estimateId, taskName) => {
 
       return taskWithFormattedSections;
     } catch (error) {
-      console.error("Error adding task:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -651,7 +651,7 @@ export const updateTask = (estimateId, taskId, updates) => {
 
       return taskWithFormattedSections;
     } catch (error) {
-      console.error("Error updating task:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -823,7 +823,7 @@ export const addSection = (estimateId, taskId, sectionData) => {
 
       return newSection;
     } catch (error) {
-      console.error("Error adding section:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -990,7 +990,7 @@ export const updateSection = (estimateId, taskId, sectionId, updates) => {
 
       return updatedSection;
     } catch (error) {
-      console.error("Error updating section:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1044,7 +1044,7 @@ export const deleteSection = (estimateId, taskId, sectionId) => {
         },
       });
     } catch (error) {
-      console.error("Error deleting section:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1061,7 +1061,7 @@ export const updateSectionItems = (
   items,
   idsToDelete = []
 ) => {
-  return async (dispatch, getState) => {
+  return async (dispatch) => {
     try {
       dispatch({ type: Actions.estimates.UPDATE_SECTION_ITEMS_START });
 
@@ -1084,7 +1084,6 @@ export const updateSectionItems = (
           .in("id", idsToDelete);
 
         if (deleteError) throw deleteError;
-        console.log(`Deleted ${idsToDelete.length} items from ${tableName}`);
       }
 
       // 2. Process items for updates and inserts
@@ -1116,13 +1115,13 @@ export const updateSectionItems = (
           }
 
           updatedItems = itemsToUpdate; // Store the items that were updated
-          console.log(`Updated ${itemsToUpdate.length} items in ${tableName}`);
         }
 
         // 4. Insert new items and update IDs
         if (itemsToInsert.length > 0) {
           const itemData = itemsToInsert.map((item) => {
-            const { id, ...insertData } = item;
+            const insertData = { ...item };
+            delete insertData.id;
             return {
               est_section_id: sectionId,
               ...insertData,
@@ -1133,9 +1132,6 @@ export const updateSectionItems = (
             await supabase.from(tableName).insert(itemData).select("*");
 
           if (insertError) throw insertError;
-          console.log(
-            `Inserted ${itemsToInsert.length} new items into ${tableName}`
-          );
 
           // Create a mapping of temp_id to new database id
           const tempIdToIdMap = new Map();
@@ -1182,7 +1178,7 @@ export const updateSectionItems = (
 
       return processedItems;
     } catch (error) {
-      console.error(`Error updating ${tableName}:`, error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_SECTION_ITEMS_ERROR,
         payload: error.message,
@@ -1392,7 +1388,7 @@ export const updateEstimateDefaults = (estimateId, defaults) => {
 
       return estimate;
     } catch (error) {
-      console.error("Error updating estimate defaults:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_DEFAULTS_ERROR,
         payload: error.message,
@@ -1428,7 +1424,7 @@ export const updateCustomNotes = (estimateId, customNotes) => {
 
       return customNotes;
     } catch (error) {
-      console.error("Error updating custom notes:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1482,7 +1478,7 @@ export const updateEstimatePriceOverrides = (
 
       return priceOverrides;
     } catch (error) {
-      console.error("Error updating estimate price overrides:", error);
+      void error;
       throw error;
     }
   };
@@ -1517,7 +1513,7 @@ export const updateEstimateLineItems = (estimateId, lineItems) => {
 
       return lineItems;
     } catch (error) {
-      console.error("Error updating estimate line items:", error);
+      void error;
       throw error;
     }
   };
@@ -1586,7 +1582,7 @@ export const duplicateItem = (
 
       return newItem;
     } catch (error) {
-      console.error(`Error duplicating item from ${tableName}:`, error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1625,7 +1621,7 @@ export const moveItem = (tableName, itemId, targetSectionId) => {
 
       return true;
     } catch (error) {
-      console.error(`Error moving item from ${tableName}:`, error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1885,7 +1881,7 @@ export const finalizeEstimate = (estimateId, catalogData) => {
 
       return updatedEstimate;
     } catch (error) {
-      console.error("Error finalizing estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1941,7 +1937,7 @@ export const unfinalizeEstimate = (estimateId) => {
 
       return data;
     } catch (error) {
-      console.error("Error un-finalizing estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -1998,7 +1994,7 @@ export const archiveEstimate = (estimateId) => {
 
       return data;
     } catch (error) {
-      console.error("Error archiving estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -2059,7 +2055,7 @@ export const unarchiveEstimate = (estimateId) => {
 
       return data;
     } catch (error) {
-      console.error("Error un-archiving estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -2140,7 +2136,7 @@ export const moveEstimateRooms = (
 
       return updatedSourceEstimate;
     } catch (error) {
-      console.error("Error moving rooms between estimates:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -2219,7 +2215,7 @@ export const duplicateEstimate = (
 
       return resolvedEstimateId;
     } catch (error) {
-      console.error("Error duplicating estimate:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -2282,7 +2278,7 @@ export const duplicateSection = (sourceSectionId, options = {}) => {
 
       return newSectionId;
     } catch (error) {
-      console.error("Error duplicating section:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -2333,7 +2329,7 @@ export const reviseSection = (sectionId) => {
 
       return newSectionId;
     } catch (error) {
-      console.error("Error revising section:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,
@@ -2368,7 +2364,7 @@ export const switchSectionRevision = (taskId, lineageId, targetSectionId) => {
         },
       });
     } catch (error) {
-      console.error("Error switching section revision:", error);
+      void error;
       dispatch({
         type: Actions.estimates.UPDATE_ESTIMATE_ERROR,
         payload: error.message,

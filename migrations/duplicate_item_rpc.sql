@@ -1,7 +1,7 @@
 -- RPC function to duplicate an estimate section'sitem (cabinet, length, accessory, or other)
 -- This function can be extended later for duplicating sections, tasks, and estimates
 
-CREATE OR REPLACE FUNCTION duplicate_section_item(
+CREATE OR REPLACE FUNCTION public.duplicate_section_item(
   p_table_name TEXT,
   p_item_id BIGINT,
   p_target_section_id BIGINT
@@ -9,6 +9,7 @@ CREATE OR REPLACE FUNCTION duplicate_section_item(
 RETURNS BIGINT
 LANGUAGE plpgsql
 SECURITY INVOKER
+SET search_path = public
 AS $$
 DECLARE
   v_new_id BIGINT;
@@ -56,7 +57,8 @@ END;
 $$;
 
 -- Grant execute permission to authenticated users
-GRANT EXECUTE ON FUNCTION duplicate_section_item(TEXT, BIGINT, BIGINT) TO authenticated;
+REVOKE ALL ON FUNCTION public.duplicate_section_item(TEXT, BIGINT, BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.duplicate_section_item(TEXT, BIGINT, BIGINT) TO authenticated;
 
 -- Add comment for documentation
-COMMENT ON FUNCTION duplicate_section_item IS 'Duplicates an estimate section item (cabinet, length, accessory, or other) to a target section. Returns the new item ID.';
+COMMENT ON FUNCTION public.duplicate_section_item IS 'Duplicates an estimate section item (cabinet, length, accessory, or other) to a target section. Returns the new item ID.';

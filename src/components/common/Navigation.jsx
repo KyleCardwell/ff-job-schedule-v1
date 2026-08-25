@@ -14,6 +14,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 import { headerButtonColor } from "../../assets/tailwindConstants";
 import useFeatureToggles from "../../hooks/useFeatureToggles";
+import { usePermissions } from "../../hooks/usePermissions";
 import { clearAuth } from "../../redux/authSlice";
 import { PATHS } from "../../utils/constants";
 import { supabase } from "../../utils/supabase";
@@ -21,10 +22,9 @@ import { supabase } from "../../utils/supabase";
 const Navigation = ({ isOpen, onClose }) => {
   const { enable_estimates } = useFeatureToggles();
   const { roleId, permissions, userName } = useSelector((state) => state.auth);
+  const { canViewEstimates } = usePermissions();
   const canAccessManage =
     roleId === 1 || (permissions && permissions.can_manage_teams);
-  const canCreateEstimates =
-    roleId === 1 || (permissions && permissions.can_create_estimates);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ const Navigation = ({ isOpen, onClose }) => {
     ...(canAccessManage
       ? [{ icon: GoGear, label: "Manage", path: PATHS.MANAGE }]
       : []),
-    ...(canCreateEstimates && enable_estimates
+    ...(canViewEstimates && enable_estimates
       ? [{ icon: FiDollarSign, label: "Estimates", path: PATHS.ESTIMATES }]
       : []),
     { icon: FiCalendar, label: "Schedule", path: PATHS.HOME },
@@ -49,7 +49,7 @@ const Navigation = ({ isOpen, onClose }) => {
       dispatch(clearAuth());
       navigate("/");
     } catch (error) {
-      console.error("Error signing out:", error.message);
+      void error;
     }
   };
 

@@ -1,6 +1,6 @@
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   BrowserRouter as Router,
@@ -143,8 +143,7 @@ const AppContent = () => {
         );
         dispatch(setSession(currentSession));
         dispatch(fetchFeatureToggles());
-      } catch (error) {
-        console.error("Error fetching user data:", error);
+      } catch {
         dispatch(clearAuth());
       } finally {
         dispatch(setLoading(false));
@@ -200,8 +199,7 @@ const AppContent = () => {
           dispatch(fetchServices()),
           dispatch(fetchOverheadRate()),
         ]);
-      } catch (error) {
-        console.error("Error fetching initial app data:", error);
+      } catch {
         initialFetchDone.current = false;
       }
     };
@@ -336,6 +334,22 @@ const AppContent = () => {
                 />
                 <Route
                   path="finalized/:estimateId/preview"
+                  element={
+                    <ProtectedRoute>
+                      <EstimatePreview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="archived/:estimateId"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="archived/:estimateId/preview"
                   element={
                     <ProtectedRoute>
                       <EstimatePreview />

@@ -17,6 +17,7 @@ as $$
       when 'can_edit_financials' then coalesce(r.can_edit_financials, false)
       when 'can_view_profit_loss'then coalesce(r.can_view_profit_loss, false)
       when 'can_create_estimates'then coalesce(r.can_create_estimates, false)
+      when 'can_view_estimates'  then coalesce(r.can_view_estimates, false)
       else false
     end
     from public.roles r
