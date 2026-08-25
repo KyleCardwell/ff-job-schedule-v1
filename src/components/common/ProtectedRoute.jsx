@@ -21,16 +21,23 @@ const ProtectedRoute = ({ children }) => {
 
   // Check if user has create estimates permission
   if (location.pathname.startsWith(PATHS.ESTIMATES)) {
-    const canCreateEstimates =
-      permissions?.can_create_estimates;
-    if (!canCreateEstimates || !enable_estimates) {
+    const canCreateEstimates = roleId === 1 || permissions?.can_create_estimates;
+    const canViewEstimates = canCreateEstimates || permissions?.can_view_estimates;
+    const isNewEstimateRoute = location.pathname === PATHS.NEW_ESTIMATE;
+
+    if (
+      !enable_estimates ||
+      !canViewEstimates ||
+      (isNewEstimateRoute && !canCreateEstimates)
+    ) {
       return <Navigate to={PATHS.HOME} replace />;
     }
   }
 
   if (location.pathname.endsWith('/schedule')) {
-    const canEditSchedule = permissions?.can_edit_schedule;
-    if (!canEditSchedule) {
+    const canEditSchedule = roleId === 1 || permissions?.can_edit_schedule;
+    const canCreateEstimates = roleId === 1 || permissions?.can_create_estimates;
+    if (!canEditSchedule || !canCreateEstimates) {
       return <Navigate to={PATHS.ESTIMATES} replace />;
     }
   }

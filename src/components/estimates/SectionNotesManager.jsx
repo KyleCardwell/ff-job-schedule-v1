@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FiCheck, FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import {
@@ -120,6 +121,7 @@ const normalizeNotes = (notes) => {
 };
 
 const SectionNotesManager = ({ notes, section, onSave }) => {
+  const { canCreateEstimates } = usePermissions();
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   const { teamDefaults } = useSelector((state) => state.teamEstimateDefaults);
   const { boxMaterials, faceMaterials, drawerBoxMaterials } = useSelector(
@@ -355,13 +357,15 @@ const SectionNotesManager = ({ notes, section, onSave }) => {
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-medium text-slate-700">Section Notes</h4>
         {!isEditing ? (
-          <button
+          canCreateEstimates && (
+            <button
             onClick={handleEdit}
             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
             <FiEdit2 size={14} />
             Edit
-          </button>
+            </button>
+          )
         ) : (
           <div className="flex items-center gap-2">
             <button

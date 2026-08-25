@@ -5,6 +5,7 @@ import { LuArrowDownUp } from "react-icons/lu";
 import { RiSwapBoxLine } from "react-icons/ri";
 import { useSelector } from "react-redux";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { ITEM_TYPES, PANEL_MOD_DISPLAY_NAMES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults.js";
 import { generateCabinetSummary } from "../../utils/estimateHelpers.js";
@@ -33,6 +34,7 @@ const SectionItemList = ({
   currentTaskId,
   currentSectionId,
 }) => {
+  const { canCreateEstimates } = usePermissions();
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
   const accessories = useSelector((state) => state.accessories);
@@ -63,15 +65,18 @@ const SectionItemList = ({
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
 
+  const availableColumns = canCreateEstimates
+    ? columns
+    : columns.filter((column) => column.key !== "actions");
   const hasLayoutPreviewColumn =
     listType === ITEM_TYPES.CABINET.type &&
-    columns.some((column) => column.key === "layout");
+    availableColumns.some((column) => column.key === "layout");
   const layoutColumn = hasLayoutPreviewColumn
-    ? columns.find((column) => column.key === "layout")
+    ? availableColumns.find((column) => column.key === "layout")
     : null;
   const visibleColumns = hasLayoutPreviewColumn
-    ? columns.filter((column) => column.key !== "layout")
-    : columns;
+    ? availableColumns.filter((column) => column.key !== "layout")
+    : availableColumns;
 
   // Clear the recently closed highlight after 2 seconds
   useEffect(() => {
@@ -195,6 +200,7 @@ const SectionItemList = ({
   }, [closeNewItemForm]);
 
   const handleSaveItem = async (item, itemIndex = -1) => {
+    if (!canCreateEstimates) return;
     try {
       await onSave(item, itemIndex);
       if (itemIndex === -1) {
@@ -208,6 +214,7 @@ const SectionItemList = ({
   };
 
   const handleDeleteItem = async (itemIndex) => {
+    if (!canCreateEstimates) return;
     try {
       await onDelete(itemIndex);
     } catch (error) {
@@ -216,6 +223,7 @@ const SectionItemList = ({
   };
 
   const handleSaveOrder = async (orderedIds) => {
+    if (!canCreateEstimates) return;
     try {
       await onReorder(orderedIds);
       setIsReorderModalOpen(false);
@@ -230,6 +238,7 @@ const SectionItemList = ({
   };
 
   const handleDuplicateSave = async ({ targetTaskId, targetSectionId }) => {
+    if (!canCreateEstimates) return;
     try {
       if (onDuplicate) {
         await onDuplicate(duplicateItemIndex, targetTaskId, targetSectionId);
@@ -247,6 +256,7 @@ const SectionItemList = ({
   };
 
   const handleMoveSave = async ({ targetTaskId, targetSectionId }) => {
+    if (!canCreateEstimates) return;
     try {
       if (onMove) {
         await onMove(moveItemIndex, targetTaskId, targetSectionId);
@@ -384,6 +394,8 @@ const SectionItemList = ({
 
     // Handle actions column (standard for all item types)
     if (col.key === "actions") {
+      if (!canCreateEstimates) return null;
+
       return (
         <div className="flex justify-center space-x-2">
           <Tooltip text="Edit">
@@ -681,7 +693,7 @@ const SectionItemList = ({
       )}
 
       {/* Add Item Button */}
-      {!showNewItem && !hideAddButton && (
+      {canCreateEstimates && !showNewItem && !hideAddButton && (
         <div className="my-2 relative">
           {onReorder && items.length > 1 && (
             <div className="flex justify-end absolute bottom-2 left-4">
@@ -716,7 +728,7 @@ const SectionItemList = ({
         </div>
       )}
 
-      {onReorder && (
+      {canCreateEstimates && onReorder && (
         <ReorderModal
           open={isReorderModalOpen}
           onClose={() => setIsReorderModalOpen(false)}
@@ -746,7 +758,7 @@ const SectionItemList = ({
         />
       )}
 
-      {onDuplicate && currentTaskId && currentSectionId && (
+      {canCreateEstimates && onDuplicate && currentTaskId && currentSectionId && (
         <DuplicateItemModal
           open={isDuplicateModalOpen}
           onClose={() => {
@@ -761,7 +773,7 @@ const SectionItemList = ({
         />
       )}
 
-      {onMove && currentTaskId && currentSectionId && (
+      {canCreateEstimates && onMove && currentTaskId && currentSectionId && (
         <DuplicateItemModal
           open={isMoveModalOpen}
           onClose={() => {

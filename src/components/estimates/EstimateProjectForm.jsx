@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
+import { usePermissions } from "../../hooks/usePermissions";
 import {
   updateEstimateProject,
   createEstimateProject,
@@ -13,6 +14,7 @@ import { PATHS } from "../../utils/constants";
 const EstimateProjectForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { canCreateEstimates } = usePermissions();
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
   );
@@ -96,6 +98,7 @@ const EstimateProjectForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canCreateEstimates) return;
 
     try {
       if (currentEstimate?.est_project_id) {
@@ -182,6 +185,7 @@ const EstimateProjectForm = () => {
                 name="est_client_name"
                 value={projectData.est_client_name}
                 onChange={handleInputChange}
+                disabled={!canCreateEstimates}
                 className={`mt-1 h-9 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
                   errors.est_client_name ? "border-red-500" : ""
                 }`}
@@ -207,6 +211,7 @@ const EstimateProjectForm = () => {
                   name="est_project_name"
                   value={projectData.est_project_name}
                   onChange={handleInputChange}
+                disabled={!canCreateEstimates}
                   className={`mt-1 h-9 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
                     errors.est_project_name ? "border-red-500" : ""
                   }`}
@@ -231,6 +236,7 @@ const EstimateProjectForm = () => {
                   name="street"
                   value={projectData.street}
                   onChange={handleInputChange}
+                disabled={!canCreateEstimates}
                   className="mt-1 h-9 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
               </div>
@@ -248,6 +254,7 @@ const EstimateProjectForm = () => {
                   name="city"
                   value={projectData.city}
                   onChange={handleInputChange}
+                disabled={!canCreateEstimates}
                   className="mt-1 h-9 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
               </div>
@@ -265,6 +272,7 @@ const EstimateProjectForm = () => {
                   name="state"
                   value={projectData.state}
                   onChange={handleInputChange}
+                disabled={!canCreateEstimates}
                   className="mt-1 h-9 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
               </div>
@@ -279,20 +287,23 @@ const EstimateProjectForm = () => {
                   name="zip"
                   value={projectData.zip}
                   onChange={handleInputChange}
+                disabled={!canCreateEstimates}
                   className="mt-1 h-9 p-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Save Changes
-            </button>
-          </div>
+          {canCreateEstimates && (
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Save Changes
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>

@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import { FiEdit2, FiSave, FiX } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { FACE_STYLE_VALUES, FACE_TYPES, PRICE_OVERRIDES_ACTIVE } from "../../utils/constants";
 import { roundToHundredth } from "../../utils/estimateHelpers";
 
@@ -17,6 +18,7 @@ const EstimateSectionPrice = ({
   onSaveTargetPrice,
   hasPriceOverrides,
 }) => {
+  const { canCreateEstimates } = usePermissions();
   // sectionCalculations is now passed as a prop from EstimateLayout
 
   // Edit mode state for toggles
@@ -260,12 +262,14 @@ const EstimateSectionPrice = ({
         <EstimateSectionPriceGroup
           title="Adjustments"
           titleAction={
-            <button
-              onClick={() => setIsTargetPriceOpen(true)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
-            >
-              Target Price
-            </button>
+            canCreateEstimates && (
+              <button
+                onClick={() => setIsTargetPriceOpen(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
+              >
+                Target Price
+              </button>
+            )
           }
         >
           {/* Header row */}
@@ -366,7 +370,7 @@ const EstimateSectionPrice = ({
         <EstimateSectionPriceGroup
           title="Parts Breakdown"
           titleAction={
-            !isEditingToggles ? (
+            canCreateEstimates && (!isEditingToggles ? (
               <button
                 onClick={handleEditToggles}
                 className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
@@ -391,7 +395,7 @@ const EstimateSectionPrice = ({
                   Save
                 </button>
               </div>
-            )
+            ))
           }
         >
           {/* Header row */}

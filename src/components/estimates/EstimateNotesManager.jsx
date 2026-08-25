@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiEdit2, FiPlus, FiX } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
+import { usePermissions } from "../../hooks/usePermissions";
 import { updateCustomNotes } from "../../redux/actions/estimates";
 import { fetchTeamDefaults } from "../../redux/actions/teamEstimateDefaults";
 
@@ -22,6 +23,7 @@ const EstimateNotesManager = ({
   marginTop = "",
 }) => {
   const dispatch = useDispatch();
+  const { canCreateEstimates } = usePermissions();
 
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
@@ -296,13 +298,15 @@ const EstimateNotesManager = ({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-slate-200">Estimate Notes</h2>
         {!isEditing ? (
-          <button
+          canCreateEstimates && (
+            <button
             onClick={handleStartEdit}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded transition-colors"
           >
             <FiEdit2 className="w-4 h-4" />
             Edit Notes
-          </button>
+            </button>
+          )
         ) : (
           <div className="flex items-center gap-2">
             {!isAddingCustomNote && (

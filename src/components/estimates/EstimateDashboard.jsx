@@ -3,6 +3,7 @@ import { FiPlusCircle, FiEdit, FiCheckCircle, FiArchive } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
+import { usePermissions } from "../../hooks/usePermissions";
 import {
   fetchEstimates,
   clearCurrentEstimate,
@@ -14,6 +15,7 @@ import EstimateDashboardCard from "./EstimateDashboardCard.jsx";
 const EstimateDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { canCreateEstimates } = usePermissions();
   const { estimates, loading, error } = useSelector((state) => state.estimates);
 
   useEffect(() => {
@@ -109,7 +111,9 @@ const EstimateDashboard = () => {
         )}
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {sections.map((section) => (
+          {sections
+            .filter((section) => canCreateEstimates || section.id !== "new")
+            .map((section) => (
             <EstimateDashboardCard
               key={section.id}
               section={section}

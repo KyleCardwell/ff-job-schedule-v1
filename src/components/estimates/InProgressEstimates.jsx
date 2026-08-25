@@ -7,6 +7,7 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiEdit,
+  FiEye,
   FiRotateCcw,
   FiSearch,
   FiTrash2,
@@ -42,7 +43,7 @@ const EstimatesList = ({ mode = "draft" }) => {
       : PATHS.IN_PROGRESS_ESTIMATES;
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { canEditSchedule } = usePermissions();
+  const { canCreateEstimates, canEditSchedule } = usePermissions();
   const { estimates, loading, error } = useSelector((state) => state.estimates);
   const [searchTerm, setSearchTerm] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState(null);
@@ -142,35 +143,39 @@ const EstimatesList = ({ mode = "draft" }) => {
   };
 
   const handleDeleteEstimate = async (estimateId) => {
+    if (!canCreateEstimates) return;
     try {
       await dispatch(deleteEstimate(estimateId));
       setShowConfirmDelete(null);
     } catch (error) {
-      console.error("Failed to delete estimate:", error);
+      void error;
     }
   };
 
   const handleUnfinalize = async (estimateId) => {
+    if (!canCreateEstimates) return;
     try {
       await dispatch(unfinalizeEstimate(estimateId));
     } catch (error) {
-      console.error("Failed to un-finalize estimate:", error);
+      void error;
     }
   };
 
   const handleArchive = async (estimateId) => {
+    if (!canCreateEstimates) return;
     try {
       await dispatch(archiveEstimate(estimateId));
     } catch (error) {
-      console.error("Failed to archive estimate:", error);
+      void error;
     }
   };
 
   const handleUnarchive = async (estimateId) => {
+    if (!canCreateEstimates) return;
     try {
       await dispatch(unarchiveEstimate(estimateId));
     } catch (error) {
-      console.error("Failed to un-archive estimate:", error);
+      void error;
     }
   };
 
@@ -256,7 +261,7 @@ const EstimatesList = ({ mode = "draft" }) => {
                         ? "No finalized estimates found"
                         : "No draft estimates found"}
                 </p>
-                {!isFinalized && !isArchived && (
+                {canCreateEstimates && !isFinalized && !isArchived && (
                   <button
                     onClick={() => navigate(PATHS.NEW_ESTIMATE)}
                     className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
@@ -348,18 +353,27 @@ const EstimatesList = ({ mode = "draft" }) => {
                         {estimate.updated_by_name}
                       </div>
                       <div className="text-sm font-medium flex items-center justify-between px-2">
-                        {isArchived && (
+                        <Tooltip text={canCreateEstimates && !isArchived ? "Edit" : "View"}>
+                          <button
+                            onClick={() => handleEditEstimate(estimate)}
+                            className="text-blue-600 hover:text-blue-900"
+                            aria-label={`${canCreateEstimates && !isArchived ? "Edit" : "View"} estimate`}
+                          >
+                            {canCreateEstimates && !isArchived ? <FiEdit /> : <FiEye />}
+                          </button>
+                        </Tooltip>
+                        {canCreateEstimates && isArchived && (
                           <Tooltip text={`Restore to ${estimate.finalized_on ? "Finalized" : "In-Progress"}`}>
                             <button
                               onClick={() => handleUnarchive(estimate.estimate_id)}
                               className="text-blue-600 hover:text-blue-800"
-                              aria-label="Restore Estimate to In-Progress"
+                              aria-label="Restore estimate"
                             >
                               <FiRotateCcw />
                             </button>
                           </Tooltip>
                         )}
-                        {isFinalized && canEditSchedule && (
+                        {canCreateEstimates && isFinalized && canEditSchedule && (
                           <Tooltip text="Add to Schedule">
                             <button
                               onClick={() => {
@@ -373,30 +387,18 @@ const EstimatesList = ({ mode = "draft" }) => {
                             </button>
                           </Tooltip>
                         )}
-                        {isFinalized && (
+                        {canCreateEstimates && isFinalized && (
                           <Tooltip text="Revert to In-Progress">
                             <button
                               onClick={() => handleUnfinalize(estimate.estimate_id)}
                               className="text-amber-600 hover:text-amber-800"
-                              aria-label="Revert Estimate to In-Progress"
+                              aria-label="Revert estimate to in-progress"
                             >
                               <FiRotateCcw />
                             </button>
                           </Tooltip>
                         )}
-                       
-                        {!isArchived && (
-                          <Tooltip text="Edit">
-                            <button
-                              onClick={() => handleEditEstimate(estimate)}
-                              className="text-blue-600 hover:text-blue-900"
-                              aria-label="Edit estimate"
-                            >
-                              <FiEdit />
-                            </button>
-                          </Tooltip>
-                        )}
-                         {!isArchived && (
+                        {canCreateEstimates && !isArchived && (
                           <Tooltip text="Archive">
                             <button
                               onClick={() => handleArchive(estimate.estimate_id)}
@@ -407,15 +409,17 @@ const EstimatesList = ({ mode = "draft" }) => {
                             </button>
                           </Tooltip>
                         )}
-                        <Tooltip text="Delete">
-                          <button
-                            onClick={() => setShowConfirmDelete(estimate.estimate_id)}
-                            className="text-red-600 hover:text-red-900"
-                            aria-label="Delete estimate"
-                          >
-                            <FiTrash2 />
-                          </button>
-                        </Tooltip>
+                        {canCreateEstimates && (
+                          <Tooltip text="Delete">
+                            <button
+                              onClick={() => setShowConfirmDelete(estimate.estimate_id)}
+                              className="text-red-600 hover:text-red-900"
+                              aria-label="Delete estimate"
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </Tooltip>
+                        )}
                       </div>
                       </div>
                     ))}

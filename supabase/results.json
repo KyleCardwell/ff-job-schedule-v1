@@ -1,0 +1,185 @@
+[
+  {
+    "tablename": "estimate_accessories",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (((estimate_sections es\n     JOIN estimate_tasks et ON ((et.est_task_id = es.est_task_id)))\n     JOIN estimates e ON ((e.estimate_id = et.estimate_id)))\n     JOIN estimate_projects ep ON ((ep.est_project_id = e.est_project_id)))\n  WHERE ((es.est_section_id = estimate_accessories.est_section_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_accessories",
+    "policyname": "View estimate accessories with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(can_read_estimate_section(est_section_id) OR can_read_estimate_cabinet(est_cabinet_id))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_cabinets",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (((estimate_sections es\n     JOIN estimate_tasks et ON ((et.est_task_id = es.est_task_id)))\n     JOIN estimates e ON ((e.estimate_id = et.estimate_id)))\n     JOIN estimate_projects ep ON ((ep.est_project_id = e.est_project_id)))\n  WHERE ((es.est_section_id = estimate_cabinets.est_section_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_cabinets",
+    "policyname": "View estimate cabinets with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate_section(est_section_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_lengths",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (((estimate_sections es\n     JOIN estimate_tasks et ON ((et.est_task_id = es.est_task_id)))\n     JOIN estimates e ON ((e.estimate_id = et.estimate_id)))\n     JOIN estimate_projects ep ON ((ep.est_project_id = e.est_project_id)))\n  WHERE ((es.est_section_id = estimate_lengths.est_section_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_lengths",
+    "policyname": "View estimate lengths with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate_section(est_section_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_other",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (((estimate_sections es\n     JOIN estimate_tasks et ON ((et.est_task_id = es.est_task_id)))\n     JOIN estimates e ON ((e.estimate_id = et.estimate_id)))\n     JOIN estimate_projects ep ON ((ep.est_project_id = e.est_project_id)))\n  WHERE ((es.est_section_id = estimate_other.est_section_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_other",
+    "policyname": "View estimate other with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate_section(est_section_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_projects",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "has_team_permission(team_id, 'can_create_estimates'::text)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_projects",
+    "policyname": "View estimate projects with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate_team(team_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_sections",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM ((estimate_tasks et\n     JOIN estimates e ON ((e.estimate_id = et.estimate_id)))\n     JOIN estimate_projects ep ON ((ep.est_project_id = e.est_project_id)))\n  WHERE ((et.est_task_id = estimate_sections.est_task_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_sections",
+    "policyname": "View estimate sections with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate_task(est_task_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_tasks",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (estimates e\n     JOIN estimate_projects ep ON ((ep.est_project_id = e.est_project_id)))\n  WHERE ((e.estimate_id = estimate_tasks.estimate_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimate_tasks",
+    "policyname": "View estimate tasks with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate(estimate_id)",
+    "with_check": null
+  },
+  {
+    "tablename": "estimates",
+    "policyname": "Policy with security definer functions",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM estimate_projects ep\n  WHERE ((ep.est_project_id = estimates.est_project_id) AND has_team_permission(ep.team_id, 'can_create_estimates'::text))))",
+    "with_check": null
+  },
+  {
+    "tablename": "estimates",
+    "policyname": "View estimates with estimate permission",
+    "permissive": "PERMISSIVE",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "can_read_estimate(estimate_id)",
+    "with_check": null
+  }
+]
+
+
+[
+  {
+    "proname": "duplicate_estimate",
+    "security_definer": false,
+    "authenticated_can_execute": true
+  },
+  {
+    "proname": "duplicate_section",
+    "security_definer": false,
+    "authenticated_can_execute": true
+  },
+  {
+    "proname": "duplicate_section_item",
+    "security_definer": true,
+    "authenticated_can_execute": true
+  },
+  {
+    "proname": "move_estimate_sections",
+    "security_definer": false,
+    "authenticated_can_execute": true
+  },
+  {
+    "proname": "move_section_item",
+    "security_definer": false,
+    "authenticated_can_execute": true
+  },
+  {
+    "proname": "revise_section",
+    "security_definer": false,
+    "authenticated_can_execute": true
+  },
+  {
+    "proname": "switch_section_revision",
+    "security_definer": false,
+    "authenticated_can_execute": true
+  }
+]

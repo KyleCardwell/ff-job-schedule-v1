@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import useMathInput from "../../hooks/useMathInput";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import { ITEM_FORM_WIDTHS } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 
@@ -1172,6 +1173,7 @@ const EstimateLengthManager = ({
   currentTaskId,
   currentSectionId,
 }) => {
+  const { canCreateEstimates } = usePermissions();
   const { catalog } = useSelector((state) => state.lengths);
   const currentEstimate = useSelector((state) => state.estimates.currentEstimate);
   const teamDefaults = useSelector(
@@ -1359,13 +1361,15 @@ const EstimateLengthManager = ({
         <span>
           Approx. molding coverage (rounded up): Base {approxBaseLengthFeet * 12} in ({approxBaseLengthFeet} ft) | Crown {approxCrownLengthFeet * 12} in ({approxCrownLengthFeet} ft)
         </span>
-        <button
+        {canCreateEstimates && (
+          <button
           type="button"
           onClick={() => setIsBulkAddModalOpen(true)}
           className="px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
         >
           Add Defaults
-        </button>
+          </button>
+        )}
       </div>
       <SectionItemList
         items={items}
