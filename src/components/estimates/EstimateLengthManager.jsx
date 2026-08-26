@@ -36,6 +36,15 @@ const getAutoLengthForType = (type, approxBaseLengthFeet, approxCrownLengthFeet)
   return "";
 };
 
+const formatInchesAsFeet = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+
+  const inches = Number(value);
+  if (!Number.isFinite(inches)) return null;
+
+  return `${Number((inches / 12).toFixed(3))} ft`;
+};
+
 const BulkAddLengthsModal = ({
   isOpen,
   onClose,
@@ -287,8 +296,8 @@ const BulkAddLengthsModal = ({
 
                       return (
                         <div key={row.row_id} className="space-y-1">
-                          <div className="grid grid-cols-[70px_minmax(180px,1fr)_70px_90px_90px_100px_85px_85px] gap-2 items-center">
-                            <div className="flex justify-center">
+                          <div className="grid grid-cols-[70px_minmax(180px,1fr)_70px_90px_90px_100px_85px_85px] gap-2 items-start">
+                            <div className="flex justify-center pt-1.5">
                               <input
                                 type="checkbox"
                                 checked={row.include}
@@ -324,16 +333,23 @@ const BulkAddLengthsModal = ({
                               }`}
                             />
 
-                            <input
-                              type="number"
-                              step="any"
-                              min="0"
-                              value={row.length}
-                              onChange={(e) => handleRowChange(row.row_id, "length", e.target.value)}
-                              className={`w-full px-2 py-1 border rounded text-sm ${
-                                rowErrors.length ? "border-red-500" : "border-slate-300"
-                              }`}
-                            />
+                            <div>
+                              <input
+                                type="number"
+                                step="any"
+                                min="0"
+                                value={row.length}
+                                onChange={(e) => handleRowChange(row.row_id, "length", e.target.value)}
+                                className={`w-full px-2 py-1 border rounded text-sm ${
+                                  rowErrors.length ? "border-red-500" : "border-slate-300"
+                                }`}
+                              />
+                              {formatInchesAsFeet(row.length) && (
+                                <div className="mt-0.5 text-[11px] text-slate-500">
+                                  {formatInchesAsFeet(row.length)}
+                                </div>
+                              )}
+                            </div>
 
                             <input
                               type="number"
@@ -511,6 +527,18 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
   const selectedLengthItemId = selectedLengthItem?.id;
   const selectedLengthItemRequiresMiters = selectedLengthItem?.requires_miters;
   const selectedLengthItemRequiresCutouts = selectedLengthItem?.requires_cutouts;
+  const widthUsesDefault =
+    formData.width === "" || formData.width === null || formData.width === undefined;
+  const thicknessUsesDefault =
+    formData.thickness === "" ||
+    formData.thickness === null ||
+    formData.thickness === undefined;
+  const formattedWidthInFeet = formatInchesAsFeet(
+    widthUsesDefault ? selectedLengthItem?.default_width : formData.width
+  );
+  const formattedThicknessInFeet = formatInchesAsFeet(
+    thicknessUsesDefault ? selectedLengthItem?.default_thickness : formData.thickness
+  );
 
   const mathInput = useMathInput(
     {
@@ -931,6 +959,11 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                   errors.length ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
               />
+              {formatInchesAsFeet(formData.length) && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {formatInchesAsFeet(formData.length)}
+                </p>
+              )}
               {errors.length && (
                 <p className="text-red-500 text-xs mt-1">{errors.length}</p>
               )}
@@ -961,6 +994,12 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                   errors.width ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
               />
+              {formattedWidthInFeet && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {formattedWidthInFeet}
+                  {widthUsesDefault && " (default)"}
+                </p>
+              )}
               {errors.width && (
                 <p className="text-red-500 text-xs mt-1">{errors.width}</p>
               )}
@@ -991,6 +1030,12 @@ const LengthItemForm = ({ item = {}, onSave, onCancel, currentSectionId }) => {
                   errors.thickness ? "border-red-500" : "border-slate-300"
                 } rounded-md text-sm`}
               />
+              {formattedThicknessInFeet && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {formattedThicknessInFeet}
+                  {thicknessUsesDefault && " (default)"}
+                </p>
+              )}
               {errors.thickness && (
                 <p className="text-red-500 text-xs mt-1">{errors.thickness}</p>
               )}
