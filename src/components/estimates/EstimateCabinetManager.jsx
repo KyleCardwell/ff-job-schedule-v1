@@ -160,6 +160,7 @@ const CabinetItemForm = ({
   onCancel,
   cabinetStyleId,
   currentSectionId,
+  readOnly = false,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   // const cabinetAnchors = useSelector(
@@ -817,6 +818,7 @@ const CabinetItemForm = ({
     if (e) {
       e.preventDefault();
     }
+    if (readOnly) return;
 
     // Commit all dimension values before validation
     commitDimensionValue("width");
@@ -2238,7 +2240,10 @@ const CabinetItemForm = ({
             Cabinet Details
           </h4>
 
-          <div className="space-y-4 flex-1 flex flex-col">
+          <fieldset
+            disabled={readOnly}
+            className="space-y-4 flex-1 flex flex-col disabled:opacity-90"
+          >
             {/* Basic Info Section */}
             <div className="pb-4 border-b border-slate-200 flex flex-col">
               {/* Cabinet Type */}
@@ -2956,9 +2961,11 @@ const CabinetItemForm = ({
                 )}
               </div>
             </div>
+          </fieldset>
 
-            {/* Form Actions */}
-            <div className="flex flex-col space-y-2 pt-2 border-t border-slate-200">
+          {/* Form Actions */}
+          <div className="flex flex-col space-y-2 pt-2 border-t border-slate-200">
+            {!readOnly && (
               <button
                 type="button"
                 onClick={handleSubmit}
@@ -2966,14 +2973,14 @@ const CabinetItemForm = ({
               >
                 Save Cabinet
               </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={onCancel}
+              className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+            >
+              {readOnly ? "Close" : "Cancel"}
+            </button>
           </div>
         </div>
 
@@ -2993,8 +3000,7 @@ const CabinetItemForm = ({
               cabinetTypeId={formData.type}
               faceConfig={formData.face_config}
               onSave={handleFaceConfigSave}
-              disabled={false}
-              onDimensionChange={handleChange}
+              readOnly={readOnly}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-slate-400 text-sm">
@@ -3023,6 +3029,7 @@ CabinetItemForm.propTypes = {
   currentSectionId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  readOnly: PropTypes.bool,
 };
 
 const EstimateCabinetManager = ({
