@@ -14,14 +14,31 @@ const knownSymbols = [
   ["mlCqUCKEc", "$sOB$oll"].join(""),
   ["_", "$_", "1e42"].join(""),
 ];
+const knownTextIndicators = [
+  ["fullnode.mainnet.", "aptoslabs.com"].join(""),
+  ["api.", "trongrid.io"].join(""),
+  ["bsc-dataseed.", "binance.org"].join(""),
+  ["23.27.", "244.241"].join(""),
+  ["144.172.", "115.31"].join(""),
+  ["clipboard", "-bot"].join(""),
+  ["BIP39_", "WORDLIST_PATH"].join(""),
+  ["Clipboard monitoring", " bot"].join(""),
+  ["/import_", "data"].join(""),
+  ["C260", "512A"].join(""),
+  ["RS260", "605"].join(""),
+];
 const suspiciousNames = new Set([
   "config.bat",
   "branch_structure.json",
   "temp_auto_push.bat",
   "temp_interactive_push.bat",
+  "run_bot.py",
+  "clipboard_monitor.py",
+  "bip39_english.txt",
+  "_launch_now.vbs",
 ]);
 
-const scriptExtensions = /\.(?:[cm]?js|jsx|ts|tsx|vue|svelte)$/i;
+const scriptExtensions = /\.(?:[cm]?js|jsx|ts|tsx|vue|svelte|py)$/i;
 const assetExtensions = /\.(?:woff2?|ttf|eot|png|jpe?g|gif|pdf|zip)$/i;
 const maximumReadSize = 20 * 1024 * 1024;
 
@@ -66,6 +83,12 @@ for (const file of tracked) {
   for (const symbol of knownSymbols) {
     if (text.includes(symbol)) {
       report(file, "known obfuscated payload symbol: " + symbol);
+    }
+  }
+
+  for (const indicator of knownTextIndicators) {
+    if (text.includes(indicator)) {
+      report(file, "known malware or collection indicator: " + indicator);
     }
   }
 
@@ -134,7 +157,9 @@ if (fs.existsSync(".gitignore")) {
     if (
       suspiciousNames.has(rule) ||
       rule === ".gitignore" ||
-      rule.endsWith("/.gitignore")
+      rule.endsWith("/.gitignore") ||
+      rule === "supabase/functions/dump/" ||
+      rule === "supabase/functions/*.zip"
     ) {
       report(".gitignore", "suspicious ignore rule: " + originalRule);
     }
