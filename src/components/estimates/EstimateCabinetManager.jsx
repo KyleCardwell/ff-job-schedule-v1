@@ -154,12 +154,15 @@ const getMoldingColumnValue = (typeSpecificOptions = {}) => {
   return `${countTopMolding ? "T" : " "} ${countBaseMolding ? "B" : " "}`;
 };
 
+const DIMENSION_FIELDS = ["width", "height", "depth"];
+
 const CabinetItemForm = ({
   item = {},
   onSave,
   onCancel,
   cabinetStyleId,
   currentSectionId,
+  dimensionOverrides = {},
   readOnly = false,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
@@ -541,24 +544,17 @@ const CabinetItemForm = ({
 
             if (selectedType) {
               // Always set dimensions to defaults when type changes
-              if (selectedType.default_width) {
-                updates.width = selectedType.default_width;
-                inputUpdates.width = decimalToFraction(
-                  selectedType.default_width,
-                );
-              }
-              if (selectedType.default_height) {
-                updates.height = selectedType.default_height;
-                inputUpdates.height = decimalToFraction(
-                  selectedType.default_height,
-                );
-              }
-              if (selectedType.default_depth) {
-                updates.depth = selectedType.default_depth;
-                inputUpdates.depth = decimalToFraction(
-                  selectedType.default_depth,
-                );
-              }
+              const selectedTypeOverrides =
+                dimensionOverrides[selectedType.cabinet_type_id] || {};
+
+              DIMENSION_FIELDS.forEach((field) => {
+                const value =
+                  selectedTypeOverrides[field] ??
+                  selectedType[`default_${field}`] ??
+                  "";
+                updates[field] = value;
+                inputUpdates[field] = value === "" ? "" : decimalToFraction(value);
+              });
 
               // Reset face_config to null when type changes
               // CabinetFaceDivider will reinitialize it with the correct defaultFaceType
@@ -3074,6 +3070,7 @@ CabinetItemForm.propTypes = {
   currentSectionId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  dimensionOverrides: PropTypes.object,
   readOnly: PropTypes.bool,
 };
 
@@ -3086,6 +3083,7 @@ const EstimateCabinetManager = ({
   cabinetStyleId,
   onDeleteItem,
   cabinetTypes,
+  dimensionOverrides = {},
   currentTaskId,
   currentSectionId,
 }) => {
@@ -3169,7 +3167,12 @@ const EstimateCabinetManager = ({
       onDuplicate={onDuplicateItem}
       onMove={onMoveItem}
       ItemForm={CabinetItemForm}
-      formProps={{ cabinetStyleId, cabinetTypes, currentSectionId }}
+      formProps={{
+        cabinetStyleId,
+        cabinetTypes,
+        currentSectionId,
+        dimensionOverrides,
+      }}
       listType={ITEM_TYPES.CABINET.type}
       currentTaskId={currentTaskId}
       currentSectionId={currentSectionId}
@@ -3187,6 +3190,7 @@ EstimateCabinetManager.propTypes = {
   cabinetTypeId: PropTypes.number,
   onDeleteItem: PropTypes.func.isRequired,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  dimensionOverrides: PropTypes.object,
   currentTaskId: PropTypes.number,
   currentSectionId: PropTypes.number,
 };
