@@ -77,6 +77,14 @@ export const CABINET_ITEM_TYPES = {
         description: "Is this a blind cabinet?",
         serviceMultipliers: {},
       },
+      {
+        name: "mirror_back_side",
+        type: "checkbox",
+        label: "Mirror Back Side",
+        defaultValue: false,
+        description: "Build matching cabinet faces on the front and back",
+        serviceMultipliers: {},
+      },
     ],
   },
 

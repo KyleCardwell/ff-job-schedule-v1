@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { FiPlus, FiEdit2, FiTrash2, FiCopy } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2, FiCopy, FiEye } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { RiSwapBoxLine } from "react-icons/ri";
 import { useSelector } from "react-redux";
@@ -65,7 +65,8 @@ const SectionItemList = ({
   // Check if any form is currently active (adding or editing)
   const isFormActive = showNewItem || editingIndex !== -1;
 
-  const availableColumns = canCreateEstimates
+  const canViewItemForm = listType === ITEM_TYPES.CABINET.type;
+  const availableColumns = canCreateEstimates || canViewItemForm
     ? columns
     : columns.filter((column) => column.key !== "actions");
   const hasLayoutPreviewColumn =
@@ -394,7 +395,26 @@ const SectionItemList = ({
 
     // Handle actions column (standard for all item types)
     if (col.key === "actions") {
-      if (!canCreateEstimates) return null;
+      if (!canCreateEstimates) {
+        return canViewItemForm ? (
+          <div className="flex justify-center">
+            <Tooltip text="View">
+              <button
+                onClick={() => openEditForm(index)}
+                disabled={isFormActive}
+                className={`p-1.5 ${
+                  isFormActive
+                    ? "text-slate-600 cursor-not-allowed"
+                    : "text-slate-400 hover:text-blue-500"
+                } transition-colors`}
+                aria-label="View cabinet item"
+              >
+                <FiEye size={16} />
+              </button>
+            </Tooltip>
+          </div>
+        ) : null;
+      }
 
       return (
         <div className="flex justify-center space-x-2">
@@ -581,6 +601,7 @@ const SectionItemList = ({
                   onSave={(updatedItem) => handleSaveItem(updatedItem, index)}
                   onCancel={() => handleCancelEdit(index)}
                   {...formProps}
+                  readOnly={!canCreateEstimates}
                 />
               </div>
             </div>

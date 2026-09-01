@@ -3110,6 +3110,10 @@ export const generateCabinetSummary = (
     });
   }
 
+  if (normalizeBooleanFlag(typeSpecificOptions?.mirror_back_side)) {
+    summary.push("mirrored on back side");
+  }
+
   return cabinetItemQuantity && cabinetItemQuantity > 1
     ? `Each: ${summary.join(", ")}`
     : summary.join(", ");

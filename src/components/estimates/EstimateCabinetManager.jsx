@@ -160,6 +160,7 @@ const CabinetItemForm = ({
   onCancel,
   cabinetStyleId,
   currentSectionId,
+  readOnly = false,
 }) => {
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   // const cabinetAnchors = useSelector(
@@ -817,6 +818,7 @@ const CabinetItemForm = ({
     if (e) {
       e.preventDefault();
     }
+    if (readOnly) return;
 
     // Commit all dimension values before validation
     commitDimensionValue("width");
@@ -921,6 +923,7 @@ const CabinetItemForm = ({
           formData.type_specific_options?.[BLIND_OPTION_NAMES.width] || 0,
           formData.type_specific_options?.[BLIND_OPTION_NAMES.side] ||
             BLIND_SIDE_VALUES.none,
+          formData.type_specific_options?.mirror_back_side || false,
         );
 
         finalFormData.face_config = {
@@ -931,6 +934,7 @@ const CabinetItemForm = ({
             formData.width,
             formData.height,
             formData.depth,
+            formData.type_specific_options?.mirror_back_side || false,
           ),
           boxSummary: boxSummary,
         };
@@ -1249,6 +1253,7 @@ const CabinetItemForm = ({
     isBlind = false,
     blindWidth = 0,
     blindSide = BLIND_SIDE_VALUES.none,
+    mirrorBackSide = false,
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -1665,10 +1670,28 @@ const CabinetItemForm = ({
 
     const boxHardware = countFaceHardware(faceConfig, itemType);
 
+    if (mirrorBackSide) {
+      boxHardware.totalHinges *= 2;
+      boxHardware.totalDoorPulls *= 2;
+      boxHardware.totalDrawerPulls *= 2;
+      boxHardware.totalAppliancePulls *= 2;
+    }
+
     let frameParts = {};
 
     if (cabinetStyleId !== 13) {
       frameParts = calculateFaceFrames(faceConfig, width, height, true);
+      if (mirrorBackSide) {
+        frameParts = {
+          totalBoardFeet: frameParts.totalBoardFeet * 2,
+          holeCount: frameParts.holeCount * 2,
+          beadLength: frameParts.beadLength * 2,
+          framePieces: [
+            ...frameParts.framePieces,
+            ...frameParts.framePieces.map((piece) => ({ ...piece })),
+          ],
+        };
+      }
     }
 
     // All parts will have finish boolean - no need to calculate counts
@@ -1956,6 +1979,10 @@ const CabinetItemForm = ({
       boxPartsList.push(...partitions);
     }
 
+    if (mirrorBackSide) {
+      openingsCount *= 2;
+    }
+
     return {
       pieces,
       cabinetCount: qty,
@@ -1973,8 +2000,17 @@ const CabinetItemForm = ({
   };
 
   // Calculate face type summary
-  const calculateFaceSummary = (node, itemType, width, height, depth) => {
+  const calculateFaceSummary = (
+    node,
+    itemType,
+    width,
+    height,
+    depth,
+    mirrorBackSide = false,
+  ) => {
     const summary = {};
+    const faceMultiplier =
+      mirrorBackSide && itemType === ITEM_TYPES.CABINET.type ? 2 : 1;
 
     // Update accessory dimensions throughout the tree
     const updateAccessoryDimensions = (node) => {
@@ -2065,7 +2101,7 @@ const CabinetItemForm = ({
               width: glassWidth,
               height: glassHeight,
               area: glassArea,
-              quantity: 2,
+              quantity: 2 * faceMultiplier,
             });
           }
 
@@ -2119,7 +2155,7 @@ const CabinetItemForm = ({
               width: glassWidth,
               height: glassHeight,
               area: glassArea,
-              quantity: 1,
+              quantity: faceMultiplier,
             });
           }
 
@@ -2142,6 +2178,17 @@ const CabinetItemForm = ({
     };
 
     processNode(node);
+
+    if (faceMultiplier === 2) {
+      Object.values(summary).forEach((faceData) => {
+        faceData.count *= faceMultiplier;
+        faceData.totalArea *= faceMultiplier;
+        faceData.faces = [
+          ...faceData.faces,
+          ...faceData.faces.map((face) => ({ ...face })),
+        ];
+      });
+    }
 
     // Return face type summary (accessories are on individual nodes)
     return summary;
@@ -2238,7 +2285,10 @@ const CabinetItemForm = ({
             Cabinet Details
           </h4>
 
-          <div className="space-y-4 flex-1 flex flex-col">
+          <fieldset
+            disabled={readOnly}
+            className="space-y-4 flex-1 flex flex-col disabled:opacity-90"
+          >
             {/* Basic Info Section */}
             <div className="pb-4 border-b border-slate-200 flex flex-col">
               {/* Cabinet Type */}
@@ -2956,9 +3006,11 @@ const CabinetItemForm = ({
                 )}
               </div>
             </div>
+          </fieldset>
 
-            {/* Form Actions */}
-            <div className="flex flex-col space-y-2 pt-2 border-t border-slate-200">
+          {/* Form Actions */}
+          <div className="flex flex-col space-y-2 pt-2 border-t border-slate-200">
+            {!readOnly && (
               <button
                 type="button"
                 onClick={handleSubmit}
@@ -2966,14 +3018,14 @@ const CabinetItemForm = ({
               >
                 Save Cabinet
               </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={onCancel}
+              className="w-full px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+            >
+              {readOnly ? "Close" : "Cancel"}
+            </button>
           </div>
         </div>
 
@@ -2993,8 +3045,7 @@ const CabinetItemForm = ({
               cabinetTypeId={formData.type}
               faceConfig={formData.face_config}
               onSave={handleFaceConfigSave}
-              disabled={false}
-              onDimensionChange={handleChange}
+              readOnly={readOnly}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-slate-400 text-sm">
@@ -3023,6 +3074,7 @@ CabinetItemForm.propTypes = {
   currentSectionId: PropTypes.number,
   cabinetTypeId: PropTypes.number,
   cabinetTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  readOnly: PropTypes.bool,
 };
 
 const EstimateCabinetManager = ({
