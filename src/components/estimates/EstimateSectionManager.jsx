@@ -5,10 +5,12 @@ import {
   FiChevronDown,
   FiChevronRight,
   FiAlertCircle,
+  FiSettings,
 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 
 // import { useDebouncedCallback } from "../../hooks/useDebounce";
+import { usePermissions } from "../../hooks/usePermissions.js";
 import {
   updateSection,
   updateSectionItems,
@@ -20,6 +22,7 @@ import { SECTION_TYPES } from "../../utils/constants.js";
 import { getEffectiveValueOnly } from "../../utils/estimateDefaults";
 import ConfirmationModal from "../common/ConfirmationModal.jsx";
 
+import CabinetDimensionDefaultsModal from "./CabinetDimensionDefaultsModal.jsx";
 import EstimateAccessoriesManager from "./EstimateAccessoriesManager.jsx";
 import EstimateCabinetManager from "./EstimateCabinetManager.jsx";
 import EstimateLengthManager from "./EstimateLengthManager.jsx";
@@ -37,6 +40,7 @@ const EstimateSectionManager = ({
   onCloseBreakdown,
 }) => {
   const dispatch = useDispatch();
+  const { canCreateEstimates } = usePermissions();
   const cabinetTypes = useSelector((state) => state.cabinetTypes.types);
   const currentEstimate = useSelector(
     (state) => state.estimates.currentEstimate,
@@ -62,6 +66,9 @@ const EstimateSectionManager = ({
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isCabinetDefaultsModalOpen, setIsCabinetDefaultsModalOpen] =
+    useState(false);
+  const [cabinetDimensionOverrides, setCabinetDimensionOverrides] = useState({});
   const NOTES_SECTION_TYPE = "notes";
   const [openSectionType, setOpenSectionType] = useState(
     SECTION_TYPES.CABINETS.type,
@@ -115,6 +122,8 @@ const EstimateSectionManager = ({
   // Close all accordions when taskId changes
   useEffect(() => {
     setOpenSectionType(null);
+    setIsCabinetDefaultsModalOpen(false);
+    setCabinetDimensionOverrides({});
   }, [taskId, sectionId]);
 
   useEffect(() => {
@@ -430,6 +439,17 @@ const EstimateSectionManager = ({
       type: SECTION_TYPES.CABINETS.type,
       title: SECTION_TYPES.CABINETS.title,
       count: cabinetsWithErrorState.length,
+      headerAction: canCreateEstimates ? (
+        <button
+          type="button"
+          onClick={() => setIsCabinetDefaultsModalOpen(true)}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-200 hover:text-teal-600"
+          aria-label="Set temporary cabinet dimension defaults"
+        >
+          <FiSettings size={16} />
+          <span className="hidden sm:inline">Defaults</span>
+        </button>
+      ) : null,
       component: (
         <EstimateCabinetManager
           items={cabinetsWithErrorState}
@@ -450,6 +470,7 @@ const EstimateSectionManager = ({
           }
           cabinetStyleId={sectionData.style}
           cabinetTypes={cabinetTypes}
+          dimensionOverrides={cabinetDimensionOverrides}
           currentTaskId={taskId}
           currentSectionId={sectionId}
         />
@@ -586,7 +607,7 @@ const EstimateSectionManager = ({
   return (
     <div className="flex-1 max-w-4xl mx-auto space-y-4">
       {/* Section Items Accordions */}
-      {sections.map(({ type, title, count, component }) => (
+      {sections.map(({ type, title, count, headerAction, component }) => (
         <div
           key={type}
           ref={(element) => {
@@ -598,39 +619,55 @@ const EstimateSectionManager = ({
           }}
           className="border border-slate-200 rounded-lg"
         >
-          <button
-            onClick={() => handleToggleSection(type)}
-            className={`
-              w-full px-4 py-3 text-left flex items-center justify-between
-              ${openSectionType === type ? "bg-slate-100 rounded-t" : "bg-white rounded"}
-              ${getSectionErrorState[type] ? "border-4 border-red-500 rounded-lg" : ""}
-              hover:bg-slate-200 transition-colors
-            `}
+          <div
+            className={`flex w-full items-center transition-colors hover:bg-slate-200 ${
+              openSectionType === type
+                ? "rounded-t bg-slate-100"
+                : "rounded bg-white"
+            } ${
+              getSectionErrorState[type]
+                ? "border-4 border-red-500 rounded-lg"
+                : ""
+            }`}
           >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-700">
-                {title}
-              </span>
-              {getSectionErrorState[type] && (
-                <span className="flex items-center gap-1 text-sm text-red-600 font-medium">
-                  <FiAlertCircle size={14} />
-                  Needs Attention
-                </span>
-              )}
-            </div>
-            <span className="text-slate-400 flex items-center gap-2">
-              {typeof count === "number" && (
+            <button
+              type="button"
+              onClick={() => handleToggleSection(type)}
+              className="flex min-w-0 flex-1 items-center px-4 py-3 text-left"
+              aria-expanded={openSectionType === type}
+            >
+              <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-700">
-                  {count} item{count === 1 ? "" : "s"}
+                  {title}
                 </span>
-              )}
+                {getSectionErrorState[type] && (
+                  <span className="flex items-center gap-1 text-sm text-red-600 font-medium">
+                    <FiAlertCircle size={14} />
+                    Needs Attention
+                  </span>
+                )}
+              </div>
+            </button>
+            {headerAction && <div className="shrink-0">{headerAction}</div>}
+            {typeof count === "number" && (
+              <span className="ml-3 shrink-0 px-2 text-sm font-medium text-slate-700">
+                {count} item{count === 1 ? "" : "s"}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => handleToggleSection(type)}
+              className="px-4 py-3 text-slate-400"
+              aria-label={`${openSectionType === type ? "Collapse" : "Expand"} ${title}`}
+              aria-expanded={openSectionType === type}
+            >
               {openSectionType === type ? (
                 <FiChevronDown size={20} />
               ) : (
                 <FiChevronRight size={20} />
               )}
-            </span>
-          </button>
+            </button>
+          </div>
           {openSectionType === type && (
             <div className="border-t border-slate-200">{component}</div>
           )}
@@ -642,6 +679,14 @@ const EstimateSectionManager = ({
         addHours={section?.add_hours}
         onSave={handleSaveAddHours}
         finishSetupNeeded={finishSetupNeeded}
+      />
+
+      <CabinetDimensionDefaultsModal
+        isOpen={isCabinetDefaultsModalOpen}
+        onClose={() => setIsCabinetDefaultsModalOpen(false)}
+        cabinetTypes={cabinetTypes}
+        dimensionOverrides={cabinetDimensionOverrides}
+        onSave={setCabinetDimensionOverrides}
       />
 
       <ConfirmationModal
