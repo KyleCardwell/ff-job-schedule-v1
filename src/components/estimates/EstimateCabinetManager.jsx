@@ -923,6 +923,7 @@ const CabinetItemForm = ({
           formData.type_specific_options?.[BLIND_OPTION_NAMES.width] || 0,
           formData.type_specific_options?.[BLIND_OPTION_NAMES.side] ||
             BLIND_SIDE_VALUES.none,
+          formData.type_specific_options?.mirror_back_side || false,
         );
 
         finalFormData.face_config = {
@@ -933,6 +934,7 @@ const CabinetItemForm = ({
             formData.width,
             formData.height,
             formData.depth,
+            formData.type_specific_options?.mirror_back_side || false,
           ),
           boxSummary: boxSummary,
         };
@@ -1251,6 +1253,7 @@ const CabinetItemForm = ({
     isBlind = false,
     blindWidth = 0,
     blindSide = BLIND_SIDE_VALUES.none,
+    mirrorBackSide = false,
   ) => {
     // Round dimensions to nearest 1/16"
     const w = roundTo16th(Number(width));
@@ -1667,10 +1670,28 @@ const CabinetItemForm = ({
 
     const boxHardware = countFaceHardware(faceConfig, itemType);
 
+    if (mirrorBackSide) {
+      boxHardware.totalHinges *= 2;
+      boxHardware.totalDoorPulls *= 2;
+      boxHardware.totalDrawerPulls *= 2;
+      boxHardware.totalAppliancePulls *= 2;
+    }
+
     let frameParts = {};
 
     if (cabinetStyleId !== 13) {
       frameParts = calculateFaceFrames(faceConfig, width, height, true);
+      if (mirrorBackSide) {
+        frameParts = {
+          totalBoardFeet: frameParts.totalBoardFeet * 2,
+          holeCount: frameParts.holeCount * 2,
+          beadLength: frameParts.beadLength * 2,
+          framePieces: [
+            ...frameParts.framePieces,
+            ...frameParts.framePieces.map((piece) => ({ ...piece })),
+          ],
+        };
+      }
     }
 
     // All parts will have finish boolean - no need to calculate counts
@@ -1958,6 +1979,10 @@ const CabinetItemForm = ({
       boxPartsList.push(...partitions);
     }
 
+    if (mirrorBackSide) {
+      openingsCount *= 2;
+    }
+
     return {
       pieces,
       cabinetCount: qty,
@@ -1975,8 +2000,17 @@ const CabinetItemForm = ({
   };
 
   // Calculate face type summary
-  const calculateFaceSummary = (node, itemType, width, height, depth) => {
+  const calculateFaceSummary = (
+    node,
+    itemType,
+    width,
+    height,
+    depth,
+    mirrorBackSide = false,
+  ) => {
     const summary = {};
+    const faceMultiplier =
+      mirrorBackSide && itemType === ITEM_TYPES.CABINET.type ? 2 : 1;
 
     // Update accessory dimensions throughout the tree
     const updateAccessoryDimensions = (node) => {
@@ -2067,7 +2101,7 @@ const CabinetItemForm = ({
               width: glassWidth,
               height: glassHeight,
               area: glassArea,
-              quantity: 2,
+              quantity: 2 * faceMultiplier,
             });
           }
 
@@ -2121,7 +2155,7 @@ const CabinetItemForm = ({
               width: glassWidth,
               height: glassHeight,
               area: glassArea,
-              quantity: 1,
+              quantity: faceMultiplier,
             });
           }
 
@@ -2144,6 +2178,17 @@ const CabinetItemForm = ({
     };
 
     processNode(node);
+
+    if (faceMultiplier === 2) {
+      Object.values(summary).forEach((faceData) => {
+        faceData.count *= faceMultiplier;
+        faceData.totalArea *= faceMultiplier;
+        faceData.faces = [
+          ...faceData.faces,
+          ...faceData.faces.map((face) => ({ ...face })),
+        ];
+      });
+    }
 
     // Return face type summary (accessories are on individual nodes)
     return summary;
