@@ -1,6 +1,15 @@
 import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
-import { FiSave, FiX, FiPlus, FiTrash2, FiChevronDown, FiChevronRight } from "react-icons/fi";
+import {
+  FiChevronDown,
+  FiChevronRight,
+  FiPlus,
+  FiSave,
+  FiTrash2,
+  FiUpload,
+  FiX,
+} from "react-icons/fi";
+import { useCSVReader } from "react-papaparse";
 import { useDispatch } from "react-redux";
 import { v4 as uuidv4 } from "uuid";
 
@@ -12,8 +21,10 @@ const createLineItemId = () => {
 
 const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
   const dispatch = useDispatch();
+  const { CSVReader } = useCSVReader();
   const [lineItems, setLineItems] = useState([]);
   const [expandedItems, setExpandedItems] = useState(new Set());
+  const [csvImportMessage, setCsvImportMessage] = useState(null);
 
   useEffect(() => {
     // Initialize line items from estimate or create empty structure
@@ -30,6 +41,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
     } else {
       setLineItems([]);
     }
+    setCsvImportMessage(null);
   }, [estimate]);
 
   const toggleExpanded = (index) => {
@@ -100,6 +112,56 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
     setLineItems(newLineItems);
   };
 
+  const handleSubItemCsvImport = (parentIndex, { data }) => {
+    const importedSubItems = (Array.isArray(data) ? data : []).flatMap((row) => {
+      const title = String(row?.description ?? row?.title ?? "").trim();
+      const parsedCost = Number(
+        String(row?.cost ?? "")
+          .replace(/[$,]/g, "")
+          .trim(),
+      );
+
+      if (!title || !Number.isFinite(parsedCost)) return [];
+
+      return [
+        {
+          id: createLineItemId(),
+          title,
+          quantity: "",
+          cost: parsedCost.toFixed(2),
+        },
+      ];
+    });
+
+    if (importedSubItems.length === 0) {
+      setCsvImportMessage({
+        type: "error",
+        text: "No valid rows were found. Expected description, quantity, and cost columns.",
+      });
+      return;
+    }
+
+    setLineItems((currentLineItems) =>
+      currentLineItems.map((item, index) =>
+        index === parentIndex
+          ? {
+              ...item,
+              subItems: [...(item.subItems || []), ...importedSubItems],
+            }
+          : item,
+      ),
+    );
+    setExpandedItems((currentExpandedItems) =>
+      new Set([...currentExpandedItems, parentIndex]),
+    );
+    setCsvImportMessage({
+      type: "success",
+      text: `Added ${importedSubItems.length} sub-item${
+        importedSubItems.length === 1 ? "" : "s"
+      } to "${lineItems[parentIndex]?.title || "Untitled line item"}". Click Save to apply them to the estimate.`,
+    });
+  };
+
   const calculateTotal = (quantity, cost) => {
     const qty = parseFloat(quantity) || 0;
     const cst = parseFloat(cost) || 0;
@@ -163,7 +225,19 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
       </div>
 
       {/* Column Headers */}
-      <div className="grid grid-cols-[1fr_120px_120px_120px_50px] gap-4 mb-4 pb-2 border-b border-slate-700">
+      {csvImportMessage && (
+        <div
+          className={`mb-4 rounded border px-4 py-3 text-sm ${
+            csvImportMessage.type === "error"
+              ? "border-red-700 bg-red-950/30 text-red-300"
+              : "border-emerald-700 bg-emerald-950/30 text-emerald-300"
+          }`}
+        >
+          {csvImportMessage.text}
+        </div>
+      )}
+
+      <div className="grid grid-cols-[1fr_120px_120px_120px_80px] gap-4 mb-4 pb-2 border-b border-slate-700">
         <div className="text-slate-400 font-medium">Title / Description</div>
         <div className="text-slate-400 font-medium text-center">Quantity</div>
         <div className="text-slate-400 font-medium text-center">Cost</div>
@@ -176,7 +250,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
         {lineItems.map((item, index) => (
           <div key={index} className="space-y-2">
             {/* Parent Line Item */}
-            <div className="grid grid-cols-[1fr_120px_120px_120px_50px] gap-4 items-center bg-slate-700 p-3 rounded">
+            <div className="grid grid-cols-[1fr_120px_120px_120px_80px] gap-4 items-center bg-slate-700 p-3 rounded">
               {/* Title with expand/collapse button */}
               <div className="flex items-center gap-2">
                 {item.subItems && item.subItems.length > 0 && (
@@ -236,6 +310,31 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
                 >
                   <FiPlus size={18} />
                 </button>
+                <CSVReader
+                  config={{
+                    header: true,
+                    skipEmptyLines: "greedy",
+                    transformHeader: (header) =>
+                      String(header)
+                        .replace(/^\uFEFF/, "")
+                        .trim()
+                        .toLowerCase(),
+                  }}
+                  onUploadAccepted={(results) =>
+                    handleSubItemCsvImport(index, results)
+                  }
+                >
+                  {({ getRootProps }) => (
+                    <button
+                      type="button"
+                      {...getRootProps()}
+                      className="p-1 text-violet-400 hover:text-violet-300 transition-colors"
+                      title="Import CSV as sub-items"
+                    >
+                      <FiUpload size={18} />
+                    </button>
+                  )}
+                </CSVReader>
                 <button
                   onClick={() => deleteLineItem(index)}
                   className="p-1 text-red-400 hover:text-red-300 transition-colors"
@@ -254,7 +353,7 @@ const EstimateLineItemsEditor = ({ estimate, onCancel, onSave }) => {
                   {item.subItems.map((subItem, subIndex) => (
                     <div
                       key={subIndex}
-                      className="grid grid-cols-[1fr_120px_120px_120px_50px] gap-4 items-center bg-slate-750 p-3 rounded border-l-2 border-teal-600"
+                      className="grid grid-cols-[1fr_120px_120px_120px_80px] gap-4 items-center bg-slate-750 p-3 rounded border-l-2 border-teal-600"
                     >
                       {/* Sub-item Title */}
                       <input

@@ -114,6 +114,46 @@ const downloadComparisonCsv = (estimate, rooms) => {
   window.URL.revokeObjectURL(url);
 };
 
+const downloadLineItemAdjustmentsCsv = (estimate, rooms) => {
+  const adjustmentRows = rooms.flatMap((room) => {
+    const includeSectionName = room.sections.length > 1;
+
+    return room.sections.flatMap((section) =>
+      section.versions
+        .filter(
+          (version) =>
+            !version.isActive &&
+            Number.isFinite(Number(version.differenceFromActive)),
+        )
+        .map((version) => [
+          includeSectionName
+            ? `${room.taskName} - ${section.sectionName}`
+            : room.taskName,
+          "",
+          Number(version.differenceFromActive).toFixed(2),
+        ]),
+    );
+  });
+
+  const csv = [["description", "quantity", "cost"], ...adjustmentRows]
+    .map((row) => row.map(csvCell).join(","))
+    .join("\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const safeProjectName = String(estimate?.est_project_name || "Estimate").replace(
+    /[\\/:*?"<>|]/g,
+    "-",
+  );
+
+  link.href = url;
+  link.download = `${safeProjectName} Version Adjustments ${formatFileDate()}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 const EstimateVersionComparison = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -269,6 +309,22 @@ const EstimateVersionComparison = () => {
   return (
     <div className="min-h-full bg-slate-900 text-slate-200">
       <div className="fixed right-0 top-0 h-[50px] z-30 flex print:hidden">
+        <button
+          type="button"
+          onClick={() =>
+            downloadLineItemAdjustmentsCsv(currentEstimate, comparison.rooms)
+          }
+          disabled={
+            isLoading ||
+            Boolean(loadError) ||
+            comparison.alternateVersionCount === 0
+          }
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white transition-colors"
+          title="Export alternative-version differences for line-item sub-item import"
+        >
+          <FiDownload className="w-4 h-4" />
+          Export Adjustments CSV
+        </button>
         <button
           type="button"
           onClick={() => downloadComparisonCsv(currentEstimate, visibleRooms)}
