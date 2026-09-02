@@ -16,7 +16,7 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
   // Map routes to page titles
   const getPageTitle = () => {
     const estimatePathMatch = location.pathname.match(
-      /^\/estimates\/(?:in-progress|finalized|archived)\/([^/]+)(?:\/(?:preview|schedule))?$/,
+      /^\/estimates\/(?:in-progress|finalized|archived)\/([^/]+)(?:\/(?:preview(?:\/versions)?|schedule))?$/,
     );
     const estimateIdFromPath = estimatePathMatch?.[1] || null;
     const isEstimateDetailPath =
@@ -28,6 +28,9 @@ const Header = ({ onMenuClick, rightContent, isMenuOpen }) => {
         : "";
     const estimateVersion = currentEstimate?.version > 1 ? ` - Version ${currentEstimate.version}` : "";
 
+    if (location.pathname.endsWith("/preview/versions")) {
+      return `Estimate Version Comparison${estimateTitleSuffix}`;
+    }
     if (location.pathname.includes("/preview")) {
       return `Estimate Preview${estimateTitleSuffix}`;
     }

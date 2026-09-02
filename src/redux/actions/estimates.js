@@ -342,6 +342,20 @@ export const fetchEstimateById = (estimateId) => {
   };
 };
 
+// Fetch every revision for the section lineages that are active in an estimate.
+// Pricing remains client-side so revisions are compared using current rates.
+export const fetchEstimateSectionRevisions = (estimateId) => {
+  return async () => {
+    const { data, error } = await supabase.rpc(
+      "get_estimate_section_revisions",
+      { p_estimate_id: estimateId },
+    );
+
+    if (error) throw error;
+    return data;
+  };
+};
+
 // Delete an estimate
 export const deleteEstimate = (id) => {
   return async (dispatch) => {
