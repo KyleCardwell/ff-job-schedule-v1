@@ -100,7 +100,7 @@ export const buildVersionComparisonPdfDefinition = ({
         { text: "Section", style: "tableHeader" },
         { text: "Version", style: "tableHeader", alignment: "center" },
         { text: "Status", style: "tableHeader", alignment: "center" },
-        { text: "Extended total", style: "tableHeader", alignment: "right" },
+        { text: "Comparison total", style: "tableHeader", alignment: "right" },
         { text: "Change", style: "tableHeader", alignment: "right" },
         { text: "Room if selected", style: "tableHeader", alignment: "right" },
         { text: "Project if selected", style: "tableHeader", alignment: "right" },
@@ -164,7 +164,11 @@ export const buildVersionComparisonPdfDefinition = ({
                   margin: [5, 3, 5, 3],
                 },
                 {
-                  text: `Qty ${room.taskQuantity}  |  Current ${formatCurrency(room.activeRoomTotal)}`,
+                  text: `Qty ${room.taskQuantity}${
+                    room.taskQuantity === 0
+                      ? ` (comparison uses ${room.comparisonTaskQuantity})`
+                      : ""
+                  }  |  Current ${formatCurrency(room.activeRoomTotal)}`,
                   alignment: "right",
                   color: "#cbd5e1",
                   fillColor: "#1e293b",
@@ -214,7 +218,7 @@ export const buildVersionComparisonPdfDefinition = ({
     footer: (currentPage, pageCount) => ({
       columns: [
         {
-          text: "Version comparison - additional line items are excluded",
+          text: "Comparison uses quantity 1 for zero-quantity rooms; actual totals still exclude them",
           color: "#64748b",
           margin: [32, 12, 0, 0],
         },

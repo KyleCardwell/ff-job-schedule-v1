@@ -75,11 +75,13 @@ const downloadComparisonCsv = (estimate, rooms) => {
     "Room",
     "Section",
     "Room Quantity",
+    "Comparison Room Quantity",
     "Section Quantity",
     "Version",
     "Active",
-    "Extended Total",
-    "Difference vs Active",
+    "Comparison Total",
+    "Actual Extended Total",
+    "Comparison Difference vs Active",
     "Room Total if Selected",
     "Project Total if Selected",
   ];
@@ -87,10 +89,12 @@ const downloadComparisonCsv = (estimate, rooms) => {
     row.room,
     row.section,
     row.roomQuantity,
+    row.comparisonRoomQuantity,
     row.sectionQuantity,
     `v${row.version}`,
     row.active ? "Yes" : "No",
     row.totalPrice?.toFixed(2),
+    row.actualTotalPrice?.toFixed(2),
     row.differenceFromActive?.toFixed(2),
     row.roomTotalIfSelected?.toFixed(2),
     row.projectTotalIfSelected?.toFixed(2),
@@ -364,6 +368,10 @@ const EstimateVersionComparison = () => {
                 Extended totals include both section and room quantities. Additional
                 line items are excluded.
               </p>
+              <p className="text-xs text-slate-500 mt-1">
+                A room quantity of 0 uses 1 only for version comparison totals and
+                differences; it remains excluded from actual room and project totals.
+              </p>
             </div>
           </div>
 
@@ -460,6 +468,8 @@ const EstimateVersionComparison = () => {
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
                           Room quantity: {room.taskQuantity}
+                          {room.taskQuantity === 0 &&
+                            ` (comparison uses ${room.comparisonTaskQuantity})`}
                         </p>
                       </div>
                       <div className="text-right">
@@ -479,7 +489,7 @@ const EstimateVersionComparison = () => {
                             <th className="px-4 py-3 text-left">Section</th>
                             <th className="px-4 py-3 text-center">Version</th>
                             <th className="px-4 py-3 text-center">Status</th>
-                            <th className="px-4 py-3 text-right">Extended total</th>
+                            <th className="px-4 py-3 text-right">Comparison total</th>
                             <th className="px-4 py-3 text-right">Change vs active</th>
                             <th className="px-4 py-3 text-right">Room if selected</th>
                             <th className="px-4 py-3 text-right">Project if selected</th>
