@@ -24,6 +24,7 @@ import AddToSchedule from "./components/estimates/AddToSchedule.jsx";
 import EstimateDashboard from "./components/estimates/EstimateDashboard.jsx";
 import EstimateLayout from "./components/estimates/EstimateLayout.jsx";
 import EstimatePreview from "./components/estimates/EstimatePreview.jsx";
+import EstimateVersionComparison from "./components/estimates/EstimateVersionComparison.jsx";
 import EstimatesList from "./components/estimates/InProgressEstimates.jsx";
 import RoomProcessingChecklist from "./components/processing/RoomProcessingChecklist.jsx";
 import MockAuth from "./mocks/mockAuth.js";
@@ -325,6 +326,14 @@ const AppContent = () => {
                   }
                 />
                 <Route
+                  path="in-progress/:estimateId/preview/versions"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateVersionComparison />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="finalized/:estimateId"
                   element={
                     <ProtectedRoute>
@@ -341,6 +350,14 @@ const AppContent = () => {
                   }
                 />
                 <Route
+                  path="finalized/:estimateId/preview/versions"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateVersionComparison />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="archived/:estimateId"
                   element={
                     <ProtectedRoute>
@@ -353,6 +370,14 @@ const AppContent = () => {
                   element={
                     <ProtectedRoute>
                       <EstimatePreview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="archived/:estimateId/preview/versions"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateVersionComparison />
                     </ProtectedRoute>
                   }
                 />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FiArrowLeft, FiCopy, FiList } from "react-icons/fi";
+import { FiArrowLeft, FiCopy, FiGitBranch, FiList } from "react-icons/fi";
 import { LuArrowDownUp } from "react-icons/lu";
 import { RiSwapBoxLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
@@ -466,6 +466,15 @@ const EstimateLayout = () => {
               View Section Breakdown
             </button>
           )}
+          <button
+            onClick={() =>
+              navigate(`${basePath}/${estimateId}/preview/versions`)
+            }
+            className="flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium transition-colors border-r border-teal-500"
+          >
+            <FiGitBranch size={18} />
+            Compare Versions
+          </button>
           <button
             onClick={() => navigate(`${basePath}/${estimateId}/preview`)}
             className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium transition-colors"

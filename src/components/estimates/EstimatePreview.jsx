@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FiArrowLeft, FiCalendar, FiCheckCircle } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiCheckCircle, FiGitBranch } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -559,6 +559,13 @@ const EstimatePreview = () => {
           (allSections.length === 0 && lineItemsTotal === 0)
         }
       >
+        <button
+          onClick={() => navigate(`${location.pathname}/versions`)}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+        >
+          <FiGitBranch className="w-4 h-4" />
+          Compare Versions
+        </button>
         {canCreateEstimates && currentEstimate?.status !== ESTIMATE_STATUS.FINALIZED && (
           <button
             onClick={handleFinalize}
