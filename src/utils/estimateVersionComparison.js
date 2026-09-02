@@ -51,10 +51,12 @@ export const buildEstimateVersionComparison = ({
     const sectionKey = String(lineageId);
 
     if (!roomMap.has(roomKey)) {
+      const taskQuantity = quantityOrOne(row.taskQuantity);
       roomMap.set(roomKey, {
         taskId,
         taskName: row.taskName || "Untitled Room",
-        taskQuantity: quantityOrOne(row.taskQuantity),
+        taskQuantity,
+        comparisonTaskQuantity: taskQuantity > 0 ? taskQuantity : 1,
         taskPosition: numberOrDefault(row.taskPosition, Number.MAX_SAFE_INTEGER),
         sections: new Map(),
       });
@@ -100,6 +102,10 @@ export const buildEstimateVersionComparison = ({
       totalPrice:
         unitPrice == null
           ? null
+          : unitPrice * sectionQuantity * room.comparisonTaskQuantity,
+      actualTotalPrice:
+        unitPrice == null
+          ? null
           : unitPrice * sectionQuantity * room.taskQuantity,
       pricingError,
       createdAt: revision.created_at || null,
@@ -126,7 +132,7 @@ export const buildEstimateVersionComparison = ({
             ...section,
             versions,
             activeVersion,
-            activeTotal: activeVersion?.totalPrice ?? null,
+            activeTotal: activeVersion?.actualTotalPrice ?? null,
           };
         });
 
@@ -145,14 +151,21 @@ export const buildEstimateVersionComparison = ({
               version.totalPrice == null || section.activeVersion?.totalPrice == null
                 ? null
                 : version.totalPrice - section.activeVersion.totalPrice;
+            const actualDifferenceFromActive =
+              version.actualTotalPrice == null ||
+              section.activeVersion?.actualTotalPrice == null
+                ? null
+                : version.actualTotalPrice -
+                  section.activeVersion.actualTotalPrice;
 
             return {
               ...version,
               differenceFromActive,
+              actualDifferenceFromActive,
               roomTotalIfSelected:
-                differenceFromActive == null || activeRoomTotal == null
+                actualDifferenceFromActive == null || activeRoomTotal == null
                   ? null
-                  : activeRoomTotal + differenceFromActive,
+                  : activeRoomTotal + actualDifferenceFromActive,
             };
           }),
         })),
@@ -183,9 +196,10 @@ export const buildEstimateVersionComparison = ({
           return {
             ...version,
             projectTotalIfSelected:
-              version.differenceFromActive == null || currentProjectTotal == null
+              version.actualDifferenceFromActive == null ||
+              currentProjectTotal == null
                 ? null
-                : currentProjectTotal + version.differenceFromActive,
+                : currentProjectTotal + version.actualDifferenceFromActive,
           };
         }),
       };
@@ -208,10 +222,12 @@ export const flattenEstimateVersionComparison = (rooms) =>
         room: room.taskName,
         section: section.sectionName,
         roomQuantity: room.taskQuantity,
+        comparisonRoomQuantity: room.comparisonTaskQuantity,
         sectionQuantity: version.sectionQuantity,
         version: version.revision,
         active: version.isActive,
         totalPrice: version.totalPrice,
+        actualTotalPrice: version.actualTotalPrice,
         differenceFromActive: version.differenceFromActive,
         roomTotalIfSelected: version.roomTotalIfSelected,
         projectTotalIfSelected: version.projectTotalIfSelected,
