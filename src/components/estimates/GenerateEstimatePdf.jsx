@@ -127,6 +127,9 @@ const GenerateEstimatePdf = ({
       const FOOTER_HEIGHT = 65; // Fixed height for footer table
       const PAGE_TOP_MARGIN = HEADER_HEIGHT; // Must match header height
       const PAGE_BOTTOM_MARGIN = FOOTER_HEIGHT; // Must match footer height
+      const LETTER_PAGE_HEIGHT = 792;
+      const PAGE_CONTENT_HEIGHT =
+        LETTER_PAGE_HEIGHT - PAGE_TOP_MARGIN - PAGE_BOTTOM_MARGIN;
 
       const GROUP_HEADER_FONT_SIZE = 10;
       const GROUP_DATA_FONT_SIZE = 9;
@@ -158,7 +161,52 @@ const GenerateEstimatePdf = ({
 
       // Build all section rows - no borders, they'll be drawn via canvas
       const allRows = [];
+      const lineItemGroups = [];
       let selectedLineItemsTotal = 0;
+
+      const estimateWrappedLineCount = (text, fontSize) => {
+        const availableTextWidth = DESC_WIDTH - 16;
+        const estimatedCharacterWidth = fontSize * 0.6;
+        const charactersPerLine = Math.max(
+          1,
+          Math.floor(availableTextWidth / estimatedCharacterWidth),
+        );
+
+        return String(text || "")
+          .split("\n")
+          .reduce(
+            (lineCount, line) =>
+              lineCount + Math.max(1, Math.ceil(line.length / charactersPerLine)),
+            0,
+          );
+      };
+
+      const estimateLineItemGroupHeight = (rows) =>
+        rows.reduce((height, row, rowIndex) => {
+          const descriptionCell = row[1];
+          const isParentRow = !!descriptionCell.bold;
+          const fontSize = isParentRow
+            ? GROUP_HEADER_FONT_SIZE
+            : GROUP_DATA_FONT_SIZE;
+          const textLineHeight =
+            estimateWrappedLineCount(descriptionCell.text, fontSize) *
+            fontSize *
+            1.2;
+          const numericLineHeight = QUANTITY_FONT_SIZE * 1.2;
+          const topPadding = isParentRow ? 0 : 1;
+          const bottomPadding = isParentRow
+            ? 4
+            : rowIndex === rows.length - 1
+              ? 10
+              : 2;
+
+          return (
+            height +
+            Math.max(textLineHeight, numericLineHeight) +
+            topPadding +
+            bottomPadding
+          );
+        }, 0);
 
       // Aggregate totals by task so multi-section tasks show pricing once
       const taskSummaries = new Map();
@@ -510,6 +558,7 @@ const GenerateEstimatePdf = ({
       if (estimate.line_items && Array.isArray(estimate.line_items)) {
         estimate.line_items.forEach((item, index) => {
           const parentKey = String(index);
+          const groupRows = [];
 
           // Add parent line item if selected
           if (selectedLineItems[parentKey]) {
@@ -519,7 +568,7 @@ const GenerateEstimatePdf = ({
                 : 0;
             selectedLineItemsTotal += itemTotal;
 
-            allRows.push([
+            groupRows.push([
               {
                 text: item.quantity ? item.quantity.toString() : "",
                 alignment: "center",
@@ -569,7 +618,7 @@ const GenerateEstimatePdf = ({
                   : 0;
               selectedLineItemsTotal += subTotal;
 
-              allRows.push([
+              groupRows.push([
                 {
                   text: subItem.quantity ? subItem.quantity.toString() : "",
                   alignment: "center",
@@ -606,6 +655,14 @@ const GenerateEstimatePdf = ({
               ]);
             });
           }
+
+          if (groupRows.length > 0) {
+            lineItemGroups.push({
+              rows: groupRows,
+              keepTogether:
+                estimateLineItemGroupHeight(groupRows) <= PAGE_CONTENT_HEIGHT,
+            });
+          }
         });
       }
 
@@ -619,9 +676,30 @@ const GenerateEstimatePdf = ({
       const finalGrandTotal =
         computedGrandTotal || roundToHundredth(Number(grandTotal) || 0);
 
-      // Build PDF content - single table with all rows
-      const content = [
-        {
+      const createLineItemGroupLayout = () => ({
+        hLineWidth: () => 0,
+        vLineWidth: () => 0,
+        hLineColor: () => "#000",
+        vLineColor: () => "#000",
+        paddingLeft: () => 8,
+        paddingRight: () => 8,
+        paddingTop: (i, node) =>
+          node.table.body[i]?.[1]?.bold ? 0 : 1,
+        paddingBottom: (i, node) => {
+          if (node.table.body[i]?.[1]?.bold) {
+            return 4;
+          }
+
+          return i === node.table.body.length - 1 ? 10 : 2;
+        },
+      });
+
+      // Build PDF content. Sections remain in one table; each line-item family
+      // gets its own table so it can be kept together when it fits on a page.
+      const content = [];
+
+      if (allRows.length > 0) {
+        content.push({
           table: {
             widths: [25, "*", 30, 20, 30, 20],
             body: allRows,
@@ -697,8 +775,20 @@ const GenerateEstimatePdf = ({
               return 10;
             },
           },
-        },
-      ];
+        });
+      }
+
+      lineItemGroups.forEach(({ rows, keepTogether }) => {
+        content.push({
+          unbreakable: keepTogether,
+          table: {
+            widths: [25, "*", 30, 20, 30, 20],
+            body: rows,
+            dontBreakRows: true,
+          },
+          layout: createLineItemGroupLayout(),
+        });
+      });
 
       // PDF document definition
       const docDefinition = {
