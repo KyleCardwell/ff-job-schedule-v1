@@ -14,6 +14,7 @@ import {
 import { createSectionContext } from "../../utils/createSectionContext";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import { formatFaceStyleSummary } from "../../utils/helpers";
+import { getBreakdownCategories } from "../../utils/sectionBreakdownHelpers";
 import {
   buildAdditionalSectionNotesText,
   buildDisplayNotesLines,
@@ -353,6 +354,52 @@ const EstimatePreviewSection = ({
     }).format(value || 0);
   };
 
+  const formatPartCount = (value) => {
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 2,
+    }).format(value || 0);
+  };
+
+  const lengthCountRows = Array.from(
+    (effectiveSection?.lengths || [])
+      .reduce((rows, item, index) => {
+        const catalogId = item.length_catalog_id;
+        const key =
+          catalogId == null ? `uncategorized-${index}` : String(catalogId);
+        const catalogItem = context?.lengthsCatalog?.find(
+          (length) => Number(length.id) === Number(catalogId),
+        );
+        const quantity =
+          item.quantity == null ? 1 : Number(item.quantity) || 0;
+        const totalLengthFeet = ((Number(item.length) || 0) * quantity) / 12;
+        const existing = rows.get(key);
+
+        rows.set(key, {
+          key: `length-${key}`,
+          title: catalogItem?.name || item.name || "Other Length",
+          count: (existing?.count || 0) + totalLengthFeet,
+          suffix: "ft",
+        });
+
+        return rows;
+      }, new Map())
+      .values(),
+  );
+
+  const partCountRows = getBreakdownCategories(calculations)
+    .flatMap((category) => {
+      if (category.title === "Fillers") {
+        return [{ ...category, count: calculations.fillerCount || 0 }];
+      }
+
+      if (category.title === "Lengths") {
+        return lengthCountRows;
+      }
+
+      return [category];
+    })
+    .filter((category) => Number(category.count) > 0);
+
   const scheduled = section.scheduled_task_id !== null;
 
   // Don't render if sectionData is null
@@ -364,7 +411,7 @@ const EstimatePreviewSection = ({
     <div
       ref={sectionRef}
       data-section-id={section.est_section_id}
-      className={`p-6 mb-4 ${
+      className={`px-6 pb-3 mb-4 ${
         hasMultipleSections && !isFirstSection
           ? "border-t-2 border-teal-500 pt-6"
           : ""
@@ -449,92 +496,118 @@ const EstimatePreviewSection = ({
         </div>
       </div>
 
-      {/* Labor Hours Breakdown */}
-      {calculations.laborCosts?.costsByService &&
-        Object.keys(calculations.laborCosts.costsByService).length > 0 && (
-          <div className="mb-4 mx-auto max-w-2xl flex flex-col items-center">
-            <h4 className="text-sm font-semibold text-slate-300 mb-2">
-              Labor Hours
-            </h4>
+      <div className="grid grid-cols-1 gap-6 border-t border-slate-600 pt-4 lg:grid-cols-3">
+        {/* Parts Counts */}
+        <div className="lg:border-r lg:border-slate-600 lg:pr-6">
+          <h4 className="text-sm font-semibold text-slate-300 mb-2">
+            Part Counts
+          </h4>
+          {partCountRows.length > 0 ? (
             <div className="space-y-1 text-sm">
-              {Object.entries(calculations.laborCosts.costsByService).map(
-                ([serviceId, serviceData]) => (
-                  <div
-                    key={serviceId}
-                    className="grid grid-cols-[2fr,2fr,3fr,2fr,3fr,2fr] text-slate-300"
-                  >
-                    <span className="text-right">{serviceData.name}:</span>
-                    <span>{formatNumber(serviceData.hours)} hrs</span>
-                    <span>x</span>
-                    <span>{formatCurrency(serviceData.rate)} / hr</span>
-                    <span>=</span>
-                    <span className="text-right">
-                      {formatCurrency(serviceData.cost)}
-                    </span>
-                  </div>
-                ),
-              )}
+              {partCountRows.map((category) => (
+                <div
+                  key={category.key || category.title}
+                  className="flex items-center justify-between gap-4 text-slate-300"
+                >
+                  <span>{category.title}</span>
+                  <span className="justify-self-center rounded-md bg-gray-700 px-1 py-0.5 text-center text-sm font-medium text-white tabular-nums">
+                    {formatPartCount(category.count)}
+                    {category.suffix ? ` ${category.suffix}` : ""}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-slate-400">No parts</p>
+          )}
+        </div>
 
-      {/* Price Summary */}
-      <div className="border-t border-slate-600 pt-4 mt-4">
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between text-slate-300">
-            <span>Parts Total:</span>
-            <span>{formatCurrency(calculations.partsTotalPrice)}</span>
-          </div>
-          <div className="flex justify-between text-slate-300">
-            <span>Labor Total:</span>
-            <span>
-              {formatCurrency(calculations.laborCosts?.totalLaborCost)}
-            </span>
-          </div>
-          <div className="flex justify-between text-slate-300">
-            <span>Subtotal:</span>
-            <span>{formatCurrency(calculations.subTotalPrice)}</span>
-          </div>
-          {calculations.profit > 0 && (
-            <div className="flex justify-between text-slate-300">
-              <span>Profit ({calculations.profitRate}%):</span>
-              <span>{formatCurrency(calculations.profit)}</span>
-            </div>
-          )}
-          {calculations.commission > 0 && (
-            <div className="flex justify-between text-slate-300">
-              <span>Commission ({calculations.commissionRate}%):</span>
-              <span>{formatCurrency(calculations.commission)}</span>
-            </div>
-          )}
-          {calculations.discount > 0 && (
-            <div className="flex justify-between text-red-400">
-              <span>Discount ({calculations.discountRate}%):</span>
-              <span>-{formatCurrency(calculations.discount)}</span>
-            </div>
-          )}
-          <div
-            className="flex justify-between text-slate-300"
-          >
-            <span>Quantity:</span>
-            <span>× {sectionData.quantity}</span>
-          </div>
-          <div
-            className="text-teal-400 flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2"
-          >
-            <span>
-              {hasMultipleSections ? `Section ${sectionNumber}` : "Room"} Total
-            </span>
-            {hasPriceOverrides && (
-              <div className="flex items-center bg-purple-600 p-1">
-                <span className="block text-xs text-white">
-                  {PRICE_OVERRIDES_ACTIVE}
-                </span>
+        <div className="lg:col-span-2">
+          {/* Labor Hours Breakdown */}
+          {calculations.laborCosts?.costsByService &&
+            Object.keys(calculations.laborCosts.costsByService).length > 0 && (
+              <div className="mb-4 mx-auto max-w-2xl flex flex-col items-center">
+                <h4 className="text-sm font-semibold text-slate-300 mb-2">
+                  Labor Hours
+                </h4>
+                <div className="space-y-1 text-sm">
+                  {Object.entries(calculations.laborCosts.costsByService).map(
+                    ([serviceId, serviceData]) => (
+                      <div
+                        key={serviceId}
+                        className="grid grid-cols-[2fr,2fr,3fr,2fr,3fr,2fr] text-slate-300"
+                      >
+                        <span className="text-right">{serviceData.name}:</span>
+                        <span>{formatNumber(serviceData.hours)} hrs</span>
+                        <span>x</span>
+                        <span>{formatCurrency(serviceData.rate)} / hr</span>
+                        <span>=</span>
+                        <span className="text-right">
+                          {formatCurrency(serviceData.cost)}
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
             )}
-            <span>
-              {formatCurrency(sectionData.totalPriceWithQuantity)}
-            </span>
+
+          {/* Price Summary */}
+          <div className="border-t border-slate-600 pt-4 mt-4">
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-slate-300">
+                <span>Parts Total:</span>
+                <span>{formatCurrency(calculations.partsTotalPrice)}</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Labor Total:</span>
+                <span>
+                  {formatCurrency(calculations.laborCosts?.totalLaborCost)}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Subtotal:</span>
+                <span>{formatCurrency(calculations.subTotalPrice)}</span>
+              </div>
+              {calculations.profit > 0 && (
+                <div className="flex justify-between text-slate-300">
+                  <span>Profit ({calculations.profitRate}%):</span>
+                  <span>{formatCurrency(calculations.profit)}</span>
+                </div>
+              )}
+              {calculations.commission > 0 && (
+                <div className="flex justify-between text-slate-300">
+                  <span>Commission ({calculations.commissionRate}%):</span>
+                  <span>{formatCurrency(calculations.commission)}</span>
+                </div>
+              )}
+              {calculations.discount > 0 && (
+                <div className="flex justify-between text-red-400">
+                  <span>Discount ({calculations.discountRate}%):</span>
+                  <span>-{formatCurrency(calculations.discount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-300">
+                <span>Quantity:</span>
+                <span>× {sectionData.quantity}</span>
+              </div>
+              <div className="text-teal-400 flex justify-between text-lg font-semibold border-t border-slate-600 pt-2 mt-2">
+                <span>
+                  {hasMultipleSections ? `Section ${sectionNumber}` : "Room"}{" "}
+                  Total
+                </span>
+                {hasPriceOverrides && (
+                  <div className="flex items-center bg-purple-600 p-1">
+                    <span className="block text-xs text-white">
+                      {PRICE_OVERRIDES_ACTIVE}
+                    </span>
+                  </div>
+                )}
+                <span>
+                  {formatCurrency(sectionData.totalPriceWithQuantity)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

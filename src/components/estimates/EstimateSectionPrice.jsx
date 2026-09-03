@@ -809,6 +809,24 @@ const EstimateSectionPrice = ({
               {formatCurrency(sectionCalculations.otherTotal || 0)}
             </span>
           </div>
+
+          {/* Total Parts Cost */}
+          <div
+            className={`grid ${
+              isEditingToggles
+                ? "grid-cols-[0.5fr,3fr,1fr,2fr]"
+                : "grid-cols-[3fr,1fr,2fr]"
+            } gap-1 mt-1 pt-2 border-t border-gray-700`}
+          >
+            {isEditingToggles && <span />}
+            <span className="text-sm font-medium text-white text-left">
+              Total Parts:
+            </span>
+            <span />
+            <span className="text-sm font-bold text-teal-400 text-right">
+              {formatCurrency(sectionCalculations.partsTotalPrice)}
+            </span>
+          </div>
         </EstimateSectionPriceGroup>
 
         {/* Labor Hours - Title */}
