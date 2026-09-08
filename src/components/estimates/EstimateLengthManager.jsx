@@ -74,22 +74,26 @@ const BulkAddLengthsModal = ({
 
     const defaultLengthRows = (catalog || [])
       .filter((lengthItem) => lengthItem.is_default)
-      .map((lengthItem) => ({
-        row_id: uuid(),
-        include: true,
-        type: lengthItem.type,
-        length_catalog_id: Number(lengthItem.id),
-        quantity: DEFAULT_NEW_LENGTH_QUANTITY,
-        length: getAutoLengthForType(
+      .map((lengthItem) => {
+        const length = getAutoLengthForType(
           lengthItem.type,
           approxBaseLengthFeet,
           approxCrownLengthFeet,
-        ),
-        width: "",
-        thickness: "",
-        miter_count: 0,
-        cutout_count: 0,
-      }));
+        );
+
+        return {
+          row_id: uuid(),
+          include: length !== "",
+          type: lengthItem.type,
+          length_catalog_id: Number(lengthItem.id),
+          quantity: DEFAULT_NEW_LENGTH_QUANTITY,
+          length,
+          width: "",
+          thickness: "",
+          miter_count: 0,
+          cutout_count: 0,
+        };
+      });
 
     setRows(defaultLengthRows);
     setErrors({});
