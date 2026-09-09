@@ -75,6 +75,7 @@ export const CABINET_FACE_PRESETS = {
       label: "2Df",
       description: "2-drawer stack",
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.BASE, CABINET_TYPE_IDS.TALL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -88,6 +89,7 @@ export const CABINET_FACE_PRESETS = {
       label: "3Df",
       description: "3-drawer stack",
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.BASE, CABINET_TYPE_IDS.TALL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -110,6 +112,7 @@ export const CABINET_FACE_PRESETS = {
       label: "4Df",
       description: "4-drawer stack",
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.BASE, CABINET_TYPE_IDS.TALL],
       layout: B4D_ROOT_LAYOUT,
     },
     {
@@ -117,6 +120,11 @@ export const CABINET_FACE_PRESETS = {
       label: "2D",
       description: "2-door stack",
       cabinetTypeId: [
+        CABINET_TYPE_IDS.BASE,
+        CABINET_TYPE_IDS.UPPER,
+        CABINET_TYPE_IDS.TALL,
+      ],
+      sectionCabinetTypeId: [
         CABINET_TYPE_IDS.BASE,
         CABINET_TYPE_IDS.UPPER,
         CABINET_TYPE_IDS.TALL,
@@ -135,6 +143,11 @@ export const CABINET_FACE_PRESETS = {
         CABINET_TYPE_IDS.UPPER,
         CABINET_TYPE_IDS.TALL,
       ],
+      sectionCabinetTypeId: [
+        CABINET_TYPE_IDS.BASE,
+        CABINET_TYPE_IDS.UPPER,
+        CABINET_TYPE_IDS.TALL,
+      ],
       layout: {
         type: FACE_NAMES.DOOR,
         rollOutQty: 1,
@@ -145,6 +158,7 @@ export const CABINET_FACE_PRESETS = {
       label: "Df/D",
       description: "Drawer front with door below",
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.BASE, CABINET_TYPE_IDS.TALL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -158,6 +172,7 @@ export const CABINET_FACE_PRESETS = {
       label: "Tr",
       description: "Drawer front with 1 shelf",
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.BASE, CABINET_TYPE_IDS.TALL],
       layout: {
         type: FACE_NAMES.DRAWER_FRONT,
         shelfQty: 1,
@@ -168,6 +183,7 @@ export const CABINET_FACE_PRESETS = {
       label: "FS",
       description: "7-inch opening over pair door with 1 shelf",
       cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.BASE, CABINET_TYPE_IDS.TALL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -250,6 +266,7 @@ export const CABINET_FACE_PRESETS = {
       label: "P/2Df",
       description: "Top panel over two stacked drawer panels",
       cabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -270,6 +287,7 @@ export const CABINET_FACE_PRESETS = {
       label: "PD/Df",
       description: "Pair door over drawer front",
       cabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -292,6 +310,7 @@ export const CABINET_FACE_PRESETS = {
       label: "G/D/Df",
       description: "Grille, Door, Drawer front",
       cabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
+      sectionCabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
       layout: {
         direction: SPLIT_DIRECTIONS.VERTICAL,
         children: [
@@ -315,21 +334,38 @@ export const CABINET_FACE_PRESETS = {
   ],
 };
 
-export const getCabinetFacePresets = (itemType, cabinetTypeId = null) => {
+export const getCabinetFacePresets = (
+  itemType,
+  cabinetTypeId = null,
+  { scope = "root" } = {},
+) => {
   const presets = CABINET_FACE_PRESETS[itemType] || [];
+  const scopedPresets =
+    scope === "section"
+      ? presets.filter(
+          (preset) =>
+            Array.isArray(preset.sectionCabinetTypeId) &&
+            preset.sectionCabinetTypeId.length > 0,
+        )
+      : presets;
 
   if (typeof cabinetTypeId !== "number") {
-    return presets;
+    return scopedPresets;
   }
 
-  return presets.filter((preset) => {
+  return scopedPresets.filter((preset) => {
+    const applicableCabinetTypeIds =
+      scope === "section"
+        ? preset.sectionCabinetTypeId
+        : preset.cabinetTypeId;
+
     if (
-      !Array.isArray(preset.cabinetTypeId) ||
-      preset.cabinetTypeId.length === 0
+      !Array.isArray(applicableCabinetTypeIds) ||
+      applicableCabinetTypeIds.length === 0
     ) {
       return true;
     }
 
-    return preset.cabinetTypeId.includes(cabinetTypeId);
+    return applicableCabinetTypeIds.includes(cabinetTypeId);
   });
 };
