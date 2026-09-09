@@ -71,6 +71,11 @@ const CabinetFaceDivider = ({
     () => getCabinetFacePresets(itemType, cabinetTypeId),
     [itemType, cabinetTypeId],
   );
+  const sectionPresets = useMemo(
+    () =>
+      getCabinetFacePresets(itemType, cabinetTypeId, { scope: "section" }),
+    [itemType, cabinetTypeId],
+  );
 
   // Check if this item type should use reveals
   const usesReveals = useMemo(
@@ -2303,8 +2308,12 @@ const CabinetFaceDivider = ({
 
     if (!hasChildren) {
       const nodeType = layoutNode?.type || itemConfig.defaultFaceType;
+      const presetShelfQty = Number.isFinite(layoutNode?.shelfQty)
+        ? Math.max(0, Math.trunc(layoutNode.shelfQty))
+        : null;
       const canHaveShelves =
-        supportsShelves(nodeType) && !DEFAULT_NO_SHELVES.includes(nodeType);
+        supportsShelves(nodeType) &&
+        (!DEFAULT_NO_SHELVES.includes(nodeType) || presetShelfQty !== null);
       const canHaveRollouts = supportsRollouts(nodeType);
       const presetRollOutQty = Number.isFinite(layoutNode?.rollOutQty)
         ? Math.max(0, Math.trunc(layoutNode.rollOutQty))
@@ -2318,7 +2327,9 @@ const CabinetFaceDivider = ({
         rollOutQty: canHaveRollouts ? presetRollOutQty : null,
         drawersWithDividersQty: null,
         drawerDividers: Boolean(layoutNode?.drawerDividers),
-        shelfQty: canHaveShelves ? calculateShelfQty(height) : null,
+        shelfQty: canHaveShelves
+          ? presetShelfQty ?? calculateShelfQty(height)
+          : null,
         children: null,
         accessories: [],
       };
@@ -2429,8 +2440,7 @@ const CabinetFaceDivider = ({
       presetWidth,
       presetHeight,
     );
-
-    setConfig({
+    const presetConfig = {
       ...presetTree,
       id: FACE_NAMES.ROOT,
       width: presetWidth,
@@ -2439,8 +2449,45 @@ const CabinetFaceDivider = ({
       y: reveals.top,
       rootReveals: reveals,
       accessories: presetTree.accessories || [],
-    });
+    };
 
+    setConfig(calculateLayout(presetConfig));
+    setSelectedNode(null);
+    setShowTypeSelector(false);
+    setShowHandlePopup(false);
+  };
+
+  const handleApplyPresetToSection = (preset) => {
+    if (
+      isInteractionDisabled ||
+      !preset?.layout ||
+      !selectedNode ||
+      selectedNode.id === FACE_NAMES.ROOT ||
+      selectedNode.type === FACE_NAMES.REVEAL
+    ) {
+      return;
+    }
+
+    const newConfig = cloneDeep(config);
+    const targetNode = findNode(newConfig, selectedNode.id);
+    const parentNode = findParent(newConfig, selectedNode.id);
+
+    if (!targetNode || !parentNode?.children) return;
+
+    const targetIndex = parentNode.children.findIndex(
+      (child) => child.id === targetNode.id,
+    );
+
+    if (targetIndex === -1) return;
+
+    parentNode.children[targetIndex] = buildPresetNode(
+      preset.layout,
+      targetNode.id,
+      targetNode.width,
+      targetNode.height,
+    );
+
+    setConfig(calculateLayout(newConfig));
     setSelectedNode(null);
     setShowTypeSelector(false);
     setShowHandlePopup(false);
@@ -2976,6 +3023,33 @@ const CabinetFaceDivider = ({
                     accessories={accessories}
                     onAccessoriesChange={handleAccessoriesChange}
                   />
+                  {!readOnly &&
+                    selectedNode.id !== FACE_NAMES.ROOT &&
+                    selectedNode.type !== FACE_NAMES.REVEAL &&
+                    sectionPresets.length > 0 && (
+                      <div className="border-t border-slate-200 mt-3 pt-3">
+                        <div className="text-xs font-medium text-slate-700 mb-2">
+                          Apply Preset to Section:
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {sectionPresets.map((preset) => (
+                            <button
+                              key={preset.key}
+                              onClick={() =>
+                                handleApplyPresetToSection(preset)
+                              }
+                              className="px-2 py-1 text-xs text-slate-600 border border-slate-300 rounded hover:text-slate-800 hover:bg-slate-50"
+                              title={
+                                preset.description ||
+                                `Apply ${preset.label} preset to section`
+                              }
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </fieldset>
             </div>
