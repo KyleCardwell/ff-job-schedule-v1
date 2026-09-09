@@ -2303,8 +2303,12 @@ const CabinetFaceDivider = ({
 
     if (!hasChildren) {
       const nodeType = layoutNode?.type || itemConfig.defaultFaceType;
+      const presetShelfQty = Number.isFinite(layoutNode?.shelfQty)
+        ? Math.max(0, Math.trunc(layoutNode.shelfQty))
+        : null;
       const canHaveShelves =
-        supportsShelves(nodeType) && !DEFAULT_NO_SHELVES.includes(nodeType);
+        supportsShelves(nodeType) &&
+        (!DEFAULT_NO_SHELVES.includes(nodeType) || presetShelfQty !== null);
       const canHaveRollouts = supportsRollouts(nodeType);
       const presetRollOutQty = Number.isFinite(layoutNode?.rollOutQty)
         ? Math.max(0, Math.trunc(layoutNode.rollOutQty))
@@ -2318,7 +2322,9 @@ const CabinetFaceDivider = ({
         rollOutQty: canHaveRollouts ? presetRollOutQty : null,
         drawersWithDividersQty: null,
         drawerDividers: Boolean(layoutNode?.drawerDividers),
-        shelfQty: canHaveShelves ? calculateShelfQty(height) : null,
+        shelfQty: canHaveShelves
+          ? presetShelfQty ?? calculateShelfQty(height)
+          : null,
         children: null,
         accessories: [],
       };

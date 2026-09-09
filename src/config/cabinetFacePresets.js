@@ -34,6 +34,7 @@ const STYLE_BOTTOM_HEIGHT = styleDimension(30.25, {
 
 const STYLE_APPLIANCE_PANEL_GRILLE_HEIGHT = styleDimension(7.75);
 const STYLE_APPLIANCE_PANEL_DRAWER_HEIGHT = styleDimension(20);
+const STYLE_APPLIANCE_PANEL_BOTTOM_HEIGHT = styleDimension(30);
 
 const B2Dw_ROOT_LAYOUT = {
   direction: SPLIT_DIRECTIONS.VERTICAL,
@@ -153,6 +154,29 @@ export const CABINET_FACE_PRESETS = {
       },
     },
     {
+      key: "tr",
+      label: "Tr",
+      description: "Drawer front with 1 shelf",
+      cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      layout: {
+        type: FACE_NAMES.DRAWER_FRONT,
+        shelfQty: 1,
+      },
+    },
+    {
+      key: "fs",
+      label: "FS",
+      description: "7-inch opening over pair door with 1 shelf",
+      cabinetTypeId: [CABINET_TYPE_IDS.BASE],
+      layout: {
+        direction: SPLIT_DIRECTIONS.VERTICAL,
+        children: [
+          { type: FACE_NAMES.OPEN, height: 7 },
+          { type: FACE_NAMES.PAIR_DOOR, shelfQty: 1 },
+        ],
+      },
+    },
+    {
       key: "d_4df",
       label: "D/4Df",
       description: "Top door with 4Df below",
@@ -221,6 +245,26 @@ export const CABINET_FACE_PRESETS = {
     },
   ],
   [ITEM_TYPES.APPLIANCE_PANEL.type]: [
+    {
+      key: "p_2df",
+      label: "P/2Df",
+      description: "Top panel over two stacked drawer panels",
+      cabinetTypeId: [CABINET_TYPE_IDS.APPLIANCE_PANEL],
+      layout: {
+        direction: SPLIT_DIRECTIONS.VERTICAL,
+        children: [
+          { type: FACE_NAMES.PANEL },
+          {
+            direction: SPLIT_DIRECTIONS.VERTICAL,
+            height: STYLE_APPLIANCE_PANEL_BOTTOM_HEIGHT,
+            children: [
+              { type: FACE_NAMES.PANEL },
+              { type: FACE_NAMES.PANEL },
+            ],
+          },
+        ],
+      },
+    },
     {
       key: "pd_df",
       label: "PD/Df",
