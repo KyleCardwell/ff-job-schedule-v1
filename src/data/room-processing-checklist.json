@@ -248,6 +248,18 @@
           "example": "2 fs (up 12 1/8\", 12 7/8\")"
         },
         {
+          "id": "ff-raised-shelf-oven-support",
+          "tags": ["fixed-shelves", "appliances"],
+          "rule": "When behind a face frame, we can use the fixed shelf as the 1/8\" bottom cleat by raising the shelf up 1/8\".",
+          "boldNote": "Tyler is okay with the 7/8\" appliance face being 1/16th proud of the 13/16\" face frame - 9/10/2026",
+          "example": "fs up 10 1/2\" (banded)",
+          "image": {
+            "src": "/images/processing/Face Frame - shelf up .125 for appliance.svg",
+            "alt": "Side-view diagram of an appliance above a face frame, showing the fixed shelf raised one eighth inch behind the face frame",
+            "caption": "Raise the fixed shelf 1/8 inch so it also serves as the bottom cleat."
+          }
+        },
+        {
           "id": "section-notes",
           "tags": ["sections"],
           "rule": "For Each Section between Fixed Shelves (or the only section if none): note per section.",

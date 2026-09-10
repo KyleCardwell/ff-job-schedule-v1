@@ -41,3 +41,35 @@ Entries can also contain a `children` array of entries. Children use the same fi
 ```
 
 Use `\n` inside an `example` when the displayed and copied Cabinet Vision text needs a line break.
+
+To display an important sentence in bold directly below a rule, add the optional `boldNote` field:
+
+```json
+{
+  "id": "example-rule",
+  "tags": ["example"],
+  "rule": "Example instruction.",
+  "boldNote": "Important note displayed in bold."
+}
+```
+
+Bold notes are included in checklist search results.
+
+## Images
+
+Place Processing checklist images in `public/images/processing/`. An entry can display one image by adding an `image` object:
+
+```json
+{
+  "id": "example-rule",
+  "tags": ["example"],
+  "rule": "Example instruction.",
+  "image": {
+    "src": "/images/processing/example-diagram.svg",
+    "alt": "Description of the information shown in the diagram",
+    "caption": "Optional caption displayed below the image."
+  }
+}
+```
+
+`alt` is required for accessibility. Use SVG for diagrams, PNG for screenshots, and JPEG or WebP for photographs. The image opens at full size when selected and is included when printing the checklist.

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 392.09 333">
+  <!-- Generator: Adobe Illustrator 30.8.1, SVG Export Plug-In . SVG Version: 2.1.4 Build 1)  -->
+  <defs>
+    <style>
+      .st0, .st1, .st2, .st3 {
+        fill: #231f20;
+      }
+
+      .st1 {
+        font-family: MyriadPro-Regular, 'Myriad Pro';
+        font-size: 18px;
+      }
+
+      .st4 {
+        fill: #fff;
+      }
+
+      .st4, .st5, .st6, .st7 {
+        stroke-miterlimit: 10;
+      }
+
+      .st4, .st6, .st7 {
+        stroke: #231f20;
+      }
+
+      .st2 {
+        font-size: 11.92px;
+      }
+
+      .st2, .st3 {
+        font-family: ArialMT, Arial;
+      }
+
+      .st3 {
+        font-size: 14px;
+      }
+
+      .st5 {
+        stroke: #6d6e71;
+      }
+
+      .st5, .st6, .st7 {
+        fill: none;
+      }
+
+      .st8 {
+        fill: #d6d5d4;
+      }
+
+      .st6 {
+        stroke-width: .5px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1">
+    <rect class="st8" width="279" height="144"/>
+    <polyline class="st5" points="216 144 279 144 279 0"/>
+    <rect class="st4" x="216" y="153" width="58.5" height="108"/>
+    <polyline class="st4" points="0 198 216 198 216 144 0 144"/>
+    <line class="st7" x1="216" x2="216" y2="144"/>
+    <line class="st7" x1="216" y1="333" x2="216" y2="261"/>
+  </g>
+  <g id="Dimensions">
+    <g id="Manual_Dimension">
+      <line class="st6" x1="279.5" y1="261" x2="325.55" y2="261"/>
+      <line class="st6" x1="279.5" y1="153" x2="325.55" y2="153"/>
+      <text class="st3" transform="translate(335.61 228.01) rotate(-90)"><tspan x="0" y="0" xml:space="preserve"> 1.5 in </tspan></text>
+      <g>
+        <line class="st7" x1="316.55" y1="153.5" x2="316.55" y2="260.5"/>
+        <rect class="st0" x="313.3" y="153" width="6.5" height="1"/>
+        <rect class="st0" x="313.3" y="260" width="6.5" height="1"/>
+      </g>
+    </g>
+    <g id="Manual_Dimension1" data-name="Manual_Dimension">
+      <line class="st6" x1="274.5" y1="266" x2="274.5" y2="299.5"/>
+      <line class="st6" x1="216" y1="266" x2="216" y2="299.5"/>
+      <text class="st3" transform="translate(216.45 309.33)"><tspan x="0" y="0" xml:space="preserve"> 0.813 in </tspan></text>
+      <g>
+        <line class="st7" x1="216.5" y1="290.5" x2="274" y2="290.5"/>
+        <rect class="st0" x="216" y="287.25" width="1" height="6.5"/>
+        <rect class="st0" x="273.5" y="287.25" width="1" height="6.5"/>
+      </g>
+    </g>
+    <g id="Manual_Dimension2" data-name="Manual_Dimension">
+      <line class="st6" x1="285" y1="144" x2="324.2" y2="144"/>
+      <line class="st6" x1="285" y1="153" x2="324.2" y2="153"/>
+      <text class="st2" transform="translate(332.25 177.3) rotate(-90) scale(1.17 1)"><tspan x="0" y="0" xml:space="preserve"> 0.125 in </tspan></text>
+      <g>
+        <line class="st7" x1="316.54" y1="152.5" x2="316.54" y2="144.5"/>
+        <rect class="st0" x="313.29" y="152" width="6.5" height="1"/>
+        <rect class="st0" x="313.29" y="144" width="6.5" height="1"/>
+      </g>
+    </g>
+    <text class="st1" transform="translate(53.57 176.28)"><tspan x="0" y="0">Fixed Shelf</tspan></text>
+    <text class="st1" transform="translate(308.38 21.83)"><tspan x="0" y="0">Box Front</tspan><tspan x="0" y="21.6">Edge</tspan></text>
+    <text class="st1" transform="translate(250.53 249.11) rotate(-90)"><tspan x="0" y="0">Face Frame</tspan></text>
+    <path class="st6" d="M304.17,29.54c-21.1,8.66-44.2,13.43-68.42,13.43-5.92,0-11.78-.29-17.55-.84"/>
+    <text class="st1" transform="translate(316.54 81.38)"><tspan x="0" y="0">Appliance</tspan><tspan x="0" y="21.6">Front</tspan></text>
+    <path class="st6" d="M313.23,87.13c-4.68,1.03-9.54,1.58-14.53,1.58-5.81,0-11.44-.74-16.82-2.13"/>
+  </g>
+</svg>

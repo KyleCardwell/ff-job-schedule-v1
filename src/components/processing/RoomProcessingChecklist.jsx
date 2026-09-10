@@ -110,6 +110,7 @@ const fuzzySearch = new Fuse(entries, {
   minMatchCharLength: 1,
   keys: [
     { name: "rule", weight: 0.6 },
+    { name: "boldNote", weight: 0.3 },
     { name: "example", weight: 0.25 },
     { name: "examples.text", weight: 0.25 },
     { name: "examples.label", weight: 0.15 },
@@ -268,6 +269,43 @@ const ChecklistEntry = ({
                 )}
               </button>
             </div>
+
+            {entry.boldNote && (
+              <p
+                className="mt-2 text-[15px] font-bold leading-6 text-slate-900 sm:text-base sm:leading-7 print:mt-1 print:text-[11px] print:leading-4 print:text-black"
+                role="note"
+              >
+                {highlightText(
+                  entry.boldNote,
+                  getMatchIndices(matches, "boldNote"),
+                )}
+              </p>
+            )}
+
+            {entry.image && (
+              <figure className="mt-4 max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white print:mt-2 print:break-inside-avoid print:rounded-none">
+                <a
+                  href={entry.image.src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block bg-slate-50 p-3 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-teal-500 sm:p-4 print:bg-white print:p-1"
+                  aria-label={`Open full-size diagram: ${entry.image.alt}`}
+                >
+                  <img
+                    src={entry.image.src}
+                    alt={entry.image.alt}
+                    loading="lazy"
+                    decoding="async"
+                    className="mx-auto h-auto max-h-[32rem] w-full object-contain"
+                  />
+                </a>
+                {entry.image.caption && (
+                  <figcaption className="border-t border-slate-200 px-3 py-2 text-sm leading-5 text-slate-600 sm:px-4 print:px-1 print:py-1 print:text-[9px] print:leading-3 print:text-black">
+                    {entry.image.caption}
+                  </figcaption>
+                )}
+              </figure>
+            )}
 
             {exampleOptions.length > 0 && (
               <div className="mt-3 rounded-lg border-l-4 border-teal-600 bg-slate-950 px-3.5 py-3 text-slate-50 print:mt-1.5 print:rounded-none print:border print:border-slate-400 print:bg-white print:px-2 print:py-1.5 print:text-black">
