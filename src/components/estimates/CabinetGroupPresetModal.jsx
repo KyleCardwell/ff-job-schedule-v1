@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useMemo, useState } from "react";
-import { FiCopy, FiTrash2 } from "react-icons/fi";
+import { FiTrash2 } from "react-icons/fi";
+import { TbArrowsSplit } from "react-icons/tb";
 import { v4 as uuid } from "uuid";
 
 import { CABINET_GROUP_PRESETS } from "../../config/cabinetGroupPresets";
@@ -11,6 +12,7 @@ import {
 } from "../../utils/mathUtils";
 
 const DIMENSION_FIELDS = ["width", "height", "depth"];
+const END_PANEL_TYPE_ID = 10;
 
 const parseDimension = (value) => {
   const input = String(value ?? "").trim();
@@ -253,12 +255,37 @@ const CabinetGroupPresetModal = ({
               Shared Dimensions
             </legend>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {selectedPreset.parameterFields.map((field) => (
+              {selectedPreset.parameterFields
+                .filter((field) => field.group !== "ends")
+                .map((field) => (
                 <label key={field.key} className="block">
                   <span className="mb-1 block text-xs font-medium text-slate-600">
                     {field.label}
                   </span>
-                  {field.type === "select" ? (
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={parameters[field.key] ?? ""}
+                    onChange={(event) =>
+                      updateParameter(field.key, event.target.value)
+                    }
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+                Ends
+              </div>
+              <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+                {selectedPreset.parameterFields
+                  .filter((field) => field.group === "ends")
+                  .map((field) => (
+                    <label key={field.key} className="block">
+                      <span className="mb-1 block text-xs font-medium text-slate-600">
+                        {field.label}
+                      </span>
                     <select
                       value={parameters[field.key] ?? ""}
                       onChange={(event) =>
@@ -272,19 +299,9 @@ const CabinetGroupPresetModal = ({
                         </option>
                       ))}
                     </select>
-                  ) : (
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={parameters[field.key] ?? ""}
-                      onChange={(event) =>
-                        updateParameter(field.key, event.target.value)
-                      }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                    />
-                  )}
-                </label>
-              ))}
+                    </label>
+                  ))}
+              </div>
             </div>
             <p className="mt-2 text-xs text-slate-500">
               Changing a shared dimension refreshes the generated rows. Make
@@ -323,14 +340,15 @@ const CabinetGroupPresetModal = ({
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <div className="min-w-[760px]">
-                <div className="grid grid-cols-[80px_minmax(150px,1.4fr)_minmax(130px,1.2fr)_repeat(3,minmax(105px,1fr))_80px] gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+              <div className="min-w-[860px]">
+                <div className="grid grid-cols-[80px_minmax(150px,1.4fr)_minmax(130px,1.2fr)_repeat(3,minmax(105px,1fr))_90px_80px] gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium uppercase tracking-wider text-slate-500">
                   <span>Qty</span>
                   <span>Type</span>
                   <span>Configuration</span>
                   <span>Width</span>
                   <span>Height</span>
                   <span>Depth</span>
+                  <span>Shop Built</span>
                   <span>Actions</span>
                 </div>
                 {rows.map((row, rowIndex) => {
@@ -341,7 +359,7 @@ const CabinetGroupPresetModal = ({
                   return (
                     <div
                       key={row.key}
-                      className="grid grid-cols-[80px_minmax(150px,1.4fr)_minmax(130px,1.2fr)_repeat(3,minmax(105px,1fr))_80px] items-start gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0"
+                      className="grid grid-cols-[80px_minmax(150px,1.4fr)_minmax(130px,1.2fr)_repeat(3,minmax(105px,1fr))_90px_80px] items-start gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0"
                     >
                       <div>
                         <input
@@ -384,6 +402,25 @@ const CabinetGroupPresetModal = ({
                           />
                         </div>
                       ))}
+                      <div className="flex justify-center pt-2">
+                        {Number(row.typeId) === END_PANEL_TYPE_ID ? (
+                          <input
+                            type="checkbox"
+                            checked={Boolean(row.shopBuilt)}
+                            onChange={(event) =>
+                              updateRow(
+                                row.key,
+                                "shopBuilt",
+                                event.target.checked,
+                              )
+                            }
+                            className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            aria-label={`${row.configuration} shop built`}
+                          />
+                        ) : (
+                          <span className="text-sm text-slate-300">—</span>
+                        )}
+                      </div>
                       <div className="flex items-center justify-center gap-1 pt-1">
                         {Number(row.quantity) > 1 && (
                           <button
@@ -393,7 +430,7 @@ const CabinetGroupPresetModal = ({
                             title="Split into individual rows"
                             aria-label={`Split ${row.configuration} into individual rows`}
                           >
-                            <FiCopy size={16} />
+                            <TbArrowsSplit size={18} />
                           </button>
                         )}
                         <button

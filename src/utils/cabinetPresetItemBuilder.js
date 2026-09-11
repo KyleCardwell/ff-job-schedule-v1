@@ -27,6 +27,7 @@ const ZERO_REVEALS = {
   right: 0,
   reveal: 0,
 };
+const EUROPEAN_CABINET_STYLE_ID = 13;
 
 const roundTo16th = (value) => Math.round(Number(value) * 16) / 16;
 
@@ -829,19 +830,35 @@ export const createCabinetItemFromPresetRow = ({
   const quantity = Math.trunc(Number(row.quantity));
   const itemType = cabinetType.item_type || ITEM_TYPES.CABINET.type;
   const itemTypeConfig = getItemTypeConfig(itemType);
+  const requestedStyleOverride =
+    row.itemOverrides?.cabinetStyleOverride == null
+      ? null
+      : Number(row.itemOverrides.cabinetStyleOverride);
+  const isShopBuiltEndPanel =
+    itemType === ITEM_TYPES.END_PANEL.type && Boolean(row.shopBuilt);
+  const cabinetStyleOverride = isShopBuiltEndPanel
+    ? EUROPEAN_CABINET_STYLE_ID
+    : requestedStyleOverride;
+  const effectiveCabinetStyleId = cabinetStyleOverride ?? cabinetStyleId;
   const faceConfig = createFaceConfig({
     cabinetType,
-    cabinetStyleId,
+    cabinetStyleId: effectiveCabinetStyleId,
     cabinetStyles,
     width,
     height,
     depth,
     facePresetKey: row.facePresetKey,
   });
-  const typeSpecificOptions = getDefaultTypeSpecificOptions(
-    itemTypeConfig,
-    cabinetType.cabinet_type_id,
-  );
+  const typeSpecificOptions = {
+    ...getDefaultTypeSpecificOptions(
+      itemTypeConfig,
+      cabinetType.cabinet_type_id,
+    ),
+    ...(row.itemOverrides?.typeSpecificOptions || {}),
+    ...(itemType === ITEM_TYPES.END_PANEL.type
+      ? { shop_built: isShopBuiltEndPanel }
+      : {}),
+  };
   const boxSummary = calculateBoxSummary({
     itemType,
     width,
@@ -849,7 +866,7 @@ export const createCabinetItemFromPresetRow = ({
     depth,
     quantity,
     faceConfig,
-    cabinetStyleId,
+    cabinetStyleId: effectiveCabinetStyleId,
     cabinetTypeId: cabinetType.cabinet_type_id,
   });
 
@@ -875,8 +892,8 @@ export const createCabinetItemFromPresetRow = ({
     fin_back_mat: null,
     fin_back_finish: null,
     fin_back_panel_mod: null,
-    cabinet_style_override: null,
-    saved_style_id: cabinetStyleId,
+    cabinet_style_override: cabinetStyleOverride,
+    saved_style_id: effectiveCabinetStyleId,
     type_specific_options: typeSpecificOptions,
   };
 };

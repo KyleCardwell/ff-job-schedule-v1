@@ -46,6 +46,8 @@ const dimensionRow = ({
   width,
   height,
   depth,
+  itemOverrides = {},
+  shopBuilt = false,
 }) => ({
   key,
   typeId,
@@ -55,6 +57,8 @@ const dimensionRow = ({
   width: asInputValue(width),
   height: asInputValue(height),
   depth: asInputValue(depth),
+  itemOverrides,
+  shopBuilt,
 });
 
 const createBathroomDefaults = ({ cabinetTypes, dimensionOverrides }) => ({
@@ -164,7 +168,19 @@ const createBoundaryRow = (kind, quantity, suffix, params, context) => {
   });
 };
 
-const BATHROOM_END_OPTIONS = [
+const arrangeRowsWithEnds = ({ left, right, coreRows, createEndRow }) => {
+  if (left === right) {
+    return [createEndRow(left, 2, "both"), ...coreRows];
+  }
+
+  return [
+    createEndRow(left, 1, "left"),
+    ...coreRows,
+    createEndRow(right, 1, "right"),
+  ];
+};
+
+const CABINET_END_OPTIONS = [
   { value: "filler", label: "Filler" },
   { value: "end-panel", label: "End Panel" },
 ];
@@ -175,38 +191,35 @@ const bathroomPreset = {
   description:
     "Two B3Ds and one default base with independently selected ends.",
   parameterFields: [
+    { key: "cabinetHeight", label: "Cabinet Height" },
+    { key: "cabinetDepth", label: "Cabinet Depth" },
     {
       key: "leftEnd",
       label: "Left End",
       type: "select",
-      options: BATHROOM_END_OPTIONS,
+      group: "ends",
+      options: CABINET_END_OPTIONS,
     },
     {
       key: "rightEnd",
       label: "Right End",
       type: "select",
-      options: BATHROOM_END_OPTIONS,
+      group: "ends",
+      options: CABINET_END_OPTIONS,
     },
-    { key: "cabinetHeight", label: "Cabinet Height" },
-    { key: "cabinetDepth", label: "Cabinet Depth" },
   ],
   createDefaults: createBathroomDefaults,
   createRows: (params, context) => {
     const left = params.leftEnd || "filler";
     const right = params.rightEnd || "filler";
     const coreRows = createBathroomCoreRows(params, context);
-    if (left === right) {
-      return [
-        createBoundaryRow(left, 2, "both", params, context),
-        ...coreRows,
-      ];
-    }
-
-    return [
-      createBoundaryRow(left, 1, "left", params, context),
-      ...coreRows,
-      createBoundaryRow(right, 1, "right", params, context),
-    ];
+    return arrangeRowsWithEnds({
+      left,
+      right,
+      coreRows,
+      createEndRow: (kind, quantity, suffix) =>
+        createBoundaryRow(kind, quantity, suffix, params, context),
+    });
   },
 };
 
@@ -216,15 +229,31 @@ export const CABINET_GROUP_PRESETS = [
     id: "appliance-surround",
     label: "Appliance Surround",
     description:
-      "Full-height end panels around an appliance panel and upper cabinet.",
+      "An appliance panel and upper cabinet with independently selected ends.",
     parameterFields: [
       { key: "overallHeight", label: "Overall Height" },
       { key: "boxDepth", label: "Cabinet Box Depth" },
       { key: "baseHeight", label: "Base Height" },
       { key: "applianceWidth", label: "Appliance Width" },
       { key: "applianceHeight", label: "Appliance Height" },
+      {
+        key: "leftEnd",
+        label: "Left End",
+        type: "select",
+        group: "ends",
+        options: CABINET_END_OPTIONS,
+      },
+      {
+        key: "rightEnd",
+        label: "Right End",
+        type: "select",
+        group: "ends",
+        options: CABINET_END_OPTIONS,
+      },
     ],
     createDefaults: ({ cabinetTypes, dimensionOverrides }) => ({
+      leftEnd: "end-panel",
+      rightEnd: "end-panel",
       overallHeight: asInputValue(
         getTypeDefault(
           cabinetTypes,
@@ -266,23 +295,7 @@ export const CABINET_GROUP_PRESETS = [
         overallHeight == null || applianceHeight == null || baseHeight == null
           ? null
           : overallHeight - applianceHeight - baseHeight;
-
-      return [
-        dimensionRow({
-          key: "full-height-end-panels",
-          typeId: CABINET_TYPE_IDS.END_PANEL,
-          configuration: "Full Height",
-          quantity: 2,
-          width: boxDepth == null ? null : boxDepth + END_PANEL_OVERHANG,
-          height: overallHeight,
-          depth: getTypeDefault(
-            cabinetTypes,
-            dimensionOverrides,
-            CABINET_TYPE_IDS.END_PANEL,
-            "depth",
-            0.75,
-          ),
-        }),
+      const coreRows = [
         dimensionRow({
           key: "appliance-panel",
           typeId: CABINET_TYPE_IDS.APPLIANCE_PANEL,
@@ -306,17 +319,87 @@ export const CABINET_GROUP_PRESETS = [
           depth: boxDepth,
         }),
       ];
+      const createEndRow = (kind, quantity, suffix) => {
+        if (kind === "filler") {
+          return dimensionRow({
+            key: `appliance-filler-${suffix}`,
+            typeId: CABINET_TYPE_IDS.FILLER,
+            configuration: "Full Height Filler",
+            quantity,
+            width: getTypeDefault(
+              cabinetTypes,
+              dimensionOverrides,
+              CABINET_TYPE_IDS.FILLER,
+              "width",
+              3,
+            ),
+            height: overallHeight,
+            depth: getTypeDefault(
+              cabinetTypes,
+              dimensionOverrides,
+              CABINET_TYPE_IDS.FILLER,
+              "depth",
+              3,
+            ),
+          });
+        }
+
+        return dimensionRow({
+          key: `full-height-end-panel-${suffix}`,
+          typeId: CABINET_TYPE_IDS.END_PANEL,
+          configuration: "Full Height End Panel",
+          quantity,
+          width: boxDepth == null ? null : boxDepth + END_PANEL_OVERHANG,
+          height: overallHeight,
+          depth: getTypeDefault(
+            cabinetTypes,
+            dimensionOverrides,
+            CABINET_TYPE_IDS.END_PANEL,
+            "depth",
+            0.75,
+          ),
+          itemOverrides: {
+            typeSpecificOptions: {
+              count_top_molding: true,
+              count_base_molding: false,
+            },
+          },
+        });
+      };
+
+      return arrangeRowsWithEnds({
+        left: params.leftEnd || "end-panel",
+        right: params.rightEnd || "end-panel",
+        coreRows,
+        createEndRow,
+      });
     },
   },
   {
     id: "tall-run",
     label: "Tall Cabinet Run",
-    description: "A tall filler, adjustable tall cabinets, and an end panel.",
+    description: "Adjustable tall cabinets with independently selected ends.",
     parameterFields: [
       { key: "tallHeight", label: "Tall Cabinet Height" },
       { key: "tallDepth", label: "Tall Cabinet Depth" },
+      {
+        key: "leftEnd",
+        label: "Left End",
+        type: "select",
+        group: "ends",
+        options: CABINET_END_OPTIONS,
+      },
+      {
+        key: "rightEnd",
+        label: "Right End",
+        type: "select",
+        group: "ends",
+        options: CABINET_END_OPTIONS,
+      },
     ],
     createDefaults: ({ cabinetTypes, dimensionOverrides }) => ({
+      leftEnd: "filler",
+      rightEnd: "end-panel",
       tallHeight: asInputValue(
         getTypeDefault(
           cabinetTypes,
@@ -340,28 +423,7 @@ export const CABINET_GROUP_PRESETS = [
       const { cabinetTypes, dimensionOverrides, parseDimension } = context;
       const tallHeight = parseDimension(params.tallHeight);
       const tallDepth = parseDimension(params.tallDepth);
-
-      return [
-        dimensionRow({
-          key: "tall-filler",
-          typeId: CABINET_TYPE_IDS.FILLER,
-          configuration: "Tall Filler",
-          width: getTypeDefault(
-            cabinetTypes,
-            dimensionOverrides,
-            CABINET_TYPE_IDS.FILLER,
-            "width",
-            3,
-          ),
-          height: tallHeight,
-          depth: getTypeDefault(
-            cabinetTypes,
-            dimensionOverrides,
-            CABINET_TYPE_IDS.FILLER,
-            "depth",
-            3,
-          ),
-        }),
+      const coreRows = [
         dimensionRow({
           key: "tall-cabinets",
           typeId: CABINET_TYPE_IDS.TALL,
@@ -377,10 +439,37 @@ export const CABINET_GROUP_PRESETS = [
           height: tallHeight,
           depth: tallDepth,
         }),
-        dimensionRow({
-          key: "tall-end-panel",
+      ];
+      const createEndRow = (kind, quantity, suffix) => {
+        if (kind === "filler") {
+          return dimensionRow({
+            key: `tall-filler-${suffix}`,
+            typeId: CABINET_TYPE_IDS.FILLER,
+            configuration: "Tall Filler",
+            quantity,
+            width: getTypeDefault(
+              cabinetTypes,
+              dimensionOverrides,
+              CABINET_TYPE_IDS.FILLER,
+              "width",
+              3,
+            ),
+            height: tallHeight,
+            depth: getTypeDefault(
+              cabinetTypes,
+              dimensionOverrides,
+              CABINET_TYPE_IDS.FILLER,
+              "depth",
+              3,
+            ),
+          });
+        }
+
+        return dimensionRow({
+          key: `tall-end-panel-${suffix}`,
           typeId: CABINET_TYPE_IDS.END_PANEL,
-          configuration: "Full Height",
+          configuration: "Full Height End Panel",
+          quantity,
           width: tallDepth == null ? null : tallDepth + END_PANEL_OVERHANG,
           height: tallHeight,
           depth: getTypeDefault(
@@ -390,8 +479,15 @@ export const CABINET_GROUP_PRESETS = [
             "depth",
             0.75,
           ),
-        }),
-      ];
+        });
+      };
+
+      return arrangeRowsWithEnds({
+        left: params.leftEnd || "filler",
+        right: params.rightEnd || "end-panel",
+        coreRows,
+        createEndRow,
+      });
     },
   },
 ];
