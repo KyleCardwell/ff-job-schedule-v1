@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { v4 as uuid } from "uuid";
 
 import { getItemTypeConfig } from "../../config/cabinetItemTypes";
+import { createCabinetItemFromPresetRow } from "../../utils/cabinetPresetItemBuilder";
 import {
   FACE_NAMES,
   ITEM_FORM_WIDTHS,
@@ -23,6 +24,7 @@ import {
 } from "../../utils/mathUtils";
 
 import CabinetFaceDivider from "./CabinetFaceDivider.jsx";
+import CabinetGroupPresetModal from "./CabinetGroupPresetModal.jsx";
 import SectionItemList from "./SectionItemList.jsx";
 
 const MOLDING_OPTION_NAMES = {
@@ -3087,6 +3089,9 @@ const EstimateCabinetManager = ({
   currentTaskId,
   currentSectionId,
 }) => {
+  const cabinetStyles = useSelector((state) => state.cabinetStyles.styles);
+  const [isCabinetGroupModalOpen, setIsCabinetGroupModalOpen] = useState(false);
+
   const columns = [
     { key: "layout", label: "Layout", width: "96px" },
     { key: "quantity", label: "Qty", width: ITEM_FORM_WIDTHS.QUANTITY },
@@ -3154,29 +3159,52 @@ const EstimateCabinetManager = ({
     onReorderItems(reorderedItems);
   };
 
+  const handleAddPresetRows = (rows) => {
+    const presetItems = rows.map((row) =>
+      createCabinetItemFromPresetRow({
+        row,
+        cabinetTypes,
+        cabinetStyles,
+        cabinetStyleId,
+      }),
+    );
+    onUpdateItems([...items, ...presetItems]);
+  };
+
   // Items already have errorState added by EstimateSectionManager
   return (
-    <SectionItemList
-      items={items}
-      columns={columns}
-      addButtonText="Add Cabinet Item"
-      emptyStateText="No cabinet items added yet. Click the button below to add one."
-      onSave={handleSaveItem}
-      onDelete={handleDeleteItem}
-      onReorder={handleReorderItems}
-      onDuplicate={onDuplicateItem}
-      onMove={onMoveItem}
-      ItemForm={CabinetItemForm}
-      formProps={{
-        cabinetStyleId,
-        cabinetTypes,
-        currentSectionId,
-        dimensionOverrides,
-      }}
-      listType={ITEM_TYPES.CABINET.type}
-      currentTaskId={currentTaskId}
-      currentSectionId={currentSectionId}
-    />
+    <>
+      <SectionItemList
+        items={items}
+        columns={columns}
+        addButtonText="Add Cabinet Item"
+        secondaryAddButtonText="Add Cabinet Group"
+        onSecondaryAdd={() => setIsCabinetGroupModalOpen(true)}
+        emptyStateText="No cabinet items added yet. Click a button below to add one."
+        onSave={handleSaveItem}
+        onDelete={handleDeleteItem}
+        onReorder={handleReorderItems}
+        onDuplicate={onDuplicateItem}
+        onMove={onMoveItem}
+        ItemForm={CabinetItemForm}
+        formProps={{
+          cabinetStyleId,
+          cabinetTypes,
+          currentSectionId,
+          dimensionOverrides,
+        }}
+        listType={ITEM_TYPES.CABINET.type}
+        currentTaskId={currentTaskId}
+        currentSectionId={currentSectionId}
+      />
+      <CabinetGroupPresetModal
+        isOpen={isCabinetGroupModalOpen}
+        onClose={() => setIsCabinetGroupModalOpen(false)}
+        onAdd={handleAddPresetRows}
+        cabinetTypes={cabinetTypes}
+        dimensionOverrides={dimensionOverrides}
+      />
+    </>
   );
 };
 

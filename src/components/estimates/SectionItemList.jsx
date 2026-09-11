@@ -27,6 +27,8 @@ const SectionItemList = ({
   onMove,
   ItemForm,
   hideAddButton = false,
+  secondaryAddButtonText,
+  onSecondaryAdd,
   formProps = {},
   getReorderItemName,
   getItemSummary,
@@ -734,18 +736,34 @@ const SectionItemList = ({
               </Tooltip>
             </div>
           )}
-          <button
-            onClick={openNewItemForm}
-            disabled={isFormActive}
-            className={`mx-auto py-3 px-4 text-sm font-medium ${
-              isFormActive
-                ? "text-blue-300 bg-blue-50/50 cursor-not-allowed"
-                : "text-blue-500 bg-blue-50 hover:bg-blue-100"
-            } rounded-md flex items-center justify-center`}
-          >
-            <FiPlus className="mr-2" />
-            {addButtonText}
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={openNewItemForm}
+              disabled={isFormActive}
+              className={`py-3 px-4 text-sm font-medium ${
+                isFormActive
+                  ? "text-blue-300 bg-blue-50/50 cursor-not-allowed"
+                  : "text-blue-500 bg-blue-50 hover:bg-blue-100"
+              } rounded-md flex items-center justify-center`}
+            >
+              <FiPlus className="mr-2" />
+              {addButtonText}
+            </button>
+            {secondaryAddButtonText && onSecondaryAdd && (
+              <button
+                onClick={onSecondaryAdd}
+                disabled={isFormActive}
+                className={`flex items-center justify-center rounded-md px-4 py-3 text-sm font-medium ${
+                  isFormActive
+                    ? "cursor-not-allowed bg-teal-50/50 text-teal-300"
+                    : "bg-teal-50 text-teal-600 hover:bg-teal-100"
+                }`}
+              >
+                <FiPlus className="mr-2" />
+                {secondaryAddButtonText}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -830,6 +848,8 @@ SectionItemList.propTypes = {
   onMove: PropTypes.func,
   ItemForm: PropTypes.elementType.isRequired,
   hideAddButton: PropTypes.bool,
+  secondaryAddButtonText: PropTypes.string,
+  onSecondaryAdd: PropTypes.func,
   formProps: PropTypes.object,
   getReorderItemName: PropTypes.func,
   getItemSummary: PropTypes.func,
