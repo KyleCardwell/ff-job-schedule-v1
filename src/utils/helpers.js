@@ -658,7 +658,7 @@ export function truncateTrailingZeros(num) {
 }
 
 export const calculateShelfQty = (height) => {
-  return Math.floor(height / 16);
+  return Math.max(0, Math.round((height - 15) / 12));
 };
 
 export const formatDoorDrawerStyle = (style) => {

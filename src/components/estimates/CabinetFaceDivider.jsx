@@ -451,8 +451,8 @@ const CabinetFaceDivider = ({
         cabinetHeight - revealsToUse.top - revealsToUse.bottom;
 
       // Check what needs updating
-      const dimensionsChanged =
-        config.width !== expectedWidth || config.height !== expectedHeight;
+      const heightChanged = config.height !== expectedHeight;
+      const dimensionsChanged = config.width !== expectedWidth || heightChanged;
 
       const revealsChanged =
         !config.rootReveals || !isEqual(config.rootReveals, revealsToUse);
@@ -482,6 +482,10 @@ const CabinetFaceDivider = ({
         // If dimensions or reveals changed, update children proportionally
         if (dimensionsChanged || revealsChanged) {
           updateChildrenFromParent(updatedConfig);
+        }
+
+        if (heightChanged) {
+          recalculateShelfQtyForNode(updatedConfig);
         }
 
         // Force recalculation of layout
@@ -1250,6 +1254,19 @@ const CabinetFaceDivider = ({
     return faceTypeSupports && itemTypeAllows;
   };
 
+  const recalculateShelfQtyForNode = (node) => {
+    if (!node || node.type === FACE_NAMES.REVEAL) return;
+
+    if (node.children?.length) {
+      node.children.forEach(recalculateShelfQtyForNode);
+      return;
+    }
+
+    if (supportsShelves(node.type) && !DEFAULT_NO_SHELVES.includes(node.type)) {
+      node.shelfQty = calculateShelfQty(node.height);
+    }
+  };
+
   const supportsGlassPanel = itemType !== ITEM_TYPES.FILLER.type;
 
   const PANEL_MOD_FACE_TYPES = [
@@ -1728,6 +1745,11 @@ const CabinetFaceDivider = ({
       updateChildrenFromParent(sibling);
     }
 
+    if (dimension === "height") {
+      recalculateShelfQtyForNode(currentNode);
+      recalculateShelfQtyForNode(sibling);
+    }
+
     // Update the config
     setConfig(newConfig);
   };
@@ -1880,6 +1902,10 @@ const CabinetFaceDivider = ({
         updateChildrenFromParent(child);
       }
     });
+
+    if (dimension === "height") {
+      parentNode.children.forEach(recalculateShelfQtyForNode);
+    }
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
@@ -2139,6 +2165,10 @@ const CabinetFaceDivider = ({
         updateChildrenFromParent(face);
       }
     });
+
+    if (splitDimension === "height") {
+      faces.forEach(recalculateShelfQtyForNode);
+    }
 
     const layoutConfig = calculateLayout(newConfig);
     setConfig(layoutConfig);
