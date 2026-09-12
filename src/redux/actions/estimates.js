@@ -1150,11 +1150,51 @@ export const updateSectionItems = (
           // Create a mapping of temp_id to new database id
           const tempIdToIdMap = new Map();
           insertedItemsFromDB.forEach((insertedItem, index) => {
-            const originalItem = itemsToInsert[index];
-            if (originalItem.temp_id) {
-              tempIdToIdMap.set(originalItem.temp_id, insertedItem.id);
+            const sourceTempId =
+              insertedItem.temp_id || itemsToInsert[index]?.temp_id;
+            if (sourceTempId) {
+              tempIdToIdMap.set(sourceTempId, insertedItem.id);
             }
           });
+
+          // Supabase does not promise that a multi-row INSERT response will stay
+          // in request order. Rebuild the inserted result from the request's
+          // temp IDs, then explicitly persist that same order on the section.
+          const insertedItemsByTempId = new Map(
+            insertedItemsFromDB
+              .filter((item) => item.temp_id)
+              .map((item) => [item.temp_id, item])
+          );
+          insertedItems = itemsToInsert.map(
+            (item, index) =>
+              insertedItemsByTempId.get(item.temp_id) ||
+              insertedItemsFromDB[index]
+          );
+
+          const itemType = tableName.replace("estimate_", "");
+          const orderColumn = `${itemType}_order`;
+          const insertedIds = insertedItems.map((item) => item.id);
+          const insertedIdSet = new Set(insertedIds.map(String));
+          const { data: sectionOrder, error: sectionOrderError } = await supabase
+            .from("estimate_sections")
+            .select(orderColumn)
+            .eq("est_section_id", sectionId)
+            .single();
+
+          if (sectionOrderError) throw sectionOrderError;
+
+          const existingOrder = Array.isArray(sectionOrder?.[orderColumn])
+            ? sectionOrder[orderColumn].filter(
+                (id) => !insertedIdSet.has(String(id))
+              )
+            : [];
+          await updateOrderArray(
+            "estimate_sections",
+            "est_section_id",
+            sectionId,
+            orderColumn,
+            [...existingOrder, ...insertedIds]
+          );
 
           // Create final items array with updated IDs
           processedItems = items.map((item) => {
@@ -1167,9 +1207,6 @@ export const updateSectionItems = (
             }
             return item;
           });
-
-          // Store the inserted items with their new IDs
-          insertedItems = insertedItemsFromDB;
         }
       }
 
