@@ -226,9 +226,9 @@ export const calculateAdjustedWidth = (
     const isTimeOff =
       builderId && timeOffByBuilder[builderId]
         ? timeOffByBuilder[builderId].some((timeOffDate) => {
-            const normalizedTimeOff = parseISO(timeOffDate);
-            return isSameDay(normalizedTimeOff, currentDate);
-          })
+          const normalizedTimeOff = parseISO(timeOffDate);
+          return isSameDay(normalizedTimeOff, currentDate);
+        })
         : false;
 
     if (
@@ -658,7 +658,8 @@ export function truncateTrailingZeros(num) {
 }
 
 export const calculateShelfQty = (height) => {
-  return Math.floor(height / 16);
+  // return Math.max(0, Math.round((height - 15) / 12));
+  return Math.round((height - 1.5) / 12 - 1);
 };
 
 export const formatDoorDrawerStyle = (style) => {
