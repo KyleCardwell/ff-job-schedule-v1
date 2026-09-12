@@ -195,8 +195,8 @@ const CabinetGroupPresetModal = ({
         aria-modal="true"
         aria-labelledby="cabinet-group-preset-title"
       >
-        <div className="flex items-start justify-between border-b border-slate-200 p-4">
-          <div>
+        <div className="relative border-b border-slate-200 p-4 text-center">
+          <div className="mx-auto px-10">
             <h2
               id="cabinet-group-preset-title"
               className="text-xl font-bold text-slate-800"
@@ -211,7 +211,7 @@ const CabinetGroupPresetModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-2 text-2xl leading-none text-slate-400 hover:text-slate-600"
+            className="absolute right-4 top-4 px-2 text-2xl leading-none text-slate-400 hover:text-slate-600"
             aria-label="Close cabinet group modal"
           >
             ×
@@ -241,44 +241,15 @@ const CabinetGroupPresetModal = ({
                   </option>
                 ))}
               </select>
-              <p className="mt-2 text-sm text-slate-500">
-                <span className="font-medium text-slate-700">
-                  {selectedPreset.label}:
-                </span>{" "}
-                {selectedPreset.description}
-              </p>
             </div>
           </fieldset>
 
-          <fieldset className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <legend className="px-1 text-xs font-medium uppercase tracking-wider text-slate-500">
-              Shared Dimensions
-            </legend>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {selectedPreset.parameterFields
-                .filter((field) => field.group !== "ends")
-                .map((field) => (
-                <label key={field.key} className="block">
-                  <span className="mb-1 block text-xs font-medium text-slate-600">
-                    {field.label}
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={parameters[field.key] ?? ""}
-                    onChange={(event) =>
-                      updateParameter(field.key, event.target.value)
-                    }
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                  />
-                </label>
-              ))}
-            </div>
-            <div className="mt-4 border-t border-slate-200 pt-4">
-              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+          <div className="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)]">
+            <fieldset className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <legend className="px-1 text-xs font-medium uppercase tracking-wider text-slate-500">
                 Ends
-              </div>
-              <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+              </legend>
+              <div className="grid gap-3">
                 {selectedPreset.parameterFields
                   .filter((field) => field.group === "ends")
                   .map((field) => (
@@ -286,42 +257,68 @@ const CabinetGroupPresetModal = ({
                       <span className="mb-1 block text-xs font-medium text-slate-600">
                         {field.label}
                       </span>
-                    <select
-                      value={parameters[field.key] ?? ""}
-                      onChange={(event) =>
-                        updateParameter(field.key, event.target.value)
-                      }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                    >
-                      {field.options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        value={parameters[field.key] ?? ""}
+                        onChange={(event) =>
+                          updateParameter(field.key, event.target.value)
+                        }
+                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        {field.options.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                   ))}
               </div>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Changing a shared dimension refreshes the generated rows. Make
-              row-specific edits afterward.
-            </p>
-            {selectedPresetId === "appliance-surround" && (
-              <p
-                className={`mt-2 text-xs ${
-                  applianceHeightError ? "text-red-600" : "text-slate-500"
-                }`}
-              >
-                Upper height = overall height − appliance height − base height.
-                {applianceHeightError ? ` ${applianceHeightError}` : ""}
+            </fieldset>
+
+            <fieldset className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <legend className="px-1 text-xs font-medium uppercase tracking-wider text-slate-500">
+                Shared Dimensions
+              </legend>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(125px,1fr))] gap-3">
+                {selectedPreset.parameterFields
+                  .filter((field) => field.group !== "ends")
+                  .map((field) => (
+                    <label key={field.key} className="block min-w-0">
+                      <span className="mb-1 block text-xs font-medium text-slate-600">
+                        {field.label}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={parameters[field.key] ?? ""}
+                        onChange={(event) =>
+                          updateParameter(field.key, event.target.value)
+                        }
+                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </label>
+                  ))}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Changing a shared dimension refreshes the generated rows. Make
+                row-specific edits afterward.
               </p>
-            )}
-          </fieldset>
+              {selectedPresetId === "appliance-surround" && (
+                <p
+                  className={`mt-2 text-xs ${
+                    applianceHeightError ? "text-red-600" : "text-slate-500"
+                  }`}
+                >
+                  Upper height = overall height − appliance height − base height.
+                  {applianceHeightError ? ` ${applianceHeightError}` : ""}
+                </p>
+              )}
+            </fieldset>
+          </div>
 
           <div>
-            <div className="mb-2 flex items-end justify-between gap-3">
-              <div>
+            <div className="relative mb-2 text-center">
+              <div className="mx-auto sm:px-28">
                 <h3 className="text-sm font-semibold text-slate-800">
                   Generated Items
                 </h3>
@@ -330,7 +327,7 @@ const CabinetGroupPresetModal = ({
                   dimensions.
                 </p>
               </div>
-              <span className="text-xs text-slate-500">
+              <span className="mt-1 block text-xs text-slate-500 sm:absolute sm:right-0 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2">
                 {rows.reduce(
                   (total, row) => total + (Number(row.quantity) || 0),
                   0,
