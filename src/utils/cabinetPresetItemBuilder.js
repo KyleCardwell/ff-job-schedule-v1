@@ -299,6 +299,7 @@ const createFaceConfig = ({
   height,
   depth,
   facePresetKey,
+  rootFaceType,
 }) => {
   const itemType = cabinetType.item_type || ITEM_TYPES.CABINET.type;
   const itemConfig = getItemTypeConfig(itemType);
@@ -318,7 +319,9 @@ const createFaceConfig = ({
         (candidate) => candidate.key === facePresetKey,
       )
     : null;
-  const layout = preset?.layout || { type: itemConfig.defaultFaceType };
+  const layout = preset?.layout || {
+    type: rootFaceType || itemConfig.defaultFaceType,
+  };
   const faceWidth = width - reveals.left - reveals.right;
   const faceHeight = height - reveals.top - reveals.bottom;
   const tree = buildFaceNode({
@@ -840,6 +843,11 @@ export const createCabinetItemFromPresetRow = ({
     ? EUROPEAN_CABINET_STYLE_ID
     : requestedStyleOverride;
   const effectiveCabinetStyleId = cabinetStyleOverride ?? cabinetStyleId;
+  const rootFaceType =
+    row.rootFaceTypeAboveWidth &&
+    width > Number(row.rootFaceTypeAboveWidth.width)
+      ? row.rootFaceTypeAboveWidth.type
+      : null;
   const faceConfig = createFaceConfig({
     cabinetType,
     cabinetStyleId: effectiveCabinetStyleId,
@@ -848,6 +856,7 @@ export const createCabinetItemFromPresetRow = ({
     height,
     depth,
     facePresetKey: row.facePresetKey,
+    rootFaceType,
   });
   const typeSpecificOptions = {
     ...getDefaultTypeSpecificOptions(
