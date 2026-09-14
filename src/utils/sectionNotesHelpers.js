@@ -1084,6 +1084,13 @@ export const SECTION_NOTES_OPTIONS = [
     label: "Wire Mesh (Need Spec)",
     estimateText: () => "Wire Mesh (Need Spec).",
   },
+  {
+    key: "mirror",
+    noteIndex: 2,
+    type: "boolean",
+    label: "Mirror (By Others)",
+    estimateText: () => "Mirror (By Others).",
+  },
 ];
 
 export const getOptionsForNoteIndex = (noteIndex) =>
