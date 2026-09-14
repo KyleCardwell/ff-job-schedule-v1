@@ -1,3 +1,4 @@
+import { FACE_NAMES } from "../utils/constants";
 import { decimalToFraction, formatNumberValue } from "../utils/mathUtils";
 
 const CABINET_TYPE_IDS = {
@@ -42,6 +43,7 @@ const dimensionRow = ({
   typeId,
   configuration,
   facePresetKey = null,
+  rootFaceTypeAboveWidth = null,
   quantity = 1,
   width,
   height,
@@ -53,6 +55,7 @@ const dimensionRow = ({
   typeId,
   configuration,
   facePresetKey,
+  rootFaceTypeAboveWidth,
   quantity: String(quantity),
   width: asInputValue(width),
   height: asInputValue(height),
@@ -103,6 +106,7 @@ const createBathroomCoreRows = (params, context) => {
       key: "base-default",
       typeId: CABINET_TYPE_IDS.BASE,
       configuration: "Base Default",
+      rootFaceTypeAboveWidth: { width: 24, type: FACE_NAMES.PAIR_DOOR },
       width: baseWidth,
       height: cabinetHeight,
       depth: cabinetDepth,
