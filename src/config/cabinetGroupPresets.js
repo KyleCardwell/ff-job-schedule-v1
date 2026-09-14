@@ -11,6 +11,7 @@ const CABINET_TYPE_IDS = {
 };
 
 const END_PANEL_OVERHANG = 1.375;
+const PAIR_DOOR_ABOVE_WIDTH = { width: 24, type: FACE_NAMES.PAIR_DOOR };
 
 const getTypeDefault = (
   cabinetTypes,
@@ -106,7 +107,7 @@ const createBathroomCoreRows = (params, context) => {
       key: "base-default",
       typeId: CABINET_TYPE_IDS.BASE,
       configuration: "Base Default",
-      rootFaceTypeAboveWidth: { width: 24, type: FACE_NAMES.PAIR_DOOR },
+      rootFaceTypeAboveWidth: PAIR_DOOR_ABOVE_WIDTH,
       width: baseWidth,
       height: cabinetHeight,
       depth: cabinetDepth,
@@ -318,6 +319,7 @@ export const CABINET_GROUP_PRESETS = [
           key: "upper-cabinet",
           typeId: CABINET_TYPE_IDS.UPPER,
           configuration: "Upper Default",
+          rootFaceTypeAboveWidth: PAIR_DOOR_ABOVE_WIDTH,
           width: applianceWidth,
           height: upperHeight,
           depth: boxDepth,
@@ -432,6 +434,7 @@ export const CABINET_GROUP_PRESETS = [
           key: "tall-cabinets",
           typeId: CABINET_TYPE_IDS.TALL,
           configuration: "Tall Default",
+          rootFaceTypeAboveWidth: PAIR_DOOR_ABOVE_WIDTH,
           quantity: 2,
           width: getTypeDefault(
             cabinetTypes,
