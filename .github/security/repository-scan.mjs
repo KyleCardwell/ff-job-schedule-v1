@@ -26,6 +26,7 @@ const knownTextIndicators = [
   ["/import_", "data"].join(""),
   ["C260", "512A"].join(""),
   ["RS260", "605"].join(""),
+  ["auth-confirm-eight.", "vercel.app"].join(""),
 ];
 const suspiciousNames = new Set([
   "config.bat",
@@ -115,6 +116,17 @@ for (const file of tracked) {
 
     if (/export\s+default\s+[^;\r\n]+;[ \t]{20,}\S/.test(text)) {
       report(file, "contains hidden code after an export statement");
+    }
+
+    if (/\batob\s*\(\s*process\.env\./.test(text)) {
+      report(file, "decodes an environment value as executable configuration");
+    }
+
+    if (
+      /\beval\s*\(/.test(text) &&
+      /(?:node-fetch|\bfetch\s*\(|\bhttps?\.request\s*\()/.test(text)
+    ) {
+      report(file, "combines network retrieval with dynamic code execution");
     }
   }
 
