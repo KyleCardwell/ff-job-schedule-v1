@@ -2970,6 +2970,7 @@ export const generateCabinetSummary = (
       defaultStyle: effectiveDoorStyle,
       defaultInsideMolding: effectiveDoorInsideMolding,
       defaultOutsideMolding: effectiveDoorOutsideMolding,
+      includeGlass: true,
       includePanelMod: true,
       defaultPanelModId: normalizedDefaultDoorPanelModId,
       staticDetails: typeSpecificOptions?.shop_built ? ["shop-built"] : [],
