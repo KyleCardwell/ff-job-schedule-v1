@@ -9,6 +9,7 @@ const GenerateJobSchedulePdf = ({
   deliveryDate,
   projectNotes,
   localRooms,
+  completedRooms,
   employees,
   formatDateForDisplay,
   disabled,
@@ -20,8 +21,18 @@ const GenerateJobSchedulePdf = ({
       return;
     }
 
-    const activeRooms = localRooms.filter((room) => room.task_active);
-    if (!activeRooms || activeRooms.length === 0) {
+    const printableRooms = [
+      ...localRooms.filter(
+        (room) => room.task_active || room.task_completed_at,
+      ),
+      ...completedRooms,
+    ].filter(
+      (room, index, rooms) =>
+        index ===
+        rooms.findIndex((otherRoom) => otherRoom.task_id === room.task_id),
+    );
+
+    if (printableRooms.length === 0) {
       return;
     }
 
@@ -89,8 +100,12 @@ const GenerateJobSchedulePdf = ({
         ],
       ];
 
-      activeRooms.forEach((room) => {
-        room.workPeriods.forEach((workPeriod, index) => {
+      printableRooms.forEach((room) => {
+        const workPeriods = room.workPeriods?.length
+          ? room.workPeriods
+          : [null];
+
+        workPeriods.forEach((workPeriod, index) => {
           tableBody.push([
             {
               text: index === 0 ? room.task_number || "" : "",
@@ -107,19 +122,23 @@ const GenerateJobSchedulePdf = ({
             //   alignment: "center",
             // },
             {
-              text: workPeriod.duration ? workPeriod.duration.toString() : "",
+              text: workPeriod?.duration
+                ? workPeriod.duration.toString()
+                : "",
               alignment: "center",
             },
             {
-              text: getEmployeeName(workPeriod.employee_id),
+              text: getEmployeeName(workPeriod?.employee_id),
               alignment: "left",
             },
             {
-              text: formatDateForDisplay(workPeriod.start_date),
+              text: workPeriod?.start_date
+                ? formatDateForDisplay(workPeriod.start_date)
+                : "",
               alignment: "center",
             },
             {
-              text: workPeriod.hard_start_date ? "Yes" : "",
+              text: workPeriod?.hard_start_date ? "Yes" : "",
               alignment: "center",
             },
           ]);
@@ -265,9 +284,14 @@ GenerateJobSchedulePdf.propTypes = {
   deliveryDate: PropTypes.string,
   projectNotes: PropTypes.string,
   localRooms: PropTypes.array.isRequired,
+  completedRooms: PropTypes.array,
   employees: PropTypes.array.isRequired,
   formatDateForDisplay: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
+};
+
+GenerateJobSchedulePdf.defaultProps = {
+  completedRooms: [],
 };
 
 export default GenerateJobSchedulePdf;
