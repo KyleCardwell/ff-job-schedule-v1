@@ -1590,14 +1590,7 @@ const JobModal = ({
     (room) => !room.task_active && !room.task_completed_at,
   );
   const completedRooms = [
-    ...localRooms
-      .filter((room) => room.task_completed_at)
-      .map((room) => ({
-        task_id: room.task_id,
-        task_number: room.task_number,
-        task_name: room.task_name,
-        task_completed_at: room.task_completed_at,
-      })),
+    ...localRooms.filter((room) => room.task_completed_at),
     ...persistedCompletedRooms,
   ]
     .filter((room, index, allRooms) => {
@@ -1679,9 +1672,13 @@ const JobModal = ({
                   deliveryDate={deliveryDate}
                   projectNotes={projectNotes}
                   localRooms={localRooms}
+                  completedRooms={completedRooms}
                   employees={employees}
                   formatDateForDisplay={formatDateForDisplay}
-                  disabled={!jobName || localRooms.length === 0}
+                  disabled={
+                    !jobName ||
+                    (localRooms.length === 0 && completedRooms.length === 0)
+                  }
                 />
                 <button
                   className={`${!jobData || !canEditSchedule ? "hidden" : ""}

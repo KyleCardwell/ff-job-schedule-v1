@@ -192,12 +192,37 @@ export const fetchProjects =
       const projectsData = result.reduce((acc, project) => {
         const completedRooms = (project.tasks || [])
           .filter((task) => task.task_completed_at)
-          .map((task) => ({
-            task_id: task.task_id,
-            task_number: task.task_number,
-            task_name: task.task_name,
-            task_completed_at: task.task_completed_at,
-          }))
+          .map((task) => {
+            const sortedSubtasks = [...(task.subtasks || [])].sort((a, b) =>
+              a.subtask_created_at.localeCompare(b.subtask_created_at),
+            );
+
+            return {
+              task_id: task.task_id,
+              task_number: task.task_number,
+              task_name: task.task_name,
+              project_id: task.project_id,
+              project_name: project.project_name,
+              task_created_at: task.task_created_at,
+              task_active: task.task_active,
+              task_completed_at: task.task_completed_at,
+              workPeriods: sortedSubtasks.map((subTask, index) => ({
+                ...subTask,
+                project_id: task.project_id,
+                project_name: project.project_name,
+                project_created_at: project.project_created_at,
+                project_scheduled_at: project.project_scheduled_at,
+                task_name: task.task_name,
+                task_created_at: task.task_created_at,
+                task_active: task.task_active,
+                task_completed_at: task.task_completed_at,
+                heightAdjust: index === 0 ? sortedSubtasks.length : 0,
+                task_number: task.task_number,
+                needs_attention: project.needs_attention,
+                est_duration: task.est_duration,
+              })),
+            };
+          })
           .sort(
             (a, b) =>
               new Date(b.task_completed_at || 0).getTime() -
