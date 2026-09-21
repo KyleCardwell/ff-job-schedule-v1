@@ -13,6 +13,7 @@ import EstimatePreviewBreakdown from "./EstimatePreviewBreakdown.jsx";
 import EstimatePreviewIndex from "./EstimatePreviewIndex.jsx";
 import EstimatePreviewTask from "./EstimatePreviewTask.jsx";
 import GenerateEstimatePdf from "./GenerateEstimatePdf.jsx";
+import GenerateGroupedEstimatePdf from "./GenerateGroupedEstimatePdf.jsx";
 
 const EstimatePreview = () => {
   const dispatch = useDispatch();
@@ -435,6 +436,11 @@ const EstimatePreview = () => {
     [orderedEstimateTasks, taskDataMap],
   );
 
+  const allEstimateSections = useMemo(
+    () => orderedTaskDataForIndex.flatMap((task) => task.sections || []),
+    [orderedTaskDataForIndex],
+  );
+
   // Redirect to edit page if no currentEstimate exists
   useEffect(() => {
     if (!currentEstimate && estimateId) {
@@ -566,6 +572,13 @@ const EstimatePreview = () => {
           <FiGitBranch className="w-4 h-4" />
           Compare Versions
         </button>
+        <GenerateGroupedEstimatePdf
+          estimate={currentEstimate}
+          sections={allEstimateSections}
+          selectedSections={selectedSections}
+          grandTotal={grandTotal}
+          disabled={allEstimateSections.length === 0}
+        />
         {canCreateEstimates && currentEstimate?.status !== ESTIMATE_STATUS.FINALIZED && (
           <button
             onClick={handleFinalize}

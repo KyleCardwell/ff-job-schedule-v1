@@ -1,13 +1,16 @@
 import PropTypes from "prop-types";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { FiCalendar } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
 import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
 import {
   FACE_NAMES,
+  FACE_STYLES,
   FINISHED,
   NONE,
+  NOT_SELECTED,
+  PANEL_MOD_DISPLAY_NAMES,
   PRE_FINISHED,
   PRICE_OVERRIDES_ACTIVE,
 } from "../../utils/constants";
@@ -110,9 +113,6 @@ const EstimatePreviewSection = ({
       accessories,
       teamDefaults,
     ]);
-
-  // Track previous total to avoid calling callback with same value
-  const prevTotalRef = useRef(null);
 
   // Build complete section data for PDF generation and parent aggregation
   const sectionData = useMemo(() => {
@@ -252,6 +252,112 @@ const EstimatePreviewSection = ({
         ? `${faceMaterialName}, Wire Brushed`
         : faceMaterialName;
 
+    const getOptionName = (options, id) => {
+      if (id === null || id === undefined || id === "") return NOT_SELECTED;
+      return (
+        options?.find((option) => String(option.id) === String(id))?.name ||
+        NOT_SELECTED
+      );
+    };
+    const getFinishDisplay = (material, finishIds) => {
+      if (material?.needs_finish === false) return PRE_FINISHED;
+      if (!Array.isArray(finishIds)) return NOT_SELECTED;
+      if (finishIds.length === 0) return NONE;
+
+      return finishIds
+        .map((finishId) => getOptionName(context.finishTypes, finishId))
+        .join(", ");
+    };
+    const getFaceStyleName = (styleId) =>
+      FACE_STYLES.find((style) => style.id === styleId)?.label || NOT_SELECTED;
+    const getPanelModificationName = (panelModId) => {
+      if (!panelModId || Number(panelModId) === 0) return NONE;
+      return (
+        PANEL_MOD_DISPLAY_NAMES[panelModId] ||
+        `Panel Modification ${panelModId}`
+      );
+    };
+    const hasExplicitDoorMaterial =
+      section.door_mat !== null &&
+      section.door_mat !== undefined &&
+      section.door_mat !== "";
+    const hasExplicitDrawerFrontMaterial =
+      section.drawer_front_mat !== null &&
+      section.drawer_front_mat !== undefined &&
+      section.drawer_front_mat !== "";
+    const doorMaterial = context.selectedDoorMaterial?.material;
+    const drawerFrontMaterial = context.selectedDrawerFrontMaterial?.material;
+    const sectionInfoDetails = {
+      cabinetStyle: cabinetStyleName || NOT_SELECTED,
+      woodGrain:
+        parseBooleanOrNull(effectiveSection.horizontal_grain) === true
+          ? "Horizontal"
+          : "Standard",
+      boxMaterial: context.selectedBoxMaterial?.material?.name || NOT_SELECTED,
+      boxFinish: getFinishDisplay(
+        context.selectedBoxMaterial?.material,
+        effectiveSection.box_finish,
+      ),
+      faceMaterial: faceMaterialDisplayName || NOT_SELECTED,
+      faceFinish: getFinishDisplay(
+        context.selectedFaceMaterial?.material,
+        effectiveSection.face_finish,
+      ),
+      doorStyle: getFaceStyleName(effectiveSection.door_style),
+      doorInsideMolding:
+        parseBooleanOrNull(effectiveSection.door_inside_molding) === true
+          ? "Yes"
+          : "No",
+      doorOutsideMolding:
+        parseBooleanOrNull(effectiveSection.door_outside_molding) === true
+          ? "Yes"
+          : "No",
+      doorPanelModification: getPanelModificationName(
+        effectiveSection.door_panel_mod_id,
+      ),
+      doorMaterial: hasExplicitDoorMaterial
+        ? doorMaterial?.name || NOT_SELECTED
+        : "Same as Face Material",
+      doorFinish: Array.isArray(section.door_finish)
+        ? getFinishDisplay(doorMaterial, effectiveSection.door_finish)
+        : "Same as Face Finish",
+      doorHinges: getOptionName(context.hardware?.hinges, effectiveSection.hinge_id),
+      doorPulls:
+        parseBooleanOrNull(effectiveSection.include_door_pulls) === false
+          ? NONE
+          : getOptionName(context.hardware?.pulls, effectiveSection.door_pull_id),
+      drawerFrontStyle: getFaceStyleName(effectiveSection.drawer_front_style),
+      drawerInsideMolding:
+        parseBooleanOrNull(effectiveSection.drawer_inside_molding) === true
+          ? "Yes"
+          : "No",
+      drawerOutsideMolding:
+        parseBooleanOrNull(effectiveSection.drawer_outside_molding) === true
+          ? "Yes"
+          : "No",
+      drawerFrontPanelModification: getPanelModificationName(
+        effectiveSection.drawer_panel_mod_id,
+      ),
+      drawerFrontMaterial: hasExplicitDrawerFrontMaterial
+        ? drawerFrontMaterial?.name || NOT_SELECTED
+        : "Same as Face Material",
+      drawerFrontFinish: Array.isArray(section.drawer_front_finish)
+        ? getFinishDisplay(
+            drawerFrontMaterial,
+            effectiveSection.drawer_front_finish,
+          )
+        : "Same as Face Finish",
+      drawerBoxMaterial: getOptionName(
+        context.drawerBoxMaterials,
+        effectiveSection.drawer_box_mat,
+      ),
+      drawerSlides: getOptionName(context.hardware?.slides, effectiveSection.slide_id),
+      drawerPulls:
+        parseBooleanOrNull(effectiveSection.include_drawer_pulls) === false
+          ? NONE
+          : getOptionName(context.hardware?.pulls, effectiveSection.drawer_pull_id),
+    };
+
     // Determine section name display
     let sectionNameDisplay = "";
     if (hasMultipleSections) {
@@ -266,6 +372,7 @@ const EstimatePreviewSection = ({
       sectionId: section.est_section_id,
       scheduledTaskId: section.scheduled_task_id ?? null,
       sectionName: section.section_name || `Section ${sectionNumber || 1}`,
+      customSectionName: section.section_name?.trim() || "",
       sectionNameDisplay,
       taskName,
       displayName, // For PDF display
@@ -297,6 +404,7 @@ const EstimatePreviewSection = ({
         : "None",
       faceFinish: hasFaceMaterialDetails ? faceFinishNames : NONE,
       boxFinish: hasBoxes ? boxFinishNames : "None",
+      groupingDetails: sectionInfoDetails,
       doorMaterialNote: doorDrawerMaterialNote, // For PDF door/drawer material note
       notes: processedNotes, // Array format for PDF
       displayNotes: displayNotesLines, // Formatted lines for UI display
@@ -330,12 +438,7 @@ const EstimatePreviewSection = ({
   // Notify parent when section data changes (only if value actually changed)
   useEffect(() => {
     if (onTotalCalculated && sectionData) {
-      const currentTotal = sectionData.totalPriceWithQuantity;
-      // Only call if the total has actually changed
-      if (prevTotalRef.current !== currentTotal) {
-        prevTotalRef.current = currentTotal;
-        onTotalCalculated(sectionData);
-      }
+      onTotalCalculated(sectionData);
     }
   }, [sectionData, onTotalCalculated]);
 
