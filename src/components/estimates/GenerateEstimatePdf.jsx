@@ -428,7 +428,7 @@ const GenerateEstimatePdf = ({
           `Drawer Boxes: ${showDrawerBoxDetails ? detailOrNone(section.drawerBoxMaterial) : "None"}`,
         );
         leftColumn.push(
-          `Cabinets: ${showCabinetDetails ? detailOrNone(section.boxMaterial) : "None"}`,
+          `Interiors: ${showCabinetDetails ? detailOrNone(section.boxMaterial) : "None"}`,
         );
         leftColumn.push(
           `Finish: ${showCabinetDetails ? detailOrNone(section.boxFinish) : "None"}`,
@@ -464,19 +464,37 @@ const GenerateEstimatePdf = ({
             columns: [
               {
                 width: "*",
-                stack: leftColumn.map((text) => ({
-                  text,
-                  fontSize: GROUP_DATA_FONT_SIZE,
-                  margin: [0, 0, 0, 4],
-                })),
+                stack: [
+                  {
+                    text: "Cabinets",
+                    bold: true,
+                    decoration: "underline",
+                    fontSize: GROUP_DATA_FONT_SIZE,
+                    margin: [0, 0, 0, 4],
+                  },
+                  ...leftColumn.map((text) => ({
+                    text,
+                    fontSize: GROUP_DATA_FONT_SIZE,
+                    margin: [0, 0, 0, 4],
+                  })),
+                ],
               },
               {
                 width: "*",
-                stack: rightColumn.map((text) => ({
-                  text,
-                  fontSize: GROUP_DATA_FONT_SIZE,
-                  margin: [0, 0, 0, 4],
-                })),
+                stack: [
+                  {
+                    text: "Faces",
+                    bold: true,
+                    decoration: "underline",
+                    fontSize: GROUP_DATA_FONT_SIZE,
+                    margin: [0, 0, 0, 4],
+                  },
+                  ...rightColumn.map((text) => ({
+                    text,
+                    fontSize: GROUP_DATA_FONT_SIZE,
+                    margin: [0, 0, 0, 4],
+                  })),
+                ],
               },
             ],
             margin: [GROUP_DATA_INDENT, 0, 0, 0],

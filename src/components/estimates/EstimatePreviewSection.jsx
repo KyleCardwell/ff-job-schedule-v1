@@ -7,7 +7,6 @@ import { TASK_SCHEDULED_COLOR } from "../../assets/tailwindConstants";
 import {
   FACE_NAMES,
   FACE_STYLES,
-  FINISHED,
   NONE,
   NOT_SELECTED,
   PANEL_MOD_DISPLAY_NAMES,
@@ -187,19 +186,23 @@ const EstimatePreviewSection = ({
     const boxMaterial = boxMaterials?.find(
       (m) => m.id === effectiveSection.box_mat,
     );
-    let boxFinishNames =
+    const baseBoxFinishNames =
       boxMaterial?.needs_finish === false
         ? PRE_FINISHED
         : effectiveSection.box_finish
             ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
             .filter(Boolean)
             .join(", ") || NONE;
-    
-    if (hasBoxes && boxFinishNames === PRE_FINISHED) {
-      if (section.cabinets.some((c) => c.finished_interior === true)) {
-        boxFinishNames = boxFinishNames + "/" + FINISHED;
-      }
-    }
+    const hasFinishedInteriors = (effectiveSection.cabinets || []).some(
+      (cabinet) =>
+        Number(cabinet.quantity ?? 1) !== 0 &&
+        parseBooleanOrNull(cabinet.finished_interior) === true,
+    );
+    const boxFinishNames = hasFinishedInteriors
+      ? [...new Set([baseBoxFinishNames, faceFinishNames])].join("/")
+      : baseBoxFinishNames;
+    const showBoxFinish =
+      boxMaterial?.needs_finish !== false || hasFinishedInteriors;
 
     const drawerBoxMaterialName = hasDrawerBoxes
       ? `${
@@ -294,10 +297,7 @@ const EstimatePreviewSection = ({
           ? "Horizontal"
           : "Standard",
       boxMaterial: context.selectedBoxMaterial?.material?.name || NOT_SELECTED,
-      boxFinish: getFinishDisplay(
-        context.selectedBoxMaterial?.material,
-        effectiveSection.box_finish,
-      ),
+      boxFinish: boxFinishNames,
       faceMaterial: faceMaterialDisplayName || NOT_SELECTED,
       faceFinish: getFinishDisplay(
         context.selectedFaceMaterial?.material,
@@ -404,6 +404,7 @@ const EstimatePreviewSection = ({
         : "None",
       faceFinish: hasFaceMaterialDetails ? faceFinishNames : NONE,
       boxFinish: hasBoxes ? boxFinishNames : "None",
+      showBoxFinish,
       groupingDetails: sectionInfoDetails,
       doorMaterialNote: doorDrawerMaterialNote, // For PDF door/drawer material note
       notes: processedNotes, // Array format for PDF
@@ -564,7 +565,7 @@ const EstimatePreviewSection = ({
           <p className="text-slate-200">{sectionData.cabinetStyle || "—"}</p>
         </div>
         <div>
-          <p className="text-slate-400">Box Material:</p>
+          <p className="text-slate-400">Interiors:</p>
           <p className="text-slate-200">{sectionData.boxMaterial || "—"}</p>
         </div>
         <div>
@@ -584,7 +585,7 @@ const EstimatePreviewSection = ({
           </p>
         </div>
         <div>
-          <p className="text-slate-400">Box Finish:</p>
+          <p className="text-slate-400">Finish:</p>
           <p className="text-slate-200">{sectionData.boxFinish || "—"}</p>
         </div>
         <div>
