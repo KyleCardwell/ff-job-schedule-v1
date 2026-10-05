@@ -68,6 +68,8 @@ const groupSectionsByDetails = (sections, selectedSections) => {
       name: section.customSectionName
         ? `${section.taskName} - ${section.customSectionName}`
         : section.taskName,
+      quantity: section.quantity ?? 1,
+      unitPrice: Number(section.unitPrice ?? section.totalPrice) || 0,
       price: Number(section.totalPriceWithQuantity) || 0,
       included: selectedSections[section.sectionId] === true,
     });
@@ -164,6 +166,8 @@ const buildGroupedEstimatePdfDefinition = ({
     const sectionRows = [
       [
         { text: "Room / Section", style: "tableHeader" },
+        { text: "Quantity", style: "tableHeader", alignment: "center" },
+        { text: "Unit Price", style: "tableHeader", alignment: "right" },
         { text: "Section Price", style: "tableHeader", alignment: "right" },
         {
           text: "Included in Estimate Total",
@@ -173,6 +177,8 @@ const buildGroupedEstimatePdfDefinition = ({
       ],
       ...group.sections.map((section) => [
         { text: section.name || "Unnamed Room" },
+        { text: String(section.quantity), alignment: "center" },
+        { text: formatCurrency(section.unitPrice), alignment: "right" },
         { text: formatCurrency(section.price), alignment: "right" },
         {
           text: section.included ? "Yes" : "No",
@@ -205,7 +211,7 @@ const buildGroupedEstimatePdfDefinition = ({
         {
           table: {
             headerRows: 1,
-            widths: ["*", 90, 100],
+            widths: ["*", 45, 82, 82, 100],
             body: sectionRows,
             dontBreakRows: true,
           },
