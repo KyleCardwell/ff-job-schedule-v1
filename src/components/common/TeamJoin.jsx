@@ -16,41 +16,13 @@ const TeamJoin = () => {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Create new team
-      const { data: teamData, error: teamError } = await supabase
-        .from('teams')
-        .insert([
-          {
-            team_name: teamName,
-            invite_code: Math.random().toString(36).substring(2, 10), // Generate random invite code
-            default_role_id: 3 // viewer
-          }
-        ])
-        .select()
-        .single();
+      const { error: teamError } = await supabase.rpc('create_team', {
+        p_team_name: teamName
+      });
 
       if (teamError) {
         console.error('Error creating team:', teamError);
-        setError('Error creating team. Please try again.');
-        return;
-      }
-
-      // Add user as team member
-      const { error: memberError } = await supabase
-        .from('team_members')
-        .insert([
-          {
-            user_id: user.id,
-            team_id: teamData.team_id,
-            role_id: 1 // admin for first user who creates team
-          }
-        ]);
-
-      if (memberError) {
-        console.error('Error joining team:', memberError);
-        setError('Error joining team. Please try again.');
+        setError(teamError.message || 'Error creating team. Please try again.');
         return;
       }
 
