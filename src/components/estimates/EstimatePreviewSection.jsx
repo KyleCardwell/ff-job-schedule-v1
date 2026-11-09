@@ -14,6 +14,7 @@ import {
   PRICE_OVERRIDES_ACTIVE,
 } from "../../utils/constants";
 import { createSectionContext } from "../../utils/createSectionContext";
+import { getEstimatePdfMaterialDetails } from "../../utils/estimatePdfMaterialDetails";
 import { getSectionCalculations } from "../../utils/getSectionCalculations";
 import { formatFaceStyleSummary } from "../../utils/helpers";
 import { getBreakdownCategories } from "../../utils/sectionBreakdownHelpers";
@@ -170,47 +171,23 @@ const EstimatePreviewSection = ({
     const hasFaceMaterialDetails =
       hasFaceParts || hasPanelDrivenFaceParts || hasLengthFaceParts;
 
-    // Look up face material to check if it needs finish
-    const faceMaterial = faceMaterials?.find(
-      (m) => m.id === effectiveSection.face_mat,
-    );
-    const faceFinishNames =
-      faceMaterial?.needs_finish === false
-        ? PRE_FINISHED
-        : effectiveSection.face_finish
-            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-            .filter(Boolean)
-            .join(", ") || NONE;
-
-    // Look up box material to check if it needs finish
-    const boxMaterial = boxMaterials?.find(
-      (m) => m.id === effectiveSection.box_mat,
-    );
-    const baseBoxFinishNames =
-      boxMaterial?.needs_finish === false
-        ? PRE_FINISHED
-        : effectiveSection.box_finish
-            ?.map((fid) => finishTypes?.find((f) => f.id === fid)?.name)
-            .filter(Boolean)
-            .join(", ") || NONE;
     const hasFinishedInteriors = (effectiveSection.cabinets || []).some(
       (cabinet) =>
         Number(cabinet.quantity ?? 1) !== 0 &&
         parseBooleanOrNull(cabinet.finished_interior) === true,
     );
-    const boxFinishNames = hasFinishedInteriors
-      ? [...new Set([baseBoxFinishNames, faceFinishNames])].join("/")
-      : baseBoxFinishNames;
-    const showBoxFinish =
-      boxMaterial?.needs_finish !== false || hasFinishedInteriors;
-
-    const drawerBoxMaterialName = hasDrawerBoxes
-      ? `${
-          drawerBoxMaterials?.find(
-            (m) => m.id === effectiveSection.drawer_box_mat,
-          )?.name || ""
-        }`
-      : NONE;
+    const {
+      faceFinishNames,
+      boxFinishNames,
+      showBoxFinish,
+      drawerBoxMaterialName,
+      groupingDrawerBoxMaterialName,
+    } = getEstimatePdfMaterialDetails({
+      context,
+      effectiveSection,
+      hasDrawerBoxes,
+      hasFinishedInteriors,
+    });
 
     // Format display name for PDF: task name + section number if multiple sections
     const displayName = section.section_name
@@ -233,8 +210,8 @@ const EstimatePreviewSection = ({
         hasDoors,
         hasDrawerFronts,
         hasDrawerBoxes,
-        faceMaterials,
-        finishTypes,
+        faceMaterials: context.faceMaterials,
+        finishTypes: context.finishTypes,
         hardware: context?.hardware,
         lengthsCatalog: context?.lengthsCatalog,
       });
@@ -347,10 +324,7 @@ const EstimatePreviewSection = ({
             effectiveSection.drawer_front_finish,
           )
         : "Same as Face Finish",
-      drawerBoxMaterial: getOptionName(
-        context.drawerBoxMaterials,
-        effectiveSection.drawer_box_mat,
-      ),
+      drawerBoxMaterial: groupingDrawerBoxMaterialName,
       drawerSlides: getOptionName(context.hardware?.slides, effectiveSection.slide_id),
       drawerPulls:
         parseBooleanOrNull(effectiveSection.include_drawer_pulls) === false
@@ -428,10 +402,6 @@ const EstimatePreviewSection = ({
     sectionNumber,
     taskName,
     cabinetStyles,
-    boxMaterials,
-    faceMaterials,
-    finishTypes,
-    drawerBoxMaterials,
     context,
     hasMultipleSections,
   ]);
