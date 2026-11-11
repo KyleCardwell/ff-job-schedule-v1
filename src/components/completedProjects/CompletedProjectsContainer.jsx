@@ -166,7 +166,7 @@ const CompletedProjectsContainer = () => {
     <div className="flex flex-col h-full pb-6 bg-slate-800">
       {/* Fixed header */}
       <div className="px-6 pt-6 max-w-[1200px] mx-auto w-full bg-slate-800">
-        <PdfCompletedListComponent completedProjects={completedProjects} />
+        <PdfCompletedListComponent completedProjects={sortedProjects} />
         <ProjectSearchFilter onFilterChange={handleFilterChange} />
       </div>
 

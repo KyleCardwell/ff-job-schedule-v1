@@ -59,6 +59,8 @@ const CompletedProjectCard = ({
   const incompleteTasksCount = project.tasks.filter(
     (task) => !task.costing_complete,
   ).length;
+  const totalTasksCount = project.tasks.length;
+  const completedTasksCount = totalTasksCount - incompleteTasksCount;
 
   const handleEditClick = (taskId, taskName, taskNumber) => {
     try {
@@ -133,9 +135,7 @@ const CompletedProjectCard = ({
             <FiX className="text-red-500" size={24} />
           )}
           <span>
-            {incompleteTasksCount === 0
-              ? "Complete"
-              : `${incompleteTasksCount} Incomplete`}
+            {`${completedTasksCount}/${totalTasksCount} Complete`}
           </span>
           <button className="justify-self-end p-2 absolute right-2">
             {isExpanded ? (
